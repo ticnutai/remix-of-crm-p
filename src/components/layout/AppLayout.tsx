@@ -137,9 +137,10 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       {/* Mobile Sidebar - Inline Sheet */}
       {isMobile && (
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetContent 
-            side="right" 
-            className="w-[85vw] max-w-[320px] p-0 overflow-hidden [&>button:first-child]:hidden" 
+          <SheetContent
+            side="right"
+            hideClose
+            className="w-[85vw] max-w-[320px] p-0 overflow-hidden"
             dir="rtl"
           >
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-muted-foreground/30 rounded-full z-10" />
