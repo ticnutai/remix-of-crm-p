@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { QuoteDocumentData, QuoteDocumentItem } from '../types';
 import { format, addDays } from 'date-fns';
+import { Quote, QuoteItem } from '@/hooks/useQuotes';
 
 const generateQuoteNumber = () => {
   const date = new Date();
@@ -54,12 +55,72 @@ const createDefaultDocument = (): QuoteDocumentData => ({
   showSignature: true,
 });
 
+// Convert Quote from database to QuoteDocumentData
+const convertQuoteToDocument = (quote: Quote): QuoteDocumentData => {
+  const items: QuoteDocumentItem[] = (quote.items || []).map((item: QuoteItem, index: number) => ({
+    id: crypto.randomUUID(),
+    number: index + 1,
+    description: item.name || '',
+    details: item.description || '',
+    quantity: item.quantity || 1,
+    unit: 'יח\'',
+    unitPrice: item.unit_price || 0,
+    total: item.total || 0,
+  }));
+
+  return {
+    id: quote.id,
+    title: quote.title || 'הצעת מחיר',
+    quoteNumber: quote.quote_number,
+    date: format(new Date(quote.issue_date || quote.created_at), 'yyyy-MM-dd'),
+    validUntil: quote.valid_until ? format(new Date(quote.valid_until), 'yyyy-MM-dd') : format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+    
+    companyName: '',
+    companyAddress: '',
+    companyPhone: '',
+    companyEmail: '',
+    
+    clientName: quote.clients?.name || '',
+    clientCompany: '',
+    clientAddress: '',
+    clientPhone: quote.clients?.phone || '',
+    clientEmail: quote.clients?.email || '',
+    
+    items,
+    
+    subtotal: quote.subtotal || 0,
+    vatRate: quote.vat_rate || 17,
+    vatAmount: quote.vat_amount || 0,
+    discount: 0,
+    discountType: 'percent',
+    total: quote.total_amount || 0,
+    
+    introduction: 'לכבוד {{clientName}},\n\nלהלן הצעת מחיר עבור הפרויקט המבוקש:',
+    terms: quote.terms_and_conditions || 'תנאי תשלום: שוטף + 30\nההצעה תקפה ל-30 יום מתאריך הנפקתה.',
+    notes: quote.notes || '',
+    footer: 'בברכה,\n{{companyName}}',
+    
+    primaryColor: '#1e3a5f',
+    secondaryColor: '#c9a227',
+    fontFamily: 'Heebo',
+    
+    showLogo: true,
+    showCompanyDetails: true,
+    showClientDetails: true,
+    showItemNumbers: true,
+    showVat: true,
+    showPaymentTerms: true,
+    showSignature: true,
+  };
+};
+
 export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
   const [document, setDocument] = useState<QuoteDocumentData>(() => ({
     ...createDefaultDocument(),
     ...initialData,
   }));
   
+  const [originalQuoteId, setOriginalQuoteId] = useState<string | undefined>(undefined);
   const [history, setHistory] = useState<QuoteDocumentData[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isDirty, setIsDirty] = useState(false);
@@ -155,6 +216,7 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
 
   const resetDocument = useCallback(() => {
     setDocument(createDefaultDocument());
+    setOriginalQuoteId(undefined);
     setIsDirty(false);
   }, []);
 
@@ -169,8 +231,17 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     setIsDirty(true);
   }, []);
 
+  // Load existing quote into the editor
+  const loadQuote = useCallback((quote: Quote) => {
+    const documentData = convertQuoteToDocument(quote);
+    setDocument(documentData);
+    setOriginalQuoteId(quote.id);
+    setIsDirty(false);
+  }, []);
+
   return {
     document,
+    originalQuoteId,
     isDirty,
     updateDocument,
     addItem,
@@ -180,5 +251,6 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     duplicateItem,
     resetDocument,
     loadTemplate,
+    loadQuote,
   };
 }
