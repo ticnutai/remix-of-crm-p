@@ -8,8 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Building2, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+
+const REMEMBER_ME_KEY = 'econtrol_remember_email';
 
 const loginSchema = z.object({
   email: z.string().email('כתובת אימייל לא תקינה'),
@@ -33,8 +36,13 @@ export default function Auth() {
   const [authView, setAuthView] = useState<'auth' | 'forgot' | 'reset'>('auth');
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail, setLoginEmail] = useState(() => {
+    return localStorage.getItem(REMEMBER_ME_KEY) || '';
+  });
   const [loginPassword, setLoginPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return !!localStorage.getItem(REMEMBER_ME_KEY);
+  });
 
   // Signup form state
   const [signupEmail, setSignupEmail] = useState('');
@@ -88,6 +96,14 @@ export default function Auth() {
     }
 
     setIsSubmitting(true);
+    
+    // Save or remove email based on "remember me" checkbox
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+    } else {
+      localStorage.removeItem(REMEMBER_ME_KEY);
+    }
+    
     const { error } = await signIn(loginEmail, loginPassword);
     setIsSubmitting(false);
 
@@ -385,6 +401,17 @@ export default function Auth() {
                       />
                     </div>
                     {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="remember-me"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(!!checked)}
+                    />
+                    <Label htmlFor="remember-me" className="text-sm cursor-pointer">
+                      זכור אותי במחשב זה
+                    </Label>
                   </div>
 
                   <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
