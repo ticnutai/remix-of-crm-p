@@ -15,10 +15,14 @@ export default defineConfig(({ mode }) => {
     "https://eadeymehidcndudeycnf.supabase.co";
 
   const supabaseKey =
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.VITE_SUPABASE_ANON_KEY ??
     env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    env.VITE_SUPABASE_ANON_KEY ??
-    // Public anon/publishable key fallback - UPDATE THIS WITH YOUR NEW ANON KEY
-    "YOUR_NEW_ANON_KEY_HERE";
+    env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseKey) {
+    throw new Error("Missing backend API key (VITE_SUPABASE_PUBLISHABLE_KEY)");
+  }
 
   return {
     server: {
