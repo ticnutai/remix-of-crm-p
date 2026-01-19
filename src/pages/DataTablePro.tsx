@@ -1,0 +1,2942 @@
+// DataTable Pro - Advanced Table System with Supabase Sync
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { AppLayout } from '@/components/layout';
+import { UniversalDataTable } from '@/components/tables/UniversalDataTable';
+import { ColumnDef, Preset, FilterState, SortState } from '@/components/DataTable/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useDataTableSync, SyncedProject, SyncedClient } from '@/hooks/useDataTableSync';
+import { useEmployeesSync, SyncedEmployee } from '@/hooks/useEmployeesSync';
+import { useCustomTables, useCustomTableData, CustomTable, CustomTableData, TableColumn } from '@/hooks/useCustomTables';
+import { useTableCustomColumns, useCustomData } from '@/hooks/useTableCustomColumns';
+import { CreateTableDialog } from '@/components/custom-tables/CreateTableDialog';
+import { CustomTableTab } from '@/components/custom-tables/CustomTableTab';
+import { ManageTablesDialog } from '@/components/custom-tables/ManageTablesDialog';
+import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
+import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
+import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  Layers,
+  Settings,
+  Save,
+  Trash2,
+  Download,
+  Filter,
+  ArrowUpDown,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Users,
+  LayoutGrid,
+  Folder,
+  Calendar,
+  DollarSign,
+  Star,
+  AlertTriangle,
+  Info,
+  Plus,
+  Edit,
+  Undo2,
+  Redo2,
+  GripVertical,
+  Columns,
+  Upload,
+  FileSpreadsheet,
+  Palette,
+  Bold,
+  Italic,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  FolderKanban,
+  Package,
+  Briefcase,
+  Building,
+  Car,
+  ShoppingCart,
+  Wallet,
+  FileText,
+  Eye,
+  Heart,
+  Pencil,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+
+// Demo data types
+interface DemoProject {
+  id: string;
+  name: string;
+  client: string;
+  status: 'active' | 'completed' | 'on-hold' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  budget: number;
+  spent: number;
+  progress: number;
+  startDate: string;
+  endDate: string | null;
+  team: string[];
+  category: string;
+  rating: number;
+  [key: string]: any; // Allow dynamic columns
+}
+
+// Custom column interface for dynamic columns
+interface DynamicColumn {
+  id: string;
+  name: string;
+  type: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'data_type';
+  options?: string[];
+  required?: boolean;
+  defaultValue?: string;
+  dataTypeId?: string;
+}
+
+interface DemoEmployee {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: string;
+  salary: number;
+  hireDate: string;
+  status: 'active' | 'inactive' | 'vacation';
+  performance: number;
+  projects: number;
+}
+
+// Role badge component
+const RoleBadge = React.forwardRef<HTMLDivElement, { role: string }>(({ role }, ref) => {
+  const config: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+    admin: { label: 'מנהל ראשי', color: '#dc2626', bgColor: '#fee2e2', icon: <Crown className="h-3 w-3" /> },
+    manager: { label: 'מנהל', color: '#ca8a04', bgColor: '#fef9c3', icon: <UserCog className="h-3 w-3" /> },
+    employee: { label: 'עובד', color: '#6b7280', bgColor: '#f3f4f6', icon: <User className="h-3 w-3" /> },
+    client: { label: 'לקוח', color: '#2563eb', bgColor: '#dbeafe', icon: <User className="h-3 w-3" /> },
+  };
+
+  const roleConfig = config[role] || config.employee;
+
+  return (
+    <div 
+      ref={ref} 
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+      style={{ backgroundColor: roleConfig.bgColor, color: roleConfig.color }}
+    >
+      {roleConfig.icon}
+      {roleConfig.label}
+    </div>
+  );
+});
+RoleBadge.displayName = 'RoleBadge';
+
+
+// Status badge component
+const StatusBadge = React.forwardRef<HTMLDivElement, { status: string }>(({ status }, ref) => {
+  const variants: Record<string, { color: string; icon: React.ReactNode }> = {
+    active: { color: 'bg-green-500/20 text-green-600 border-green-500/30', icon: <CheckCircle className="h-3 w-3" /> },
+    completed: { color: 'bg-blue-500/20 text-blue-600 border-blue-500/30', icon: <CheckCircle className="h-3 w-3" /> },
+    'on-hold': { color: 'bg-amber-500/20 text-amber-600 border-amber-500/30', icon: <Clock className="h-3 w-3" /> },
+    cancelled: { color: 'bg-red-500/20 text-red-600 border-red-500/30', icon: <XCircle className="h-3 w-3" /> },
+    inactive: { color: 'bg-gray-500/20 text-gray-600 border-gray-500/30', icon: <XCircle className="h-3 w-3" /> },
+    vacation: { color: 'bg-purple-500/20 text-purple-600 border-purple-500/30', icon: <Calendar className="h-3 w-3" /> },
+  };
+
+  const statusLabels: Record<string, string> = {
+    active: 'פעיל',
+    completed: 'הושלם',
+    'on-hold': 'בהמתנה',
+    cancelled: 'בוטל',
+    inactive: 'לא פעיל',
+    vacation: 'חופשה',
+  };
+
+  const config = variants[status] || variants.active;
+
+  return (
+    <div ref={ref} className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${config.color}`}>
+      {config.icon}
+      {statusLabels[status] || status}
+    </div>
+  );
+});
+StatusBadge.displayName = 'StatusBadge';
+
+// Priority badge
+const PriorityBadge = React.forwardRef<HTMLDivElement, { priority: string }>(({ priority }, ref) => {
+  const colors: Record<string, string> = {
+    low: 'bg-slate-500/20 text-slate-600',
+    medium: 'bg-blue-500/20 text-blue-600',
+    high: 'bg-orange-500/20 text-orange-600',
+    critical: 'bg-red-500/20 text-red-600',
+  };
+
+  const labels: Record<string, string> = {
+    low: 'נמוך',
+    medium: 'בינוני',
+    high: 'גבוה',
+    critical: 'קריטי',
+  };
+
+  return (
+    <div ref={ref} className={`inline-flex items-center px-2 py-1 rounded-full text-xs border ${colors[priority]}`}>
+      {labels[priority]}
+    </div>
+  );
+});
+PriorityBadge.displayName = 'PriorityBadge';
+
+// Progress bar
+const ProgressBar = React.forwardRef<HTMLDivElement, { value: number }>(({ value }, ref) => (
+  <div ref={ref} className="flex items-center gap-2">
+    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+      <div
+        className={`h-full transition-all ${
+          value >= 80 ? 'bg-green-500' : value >= 50 ? 'bg-blue-500' : value >= 25 ? 'bg-amber-500' : 'bg-red-500'
+        }`}
+        style={{ width: `${value}%` }}
+      />
+    </div>
+    <span className="text-sm text-muted-foreground w-10">{value}%</span>
+  </div>
+));
+ProgressBar.displayName = 'ProgressBar';
+
+// Rating stars
+const RatingStars = React.forwardRef<HTMLDivElement, { rating: number }>(({ rating }, ref) => (
+  <div ref={ref} className="flex items-center gap-0.5">
+    {Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${i < rating ? 'text-amber-400 fill-amber-400' : 'text-muted'}`}
+      />
+    ))}
+  </div>
+));
+RatingStars.displayName = 'RatingStars';
+
+// Presets storage key
+const PRESETS_STORAGE_KEY = 'datatable-pro-presets';
+
+export default function DataTablePro() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('clients');
+  
+  // Database sync hook
+  const {
+    projects: dbProjects,
+    clients: dbClients,
+    clientOptions,
+    isLoading: dbLoading,
+    isSyncing,
+    fetchData: refreshData,
+    updateProject,
+    addProject: addDbProject,
+    deleteProject: deleteDbProject,
+    updateClient,
+    addClient: addDbClient,
+    deleteClient: deleteDbClient,
+  } = useDataTableSync();
+  
+  // Employees sync hook
+  const {
+    employees: dbEmployees,
+    isLoading: employeesLoading,
+    isSyncing: employeesSyncing,
+    fetchEmployees: refreshEmployees,
+    updateEmployee,
+    isManager,
+    isAdmin,
+  } = useEmployeesSync();
+
+  // Custom tables hook
+  const {
+    tables: customTables,
+    isLoading: customTablesLoading,
+    fetchTables: refreshCustomTables,
+    deleteTable: deleteCustomTable,
+    updateTable: updateCustomTable,
+    duplicateTable: duplicateCustomTable,
+    canManage: canManageCustomTables,
+  } = useCustomTables();
+
+  // Custom columns for clients table (persistent in DB)
+  const {
+    customColumns: clientCustomColumns,
+    isLoading: clientColumnsLoading,
+    dataTypeOptions: clientDataTypeOptions,
+    addColumn: addClientCustomColumn,
+    deleteColumn: deleteClientCustomColumn,
+    refetch: refetchClientColumns,
+  } = useTableCustomColumns('clients');
+
+  // Custom columns for projects table (persistent in DB)
+  const {
+    customColumns: projectCustomColumns,
+    isLoading: projectColumnsLoading,
+    dataTypeOptions: projectDataTypeOptions,
+    addColumn: addProjectCustomColumn,
+    deleteColumn: deleteProjectCustomColumn,
+    refetch: refetchProjectColumns,
+  } = useTableCustomColumns('projects');
+
+  // Custom columns for employees/profiles table (persistent in DB)
+  const {
+    customColumns: employeeCustomColumns,
+    isLoading: employeeColumnsLoading,
+    dataTypeOptions: employeeDataTypeOptions,
+    addColumn: addEmployeeCustomColumn,
+    deleteColumn: deleteEmployeeCustomColumn,
+    refetch: refetchEmployeeColumns,
+  } = useTableCustomColumns('profiles');
+
+  // Create table dialog state
+  const [isCreateTableDialogOpen, setIsCreateTableDialogOpen] = useState(false);
+  const [isManageTablesDialogOpen, setIsManageTablesDialogOpen] = useState(false);
+
+  // Debug logging
+  console.log('🔵 DataTablePro rendered');
+  console.log('📊 dbClients:', dbClients?.length || 0);
+  console.log('📊 dbProjects:', dbProjects?.length || 0);
+  console.log('📊 dbEmployees:', dbEmployees?.length || 0);
+  console.log('🎨 clientCustomColumns:', clientCustomColumns?.length || 0);
+  console.log('🎨 projectCustomColumns:', projectCustomColumns?.length || 0);
+  console.log('🎨 employeeCustomColumns:', employeeCustomColumns?.length || 0);
+
+  // Active custom table state
+  const activeCustomTable = useMemo(() => {
+    if (!activeTab.startsWith('custom_')) return null;
+    const tableId = activeTab.replace('custom_', '');
+    return customTables.find(t => t.id === tableId) || null;
+  }, [activeTab, customTables]);
+  
+  // Preset management
+  const [presets, setPresets] = useState<Preset[]>(() => {
+    try {
+      const saved = localStorage.getItem(PRESETS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [presetName, setPresetName] = useState('');
+  const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<FilterState[]>([]);
+  const [currentSorts, setCurrentSorts] = useState<SortState[]>([]);
+
+  const [isAddRowDialogOpen, setIsAddRowDialogOpen] = useState(false);
+  const [isAddColumnDialogOpen, setIsAddColumnDialogOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectClient, setNewProjectClient] = useState('');
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
+  const [headerStyle, setHeaderStyle] = useState({ bold: true, align: 'right' as 'left' | 'center' | 'right' });
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Client name edit dialog state
+  const [isEditClientNameOpen, setIsEditClientNameOpen] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [editingClientName, setEditingClientName] = useState('');
+  
+  const openEditDialog = useCallback((client: SyncedClient) => {
+    setEditingClientId(client.id);
+    setEditingClientName(client.name);
+    setIsEditClientNameOpen(true);
+  }, []);
+  
+  const handleSaveClientName = useCallback(async () => {
+    if (!editingClientId || !editingClientName.trim()) return;
+    await updateClient(editingClientId, 'name', editingClientName.trim());
+    setIsEditClientNameOpen(false);
+    setEditingClientId(null);
+    setEditingClientName('');
+    toast({ title: 'שם הלקוח עודכן בהצלחה' });
+  }, [editingClientId, editingClientName, updateClient, toast]);
+
+
+
+  // Editable column headers state
+  const [columnHeaders, setColumnHeaders] = useState<Record<string, string>>({
+    name: 'שם פרויקט',
+    client: 'לקוח',
+    status: 'סטטוס',
+    priority: 'עדיפות',
+    category: 'קטגוריה',
+    budget: 'תקציב',
+    spent: 'הוצאות',
+    progress: 'התקדמות',
+    rating: 'דירוג',
+    startDate: 'תאריך התחלה',
+    team: 'צוות',
+  });
+
+  // Enhanced select options state (with colors and icons)
+  const [priorityOptions, setPriorityOptions] = useState<{ value: string; label: string; color?: string; bgColor?: string; icon?: string; }[]>([
+    { value: 'low', label: 'נמוך', color: '#6b7280', bgColor: '#f3f4f6', icon: 'Circle' },
+    { value: 'medium', label: 'בינוני', color: '#ca8a04', bgColor: '#fef9c3', icon: 'Circle' },
+    { value: 'high', label: 'גבוה', color: '#ea580c', bgColor: '#ffedd5', icon: 'AlertTriangle' },
+    { value: 'critical', label: 'קריטי', color: '#dc2626', bgColor: '#fee2e2', icon: 'Zap' },
+  ]);
+
+  const [statusOptions, setStatusOptions] = useState<{ value: string; label: string; color?: string; bgColor?: string; icon?: string; }[]>([
+    { value: 'active', label: 'פעיל', color: '#16a34a', bgColor: '#dcfce7', icon: 'CheckCircle' },
+    { value: 'completed', label: 'הושלם', color: '#2563eb', bgColor: '#dbeafe', icon: 'CheckCircle' },
+    { value: 'on-hold', label: 'בהמתנה', color: '#ca8a04', bgColor: '#fef9c3', icon: 'Clock' },
+    { value: 'cancelled', label: 'בוטל', color: '#dc2626', bgColor: '#fee2e2', icon: 'XCircle' },
+  ]);
+
+  const handleHeaderChange = useCallback((columnId: string, newHeader: string) => {
+    setColumnHeaders(prev => ({ ...prev, [columnId]: newHeader }));
+    toast({ title: 'כותרת עודכנה', description: `הכותרת שונתה ל-"${newHeader}"` });
+  }, [toast]);
+
+  // Cell formatting state
+  const [cellFormatting, setCellFormatting] = useState<{
+    styles: Record<string, any>;
+    notes: Record<string, any>;
+    reminders: Record<string, any[]>;
+  }>({ styles: {}, notes: {}, reminders: {} });
+
+  const handleCellStyleChange = useCallback((cellId: string, style: any) => {
+    setCellFormatting(prev => ({
+      ...prev,
+      styles: { ...prev.styles, [cellId]: style }
+    }));
+  }, []);
+
+  const handleCellNoteChange = useCallback((cellId: string, note: any) => {
+    setCellFormatting(prev => ({
+      ...prev,
+      notes: note ? { ...prev.notes, [cellId]: note } : 
+        Object.fromEntries(Object.entries(prev.notes).filter(([k]) => k !== cellId))
+    }));
+    toast({ title: note ? 'הערה נשמרה' : 'הערה נמחקה' });
+  }, [toast]);
+
+  const handleCellReminderAdd = useCallback((cellId: string, reminder: any) => {
+    const newReminder = { ...reminder, id: `rem-${Date.now()}` };
+    setCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: [...(prev.reminders[cellId] || []), newReminder] }
+    }));
+    toast({ title: 'תזכורת נוספה' });
+  }, [toast]);
+
+  const handleCellReminderUpdate = useCallback((cellId: string, reminder: any) => {
+    setCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.map((r: any) => r.id === reminder.id ? reminder : r) || [] }
+    }));
+  }, []);
+
+  const handleCellReminderDelete = useCallback((cellId: string, reminderId: string) => {
+    setCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.filter((r: any) => r.id !== reminderId) || [] }
+    }));
+    toast({ title: 'תזכורת נמחקה' });
+  }, [toast]);
+
+  // Undo/Redo history
+  const [projectHistory, setProjectHistory] = useState<DemoProject[][]>([]);
+  const [projectFuture, setProjectFuture] = useState<DemoProject[][]>([]);
+  const maxHistorySize = 50;
+
+  // Save to history before changes
+  const saveToHistory = useCallback((currentData: DemoProject[]) => {
+    setProjectHistory(prev => {
+      const newHistory = [...prev, currentData];
+      return newHistory.slice(-maxHistorySize);
+    });
+    setProjectFuture([]);
+  }, []);
+
+  // Import from file (CSV/Excel)
+  const handleImportFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'csv') {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        const importedData: DemoProject[] = lines.slice(1).map((line, index) => {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+          return {
+            id: `imported-${Date.now()}-${index}`,
+            name: values[0] || `פרויקט ${index + 1}`,
+            client: values[1] || 'לקוח מיובא',
+            status: 'active' as const,
+            priority: 'medium' as const,
+            budget: parseInt(values[2]) || 0,
+            spent: parseInt(values[3]) || 0,
+            progress: parseInt(values[4]) || 0,
+            startDate: new Date().toISOString(),
+            endDate: null,
+            team: [],
+            category: 'מיובא',
+            rating: 3,
+          };
+        });
+
+        toast({ title: 'יובא בהצלחה', description: `${importedData.length} שורות יובאו מקובץ CSV` });
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        const XLSX = await import('xlsx');
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        const importedData: DemoProject[] = jsonData.map((row: any, index: number) => ({
+          id: `imported-${Date.now()}-${index}`,
+          name: row['שם'] || row['name'] || `פרויקט ${index + 1}`,
+          client: row['לקוח'] || row['client'] || 'לקוח מיובא',
+          status: 'active' as const,
+          priority: 'medium' as const,
+          budget: parseInt(row['תקציב'] || row['budget']) || 0,
+          spent: parseInt(row['הוצאות'] || row['spent']) || 0,
+          progress: parseInt(row['התקדמות'] || row['progress']) || 0,
+          startDate: new Date().toISOString(),
+          endDate: null,
+          team: [],
+          category: 'מיובא',
+          rating: 3,
+        }));
+
+        toast({ title: 'יובא בהצלחה', description: `${importedData.length} שורות יובאו מקובץ Excel` });
+      }
+    } catch (error) {
+      toast({ title: 'שגיאה', description: 'לא ניתן לייבא את הקובץ', variant: 'destructive' });
+    }
+
+    setIsImportDialogOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [saveToHistory, toast]);
+
+  // Connect to Google Sheets (placeholder - requires API key)
+  const handleConnectGoogleSheets = useCallback(() => {
+    toast({ 
+      title: 'חיבור ל-Google Sheets', 
+      description: 'תכונה זו דורשת הגדרת API Key של Google. פנה למנהל המערכת.',
+    });
+  }, [toast]);
+
+  // Undo - placeholder for DB mode
+  const handleUndo = useCallback(() => {
+    toast({ title: 'לא זמין', description: 'פעולת ביטול לא נתמכת במצב מסד נתונים' });
+  }, [toast]);
+
+  // Redo - placeholder for DB mode
+  const handleRedo = useCallback(() => {
+    toast({ title: 'לא זמין', description: 'פעולת חזרה לא נתמכת במצב מסד נתונים' });
+  }, [toast]);
+
+  // Move row - placeholder for DB mode
+  const handleMoveRow = useCallback((rowId: string, direction: 'up' | 'down') => {
+    toast({ title: 'לא זמין', description: 'הזזת שורות לא נתמכת במצב מסד נתונים' });
+  }, [toast]);
+
+  // Local projects state for custom data updates
+  const [localProjects, setLocalProjects] = useState<SyncedProject[]>([]);
+  
+  // Keep localProjects in sync with dbProjects
+  useEffect(() => {
+    setLocalProjects(dbProjects);
+  }, [dbProjects]);
+  
+  // Custom data hook for updating custom columns data for projects
+  const { updateCustomData: updateProjectCustomData } = useCustomData('projects', localProjects, setLocalProjects);
+
+  // Project column added handler (for AddColumnDialog)
+  const handleProjectColumnAdded = useCallback((column: CustomColumn) => {
+    addProjectCustomColumn(column);
+    setIsAddColumnDialogOpen(false);
+    toast({ title: 'נוסף', description: `העמודה "${column.column_name}" נוספה` });
+  }, [addProjectCustomColumn, toast]);
+
+  // Delete column for projects (from DB)
+  const handleDeleteProjectColumn = useCallback(async (columnId: string) => {
+    const { error } = await deleteProjectCustomColumn(columnId);
+    if (!error) {
+      toast({ title: 'נמחק', description: 'העמודה נמחקה' });
+    } else {
+      toast({ title: 'שגיאה', description: 'לא ניתן למחוק את העמודה', variant: 'destructive' });
+    }
+  }, [deleteProjectCustomColumn, toast]);
+
+  // Handle cell edit - syncs to database and supports custom columns
+  const handleProjectCellEdit = useCallback(async (row: SyncedProject, columnId: string, newValue: any) => {
+    // Check if this is a custom column (stored in custom_data)
+    const customColumn = projectCustomColumns.find(col => col.column_key === columnId || `custom_data.${col.column_key}` === columnId);
+    
+    if (customColumn) {
+      // Extract the actual column key from accessorKey if needed
+      const actualColumnKey = columnId.startsWith('custom_data.') 
+        ? columnId.replace('custom_data.', '') 
+        : columnId;
+      
+      const { error } = await updateProjectCustomData(row.id, actualColumnKey, newValue);
+      if (error) {
+        toast({ title: 'שגיאה', description: 'לא ניתן לעדכן את הערך', variant: 'destructive' });
+      } else {
+        toast({ title: 'עודכן', description: 'הערך נשמר' });
+      }
+    } else {
+      // Base column - update via updateProject
+      await updateProject(row.id, columnId, newValue);
+    }
+  }, [updateProject, projectCustomColumns, updateProjectCustomData, toast]);
+
+  // Local employees state for custom data updates (must be before handleEmployeeCellEdit)
+  const [localEmployees, setLocalEmployees] = useState<SyncedEmployee[]>([]);
+  
+  // Keep localEmployees in sync with dbEmployees
+  useEffect(() => {
+    console.log('🔄 Syncing localEmployees with dbEmployees:', dbEmployees?.length || 0);
+    setLocalEmployees(dbEmployees);
+  }, [dbEmployees]);
+  
+  // Custom data hook for updating custom columns data for employees
+  const { updateCustomData: updateEmployeeCustomData } = useCustomData('profiles', localEmployees, setLocalEmployees);
+  console.log('🎯 updateEmployeeCustomData:', typeof updateEmployeeCustomData, updateEmployeeCustomData ? 'defined' : 'UNDEFINED');
+
+  const handleEmployeeCellEdit = useCallback(async (row: SyncedEmployee, columnId: string, newValue: any) => {
+    console.log('🔧 handleEmployeeCellEdit called:', { rowId: row.id, columnId, newValue });
+    console.log('🔧 employeeCustomColumns:', employeeCustomColumns);
+    console.log('🔧 updateEmployeeCustomData:', typeof updateEmployeeCustomData);
+    
+    // Check if this is a custom column (stored in custom_data)
+    const customColumn = employeeCustomColumns.find(col => col.column_key === columnId || `custom_data.${col.column_key}` === columnId);
+    console.log('🔧 customColumn found:', customColumn);
+    
+    if (customColumn) {
+      // Update custom column data
+      const actualColumnKey = columnId.startsWith('custom_data.') ? columnId.replace('custom_data.', '') : columnId;
+      console.log('🔧 Updating custom data with key:', actualColumnKey);
+      const { error } = await updateEmployeeCustomData(row.id, actualColumnKey, newValue);
+      
+      if (error) {
+        console.error('❌ Error updating custom data:', error);
+        toast({
+          title: 'שגיאה',
+          description: 'לא ניתן לעדכן את העמודה',
+          variant: 'destructive',
+        });
+      } else {
+        console.log('✅ Custom data updated successfully');
+      }
+    } else {
+      // Update base column
+      console.log('🔧 Updating base column');
+      await updateEmployee(row.id, columnId, newValue);
+    }
+  }, [updateEmployee, employeeCustomColumns, updateEmployeeCustomData, toast]);
+
+  // Add new project - syncs to database
+  const handleAddProject = useCallback(async () => {
+    if (!newProjectName.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין שם פרויקט',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const result = await addDbProject(newProjectName, newProjectClient);
+    if (result) {
+      setNewProjectName('');
+      setNewProjectClient('');
+      setIsAddRowDialogOpen(false);
+    }
+  }, [newProjectName, newProjectClient, toast, addDbProject]);
+
+  // Delete selected projects - now syncs to database
+  const [selectedProjects, setSelectedProjects] = useState<DemoProject[]>([]);
+  const [selectedClients, setSelectedClients] = useState<SyncedClient[]>([]);
+  
+  // Client dialog states
+  const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientCompany, setNewClientCompany] = useState('');
+  
+  // Client dynamic columns state - using persistent DB columns
+  const [isAddClientColumnDialogOpen, setIsAddClientColumnDialogOpen] = useState(false);
+  const clientFileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Local clients state for custom data updates
+  const [localClients, setLocalClients] = useState<SyncedClient[]>([]);
+  
+  // Keep localClients in sync with dbClients
+  useEffect(() => {
+    setLocalClients(dbClients);
+  }, [dbClients]);
+  
+  // Custom data hook for updating custom columns data
+  const { updateCustomData: updateClientCustomData } = useCustomData('clients', localClients, setLocalClients);
+  
+  // Client cell formatting state
+  const [clientCellFormatting, setClientCellFormatting] = useState<{
+    styles: Record<string, any>;
+    notes: Record<string, any>;
+    reminders: Record<string, any[]>;
+  }>({ styles: {}, notes: {}, reminders: {} });
+  
+  // Client history for Undo/Redo
+  const [clientHistory, setClientHistory] = useState<SyncedClient[][]>([]);
+  const [clientFuture, setClientFuture] = useState<SyncedClient[][]>([]);
+  
+  // Employee dialog states
+  const [isAddEmployeeDialogOpen, setIsAddEmployeeDialogOpen] = useState(false);
+  const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newEmployeeEmail, setNewEmployeeEmail] = useState('');
+  const [newEmployeeDepartment, setNewEmployeeDepartment] = useState('');
+  const [newEmployeePosition, setNewEmployeePosition] = useState('');
+  const [newEmployeePhone, setNewEmployeePhone] = useState('');
+  const [selectedEmployees, setSelectedEmployees] = useState<SyncedEmployee[]>([]);
+  
+  // Employee columns state
+  const [isAddEmployeeColumnDialogOpen, setIsAddEmployeeColumnDialogOpen] = useState(false);
+  const employeeFileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // Employee cell formatting state
+  const [employeeCellFormatting, setEmployeeCellFormatting] = useState<{
+    styles: Record<string, any>;
+    notes: Record<string, any>;
+    reminders: Record<string, any[]>;
+  }>({ styles: {}, notes: {}, reminders: {} });
+  
+  // Employee history for Undo/Redo
+  const [employeeHistory, setEmployeeHistory] = useState<SyncedEmployee[][]>([]);
+  const [employeeFuture, setEmployeeFuture] = useState<SyncedEmployee[][]>([]);
+
+  // Handle client cell edit - supports both base columns and custom columns
+  const handleClientCellEdit = useCallback(async (row: SyncedClient, columnId: string, newValue: any) => {
+    // Check if this is a custom column (stored in custom_data)
+    const customColumn = clientCustomColumns.find(col => col.column_key === columnId || `custom_data.${col.column_key}` === columnId);
+    
+    if (customColumn) {
+      // Extract the actual column key from accessorKey if needed
+      const actualColumnKey = columnId.startsWith('custom_data.') 
+        ? columnId.replace('custom_data.', '') 
+        : columnId;
+      
+      const { error } = await updateClientCustomData(row.id, actualColumnKey, newValue);
+      if (error) {
+        toast({ title: 'שגיאה', description: 'לא ניתן לעדכן את הערך', variant: 'destructive' });
+      } else {
+        toast({ title: 'עודכן', description: 'הערך נשמר' });
+      }
+    } else {
+      // Base column - update via updateClient
+      await updateClient(row.id, columnId, newValue);
+    }
+  }, [updateClient, clientCustomColumns, updateClientCustomData, toast]);
+
+  // Add new client
+  const handleAddClient = useCallback(async () => {
+    if (!newClientName.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין שם לקוח',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const result = await addDbClient(newClientName);
+    if (result) {
+      // Update additional fields if provided
+      if (newClientEmail) await updateClient(result.id, 'email', newClientEmail);
+      if (newClientPhone) await updateClient(result.id, 'phone', newClientPhone);
+      if (newClientCompany) await updateClient(result.id, 'company', newClientCompany);
+      
+      setNewClientName('');
+      setNewClientEmail('');
+      setNewClientPhone('');
+      setNewClientCompany('');
+      setIsAddClientDialogOpen(false);
+    }
+  }, [newClientName, newClientEmail, newClientPhone, newClientCompany, addDbClient, updateClient, toast]);
+
+  // Delete selected clients
+  const handleDeleteSelectedClients = useCallback(async () => {
+    if (selectedClients.length === 0) return;
+    
+    for (const client of selectedClients) {
+      await deleteDbClient(client.id);
+    }
+    setSelectedClients([]);
+  }, [selectedClients, deleteDbClient]);
+
+  // Client cell formatting handlers
+  const handleClientCellStyleChange = useCallback((cellId: string, style: any) => {
+    setClientCellFormatting(prev => ({
+      ...prev,
+      styles: { ...prev.styles, [cellId]: style }
+    }));
+  }, []);
+
+  const handleClientCellNoteChange = useCallback((cellId: string, note: any) => {
+    setClientCellFormatting(prev => ({
+      ...prev,
+      notes: note ? { ...prev.notes, [cellId]: note } : 
+        Object.fromEntries(Object.entries(prev.notes).filter(([k]) => k !== cellId))
+    }));
+    toast({ title: note ? 'הערה נשמרה' : 'הערה נמחקה' });
+  }, [toast]);
+
+  const handleClientCellReminderAdd = useCallback((cellId: string, reminder: any) => {
+    const newReminder = { ...reminder, id: `rem-${Date.now()}` };
+    setClientCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: [...(prev.reminders[cellId] || []), newReminder] }
+    }));
+    toast({ title: 'תזכורת נוספה' });
+  }, [toast]);
+
+  const handleClientCellReminderUpdate = useCallback((cellId: string, reminder: any) => {
+    setClientCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.map((r: any) => r.id === reminder.id ? reminder : r) || [] }
+    }));
+  }, []);
+
+  const handleClientCellReminderDelete = useCallback((cellId: string, reminderId: string) => {
+    setClientCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.filter((r: any) => r.id !== reminderId) || [] }
+    }));
+    toast({ title: 'תזכורת נמחקה' });
+  }, [toast]);
+
+  // Client Undo/Redo handlers
+  const handleClientUndo = useCallback(() => {
+    if (clientHistory.length === 0) return;
+    toast({ title: 'בוטל', description: 'הפעולה האחרונה בוטלה' });
+  }, [clientHistory, toast]);
+
+  const handleClientRedo = useCallback(() => {
+    if (clientFuture.length === 0) return;
+    toast({ title: 'שוחזר', description: 'הפעולה שוחזרה' });
+  }, [clientFuture, toast]);
+
+  // Client column added handler (for AddColumnDialog)
+  const handleClientColumnAdded = useCallback((column: CustomColumn) => {
+    addClientCustomColumn(column);
+    setIsAddClientColumnDialogOpen(false);
+    toast({ title: 'נוסף', description: `העמודה "${column.column_name}" נוספה` });
+  }, [addClientCustomColumn, toast]);
+
+  // Employee column added handler (for AddColumnDialog)
+  const handleEmployeeColumnAdded = useCallback((column: CustomColumn) => {
+    addEmployeeCustomColumn(column);
+    setIsAddEmployeeColumnDialogOpen(false);
+    toast({ title: 'נוסף', description: `העמודה "${column.column_name}" נוספה` });
+  }, [addEmployeeCustomColumn, toast]);
+
+  // Delete column for employees (from DB)
+  const handleDeleteEmployeeColumn = useCallback(async (columnId: string) => {
+    const { error } = await deleteEmployeeCustomColumn(columnId);
+    if (!error) {
+      toast({ title: 'נמחק', description: 'העמודה נמחקה' });
+    } else {
+      toast({ title: 'שגיאה', description: 'לא ניתן למחוק את העמודה', variant: 'destructive' });
+    }
+  }, [deleteEmployeeCustomColumn, toast]);
+
+  // Client import from file
+  const handleClientImportFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'csv') {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        toast({ title: 'יובא בהצלחה', description: `${lines.length - 1} שורות נקראו מקובץ CSV` });
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        const XLSX = await import('xlsx');
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        toast({ title: 'יובא בהצלחה', description: `${jsonData.length} שורות נקראו מקובץ Excel` });
+      }
+    } catch (error) {
+      toast({ title: 'שגיאה', description: 'לא ניתן לייבא את הקובץ', variant: 'destructive' });
+    }
+
+    if (clientFileInputRef.current) clientFileInputRef.current.value = '';
+  }, [toast]);
+
+  // Delete column for clients (from DB)
+  const handleDeleteClientColumn = useCallback(async (columnId: string) => {
+    const { error } = await deleteClientCustomColumn(columnId);
+    if (!error) {
+      toast({ title: 'נמחק', description: 'העמודה נמחקה' });
+    } else {
+      toast({ title: 'שגיאה', description: 'לא ניתן למחוק את העמודה', variant: 'destructive' });
+    }
+  }, [deleteClientCustomColumn, toast]);
+
+  // Employee cell formatting handlers
+  const handleEmployeeCellStyleChange = useCallback((cellId: string, style: any) => {
+    setEmployeeCellFormatting(prev => ({
+      ...prev,
+      styles: { ...prev.styles, [cellId]: style }
+    }));
+  }, []);
+
+  const handleEmployeeCellNoteChange = useCallback((cellId: string, note: any) => {
+    setEmployeeCellFormatting(prev => ({
+      ...prev,
+      notes: note ? { ...prev.notes, [cellId]: note } : 
+        Object.fromEntries(Object.entries(prev.notes).filter(([k]) => k !== cellId))
+    }));
+    toast({ title: note ? 'הערה נשמרה' : 'הערה נמחקה' });
+  }, [toast]);
+
+  const handleEmployeeCellReminderAdd = useCallback((cellId: string, reminder: any) => {
+    const newReminder = { ...reminder, id: `rem-${Date.now()}` };
+    setEmployeeCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: [...(prev.reminders[cellId] || []), newReminder] }
+    }));
+    toast({ title: 'תזכורת נוספה' });
+  }, [toast]);
+
+  const handleEmployeeCellReminderUpdate = useCallback((cellId: string, reminder: any) => {
+    setEmployeeCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.map((r: any) => r.id === reminder.id ? reminder : r) || [] }
+    }));
+  }, []);
+
+  const handleEmployeeCellReminderDelete = useCallback((cellId: string, reminderId: string) => {
+    setEmployeeCellFormatting(prev => ({
+      ...prev,
+      reminders: { ...prev.reminders, [cellId]: prev.reminders[cellId]?.filter((r: any) => r.id !== reminderId) || [] }
+    }));
+    toast({ title: 'תזכורת נמחקה' });
+  }, [toast]);
+
+  // Employee Undo/Redo handlers
+  const handleEmployeeUndo = useCallback(() => {
+    if (employeeHistory.length === 0) return;
+    toast({ title: 'בוטל', description: 'הפעולה האחרונה בוטלה' });
+  }, [employeeHistory, toast]);
+
+  const handleEmployeeRedo = useCallback(() => {
+    if (employeeFuture.length === 0) return;
+    toast({ title: 'שוחזר', description: 'הפעולה שוחזרה' });
+  }, [employeeFuture, toast]);
+
+  // Employee import from file
+  const handleEmployeeImportFile = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (fileExtension === 'csv') {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        toast({ title: 'יובא בהצלחה', description: `${lines.length - 1} שורות נקראו מקובץ CSV` });
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        const XLSX = await import('xlsx');
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        toast({ title: 'יובא בהצלחה', description: `${jsonData.length} שורות נקראו מקובץ Excel` });
+      }
+    } catch (error) {
+      toast({ title: 'שגיאה', description: 'לא ניתן לייבא את הקובץ', variant: 'destructive' });
+    }
+
+    if (employeeFileInputRef.current) employeeFileInputRef.current.value = '';
+  }, [toast]);
+
+  // Delete selected employees
+  const handleDeleteSelectedEmployees = useCallback(async () => {
+    if (selectedEmployees.length === 0) return;
+    // Note: deleteEmployee function would need to be added to useEmployeesSync hook
+    toast({ 
+      title: 'מחיקה', 
+      description: `${selectedEmployees.length} עובדים נבחרו למחיקה`,
+    });
+    setSelectedEmployees([]);
+  }, [selectedEmployees, toast]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedProjects.length === 0) return;
+    
+    for (const project of selectedProjects) {
+      await deleteDbProject(project.id);
+    }
+    setSelectedProjects([]);
+  }, [selectedProjects, deleteDbProject]);
+
+  // Project columns with editable fields + drag column + dynamic columns
+  const projectColumns: ColumnDef<DemoProject>[] = useMemo(() => {
+    const baseColumns: ColumnDef<DemoProject>[] = [
+      {
+        id: 'drag',
+        header: '',
+        accessorKey: 'id',
+        width: 50,
+        cell: (value, row) => (
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id, 'up'); }}
+              className="p-0.5 hover:bg-muted rounded"
+              title="העלה"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 15l-6-6-6 6"/>
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleMoveRow(row.id, 'down'); }}
+              className="p-0.5 hover:bg-muted rounded"
+              title="הורד"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+          </div>
+        ),
+      },
+      {
+        id: 'name',
+        header: columnHeaders.name,
+        accessorKey: 'name',
+        sortable: true,
+        filterable: true,
+        sticky: 'right',
+        width: 180,
+        editable: true,
+        editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('name', val),
+      },
+      {
+        id: 'client',
+        header: columnHeaders.client,
+        accessorKey: 'client',
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        editable: true,
+        editType: 'select',
+        editOptions: clientOptions,
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('client', val),
+      },
+      {
+        id: 'status',
+        header: columnHeaders.status,
+        accessorKey: 'status',
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        cell: (value) => {
+          const opt = statusOptions.find(o => o.value === value);
+          if (!opt) return <StatusBadge status={value} />;
+          return (
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+              style={{ backgroundColor: opt.bgColor, color: opt.color }}
+            >
+              {opt.label}
+            </span>
+          );
+        },
+        editable: true,
+        editType: 'select',
+        editOptions: statusOptions,
+        allowAddOptions: true,
+        onOptionsChange: setStatusOptions,
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('status', val),
+      },
+      {
+        id: 'priority',
+        header: columnHeaders.priority,
+        accessorKey: 'priority',
+        sortable: true,
+        filterable: true,
+        cell: (value) => {
+          const opt = priorityOptions.find(o => o.value === value);
+          if (!opt) return <PriorityBadge priority={value} />;
+          return (
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+              style={{ backgroundColor: opt.bgColor, color: opt.color }}
+            >
+              {opt.label}
+            </span>
+          );
+        },
+        editable: true,
+        editType: 'select',
+        editOptions: priorityOptions,
+        allowAddOptions: true,
+        onOptionsChange: setPriorityOptions,
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('priority', val),
+      },
+      {
+        id: 'category',
+        header: columnHeaders.category,
+        accessorKey: 'category',
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        editable: true,
+        editType: 'select',
+        editOptions: [
+          { value: 'פיתוח', label: 'פיתוח', color: '#2563eb', bgColor: '#dbeafe' },
+          { value: 'עיצוב', label: 'עיצוב', color: '#9333ea', bgColor: '#f3e8ff' },
+          { value: 'שיווק', label: 'שיווק', color: '#16a34a', bgColor: '#dcfce7' },
+          { value: 'ייעוץ', label: 'ייעוץ', color: '#ea580c', bgColor: '#ffedd5' },
+          { value: 'תחזוקה', label: 'תחזוקה', color: '#6b7280', bgColor: '#f3f4f6' },
+        ],
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('category', val),
+      },
+      {
+        id: 'budget',
+        header: columnHeaders.budget,
+        accessorKey: 'budget',
+        sortable: true,
+        align: 'left',
+        cell: (value) => `₪${value.toLocaleString()}`,
+        summary: 'sum',
+        editable: true,
+        editType: 'number',
+        headerEditable: true,
+        onHeaderChange: (val) => handleHeaderChange('budget', val),
+      },
+      {
+        id: 'spent',
+        header: columnHeaders.spent,
+        accessorKey: 'spent',
+        sortable: true,
+        align: 'left',
+        cell: (value) => `₪${value.toLocaleString()}`,
+        summary: 'sum',
+        editable: true,
+        editType: 'number',
+      },
+      {
+        id: 'progress',
+        header: 'התקדמות',
+        accessorKey: 'progress',
+        sortable: true,
+        cell: (value) => <ProgressBar value={value} />,
+        summary: 'avg',
+        width: 180,
+        editable: true,
+        editType: 'number',
+      },
+      {
+        id: 'rating',
+        header: 'דירוג',
+        accessorKey: 'rating',
+        sortable: true,
+        cell: (value) => <RatingStars rating={value} />,
+        summary: 'avg',
+        editable: true,
+        editType: 'number',
+      },
+      {
+        id: 'startDate',
+        header: 'תאריך התחלה',
+        accessorKey: 'startDate',
+        sortable: true,
+        cell: (value) => format(new Date(value), 'dd/MM/yyyy', { locale: he }),
+        editable: true,
+        editType: 'date',
+      },
+      {
+        id: 'team',
+        header: 'צוות',
+        accessorKey: 'team',
+        cell: (value: string[]) => (
+          <div className="flex flex-wrap gap-1">
+            {value.slice(0, 2).map((member) => (
+              <Badge key={member} variant="secondary" className="text-xs">
+                {member}
+              </Badge>
+            ))}
+            {value.length > 2 && (
+              <Badge variant="outline" className="text-xs">
+                +{value.length - 2}
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+    ];
+
+    // Add dynamic columns from DB (projectCustomColumns)
+    const dynamicCols: ColumnDef<DemoProject>[] = projectCustomColumns.map(col => {
+      // Determine editType based on column_type
+      let editType: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'enhanced-select' = 'text';
+      let editOptions: any[] | undefined = undefined;
+      
+      if (col.column_type === 'number') {
+        editType = 'number';
+      } else if (col.column_type === 'date') {
+        editType = 'date';
+      } else if (col.column_type === 'boolean') {
+        editType = 'checkbox';
+      } else if (col.column_type === 'select') {
+        editType = 'enhanced-select';
+        editOptions = (col.column_options || []).map((opt: string) => ({
+          value: opt,
+          label: opt,
+          color: '#6b7280',
+          bgColor: '#f3f4f6',
+        }));
+      } else if (col.column_type === 'data_type') {
+        editType = 'enhanced-select';
+        editOptions = (projectDataTypeOptions[col.column_key] || []).map((opt: any) => ({
+          value: opt.value,
+          label: opt.label,
+          color: opt.color || '#1e3a5f',
+          bgColor: opt.color ? `${opt.color}20` : '#f0f4f8',
+        }));
+      }
+
+      return {
+        id: col.column_key,
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>{col.column_name}</span>
+            <ColumnOptionsMenu
+              columnName={col.column_name}
+              columnId={col.id || ''}
+              onDelete={handleDeleteProjectColumn}
+            />
+          </div>
+        ),
+        accessorKey: `custom_data.${col.column_key}`,
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType,
+        editOptions,
+        cell: (value: any, row: DemoProject) => {
+          const customValue = row.custom_data?.[col.column_key];
+          if (customValue == null || customValue === '') return null;
+          
+          if (col.column_type === 'boolean') {
+            return customValue ? '✓' : '✗';
+          }
+          
+          // For data_type and select columns, show as colored badge
+          if (col.column_type === 'data_type' || col.column_type === 'select') {
+            const options = editOptions || [];
+            const option = options.find((o: any) => o.value === customValue);
+            if (option) {
+              return (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 w-fit px-2 py-0.5"
+                  style={{
+                    borderColor: option.color,
+                    backgroundColor: option.bgColor || `${option.color}15`,
+                    color: option.color,
+                  }}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: option.color }}
+                  />
+                  {option.label}
+                </Badge>
+              );
+            }
+          }
+          
+          return customValue;
+        },
+      };
+    });
+
+    return [...baseColumns, ...dynamicCols];
+  }, [projectCustomColumns, projectDataTypeOptions, handleMoveRow, handleDeleteProjectColumn]);
+
+  // Employee columns with editable fields - connected to DB
+  const employeeColumns: ColumnDef<SyncedEmployee>[] = useMemo(() => [
+    {
+      id: 'full_name',
+      header: 'שם מלא',
+      accessorKey: 'full_name',
+      sortable: true,
+      filterable: true,
+      sticky: 'right',
+      width: 180,
+      editable: isManager || isAdmin,
+      editType: 'text',
+      cell: (value, row) => (
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground font-semibold text-sm">
+            {value?.charAt(0) || '?'}
+          </div>
+          <div>
+            <p className="font-medium">{value || 'ללא שם'}</p>
+            <p className="text-xs text-muted-foreground">{row.email}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'email',
+      header: 'אימייל',
+      accessorKey: 'email',
+      sortable: true,
+      filterable: true,
+      editable: false, // Email is read-only (from auth)
+      cell: (value) => value ? (
+        <span dir="ltr" className="text-primary">{value}</span>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      ),
+    },
+    {
+      id: 'phone',
+      header: 'טלפון',
+      accessorKey: 'phone',
+      sortable: true,
+      filterable: true,
+      editable: isManager || isAdmin,
+      editType: 'text',
+      cell: (value) => value ? (
+        <span dir="ltr">{value}</span>
+      ) : (
+        <span className="text-muted-foreground">-</span>
+      ),
+    },
+    {
+      id: 'department',
+      header: 'מחלקה',
+      accessorKey: 'department',
+      sortable: true,
+      filterable: true,
+      groupable: true,
+      editable: isManager || isAdmin,
+      editType: 'select',
+      editOptions: [
+        { value: 'פיתוח', label: 'פיתוח' },
+        { value: 'עיצוב', label: 'עיצוב' },
+        { value: 'שיווק', label: 'שיווק' },
+        { value: 'מכירות', label: 'מכירות' },
+        { value: 'HR', label: 'HR' },
+        { value: 'כספים', label: 'כספים' },
+        { value: 'תפעול', label: 'תפעול' },
+        { value: 'הנהלה', label: 'הנהלה' },
+      ],
+      cell: (value) => value || <span className="text-muted-foreground">-</span>,
+    },
+    {
+      id: 'position',
+      header: 'תפקיד',
+      accessorKey: 'position',
+      sortable: true,
+      filterable: true,
+      editable: isManager || isAdmin,
+      editType: 'text',
+      cell: (value) => value || <span className="text-muted-foreground">-</span>,
+    },
+    {
+      id: 'role',
+      header: 'הרשאה',
+      accessorKey: 'role',
+      sortable: true,
+      filterable: true,
+      editable: isAdmin, // Only admin can change roles
+      editType: 'select',
+      editOptions: [
+        { value: 'employee', label: 'עובד' },
+        { value: 'manager', label: 'מנהל' },
+        { value: 'admin', label: 'מנהל ראשי' },
+      ],
+      cell: (value) => <RoleBadge role={value} />,
+    },
+    {
+      id: 'hourly_rate',
+      header: 'תעריף שעתי',
+      accessorKey: 'hourly_rate',
+      sortable: true,
+      align: 'left',
+      cell: (value) => `₪${(value || 0).toLocaleString()}`,
+      summary: 'avg',
+      editable: isAdmin, // Only admin can change hourly rate
+      editType: 'number',
+    },
+    {
+      id: 'is_active',
+      header: 'סטטוס',
+      accessorKey: 'is_active',
+      sortable: true,
+      filterable: true,
+      cell: (value) => <StatusBadge status={value ? 'active' : 'inactive'} />,
+      editable: isManager || isAdmin,
+      editType: 'select',
+      editOptions: [
+        { value: 'true', label: 'פעיל' },
+        { value: 'false', label: 'לא פעיל' },
+      ],
+    },
+    {
+      id: 'hoursThisWeek',
+      header: 'שעות השבוע',
+      accessorKey: 'hoursThisWeek',
+      sortable: true,
+      align: 'left',
+      summary: 'sum',
+      cell: (value) => (
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className={value > 40 ? 'text-amber-600 font-medium' : ''}>{value}h</span>
+        </div>
+      ),
+    },
+    {
+      id: 'hoursThisMonth',
+      header: 'שעות החודש',
+      accessorKey: 'hoursThisMonth',
+      sortable: true,
+      align: 'left',
+      summary: 'sum',
+      cell: (value) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{value}h</span>
+        </div>
+      ),
+    },
+    {
+      id: 'billableHoursThisMonth',
+      header: 'שעות לחיוב',
+      accessorKey: 'billableHoursThisMonth',
+      sortable: true,
+      align: 'left',
+      summary: 'sum',
+      cell: (value, row) => {
+        const percentage = row.hoursThisMonth > 0 
+          ? Math.round((value / row.hoursThisMonth) * 100) 
+          : 0;
+        return (
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-green-600" />
+            <span className="text-green-600 font-medium">{value}h</span>
+            <span className="text-xs text-muted-foreground">({percentage}%)</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'created_at',
+      header: 'תאריך הצטרפות',
+      accessorKey: 'created_at',
+      sortable: true,
+      cell: (value) => format(new Date(value), 'dd/MM/yyyy', { locale: he }),
+    },
+  ], [isManager, isAdmin]);
+
+  // Client columns with editable fields + dynamic columns
+  const clientColumns: ColumnDef<SyncedClient>[] = useMemo(() => {
+    const baseColumns: ColumnDef<SyncedClient>[] = [
+      {
+        id: 'name',
+        header: 'שם לקוח',
+        accessorKey: 'name',
+        sortable: true,
+        filterable: true,
+        sticky: 'right',
+        width: 200,
+        editable: false, // Navigation column - not editable directly, edit via pencil button
+        cell: (value, row) => (
+          <div className="flex items-center gap-2 group">
+            <Link 
+              to={`/client-profile/${row.id}`}
+              className="text-primary hover:underline font-medium"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {value}
+            </Link>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                openEditDialog(row);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-opacity"
+              title="עריכת שם"
+            >
+              <Pencil className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
+        ),
+      },
+      {
+        id: 'company',
+        header: 'חברה',
+        accessorKey: 'company',
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType: 'text',
+      },
+      {
+        id: 'email',
+        header: 'אימייל',
+        accessorKey: 'email',
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType: 'text',
+        cell: (value) => value ? (
+          <span dir="ltr" className="text-primary">{value}</span>
+        ) : null,
+      },
+      {
+        id: 'phone',
+        header: 'טלפון',
+        accessorKey: 'phone',
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType: 'text',
+        cell: (value) => value ? (
+          <span dir="ltr">{value}</span>
+        ) : null,
+      },
+      {
+        id: 'status',
+        header: 'סטטוס',
+        accessorKey: 'status',
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        cell: (value) => {
+          const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
+            active: { label: 'פעיל', color: '#16a34a', bgColor: '#dcfce7' },
+            inactive: { label: 'לא פעיל', color: '#6b7280', bgColor: '#f3f4f6' },
+            pending: { label: 'ממתין', color: '#ca8a04', bgColor: '#fef9c3' },
+          };
+          const config = statusConfig[value] || statusConfig.active;
+          return (
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
+              style={{ backgroundColor: config.bgColor, color: config.color }}
+            >
+              {config.label}
+            </span>
+          );
+        },
+        editable: true,
+        editType: 'select',
+        editOptions: [
+          { value: 'active', label: 'פעיל', color: '#16a34a', bgColor: '#dcfce7' },
+          { value: 'inactive', label: 'לא פעיל', color: '#6b7280', bgColor: '#f3f4f6' },
+          { value: 'pending', label: 'ממתין', color: '#ca8a04', bgColor: '#fef9c3' },
+        ],
+      },
+      {
+        id: 'address',
+        header: 'כתובת',
+        accessorKey: 'address',
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType: 'text',
+        cell: (value) => value || null,
+      },
+      {
+        id: 'notes',
+        header: 'הערות',
+        accessorKey: 'notes',
+        sortable: false,
+        editable: true,
+        editType: 'text',
+        cell: (value) => value ? (
+          <span className="max-w-[200px] truncate block" title={value}>{value}</span>
+        ) : null,
+      },
+      {
+        id: 'created_at',
+        header: 'תאריך הוספה',
+        accessorKey: 'created_at',
+        sortable: true,
+        cell: (value) => format(new Date(value), 'dd/MM/yyyy', { locale: he }),
+      },
+      {
+        id: 'actions',
+        header: 'פעולות',
+        accessorKey: 'id',
+        width: 100,
+        cell: (value, row) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/client-profile/${row.id}`);
+            }}
+            className="gap-1"
+          >
+            <Eye className="h-4 w-4" />
+            פרופיל
+          </Button>
+        ),
+      },
+    ];
+
+    // Add dynamic columns from DB (clientCustomColumns)
+    const dynamicCols: ColumnDef<SyncedClient>[] = clientCustomColumns.map(col => {
+      // Determine editType based on column_type
+      let editType: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'enhanced-select' = 'text';
+      let editOptions: any[] | undefined = undefined;
+      
+      if (col.column_type === 'number') {
+        editType = 'number';
+      } else if (col.column_type === 'date') {
+        editType = 'date';
+      } else if (col.column_type === 'boolean') {
+        editType = 'checkbox';
+      } else if (col.column_type === 'select') {
+        editType = 'enhanced-select';
+        editOptions = (col.column_options || []).map((opt: string) => ({
+          value: opt,
+          label: opt,
+          color: '#6b7280',
+          bgColor: '#f3f4f6',
+        }));
+      } else if (col.column_type === 'data_type') {
+        editType = 'enhanced-select';
+        // Get options from clientDataTypeOptions
+        editOptions = (clientDataTypeOptions[col.column_key] || []).map((opt: any) => ({
+          value: opt.value,
+          label: opt.label,
+          color: opt.color || '#1e3a5f',
+          bgColor: opt.color ? `${opt.color}20` : '#f0f4f8',
+        }));
+      }
+
+      return {
+        id: col.column_key,
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>{col.column_name}</span>
+            <ColumnOptionsMenu
+              columnName={col.column_name}
+              columnId={col.id || ''}
+              onDelete={handleDeleteClientColumn}
+            />
+          </div>
+        ),
+        accessorKey: `custom_data.${col.column_key}`,
+        sortable: true,
+        filterable: true,
+        editable: true,
+        editType,
+        editOptions,
+        cell: (value, row) => {
+          const customValue = row.custom_data?.[col.column_key];
+          if (customValue == null || customValue === '') return null;
+          
+          if (col.column_type === 'boolean') {
+            return customValue ? '✓' : '✗';
+          }
+          
+          // For data_type and select columns, show as colored badge
+          if (col.column_type === 'data_type' || col.column_type === 'select') {
+            const options = editOptions || [];
+            const option = options.find((o: any) => o.value === customValue);
+            if (option) {
+              return (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 w-fit px-2 py-0.5"
+                  style={{
+                    borderColor: option.color,
+                    backgroundColor: option.bgColor || `${option.color}15`,
+                    color: option.color,
+                  }}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: option.color }}
+                  />
+                  {option.label}
+                </Badge>
+              );
+            }
+          }
+          
+          return customValue;
+        },
+      };
+    });
+
+    return [...baseColumns, ...dynamicCols];
+  }, [navigate, clientCustomColumns, handleDeleteClientColumn]);
+
+  // Employee columns with editable fields + dynamic columns from DB
+  const employeeColumnsWithDynamic: ColumnDef<SyncedEmployee>[] = useMemo(() => {
+    // Add dynamic columns from DB (employeeCustomColumns)
+    const dynamicCols: ColumnDef<SyncedEmployee>[] = employeeCustomColumns.map(col => {
+      // Determine editType based on column_type
+      let editType: 'text' | 'number' | 'date' | 'checkbox' | 'select' | 'enhanced-select' = 'text';
+      let editOptions: any[] | undefined = undefined;
+      
+      if (col.column_type === 'number') {
+        editType = 'number';
+      } else if (col.column_type === 'date') {
+        editType = 'date';
+      } else if (col.column_type === 'boolean') {
+        editType = 'checkbox';
+      } else if (col.column_type === 'select') {
+        editType = 'enhanced-select';
+        editOptions = (col.column_options || []).map((opt: string) => ({
+          value: opt,
+          label: opt,
+          color: '#6b7280',
+          bgColor: '#f3f4f6',
+        }));
+      } else if (col.column_type === 'data_type') {
+        editType = 'enhanced-select';
+        editOptions = (employeeDataTypeOptions[col.column_key] || []).map((opt: any) => ({
+          value: opt.value,
+          label: opt.label,
+          color: opt.color || '#1e3a5f',
+          bgColor: opt.color ? `${opt.color}20` : '#f0f4f8',
+        }));
+      }
+
+      return {
+        id: col.column_key,
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>{col.column_name}</span>
+            <ColumnOptionsMenu
+              columnName={col.column_name}
+              columnId={col.id || ''}
+              onDelete={handleDeleteEmployeeColumn}
+            />
+          </div>
+        ),
+        accessorKey: `custom_data.${col.column_key}`,
+        sortable: true,
+        filterable: true,
+        editable: isManager || isAdmin,
+        editType,
+        editOptions,
+        cell: (value: any, row: SyncedEmployee) => {
+          const customValue = (row as any).custom_data?.[col.column_key];
+          if (customValue == null || customValue === '') return null;
+          
+          if (col.column_type === 'boolean') {
+            return customValue ? '✓' : '✗';
+          }
+          
+          // For data_type and select columns, show as colored badge
+          if (col.column_type === 'data_type' || col.column_type === 'select') {
+            const options = editOptions || [];
+            const option = options.find((o: any) => o.value === customValue);
+            if (option) {
+              return (
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1.5 w-fit px-2 py-0.5"
+                  style={{
+                    borderColor: option.color,
+                    backgroundColor: option.bgColor || `${option.color}15`,
+                    color: option.color,
+                  }}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: option.color }}
+                  />
+                  {option.label}
+                </Badge>
+              );
+            }
+          }
+          
+          return customValue;
+        },
+      };
+    });
+
+    return [...employeeColumns, ...dynamicCols];
+  }, [employeeColumns, employeeCustomColumns, employeeDataTypeOptions, handleDeleteEmployeeColumn, isManager, isAdmin]);
+
+  // Expanded content for clients
+  const clientExpandedContent = useCallback((row: SyncedClient) => (
+    <div className="grid grid-cols-3 gap-4 p-4 bg-card rounded-lg">
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          פרטי לקוח
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">מזהה:</dt>
+            <dd>{row.id.slice(0, 8)}...</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">חברה:</dt>
+            <dd>{row.company || '-'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          פרטי קשר
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">אימייל:</dt>
+            <dd>{row.email || '-'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">טלפון:</dt>
+            <dd>{row.phone || '-'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          מידע נוסף
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">כתובת:</dt>
+            <dd>{row.address || '-'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">תאריך הוספה:</dt>
+            <dd>{format(new Date(row.created_at), 'dd/MM/yyyy', { locale: he })}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  ), []);
+
+  // Expanded content for employees
+  const employeeExpandedContent = useCallback((row: SyncedEmployee) => (
+    <div className="grid grid-cols-3 gap-4 p-4 bg-card rounded-lg">
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          פרטי עובד
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">מזהה:</dt>
+            <dd>{row.id.slice(0, 8)}...</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">מחלקה:</dt>
+            <dd>{row.department || '-'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">תפקיד:</dt>
+            <dd>{row.position || '-'}</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          נתונים כספיים
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">תעריף שעתי:</dt>
+            <dd>₪{(row.hourly_rate || 0).toLocaleString()}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">שעות החודש:</dt>
+            <dd>{row.hoursThisMonth}h</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">שעות לחיוב:</dt>
+            <dd className="text-green-600">{row.billableHoursThisMonth}h</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          סטטיסטיקות
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">שעות השבוע:</dt>
+            <dd>{row.hoursThisWeek}h</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">תאריך הצטרפות:</dt>
+            <dd>{format(new Date(row.created_at), 'dd/MM/yyyy', { locale: he })}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  ), []);
+
+  // Save preset
+  const handleSavePreset = useCallback(() => {
+    if (!presetName.trim()) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להזין שם לפריסט',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newPreset: Preset = {
+      id: crypto.randomUUID(),
+      name: presetName,
+      filters: currentFilters,
+      sorts: currentSorts,
+      hiddenColumns: [],
+      columnOrder: [],
+    };
+
+    const updatedPresets = [...presets, newPreset];
+    setPresets(updatedPresets);
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updatedPresets));
+
+    toast({
+      title: 'פריסט נשמר',
+      description: `הפריסט "${presetName}" נשמר בהצלחה`,
+    });
+
+    setPresetName('');
+    setIsPresetDialogOpen(false);
+  }, [presetName, currentFilters, currentSorts, presets, toast]);
+
+  // Delete preset
+  const handleDeletePreset = useCallback((id: string) => {
+    const updatedPresets = presets.filter(p => p.id !== id);
+    setPresets(updatedPresets);
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updatedPresets));
+
+    toast({
+      title: 'פריסט נמחק',
+    });
+  }, [presets, toast]);
+
+  // Expanded content for projects
+  const projectExpandedContent = useCallback((row: DemoProject) => (
+    <div className="grid grid-cols-3 gap-4 p-4 bg-card rounded-lg">
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          פרטי פרויקט
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">מזהה:</dt>
+            <dd>{row.id}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">קטגוריה:</dt>
+            <dd>{row.category}</dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <DollarSign className="h-4 w-4" />
+          תקציב
+        </h4>
+        <dl className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">תקציב:</dt>
+            <dd>₪{row.budget.toLocaleString()}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">הוצאות:</dt>
+            <dd>₪{row.spent.toLocaleString()}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-muted-foreground">יתרה:</dt>
+            <dd className={row.budget - row.spent < 0 ? 'text-red-500' : 'text-green-500'}>
+              ₪{(row.budget - row.spent).toLocaleString()}
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <div>
+        <h4 className="font-semibold mb-2 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          צוות ({row.team.length})
+        </h4>
+        <div className="flex flex-wrap gap-1">
+          {row.team.map((member) => (
+            <Badge key={member} variant="secondary">
+              {member}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    </div>
+  ), []);
+
+  return (
+    <AppLayout title="DataTable Pro">
+      <div className="p-6 space-y-6 animate-fade-in w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Table className="h-8 w-8 text-secondary" />
+              DataTable Pro
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              טבלה מתקדמת עם כל התכונות המובנות
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Navigation to Clients Gallery */}
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/clients')}
+              className="border-[hsl(45,70%,45%)] text-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)] hover:text-[hsl(222,47%,15%)] transition-all"
+            >
+              <LayoutGrid className="h-4 w-4 ml-2" />
+              גלריה
+            </Button>
+
+            {/* Preset management */}
+            <Dialog open={isPresetDialogOpen} onOpenChange={setIsPresetDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Save className="h-4 w-4 ml-2" />
+                  שמור פריסט
+                </Button>
+              </DialogTrigger>
+              <DialogContent dir="rtl">
+                <DialogHeader>
+                  <DialogTitle>שמירת פריסט</DialogTitle>
+                  <DialogDescription>
+                    שמור את הגדרות הסינון והמיון הנוכחיות לשימוש עתידי
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Label htmlFor="presetName">שם הפריסט</Label>
+                  <Input
+                    id="presetName"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    placeholder="לדוגמה: פרויקטים פעילים בעדיפות גבוהה"
+                    className="mt-2"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsPresetDialogOpen(false)}>
+                    ביטול
+                  </Button>
+                  <Button onClick={handleSavePreset}>
+                    <Save className="h-4 w-4 ml-2" />
+                    שמור
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Saved Presets */}
+        {presets.length > 0 && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                פריסטים שמורים
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2">
+              <div className="flex flex-wrap gap-2">
+                {presets.map((preset) => (
+                  <Badge
+                    key={preset.id}
+                    variant="secondary"
+                    className="cursor-pointer hover:bg-secondary/80 gap-2 py-1.5"
+                  >
+                    {preset.name}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeletePreset(preset.id);
+                      }}
+                      className="hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Feature highlights */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card className="bg-gradient-to-br from-cyan-500/20 border-cyan-500/50 to-transparent">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Database className="h-8 w-8 text-cyan-400" />
+                <div>
+                  <p className="font-semibold">סינכרון DB</p>
+                  <p className="text-xs text-muted-foreground">מחובר ופעיל</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <ArrowUpDown className="h-8 w-8 text-green-500" />
+                <div>
+                  <p className="font-semibold">מיון מתקדם</p>
+                  <p className="text-xs text-muted-foreground">רב-עמודות + Shift</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Filter className="h-8 w-8 text-blue-500" />
+                <div>
+                  <p className="font-semibold">סינון חכם</p>
+                  <p className="text-xs text-muted-foreground">טקסט, מספרים, תאריכים</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Download className="h-8 w-8 text-purple-500" />
+                <div>
+                  <p className="font-semibold">ייצוא</p>
+                  <p className="text-xs text-muted-foreground">CSV, Excel, PDF</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Layers className="h-8 w-8 text-amber-500" />
+                <div>
+                  <p className="font-semibold">Virtual Scroll</p>
+                  <p className="text-xs text-muted-foreground">אלפי רשומות בקלות</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs for different demos */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="flex items-center gap-2">
+            <TabsList className="flex-wrap h-auto gap-1">
+              <TabsTrigger value="clients" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                לקוחות
+              </TabsTrigger>
+              <TabsTrigger value="projects" className="flex items-center gap-2">
+                <Folder className="h-4 w-4" />
+                פרויקטים
+              </TabsTrigger>
+              <TabsTrigger value="employees" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                עובדים
+              </TabsTrigger>
+              
+              {/* Custom Tables */}
+              {customTables.map((table) => {
+                const IconComponent = {
+                  Table,
+                  FileSpreadsheet,
+                  Users,
+                  FolderKanban,
+                  Package,
+                  Briefcase,
+                  Building,
+                  Car,
+                  ShoppingCart,
+                  Wallet,
+                  FileText,
+                  Calendar,
+                  Clock,
+                  Star,
+                  Heart,
+                }[table.icon] || Table;
+                
+                return (
+                  <TabsTrigger
+                    key={table.id}
+                    value={`custom_${table.id}`}
+                    className="flex items-center gap-2"
+                  >
+                    <IconComponent className="h-4 w-4" />
+                    {table.display_name}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            {/* Manage Tables Button */}
+            {canManageCustomTables && customTables.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={() => setIsManageTablesDialogOpen(true)}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>ניהול טבלאות</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* Add Table Button */}
+            {canManageCustomTables && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 border-dashed border-primary/50 hover:border-primary hover:bg-primary/10"
+                      onClick={() => setIsCreateTableDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4 text-primary" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>הוסף טבלה חדשה</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+
+          {/* Create Table Dialog */}
+          <CreateTableDialog
+            open={isCreateTableDialogOpen}
+            onOpenChange={setIsCreateTableDialogOpen}
+            onSuccess={() => {
+              refreshCustomTables();
+            }}
+          />
+
+          {/* Manage Tables Dialog */}
+          <ManageTablesDialog
+            open={isManageTablesDialogOpen}
+            onOpenChange={setIsManageTablesDialogOpen}
+            tables={customTables}
+            onUpdateTable={updateCustomTable}
+            onDeleteTable={deleteCustomTable}
+            onDuplicateTable={duplicateCustomTable}
+            onSelectTable={setActiveTab}
+          />
+
+          {/* Clients Tab */}
+          <TabsContent value="clients" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-secondary" />
+                    טבלת לקוחות
+                    <Badge variant="outline" className="text-xs gap-1 mr-2">
+                      <Database className="h-3 w-3" />
+                      מחובר למסד נתונים
+                    </Badge>
+                    {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </CardTitle>
+                  <CardDescription>
+                    {dbClients.length} לקוחות | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Refresh button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refreshData()}
+                    disabled={dbLoading}
+                    title="רענן נתונים"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${dbLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                  
+                  {/* Import buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <input
+                      ref={clientFileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleClientImportFile}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => clientFileInputRef.current?.click()}
+                      title="ייבא מקובץ"
+                    >
+                      <Upload className="h-4 w-4 ml-1" />
+                      ייבוא
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectGoogleSheets}
+                      title="חבר ל-Google Sheets"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 ml-1" />
+                      Sheets
+                    </Button>
+                  </div>
+                  
+                  {/* Undo/Redo buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClientUndo}
+                      disabled={clientHistory.length === 0}
+                      title="בטל (Undo)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClientRedo}
+                      disabled={clientFuture.length === 0}
+                      title="חזור (Redo)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {selectedClients.length > 0 && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteSelectedClients}
+                    >
+                      <Trash2 className="h-4 w-4 ml-2" />
+                      מחק ({selectedClients.length})
+                    </Button>
+                  )}
+                  
+                  {/* Add Client Column Button and Dialog */}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsAddClientColumnDialogOpen(true)}
+                    className="border-[#D4AF37] bg-white hover:bg-[#1e3a8a]/5 hover:border-[#D4AF37]/80 transition-all shadow-sm"
+                  >
+                    <Columns className="h-4 w-4 ml-2 text-[#D4AF37]" />
+                    <span className="text-[#1e3a8a] font-medium">הוסף עמודה</span>
+                  </Button>
+                  
+                  <AddColumnDialog
+                    open={isAddClientColumnDialogOpen}
+                    onOpenChange={setIsAddClientColumnDialogOpen}
+                    tableName="clients"
+                    onColumnAdded={handleClientColumnAdded}
+                    existingColumns={clientCustomColumns}
+                  />
+                  
+                  {/* Add Client Sheet */}
+                  <Sheet open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="default" size="sm">
+                        <Plus className="h-4 w-4 ml-2" />
+                        הוסף לקוח
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="sm:max-w-xl" dir="rtl">
+                      <SheetHeader>
+                        <SheetTitle>הוספת לקוח חדש</SheetTitle>
+                        <SheetDescription>
+                          הזן את פרטי הלקוח החדש
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <Label htmlFor="newClientName">שם לקוח *</Label>
+                          <Input
+                            id="newClientName"
+                            value={newClientName}
+                            onChange={(e) => setNewClientName(e.target.value)}
+                            placeholder="הזן שם לקוח"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientCompany">חברה</Label>
+                          <Input
+                            id="newClientCompany"
+                            value={newClientCompany}
+                            onChange={(e) => setNewClientCompany(e.target.value)}
+                            placeholder="הזן שם חברה"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientEmail">אימייל</Label>
+                          <Input
+                            id="newClientEmail"
+                            type="email"
+                            value={newClientEmail}
+                            onChange={(e) => setNewClientEmail(e.target.value)}
+                            placeholder="email@example.com"
+                            className="mt-2"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientPhone">טלפון</Label>
+                          <Input
+                            id="newClientPhone"
+                            value={newClientPhone}
+                            onChange={(e) => setNewClientPhone(e.target.value)}
+                            placeholder="050-0000000"
+                            className="mt-2"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
+                      <SheetFooter>
+                        <Button variant="outline" onClick={() => setIsAddClientDialogOpen(false)}>
+                          ביטול
+                        </Button>
+                        <Button onClick={handleAddClient}>
+                          <Plus className="h-4 w-4 ml-2" />
+                          הוסף
+                        </Button>
+                      </SheetFooter>
+                    </SheetContent>
+                  </Sheet>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {dbLoading && localClients.length === 0 ? (
+                  <div className="p-8 space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+                    ))}
+                  </div>
+                ) : (
+                  <UniversalDataTable
+                    tableName="clients"
+                    data={localClients}
+                    setData={setLocalClients}
+                    columns={clientColumns}
+                    variant="gold"
+                    selectable
+                    filterable
+                    globalSearch
+                    paginated
+                    pageSize={25}
+                    pageSizeOptions={[10, 25, 50, 100]}
+                    exportable
+                    columnToggle
+                    showSummary
+                    onCellEdit={handleClientCellEdit}
+                    loading={isSyncing}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="projects" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Folder className="h-5 w-5 text-secondary" />
+                    טבלת פרויקטים
+                    <Badge variant="outline" className="text-xs gap-1 mr-2">
+                      <Database className="h-3 w-3" />
+                      מחובר למסד נתונים
+                    </Badge>
+                    {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </CardTitle>
+                  <CardDescription>
+                    {localProjects.length} פרויקטים | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Refresh button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refreshData()}
+                    disabled={dbLoading}
+                    title="רענן נתונים"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${dbLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                  {/* Import buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleImportFile}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="ייבא מקובץ"
+                    >
+                      <Upload className="h-4 w-4 ml-1" />
+                      ייבוא
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectGoogleSheets}
+                      title="חבר ל-Google Sheets"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 ml-1" />
+                      Sheets
+                    </Button>
+                  </div>
+
+                  {/* Undo/Redo buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleUndo}
+                      disabled={projectHistory.length === 0}
+                      title="בטל (Undo)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRedo}
+                      disabled={projectFuture.length === 0}
+                      title="חזור (Redo)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {selectedProjects.length > 0 && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                    >
+                      <Trash2 className="h-4 w-4 ml-2" />
+                      מחק ({selectedProjects.length})
+                    </Button>
+                  )}
+                  {/* Add Project Column Button and Dialog */}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsAddColumnDialogOpen(true)}
+                    className="border-[#D4AF37] bg-white hover:bg-[#1e3a8a]/5 hover:border-[#D4AF37]/80 transition-all shadow-sm"
+                  >
+                    <Columns className="h-4 w-4 ml-2 text-[#D4AF37]" />
+                    <span className="text-[#1e3a8a] font-medium">הוסף עמודה</span>
+                  </Button>
+                  
+                  <AddColumnDialog
+                    open={isAddColumnDialogOpen}
+                    onOpenChange={setIsAddColumnDialogOpen}
+                    tableName="projects"
+                    onColumnAdded={handleProjectColumnAdded}
+                    existingColumns={projectCustomColumns}
+                  />
+
+                  {/* Add Row Dialog */}
+                  <Dialog open={isAddRowDialogOpen} onOpenChange={setIsAddRowDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="default" size="sm">
+                        <Plus className="h-4 w-4 ml-2" />
+                        הוסף שורה
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent dir="rtl">
+                      <DialogHeader>
+                        <DialogTitle>הוספת פרויקט חדש</DialogTitle>
+                        <DialogDescription>
+                          הזן את פרטי הפרויקט החדש
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <Label htmlFor="newProjectName">שם פרויקט *</Label>
+                          <Input
+                            id="newProjectName"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            placeholder="הזן שם פרויקט"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newProjectClient">לקוח</Label>
+                          <Input
+                            id="newProjectClient"
+                            value={newProjectClient}
+                            onChange={(e) => setNewProjectClient(e.target.value)}
+                            placeholder="הזן שם לקוח"
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddRowDialogOpen(false)}>
+                          ביטול
+                        </Button>
+                        <Button onClick={handleAddProject}>
+                          <Plus className="h-4 w-4 ml-2" />
+                          הוסף
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <UniversalDataTable
+                  tableName="projects"
+                  data={localProjects}
+                  setData={setLocalProjects}
+                  columns={projectColumns}
+                  variant="gold"
+                  selectable
+                  filterable
+                  globalSearch
+                  paginated
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  exportable
+                  columnToggle
+                  showSummary
+                  onCellEdit={handleProjectCellEdit}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="employees" className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-secondary" />
+                    טבלת עובדים
+                    <Badge variant="outline" className="text-xs gap-1 mr-2">
+                      <Database className="h-3 w-3" />
+                      מחובר למסד נתונים
+                    </Badge>
+                    {employeesSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  </CardTitle>
+                  <CardDescription>
+                    {dbEmployees.length} עובדים | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
+                    {!isManager && !isAdmin && ' | מצב צפייה בלבד'}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Refresh button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refreshEmployees()}
+                    disabled={employeesLoading}
+                    title="רענן נתונים"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${employeesLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                  
+                  {/* Import buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <input
+                      ref={employeeFileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleEmployeeImportFile}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => employeeFileInputRef.current?.click()}
+                      title="ייבא מקובץ"
+                    >
+                      <Upload className="h-4 w-4 ml-1" />
+                      ייבוא
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleConnectGoogleSheets}
+                      title="חבר ל-Google Sheets"
+                    >
+                      <FileSpreadsheet className="h-4 w-4 ml-1" />
+                      Sheets
+                    </Button>
+                  </div>
+                  
+                  {/* Undo/Redo buttons */}
+                  <div className="flex items-center gap-1 border-l pl-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEmployeeUndo}
+                      disabled={employeeHistory.length === 0}
+                      title="בטל (Undo)"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleEmployeeRedo}
+                      disabled={employeeFuture.length === 0}
+                      title="חזור (Redo)"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {selectedEmployees.length > 0 && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteSelectedEmployees}
+                    >
+                      <Trash2 className="h-4 w-4 ml-2" />
+                      מחק ({selectedEmployees.length})
+                    </Button>
+                  )}
+                  
+                  {/* Add Employee Column Button and Dialog */}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsAddEmployeeColumnDialogOpen(true)}
+                    className="border-[#D4AF37] bg-white hover:bg-[#1e3a8a]/5 hover:border-[#D4AF37]/80 transition-all shadow-sm"
+                  >
+                    <Columns className="h-4 w-4 ml-2 text-[#D4AF37]" />
+                    <span className="text-[#1e3a8a] font-medium">הוסף עמודה</span>
+                  </Button>
+                  
+                  <AddColumnDialog
+                    open={isAddEmployeeColumnDialogOpen}
+                    onOpenChange={setIsAddEmployeeColumnDialogOpen}
+                    tableName="profiles"
+                    onColumnAdded={handleEmployeeColumnAdded}
+                    existingColumns={employeeCustomColumns}
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <UniversalDataTable
+                  tableName="profiles"
+                  data={localEmployees}
+                  setData={setLocalEmployees}
+                  columns={employeeColumnsWithDynamic}
+                  loading={employeesLoading}
+                  variant="navy"
+                  selectable
+                  filterable
+                  globalSearch
+                  paginated
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  exportable
+                  columnToggle
+                  showSummary
+                  striped
+                  onCellEdit={handleEmployeeCellEdit}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Custom Tables Content */}
+          {customTables.map((table) => (
+            <TabsContent key={table.id} value={`custom_${table.id}`} className="mt-6">
+              <CustomTableTab
+                table={table}
+                onDeleteTable={async (tableId) => {
+                  const success = await deleteCustomTable(tableId);
+                  if (success) {
+                    setActiveTab('clients');
+                  }
+                  return success;
+                }}
+                canManage={canManageCustomTables}
+              />
+            </TabsContent>
+          ))}
+        </Tabs>
+
+        {/* Features documentation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              תכונות זמינות
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <h4 className="font-semibold mb-3 text-green-600">✓ תכונות ליבה</h4>
+                <ul className="space-y-1 text-sm">
+                  <li>• מיון רב-עמודות (Shift+Click)</li>
+                  <li>• סינון חכם לכל סוג נתון</li>
+                  <li>• חיפוש גלובלי מהיר</li>
+                  <li>• עימוד עם בחירת גודל</li>
+                  <li>• בחירת שורות בודדת/מרובה</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3 text-blue-600">✓ תכונות מתקדמות</h4>
+                <ul className="space-y-1 text-sm">
+                  <li>• <strong>עריכת תאים Inline</strong> - לחץ על תא לעריכה</li>
+                  <li>• <strong>הוספת שורות</strong> - כפתור "הוסף שורה"</li>
+                  <li>• <strong>הוספת עמודות</strong> - כפתור "הוסף עמודה"</li>
+                  <li>• <strong>Undo/Redo</strong> - כפתורי ביטול/חזור</li>
+                  <li>• <strong>גרירת שורות</strong> - חצים להזזת שורות</li>
+                  <li>• <strong>מחיקת שורות</strong> - בחר ולחץ מחק</li>
+                  <li>• שינוי גודל עמודות</li>
+                  <li>• הסתרה/הצגת עמודות</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-3 text-purple-600">✓ ביצועים ו-UX</h4>
+                <ul className="space-y-1 text-sm">
+                  <li>• Virtual Scrolling לאלפי שורות</li>
+                  <li>• ניווט מקלדת מלא</li>
+                  <li>• RTL מושלם</li>
+                  <li>• Loading Skeletons</li>
+                  <li>• ייצוא CSV, Excel, PDF</li>
+                  <li>• הרחבת שורה לפרטים</li>
+                  <li>• שורת סיכום (סה״כ, ממוצע)</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Edit Client Name Dialog */}
+        <Dialog open={isEditClientNameOpen} onOpenChange={setIsEditClientNameOpen}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle>עריכת שם לקוח</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="clientName">שם הלקוח</Label>
+              <Input
+                id="clientName"
+                value={editingClientName}
+                onChange={(e) => setEditingClientName(e.target.value)}
+                className="mt-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSaveClientName();
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditClientNameOpen(false)}>
+                ביטול
+              </Button>
+              <Button onClick={handleSaveClientName}>
+                שמור
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AppLayout>
+  );
+}

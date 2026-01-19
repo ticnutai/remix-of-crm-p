@@ -1,0 +1,31 @@
+project_id = "cxzrjgkjikglkrjcmmhe"
+
+[functions.create-employee]
+verify_jwt = false
+
+[functions.create-admin-user]
+verify_jwt = false
+
+[functions.admin-reset-password]
+verify_jwt = false
+
+[functions.auto-backup]
+verify_jwt = false
+
+[functions.check-reminders]
+verify_jwt = false
+
+[functions.financial-alerts]
+verify_jwt = false
+
+[functions.green-invoice]
+verify_jwt = false
+
+[functions.import-backup]
+verify_jwt = false
+
+[functions.invite-client]
+verify_jwt = false
+
+[functions.send-reminder-email]
+verify_jwt = false

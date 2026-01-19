@@ -1,0 +1,573 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Use flexible type to support Hebrew field names from Excel
+interface BackupClient {
+  id?: string;
+  name?: string;
+  name_clean?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  company?: string;
+  status?: string;
+  stage?: string;
+  source?: string;
+  notes?: string;
+  tags?: string[];
+  custom_data?: Record<string, any>;
+  position?: string;
+  phone_secondary?: string;
+  whatsapp?: string;
+  website?: string;
+  linkedin?: string;
+  preferred_contact?: string;
+  budget_range?: string;
+  is_sample?: boolean;
+  created_date?: string;
+  updated_date?: string;
+  // Hebrew field names
+  "שם"?: string;
+  "שם לקוח"?: string;
+  "אימייל"?: string;
+  "כתובת מייל"?: string;
+  "טלפון"?: string;
+  "טלפון ראשי"?: string;
+  "טלפון משני"?: string;
+  "כתובת"?: string;
+  "חברה"?: string;
+  "סטטוס"?: string;
+  "שלב"?: string;
+  "הערות"?: string;
+  "תפקיד"?: string;
+  "ווצאפ"?: string;
+  "אתר"?: string;
+  [key: string]: any; // Allow any other field
+}
+
+interface BackupTask {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  due_date?: string;
+  client_id?: string;
+  client_name?: string;
+  project_id?: string;
+  assigned_to?: string;
+  tags?: string[];
+  created_date?: string;
+}
+
+interface BackupTimeLog {
+  id: string;
+  client_id?: string;
+  client_name?: string;
+  log_date?: string;
+  duration_seconds?: number;
+  title?: string;
+  notes?: string;
+  created_date?: string;
+}
+
+interface BackupMeeting {
+  id: string;
+  title?: string;
+  description?: string;
+  client_id?: string;
+  client_name?: string;
+  start_time?: string;
+  end_time?: string;
+  start_date?: string;
+  end_date?: string;
+  location?: string;
+  notes?: string;
+  status?: string;
+  attendees?: string[];
+  created_date?: string;
+}
+
+interface BackupQuote {
+  id: string;
+  client_id?: string;
+  client_name?: string;
+  amount?: number;
+  status?: string;
+  description?: string;
+  created_date?: string;
+  valid_until?: string;
+}
+
+interface BackupAccessControl {
+  id: string;
+  user_email: string;
+  role: string;
+  permissions?: Record<string, any>;
+  is_active?: boolean;
+}
+
+interface BackupUserPreferences {
+  id: string;
+  user_email: string;
+  theme?: string;
+  language?: string;
+  notifications_enabled?: boolean;
+  default_view?: string;
+}
+
+interface BackupData {
+  Client?: BackupClient[];
+  Task?: BackupTask[];
+  TimeLog?: BackupTimeLog[];
+  Meeting?: BackupMeeting[];
+  Quote?: BackupQuote[];
+  AccessControl?: BackupAccessControl[];
+  UserPreferences?: BackupUserPreferences[];
+}
+
+// Map Hebrew statuses to valid DB values
+const statusMap: Record<string, string> = {
+  'פוטנציאלי': 'active',
+  'פעיל': 'active',
+  'לא פעיל': 'inactive',
+  'ארכיון': 'archived',
+  'ברור_תכן': 'active',
+  'תיק_מידע': 'active',
+  'היתרים': 'active',
+  'ביצוע': 'active',
+  'סיום': 'inactive',
+  'active': 'active',
+  'inactive': 'inactive',
+  'archived': 'archived',
+};
+
+const normalizeStatus = (status?: string): string => {
+  if (!status) return 'active';
+  const normalized = status.trim().toLowerCase();
+  return statusMap[normalized] || statusMap[status] || 'active';
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: backupData, userId } = await req.json() as { data: BackupData; userId: string };
+
+    if (!backupData || !userId) {
+      return new Response(
+        JSON.stringify({ error: "Missing backup data or userId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Starting comprehensive backup import...");
+    console.log("Data counts:", {
+      clients: backupData.Client?.length || 0,
+      tasks: backupData.Task?.length || 0,
+      timeLogs: backupData.TimeLog?.length || 0,
+      meetings: backupData.Meeting?.length || 0,
+      quotes: backupData.Quote?.length || 0,
+    });
+
+    const results = {
+      clients: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      tasks: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      timeLogs: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      meetings: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      quotes: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+    };
+
+    // Map old IDs to new IDs and names to IDs
+    const clientIdMap = new Map<string, string>();
+    const clientNameMap = new Map<string, string>();
+
+    // Get existing clients to avoid duplicates and build name map
+    const { data: existingClients } = await supabase
+      .from("clients")
+      .select("id, name, name_clean, original_id, email, phone");
+
+    if (existingClients) {
+      for (const client of existingClients) {
+        const normalizedName = (client.name_clean || client.name || "").trim().toLowerCase();
+        if (normalizedName) {
+          clientNameMap.set(normalizedName, client.id);
+        }
+        if (client.original_id) {
+          clientIdMap.set(client.original_id, client.id);
+        }
+      }
+    }
+
+    // 1. Import/Update Clients
+    if (backupData.Client && backupData.Client.length > 0) {
+      console.log(`Processing ${backupData.Client.length} clients...`);
+      
+      // Log first client for debugging
+      if (backupData.Client.length > 0) {
+        console.log("Sample client data:", JSON.stringify(backupData.Client[0]).slice(0, 500));
+      }
+      
+      for (const client of backupData.Client) {
+        try {
+          // Skip if no valid name
+          if (!client.name && !client.שם) {
+            console.log("Skipping client with no name");
+            results.clients.skipped++;
+            continue;
+          }
+
+          // Handle Hebrew field names from Excel
+          const clientName = client.name || client.שם || client["שם לקוח"] || "ללא שם";
+          const normalizedName = clientName.trim().toLowerCase();
+          const existingId = (client.id ? clientIdMap.get(client.id) : undefined) || clientNameMap.get(normalizedName);
+          
+          const clientData = {
+            name: clientName,
+            name_clean: client.name_clean || clientName,
+            email: client.email || client.אימייל || client["כתובת מייל"] || null,
+            phone: client.phone || client.טלפון || client["טלפון ראשי"] || null,
+            address: client.address || client.כתובת || null,
+            company: client.company || client.חברה || null,
+            status: normalizeStatus(client.status || client.סטטוס),
+            stage: client.stage || client.שלב || null,
+            source: client.source || "imported_backup",
+            notes: client.notes || client.הערות || null,
+            tags: Array.isArray(client.tags) ? client.tags : [],
+            custom_data: client.custom_data || {},
+            position: client.position || client.תפקיד || null,
+            phone_secondary: client.phone_secondary || client["טלפון משני"] || null,
+            whatsapp: client.whatsapp || client.ווצאפ || null,
+            website: client.website || client.אתר || null,
+            linkedin: client.linkedin || null,
+            preferred_contact: client.preferred_contact || null,
+            budget_range: client.budget_range || null,
+            is_sample: client.is_sample || false,
+            original_id: client.id || null,
+            created_by: userId,
+          };
+
+          if (existingId) {
+            // Update existing client - remove created_by from update
+            const { created_by, ...updateData } = clientData;
+            const { error } = await supabase
+              .from("clients")
+              .update(updateData)
+              .eq("id", existingId);
+
+            if (error) {
+              console.error(`Error updating client ${clientName}:`, JSON.stringify(error));
+              results.clients.errors++;
+            } else {
+              if (client.id) clientIdMap.set(client.id, existingId);
+              results.clients.updated++;
+            }
+          } else {
+            // Insert new client
+            const { data: inserted, error } = await supabase
+              .from("clients")
+              .insert(clientData)
+              .select("id")
+              .single();
+
+            if (error) {
+              console.error(`Error inserting client ${clientName}:`, JSON.stringify(error));
+              results.clients.errors++;
+            } else {
+              if (client.id) clientIdMap.set(client.id, inserted.id);
+              clientNameMap.set(normalizedName, inserted.id);
+              results.clients.imported++;
+            }
+          }
+        } catch (e) {
+          console.error(`Exception processing client:`, e);
+          results.clients.errors++;
+        }
+      }
+    }
+
+    // Helper function to find client ID by name or original ID
+    const findClientId = (originalId?: string, clientName?: string): string | null => {
+      if (originalId && clientIdMap.has(originalId)) {
+        return clientIdMap.get(originalId)!;
+      }
+      if (clientName) {
+        const normalizedName = clientName.trim().toLowerCase();
+        if (clientNameMap.has(normalizedName)) {
+          return clientNameMap.get(normalizedName)!;
+        }
+      }
+      return null;
+    };
+
+    // Get existing tasks to check for duplicates
+    const { data: existingTasks } = await supabase
+      .from("tasks")
+      .select("id, title, description");
+    
+    const existingTaskSet = new Set(
+      existingTasks?.map(t => `${t.title}::${t.description || ''}`) || []
+    );
+
+    // 2. Import Tasks
+    if (backupData.Task && backupData.Task.length > 0) {
+      console.log(`Processing ${backupData.Task.length} tasks...`);
+      
+      for (const task of backupData.Task) {
+        try {
+          // Check for duplicates
+          const taskKey = `${task.title}::${task.description || ''}`;
+          if (existingTaskSet.has(taskKey)) {
+            results.tasks.skipped++;
+            continue;
+          }
+
+          // Map priority
+          let priority = "medium";
+          if (task.priority === "גבוהה" || task.priority === "high") priority = "high";
+          else if (task.priority === "נמוכה" || task.priority === "low") priority = "low";
+
+          // Map status
+          let status = "pending";
+          if (task.status === "הושלם" || task.status === "completed" || task.status === "הושלמה") status = "completed";
+          else if (task.status === "בתהליך" || task.status === "in_progress") status = "in_progress";
+          else if (task.status === "חדשה" || task.status === "new") status = "pending";
+
+          const clientId = findClientId(task.client_id, task.client_name);
+
+          const taskData = {
+            title: task.title || "ללא כותרת",
+            description: task.description || null,
+            status,
+            priority,
+            due_date: task.due_date ? new Date(task.due_date).toISOString() : null,
+            client_id: clientId,
+            tags: Array.isArray(task.tags) ? task.tags : [],
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("tasks").insert(taskData);
+
+          if (error) {
+            console.error(`Error inserting task ${task.title}:`, error);
+            results.tasks.errors++;
+          } else {
+            existingTaskSet.add(taskKey);
+            results.tasks.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting task:`, e);
+          results.tasks.errors++;
+        }
+      }
+    }
+
+    // Get existing time entries to check for duplicates
+    const { data: existingTimeEntries } = await supabase
+      .from("time_entries")
+      .select("id, client_id, start_time, duration_minutes");
+    
+    const existingTimeSet = new Set(
+      existingTimeEntries?.map(t => `${t.client_id}::${t.start_time}::${t.duration_minutes}`) || []
+    );
+
+    // 3. Import Time Logs
+    if (backupData.TimeLog && backupData.TimeLog.length > 0) {
+      console.log(`Processing ${backupData.TimeLog.length} time logs...`);
+      
+      for (const log of backupData.TimeLog) {
+        try {
+          // Convert duration_seconds to minutes
+          const durationMinutes = log.duration_seconds ? Math.round(log.duration_seconds / 60) : 0;
+          
+          // Parse log_date to create start_time
+          let startTime = new Date().toISOString();
+          if (log.log_date) {
+            try {
+              const dateObj = new Date(log.log_date);
+              if (!isNaN(dateObj.getTime())) {
+                startTime = dateObj.toISOString();
+              }
+            } catch {
+              // Keep default
+            }
+          }
+
+          const clientId = findClientId(log.client_id, log.client_name);
+
+          // Check for duplicates
+          const timeKey = `${clientId}::${startTime}::${durationMinutes}`;
+          if (existingTimeSet.has(timeKey)) {
+            results.timeLogs.skipped++;
+            continue;
+          }
+
+          // Calculate end_time from start_time + duration (duration_minutes is a generated column)
+          const startDate = new Date(startTime);
+          const endDate = new Date(startDate.getTime() + durationMinutes * 60 * 1000);
+          const endTime = endDate.toISOString();
+
+          const timeEntryData = {
+            user_id: userId,
+            client_id: clientId,
+            description: log.notes || log.title || null,
+            start_time: startTime,
+            end_time: endTime, // Set end_time so duration_minutes is calculated automatically
+            is_billable: true,
+            is_running: false,
+          };
+
+          const { error } = await supabase.from("time_entries").insert(timeEntryData);
+
+          if (error) {
+            console.error(`Error inserting time log:`, error);
+            results.timeLogs.errors++;
+          } else {
+            existingTimeSet.add(timeKey);
+            results.timeLogs.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting time log:`, e);
+          results.timeLogs.errors++;
+        }
+      }
+    }
+
+    // Get existing meetings to check for duplicates
+    const { data: existingMeetings } = await supabase
+      .from("meetings")
+      .select("id, title, start_time");
+    
+    const existingMeetingSet = new Set(
+      existingMeetings?.map(m => `${m.title}::${m.start_time}`) || []
+    );
+
+    // 4. Import Meetings
+    if (backupData.Meeting && backupData.Meeting.length > 0) {
+      console.log(`Processing ${backupData.Meeting.length} meetings...`);
+      
+      for (const meeting of backupData.Meeting) {
+        try {
+          const startTime = meeting.start_time || meeting.start_date || new Date().toISOString();
+          const endTime = meeting.end_time || meeting.end_date || new Date(Date.now() + 3600000).toISOString();
+
+          // Check for duplicates
+          const meetingKey = `${meeting.title}::${startTime}`;
+          if (existingMeetingSet.has(meetingKey)) {
+            results.meetings.skipped++;
+            continue;
+          }
+
+          const clientId = findClientId(meeting.client_id, meeting.client_name);
+
+          // Map status
+          let status = "scheduled";
+          if (meeting.status === "הושלם" || meeting.status === "completed") status = "completed";
+          else if (meeting.status === "בוטל" || meeting.status === "cancelled") status = "cancelled";
+
+          const meetingData = {
+            title: meeting.title || "פגישה",
+            description: meeting.description || null,
+            client_id: clientId,
+            start_time: startTime,
+            end_time: endTime,
+            location: meeting.location || null,
+            notes: meeting.notes || null,
+            status,
+            attendees: Array.isArray(meeting.attendees) ? meeting.attendees : [],
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("meetings").insert(meetingData);
+
+          if (error) {
+            console.error(`Error inserting meeting:`, error);
+            results.meetings.errors++;
+          } else {
+            existingMeetingSet.add(meetingKey);
+            results.meetings.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting meeting:`, e);
+          results.meetings.errors++;
+        }
+      }
+    }
+
+    // 5. Import Quotes as Invoices (draft)
+    if (backupData.Quote && backupData.Quote.length > 0) {
+      console.log(`Processing ${backupData.Quote.length} quotes...`);
+      
+      for (const quote of backupData.Quote) {
+        try {
+          const clientId = findClientId(quote.client_id, quote.client_name);
+          if (!clientId) {
+            results.quotes.skipped++;
+            continue;
+          }
+
+          const invoiceData = {
+            invoice_number: `QT-${quote.id.slice(-6)}`,
+            client_id: clientId,
+            amount: quote.amount || 0,
+            status: "draft",
+            description: quote.description || "הצעת מחיר מיובאת",
+            issue_date: quote.created_date ? new Date(quote.created_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            due_date: quote.valid_until ? new Date(quote.valid_until).toISOString().split('T')[0] : null,
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("invoices").insert(invoiceData);
+
+          if (error) {
+            console.error(`Error inserting quote as invoice:`, error);
+            results.quotes.errors++;
+          } else {
+            results.quotes.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting quote:`, e);
+          results.quotes.errors++;
+        }
+      }
+    }
+
+    console.log("Import completed:", results);
+
+    const summary = {
+      לקוחות: `${results.clients.imported} חדשים, ${results.clients.updated} עודכנו, ${results.clients.skipped} דולגו, ${results.clients.errors} שגיאות`,
+      משימות: `${results.tasks.imported} חדשים, ${results.tasks.skipped} דולגו, ${results.tasks.errors} שגיאות`,
+      רישומי_זמן: `${results.timeLogs.imported} חדשים, ${results.timeLogs.skipped} דולגו, ${results.timeLogs.errors} שגיאות`,
+      פגישות: `${results.meetings.imported} חדשים, ${results.meetings.skipped} דולגו, ${results.meetings.errors} שגיאות`,
+      הצעות_מחיר: `${results.quotes.imported} חדשים, ${results.quotes.skipped} דולגו, ${results.quotes.errors} שגיאות`,
+    };
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        results,
+        summary,
+        message: `ייבוא הושלם בהצלחה!`
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: unknown) {
+    console.error("Import error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
