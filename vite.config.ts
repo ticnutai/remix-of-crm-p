@@ -18,11 +18,9 @@ export default defineConfig(({ mode }) => {
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
     process.env.VITE_SUPABASE_ANON_KEY ??
     env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    env.VITE_SUPABASE_ANON_KEY;
-
-  if (!supabaseKey) {
-    throw new Error("Missing backend API key (VITE_SUPABASE_PUBLISHABLE_KEY)");
-  }
+    env.VITE_SUPABASE_ANON_KEY ??
+    // Public anon key fallback (safe to ship - this is publishable)
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhZGV5bWVoaWRjbmR1ZGV5Y25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4Mzg2ODQsImV4cCI6MjA4NDQxNDY4NH0.8t74NyPPHaWXHGyllAvdjPZ6DfAWM9fsAKopVEVogpM";
 
   return {
     server: {
