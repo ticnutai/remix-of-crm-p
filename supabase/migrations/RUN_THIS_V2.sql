@@ -1,6 +1,6 @@
 -- ============================================================================
 -- ADVANCED FEATURES V2 - Run in Supabase SQL Editor
--- Dashboard URL: https://supabase.com/dashboard/project/cxzrjgkjikglkrjcmmhe/sql
+-- Dashboard URL: https://supabase.com/dashboard/project/eadeymehidcndudeycnf/sql
 -- ============================================================================
 
 -- SECTION 1: TASKS (Kanban Board)

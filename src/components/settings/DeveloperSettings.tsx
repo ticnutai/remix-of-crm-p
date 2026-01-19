@@ -996,7 +996,7 @@ function MigrationManagement() {
             )}
             onClick={() => {
               // Open Lovable Cloud backend panel
-              const backendUrl = `https://lovable.dev/projects/${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'cxzrjgkjikglkrjcmmhe'}/backend`;
+              const backendUrl = `https://lovable.dev/projects/${import.meta.env.VITE_SUPABASE_PROJECT_ID || 'eadeymehidcndudeycnf'}/backend`;
               window.open(backendUrl, '_blank');
               toast.success('פותח את ממשק ה-Backend בחלון חדש');
             }}

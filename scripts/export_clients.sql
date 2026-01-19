@@ -1,6 +1,6 @@
 -- =============================================================================
--- EXPORT SCRIPT FOR OLD SUPABASE PROJECT (cxzrjgkjikglkrjcmmhe)
--- Run this in the SQL Editor of the OLD project to export data
+-- EXPORT SCRIPT - Run in OLD project, then import to NEW project
+-- NEW project: eadeymehidcndudeycnf
 -- =============================================================================
 
 -- Step 1: Export all tables data as INSERT statements

@@ -1,6 +1,7 @@
 -- =============================================================================
 -- COMPLETE DATA EXPORT SCRIPT
--- Run this in SQL Editor of OLD project: cxzrjgkjikglkrjcmmhe
+-- Run this in SQL Editor of OLD project to export data
+-- Then run the output in NEW project: eadeymehidcndudeycnf
 -- =============================================================================
 
 -- This will generate INSERT statements for all main tables

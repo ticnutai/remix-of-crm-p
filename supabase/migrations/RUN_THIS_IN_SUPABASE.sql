@@ -1,7 +1,7 @@
 -- ============================================================================
 -- ARCHFLOW CRM - ALL NEW TABLES SQL
 -- Run this file in Supabase SQL Editor to create all missing tables
--- Dashboard URL: https://supabase.com/dashboard/project/cxzrjgkjikglkrjcmmhe/sql
+-- Dashboard URL: https://supabase.com/dashboard/project/eadeymehidcndudeycnf/sql
 -- ============================================================================
 
 -- ############################################################################

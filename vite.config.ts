@@ -12,13 +12,13 @@ export default defineConfig(({ mode }) => {
   const supabaseUrl =
     env.VITE_SUPABASE_URL ??
     // Public URL fallback (safe to ship)
-    "https://cxzrjgkjikglkrjcmmhe.supabase.co";
+    "https://eadeymehidcndudeycnf.supabase.co";
 
   const supabaseKey =
     env.VITE_SUPABASE_PUBLISHABLE_KEY ??
     env.VITE_SUPABASE_ANON_KEY ??
-    // Public anon/publishable key fallback (safe to ship)
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4enJqZ2tqaWtnbGtyamNtbWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDAxMDUsImV4cCI6MjA4Mzk3NjEwNX0.msBnOg6bvcLr7eaGZBhjM4uPFlRXV3zcUl5fuaW9W2E";
+    // Public anon/publishable key fallback - UPDATE THIS WITH YOUR NEW ANON KEY
+    "YOUR_NEW_ANON_KEY_HERE";
 
   return {
     server: {

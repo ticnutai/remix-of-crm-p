@@ -65,7 +65,7 @@
 
 **המשתמש המנהל:** jj1212t@gmail.com  
 **Project:** kind-client-connect  
-**Supabase URL:** https://cxzrjgkjikglkrjcmmhe.supabase.co
+**Supabase URL:** https://eadeymehidcndudeycnf.supabase.co
 
 ---
 
