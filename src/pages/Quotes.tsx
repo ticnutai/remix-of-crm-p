@@ -19,6 +19,7 @@ import {
   Building2,
   Calendar,
   AlertCircle,
+  PenTool,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ import { QuotePaymentDialog } from '@/components/quotes/QuotePaymentDialog';
 import { ContractForm } from '@/components/contracts/ContractForm';
 import { ContractDetails } from '@/components/contracts/ContractDetails';
 import { ContractTemplatesManager } from '@/components/contracts/ContractTemplatesManager';
+import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
 import { cn } from '@/lib/utils';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -128,6 +130,8 @@ export default function Quotes() {
   const [convertToContractQuote, setConvertToContractQuote] = useState<Quote | null>(null);
   const [terminatingContractId, setTerminatingContractId] = useState<string | null>(null);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [advancedEditorQuote, setAdvancedEditorQuote] = useState<Quote | null>(null);
+  const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
   
   // Save filters to localStorage
   React.useEffect(() => {
@@ -282,7 +286,11 @@ export default function Quotes() {
           {/* Quotes Tab */}
           <TabsContent value="quotes" className="space-y-6 mt-6">
             {/* Quotes Header */}
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsAdvancedEditorOpen(true)}>
+                <PenTool className="h-4 w-4 ml-2" />
+                עורך מתקדם
+              </Button>
               <Button onClick={() => setIsFormOpen(true)}>
                 <Plus className="h-4 w-4 ml-2" />
                 הצעה חדשה
@@ -443,9 +451,16 @@ export default function Quotes() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => {
+                                    setAdvancedEditorQuote(quote);
+                                    setIsAdvancedEditorOpen(true);
+                                  }}>
+                                    <PenTool className="h-4 w-4 ml-2" />
+                                    עורך מתקדם
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setEditingQuote(quote)}>
                                     <Pencil className="h-4 w-4 ml-2" />
-                                    עריכה
+                                    עריכה מהירה
                                   </DropdownMenuItem>
                                   {quote.status === 'draft' && (
                                     <DropdownMenuItem onClick={() => sendQuote.mutate(quote.id)}>
@@ -841,6 +856,16 @@ export default function Quotes() {
       <ContractTemplatesManager
         open={isTemplateManagerOpen}
         onOpenChange={setIsTemplateManagerOpen}
+      />
+
+      {/* Advanced Quote Editor Sheet */}
+      <QuoteEditorSheet
+        open={isAdvancedEditorOpen}
+        onOpenChange={setIsAdvancedEditorOpen}
+        quote={advancedEditorQuote}
+        onSaved={() => {
+          setAdvancedEditorQuote(null);
+        }}
       />
     </AppLayout>
   );
