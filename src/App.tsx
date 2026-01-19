@@ -46,7 +46,6 @@ const EmailAnalytics = lazy(() => import("./pages/EmailAnalytics"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const AuditLogPage = lazy(() => import("./pages/AuditLog"));
 const QuoteTemplates = lazy(() => import("./pages/QuoteTemplates"));
-const QuoteEditor = lazy(() => import("./pages/QuoteEditor"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // V2 Features - Advanced Pages
@@ -117,7 +116,6 @@ const App = () => {
                           <Route path="/analytics" element={<Analytics />} />
                           <Route path="/audit-log" element={<AuditLogPage />} />
                           <Route path="/quote-templates" element={<QuoteTemplates />} />
-                          <Route path="/quote-editor" element={<QuoteEditor />} />
                           {/* V2 Advanced Features */}
                           <Route path="/kanban" element={<TasksKanban />} />
                           <Route path="/dashboard" element={<Dashboard />} />
