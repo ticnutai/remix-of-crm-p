@@ -163,7 +163,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
           width: `${width}px`,
           transform: shouldShow ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 300ms ease-out',
-          zIndex: 100,
+          zIndex: 50, // Lowered from 100 to be below Sheet (200)
           backgroundColor: '#1e293b',
           borderLeft: '3px solid #ffd700',
           borderRadius: '12px 0 0 12px',

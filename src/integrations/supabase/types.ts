@@ -1204,6 +1204,7 @@ export type Database = {
           start_date: string
           status: string | null
           tags: string[] | null
+          template_id: string | null
           terminated_at: string | null
           termination_reason: string | null
           terms_and_conditions: string | null
@@ -1239,6 +1240,7 @@ export type Database = {
           start_date: string
           status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           terminated_at?: string | null
           termination_reason?: string | null
           terms_and_conditions?: string | null
@@ -1274,6 +1276,7 @@ export type Database = {
           start_date?: string
           status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           terminated_at?: string | null
           termination_reason?: string | null
           terms_and_conditions?: string | null

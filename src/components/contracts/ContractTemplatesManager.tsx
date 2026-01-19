@@ -79,9 +79,11 @@ import { toast } from '@/hooks/use-toast';
 interface ContractTemplatesManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  selectionMode?: boolean;
+  onSelect?: (template: ContractTemplate) => void;
 }
 
-export function ContractTemplatesManager({ open, onOpenChange }: ContractTemplatesManagerProps) {
+export function ContractTemplatesManager({ open, onOpenChange, selectionMode = false, onSelect }: ContractTemplatesManagerProps) {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, setAsDefault } = useContractTemplates();
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -112,9 +114,9 @@ export function ContractTemplatesManager({ open, onOpenChange }: ContractTemplat
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-5xl max-h-[90vh]" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+          <DialogHeader className="text-right">
+            <DialogTitle className="flex items-center justify-between flex-row-reverse">
+              <div className="flex items-center gap-2 flex-row-reverse">
                 <FileText className="h-5 w-5" />
                 ניהול תבניות חוזים
               </div>
@@ -140,6 +142,13 @@ export function ContractTemplatesManager({ open, onOpenChange }: ContractTemplat
                     onDuplicate={() => handleDuplicate(template.id)}
                     onSetDefault={() => handleSetDefault(template.id)}
                     onDelete={() => setDeleteConfirm(template.id)}
+                    selectionMode={selectionMode}
+                    onSelect={() => {
+                      if (onSelect) {
+                        onSelect(template);
+                        onOpenChange(false);
+                      }
+                    }}
                   />
                 ))}
 
@@ -214,6 +223,8 @@ interface TemplateListItemProps {
   onDuplicate: () => void;
   onSetDefault: () => void;
   onDelete: () => void;
+  selectionMode?: boolean;
+  onSelect?: () => void;
 }
 
 function TemplateListItem({ 
@@ -221,14 +232,17 @@ function TemplateListItem({
   onEdit, 
   onDuplicate, 
   onSetDefault, 
-  onDelete 
+  onDelete,
+  selectionMode = false,
+  onSelect
 }: TemplateListItemProps) {
   return (
-    <Card>
+    <Card dir="rtl">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
+          <Badge className="shrink-0">{template.category}</Badge>
+          <div className="flex-1 text-right mr-3">
+            <CardTitle className="text-lg flex items-center gap-2 justify-end">
               {template.name}
               {template.is_default && (
                 <Badge variant="secondary" className="gap-1">
@@ -241,41 +255,48 @@ function TemplateListItem({
               {template.description || 'ללא תיאור'}
             </CardDescription>
           </div>
-          <Badge>{template.category}</Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-          {template.default_payment_schedule?.length > 0 && (
-            <span>💳 {template.default_payment_schedule.length} שלבי תשלום</span>
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3 justify-end">
+          {template.variables?.length > 0 && (
+            <span>🔤 {template.variables.length} משתנים</span>
           )}
           {template.default_duration_days && (
             <span>📅 {template.default_duration_days} ימים</span>
           )}
-          {template.variables?.length > 0 && (
-            <span>🔤 {template.variables.length} משתנים</span>
+          {template.default_payment_schedule?.length > 0 && (
+            <span>💳 {template.default_payment_schedule.length} שלבי תשלום</span>
           )}
         </div>
         
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            <Pencil className="h-4 w-4 ml-1" />
-            עריכה
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDuplicate}>
-            <Copy className="h-4 w-4 ml-1" />
-            שכפול
-          </Button>
-          {!template.is_default && (
-            <Button variant="outline" size="sm" onClick={onSetDefault}>
-              <Star className="h-4 w-4 ml-1" />
-              הגדר כברירת מחדל
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          {selectionMode ? (
+            <Button size="sm" onClick={onSelect}>
+              בחר תבנית זו
             </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4 ml-1" />
+                מחק
+              </Button>
+              {!template.is_default && (
+                <Button variant="outline" size="sm" onClick={onSetDefault}>
+                  <Star className="h-4 w-4 ml-1" />
+                  הגדר כברירת מחדל
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={onDuplicate}>
+                <Copy className="h-4 w-4 ml-1" />
+                שכפול
+              </Button>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Pencil className="h-4 w-4 ml-1" />
+                עריכה
+              </Button>
+            </>
           )}
-          <Button variant="outline" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
-            <Trash2 className="h-4 w-4 ml-1" />
-            מחק
-          </Button>
         </div>
       </CardContent>
     </Card>

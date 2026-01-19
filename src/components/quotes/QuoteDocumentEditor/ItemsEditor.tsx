@@ -66,27 +66,27 @@ export function ItemsEditor({
   showNumbers = true,
 }: ItemsEditorProps) {
   return (
-    <div className="space-y-2" dir="rtl">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3" dir="rtl">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="font-semibold text-sm">פריטים</h3>
-        <Button onClick={onAdd} size="sm" variant="outline">
+        <Button onClick={onAdd} size="sm" variant="default" className="shrink-0">
           <Plus className="h-4 w-4 ml-1" />
           הוסף פריט
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
+      <div className="border rounded-lg overflow-x-auto">
+        <Table className="min-w-[600px]">
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-8"></TableHead>
-              {showNumbers && <TableHead className="w-12 text-center">#</TableHead>}
-              <TableHead>תיאור</TableHead>
-              <TableHead className="w-20 text-center">כמות</TableHead>
-              <TableHead className="w-24">יחידה</TableHead>
-              <TableHead className="w-28">מחיר</TableHead>
-              <TableHead className="w-28 text-left">סה"כ</TableHead>
-              <TableHead className="w-20"></TableHead>
+              {showNumbers && <TableHead className="w-10 text-center">#</TableHead>}
+              <TableHead className="min-w-[150px]">תיאור</TableHead>
+              <TableHead className="w-16 text-center">כמות</TableHead>
+              <TableHead className="w-20">יחידה</TableHead>
+              <TableHead className="w-24">מחיר</TableHead>
+              <TableHead className="w-24 text-left">סה"כ</TableHead>
+              <TableHead className="w-16"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -94,12 +94,12 @@ export function ItemsEditor({
               <TableRow>
                 <TableCell 
                   colSpan={showNumbers ? 8 : 7} 
-                  className="h-24 text-center text-muted-foreground"
+                  className="h-32 text-center text-muted-foreground"
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <span>אין פריטים עדיין</span>
-                    <Button onClick={onAdd} size="sm" variant="outline">
-                      <Plus className="h-4 w-4 ml-1" />
+                  <div className="flex flex-col items-center justify-center gap-3 py-4">
+                    <span className="text-base">אין פריטים עדיין</span>
+                    <Button onClick={onAdd} size="default" variant="default">
+                      <Plus className="h-4 w-4 ml-2" />
                       הוסף פריט ראשון
                     </Button>
                   </div>

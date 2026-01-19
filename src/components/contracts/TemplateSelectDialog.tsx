@@ -330,8 +330,24 @@ interface SelectedTemplateInfoProps {
 }
 
 function SelectedTemplateInfo({ template, contractValue, startDate }: SelectedTemplateInfoProps) {
-  const paymentSchedule = generatePaymentScheduleFromTemplate(template, startDate, contractValue);
-  const endDate = calculateEndDate(startDate, template);
+  // וידוא שתאריך ההתחלה תקין
+  const validStartDate = (() => {
+    try {
+      if (startDate instanceof Date && !isNaN(startDate.getTime())) {
+        return startDate;
+      }
+      if (typeof startDate === 'string' || typeof startDate === 'number') {
+        const parsed = new Date(startDate);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+      }
+      return new Date();
+    } catch {
+      return new Date();
+    }
+  })();
+
+  const paymentSchedule = generatePaymentScheduleFromTemplate(template, validStartDate, contractValue);
+  const endDate = calculateEndDate(validStartDate, template);
 
   return (
     <div className="p-4 rounded-lg bg-muted/50 space-y-3">
@@ -388,10 +404,15 @@ function TemplatePreviewDialog({
   contractValue,
   startDate,
 }: TemplatePreviewDialogProps) {
+  // וידוא שתאריך ההתחלה תקין
+  const validStartDate = startDate instanceof Date && !isNaN(startDate.getTime()) 
+    ? startDate 
+    : new Date();
+  
   // יצירת לוח תשלומים
-  const paymentSchedule = generatePaymentScheduleFromTemplate(template, startDate, contractValue);
+  const paymentSchedule = generatePaymentScheduleFromTemplate(template, validStartDate, contractValue);
   const paymentScheduleHtml = generatePaymentScheduleHtml(paymentSchedule);
-  const endDate = calculateEndDate(startDate, template);
+  const endDate = calculateEndDate(validStartDate, template);
 
   // החלפת משתנים
   const previewHtml = replaceTemplateVariables(
@@ -402,7 +423,7 @@ function TemplatePreviewDialog({
       title: 'חוזה לדוגמה',
       value: contractValue,
       description: 'תיאור הפרויקט יופיע כאן',
-      start_date: format(startDate, 'yyyy-MM-dd'),
+      start_date: format(validStartDate, 'yyyy-MM-dd'),
       end_date: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
       payment_terms: template.default_payment_terms,
       terms_and_conditions: template.default_terms_and_conditions,

@@ -624,12 +624,34 @@ export function generatePaymentScheduleFromTemplate(
     return [];
   }
   
-  return template.default_payment_schedule.map((item, index) => ({
-    payment_number: index + 1,
-    description: item.description,
-    amount: Math.round((totalValue * item.percentage) / 100),
-    due_date: format(addDays(startDate, item.days_offset), 'yyyy-MM-dd'),
-  }));
+  // וידוא שתאריך ההתחלה תקין
+  let validStartDate: Date;
+  try {
+    if (startDate instanceof Date && !isNaN(startDate.getTime())) {
+      validStartDate = startDate;
+    } else if (typeof startDate === 'string' || typeof startDate === 'number') {
+      const parsed = new Date(startDate);
+      validStartDate = isNaN(parsed.getTime()) ? new Date() : parsed;
+    } else {
+      validStartDate = new Date();
+    }
+  } catch {
+    validStartDate = new Date();
+  }
+  
+  return template.default_payment_schedule.map((item, index) => {
+    const daysOffset = typeof item.days_offset === 'number' && !isNaN(item.days_offset) 
+      ? item.days_offset 
+      : 0;
+    const dueDate = addDays(validStartDate, daysOffset);
+    
+    return {
+      payment_number: index + 1,
+      description: item.description || '',
+      amount: Math.round((totalValue * (item.percentage || 0)) / 100),
+      due_date: format(dueDate, 'yyyy-MM-dd'),
+    };
+  });
 }
 
 // יצירת HTML ללוח תשלומים
@@ -670,5 +692,11 @@ export function calculateEndDate(
   template: ContractTemplate
 ): Date | null {
   if (!template.default_duration_days) return null;
-  return addDays(startDate, template.default_duration_days);
+  
+  // וידוא שתאריך ההתחלה תקין
+  const validStartDate = startDate instanceof Date && !isNaN(startDate.getTime()) 
+    ? startDate 
+    : new Date();
+  
+  return addDays(validStartDate, template.default_duration_days);
 }

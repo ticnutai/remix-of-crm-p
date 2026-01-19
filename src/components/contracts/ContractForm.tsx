@@ -207,7 +207,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
       start_date: values.start_date,
       signed_date: values.signed_date,
       project_id: values.project_id || undefined,
-      template_id: selectedTemplate?.id,
+      template_id: selectedTemplate?.id || undefined,
       description: values.description || undefined,
       end_date: values.end_date || undefined,
       payment_terms: values.payment_terms || undefined,
@@ -734,7 +734,11 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
       onSelect={handleTemplateSelect}
       client={selectedClient as ClientData | null}
       contractValue={watchedContractValue || 0}
-      startDate={watchedStartDate ? new Date(watchedStartDate) : new Date()}
+      startDate={(() => {
+        if (!watchedStartDate) return new Date();
+        const parsed = new Date(watchedStartDate);
+        return isNaN(parsed.getTime()) ? new Date() : parsed;
+      })()}
     />
 
     {/* מנהל תבניות */}

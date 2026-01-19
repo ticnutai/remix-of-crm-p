@@ -128,13 +128,25 @@ export function QuoteEditorSheet({
       <SheetContent 
         side="right" 
         hideClose
-        className="w-screen max-w-none p-0 flex flex-col"
+        className="flex flex-col gap-0 overflow-hidden border-0"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          maxWidth: 'none',
+          padding: 0,
+          zIndex: 300,
+        }}
         dir="rtl"
       >
         <TooltipProvider>
-          <div className="h-full flex flex-col bg-muted/30">
+          <div className="h-full w-full flex flex-col bg-muted/30 overflow-hidden">
             {/* Header with close button */}
-            <div className="flex items-center justify-between p-2 border-b bg-background">
+            <div className="flex items-center justify-between p-3 border-b bg-background shrink-0 z-10">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-lg">
                   עורך הצעת מחיר מתקדם
@@ -154,85 +166,95 @@ export function QuoteEditorSheet({
             </div>
 
             {/* Toolbar */}
-            <EditorToolbar
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              scale={scale}
-              onScaleChange={setScale}
-              isDirty={isDirty}
-              onSave={handleSave}
-              onExportPdf={handleExportPdf}
-              onExportImage={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
-              onPrint={handlePrint}
-              onImport={handleImport}
-              onNew={() => resetDocument()}
-              onLoadTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
-              onSaveAsTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
-              isSaving={isSaving}
-            />
+            <div className="shrink-0 z-10">
+              <EditorToolbar
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                scale={scale}
+                onScaleChange={setScale}
+                isDirty={isDirty}
+                onSave={handleSave}
+                onExportPdf={handleExportPdf}
+                onExportImage={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
+                onPrint={handlePrint}
+                onImport={handleImport}
+                onNew={() => resetDocument()}
+                onLoadTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
+                onSaveAsTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
+                isSaving={isSaving}
+              />
+            </div>
 
             {/* Main content with resizable panels */}
-            <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0">
-              {/* Sidebar panel */}
-              {!sidebarCollapsed && (
-                <>
-                  <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
-                    <EditorSidebar
-                      document={document}
-                      onUpdate={updateDocument}
-                      collapsed={sidebarCollapsed}
-                      onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    />
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                </>
-              )}
-
-              {/* Edit panel */}
-              {(viewMode === 'edit' || viewMode === 'split') && (
-                <>
-                  <ResizablePanel 
-                    defaultSize={viewMode === 'split' ? 35 : 82} 
-                    minSize={20}
-                  >
-                    <div className="h-full bg-card border-l overflow-hidden flex flex-col">
-                      <ScrollArea className="flex-1 p-4">
-                        <ItemsEditor
-                          items={document.items}
-                          onAdd={addItem}
-                          onUpdate={updateItem}
-                          onRemove={removeItem}
-                          onMove={moveItem}
-                          onDuplicate={duplicateItem}
-                          showNumbers={document.showItemNumbers}
+            <div className="flex-1 min-h-0 overflow-hidden w-full">
+              <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+                {/* Sidebar panel */}
+                {!sidebarCollapsed && (
+                  <>
+                    <ResizablePanel defaultSize={18} minSize={12} maxSize={30} className="h-full">
+                      <div className="h-full overflow-hidden">
+                        <EditorSidebar
+                          document={document}
+                          onUpdate={updateDocument}
+                          collapsed={sidebarCollapsed}
+                          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
                         />
+                      </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                  </>
+                )}
+
+                {/* Edit panel */}
+                {(viewMode === 'edit' || viewMode === 'split') && (
+                  <>
+                    <ResizablePanel 
+                      defaultSize={viewMode === 'split' ? 35 : 82} 
+                      minSize={25}
+                      className="h-full"
+                    >
+                      <div className="h-full bg-card border-l flex flex-col overflow-hidden">
+                        <ScrollArea className="flex-1 h-full">
+                          <div className="p-4 min-w-0">
+                            <ItemsEditor
+                              items={document.items}
+                              onAdd={addItem}
+                              onUpdate={updateItem}
+                              onRemove={removeItem}
+                              onMove={moveItem}
+                              onDuplicate={duplicateItem}
+                              showNumbers={document.showItemNumbers}
+                            />
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </ResizablePanel>
+                    {viewMode === 'split' && <ResizableHandle withHandle />}
+                  </>
+                )}
+
+                {/* Preview panel */}
+                {(viewMode === 'preview' || viewMode === 'split') && (
+                  <ResizablePanel 
+                    defaultSize={viewMode === 'split' ? 47 : 82} 
+                    minSize={30}
+                    className="h-full"
+                  >
+                    <div className="h-full bg-muted/50 overflow-hidden">
+                      <ScrollArea className="h-full">
+                        <div className="p-8 flex justify-center min-h-full">
+                          <DocumentPreview
+                            document={document}
+                            scale={scale}
+                            editable={viewMode !== 'preview'}
+                          />
+                        </div>
                       </ScrollArea>
                     </div>
                   </ResizablePanel>
-                  {viewMode === 'split' && <ResizableHandle withHandle />}
-                </>
-              )}
-
-              {/* Preview panel */}
-              {(viewMode === 'preview' || viewMode === 'split') && (
-                <ResizablePanel 
-                  defaultSize={viewMode === 'split' ? 47 : 82} 
-                  minSize={30}
-                >
-                  <div className="h-full bg-muted/50 overflow-hidden">
-                    <ScrollArea className="h-full">
-                      <div className="p-8 flex justify-center min-h-full">
-                        <DocumentPreview
-                          document={document}
-                          scale={scale}
-                          editable={viewMode !== 'preview'}
-                        />
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </ResizablePanel>
-              )}
-            </ResizablePanelGroup>
+                )}
+              </ResizablePanelGroup>
+            </div>
 
             {/* Toggle sidebar button when collapsed */}
             {sidebarCollapsed && (

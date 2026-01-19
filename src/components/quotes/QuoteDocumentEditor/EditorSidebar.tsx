@@ -88,9 +88,9 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
   }
 
   return (
-    <div className="w-80 bg-card border-l flex flex-col" dir="rtl">
+    <div className="w-full h-full bg-card border-l flex flex-col overflow-hidden" dir="rtl">
       {/* Header */}
-      <div className="p-3 border-b flex items-center justify-between">
+      <div className="p-3 border-b flex items-center justify-between shrink-0">
         <h3 className="font-semibold text-sm">הגדרות מסמך</h3>
         <Button variant="ghost" size="icon" onClick={onToggle}>
           <ChevronRight className="h-4 w-4" />
@@ -98,7 +98,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-full overflow-auto">
         <Accordion
           type="multiple"
           value={openSections}
