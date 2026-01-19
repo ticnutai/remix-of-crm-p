@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
@@ -11,8 +10,12 @@ import { QuotesList } from './QuotesList';
 import { useQuoteDocument } from './hooks/useQuoteDocument';
 import { ViewMode } from './types';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 export function QuoteDocumentEditor() {
   const { toast } = useToast();
@@ -42,7 +45,6 @@ export function QuoteDocumentEditor() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Convert document items back to QuoteItem format
       const items = document.items.map(item => ({
         name: item.description,
         description: item.details || '',
@@ -52,7 +54,6 @@ export function QuoteDocumentEditor() {
       }));
 
       if (originalQuoteId) {
-        // Update existing quote
         await updateQuote.mutateAsync({
           id: originalQuoteId,
           title: document.title,
@@ -63,7 +64,6 @@ export function QuoteDocumentEditor() {
           terms_and_conditions: document.terms,
         });
       } else {
-        // For new quotes, we'd need client_id - show message
         toast({ 
           title: 'שים לב', 
           description: 'כדי לשמור הצעה חדשה, יש לבחור לקוח תחילה',
@@ -92,7 +92,6 @@ export function QuoteDocumentEditor() {
 
   const handleImport = useCallback((file: File) => {
     toast({ title: 'מייבא קובץ', description: file.name });
-    // TODO: Implement file import
   }, [toast]);
 
   const handleSelectQuote = useCallback((quote: Quote) => {
@@ -133,71 +132,74 @@ export function QuoteDocumentEditor() {
           isSaving={isSaving}
         />
 
-        {/* Main content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Quotes List */}
-          <QuotesList
-            quotes={quotes}
-            isLoading={quotesLoading}
-            selectedQuoteId={originalQuoteId}
-            onSelect={handleSelectQuote}
-            onNew={handleNewQuote}
-            collapsed={quotesListCollapsed}
-          />
+        {/* Main content with resizable panels */}
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          {/* Quotes List panel */}
+          {!quotesListCollapsed && (
+            <>
+              <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+                <QuotesList
+                  quotes={quotes}
+                  isLoading={quotesLoading}
+                  selectedQuoteId={originalQuoteId}
+                  onSelect={handleSelectQuote}
+                  onNew={handleNewQuote}
+                  collapsed={quotesListCollapsed}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
 
-          {/* Toggle Quotes List */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-[70px] right-[320px] z-10 bg-background/80 shadow-sm"
-            onClick={() => setQuotesListCollapsed(!quotesListCollapsed)}
-            style={{ right: quotesListCollapsed ? '56px' : '320px' }}
-          >
-            {quotesListCollapsed ? (
-              <PanelLeft className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
-          </Button>
+          {/* Sidebar panel */}
+          {!sidebarCollapsed && (
+            <>
+              <ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
+                <EditorSidebar
+                  document={document}
+                  onUpdate={updateDocument}
+                  collapsed={sidebarCollapsed}
+                  onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+            </>
+          )}
 
-          {/* Sidebar */}
-          <EditorSidebar
-            document={document}
-            onUpdate={updateDocument}
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
+          {/* Edit panel */}
+          {(viewMode === 'edit' || viewMode === 'split') && (
+            <>
+              <ResizablePanel 
+                defaultSize={viewMode === 'split' ? 30 : 67} 
+                minSize={20}
+              >
+                <div className="h-full bg-card border-l overflow-hidden flex flex-col">
+                  <ScrollArea className="flex-1 p-4">
+                    <ItemsEditor
+                      items={document.items}
+                      onAdd={addItem}
+                      onUpdate={updateItem}
+                      onRemove={removeItem}
+                      onMove={moveItem}
+                      onDuplicate={duplicateItem}
+                      showNumbers={document.showItemNumbers}
+                    />
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+              {viewMode === 'split' && <ResizableHandle withHandle />}
+            </>
+          )}
 
-          {/* Editor / Preview area */}
-          <div className="flex-1 flex overflow-hidden">
-            {/* Edit panel */}
-            {(viewMode === 'edit' || viewMode === 'split') && (
-              <div className={cn(
-                'bg-card border-l overflow-hidden flex flex-col',
-                viewMode === 'split' ? 'w-1/2' : 'flex-1'
-              )}>
-                <ScrollArea className="flex-1 p-4">
-                  <ItemsEditor
-                    items={document.items}
-                    onAdd={addItem}
-                    onUpdate={updateItem}
-                    onRemove={removeItem}
-                    onMove={moveItem}
-                    onDuplicate={duplicateItem}
-                    showNumbers={document.showItemNumbers}
-                  />
-                </ScrollArea>
-              </div>
-            )}
-
-            {/* Preview panel */}
-            {(viewMode === 'preview' || viewMode === 'split') && (
-              <div className={cn(
-                'bg-muted/50 overflow-hidden',
-                viewMode === 'split' ? 'w-1/2' : 'flex-1'
-              )}>
+          {/* Preview panel */}
+          {(viewMode === 'preview' || viewMode === 'split') && (
+            <ResizablePanel 
+              defaultSize={viewMode === 'split' ? 37 : 67} 
+              minSize={25}
+            >
+              <div className="h-full bg-muted/50 overflow-hidden">
                 <ScrollArea className="h-full">
-                  <div className="p-8 flex justify-center">
+                  <div className="p-8 flex justify-center min-h-full">
                     <DocumentPreview
                       document={document}
                       scale={scale}
@@ -206,8 +208,30 @@ export function QuoteDocumentEditor() {
                   </div>
                 </ScrollArea>
               </div>
-            )}
-          </div>
+            </ResizablePanel>
+          )}
+        </ResizablePanelGroup>
+
+        {/* Toggle buttons when panels are collapsed */}
+        <div className="fixed right-2 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2">
+          {quotesListCollapsed && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setQuotesListCollapsed(false)}
+            >
+              הצעות
+            </Button>
+          )}
+          {sidebarCollapsed && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSidebarCollapsed(false)}
+            >
+              הגדרות
+            </Button>
+          )}
         </div>
       </div>
     </TooltipProvider>
