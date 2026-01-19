@@ -38,7 +38,7 @@ export function QuoteEditorSheet({
   const { updateQuote, createQuote } = useQuotes();
   
   const [viewMode, setViewMode] = useState<ViewMode>('split');
-  const [scale, setScale] = useState(0.6);
+  const [scale, setScale] = useState(0.85);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -127,7 +127,8 @@ export function QuoteEditorSheet({
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent 
         side="right" 
-        className="w-full sm:max-w-[90vw] lg:max-w-[1400px] p-0 flex flex-col"
+        hideClose
+        className="w-screen max-w-none p-0 flex flex-col"
         dir="rtl"
       >
         <TooltipProvider>
@@ -171,7 +172,7 @@ export function QuoteEditorSheet({
             />
 
             {/* Main content with resizable panels */}
-            <ResizablePanelGroup direction="horizontal" className="flex-1">
+            <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0">
               {/* Sidebar panel */}
               {!sidebarCollapsed && (
                 <>
