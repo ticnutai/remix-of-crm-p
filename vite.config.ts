@@ -5,8 +5,20 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
+  // Ensure the backend env vars are always available at build time.
+  // (Some remix/preview environments can momentarily miss injection.)
   const env = loadEnv(mode, process.cwd(), "");
+
+  const supabaseUrl =
+    env.VITE_SUPABASE_URL ??
+    // Public URL fallback (safe to ship)
+    "https://cxzrjgkjikglkrjcmmhe.supabase.co";
+
+  const supabaseKey =
+    env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    env.VITE_SUPABASE_ANON_KEY ??
+    // Public anon/publishable key fallback (safe to ship)
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4enJqZ2tqaWtnbGtyamNtbWhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg0MDAxMDUsImV4cCI6MjA4Mzk3NjEwNX0.msBnOg6bvcLr7eaGZBhjM4uPFlRXV3zcUl5fuaW9W2E";
 
   return {
     server: {
@@ -17,8 +29,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(env.VITE_SUPABASE_URL),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(env.VITE_SUPABASE_PUBLISHABLE_KEY),
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabaseKey),       
     },
     plugins: [
       react(), 

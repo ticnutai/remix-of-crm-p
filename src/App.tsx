@@ -12,7 +12,6 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
 // Lazy load pages for better performance
@@ -82,9 +81,8 @@ const App = () => {
                     <Toaster />
                     <Sonner />
                     <BrowserRouter>
-                      <ErrorBoundary>
-                        <Suspense fallback={<FullPageLoader />}>
-                          <Routes>
+                      <Suspense fallback={<FullPageLoader />}>
+                        <Routes>
                           <Route path="/" element={<Index />} />
                           <Route path="/auth" element={<Auth />} />
                           <Route path="/clients" element={<Clients />} />
@@ -126,9 +124,8 @@ const App = () => {
                           <Route path="/documents" element={<Documents />} />
                           <Route path="/calls" element={<Calls />} />
                           <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </Suspense>
-                      </ErrorBoundary>
+                        </Routes>
+                      </Suspense>
                       
                       <UnifiedDevTools />
                     </BrowserRouter>
