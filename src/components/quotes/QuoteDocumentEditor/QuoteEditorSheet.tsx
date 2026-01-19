@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from 'react';
-import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
@@ -16,6 +15,11 @@ import {
   Sheet,
   SheetContent,
 } from '@/components/ui/sheet';
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from '@/components/ui/resizable';
 
 interface QuoteEditorSheetProps {
   open: boolean;
@@ -140,7 +144,7 @@ export function QuoteEditorSheet({
                   </span>
                 )}
                 {isDirty && (
-                  <span className="text-xs text-orange-500">• שינויים לא נשמרו</span>
+                  <span className="text-xs text-destructive">• שינויים לא נשמרו</span>
                 )}
               </div>
               <Button variant="ghost" size="icon" onClick={handleClose}>
@@ -166,46 +170,57 @@ export function QuoteEditorSheet({
               isSaving={isSaving}
             />
 
-            {/* Main content */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Sidebar */}
-              <EditorSidebar
-                document={document}
-                onUpdate={updateDocument}
-                collapsed={sidebarCollapsed}
-                onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-              />
+            {/* Main content with resizable panels */}
+            <ResizablePanelGroup direction="horizontal" className="flex-1">
+              {/* Sidebar panel */}
+              {!sidebarCollapsed && (
+                <>
+                  <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+                    <EditorSidebar
+                      document={document}
+                      onUpdate={updateDocument}
+                      collapsed={sidebarCollapsed}
+                      onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    />
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                </>
+              )}
 
-              {/* Editor / Preview area */}
-              <div className="flex-1 flex overflow-hidden">
-                {/* Edit panel */}
-                {(viewMode === 'edit' || viewMode === 'split') && (
-                  <div className={cn(
-                    'bg-card border-l overflow-hidden flex flex-col',
-                    viewMode === 'split' ? 'w-1/2' : 'flex-1'
-                  )}>
-                    <ScrollArea className="flex-1 p-4">
-                      <ItemsEditor
-                        items={document.items}
-                        onAdd={addItem}
-                        onUpdate={updateItem}
-                        onRemove={removeItem}
-                        onMove={moveItem}
-                        onDuplicate={duplicateItem}
-                        showNumbers={document.showItemNumbers}
-                      />
-                    </ScrollArea>
-                  </div>
-                )}
+              {/* Edit panel */}
+              {(viewMode === 'edit' || viewMode === 'split') && (
+                <>
+                  <ResizablePanel 
+                    defaultSize={viewMode === 'split' ? 35 : 82} 
+                    minSize={20}
+                  >
+                    <div className="h-full bg-card border-l overflow-hidden flex flex-col">
+                      <ScrollArea className="flex-1 p-4">
+                        <ItemsEditor
+                          items={document.items}
+                          onAdd={addItem}
+                          onUpdate={updateItem}
+                          onRemove={removeItem}
+                          onMove={moveItem}
+                          onDuplicate={duplicateItem}
+                          showNumbers={document.showItemNumbers}
+                        />
+                      </ScrollArea>
+                    </div>
+                  </ResizablePanel>
+                  {viewMode === 'split' && <ResizableHandle withHandle />}
+                </>
+              )}
 
-                {/* Preview panel */}
-                {(viewMode === 'preview' || viewMode === 'split') && (
-                  <div className={cn(
-                    'bg-muted/50 overflow-hidden',
-                    viewMode === 'split' ? 'w-1/2' : 'flex-1'
-                  )}>
+              {/* Preview panel */}
+              {(viewMode === 'preview' || viewMode === 'split') && (
+                <ResizablePanel 
+                  defaultSize={viewMode === 'split' ? 47 : 82} 
+                  minSize={30}
+                >
+                  <div className="h-full bg-muted/50 overflow-hidden">
                     <ScrollArea className="h-full">
-                      <div className="p-8 flex justify-center">
+                      <div className="p-8 flex justify-center min-h-full">
                         <DocumentPreview
                           document={document}
                           scale={scale}
@@ -214,9 +229,21 @@ export function QuoteEditorSheet({
                       </div>
                     </ScrollArea>
                   </div>
-                )}
-              </div>
-            </div>
+                </ResizablePanel>
+              )}
+            </ResizablePanelGroup>
+
+            {/* Toggle sidebar button when collapsed */}
+            {sidebarCollapsed && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="fixed right-2 top-1/2 -translate-y-1/2 z-50"
+                onClick={() => setSidebarCollapsed(false)}
+              >
+                הגדרות
+              </Button>
+            )}
           </div>
         </TooltipProvider>
       </SheetContent>
