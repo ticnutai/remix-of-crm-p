@@ -33,6 +33,8 @@ import {
   ChevronLeft,
 } from 'lucide-react';
 import { QuoteDocumentData } from './types';
+import { ClientCombobox } from './ClientCombobox';
+import { Client } from '@/hooks/useClients';
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
@@ -60,6 +62,16 @@ const UNITS = [
 
 export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: EditorSidebarProps) {
   const [openSections, setOpenSections] = useState<string[]>(['company', 'client']);
+
+  const handleClientSelect = (client: Client) => {
+    onUpdate({
+      clientName: client.name,
+      clientCompany: client.company || '',
+      clientEmail: client.email || '',
+      clientPhone: client.phone || '',
+      clientAddress: client.address || '',
+    });
+  };
 
   if (collapsed) {
     return (
@@ -166,12 +178,13 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
             <AccordionContent className="space-y-3">
               <div>
                 <Label className="text-xs">שם הלקוח</Label>
-                <Input
-                  value={document.clientName}
-                  onChange={(e) => onUpdate({ clientName: e.target.value })}
-                  placeholder="שם הלקוח"
-                  className="mt-1"
-                />
+                <div className="mt-1">
+                  <ClientCombobox
+                    value={document.clientName}
+                    onChange={(value) => onUpdate({ clientName: value })}
+                    onClientSelect={handleClientSelect}
+                  />
+                </div>
               </div>
               <div>
                 <Label className="text-xs">חברה</Label>

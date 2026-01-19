@@ -7,6 +7,7 @@ export interface Client {
   email: string | null;
   phone: string | null;
   company: string | null;
+  address: string | null;
   status: string | null;
   stage: string | null;
 }
@@ -17,7 +18,7 @@ export function useClients() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, email, phone, company, status, stage')
+        .select('id, name, email, phone, company, address, status, stage')
         .order('name');
       
       if (error) throw error;
