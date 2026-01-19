@@ -12,7 +12,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
-import { ActiveTimer } from "@/components/time-tracking/ActiveTimer";
+
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -126,7 +126,7 @@ const App = () => {
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </Suspense>
-                      <ActiveTimer />
+                      
                       <UnifiedDevTools />
                     </BrowserRouter>
                   </BackupProvider>
