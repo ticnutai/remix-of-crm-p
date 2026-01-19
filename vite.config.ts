@@ -53,15 +53,22 @@ export default defineConfig(({ mode }) => {
             'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
             'vendor-supabase': ['@supabase/supabase-js'],
             'vendor-charts': ['recharts'],
+            // Split heavy libs to load on demand
+            'xlsx': ['xlsx'],
+            'jspdf': ['jspdf'],
+            'html2canvas': ['html2canvas'],
+            'dompurify': ['dompurify'],
           },
         },
       },
       // Minification
       minify: 'esbuild',
       // Reduce chunk size warnings threshold
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 500,
       // Source maps only in dev
       sourcemap: mode === 'development',
+      // Target modern browsers
+      target: 'es2020',
     },
     // Optimize deps pre-bundling
     optimizeDeps: {
@@ -73,6 +80,8 @@ export default defineConfig(({ mode }) => {
         'date-fns',
         'lucide-react',
       ],
+      // Exclude heavy libs from pre-bundling
+      exclude: ['xlsx', 'jspdf', 'html2canvas'],
     },
   };
 });
