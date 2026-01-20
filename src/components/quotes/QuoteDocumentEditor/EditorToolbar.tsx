@@ -254,13 +254,14 @@ export function EditorToolbar({
         </Button>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input - positioned fixed with high z-index to avoid being blocked */}
       <input
         ref={fileInputRef}
         type="file"
         accept=".docx,.doc,.pdf"
         onChange={handleFileSelect}
-        className="hidden"
+        className="fixed top-0 left-0 opacity-0 pointer-events-none"
+        style={{ zIndex: 9999 }}
       />
     </div>
   );
