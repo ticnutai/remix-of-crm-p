@@ -930,18 +930,6 @@ export default function Clients() {
           
           {/* Status dot */}
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusConfig.bgColor }} title={statusConfig.label} />
-          
-          {/* Indicators */}
-          <div className="flex gap-1">
-            {hasReminder && <Bell className="w-4 h-4 text-orange-500" />}
-            {hasTask && <CheckSquare className="w-4 h-4 text-blue-500" />}
-            {hasMeeting && <Calendar className="w-4 h-4 text-green-500" />}
-          </div>
-          
-          {/* Phone */}
-          {client.phone && (
-            <span style={{ fontSize: '12px', color: '#64748b', direction: 'ltr' }}>{client.phone}</span>
-          )}
 
           {/* Hover Actions */}
           {showActions && (
