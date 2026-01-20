@@ -308,6 +308,11 @@ export default function Backups() {
     clients: true,
     projects: true,
     time_entries: true,
+    tasks: true,
+    meetings: true,
+    quotes: true,
+    invoices: true,
+    custom_spreadsheets: true,
     skipDuplicates: true,
   });
   const [importStats, setImportStats] = useState<ImportStats | null>(null);
@@ -885,11 +890,19 @@ export default function Backups() {
     setProgressMessage('מתחיל ייבוא מקיף...');
     
     try {
-      setProgress(10);
-      setProgressMessage('שולח נתונים לשרת...');
-      
-      // Prepare the data for the edge function
+      // Calculate total items for progress
       const dataToImport = externalBackupData.data;
+      const totalItems = 
+        (importOptions.clients ? (dataToImport.Client?.length || 0) : 0) +
+        (importOptions.tasks ? (dataToImport.Task?.length || 0) : 0) +
+        (importOptions.time_entries ? (dataToImport.TimeLog?.length || 0) : 0) +
+        (importOptions.meetings ? (dataToImport.Meeting?.length || 0) : 0) +
+        (importOptions.quotes ? (dataToImport.Quote?.length || 0) : 0) +
+        (importOptions.invoices ? ((dataToImport as Record<string, unknown>).Invoice as unknown[] || []).length : 0) +
+        (importOptions.custom_spreadsheets ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length : 0);
+      
+      setProgress(5);
+      setProgressMessage(`מכין ${totalItems} רשומות לייבוא...`);
       
       // Log what we're sending
       console.log('Importing data categories:', Object.keys(dataToImport));
@@ -901,15 +914,41 @@ export default function Backups() {
         Quote: dataToImport.Quote?.length || 0,
         Project: dataToImport.Project?.length || 0,
         Invoice: (dataToImport as Record<string, unknown>).Invoice ? ((dataToImport as Record<string, unknown>).Invoice as unknown[]).length : 0,
+        CustomSpreadsheet: (dataToImport as Record<string, unknown>).CustomSpreadsheet ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[]).length : 0,
       });
       
-      setProgress(20);
+      // Filter data based on import options
+      const filteredData: Record<string, unknown> = {};
+      if (importOptions.clients && dataToImport.Client) filteredData.Client = dataToImport.Client;
+      if (importOptions.projects && dataToImport.Project) filteredData.Project = dataToImport.Project;
+      if (importOptions.time_entries && dataToImport.TimeLog) filteredData.TimeLog = dataToImport.TimeLog;
+      if (importOptions.tasks && dataToImport.Task) filteredData.Task = dataToImport.Task;
+      if (importOptions.meetings && dataToImport.Meeting) filteredData.Meeting = dataToImport.Meeting;
+      if (importOptions.quotes && dataToImport.Quote) filteredData.Quote = dataToImport.Quote;
+      if (importOptions.invoices && (dataToImport as Record<string, unknown>).Invoice) filteredData.Invoice = (dataToImport as Record<string, unknown>).Invoice;
+      if (importOptions.custom_spreadsheets && (dataToImport as Record<string, unknown>).CustomSpreadsheet) filteredData.CustomSpreadsheet = (dataToImport as Record<string, unknown>).CustomSpreadsheet;
+      
+      setProgress(15);
+      setProgressMessage('שולח נתונים לשרת...');
+      
+      // Simulate progress during import
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev < 85) return prev + 5;
+          return prev;
+        });
+      }, 1000);
+      
+      setProgress(25);
       setProgressMessage('מייבא נתונים לדאטהבייס...');
       
-      // Call the comprehensive edge function
+      // Call the comprehensive edge function with filtered data
       const { data: result, error } = await supabase.functions.invoke('import-backup', {
-        body: { data: dataToImport, userId: user.id }
+        body: { data: filteredData, userId: user.id }
       });
+      
+      // Clear the progress interval
+      clearInterval(progressInterval);
       
       if (error) {
         throw error;
@@ -2585,6 +2624,106 @@ export default function Backups() {
                           {externalBackupData.data.TimeLog?.length || 0} רשומות
                         </Badge>
                       </div>
+                      
+                      {/* Tasks */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-tasks"
+                            checked={importOptions.tasks}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, tasks: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-tasks" className="flex items-center gap-2 cursor-pointer">
+                            <CheckCircle className="h-4 w-4 text-blue-500" />
+                            משימות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {externalBackupData.data.Task?.length || 0} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Meetings */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-meetings"
+                            checked={importOptions.meetings}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, meetings: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-meetings" className="flex items-center gap-2 cursor-pointer">
+                            <Calendar className="h-4 w-4 text-purple-500" />
+                            פגישות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {externalBackupData.data.Meeting?.length || 0} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Quotes */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-quotes"
+                            checked={importOptions.quotes}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, quotes: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-quotes" className="flex items-center gap-2 cursor-pointer">
+                            <FileText className="h-4 w-4 text-orange-500" />
+                            הצעות מחיר
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {externalBackupData.data.Quote?.length || 0} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Invoices */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-invoices"
+                            checked={importOptions.invoices}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, invoices: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-invoices" className="flex items-center gap-2 cursor-pointer">
+                            <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+                            חשבוניות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).Invoice as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Custom Spreadsheets */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-spreadsheets"
+                            checked={importOptions.custom_spreadsheets}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, custom_spreadsheets: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-spreadsheets" className="flex items-center gap-2 cursor-pointer">
+                            <FileSpreadsheet className="h-4 w-4 text-cyan-500" />
+                            טבלאות מותאמות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3 p-3 border border-dashed rounded-lg bg-muted/30">
@@ -2623,7 +2762,7 @@ export default function Backups() {
                   <Button 
                     onClick={handleExternalImport}
                     className="btn-gold"
-                    disabled={!importOptions.clients && !importOptions.projects && !importOptions.time_entries}
+                    disabled={!importOptions.clients && !importOptions.projects && !importOptions.time_entries && !importOptions.tasks && !importOptions.meetings && !importOptions.quotes && !importOptions.invoices && !importOptions.custom_spreadsheets}
                   >
                     <Upload className="h-4 w-4 ml-2" />
                     התחל ייבוא
