@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewSettings } from '@/hooks/useUserSettings';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
@@ -72,9 +73,40 @@ export default function Clients() {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait'>('grid');
   const [showViewOptions, setShowViewOptions] = useState(false);
-  const [minimalColumns, setMinimalColumns] = useState<2 | 3>(2);
+  
+  // Persistent view settings from cloud
+  const { 
+    viewMode: savedViewMode, 
+    columns: savedColumns, 
+    setViewMode: saveViewMode, 
+    setColumns: saveColumns,
+    isLoading: settingsLoading 
+  } = useViewSettings('clients');
+  
+  const [viewMode, setViewModeLocal] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait'>('grid');
+  const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
+  
+  // Sync with cloud settings when loaded
+  useEffect(() => {
+    if (!settingsLoading && savedViewMode) {
+      setViewModeLocal(savedViewMode as any);
+    }
+    if (!settingsLoading && savedColumns) {
+      setMinimalColumnsLocal(savedColumns as 2 | 3);
+    }
+  }, [settingsLoading, savedViewMode, savedColumns]);
+  
+  // Wrapper functions to save to cloud
+  const setViewMode = (mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait') => {
+    setViewModeLocal(mode);
+    saveViewMode(mode);
+  };
+  
+  const setMinimalColumns = (cols: 2 | 3) => {
+    setMinimalColumnsLocal(cols);
+    saveColumns(cols);
+  };
   
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
