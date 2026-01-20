@@ -27,7 +27,3 @@ dist-ssr
 .env
 .env.*
 !.env.example
-
-# PostCSS config - using inline config in vite.config.ts
-postcss.config.js
-postcss.config.cjs

@@ -619,9 +619,6 @@ function MigrationManagement() {
   const [sqlContent, setSqlContent] = useState<string>('');
   const [sqlFileName, setSqlFileName] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
-  
-  // Execution mode: 'rpc' for safe RPC, 'edge' for direct Edge Function
-  const [executionMode, setExecutionMode] = useState<'rpc' | 'edge'>('rpc');
 
   const fetchMigrationLogs = async () => {
     setLoading(true);
@@ -679,62 +676,32 @@ function MigrationManagement() {
       return;
     }
     
-    const modeLabel = executionMode === 'edge' ? 'מצב מתקדם (Edge Function)' : 'מצב רגיל (RPC)';
-    
     // Confirm before execution
-    if (!window.confirm(`האם להריץ את המיגרציה "${sqlFileName || 'Manual SQL'}"?\n\nמצב: ${modeLabel}\n\nזו פעולה שלא ניתן לבטל!`)) {
+    if (!window.confirm(`האם להריץ את המיגרציה "${sqlFileName || 'Manual SQL'}"?\n\nזו פעולה שלא ניתן לבטל!`)) {
       return;
     }
     
     setExecuting(true);
     try {
-      let result: { success: boolean; error?: string; message?: string; rows_affected?: number; data?: any[] };
-      
-      if (executionMode === 'edge') {
-        // Use Edge Function for advanced SQL (CREATE FUNCTION, $$ delimiters, etc.)
-        const { data: session } = await supabase.auth.getSession();
-        const { data, error: execError } = await supabase.functions.invoke('execute-sql', {
-          body: { 
-            sql: sqlContent, 
-            migration_name: sqlFileName || `manual_${Date.now()}` 
-          }
+      const { data, error: execError } = await supabase
+        .rpc('execute_safe_migration', {
+          p_migration_name: sqlFileName || `manual_${Date.now()}`,
+          p_migration_sql: sqlContent
         });
-        
-        if (execError) {
-          console.error('Edge Function execution error:', execError);
-          toast.error('שגיאה בהרצת המיגרציה (Edge)', {
-            description: execError.message
-          });
-          return;
-        }
-        
-        result = data as { success: boolean; error?: string; message?: string; rows_affected?: number; data?: any[] };
-      } else {
-        // Use safe RPC migration
-        const { data, error: execError } = await supabase
-          .rpc('execute_safe_migration', {
-            p_migration_name: sqlFileName || `manual_${Date.now()}`,
-            p_migration_sql: sqlContent
-          });
-        
-        if (execError) {
-          console.error('Migration execution error:', execError);
-          toast.error('שגיאה בהרצת המיגרציה', {
-            description: execError.message
-          });
-          return;
-        }
-        
-        result = data as { success: boolean; error?: string; message?: string };
+      
+      if (execError) {
+        console.error('Migration execution error:', execError);
+        toast.error('שגיאה בהרצת המיגרציה', {
+          description: execError.message
+        });
+        return;
       }
       
+      const result = data as { success: boolean; error?: string; message?: string };
+      
       if (result.success) {
-        const details = executionMode === 'edge' && result.rows_affected !== undefined
-          ? `${result.message || sqlFileName} (${result.rows_affected} שורות הושפעו)`
-          : result.message || sqlFileName;
-        
         toast.success('המיגרציה הורצה בהצלחה! ✅', {
-          description: details
+          description: result.message || sqlFileName
         });
         setSqlContent('');
         setSqlFileName('');
@@ -832,67 +799,6 @@ function MigrationManagement() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Execution Mode Toggle */}
-        <div className={cn(
-          "rounded-xl p-4",
-          "border-2",
-          executionMode === 'edge' 
-            ? "border-orange-500/50 bg-orange-500/5" 
-            : "border-yellow-500/30 bg-yellow-500/5"
-        )}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Settings className={cn("h-5 w-5", executionMode === 'edge' ? "text-orange-500" : goldIcon)} />
-              <div>
-                <p className="font-medium text-sm">מצב הרצה</p>
-                <p className="text-xs text-muted-foreground">
-                  {executionMode === 'edge' 
-                    ? 'מצב מתקדם - תמיכה מלאה ב-CREATE FUNCTION, $$, triggers' 
-                    : 'מצב רגיל - מיגרציות סטנדרטיות (מומלץ)'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant={executionMode === 'rpc' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setExecutionMode('rpc')}
-                className={cn(
-                  executionMode === 'rpc' 
-                    ? cn(goldGradient, "text-white border-0") 
-                    : "border-yellow-500/50"
-                )}
-              >
-                <Code2 className="h-4 w-4 ml-1" />
-                רגיל
-              </Button>
-              <Button
-                variant={executionMode === 'edge' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setExecutionMode('edge')}
-                className={cn(
-                  executionMode === 'edge' 
-                    ? "bg-orange-500 hover:bg-orange-600 text-white border-0" 
-                    : "border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
-                )}
-              >
-                <Zap className="h-4 w-4 ml-1" />
-                מתקדם
-              </Button>
-            </div>
-          </div>
-          
-          {executionMode === 'edge' && (
-            <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
-              <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-orange-700 dark:text-orange-300">
-                מצב מתקדם מריץ SQL ישירות על הדאטהבייס עם service_role. 
-                השתמש בזהירות! תומך ב-CREATE FUNCTION עם $$ delimiters.
-              </p>
-            </div>
-          )}
-        </div>
-
         {/* SQL Upload Area */}
         <div
           onDragOver={handleDragOver}
