@@ -60,12 +60,12 @@ export const SIZE_LABELS: Record<WidgetSize, string> = {
   full: 'מלא',
 };
 
-// Grid class for each size
+// Grid class for each size (4-column grid system)
 export const SIZE_GRID_CLASS: Record<WidgetSize, string> = {
-  small: 'col-span-1',
-  medium: 'col-span-1 md:col-span-1',
-  large: 'col-span-1 md:col-span-2',
-  full: 'col-span-full',
+  small: 'col-span-1',                    // 1/4 width
+  medium: 'col-span-1 md:col-span-2',     // 1/2 width
+  large: 'col-span-1 md:col-span-3',      // 3/4 width
+  full: 'col-span-1 md:col-span-4',       // full width
 };
 
 // Context Type
@@ -81,6 +81,7 @@ interface WidgetLayoutContextType {
   toggleCollapse: (id: WidgetId) => void;
   resetAll: () => void;
   moveWidget: (id: WidgetId, direction: 'up' | 'down') => void;
+  autoArrangeWidgets: () => void;
 }
 
 const WidgetLayoutContext = createContext<WidgetLayoutContextType | undefined>(undefined);
@@ -213,6 +214,55 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Auto-arrange widgets to eliminate gaps (pack efficiently in 4-column grid)
+  const autoArrangeWidgets = useCallback(() => {
+    setLayouts(prev => {
+      const visible = prev.filter(l => l.visible);
+      const hidden = prev.filter(l => !l.visible);
+      
+      // Size weights for 4-column grid
+      const sizeWeight: Record<WidgetSize, number> = {
+        full: 4,
+        large: 3,
+        medium: 2,
+        small: 1,
+      };
+      
+      // Sort by size (larger first) for optimal row packing
+      visible.sort((a, b) => sizeWeight[b.size] - sizeWeight[a.size]);
+      
+      // Reassign order values
+      const arranged = visible.map((widget, idx) => ({
+        ...widget,
+        order: idx + 1,
+      }));
+      
+      // Add hidden widgets at the end
+      const hiddenArranged = hidden.map((widget, idx) => ({
+        ...widget,
+        order: arranged.length + idx + 1,
+      }));
+      
+      return [...arranged, ...hiddenArranged];
+    });
+    
+    toast({
+      title: "✨ סידור אוטומטי",
+      description: "הווידג'טים סודרו בצורה אופטימלית",
+      duration: 2000,
+    });
+  }, []);
+
+  // Listen for auto-arrange event from DashboardSettingsDialog
+  useEffect(() => {
+    const handleAutoArrange = () => {
+      autoArrangeWidgets();
+    };
+    
+    window.addEventListener('autoArrangeWidgets', handleAutoArrange);
+    return () => window.removeEventListener('autoArrangeWidgets', handleAutoArrange);
+  }, [autoArrangeWidgets]);
+
   // Reset all to defaults
   const resetAll = useCallback(() => {
     setLayouts(DEFAULT_LAYOUTS);
@@ -237,6 +287,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       toggleCollapse,
       resetAll,
       moveWidget,
+      autoArrangeWidgets,
     }}>
       {children}
     </WidgetLayoutContext.Provider>

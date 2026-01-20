@@ -367,6 +367,25 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
               {/* Action Buttons */}
               <div className="flex gap-2 flex-wrap">
+                {/* Auto Arrange - Pack widgets optimally */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    // Trigger auto-arrange via custom event
+                    window.dispatchEvent(new CustomEvent('autoArrangeWidgets'));
+                    toast({
+                      title: "✨ סידור אוטומטי",
+                      description: "הווידג'טים סודרו בצורה אופטימלית",
+                      duration: 2000,
+                    });
+                  }}
+                  className="gap-1 text-xs bg-primary/10 hover:bg-primary/20"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  סדר אוטומטי
+                </Button>
+                
                 {/* Auto Layout Toggle */}
                 <Button
                   variant={autoLayout ? 'default' : 'outline'}
@@ -375,7 +394,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   className="gap-1 text-xs"
                 >
                   <LayoutGrid className="h-3 w-3" />
-                  {autoLayout ? 'סידור אוטומטי ✓' : 'סידור אוטומטי'}
+                  {autoLayout ? 'פריסה צפופה ✓' : 'פריסה צפופה'}
                 </Button>
                 
                 <div className="w-px h-6 bg-border self-center" />
