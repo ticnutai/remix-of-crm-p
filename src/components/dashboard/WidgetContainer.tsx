@@ -320,19 +320,21 @@ export function WidgetContainer({
   );
 }
 
-// Grid wrapper with instructions
+// Grid wrapper with instructions - 4-column dense grid
 interface WidgetGridProps {
   children: React.ReactNode;
   className?: string;
   columns?: 1 | 2 | 3 | 4;
+  denseLayout?: boolean;
 }
 
-export function WidgetGrid({ children, className, columns = 2 }: WidgetGridProps) {
+export function WidgetGrid({ children, className, columns = 4, denseLayout = true }: WidgetGridProps) {
   const { currentTheme } = useDashboardTheme();
   const { autoLayout } = useWidgetManager();
   const isDarkTheme = currentTheme === 'navy-gold' || currentTheme === 'modern-dark';
   const editMode = useWidgetEditMode();
 
+  // 4-column grid system with dense packing
   const gridCols = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 md:grid-cols-2',
@@ -340,14 +342,8 @@ export function WidgetGrid({ children, className, columns = 2 }: WidgetGridProps
     4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
   };
 
-  // Auto layout uses CSS columns for masonry-like effect (no gaps between widgets)
-  const autoLayoutStyle: React.CSSProperties = autoLayout ? {
-    columnCount: columns,
-    columnGap: '0.5rem',
-  } : {};
-
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-3", className)}>
       {/* Instructions Bar - Only visible in edit mode */}
       {editMode && (
         <div 
@@ -369,20 +365,16 @@ export function WidgetGrid({ children, className, columns = 2 }: WidgetGridProps
         </div>
       )}
       
-      {/* Grid - switches between CSS grid and CSS columns based on autoLayout */}
-      {autoLayout ? (
-        <div style={autoLayoutStyle}>
-          {React.Children.map(children, (child) => (
-            <div style={{ breakInside: 'avoid', marginBottom: '0.5rem' }}>
-              {child}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className={cn("grid gap-2", gridCols[columns])}>
-          {children}
-        </div>
-      )}
+      {/* Grid with dense packing to eliminate gaps */}
+      <div 
+        className={cn(
+          "grid gap-4",
+          gridCols[columns],
+          denseLayout && "[grid-auto-flow:dense]"
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

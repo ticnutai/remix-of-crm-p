@@ -202,6 +202,8 @@ interface BackupData {
   Project?: BackupProject[];
   AccessControl?: BackupAccessControl[];
   UserPreferences?: BackupUserPreferences[];
+  CustomSpreadsheet?: BackupCustomSpreadsheet[];
+  TeamMember?: BackupTeamMember[];
 }
 
 // Map Hebrew statuses to valid DB values
