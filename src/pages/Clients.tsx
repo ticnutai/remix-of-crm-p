@@ -74,6 +74,7 @@ export default function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait'>('grid');
   const [showViewOptions, setShowViewOptions] = useState(false);
+  const [minimalColumns, setMinimalColumns] = useState<2 | 3>(2);
   
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -1598,6 +1599,43 @@ export default function Clients() {
         />
 
         {/* Clients Grid */}
+        {/* Minimal View Column Selector */}
+        {viewMode === 'minimal' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '16px',
+            padding: '12px 16px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+          }}>
+            <span style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>מספר עמודות:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {[2, 3].map((cols) => (
+                <button
+                  key={cols}
+                  onClick={() => setMinimalColumns(cols as 2 | 3)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '8px',
+                    border: minimalColumns === cols ? '2px solid #d4a843' : '1px solid #cbd5e1',
+                    backgroundColor: minimalColumns === cols ? '#1e3a5f' : '#ffffff',
+                    color: minimalColumns === cols ? '#d4a843' : '#64748b',
+                    fontWeight: '600',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {cols}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {filteredClients.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0' }}>
             <Users style={{ width: '64px', height: '64px', color: '#cbd5e1', margin: '0 auto 16px' }} />
@@ -1609,17 +1647,19 @@ export default function Clients() {
           </div>
         ) : (
           <div style={{
-            display: viewMode === 'list' || viewMode === 'minimal' ? 'flex' : 'grid',
-            flexDirection: viewMode === 'list' || viewMode === 'minimal' ? 'column' : undefined,
+            display: viewMode === 'list' ? 'flex' : viewMode === 'minimal' ? 'grid' : 'grid',
+            flexDirection: viewMode === 'list' ? 'column' : undefined,
             gridTemplateColumns: 
-              viewMode === 'portrait' 
-                ? 'repeat(auto-fill, minmax(160px, 1fr))'
-                : viewMode === 'cards'
-                  ? 'repeat(auto-fill, minmax(320px, 1fr))'
-                  : viewMode === 'compact' 
-                    ? 'repeat(auto-fill, minmax(200px, 1fr))' 
-                    : 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: viewMode === 'list' || viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
+              viewMode === 'minimal'
+                ? `repeat(${minimalColumns}, 1fr)`
+                : viewMode === 'portrait' 
+                  ? 'repeat(auto-fill, minmax(160px, 1fr))'
+                  : viewMode === 'cards'
+                    ? 'repeat(auto-fill, minmax(320px, 1fr))'
+                    : viewMode === 'compact' 
+                      ? 'repeat(auto-fill, minmax(200px, 1fr))' 
+                      : 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: viewMode === 'list' ? '8px' : viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
           }}>
             {filteredClients.map((client) => (
               <ClientCard key={client.id} client={client} />
