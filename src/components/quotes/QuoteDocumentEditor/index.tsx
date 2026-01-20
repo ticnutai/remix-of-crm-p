@@ -16,6 +16,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from '@/components/ui/resizable';
+import { importFile, getSupportedFileTypes } from '@/utils/fileImporter';
 
 export function QuoteDocumentEditor() {
   const { toast } = useToast();
@@ -40,6 +41,7 @@ export function QuoteDocumentEditor() {
     resetDocument,
     loadTemplate,
     loadQuote,
+    loadImportedContent,
   } = useQuoteDocument();
 
   const handleSave = useCallback(async () => {
@@ -90,9 +92,26 @@ export function QuoteDocumentEditor() {
     window.print();
   }, []);
 
-  const handleImport = useCallback((file: File) => {
-    toast({ title: 'מייבא קובץ', description: file.name });
-  }, [toast]);
+  const handleImport = useCallback(async (file: File) => {
+    toast({ title: 'מייבא קובץ...', description: file.name });
+    
+    try {
+      const imported = await importFile(file);
+      loadImportedContent(imported);
+      
+      toast({ 
+        title: 'קובץ יובא בהצלחה', 
+        description: `נמצאו ${imported.items.length} פריטים` 
+      });
+    } catch (error) {
+      console.error('Import error:', error);
+      toast({ 
+        title: 'שגיאה בייבוא', 
+        description: error instanceof Error ? error.message : 'לא ניתן לקרוא את הקובץ',
+        variant: 'destructive'
+      });
+    }
+  }, [toast, loadImportedContent]);
 
   const handleSelectQuote = useCallback((quote: Quote) => {
     if (isDirty) {
