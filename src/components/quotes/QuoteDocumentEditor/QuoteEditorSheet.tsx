@@ -210,8 +210,15 @@ export function QuoteEditorSheet({
                 {/* Sidebar panel */}
                 {!sidebarCollapsed && (
                   <>
-                    <ResizablePanel defaultSize={18} minSize={12} maxSize={30} className="h-full">
-                      <div className="h-full overflow-hidden">
+                    <ResizablePanel 
+                      id="sidebar-panel"
+                      order={1}
+                      defaultSize={20} 
+                      minSize={15} 
+                      maxSize={30} 
+                      className="h-full"
+                    >
+                      <div className="h-full overflow-hidden relative z-10">
                         <EditorSidebar
                           document={document}
                           onUpdate={updateDocument}
@@ -228,11 +235,13 @@ export function QuoteEditorSheet({
                 {(viewMode === 'edit' || viewMode === 'split') && (
                   <>
                     <ResizablePanel 
-                      defaultSize={viewMode === 'split' ? 40 : 82} 
-                      minSize={30}
+                      id="edit-panel"
+                      order={2}
+                      defaultSize={sidebarCollapsed ? (viewMode === 'split' ? 50 : 100) : (viewMode === 'split' ? 40 : 80)} 
+                      minSize={25}
                       className="h-full"
                     >
-                      <div className="h-full bg-card border-l flex flex-col overflow-hidden min-w-[300px]">
+                      <div className="h-full bg-card border-l flex flex-col overflow-hidden">
                         <ScrollArea className="flex-1 h-full">
                           <div className="p-4">
                             <ItemsEditor
@@ -255,8 +264,10 @@ export function QuoteEditorSheet({
                 {/* Preview panel */}
                 {(viewMode === 'preview' || viewMode === 'split') && (
                   <ResizablePanel 
-                    defaultSize={viewMode === 'split' ? 47 : 82} 
-                    minSize={30}
+                    id="preview-panel"
+                    order={3}
+                    defaultSize={sidebarCollapsed ? (viewMode === 'split' ? 50 : 100) : (viewMode === 'split' ? 40 : 80)} 
+                    minSize={25}
                     className="h-full"
                   >
                     <div className="h-full bg-muted/50 overflow-hidden">

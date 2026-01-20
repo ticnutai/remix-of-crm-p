@@ -156,7 +156,13 @@ export function QuoteDocumentEditor() {
           {/* Quotes List panel */}
           {!quotesListCollapsed && (
             <>
-              <ResizablePanel defaultSize={18} minSize={12} maxSize={30}>
+              <ResizablePanel 
+                id="quotes-list-panel"
+                order={1}
+                defaultSize={15} 
+                minSize={10} 
+                maxSize={25}
+              >
                 <QuotesList
                   quotes={quotes}
                   isLoading={quotesLoading}
@@ -173,13 +179,21 @@ export function QuoteDocumentEditor() {
           {/* Sidebar panel */}
           {!sidebarCollapsed && (
             <>
-              <ResizablePanel defaultSize={15} minSize={10} maxSize={25}>
-                <EditorSidebar
-                  document={document}
-                  onUpdate={updateDocument}
-                  collapsed={sidebarCollapsed}
-                  onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-                />
+              <ResizablePanel 
+                id="sidebar-panel"
+                order={2}
+                defaultSize={15} 
+                minSize={10} 
+                maxSize={25}
+              >
+                <div className="h-full overflow-hidden relative z-10">
+                  <EditorSidebar
+                    document={document}
+                    onUpdate={updateDocument}
+                    collapsed={sidebarCollapsed}
+                    onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  />
+                </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
             </>
@@ -189,20 +203,24 @@ export function QuoteDocumentEditor() {
           {(viewMode === 'edit' || viewMode === 'split') && (
             <>
               <ResizablePanel 
-                defaultSize={viewMode === 'split' ? 30 : 67} 
+                id="edit-panel"
+                order={3}
+                defaultSize={viewMode === 'split' ? 35 : 70} 
                 minSize={20}
               >
                 <div className="h-full bg-card border-l overflow-hidden flex flex-col">
-                  <ScrollArea className="flex-1 p-4">
-                    <ItemsEditor
-                      items={document.items}
-                      onAdd={addItem}
-                      onUpdate={updateItem}
-                      onRemove={removeItem}
-                      onMove={moveItem}
-                      onDuplicate={duplicateItem}
-                      showNumbers={document.showItemNumbers}
-                    />
+                  <ScrollArea className="flex-1">
+                    <div className="p-4">
+                      <ItemsEditor
+                        items={document.items}
+                        onAdd={addItem}
+                        onUpdate={updateItem}
+                        onRemove={removeItem}
+                        onMove={moveItem}
+                        onDuplicate={duplicateItem}
+                        showNumbers={document.showItemNumbers}
+                      />
+                    </div>
                   </ScrollArea>
                 </div>
               </ResizablePanel>
@@ -213,8 +231,10 @@ export function QuoteDocumentEditor() {
           {/* Preview panel */}
           {(viewMode === 'preview' || viewMode === 'split') && (
             <ResizablePanel 
-              defaultSize={viewMode === 'split' ? 37 : 67} 
-              minSize={25}
+              id="preview-panel"
+              order={4}
+              defaultSize={viewMode === 'split' ? 35 : 70} 
+              minSize={20}
             >
               <div className="h-full bg-muted/50 overflow-hidden">
                 <ScrollArea className="h-full">
