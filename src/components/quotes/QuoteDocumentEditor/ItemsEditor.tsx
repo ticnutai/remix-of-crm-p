@@ -67,8 +67,8 @@ export function ItemsEditor({
 }: ItemsEditorProps) {
   return (
     <div className="space-y-3" dir="rtl">
-      {/* Sticky header with Add button */}
-      <div className="sticky top-0 z-20 bg-card pb-3 pt-1 -mx-4 px-4 border-b">
+      {/* Header with Add button */}
+      <div className="bg-card pb-3 pt-1 border-b">
         <div className="flex items-center justify-between gap-3">
           <h3 className="font-semibold text-sm whitespace-nowrap">פריטים</h3>
           <Button onClick={onAdd} size="sm" variant="default" className="shrink-0 whitespace-nowrap">
