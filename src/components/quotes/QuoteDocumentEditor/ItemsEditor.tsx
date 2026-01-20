@@ -67,12 +67,15 @@ export function ItemsEditor({
 }: ItemsEditorProps) {
   return (
     <div className="space-y-3" dir="rtl">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="font-semibold text-sm">פריטים</h3>
-        <Button onClick={onAdd} size="sm" variant="default" className="shrink-0">
-          <Plus className="h-4 w-4 ml-1" />
-          הוסף פריט
-        </Button>
+      {/* Sticky header with Add button */}
+      <div className="sticky top-0 z-20 bg-card pb-3 pt-1 -mx-4 px-4 border-b">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-sm whitespace-nowrap">פריטים</h3>
+          <Button onClick={onAdd} size="sm" variant="default" className="shrink-0 whitespace-nowrap">
+            <Plus className="h-4 w-4 ml-1" />
+            הוסף פריט
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-lg overflow-x-auto">
