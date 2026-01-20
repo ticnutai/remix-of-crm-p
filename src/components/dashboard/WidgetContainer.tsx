@@ -2,10 +2,9 @@
 // e-control CRM Pro
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { GripVertical, Maximize2, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
-import { useWidgetLayout, WidgetId, SIZE_LABELS } from './WidgetLayoutManager';
+import { GripVertical, Maximize2, ChevronUp, ChevronDown, Eye, EyeOff, Scale } from 'lucide-react';
+import { useWidgetLayout, WidgetId, SIZE_LABELS, GAP_CLASSES } from './WidgetLayoutManager';
 import { useDashboardTheme } from './DashboardThemeProvider';
-import { useWidgetManager } from './WidgetManager';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -60,6 +59,7 @@ export function WidgetContainer({
     setSize,
     toggleCollapse,
     moveWidget,
+    balanceRow,
   } = useWidgetLayout();
   const { currentTheme } = useDashboardTheme();
   const editMode = useWidgetEditMode();
@@ -122,9 +122,7 @@ export function WidgetContainer({
     setIsDragOver(false);
     
     const sourceId = e.dataTransfer.getData('text/plain') as WidgetId;
-    console.log('[WidgetContainer] handleDrop:', { sourceId, targetId: widgetId });
     if (sourceId && sourceId !== widgetId) {
-      console.log('[WidgetContainer] Calling swapWidgets:', sourceId, '<->', widgetId);
       swapWidgets(sourceId, widgetId);
     }
     globalDraggedId = null;
@@ -197,18 +195,23 @@ export function WidgetContainer({
                 <Maximize2 className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={() => setSize(widgetId, 'small')}>
-                <span className={layout.size === 'small' ? 'font-bold' : ''}>קטן</span>
+                <span className={layout.size === 'small' ? 'font-bold' : ''}>קטן (25%)</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSize(widgetId, 'medium')}>
-                <span className={layout.size === 'medium' ? 'font-bold' : ''}>בינוני</span>
+                <span className={layout.size === 'medium' ? 'font-bold' : ''}>בינוני (50%)</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSize(widgetId, 'large')}>
-                <span className={layout.size === 'large' ? 'font-bold' : ''}>גדול</span>
+                <span className={layout.size === 'large' ? 'font-bold' : ''}>גדול (75%)</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSize(widgetId, 'full')}>
-                <span className={layout.size === 'full' ? 'font-bold' : ''}>רוחב מלא</span>
+                <span className={layout.size === 'full' ? 'font-bold' : ''}>רוחב מלא (100%)</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => balanceRow(widgetId)}>
+                <Scale className="h-4 w-4 ml-2" />
+                אזן שורה
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => moveWidget(widgetId, 'up')}>
@@ -258,18 +261,20 @@ export function WidgetContainer({
       )}
 
       {/* Size Badge */}
-      <div
-        className={cn(
-          "absolute -bottom-1 left-1/2 -translate-x-1/2 z-20",
-          "opacity-0 group-hover:opacity-100 transition-all duration-200",
-          "px-2 py-0.5 rounded-full text-[10px] font-medium shadow",
-          isDarkTheme 
-            ? "bg-slate-800 text-amber-400 border border-amber-500/30" 
-            : "bg-white text-primary border border-primary/20"
-        )}
-      >
-        {SIZE_LABELS[layout.size]}
-      </div>
+      {editMode && (
+        <div
+          className={cn(
+            "absolute -bottom-1 left-1/2 -translate-x-1/2 z-20",
+            "opacity-0 group-hover:opacity-100 transition-all duration-200",
+            "px-2 py-0.5 rounded-full text-[10px] font-medium shadow",
+            isDarkTheme 
+              ? "bg-slate-800 text-amber-400 border border-amber-500/30" 
+              : "bg-white text-primary border border-primary/20"
+          )}
+        >
+          {SIZE_LABELS[layout.size]}
+        </div>
+      )}
 
       {/* Drop Overlay */}
       {isDragOver && (
@@ -320,27 +325,17 @@ export function WidgetContainer({
   );
 }
 
-// Grid wrapper with instructions - 4-column dense grid
+// Grid wrapper with 4-column layout and configurable gap
 interface WidgetGridProps {
   children: React.ReactNode;
   className?: string;
-  columns?: 1 | 2 | 3 | 4;
-  denseLayout?: boolean;
 }
 
-export function WidgetGrid({ children, className, columns = 4, denseLayout = true }: WidgetGridProps) {
+export function WidgetGrid({ children, className }: WidgetGridProps) {
   const { currentTheme } = useDashboardTheme();
-  const { autoLayout } = useWidgetManager();
+  const { gridGap } = useWidgetLayout();
   const isDarkTheme = currentTheme === 'navy-gold' || currentTheme === 'modern-dark';
   const editMode = useWidgetEditMode();
-
-  // 4-column grid system with dense packing
-  const gridCols = {
-    1: 'grid-cols-1',
-    2: 'grid-cols-1 md:grid-cols-2',
-    3: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-    4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
-  };
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -362,15 +357,19 @@ export function WidgetGrid({ children, className, columns = 4, denseLayout = tru
             <Maximize2 className="h-3.5 w-3.5" />
             <span>לחץ לשינוי גודל</span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <Scale className="h-3.5 w-3.5" />
+            <span>איזון שורה</span>
+          </div>
         </div>
       )}
       
-      {/* Grid with dense packing to eliminate gaps */}
+      {/* 4-column Grid with dense packing and configurable gap */}
       <div 
         className={cn(
-          "grid gap-4",
-          gridCols[columns],
-          denseLayout && "[grid-auto-flow:dense]"
+          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+          GAP_CLASSES[gridGap],
+          "[grid-auto-flow:dense]"
         )}
       >
         {children}

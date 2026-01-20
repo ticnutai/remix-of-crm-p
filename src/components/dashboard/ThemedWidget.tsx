@@ -1,10 +1,11 @@
 // Themed Widget Wrapper - Applies dashboard theme styles
+// Uses unified WidgetLayout system
 import React, { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useDashboardTheme } from './DashboardThemeProvider';
-import { useWidgetManager, WidgetId } from './WidgetManager';
-import { ChevronDown, ChevronUp, GripVertical, Settings, ExternalLink } from 'lucide-react';
+import { useWidgetLayout, WidgetId } from './WidgetLayoutManager';
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Mapping widget IDs to navigation paths
@@ -30,7 +31,7 @@ interface ThemedWidgetProps {
   titleIcon?: ReactNode;
   headerActions?: ReactNode;
   noPadding?: boolean;
-  linkTo?: string; // Custom navigation path
+  linkTo?: string;
 }
 
 export function ThemedWidget({ 
@@ -45,11 +46,12 @@ export function ThemedWidget({
 }: ThemedWidgetProps) {
   const navigate = useNavigate();
   const { themeConfig, currentTheme } = useDashboardTheme();
-  const { getWidget, toggleCollapse, isWidgetVisible } = useWidgetManager();
+  const { getLayout, toggleCollapse, isVisible } = useWidgetLayout();
   
-  const widget = getWidget(widgetId);
+  const layout = getLayout(widgetId);
   
-  if (!widget || !widget.visible) {
+  // Use unified visibility check
+  if (!isVisible(widgetId)) {
     return null;
   }
 
@@ -67,8 +69,8 @@ export function ThemedWidget({
 
   // Widget container styles based on theme
   const containerStyles: React.CSSProperties = {
-    backgroundColor: widget.customStyles?.backgroundColor || themeConfig.colors.cardBackground,
-    borderColor: widget.customStyles?.borderColor || themeConfig.colors.border,
+    backgroundColor: themeConfig.colors.cardBackground,
+    borderColor: themeConfig.colors.border,
     borderWidth: isNavyGold ? '2px' : '1px',
     borderStyle: 'solid',
     borderRadius: themeConfig.effects.roundedCorners === 'sm' ? '0.375rem' :
@@ -86,6 +88,8 @@ export function ThemedWidget({
       ? '0 0 30px rgba(66, 153, 225, 0.15), 0 10px 40px -15px rgba(0,0,0,0.4)'
       : undefined,
   } : {};
+
+  const isCollapsed = layout?.collapsed ?? false;
 
   return (
     <div 
@@ -171,7 +175,7 @@ export function ThemedWidget({
               )}
               onClick={() => toggleCollapse(widgetId)}
             >
-              {widget.collapsed ? (
+              {isCollapsed ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
                 <ChevronUp className="h-4 w-4" />
@@ -182,14 +186,14 @@ export function ThemedWidget({
       )}
 
       {/* Content */}
-      {!widget.collapsed && (
+      {!isCollapsed && (
         <div className={cn(!noPadding && "p-5")}>
           {children}
         </div>
       )}
 
       {/* Reflection Effect for Navy Gold */}
-      {themeConfig.effects.reflection && !widget.collapsed && (
+      {themeConfig.effects.reflection && !isCollapsed && (
         <div 
           className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
           style={{
@@ -224,11 +228,10 @@ export function ThemedStatCard({
   onClick,
 }: ThemedStatCardProps) {
   const { themeConfig, currentTheme } = useDashboardTheme();
-  const { isWidgetVisible } = useWidgetManager();
+  const { isVisible } = useWidgetLayout();
 
-  const visible = isWidgetVisible(widgetId);
-
-  if (!visible) {
+  // Use unified visibility check
+  if (!isVisible(widgetId)) {
     return null;
   }
 
