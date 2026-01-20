@@ -2468,10 +2468,13 @@ export default function Backups() {
                 <div className="flex items-center justify-center">
                   <Loader2 className="h-12 w-12 animate-spin text-secondary" />
                 </div>
-                <Progress value={progress} className="h-2" />
-                <p className="text-center text-muted-foreground">
-                  {progressMessage || `מייבא נתונים... ${Math.round(progress)}%`}
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{progressMessage || 'מייבא נתונים...'}</span>
+                    <span className="font-medium text-secondary">{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
               </div>
             ) : status === 'success' && importStats ? (
               <div className="py-6 space-y-4">
