@@ -127,6 +127,40 @@ interface BackupInvoice {
   created_date?: string;
 }
 
+interface BackupCustomSpreadsheet {
+  id: string;
+  name: string;
+  description?: string;
+  columns?: any[];
+  rows?: any[];
+  created_by_id?: string;
+  created_date?: string;
+  updated_date?: string;
+}
+
+interface BackupTeamMember {
+  id: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  user_id?: string;
+  created_date?: string;
+}
+
+interface BackupUserPreferences {
+  id: string;
+  user_id?: string;
+  preferences?: Record<string, any>;
+  theme?: string;
+  language?: string;
+  notifications_enabled?: boolean;
+  created_date?: string;
+  updated_date?: string;
+}
+
 interface BackupProject {
   id: string;
   name: string;
@@ -230,6 +264,9 @@ serve(async (req) => {
       quotes: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       invoices: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       projects: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      customSpreadsheets: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      teamMembers: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      userPreferences: { imported: 0, updated: 0, skipped: 0, errors: 0 },
     };
 
     // Map old IDs to new IDs and names to IDs
@@ -728,6 +765,143 @@ serve(async (req) => {
       }
     }
 
+    // Import CustomSpreadsheets
+    if (backupData.CustomSpreadsheet && backupData.CustomSpreadsheet.length > 0) {
+      console.log(`Importing ${backupData.CustomSpreadsheet.length} custom spreadsheets...`);
+      
+      for (const spreadsheet of backupData.CustomSpreadsheet as BackupCustomSpreadsheet[]) {
+        try {
+          const spreadsheetData = {
+            name: spreadsheet.name,
+            description: spreadsheet.description || null,
+            columns: spreadsheet.columns || [],
+            rows: spreadsheet.rows || [],
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("custom_spreadsheets").insert(spreadsheetData);
+
+          if (error) {
+            console.error(`Error inserting spreadsheet ${spreadsheet.name}:`, error);
+            results.customSpreadsheets.errors++;
+          } else {
+            results.customSpreadsheets.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting spreadsheet:`, e);
+          results.customSpreadsheets.errors++;
+        }
+      }
+    }
+
+    // Import TeamMembers (Employees)
+    if (backupData.TeamMember && backupData.TeamMember.length > 0) {
+      console.log(`Importing ${backupData.TeamMember.length} team members...`);
+      
+      // Get existing employees to avoid duplicates
+      const { data: existingEmployees } = await supabase
+        .from("employees")
+        .select("email");
+      
+      const existingEmails = new Set(existingEmployees?.map(e => e.email?.toLowerCase()) || []);
+      
+      for (const member of backupData.TeamMember as BackupTeamMember[]) {
+        try {
+          if (!member.email) {
+            results.teamMembers.skipped++;
+            continue;
+          }
+
+          const emailLower = member.email.toLowerCase();
+          if (existingEmails.has(emailLower)) {
+            results.teamMembers.skipped++;
+            continue;
+          }
+
+          // Map role
+          let role = "employee";
+          if (member.role === "admin" || member.role === "מנהל") role = "admin";
+          else if (member.role === "manager" || member.role === "מנהל צוות") role = "manager";
+
+          const employeeData = {
+            name: member.name || member.email,
+            email: member.email,
+            role,
+            phone: member.phone || null,
+            department: member.department || null,
+            position: member.position || null,
+          };
+
+          const { error } = await supabase.from("employees").insert(employeeData);
+
+          if (error) {
+            console.error(`Error inserting team member ${member.email}:`, error);
+            results.teamMembers.errors++;
+          } else {
+            existingEmails.add(emailLower);
+            results.teamMembers.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting team member:`, e);
+          results.teamMembers.errors++;
+        }
+      }
+    }
+
+    // Import UserPreferences
+    if (backupData.UserPreferences && backupData.UserPreferences.length > 0) {
+      console.log(`Importing ${backupData.UserPreferences.length} user preferences...`);
+      
+      for (const pref of backupData.UserPreferences as BackupUserPreferences[]) {
+        try {
+          const prefData = {
+            user_id: userId, // Use current user since we can't map old user IDs
+            preferences: pref.preferences || {},
+            theme: pref.theme || 'system',
+            language: pref.language || 'he',
+            notifications_enabled: pref.notifications_enabled !== false,
+          };
+
+          // Check if preferences exist for this user
+          const { data: existing } = await supabase
+            .from("user_preferences")
+            .select("id")
+            .eq("user_id", userId)
+            .single();
+
+          if (existing) {
+            // Update existing
+            const { error } = await supabase
+              .from("user_preferences")
+              .update(prefData)
+              .eq("user_id", userId);
+
+            if (error) {
+              console.error(`Error updating user preferences:`, error);
+              results.userPreferences.errors++;
+            } else {
+              results.userPreferences.updated++;
+            }
+          } else {
+            // Insert new
+            const { error } = await supabase
+              .from("user_preferences")
+              .insert(prefData);
+
+            if (error) {
+              console.error(`Error inserting user preferences:`, error);
+              results.userPreferences.errors++;
+            } else {
+              results.userPreferences.imported++;
+            }
+          }
+        } catch (e) {
+          console.error(`Exception handling user preferences:`, e);
+          results.userPreferences.errors++;
+        }
+      }
+    }
+
     console.log("Import completed:", results);
 
     const summary = {
@@ -738,6 +912,9 @@ serve(async (req) => {
       הצעות_מחיר: `${results.quotes.imported} חדשים, ${results.quotes.skipped} דולגו, ${results.quotes.errors} שגיאות`,
       חשבוניות: `${results.invoices.imported} חדשים, ${results.invoices.skipped} דולגו, ${results.invoices.errors} שגיאות`,
       פרויקטים: `${results.projects.imported} חדשים, ${results.projects.skipped} דולגו, ${results.projects.errors} שגיאות`,
+      טבלאות_מותאמות: `${results.customSpreadsheets.imported} חדשים, ${results.customSpreadsheets.skipped} דולגו, ${results.customSpreadsheets.errors} שגיאות`,
+      עובדים: `${results.teamMembers.imported} חדשים, ${results.teamMembers.skipped} דולגו, ${results.teamMembers.errors} שגיאות`,
+      העדפות_משתמשים: `${results.userPreferences.imported} חדשים, ${results.userPreferences.updated} עודכנו, ${results.userPreferences.errors} שגיאות`,
     };
 
     return new Response(
