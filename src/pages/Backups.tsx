@@ -63,6 +63,10 @@ import {
   Link,
   FileText,
   FileSpreadsheet,
+  MessageSquare,
+  UserCheck,
+  Settings2,
+  Mail,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -313,6 +317,13 @@ export default function Backups() {
     quotes: true,
     invoices: true,
     custom_spreadsheets: true,
+    team_members: true,
+    documents: true,
+    client_feedback: true,
+    internal_messages: true,
+    chat_conversations: true,
+    user_preferences: true,
+    access_control: true,
     skipDuplicates: true,
   });
   const [importStats, setImportStats] = useState<ImportStats | null>(null);
@@ -899,7 +910,14 @@ export default function Backups() {
         (importOptions.meetings ? (dataToImport.Meeting?.length || 0) : 0) +
         (importOptions.quotes ? (dataToImport.Quote?.length || 0) : 0) +
         (importOptions.invoices ? ((dataToImport as Record<string, unknown>).Invoice as unknown[] || []).length : 0) +
-        (importOptions.custom_spreadsheets ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length : 0);
+        (importOptions.custom_spreadsheets ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length : 0) +
+        (importOptions.team_members ? ((dataToImport as Record<string, unknown>).TeamMember as unknown[] || []).length : 0) +
+        (importOptions.documents ? ((dataToImport as Record<string, unknown>).Document as unknown[] || []).length : 0) +
+        (importOptions.client_feedback ? ((dataToImport as Record<string, unknown>).ClientFeedback as unknown[] || []).length : 0) +
+        (importOptions.internal_messages ? ((dataToImport as Record<string, unknown>).InternalMessage as unknown[] || []).length : 0) +
+        (importOptions.chat_conversations ? ((dataToImport as Record<string, unknown>).ChatConversation as unknown[] || []).length : 0) +
+        (importOptions.user_preferences ? ((dataToImport as Record<string, unknown>).UserPreferences as unknown[] || []).length : 0) +
+        (importOptions.access_control ? ((dataToImport as Record<string, unknown>).AccessControl as unknown[] || []).length : 0);
       
       setProgress(5);
       setProgressMessage(`מכין ${totalItems} רשומות לייבוא...`);
@@ -915,6 +933,13 @@ export default function Backups() {
         Project: dataToImport.Project?.length || 0,
         Invoice: (dataToImport as Record<string, unknown>).Invoice ? ((dataToImport as Record<string, unknown>).Invoice as unknown[]).length : 0,
         CustomSpreadsheet: (dataToImport as Record<string, unknown>).CustomSpreadsheet ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[]).length : 0,
+        TeamMember: (dataToImport as Record<string, unknown>).TeamMember ? ((dataToImport as Record<string, unknown>).TeamMember as unknown[]).length : 0,
+        Document: (dataToImport as Record<string, unknown>).Document ? ((dataToImport as Record<string, unknown>).Document as unknown[]).length : 0,
+        ClientFeedback: (dataToImport as Record<string, unknown>).ClientFeedback ? ((dataToImport as Record<string, unknown>).ClientFeedback as unknown[]).length : 0,
+        InternalMessage: (dataToImport as Record<string, unknown>).InternalMessage ? ((dataToImport as Record<string, unknown>).InternalMessage as unknown[]).length : 0,
+        ChatConversation: (dataToImport as Record<string, unknown>).ChatConversation ? ((dataToImport as Record<string, unknown>).ChatConversation as unknown[]).length : 0,
+        UserPreferences: (dataToImport as Record<string, unknown>).UserPreferences ? ((dataToImport as Record<string, unknown>).UserPreferences as unknown[]).length : 0,
+        AccessControl: (dataToImport as Record<string, unknown>).AccessControl ? ((dataToImport as Record<string, unknown>).AccessControl as unknown[]).length : 0,
       });
       
       // Filter data based on import options
@@ -927,6 +952,13 @@ export default function Backups() {
       if (importOptions.quotes && dataToImport.Quote) filteredData.Quote = dataToImport.Quote;
       if (importOptions.invoices && (dataToImport as Record<string, unknown>).Invoice) filteredData.Invoice = (dataToImport as Record<string, unknown>).Invoice;
       if (importOptions.custom_spreadsheets && (dataToImport as Record<string, unknown>).CustomSpreadsheet) filteredData.CustomSpreadsheet = (dataToImport as Record<string, unknown>).CustomSpreadsheet;
+      if (importOptions.team_members && (dataToImport as Record<string, unknown>).TeamMember) filteredData.TeamMember = (dataToImport as Record<string, unknown>).TeamMember;
+      if (importOptions.documents && (dataToImport as Record<string, unknown>).Document) filteredData.Document = (dataToImport as Record<string, unknown>).Document;
+      if (importOptions.client_feedback && (dataToImport as Record<string, unknown>).ClientFeedback) filteredData.ClientFeedback = (dataToImport as Record<string, unknown>).ClientFeedback;
+      if (importOptions.internal_messages && (dataToImport as Record<string, unknown>).InternalMessage) filteredData.InternalMessage = (dataToImport as Record<string, unknown>).InternalMessage;
+      if (importOptions.chat_conversations && (dataToImport as Record<string, unknown>).ChatConversation) filteredData.ChatConversation = (dataToImport as Record<string, unknown>).ChatConversation;
+      if (importOptions.user_preferences && (dataToImport as Record<string, unknown>).UserPreferences) filteredData.UserPreferences = (dataToImport as Record<string, unknown>).UserPreferences;
+      if (importOptions.access_control && (dataToImport as Record<string, unknown>).AccessControl) filteredData.AccessControl = (dataToImport as Record<string, unknown>).AccessControl;
       
       setProgress(15);
       setProgressMessage('שולח נתונים לשרת...');
@@ -2727,6 +2759,146 @@ export default function Backups() {
                           {((externalBackupData.data as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length} רשומות
                         </Badge>
                       </div>
+                      
+                      {/* Team Members */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-team-members"
+                            checked={importOptions.team_members}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, team_members: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-team-members" className="flex items-center gap-2 cursor-pointer">
+                            <UserCheck className="h-4 w-4 text-indigo-500" />
+                            משתמשים / עובדים
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).TeamMember as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Documents */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-documents"
+                            checked={importOptions.documents}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, documents: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-documents" className="flex items-center gap-2 cursor-pointer">
+                            <FileText className="h-4 w-4 text-amber-500" />
+                            מסמכים
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).Document as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Client Feedback */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-feedback"
+                            checked={importOptions.client_feedback}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, client_feedback: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-feedback" className="flex items-center gap-2 cursor-pointer">
+                            <MessageSquare className="h-4 w-4 text-pink-500" />
+                            משוב לקוחות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).ClientFeedback as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Internal Messages */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-messages"
+                            checked={importOptions.internal_messages}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, internal_messages: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-messages" className="flex items-center gap-2 cursor-pointer">
+                            <Mail className="h-4 w-4 text-teal-500" />
+                            הודעות פנימיות
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).InternalMessage as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Chat Conversations */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-chats"
+                            checked={importOptions.chat_conversations}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, chat_conversations: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-chats" className="flex items-center gap-2 cursor-pointer">
+                            <MessageSquare className="h-4 w-4 text-violet-500" />
+                            שיחות צ'אט
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).ChatConversation as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* User Preferences */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-preferences"
+                            checked={importOptions.user_preferences}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, user_preferences: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-preferences" className="flex items-center gap-2 cursor-pointer">
+                            <Settings2 className="h-4 w-4 text-slate-500" />
+                            העדפות משתמשים
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).UserPreferences as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
+                      
+                      {/* Access Control */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id="import-access"
+                            checked={importOptions.access_control}
+                            onCheckedChange={(checked) => 
+                              setImportOptions(prev => ({ ...prev, access_control: checked as boolean }))
+                            }
+                          />
+                          <Label htmlFor="import-access" className="flex items-center gap-2 cursor-pointer">
+                            <Shield className="h-4 w-4 text-red-500" />
+                            הרשאות גישה
+                          </Label>
+                        </div>
+                        <Badge variant="secondary">
+                          {((externalBackupData.data as Record<string, unknown>).AccessControl as unknown[] || []).length} רשומות
+                        </Badge>
+                      </div>
                     </div>
                     
                     <div className="flex items-center gap-3 p-3 border border-dashed rounded-lg bg-muted/30">
@@ -2765,7 +2937,23 @@ export default function Backups() {
                   <Button 
                     onClick={handleExternalImport}
                     className="btn-gold"
-                    disabled={!importOptions.clients && !importOptions.projects && !importOptions.time_entries && !importOptions.tasks && !importOptions.meetings && !importOptions.quotes && !importOptions.invoices && !importOptions.custom_spreadsheets}
+                    disabled={
+                      !importOptions.clients && 
+                      !importOptions.projects && 
+                      !importOptions.time_entries && 
+                      !importOptions.tasks && 
+                      !importOptions.meetings && 
+                      !importOptions.quotes && 
+                      !importOptions.invoices && 
+                      !importOptions.custom_spreadsheets &&
+                      !importOptions.team_members &&
+                      !importOptions.documents &&
+                      !importOptions.client_feedback &&
+                      !importOptions.internal_messages &&
+                      !importOptions.chat_conversations &&
+                      !importOptions.user_preferences &&
+                      !importOptions.access_control
+                    }
                   >
                     <Upload className="h-4 w-4 ml-2" />
                     התחל ייבוא
