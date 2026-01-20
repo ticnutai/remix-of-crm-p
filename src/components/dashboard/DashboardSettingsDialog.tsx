@@ -1,5 +1,5 @@
 // Dashboard Settings Dialog - Theme & Widget Control
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -45,13 +45,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboardTheme, dashboardThemes, DashboardTheme } from './DashboardThemeProvider';
-import { useWidgetManager, WidgetConfig, WidgetCategory, widgetPresets } from './WidgetManager';
+import { useWidgetLayout, WidgetSize, SIZE_LABELS } from './WidgetLayoutManager';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type WidgetCategory = 'stats' | 'charts' | 'tables' | 'other';
 
 const categoryIcons: Record<WidgetCategory, React.ReactNode> = {
   stats: <BarChart3 className="h-4 w-4" />,
@@ -67,9 +69,32 @@ const categoryNames: Record<WidgetCategory, string> = {
   other: 'אחר',
 };
 
+// Map widget IDs to categories
+const widgetCategories: Record<string, WidgetCategory> = {
+  'stats-clients': 'stats',
+  'stats-projects': 'stats',
+  'stats-revenue': 'stats',
+  'stats-hours': 'stats',
+  'dynamic-stats': 'stats',
+  'chart-revenue': 'charts',
+  'chart-projects': 'charts',
+  'chart-hours': 'charts',
+  'table-hours': 'tables',
+  'table-clients': 'tables',
+  'table-vip': 'tables',
+  'features-info': 'other',
+};
+
 export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSettingsDialogProps) {
   const { currentTheme, setTheme, themeConfig } = useDashboardTheme();
-  const { widgets, toggleVisibility, resetToDefaults, reorderWidgets, updateWidget, moveWidget, applyPreset, exportConfig, importConfig, autoLayout, toggleAutoLayout, addDynamicStatsWidget, removeDynamicStatsWidget } = useWidgetManager();
+  const { 
+    layouts: widgets, 
+    toggleVisibility, 
+    resetAll: resetToDefaults, 
+    moveWidget, 
+    setSize,
+    autoArrangeWidgets 
+  } = useWidgetLayout();
   const { toast } = useToast();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,7 +109,17 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (draggedIndex !== null && draggedIndex !== index) {
-      reorderWidgets(draggedIndex, index);
+      // Swap widgets using moveWidget
+      const currentWidget = sortedWidgets[draggedIndex];
+      const targetWidget = sortedWidgets[index];
+      if (currentWidget && targetWidget) {
+        // Move in the right direction
+        if (index < draggedIndex) {
+          moveWidget(currentWidget.id, 'up');
+        } else {
+          moveWidget(currentWidget.id, 'down');
+        }
+      }
       setDraggedIndex(index);
     }
   };
@@ -94,7 +129,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
   };
 
   const handleExport = () => {
-    const json = exportConfig();
+    const json = JSON.stringify(widgets, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -105,31 +140,25 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     toast({ title: 'הוגדרות יוצאו בהצלחה', description: 'הקובץ הורד למחשב שלך' });
   };
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const json = event.target?.result as string;
-      if (importConfig(json)) {
-        toast({ title: 'הגדרות יובאו בהצלחה', description: 'הוידג\'טים עודכנו' });
-      } else {
-        toast({ title: 'שגיאה בייבוא', description: 'הקובץ אינו תקין', variant: 'destructive' });
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+  // Helper: Get category for a widget
+  const getCategory = (widgetId: string): WidgetCategory => {
+    return widgetCategories[widgetId] || 'other';
   };
 
+  // Sorted widgets
+  const sortedWidgets = useMemo(() => 
+    [...widgets].sort((a, b) => a.order - b.order), 
+    [widgets]
+  );
+
   // Filter widgets
-  const filteredWidgets = widgets
-    .sort((a, b) => a.order - b.order)
+  const filteredWidgets = sortedWidgets
     .filter(widget => {
-      if (searchQuery && !widget.name.includes(searchQuery) && !widget.description.includes(searchQuery)) {
+      if (searchQuery && !widget.name.includes(searchQuery)) {
         return false;
       }
-      if (categoryFilter !== 'all' && widget.category !== categoryFilter) {
+      const category = getCategory(widget.id);
+      if (categoryFilter !== 'all' && category !== categoryFilter) {
         return false;
       }
       if (statusFilter === 'visible' && !widget.visible) {
@@ -349,20 +378,6 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                 </div>
 
                 <div className="flex-1" />
-
-                {/* Presets */}
-                <Select onValueChange={applyPreset}>
-                  <SelectTrigger className="h-8 w-[110px] text-xs">
-                    <SelectValue placeholder="פריסות מוכנות" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {widgetPresets.map(preset => (
-                      <SelectItem key={preset.id} value={preset.id}>
-                        {preset.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Action Buttons */}
@@ -372,8 +387,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // Trigger auto-arrange via custom event
-                    window.dispatchEvent(new CustomEvent('autoArrangeWidgets'));
+                    autoArrangeWidgets();
                     toast({
                       title: "✨ סידור אוטומטי",
                       description: "הווידג'טים סודרו בצורה אופטימלית",
@@ -386,54 +400,12 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   סדר אוטומטי
                 </Button>
                 
-                {/* Auto Layout Toggle */}
-                <Button
-                  variant={autoLayout ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={toggleAutoLayout}
-                  className="gap-1 text-xs"
-                >
-                  <LayoutGrid className="h-3 w-3" />
-                  {autoLayout ? 'פריסה צפופה ✓' : 'פריסה צפופה'}
-                </Button>
-                
-                <div className="w-px h-6 bg-border self-center" />
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    addDynamicStatsWidget();
-                    toast({
-                      title: "✅ ווידג'ט נוסף",
-                      description: "ווידג'ט סטטוס דינמי חדש נוצר",
-                      duration: 2000,
-                    });
-                  }} 
-                  className="gap-1 text-xs"
-                >
-                  <Plus className="h-3 w-3" />
-                  הוסף סטטוס דינמי
-                </Button>
-                
-                <div className="w-px h-6 bg-border self-center" />
+                <div className="flex-1" />
                 
                 <Button variant="outline" size="sm" onClick={handleExport} className="gap-1 text-xs">
                   <Download className="h-3 w-3" />
                   ייצוא
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1 text-xs">
-                  <Upload className="h-3 w-3" />
-                  ייבוא
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleImport}
-                  className="hidden"
-                />
-                <div className="flex-1" />
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -467,7 +439,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                       <GripVertical className="h-4 w-4 text-muted-foreground" />
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {categoryIcons[widget.category]}
+                          {categoryIcons[getCategory(widget.id)]}
                         </Badge>
                       </div>
                       <div className="text-right">
@@ -478,7 +450,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                           {widget.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {widget.description}
+                          {SIZE_LABELS[widget.size]}
                         </p>
                       </div>
                     </div>
@@ -507,7 +479,12 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                       <Select
                         value={widget.size}
                         onValueChange={(value: 'small' | 'medium' | 'large' | 'full') => {
-                          updateWidget(widget.id, { size: value });
+                          setSize(widget.id, value as WidgetSize);
+                          toast({
+                            title: "📐 גודל שונה",
+                            description: `${widget.name}: ${SIZE_LABELS[value as WidgetSize]}`,
+                            duration: 1500,
+                          });
                         }}
                       >
                         <SelectTrigger className="h-7 w-[70px] text-xs border-primary/50 border">
@@ -533,25 +510,8 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                         ) : (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
                         )}
-                      </Button>                      
-                      {/* Delete Dynamic Stats Widgets */}
-                      {widget.id.startsWith('dynamic-stats-') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:text-destructive"
-                          onClick={() => {
-                            removeDynamicStatsWidget(widget.id);
-                            toast({
-                              title: "🗑️ ווידג'ט הוסר",
-                              description: `${widget.name} נמחק`,
-                              duration: 2000,
-                            });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}                    </div>
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 
