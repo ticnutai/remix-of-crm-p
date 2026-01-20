@@ -1346,6 +1346,65 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_spreadsheets: {
+        Row: {
+          client_id: string | null
+          columns: Json | null
+          created_at: string | null
+          created_by: string | null
+          custom_types: Json | null
+          description: string | null
+          filters: Json | null
+          google_sheet_id: string | null
+          google_sheet_name: string | null
+          id: string
+          name: string
+          rows: Json | null
+          sync_config: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          columns?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_types?: Json | null
+          description?: string | null
+          filters?: Json | null
+          google_sheet_id?: string | null
+          google_sheet_name?: string | null
+          id?: string
+          name: string
+          rows?: Json | null
+          sync_config?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          columns?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          custom_types?: Json | null
+          description?: string | null
+          filters?: Json | null
+          google_sheet_id?: string | null
+          google_sheet_name?: string | null
+          id?: string
+          name?: string
+          rows?: Json | null
+          sync_config?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_spreadsheets_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_table_data: {
         Row: {
           created_at: string
