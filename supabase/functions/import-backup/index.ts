@@ -98,10 +98,47 @@ interface BackupQuote {
   client_id?: string;
   client_name?: string;
   amount?: number;
+  total?: number;
   status?: string;
   description?: string;
+  title?: string;
   created_date?: string;
   valid_until?: string;
+  items?: Array<{
+    description?: string;
+    quantity?: number;
+    unit_price?: number;
+    total?: number;
+  }>;
+}
+
+interface BackupInvoice {
+  id: string;
+  client_id?: string;
+  client_name?: string;
+  amount?: number;
+  total?: number;
+  status?: string;
+  description?: string;
+  invoice_number?: string;
+  issue_date?: string;
+  due_date?: string;
+  paid_amount?: number;
+  created_date?: string;
+}
+
+interface BackupProject {
+  id: string;
+  name: string;
+  description?: string;
+  client_id?: string;
+  client_name?: string;
+  status?: string;
+  priority?: string;
+  start_date?: string;
+  end_date?: string;
+  budget?: number;
+  created_date?: string;
 }
 
 interface BackupAccessControl {
@@ -127,6 +164,8 @@ interface BackupData {
   TimeLog?: BackupTimeLog[];
   Meeting?: BackupMeeting[];
   Quote?: BackupQuote[];
+  Invoice?: BackupInvoice[];
+  Project?: BackupProject[];
   AccessControl?: BackupAccessControl[];
   UserPreferences?: BackupUserPreferences[];
 }
@@ -179,6 +218,8 @@ serve(async (req) => {
       timeLogs: backupData.TimeLog?.length || 0,
       meetings: backupData.Meeting?.length || 0,
       quotes: backupData.Quote?.length || 0,
+      invoices: backupData.Invoice?.length || 0,
+      projects: backupData.Project?.length || 0,
     });
 
     const results = {
@@ -187,6 +228,8 @@ serve(async (req) => {
       timeLogs: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       meetings: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       quotes: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      invoices: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      projects: { imported: 0, updated: 0, skipped: 0, errors: 0 },
     };
 
     // Map old IDs to new IDs and names to IDs
@@ -505,9 +548,16 @@ serve(async (req) => {
       }
     }
 
-    // 5. Import Quotes as Invoices (draft)
+    // 5. Import Quotes to quotes table
     if (backupData.Quote && backupData.Quote.length > 0) {
       console.log(`Processing ${backupData.Quote.length} quotes...`);
+      
+      // Get existing quotes to check for duplicates
+      const { data: existingQuotes } = await supabase
+        .from("quotes")
+        .select("id, quote_number");
+      
+      const existingQuoteNumbers = new Set(existingQuotes?.map(q => q.quote_number) || []);
       
       for (const quote of backupData.Quote) {
         try {
@@ -517,28 +567,163 @@ serve(async (req) => {
             continue;
           }
 
-          const invoiceData = {
-            invoice_number: `QT-${quote.id.slice(-6)}`,
+          const quoteNumber = `Q-${quote.id?.slice(-6) || Date.now().toString().slice(-6)}`;
+          
+          // Check for duplicates
+          if (existingQuoteNumbers.has(quoteNumber)) {
+            results.quotes.skipped++;
+            continue;
+          }
+
+          // Map status
+          let status = "draft";
+          if (quote.status === "אושר" || quote.status === "approved") status = "approved";
+          else if (quote.status === "נשלח" || quote.status === "sent") status = "sent";
+          else if (quote.status === "נדחה" || quote.status === "rejected") status = "rejected";
+
+          const quoteData = {
+            quote_number: quoteNumber,
             client_id: clientId,
-            amount: quote.amount || 0,
-            status: "draft",
-            description: quote.description || "הצעת מחיר מיובאת",
-            issue_date: quote.created_date ? new Date(quote.created_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            due_date: quote.valid_until ? new Date(quote.valid_until).toISOString().split('T')[0] : null,
+            total: quote.amount || quote.total || 0,
+            status,
+            description: quote.description || quote.title || null,
+            valid_until: quote.valid_until ? new Date(quote.valid_until).toISOString().split('T')[0] : null,
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("quotes").insert(quoteData);
+
+          if (error) {
+            console.error(`Error inserting quote:`, error);
+            results.quotes.errors++;
+          } else {
+            existingQuoteNumbers.add(quoteNumber);
+            results.quotes.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting quote:`, e);
+          results.quotes.errors++;
+        }
+      }
+    }
+
+    // 6. Import Invoices directly
+    if (backupData.Invoice && backupData.Invoice.length > 0) {
+      console.log(`Processing ${backupData.Invoice.length} invoices...`);
+      
+      // Get existing invoices to check for duplicates
+      const { data: existingInvoices } = await supabase
+        .from("invoices")
+        .select("id, invoice_number");
+      
+      const existingInvoiceNumbers = new Set(existingInvoices?.map(i => i.invoice_number) || []);
+      
+      for (const invoice of backupData.Invoice) {
+        try {
+          const clientId = findClientId(invoice.client_id, invoice.client_name);
+          if (!clientId) {
+            results.invoices.skipped++;
+            continue;
+          }
+
+          const invoiceNumber = invoice.invoice_number || `INV-${invoice.id?.slice(-6) || Date.now().toString().slice(-6)}`;
+          
+          // Check for duplicates
+          if (existingInvoiceNumbers.has(invoiceNumber)) {
+            results.invoices.skipped++;
+            continue;
+          }
+
+          // Map status
+          let status = "draft";
+          if (invoice.status === "שולם" || invoice.status === "paid") status = "paid";
+          else if (invoice.status === "נשלח" || invoice.status === "sent") status = "sent";
+          else if (invoice.status === "באיחור" || invoice.status === "overdue") status = "overdue";
+          else if (invoice.status === "בוטל" || invoice.status === "cancelled") status = "cancelled";
+
+          const invoiceData = {
+            invoice_number: invoiceNumber,
+            client_id: clientId,
+            amount: invoice.amount || invoice.total || 0,
+            status,
+            description: invoice.description || null,
+            issue_date: invoice.issue_date ? new Date(invoice.issue_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            due_date: invoice.due_date ? new Date(invoice.due_date).toISOString().split('T')[0] : null,
+            paid_amount: invoice.paid_amount || 0,
             created_by: userId,
           };
 
           const { error } = await supabase.from("invoices").insert(invoiceData);
 
           if (error) {
-            console.error(`Error inserting quote as invoice:`, error);
-            results.quotes.errors++;
+            console.error(`Error inserting invoice:`, error);
+            results.invoices.errors++;
           } else {
-            results.quotes.imported++;
+            existingInvoiceNumbers.add(invoiceNumber);
+            results.invoices.imported++;
           }
         } catch (e) {
-          console.error(`Exception inserting quote:`, e);
-          results.quotes.errors++;
+          console.error(`Exception inserting invoice:`, e);
+          results.invoices.errors++;
+        }
+      }
+    }
+
+    // 7. Import Projects
+    if (backupData.Project && backupData.Project.length > 0) {
+      console.log(`Processing ${backupData.Project.length} projects...`);
+      
+      // Get existing projects to check for duplicates
+      const { data: existingProjects } = await supabase
+        .from("projects")
+        .select("id, name, client_id");
+      
+      const existingProjectSet = new Set(
+        existingProjects?.map(p => `${p.name}::${p.client_id || 'null'}`) || []
+      );
+      
+      for (const project of backupData.Project) {
+        try {
+          const clientId = findClientId(project.client_id, project.client_name);
+          
+          // Check for duplicates
+          const projectKey = `${project.name}::${clientId || 'null'}`;
+          if (existingProjectSet.has(projectKey)) {
+            results.projects.skipped++;
+            continue;
+          }
+
+          // Map status
+          let status = "planning";
+          if (project.status === "פעיל" || project.status === "active") status = "active";
+          else if (project.status === "הושלם" || project.status === "completed") status = "completed";
+          else if (project.status === "בהמתנה" || project.status === "on-hold") status = "on-hold";
+          else if (project.status === "מבוטל" || project.status === "cancelled") status = "cancelled";
+
+          const projectData = {
+            name: project.name,
+            description: project.description || null,
+            client_id: clientId,
+            status,
+            priority: project.priority || "medium",
+            start_date: project.start_date ? new Date(project.start_date).toISOString().split('T')[0] : null,
+            end_date: project.end_date ? new Date(project.end_date).toISOString().split('T')[0] : null,
+            budget: project.budget || null,
+            created_by: userId,
+          };
+
+          const { error } = await supabase.from("projects").insert(projectData);
+
+          if (error) {
+            console.error(`Error inserting project ${project.name}:`, error);
+            results.projects.errors++;
+          } else {
+            existingProjectSet.add(projectKey);
+            results.projects.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting project:`, e);
+          results.projects.errors++;
         }
       }
     }
@@ -551,6 +736,8 @@ serve(async (req) => {
       רישומי_זמן: `${results.timeLogs.imported} חדשים, ${results.timeLogs.skipped} דולגו, ${results.timeLogs.errors} שגיאות`,
       פגישות: `${results.meetings.imported} חדשים, ${results.meetings.skipped} דולגו, ${results.meetings.errors} שגיאות`,
       הצעות_מחיר: `${results.quotes.imported} חדשים, ${results.quotes.skipped} דולגו, ${results.quotes.errors} שגיאות`,
+      חשבוניות: `${results.invoices.imported} חדשים, ${results.invoices.skipped} דולגו, ${results.invoices.errors} שגיאות`,
+      פרויקטים: `${results.projects.imported} חדשים, ${results.projects.skipped} דולגו, ${results.projects.errors} שגיאות`,
     };
 
     return new Response(
