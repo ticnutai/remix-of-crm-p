@@ -455,13 +455,25 @@ serve(async (req) => {
       }
     }
 
-    // Get existing time entries to check for duplicates
+    // Get existing time entries to check for duplicates - using comprehensive key
     const { data: existingTimeEntries } = await supabase
       .from("time_entries")
-      .select("id, client_id, start_time, duration_minutes");
+      .select("id, client_id, start_time, duration_minutes, description");
     
+    // Create a more comprehensive duplicate check key including description
     const existingTimeSet = new Set(
-      existingTimeEntries?.map(t => `${t.client_id}::${t.start_time}::${t.duration_minutes}`) || []
+      existingTimeEntries?.map(t => {
+        const descNormalized = (t.description || '').trim().toLowerCase().slice(0, 50);
+        return `${t.client_id}::${t.start_time}::${t.duration_minutes}::${descNormalized}`;
+      }) || []
+    );
+
+    // Also track by original start_time + client for broader duplicate detection
+    const existingTimeByDateClient = new Set(
+      existingTimeEntries?.map(t => {
+        const dateOnly = t.start_time?.split('T')[0] || '';
+        return `${t.client_id}::${dateOnly}::${t.duration_minutes}`;
+      }) || []
     );
 
     // 3. Import Time Logs
@@ -487,12 +499,36 @@ serve(async (req) => {
           }
 
           const clientId = findClientId(log.client_id, log.client_name);
+          const descNormalized = (log.notes || log.title || '').trim().toLowerCase().slice(0, 50);
+          const dateOnly = startTime.split('T')[0];
 
-          // Check for duplicates
-          const timeKey = `${clientId}::${startTime}::${durationMinutes}`;
+          // Check for duplicates using comprehensive key
+          const timeKey = `${clientId}::${startTime}::${durationMinutes}::${descNormalized}`;
+          const dateClientKey = `${clientId}::${dateOnly}::${durationMinutes}`;
+          
           if (existingTimeSet.has(timeKey)) {
             results.timeLogs.skipped++;
+            console.log(`Skipping duplicate time log (exact match): ${timeKey}`);
             continue;
+          }
+          
+          // Also check if same client + date + duration exists (likely duplicate with different timestamp)
+          if (existingTimeByDateClient.has(dateClientKey) && descNormalized) {
+            // Check if description matches any existing entry for this date/client/duration
+            const possibleDuplicate = existingTimeEntries?.find(t => {
+              const tDateOnly = t.start_time?.split('T')[0] || '';
+              const tDescNormalized = (t.description || '').trim().toLowerCase().slice(0, 50);
+              return t.client_id === clientId && 
+                     tDateOnly === dateOnly && 
+                     t.duration_minutes === durationMinutes &&
+                     tDescNormalized === descNormalized;
+            });
+            
+            if (possibleDuplicate) {
+              results.timeLogs.skipped++;
+              console.log(`Skipping duplicate time log (date+desc match): ${dateClientKey}`);
+              continue;
+            }
           }
 
           // Calculate end_time from start_time + duration (duration_minutes is a generated column)
@@ -516,7 +552,9 @@ serve(async (req) => {
             console.error(`Error inserting time log:`, error);
             results.timeLogs.errors++;
           } else {
+            // Add to both sets to prevent duplicates within the same import
             existingTimeSet.add(timeKey);
+            existingTimeByDateClient.add(dateClientKey);
             results.timeLogs.imported++;
           }
         } catch (e) {
