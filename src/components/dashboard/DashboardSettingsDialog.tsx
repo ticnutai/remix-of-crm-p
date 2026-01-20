@@ -28,8 +28,6 @@ import {
   EyeOff,
   Check,
   Sparkles,
-  Moon,
-  Sun,
   GripVertical,
   ChevronDown,
   ChevronUp,
@@ -38,14 +36,13 @@ import {
   Table,
   PieChart,
   Download,
-  Upload,
-  Trash2,
   Filter,
-  Plus,
+  Scale,
+  Rows3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboardTheme, dashboardThemes, DashboardTheme } from './DashboardThemeProvider';
-import { useWidgetLayout, WidgetSize, SIZE_LABELS } from './WidgetLayoutManager';
+import { useWidgetLayout, WidgetSize, SIZE_LABELS, GAP_LABELS, GridGap } from './WidgetLayoutManager';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardSettingsDialogProps {
@@ -93,7 +90,10 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     resetAll: resetToDefaults, 
     moveWidget, 
     setSize,
-    autoArrangeWidgets 
+    autoArrangeWidgets,
+    gridGap,
+    setGridGap,
+    balanceRow,
   } = useWidgetLayout();
   const { toast } = useToast();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -381,18 +381,28 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 flex-wrap items-center">
+                {/* Grid Gap Select */}
+                <div className="flex items-center gap-1.5">
+                  <Rows3 className="h-4 w-4 text-muted-foreground" />
+                  <Select value={gridGap} onValueChange={(v) => setGridGap(v as GridGap)}>
+                    <SelectTrigger className="h-8 w-[90px] text-xs">
+                      <SelectValue placeholder="מרווח" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tight">צפוף</SelectItem>
+                      <SelectItem value="normal">רגיל</SelectItem>
+                      <SelectItem value="wide">רחב</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Auto Arrange - Pack widgets optimally */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     autoArrangeWidgets();
-                    toast({
-                      title: "✨ סידור אוטומטי",
-                      description: "הווידג'טים סודרו בצורה אופטימלית",
-                      duration: 2000,
-                    });
                   }}
                   className="gap-1 text-xs bg-primary/10 hover:bg-primary/20"
                 >
@@ -480,23 +490,29 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                         value={widget.size}
                         onValueChange={(value: 'small' | 'medium' | 'large' | 'full') => {
                           setSize(widget.id, value as WidgetSize);
-                          toast({
-                            title: "📐 גודל שונה",
-                            description: `${widget.name}: ${SIZE_LABELS[value as WidgetSize]}`,
-                            duration: 1500,
-                          });
                         }}
                       >
-                        <SelectTrigger className="h-7 w-[70px] text-xs border-primary/50 border">
+                        <SelectTrigger className="h-7 w-[80px] text-xs border-primary/50 border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent align="end">
-                          <SelectItem value="small">קטן</SelectItem>
-                          <SelectItem value="medium">בינוני</SelectItem>
-                          <SelectItem value="large">גדול</SelectItem>
-                          <SelectItem value="full">מלא</SelectItem>
+                          <SelectItem value="small">25%</SelectItem>
+                          <SelectItem value="medium">50%</SelectItem>
+                          <SelectItem value="large">75%</SelectItem>
+                          <SelectItem value="full">100%</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Balance Row */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => balanceRow(widget.id)}
+                        title="אזן שורה"
+                      >
+                        <Scale className="h-4 w-4" />
+                      </Button>
                       
                       {/* Visibility Toggle */}
                       <Button

@@ -14,15 +14,13 @@ import {
   WorkHoursChart,
   WorkHoursTableWidget,
   DashboardThemeProvider,
-  WidgetManagerProvider,
   useDashboardTheme,
-  useWidgetManager,
   DashboardSettingsDialog,
   ThemedWidget,
   ThemedStatCard,
   DynamicTableWidget,
   DynamicStatsWidget,
-  // New Widget System
+  // Unified Widget System
   WidgetLayoutProvider,
   useWidgetLayout,
   WidgetContainer,
@@ -132,8 +130,7 @@ function DashboardContent() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   
   const { themeConfig, currentTheme } = useDashboardTheme();
-  const { isWidgetVisible } = useWidgetManager();
-  const { isVisible, getGridClass, layouts } = useWidgetLayout();
+  const { isVisible, getGridClass, layouts, gridGap, setGridGap } = useWidgetLayout();
   
   const {
     isLoading: dashboardLoading,
@@ -310,7 +307,7 @@ function DashboardContent() {
             </div>
 
             {/* Widget Grid Section - Dynamic Order Based on Layouts */}
-            <WidgetGrid columns={2}>
+            <WidgetGrid>
               {layouts
                 .filter(layout => layout.visible)
                 .sort((a, b) => a.order - b.order)
@@ -560,15 +557,13 @@ function DashboardContent() {
   );
 }
 
-// Main Index Component with Providers
+// Main Index Component with Providers (unified - no WidgetManagerProvider needed)
 const Index = () => {
   return (
     <DashboardThemeProvider>
-      <WidgetManagerProvider>
-        <WidgetLayoutProvider>
-          <DashboardContent />
-        </WidgetLayoutProvider>
-      </WidgetManagerProvider>
+      <WidgetLayoutProvider>
+        <DashboardContent />
+      </WidgetLayoutProvider>
     </DashboardThemeProvider>
   );
 };
