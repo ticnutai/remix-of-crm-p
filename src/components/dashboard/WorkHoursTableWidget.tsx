@@ -665,7 +665,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
           <div className="max-h-64 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className={`sticky top-0 ${
-                currentTheme === 'navy-gold' ? 'bg-[#162C58] text-white' :
+                currentTheme === 'navy-gold' ? 'bg-[hsl(45,30%,92%)] text-[hsl(220,60%,20%)] border-b-2 border-[hsl(45,80%,50%)]' :
                 currentTheme === 'modern-dark' ? 'bg-gray-800 text-white' : 'bg-muted'
               }`}>
                 <tr>
@@ -677,7 +677,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                 </tr>
               </thead>
               <tbody className={
-                (currentTheme === 'navy-gold' || currentTheme === 'modern-dark') ? 'text-white' : ''
+                currentTheme === 'modern-dark' ? 'text-white' : ''
               }>
                 {filteredEntries.slice(0, 10).map((entry) => {
                   const minutes = entry.duration_minutes || 0;
@@ -701,7 +701,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                       <td className="p-2 font-medium truncate max-w-[120px]">
                         {entry.project?.name || entry.client?.name || '-'}
                       </td>
-                      <td className={`p-2 truncate max-w-[150px] hidden md:table-cell ${(currentTheme === 'navy-gold' || currentTheme === 'modern-dark') ? 'text-white/70' : 'text-muted-foreground'}`}>
+                      <td className={`p-2 truncate max-w-[150px] hidden md:table-cell ${currentTheme === 'modern-dark' ? 'text-white/70' : 'text-muted-foreground'}`}>
                         {entry.description || '-'}
                       </td>
                       <td className="p-2 text-center">
@@ -720,7 +720,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
                 })}
                 {filteredEntries.length === 0 && (
                   <tr>
-                    <td colSpan={5} className={`p-8 text-center ${(currentTheme === 'navy-gold' || currentTheme === 'modern-dark') ? 'text-white/60' : 'text-muted-foreground'}`}>
+                    <td colSpan={5} className={`p-8 text-center ${currentTheme === 'modern-dark' ? 'text-white/60' : 'text-muted-foreground'}`}>
                       אין רשומות לתקופה זו
                     </td>
                   </tr>
@@ -729,14 +729,14 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
               {filteredEntries.length > 0 && (
                 <tfoot className={cn(
                   "font-semibold",
-                  currentTheme === 'navy-gold' && `${getColorValue(customColors.iconColor, 'bg')}/10 text-white`,
+                  currentTheme === 'navy-gold' && 'bg-[hsl(45,30%,90%)] text-[hsl(220,60%,20%)]',
                   currentTheme === 'modern-dark' && 'bg-purple-900/20 text-white',
                   currentTheme !== 'navy-gold' && currentTheme !== 'modern-dark' && 'bg-primary/10'
                 )}>
-                  <tr className="border-t-2">
+                  <tr className="border-t-2" style={{ borderColor: currentTheme === 'navy-gold' ? 'hsl(45, 80%, 50%)' : undefined }}>
                     <td colSpan={3} className="p-2 text-right">סה״כ:</td>
                     <td className="p-2 text-center">
-                      <Badge className={`font-mono ${currentTheme === 'navy-gold' ? `${getColorValue(customColors.iconColor, 'bg')} text-[#0a1628]` : ''}`}>
+                      <Badge className={`font-mono ${currentTheme === 'navy-gold' ? 'bg-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)]' : ''}`}>
                         {formatDuration(stats.totalMinutes)}
                       </Badge>
                     </td>
@@ -753,7 +753,7 @@ export function WorkHoursTableWidget({ isLoading: externalLoading }: WorkHoursTa
         {filteredEntries.length > 10 && (
           <p className={cn(
             "text-xs text-center",
-            (currentTheme === 'navy-gold' || currentTheme === 'modern-dark') ? 'text-white/60' : 'text-muted-foreground'
+            currentTheme === 'modern-dark' ? 'text-white/60' : 'text-muted-foreground'
           )}>
             מציג 10 מתוך {filteredEntries.length} רשומות
           </p>

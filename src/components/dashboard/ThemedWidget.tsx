@@ -127,11 +127,11 @@ export function ThemedWidget({
         <div 
           className={cn(
             "flex items-center justify-between px-5 py-4 border-b",
-            isNavyGold && "bg-gradient-to-l from-[hsl(220,60%,18%)] to-[hsl(220,60%,22%)]"
+            isModernDark && "bg-gradient-to-l from-[hsl(240,10%,12%)] to-[hsl(240,10%,15%)]"
           )}
           style={{ 
-            borderColor: isNavyGold ? `${themeConfig.colors.border}66` : themeConfig.colors.border,
-            backgroundColor: isNavyGold ? undefined : isModernDark ? themeConfig.colors.headerBackground : undefined,
+            borderColor: themeConfig.colors.border,
+            backgroundColor: isNavyGold ? themeConfig.colors.cardBackground : isModernDark ? undefined : undefined,
           }}
         >
           <div 
@@ -152,7 +152,7 @@ export function ThemedWidget({
                 navigationPath && "group-hover/title:underline"
               )}
               style={{ 
-                color: isNavyGold || isModernDark ? 'white' : themeConfig.colors.text 
+                color: isModernDark ? 'white' : themeConfig.colors.text 
               }}
             >
               {title}
@@ -171,8 +171,9 @@ export function ThemedWidget({
               size="icon"
               className={cn(
                 "h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity",
-                (isNavyGold || isModernDark) && "text-white/70 hover:text-white hover:bg-white/10"
+                isModernDark && "text-white/70 hover:text-white hover:bg-white/10"
               )}
+              style={{ color: isNavyGold ? themeConfig.colors.textMuted : undefined }}
               onClick={() => toggleCollapse(widgetId)}
             >
               {isCollapsed ? (
