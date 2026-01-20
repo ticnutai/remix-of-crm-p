@@ -876,340 +876,100 @@ export default function Backups() {
     }
   };
 
-  // Import external backup to database
+  // Import external backup to database using Edge Function
   const handleExternalImport = async () => {
     if (!externalBackupData || !user) return;
 
     setStatus('importing');
     setProgress(0);
-    setProgressMessage('מתחיל ייבוא...');
+    setProgressMessage('מתחיל ייבוא מקיף...');
     
-    const stats: ImportStats = {
-      clients: { total: 0, imported: 0, skipped: 0 },
-      projects: { total: 0, imported: 0, skipped: 0 },
-      time_entries: { total: 0, imported: 0, skipped: 0 },
-      tasks: { total: 0, imported: 0, skipped: 0 },
-      meetings: { total: 0, imported: 0, skipped: 0 },
-    };
-
     try {
-      // Map old IDs to new IDs
-      const clientIdMap = new Map<string, string>();
-      const projectIdMap = new Map<string, string>();
-
-      // Import Clients
-      if (importOptions.clients && externalBackupData.data.Client) {
-        const clients = externalBackupData.data.Client;
-        stats.clients.total = clients.length;
-        setProgressMessage(`מייבא לקוחות (0/${clients.length})...`);
-        
-        for (let i = 0; i < clients.length; i++) {
-          const client = clients[i];
-          setProgress(((i + 1) / clients.length) * 30);
-          setProgressMessage(`מייבא לקוחות (${i + 1}/${clients.length})...`);
-          
-          // Check for duplicates by name AND email (more comprehensive)
-          if (importOptions.skipDuplicates) {
-            const query = supabase
-              .from('clients')
-              .select('id')
-              .eq('name', client.name);
-            
-            // If client has email, also check for email match
-            if (client.email) {
-              const { data: existingByName } = await query.maybeSingle();
-              if (existingByName) {
-                clientIdMap.set(client.id, existingByName.id);
-                stats.clients.skipped++;
-                continue;
-              }
-              
-              const { data: existingByEmail } = await supabase
-                .from('clients')
-                .select('id')
-                .eq('email', client.email)
-                .maybeSingle();
-              
-              if (existingByEmail) {
-                clientIdMap.set(client.id, existingByEmail.id);
-                stats.clients.skipped++;
-                continue;
-              }
-            } else {
-              const { data: existing } = await query.maybeSingle();
-              if (existing) {
-                clientIdMap.set(client.id, existing.id);
-                stats.clients.skipped++;
-                continue;
-              }
-            }
-          }
-          
-          // Build notes with custom_data
-          let fullNotes = client.notes || '';
-          if (client.custom_data && Object.keys(client.custom_data).length > 0) {
-            const customDataStr = Object.entries(client.custom_data)
-              .filter(([_, v]) => v && v !== '')
-              .map(([k, v]) => `${k}: ${v}`)
-              .join('\n');
-            if (customDataStr) {
-              fullNotes = fullNotes ? `${fullNotes}\n\n--- נתונים נוספים ---\n${customDataStr}` : customDataStr;
-            }
-          }
-          
-          // Map status to allowed values (active, inactive, pending)
-          const clientStatusMap: Record<string, string> = {
-            'פוטנציאלי': 'pending',
-            'פעיל': 'active',
-            'לא פעיל': 'inactive',
-            'סיום': 'inactive',
-            'active': 'active',
-            'inactive': 'inactive',
-            'pending': 'pending',
-          };
-          const mappedStatus = clientStatusMap[client.stage] || clientStatusMap[client.status] || 'active';
-          
-          const { data: newClient, error } = await supabase
-            .from('clients')
-            .insert({
-              name: client.name,
-              email: client.email || null,
-              phone: client.phone || null,
-              address: client.address || null,
-              company: client.company || null,
-              status: mappedStatus,
-              notes: fullNotes || null,
-              created_by: user.id,
-            })
-            .select('id')
-            .single();
-          
-          if (!error && newClient) {
-            clientIdMap.set(client.id, newClient.id);
-            stats.clients.imported++;
-          } else {
-            console.error('Failed to import client:', client.name, error);
-            stats.clients.skipped++;
-          }
-        }
+      setProgress(10);
+      setProgressMessage('שולח נתונים לשרת...');
+      
+      // Prepare the data for the edge function
+      const dataToImport = externalBackupData.data;
+      
+      // Log what we're sending
+      console.log('Importing data categories:', Object.keys(dataToImport));
+      console.log('Data counts:', {
+        Client: dataToImport.Client?.length || 0,
+        Task: dataToImport.Task?.length || 0,
+        TimeLog: dataToImport.TimeLog?.length || 0,
+        Meeting: dataToImport.Meeting?.length || 0,
+        Quote: dataToImport.Quote?.length || 0,
+        Project: dataToImport.Project?.length || 0,
+        Invoice: (dataToImport as Record<string, unknown>).Invoice ? ((dataToImport as Record<string, unknown>).Invoice as unknown[]).length : 0,
+      });
+      
+      setProgress(20);
+      setProgressMessage('מייבא נתונים לדאטהבייס...');
+      
+      // Call the comprehensive edge function
+      const { data: result, error } = await supabase.functions.invoke('import-backup', {
+        body: { data: dataToImport, userId: user.id }
+      });
+      
+      if (error) {
+        throw error;
       }
-
-      // Import Projects
-      if (importOptions.projects && externalBackupData.data.Project) {
-        const projects = externalBackupData.data.Project;
-        stats.projects.total = projects.length;
-        setProgressMessage(`מייבא פרויקטים (0/${projects.length})...`);
-        
-        // Map client_id first for all projects
-        const mappedClientIds = new Map<string, string | null>();
-        for (const project of projects) {
-          mappedClientIds.set(project.id, project.client_id ? clientIdMap.get(project.client_id) || null : null);
-        }
-        
-        for (let i = 0; i < projects.length; i++) {
-          const project = projects[i];
-          setProgress(30 + ((i + 1) / projects.length) * 30);
-          setProgressMessage(`מייבא פרויקטים (${i + 1}/${projects.length})...`);
-          
-          const mappedClientId = mappedClientIds.get(project.id);
-          
-          // Check for duplicates by name AND client
-          if (importOptions.skipDuplicates) {
-            let query = supabase
-              .from('projects')
-              .select('id')
-              .eq('name', project.name);
-            
-            // If project has client, check for same name with same client
-            if (mappedClientId) {
-              query = query.eq('client_id', mappedClientId);
-            }
-            
-            const { data: existing } = await query.maybeSingle();
-            
-            if (existing) {
-              projectIdMap.set(project.id, existing.id);
-              stats.projects.skipped++;
-              continue;
-            }
-            
-            // Also check if project with same name exists without client
-            if (!mappedClientId) {
-              const { data: existingNoClient } = await supabase
-                .from('projects')
-                .select('id')
-                .eq('name', project.name)
-                .is('client_id', null)
-                .maybeSingle();
-              
-              if (existingNoClient) {
-                projectIdMap.set(project.id, existingNoClient.id);
-                stats.projects.skipped++;
-                continue;
-              }
-            }
-          }
-          
-          // Map status to valid values
-          const statusMap: Record<string, string> = {
-            'active': 'active',
-            'completed': 'completed',
-            'on-hold': 'on-hold',
-            'cancelled': 'cancelled',
-            'פעיל': 'active',
-            'הושלם': 'completed',
-            'בהמתנה': 'on-hold',
-            'מבוטל': 'cancelled',
-          };
-          
-          const { data: newProject, error } = await supabase
-            .from('projects')
-            .insert({
-              name: project.name,
-              description: project.description || null,
-              client_id: mappedClientId,
-              status: statusMap[project.status || ''] || 'planning',
-              priority: project.priority || 'medium',
-              start_date: project.start_date || null,
-              end_date: project.end_date || null,
-              budget: project.budget || null,
-              created_by: user.id,
-            })
-            .select('id')
-            .single();
-          
-          if (!error && newProject) {
-            projectIdMap.set(project.id, newProject.id);
-            stats.projects.imported++;
-          } else {
-            console.error('Failed to import project:', project.name, error);
-            stats.projects.skipped++;
-          }
-        }
-      }
-
-      // Import Time Logs
-      if (importOptions.time_entries && externalBackupData.data.TimeLog) {
-        const timeLogs = externalBackupData.data.TimeLog;
-        stats.time_entries.total = timeLogs.length;
-        setProgressMessage(`מייבא רישומי זמן (0/${timeLogs.length})...`);
-        
-        // Pre-fetch all clients to create a name-to-id map for fallback matching
-        const { data: allClients } = await supabase
-          .from('clients')
-          .select('id, name');
-        
-        const clientNameToIdMap = new Map<string, string>();
-        (allClients || []).forEach(c => {
-          clientNameToIdMap.set(c.name, c.id);
-        });
-        
-        // Batch insert for better performance - prepare all entries first
-        const timeEntriesToInsert: Array<{
-          user_id: string;
-          client_id: string | null;
-          start_time: string;
-          end_time: string;
-          description: string | null;
-          is_billable: boolean;
-          is_running: boolean;
-        }> = [];
-        
-        // First, fetch all existing time entries for duplicate checking
-        const { data: existingEntries } = await supabase
-          .from('time_entries')
-          .select('start_time, end_time, client_id, description')
-          .eq('user_id', user.id);
-        
-        const existingSet = new Set(
-          (existingEntries || []).map(e => 
-            `${e.start_time?.substring(0, 10)}|${e.client_id || 'null'}|${e.description || ''}`
-          )
-        );
-        
-        for (let i = 0; i < timeLogs.length; i++) {
-          const timeLog = timeLogs[i];
-          
-          if (i % 50 === 0) {
-            setProgress(60 + ((i + 1) / timeLogs.length) * 30);
-            setProgressMessage(`מעבד רישומי זמן (${i + 1}/${timeLogs.length})...`);
-          }
-          
-          // Map client_id - first try the ID map, then fall back to name matching
-          let mappedClientId: string | null = null;
-          if (timeLog.client_id) {
-            mappedClientId = clientIdMap.get(timeLog.client_id) || null;
-          }
-          // Fallback: if no ID match found and we have client_name, try to match by name
-          if (!mappedClientId && timeLog.client_name) {
-            mappedClientId = clientNameToIdMap.get(timeLog.client_name) || null;
-          }
-          
-          // Parse log_date to create start_time
-          const startTime = new Date(timeLog.log_date);
-          startTime.setHours(9, 0, 0, 0); // Default to 9:00 AM
-          
-          const endTime = new Date(startTime.getTime() + timeLog.duration_seconds * 1000);
-          
-          const description = [timeLog.title, timeLog.notes].filter(Boolean).join(' - ') || null;
-          
-          // Check for duplicates using the pre-fetched set
-          if (importOptions.skipDuplicates) {
-            const key = `${startTime.toISOString().substring(0, 10)}|${mappedClientId || 'null'}|${description || ''}`;
-            if (existingSet.has(key)) {
-              stats.time_entries.skipped++;
-              continue;
-            }
-            // Add to set to prevent duplicates within the same import
-            existingSet.add(key);
-          }
-          
-          timeEntriesToInsert.push({
-            user_id: user.id,
-            client_id: mappedClientId,
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            description,
-            is_billable: true,
-            is_running: false,
-          });
-        }
-        
-        // Batch insert in chunks of 100
-        const chunkSize = 100;
-        for (let i = 0; i < timeEntriesToInsert.length; i += chunkSize) {
-          const chunk = timeEntriesToInsert.slice(i, i + chunkSize);
-          setProgressMessage(`מייבא רישומי זמן (${Math.min(i + chunkSize, timeEntriesToInsert.length)}/${timeEntriesToInsert.length})...`);
-          
-          const { error } = await supabase
-            .from('time_entries')
-            .insert(chunk);
-          
-          if (!error) {
-            stats.time_entries.imported += chunk.length;
-          } else {
-            console.error('Failed to import time entries batch:', error);
-            stats.time_entries.skipped += chunk.length;
-          }
-        }
-      }
-
+      
       setProgress(100);
       setProgressMessage('הייבוא הושלם!');
+      
+      // Build stats from result
+      const stats: ImportStats = {
+        clients: { 
+          total: (result?.results?.clients?.imported || 0) + (result?.results?.clients?.updated || 0) + (result?.results?.clients?.skipped || 0),
+          imported: (result?.results?.clients?.imported || 0) + (result?.results?.clients?.updated || 0), 
+          skipped: result?.results?.clients?.skipped || 0 
+        },
+        projects: { total: 0, imported: 0, skipped: 0 },
+        time_entries: { 
+          total: (result?.results?.timeLogs?.imported || 0) + (result?.results?.timeLogs?.skipped || 0),
+          imported: result?.results?.timeLogs?.imported || 0, 
+          skipped: result?.results?.timeLogs?.skipped || 0 
+        },
+        tasks: { 
+          total: (result?.results?.tasks?.imported || 0) + (result?.results?.tasks?.skipped || 0),
+          imported: result?.results?.tasks?.imported || 0, 
+          skipped: result?.results?.tasks?.skipped || 0 
+        },
+        meetings: { 
+          total: (result?.results?.meetings?.imported || 0) + (result?.results?.meetings?.skipped || 0),
+          imported: result?.results?.meetings?.imported || 0, 
+          skipped: result?.results?.meetings?.skipped || 0 
+        },
+      };
+      
       setImportStats(stats);
       setStatus('success');
       
+      // Build detailed description
+      const importedItems = [];
+      if (stats.clients.imported > 0) importedItems.push(`${stats.clients.imported} לקוחות`);
+      if (stats.tasks.imported > 0) importedItems.push(`${stats.tasks.imported} משימות`);
+      if (stats.meetings.imported > 0) importedItems.push(`${stats.meetings.imported} פגישות`);
+      if (stats.time_entries.imported > 0) importedItems.push(`${stats.time_entries.imported} רישומי זמן`);
+      if (result?.results?.quotes?.imported > 0) importedItems.push(`${result.results.quotes.imported} הצעות מחיר`);
+      
       toast({
-        title: 'הייבוא הושלם בהצלחה',
-        description: `יובאו ${stats.clients.imported} לקוחות, ${stats.projects.imported} פרויקטים, ${stats.time_entries.imported} רישומי זמן`,
+        title: 'הייבוא הושלם בהצלחה! 🎉',
+        description: importedItems.length > 0 
+          ? `יובאו: ${importedItems.join(', ')}`
+          : 'כל הנתונים כבר קיימים במערכת',
       });
+      
+      // Log the full summary for debugging
+      console.log('Import summary:', result?.summary);
       
     } catch (error) {
       console.error('Import failed:', error);
       setStatus('error');
       toast({
         title: 'שגיאה בייבוא',
-        description: 'אירעה שגיאה במהלך ייבוא הנתונים',
+        description: error instanceof Error ? error.message : 'אירעה שגיאה במהלך ייבוא הנתונים',
         variant: 'destructive',
       });
     }
