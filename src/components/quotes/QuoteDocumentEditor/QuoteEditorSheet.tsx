@@ -209,13 +209,13 @@ export function QuoteEditorSheet({
                 {(viewMode === 'edit' || viewMode === 'split') && (
                   <>
                     <ResizablePanel 
-                      defaultSize={viewMode === 'split' ? 35 : 82} 
-                      minSize={25}
+                      defaultSize={viewMode === 'split' ? 40 : 82} 
+                      minSize={30}
                       className="h-full"
                     >
-                      <div className="h-full bg-card border-l flex flex-col overflow-hidden">
+                      <div className="h-full bg-card border-l flex flex-col overflow-hidden min-w-[300px]">
                         <ScrollArea className="flex-1 h-full">
-                          <div className="p-4 min-w-0">
+                          <div className="p-4">
                             <ItemsEditor
                               items={document.items}
                               onAdd={addItem}
