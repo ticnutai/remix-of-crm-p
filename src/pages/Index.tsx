@@ -478,59 +478,8 @@ function DashboardContent() {
                       );
                       
                     case 'features-info':
-                      return (
-                        <WidgetContainer key={layout.id} widgetId="features-info">
-                          <FadeIn delay={delay}>
-                            <div className="flex items-center justify-between p-4 rounded-xl" style={{ background: themeConfig.colors.cardBackground }}>
-                              <div className="flex items-center gap-2 text-sm" style={{ color: themeConfig.colors.textMuted }}>
-                                <Sparkles className="h-4 w-4" style={{ color: themeConfig.colors.accent }} />
-                                <span>פיצ'רים וקיצורים</span>
-                              </div>
-                              <InfoTooltipButton
-                                buttonClassName={cn(
-                                  isNavyGold && "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/40 text-[hsl(45,80%,55%)] hover:bg-[hsl(45,80%,50%)]/30",
-                                  isModernDark && "bg-[hsl(210,100%,50%)]/20 border-[hsl(210,100%,50%)]/40 text-[hsl(210,100%,60%)] hover:bg-[hsl(210,100%,50%)]/30"
-                                )}
-                                sections={[
-                                  {
-                                    title: 'טבלאות חכמות',
-                                    icon: <BarChart3 className="h-4 w-4" />,
-                                    variant: 'default',
-                                    items: [
-                                      'מיון רב-עמודות (Shift+Click)',
-                                      'חיפוש גלובלי מהיר',
-                                      'עריכה ישירה בתא',
-                                      'שורת סיכום אוטומטית',
-                                    ],
-                                  },
-                                  {
-                                    title: 'קיצורי מקלדת',
-                                    icon: <Keyboard className="h-4 w-4" />,
-                                    variant: 'secondary',
-                                    items: [
-                                      'Ctrl+Z - בטל פעולה',
-                                      'Ctrl+Y - בצע שוב',
-                                      'Enter - אישור עריכה',
-                                      'חצים - ניווט בין תאים',
-                                    ],
-                                  },
-                                  {
-                                    title: 'גיבוי ושחזור',
-                                    icon: <HardDrive className="h-4 w-4" />,
-                                    variant: 'muted',
-                                    items: [
-                                      'גיבוי אוטומטי לאחסון מקומי',
-                                      'ייצוא לקובץ JSON',
-                                      'שחזור מגיבוי',
-                                      'היסטוריית פעולות',
-                                    ],
-                                  },
-                                ]}
-                              />
-                            </div>
-                          </FadeIn>
-                        </WidgetContainer>
-                      );
+                      // Hidden from grid - rendered as floating icon below
+                      return null;
                   }
                 })}
             </WidgetGrid>
@@ -545,6 +494,54 @@ function DashboardContent() {
               />
             )}
           </div>
+        </div>
+        
+        {/* Floating Features Info Button - Bottom Left */}
+        <div className="fixed bottom-4 left-4 z-50">
+          <InfoTooltipButton
+            buttonClassName={cn(
+              "h-10 w-10 rounded-full shadow-lg border-2",
+              isNavyGold && "bg-[hsl(45,30%,95%)] border-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)] hover:bg-[hsl(45,30%,90%)]",
+              isModernDark && "bg-[hsl(240,10%,15%)] border-[hsl(210,100%,50%)] text-[hsl(210,100%,60%)] hover:bg-[hsl(240,10%,20%)]",
+              !isNavyGold && !isModernDark && "bg-card border-border text-muted-foreground hover:bg-muted"
+            )}
+            triggerIcon={<Sparkles className="h-5 w-5" style={{ color: themeConfig.colors.accent }} />}
+            sections={[
+              {
+                title: 'טבלאות חכמות',
+                icon: <BarChart3 className="h-4 w-4" />,
+                variant: 'default',
+                items: [
+                  'מיון רב-עמודות (Shift+Click)',
+                  'חיפוש גלובלי מהיר',
+                  'עריכה ישירה בתא',
+                  'שורת סיכום אוטומטית',
+                ],
+              },
+              {
+                title: 'קיצורי מקלדת',
+                icon: <Keyboard className="h-4 w-4" />,
+                variant: 'secondary',
+                items: [
+                  'Ctrl+Z - בטל פעולה',
+                  'Ctrl+Y - בצע שוב',
+                  'Enter - אישור עריכה',
+                  'חצים - ניווט בין תאים',
+                ],
+              },
+              {
+                title: 'גיבוי ושחזור',
+                icon: <HardDrive className="h-4 w-4" />,
+                variant: 'muted',
+                items: [
+                  'גיבוי אוטומטי לאחסון מקומי',
+                  'ייצוא לקובץ JSON',
+                  'שחזור מגיבוי',
+                  'היסטוריית פעולות',
+                ],
+              },
+            ]}
+          />
         </div>
         
         {/* Settings Dialog */}
