@@ -361,10 +361,15 @@ function FloatingTimerContent() {
                   className={cn(
                     "h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200",
                     "hover:scale-105 active:scale-95",
-                    timerState.isRunning 
-                      ? "bg-gradient-to-br from-[hsl(45,80%,50%)] to-[hsl(45,90%,40%)] text-[hsl(220,60%,15%)] shadow-lg shadow-[hsl(45,80%,50%)]/30" 
-                      : "bg-gradient-to-br from-[hsl(45,80%,55%)] to-[hsl(45,90%,45%)] text-[hsl(220,60%,15%)] shadow-lg shadow-[hsl(45,80%,50%)]/30"
+                    "shadow-lg"
                   )}
+                  style={{
+                    background: timerState.isRunning
+                      ? `linear-gradient(135deg, ${timerTheme.controlButtonsActiveColor || 'hsl(45,80%,50%)'}, ${timerTheme.controlButtonsActiveColor || 'hsl(45,90%,40%)'})`
+                      : `linear-gradient(135deg, ${timerTheme.controlButtonsIdleColor || 'hsl(45,80%,55%)'}, ${timerTheme.controlButtonsIdleColor || 'hsl(45,90%,45%)'})`,
+                    color: timerTheme.playButtonColor || 'hsl(220,60%,15%)',
+                    boxShadow: `0 4px 15px ${timerTheme.controlButtonsActiveColor || 'hsl(45,80%,50%)'}40`,
+                  }}
                 >
                   {timerState.isRunning ? (
                     <Pause className="h-4 w-4 fill-current" />
@@ -400,10 +405,16 @@ function FloatingTimerContent() {
                     className={cn(
                       "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
-                      timerState.isRunning
-                        ? "border border-[hsl(45,80%,50%)]/50 text-[hsl(45,80%,60%)] hover:bg-[hsl(45,80%,50%)]/20"
-                        : "border border-white/30 text-white hover:bg-white/10"
+                      "border"
                     )}
+                    style={{
+                      borderColor: timerState.isRunning
+                        ? `${timerTheme.controlButtonsActiveColor || 'hsl(45,80%,50%)'}80`
+                        : 'rgba(255,255,255,0.3)',
+                      color: timerState.isRunning
+                        ? (timerTheme.controlButtonsActiveColor || 'hsl(45,80%,60%)')
+                        : (timerTheme.controlButtonsIdleColor || 'white'),
+                    }}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                   </button>
@@ -419,13 +430,18 @@ function FloatingTimerContent() {
                   )}
                   style={{
                     fontSize: `${Math.min((timerTheme.timerDisplayFontSize || 28) * 0.75, 24)}px`,
-                    color: timerState.isRunning ? 'hsl(45, 85%, 60%)' : 'hsl(0, 0%, 100%)',
+                    color: timerState.isRunning 
+                      ? (timerTheme.controlButtonsActiveColor || 'hsl(45, 85%, 60%)') 
+                      : (timerTheme.timerDigitsColor || 'hsl(0, 0%, 100%)'),
                   }}
                 >
                   {formatTime(timerState.elapsed)}
                 </span>
                 {timerState.currentEntry?.description && (
-                  <span className="text-[11px] text-[hsl(45,60%,70%)] mt-1 max-w-[120px] truncate text-right">
+                  <span 
+                    className="text-[11px] mt-1 max-w-[120px] truncate text-right"
+                    style={{ color: timerTheme.labelsColor || 'hsl(45,60%,70%)' }}
+                  >
                     {timerState.currentEntry.description}
                   </span>
                 )}
