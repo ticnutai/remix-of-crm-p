@@ -303,14 +303,14 @@ export function QuoteTemplatesManager() {
                 <div className="space-y-3">
                   {/* פרטי פריטים */}
                   <div className="text-sm text-muted-foreground">
-                    {template.items.length} פריטים
+                    {(template.items || []).length} פריטים
                   </div>
                   
                   {/* סה"כ */}
                   <div className="flex items-center justify-between py-2 border-t">
                     <span className="font-medium">סה״כ:</span>
                     <span className="font-bold text-lg">
-                      ₪{calculateTotal(template.items).toLocaleString()}
+                      ₪{calculateTotal(template.items || []).toLocaleString()}
                     </span>
                   </div>
                   
