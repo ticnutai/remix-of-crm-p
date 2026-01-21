@@ -441,7 +441,7 @@ export function DynamicTableWidget({
                   "gap-3 h-12 px-5 font-bold text-base shadow-lg transition-all duration-200",
                   "ring-2 ring-offset-2 ring-offset-background",
                   (isNavyGold || isModernDark) 
-                    ? "bg-amber-500 hover:bg-amber-400 text-slate-900 ring-amber-400/50 border-amber-300" 
+                    ? "bg-[hsl(220,60%,20%)] hover:bg-[hsl(220,60%,25%)] text-[hsl(45,80%,55%)] ring-[hsl(45,80%,55%)]/50 border-[hsl(45,80%,55%)]" 
                     : "bg-primary hover:bg-primary/90 text-primary-foreground ring-primary/30"
                 )}
               >
@@ -458,7 +458,7 @@ export function DynamicTableWidget({
                 className={cn(
                   "text-xs font-bold",
                   (isNavyGold || isModernDark) 
-                    ? "bg-slate-900/30 text-amber-100" 
+                    ? "bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,65%)]" 
                     : "bg-primary-foreground/20 text-primary-foreground"
                 )}
               >
@@ -546,7 +546,7 @@ export function DynamicTableWidget({
                 size="lg"
                 className={cn(
                   "h-12 px-4 gap-2 font-medium",
-                  (isNavyGold || isModernDark) && "border-amber-500/30 hover:bg-amber-500/10"
+                  (isNavyGold || isModernDark) && "border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 text-[hsl(222,47%,25%)]"
                 )}
                 onClick={handleNavigateToTable}
               >
