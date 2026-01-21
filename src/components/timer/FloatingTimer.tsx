@@ -472,8 +472,8 @@ function FloatingTimerContent() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button onClick={() => timerState.isRunning ? pauseTimer() : resumeTimer()} disabled={timerState.elapsed === 0} className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 border-2 disabled:cursor-not-allowed bg-card text-secondary shadow-lg opacity-100", timerState.isRunning ? "bg-white/20 border-white/40 hover:bg-white/30" : "bg-[hsl(45,80%,50%)]/30 border-[hsl(45,80%,50%)]/50 hover:bg-[hsl(45,80%,50%)]/40")}>
-                      {timerState.isRunning ? <Pause className="h-6 w-6 text-white" /> : <Play className="h-6 w-6 text-[hsl(45,85%,65%)]" />}
+                    <button onClick={() => timerState.isRunning ? pauseTimer() : resumeTimer()} disabled={timerState.elapsed === 0} className={cn("h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 border-2 disabled:cursor-not-allowed shadow-lg", timerState.isRunning ? "bg-white/20 border-white/40 hover:bg-white/30" : "bg-white border-[#d8ac27] hover:bg-gray-50")}>
+                      {timerState.isRunning ? <Pause className="h-6 w-6 text-white" /> : <Play className="h-6 w-6 text-[#d8ac27]" />}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{timerState.isRunning ? 'השהה' : 'המשך'}</TooltipContent>
