@@ -13,6 +13,7 @@ import { useViewSettings } from '@/hooks/useUserSettings';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
+import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import {
   Users,
   Search,
@@ -828,7 +829,7 @@ export default function Clients() {
           </span>
           
           {/* Phone */}
-          {client.phone && (
+          {isValidPhoneForDisplay(client.phone) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', marginTop: 'auto', paddingTop: '8px' }} dir="ltr">
               <Phone style={{ width: '12px', height: '12px' }} />
               <span style={{ fontSize: '11px' }}>{client.phone}</span>
@@ -932,7 +933,7 @@ export default function Clients() {
             </h3>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', color: '#64748b' }}>
-              {client.phone && (
+              {isValidPhoneForDisplay(client.phone) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} dir="ltr">
                   <Phone style={{ width: '14px', height: '14px' }} />
                   <span style={{ fontSize: '13px' }}>{client.phone}</span>
@@ -1208,7 +1209,7 @@ export default function Clients() {
 
           {/* Bottom Section - Contact Info */}
           <div style={{ display: 'flex', flexDirection: viewMode === 'list' ? 'row' : 'column', gap: '6px' }}>
-            {client.phone && (
+            {isValidPhoneForDisplay(client.phone) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f' }} dir="ltr">
                 <Phone style={{ width: '16px', height: '16px', flexShrink: 0 }} />
                 <span style={{ fontSize: '14px', fontWeight: '500' }}>{client.phone}</span>
