@@ -49,6 +49,15 @@ interface Client {
   company: string | null;
   status: 'active' | 'inactive' | 'pending' | null;
   created_at: string;
+  category_id: string | null;
+  tags: string[] | null;
+}
+
+interface ClientCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
 }
 
 interface ClientStageInfo {
@@ -138,6 +147,8 @@ export default function Clients() {
     hasReminders: null,
     hasTasks: null,
     hasMeetings: null,
+    categories: [],
+    tags: [],
   });
   
   // Client data for filtering
@@ -145,11 +156,14 @@ export default function Clients() {
   const [clientsWithReminders, setClientsWithReminders] = useState<Set<string>>(new Set());
   const [clientsWithTasks, setClientsWithTasks] = useState<Set<string>>(new Set());
   const [clientsWithMeetings, setClientsWithMeetings] = useState<Set<string>>(new Set());
+  const [categories, setCategories] = useState<ClientCategory[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   useEffect(() => {
     console.log('📡 [Clients Page] useEffect triggered - fetching clients...');
     fetchClients();
     fetchFilterData();
+    fetchCategoriesAndTags();
   }, []);
 
   useEffect(() => {
@@ -290,6 +304,18 @@ export default function Clients() {
       result = result.filter(client => clientsWithMeetings.has(client.id));
     }
 
+    // Category filter
+    if (filters.categories.length > 0) {
+      result = result.filter(client => client.category_id && filters.categories.includes(client.category_id));
+    }
+
+    // Tags filter
+    if (filters.tags.length > 0) {
+      result = result.filter(client => 
+        client.tags && client.tags.some(tag => filters.tags.includes(tag))
+      );
+    }
+
     setFilteredClients(result);
   };
 
@@ -331,6 +357,35 @@ export default function Clients() {
 
     } catch (error) {
       console.error('Error fetching filter data:', error);
+    }
+  };
+
+  const fetchCategoriesAndTags = async () => {
+    try {
+      // Fetch categories
+      const { data: categoriesData } = await supabase
+        .from('client_categories')
+        .select('id, name, color, icon')
+        .order('sort_order');
+      
+      setCategories(categoriesData || []);
+
+      // Fetch unique tags from all clients
+      const { data: clientsData } = await supabase
+        .from('clients')
+        .select('tags')
+        .not('tags', 'is', null);
+      
+      const uniqueTags = new Set<string>();
+      clientsData?.forEach(client => {
+        if (client.tags && Array.isArray(client.tags)) {
+          client.tags.forEach((tag: string) => uniqueTags.add(tag));
+        }
+      });
+      
+      setAllTags(Array.from(uniqueTags).sort());
+    } catch (error) {
+      console.error('Error fetching categories and tags:', error);
     }
   };
 
@@ -1616,6 +1671,8 @@ export default function Clients() {
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}
+          categories={categories}
+          allTags={allTags}
         />
 
         {/* Clients Grid */}

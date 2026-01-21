@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Layers,
   Calendar,
@@ -16,6 +17,12 @@ import {
   ChevronDown,
   Filter,
   CalendarDays,
+  FolderOpen,
+  Tag,
+  Plus,
+  Heart,
+  Building,
+  Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +32,8 @@ export interface ClientFilterState {
   hasReminders: boolean | null;
   hasTasks: boolean | null;
   hasMeetings: boolean | null;
+  categories: string[];
+  tags: string[];
 }
 
 interface ClientStageDefinition {
@@ -33,13 +42,30 @@ interface ClientStageDefinition {
   stage_icon: string | null;
 }
 
+interface ClientCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+}
+
 interface ClientsFilterStripProps {
   filters: ClientFilterState;
   onFiltersChange: (filters: ClientFilterState) => void;
   clientsWithReminders: Set<string>;
   clientsWithTasks: Set<string>;
   clientsWithMeetings: Set<string>;
+  categories?: ClientCategory[];
+  allTags?: string[];
 }
+
+const iconMap: Record<string, React.ReactNode> = {
+  Users: <Users className="h-4 w-4" />,
+  Heart: <Heart className="h-4 w-4" />,
+  Building: <Building className="h-4 w-4" />,
+  Handshake: <Handshake className="h-4 w-4" />,
+  FolderOpen: <FolderOpen className="h-4 w-4" />,
+};
 
 export function ClientsFilterStrip({
   filters,
@@ -47,10 +73,15 @@ export function ClientsFilterStrip({
   clientsWithReminders,
   clientsWithTasks,
   clientsWithMeetings,
+  categories = [],
+  allTags = [],
 }: ClientsFilterStripProps) {
   const [stageDefinitions, setStageDefinitions] = useState<ClientStageDefinition[]>([]);
   const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
 
   // Fetch unique stages from all clients
   useEffect(() => {
@@ -59,7 +90,6 @@ export function ClientsFilterStrip({
 
   const fetchStageDefinitions = async () => {
     try {
-      // Get unique stages from client_stages table
       const { data, error } = await supabase
         .from('client_stages')
         .select('stage_id, stage_name, stage_icon')
@@ -67,7 +97,6 @@ export function ClientsFilterStrip({
 
       if (error) throw error;
 
-      // Get unique stages by stage_id
       const uniqueStages = data?.reduce((acc, stage) => {
         if (!acc.find(s => s.stage_id === stage.stage_id)) {
           acc.push(stage);
@@ -116,12 +145,36 @@ export function ClientsFilterStrip({
     onFiltersChange({ ...filters, hasMeetings: newValue });
   };
 
+  const toggleCategory = (categoryId: string) => {
+    const newCategories = filters.categories.includes(categoryId)
+      ? filters.categories.filter(c => c !== categoryId)
+      : [...filters.categories, categoryId];
+    onFiltersChange({ ...filters, categories: newCategories });
+  };
+
+  const toggleTag = (tag: string) => {
+    const newTags = filters.tags.includes(tag)
+      ? filters.tags.filter(t => t !== tag)
+      : [...filters.tags, tag];
+    onFiltersChange({ ...filters, tags: newTags });
+  };
+
+  const clearCategories = () => {
+    onFiltersChange({ ...filters, categories: [] });
+  };
+
+  const clearTags = () => {
+    onFiltersChange({ ...filters, tags: [] });
+  };
+
   const hasActiveFilters = 
     filters.stages.length > 0 || 
     filters.dateFilter !== 'all' || 
     filters.hasReminders !== null || 
     filters.hasTasks !== null || 
-    filters.hasMeetings !== null;
+    filters.hasMeetings !== null ||
+    filters.categories.length > 0 ||
+    filters.tags.length > 0;
 
   const clearAllFilters = () => {
     onFiltersChange({
@@ -130,6 +183,8 @@ export function ClientsFilterStrip({
       hasReminders: null,
       hasTasks: null,
       hasMeetings: null,
+      categories: [],
+      tags: [],
     });
   };
 
@@ -141,25 +196,187 @@ export function ClientsFilterStrip({
     older: 'ישן יותר',
   };
 
+  const filteredTags = allTags.filter(tag => 
+    tag.toLowerCase().includes(tagSearch.toLowerCase())
+  );
+
   return (
     <div 
       dir="rtl"
-      style={{
-        backgroundColor: '#f8fafc',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        padding: '12px 16px',
-        marginBottom: '16px',
-      }}
+      className="bg-muted/50 rounded-xl border border-border p-3 mb-4"
     >
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+      <div className="flex flex-wrap gap-2 items-center">
         {/* Filter Icon */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
-          <Filter style={{ width: '18px', height: '18px', color: '#64748b' }} />
-          <span style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>סינון:</span>
+        <div className="flex items-center gap-2 ml-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">סינון:</span>
         </div>
 
-        {/* Stages Filter - Popover */}
+        {/* Categories Filter */}
+        <Popover open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "gap-2 h-9",
+                filters.categories.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+              )}
+            >
+              <FolderOpen className="h-4 w-4" />
+              קטגוריות
+              {filters.categories.length > 0 && (
+                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
+                  {filters.categories.length}
+                </Badge>
+              )}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-[300px] p-0" 
+            dir="rtl" 
+            align="end"
+          >
+            <div className="p-4 border-b">
+              <div className="flex flex-row-reverse items-center gap-2 mb-3">
+                <FolderOpen className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">סינון לפי קטגוריה</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 ml-auto"
+                  onClick={() => setCategoriesDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {filters.categories.length > 0 && (
+                <Button variant="outline" size="sm" onClick={clearCategories}>
+                  נקה הכל
+                </Button>
+              )}
+            </div>
+            <ScrollArea className="h-[250px] p-4">
+              <div className="space-y-2">
+                {categories.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    אין קטגוריות מוגדרות
+                  </p>
+                ) : (
+                  categories.map((category) => (
+                    <div
+                      key={category.id}
+                      className={cn(
+                        "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                        filters.categories.includes(category.id)
+                          ? "bg-primary/10 border-primary"
+                          : "bg-background border-border hover:border-primary/50"
+                      )}
+                      onClick={() => toggleCategory(category.id)}
+                    >
+                      <Checkbox
+                        checked={filters.categories.includes(category.id)}
+                        onCheckedChange={() => toggleCategory(category.id)}
+                      />
+                      <div 
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                        style={{ backgroundColor: category.color }}
+                      >
+                        {iconMap[category.icon] || <FolderOpen className="h-3 w-3" />}
+                      </div>
+                      <span className="font-medium flex-1">
+                        {category.name}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Tags Filter */}
+        <Popover open={tagsDialogOpen} onOpenChange={setTagsDialogOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "gap-2 h-9",
+                filters.tags.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+              )}
+            >
+              <Tag className="h-4 w-4" />
+              תגיות
+              {filters.tags.length > 0 && (
+                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
+                  {filters.tags.length}
+                </Badge>
+              )}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-[300px] p-0" 
+            dir="rtl" 
+            align="end"
+          >
+            <div className="p-4 border-b">
+              <div className="flex flex-row-reverse items-center gap-2 mb-3">
+                <Tag className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">סינון לפי תגיות</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 ml-auto"
+                  onClick={() => setTagsDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <Input
+                placeholder="חפש תגית..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                className="mb-2"
+              />
+              {filters.tags.length > 0 && (
+                <Button variant="outline" size="sm" onClick={clearTags}>
+                  נקה הכל
+                </Button>
+              )}
+            </div>
+            <ScrollArea className="h-[250px] p-4">
+              <div className="flex flex-wrap gap-2">
+                {filteredTags.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8 w-full">
+                    {allTags.length === 0 ? 'אין תגיות' : 'לא נמצאו תגיות'}
+                  </p>
+                ) : (
+                  filteredTags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant={filters.tags.includes(tag) ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer transition-all",
+                        filters.tags.includes(tag) 
+                          ? "bg-primary text-primary-foreground" 
+                          : "hover:bg-primary/10"
+                      )}
+                      onClick={() => toggleTag(tag)}
+                    >
+                      <Tag className="h-3 w-3 ml-1" />
+                      {tag}
+                    </Badge>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {/* Stages Filter */}
         <Popover open={stagesDialogOpen} onOpenChange={setStagesDialogOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -167,13 +384,13 @@ export function ClientsFilterStrip({
               size="sm"
               className={cn(
                 "gap-2 h-9",
-                filters.stages.length > 0 && "bg-[#1e3a5f] text-white border-[#1e3a5f] hover:bg-[#2d4a6f] hover:text-white"
+                filters.stages.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
               )}
             >
               <Layers className="h-4 w-4" />
               שלבים
               {filters.stages.length > 0 && (
-                <Badge variant="secondary" className="mr-1 bg-amber-500 text-white">
+                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
                   {filters.stages.length}
                 </Badge>
               )}
@@ -184,11 +401,10 @@ export function ClientsFilterStrip({
             className="w-[350px] p-0" 
             dir="rtl" 
             align="end"
-            onEscapeKeyDown={() => setStagesDialogOpen(false)}
           >
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
-                <Layers className="h-5 w-5 text-[#d4a843]" />
+                <Layers className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי שלבים</h3>
                 <Button 
                   variant="ghost" 
@@ -221,8 +437,8 @@ export function ClientsFilterStrip({
                       className={cn(
                         "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                         filters.stages.includes(stage.stage_id)
-                          ? "bg-[#1e3a5f]/10 border-[#1e3a5f]"
-                          : "bg-white border-gray-200 hover:border-gray-300"
+                          ? "bg-primary/10 border-primary"
+                          : "bg-background border-border hover:border-primary/50"
                       )}
                       onClick={() => toggleStage(stage.stage_id)}
                     >
@@ -230,7 +446,7 @@ export function ClientsFilterStrip({
                         checked={filters.stages.includes(stage.stage_id)}
                         onCheckedChange={() => toggleStage(stage.stage_id)}
                       />
-                      <span className="font-medium text-[#1e3a5f] flex-1">
+                      <span className="font-medium text-foreground flex-1">
                         {stage.stage_name}
                       </span>
                     </div>
@@ -241,8 +457,7 @@ export function ClientsFilterStrip({
           </PopoverContent>
         </Popover>
 
-        {/* Date Filter - Dialog */}
-        {/* Date Filter - Popover */}
+        {/* Date Filter */}
         <Popover open={dateDialogOpen} onOpenChange={setDateDialogOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -250,7 +465,7 @@ export function ClientsFilterStrip({
               size="sm"
               className={cn(
                 "gap-2 h-9",
-                filters.dateFilter !== 'all' && "bg-[#1e3a5f] text-white border-[#1e3a5f] hover:bg-[#2d4a6f] hover:text-white"
+                filters.dateFilter !== 'all' && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
               )}
             >
               <CalendarDays className="h-4 w-4" />
@@ -262,11 +477,10 @@ export function ClientsFilterStrip({
             className="w-[280px] p-0" 
             dir="rtl" 
             align="end"
-            onEscapeKeyDown={() => setDateDialogOpen(false)}
           >
             <div className="p-3 border-b">
               <div className="flex flex-row-reverse items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-[#d4a843]" />
+                <CalendarDays className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי תאריך יצירה</h3>
                 <Button 
                   variant="ghost" 
@@ -283,13 +497,9 @@ export function ClientsFilterStrip({
                 <Button
                   key={value}
                   variant={filters.dateFilter === value ? "default" : "outline"}
-                  className={cn(
-                    "w-full",
-                    filters.dateFilter === value && "bg-[#1e3a5f]"
-                  )}
+                  className="w-full"
                   onClick={() => {
                     setDateFilter(value as ClientFilterState['dateFilter']);
-                    setDateDialogOpen(false);
                   }}
                 >
                   {label}
@@ -306,12 +516,12 @@ export function ClientsFilterStrip({
           onClick={toggleHasReminders}
           className={cn(
             "gap-2 h-9",
-            filters.hasReminders === true && "bg-orange-500 text-white border-orange-500 hover:bg-orange-600 hover:text-white"
+            filters.hasReminders === true && "bg-orange-500 text-white border-orange-500 hover:bg-orange-600"
           )}
         >
           <Bell className="h-4 w-4" />
           תזכורות
-          <Badge variant="secondary" className="mr-1 bg-orange-100 text-orange-700">
+          <Badge variant="secondary" className="mr-1">
             {clientsWithReminders.size}
           </Badge>
         </Button>
@@ -323,12 +533,12 @@ export function ClientsFilterStrip({
           onClick={toggleHasTasks}
           className={cn(
             "gap-2 h-9",
-            filters.hasTasks === true && "bg-blue-500 text-white border-blue-500 hover:bg-blue-600 hover:text-white"
+            filters.hasTasks === true && "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
           )}
         >
           <CheckSquare className="h-4 w-4" />
           משימות
-          <Badge variant="secondary" className="mr-1 bg-blue-100 text-blue-700">
+          <Badge variant="secondary" className="mr-1">
             {clientsWithTasks.size}
           </Badge>
         </Button>
@@ -340,12 +550,12 @@ export function ClientsFilterStrip({
           onClick={toggleHasMeetings}
           className={cn(
             "gap-2 h-9",
-            filters.hasMeetings === true && "bg-green-500 text-white border-green-500 hover:bg-green-600 hover:text-white"
+            filters.hasMeetings === true && "bg-green-500 text-white border-green-500 hover:bg-green-600"
           )}
         >
           <Users className="h-4 w-4" />
           פגישות
-          <Badge variant="secondary" className="mr-1 bg-green-100 text-green-700">
+          <Badge variant="secondary" className="mr-1">
             {clientsWithMeetings.size}
           </Badge>
         </Button>
@@ -356,7 +566,7 @@ export function ClientsFilterStrip({
             variant="ghost"
             size="sm"
             onClick={clearAllFilters}
-            className="gap-1 h-9 text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="gap-1 h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
           >
             <X className="h-4 w-4" />
             נקה פילטרים
@@ -366,9 +576,19 @@ export function ClientsFilterStrip({
 
       {/* Active Filters Summary */}
       {hasActiveFilters && (
-        <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {filters.categories.length > 0 && (
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              {filters.categories.length} קטגוריות
+            </Badge>
+          )}
+          {filters.tags.length > 0 && (
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
+              {filters.tags.length} תגיות
+            </Badge>
+          )}
           {filters.stages.length > 0 && (
-            <Badge variant="secondary" className="bg-[#1e3a5f]/10 text-[#1e3a5f]">
+            <Badge variant="secondary" className="bg-primary/10 text-primary">
               {filters.stages.length} שלבים נבחרו
             </Badge>
           )}
