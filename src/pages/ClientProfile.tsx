@@ -445,50 +445,50 @@ export default function ClientProfile() {
         {/* Client Info Card - Elegant Navy Border */}
         <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row-reverse items-start justify-between gap-6">
-              {/* Right side - Client info (appears first in RTL) */}
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="text-right">
+            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
+              {/* Right side - Client info */}
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
+                </div>
+                <div className="text-right flex-1">
                   <h1 className="text-2xl font-bold text-foreground">{client.name}</h1>
                   {client.company && (
                     <p className="text-muted-foreground font-medium">{client.company}</p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 justify-end flex-row-reverse">
+                  <div className="flex items-center gap-2 mt-2 justify-start">
                     <StatusBadge status={client.status} />
                     {client.stage && (
                       <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10 text-foreground">{client.stage}</Badge>
                     )}
                   </div>
                 </div>
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg">
-                  <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
-                </div>
               </div>
               
               {/* Left side - Contact details */}
-              <div className="flex flex-col items-start gap-3 text-sm bg-muted/30 rounded-xl p-4 border border-border/50">
+              <div className="flex flex-col items-end gap-3 text-sm bg-muted/30 rounded-xl p-4 border border-border/50 w-full md:w-auto">
                 {client.email && (
-                  <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Mail className="h-4 w-4" />
+                  <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors">
                     <span>{client.email}</span>
+                    <Mail className="h-4 w-4" />
                   </a>
                 )}
                 {client.phone && (
-                  <a href={`tel:${client.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Phone className="h-4 w-4" />
+                  <a href={`tel:${client.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors">
                     <span>{client.phone}</span>
+                    <Phone className="h-4 w-4" />
                   </a>
                 )}
                 {client.website && (
-                  <a href={client.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Globe className="h-4 w-4" />
+                  <a href={client.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors">
                     <span>{client.website}</span>
+                    <Globe className="h-4 w-4" />
                   </a>
                 )}
                 {client.address && (
-                  <div className="flex items-center gap-2 text-muted-foreground flex-row-reverse">
-                    <MapPin className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <span>{client.address}</span>
+                    <MapPin className="h-4 w-4" />
                   </div>
                 )}
               </div>
@@ -525,22 +525,23 @@ export default function ClientProfile() {
           />
         </div>
 
-        {/* Tabs - Elegant Navy Style */}
+        {/* Tabs - Elegant Navy Style - Ordered: Overview, Projects, Time, Tasks, Meetings, Files, Messages, Invoices, etc */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-end flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
-            <TabsTrigger 
-              value="all-data" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
-            >
-              <Layers className="h-4 w-4" />
-              כל הנתונים
-            </TabsTrigger>
+          <TabsList className="w-full justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
+            {/* Primary tabs - most used first */}
             <TabsTrigger 
               value="overview" 
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <TrendingUp className="h-4 w-4" />
               סקירה
+            </TabsTrigger>
+            <TabsTrigger 
+              value="all-data" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
+            >
+              <Layers className="h-4 w-4" />
+              כל הנתונים
             </TabsTrigger>
             <TabsTrigger 
               value="projects" 
@@ -592,20 +593,6 @@ export default function ClientProfile() {
               הודעות ({messages.length})
             </TabsTrigger>
             <TabsTrigger 
-              value="reminders" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <Bell className="h-4 w-4" />
-              תזכורות ({reminders.length})
-            </TabsTrigger>
-            <TabsTrigger 
-              value="whatsapp" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp ({whatsappMessages.length})
-            </TabsTrigger>
-            <TabsTrigger 
               value="invoices" 
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
@@ -618,6 +605,20 @@ export default function ClientProfile() {
             >
               <Table className="h-4 w-4" />
               טבלאות ({allClientTables.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="whatsapp" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp ({whatsappMessages.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="reminders" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
+            >
+              <Bell className="h-4 w-4" />
+              תזכורות ({reminders.length})
             </TabsTrigger>
             
             {/* Grid View Tab - Shows all custom tabs in grid */}
