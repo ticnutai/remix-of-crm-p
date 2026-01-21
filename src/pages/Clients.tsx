@@ -13,6 +13,9 @@ import { useViewSettings } from '@/hooks/useUserSettings';
 import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
+import { ClientQuickClassify } from '@/components/clients/ClientQuickClassify';
+import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
+import { CategoryTagsManager } from '@/components/clients/CategoryTagsManager';
 import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import {
   Users,
@@ -39,6 +42,8 @@ import {
   X,
   CheckCheck,
   UserPlus,
+  Tag,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -160,6 +165,10 @@ export default function Clients() {
   const [clientsWithMeetings, setClientsWithMeetings] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<ClientCategory[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
+  
+  // Quick Classification dialogs
+  const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
 
   useEffect(() => {
     console.log('📡 [Clients Page] useEffect triggered - fetching clients...');
@@ -1072,6 +1081,21 @@ export default function Clients() {
         {/* Selection Checkbox */}
         <SelectionCheckbox position="top-left" />
         
+        {/* Quick Classify Button */}
+        {!selectionMode && (
+          <ClientQuickClassify
+            clientId={client.id}
+            clientName={client.name}
+            currentCategoryId={client.category_id}
+            currentTags={client.tags}
+            categories={categories}
+            allTags={allTags}
+            onUpdate={() => {
+              fetchClients();
+              fetchCategoriesAndTags();
+            }}
+          />
+        )}
         {/* Client Indicators - Top Right */}
         {(hasReminder || hasTask || hasMeeting) && (
           <div 
@@ -1391,6 +1415,31 @@ export default function Clients() {
                     )}
                     <span style={{ color: selectedClients.size > 0 ? '#ffffff' : '#dc2626', fontSize: '14px', fontWeight: '500' }}>
                       מחק ({selectedClients.size})
+                    </span>
+                  </button>
+                  
+                  {/* Bulk Classify Button */}
+                  <button
+                    onClick={() => setIsBulkClassifyOpen(true)}
+                    disabled={selectedClients.size === 0}
+                    style={{
+                      height: '40px',
+                      padding: '0 16px',
+                      borderRadius: '20px',
+                      backgroundColor: selectedClients.size > 0 ? '#8b5cf6' : 'transparent',
+                      border: '2px solid #8b5cf6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: selectedClients.size === 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                    }}
+                    title="סווג נבחרים"
+                  >
+                    <Tag style={{ width: '18px', height: '18px', color: selectedClients.size > 0 ? '#ffffff' : '#8b5cf6' }} />
+                    <span style={{ color: selectedClients.size > 0 ? '#ffffff' : '#8b5cf6', fontSize: '14px', fontWeight: '500' }}>
+                      סווג ({selectedClients.size})
                     </span>
                   </button>
                   
@@ -1916,6 +1965,32 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Classify Dialog */}
+      <BulkClassifyDialog
+        isOpen={isBulkClassifyOpen}
+        onClose={() => setIsBulkClassifyOpen(false)}
+        selectedClientIds={Array.from(selectedClients)}
+        categories={categories}
+        allTags={allTags}
+        onUpdate={() => {
+          fetchClients();
+          fetchCategoriesAndTags();
+          setSelectedClients(new Set());
+          setSelectionMode(false);
+        }}
+      />
+
+      {/* Category & Tags Manager Dialog */}
+      <CategoryTagsManager
+        isOpen={isCategoryManagerOpen}
+        onClose={() => setIsCategoryManagerOpen(false)}
+        categories={categories}
+        allTags={allTags}
+        onUpdate={() => {
+          fetchCategoriesAndTags();
+        }}
+      />
     </AppLayout>
   );
 }
