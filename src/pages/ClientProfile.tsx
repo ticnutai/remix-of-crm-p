@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout';
 import { useClientData } from '@/hooks/useClientData';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -473,7 +474,7 @@ export default function ClientProfile() {
                     <Mail className="h-4 w-4" />
                   </a>
                 )}
-                {client.phone && (
+                {isValidPhoneForDisplay(client.phone) && (
                   <a href={`tel:${client.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors">
                     <span>{client.phone}</span>
                     <Phone className="h-4 w-4" />
@@ -1150,7 +1151,9 @@ export default function ClientProfile() {
                           <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{msg.direction === 'outgoing' ? 'יוצא' : 'נכנס'}</Badge>
                         </div>
                         <p className="text-right">{msg.message}</p>
-                        <p className="text-sm text-muted-foreground mt-1 text-right">{msg.phone_number}</p>
+                        {isValidPhoneForDisplay(msg.phone_number) && (
+                          <p className="text-sm text-muted-foreground mt-1 text-right">{msg.phone_number}</p>
+                        )}
                       </div>
                     ))}
                     {whatsappMessages.length === 0 && (
