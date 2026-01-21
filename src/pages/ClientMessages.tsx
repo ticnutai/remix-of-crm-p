@@ -194,7 +194,7 @@ export default function ClientMessages() {
                         <p className={`text-xs mt-1 ${
                           message.sender_type === 'client' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                         }`}>
-                          {format(new Date(message.created_at), 'HH:mm', { locale: he })}
+                          {(() => { const d = new Date(message.created_at); return `${d.getHours()}:${d.getMinutes()}`; })()}
                         </p>
                       </div>
                     </div>

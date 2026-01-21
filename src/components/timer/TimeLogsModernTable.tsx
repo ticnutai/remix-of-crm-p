@@ -119,14 +119,15 @@ export function TimeLogsModernTable({
   };
 
   const formatDuration = (minutes: number | null) => {
-    if (!minutes) return '0:00';
+    if (!minutes) return '0:0';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}:${mins.toString().padStart(2, '0')}`;
+    return `${hours}:${mins}`;
   };
 
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), 'HH:mm', { locale: he });
+    const date = new Date(dateString);
+    return `${date.getHours()}:${date.getMinutes()}`;
   };
 
   const formatDateFull = (dateString: string) => {

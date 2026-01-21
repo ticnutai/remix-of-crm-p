@@ -109,11 +109,11 @@ const COLOR_OPTIONS: { key: ColorKey; label: string; hex: string; bg: string; te
   { key: 'white', label: 'לבן', hex: '#ffffff', bg: 'bg-white', text: 'text-white', border: 'border-white' },
 ];
 
-// Format duration in HH:MM format
+// Format duration in H:M format (no leading zeros)
 const formatDuration = (minutes: number) => {
   const hours = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);
-  return `${hours}:${mins.toString().padStart(2, '0')}`;
+  return `${hours}:${mins}`;
 };
 
 // Format duration with label for display
@@ -122,7 +122,7 @@ const formatDurationLabel = (minutes: number) => {
   const mins = Math.round(minutes % 60);
   if (hours === 0) return `${mins} דק'`;
   if (mins === 0) return `${hours} שעות`;
-  return `${hours}:${mins.toString().padStart(2, '0')}`;
+  return `${hours}:${mins}`;
 };
 
 const FONT_WEIGHT_OPTIONS: { key: CustomColors['fontWeight']; label: string }[] = [

@@ -506,7 +506,7 @@ export default function History() {
                           <div>
                             <p className="font-medium">{action.description}</p>
                             <p className="text-xs text-muted-foreground">
-                              {format(action.timestamp, 'HH:mm:ss', { locale: he })}
+                              {`${action.timestamp.getHours()}:${action.timestamp.getMinutes()}:${action.timestamp.getSeconds()}`}
                             </p>
                           </div>
                         </div>
@@ -524,7 +524,7 @@ export default function History() {
                           <div>
                             <p className="font-medium">{action.description}</p>
                             <p className="text-xs text-muted-foreground">
-                              {format(action.timestamp, 'HH:mm:ss', { locale: he })} • {action.type}
+                              {`${action.timestamp.getHours()}:${action.timestamp.getMinutes()}:${action.timestamp.getSeconds()}`} • {action.type}
                             </p>
                           </div>
                         </div>

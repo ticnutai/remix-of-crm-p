@@ -493,14 +493,17 @@ export default function TimeLogs() {
       sortable: true,
       editable: true,
       editType: 'date',
-      cell: (value) => (
-        <div className="flex flex-col gap-0.5">
-          <div>{format(parseISO(value), 'dd/MM/yy', { locale: he })}</div>
-          <div className="text-xs text-muted-foreground">
-            {format(parseISO(value), 'HH:mm', { locale: he })}
+      cell: (value) => {
+        const date = parseISO(value);
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div>{format(date, 'dd/MM/yy', { locale: he })}</div>
+            <div className="text-xs text-muted-foreground">
+              {date.getHours()}:{date.getMinutes()}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       id: 'client_id',
