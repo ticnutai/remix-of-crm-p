@@ -149,6 +149,7 @@ export default function Clients() {
     hasMeetings: null,
     categories: [],
     tags: [],
+    sortBy: 'date_desc',
   });
   
   // Client data for filtering
@@ -315,6 +316,22 @@ export default function Clients() {
         client.tags && client.tags.some(tag => filters.tags.includes(tag))
       );
     }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name, 'he');
+        case 'name_desc':
+          return b.name.localeCompare(a.name, 'he');
+        case 'date_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        default:
+          return 0;
+      }
+    });
 
     setFilteredClients(result);
   };
@@ -1250,7 +1267,7 @@ export default function Clients() {
                 ({filteredClients.length} לקוחות)
               </span>
               
-              {/* Add Client Button */}
+              {/* Add Client Button - Gold themed */}
               <button
                 onClick={() => setIsAddClientDialogOpen(true)}
                 style={{
@@ -1258,20 +1275,22 @@ export default function Clients() {
                   alignItems: 'center',
                   gap: '6px',
                   padding: '8px 16px',
-                  backgroundColor: '#22c55e',
-                  border: 'none',
+                  backgroundColor: 'transparent',
+                  border: '2px solid #d4a843',
                   borderRadius: '8px',
-                  color: '#ffffff',
+                  color: '#d4a843',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   fontSize: '14px',
                   fontWeight: '600',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#16a34a';
+                  e.currentTarget.style.backgroundColor = '#d4a843';
+                  e.currentTarget.style.color = '#1e293b';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#22c55e';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#d4a843';
                 }}
                 title="הוסף לקוח חדש"
               >
@@ -1643,9 +1662,9 @@ export default function Clients() {
                 )}
               </div>
 
-              {/* Search */}
+              {/* Search - White with gold border */}
               <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
-                <Search style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#94a3b8' }} />
+                <Search style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#d4a843' }} />
                 <Input
                   type="text"
                   placeholder="חיפוש לקוחות..."
@@ -1653,11 +1672,11 @@ export default function Clients() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     paddingRight: '40px',
-                    backgroundColor: '#334155',
-                    border: '1px solid #475569',
-                    color: '#ffffff',
+                    backgroundColor: '#ffffff',
+                    border: '2px solid #d4a843',
+                    color: '#d4a843',
                   }}
-                  className="placeholder:text-slate-400 focus:border-amber-500"
+                  className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
                 />
               </div>
             </div>
