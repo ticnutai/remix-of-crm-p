@@ -215,12 +215,15 @@ export default function MyDay() {
     }
   }, [user, authLoading, navigate, fetchTodayData]);
 
-  const formatTime = (dateStr: string) => format(parseISO(dateStr), 'HH:mm');
+  const formatTime = (dateStr: string) => {
+    const date = parseISO(dateStr);
+    return `${date.getHours()}:${date.getMinutes()}`;
+  };
   
   const formatMinutes = (minutes: number) => {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins}`;
   };
 
   const getGreeting = () => {

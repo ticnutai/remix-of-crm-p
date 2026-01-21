@@ -65,7 +65,7 @@ export function TimeLogsTimelineView({
     if (!minutes) return '-';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}:${mins.toString().padStart(2, '0')}`;
+    return `${hours}:${mins}`;
   };
 
   return (
@@ -126,11 +126,11 @@ export function TimeLogsTimelineView({
                         </div>
                         <div className="text-left">
                           <div className="text-sm font-medium">
-                            {format(new Date(entry.start_time), 'HH:mm')}
+                            {(() => { const d = new Date(entry.start_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
                             {entry.end_time && (
                               <span className="text-muted-foreground">
                                 {' - '}
-                                {format(new Date(entry.end_time), 'HH:mm')}
+                                {(() => { const d = new Date(entry.end_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
                               </span>
                             )}
                           </div>

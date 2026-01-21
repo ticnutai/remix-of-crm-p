@@ -120,8 +120,8 @@ export function MeetingsListView({ meetings, onEdit, onDelete }: MeetingsListVie
                           <div className="flex items-center gap-4 text-sm text-muted-foreground justify-end mb-2">
                             <span className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {format(parseISO(meeting.start_time), 'HH:mm', { locale: he })} - 
-                              {format(parseISO(meeting.end_time), 'HH:mm', { locale: he })}
+                              {(() => { const d = parseISO(meeting.start_time); return `${d.getHours()}:${d.getMinutes()}`; })()} - 
+                              {(() => { const d = parseISO(meeting.end_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
                             </span>
                             {meeting.location && (
                               <span className="flex items-center gap-1">

@@ -125,7 +125,7 @@ export function SidebarMeetingItem({
   
   // Format time range
   const formatTimeRange = () => {
-    return `${format(startTime, 'HH:mm')} - ${format(endTime, 'HH:mm')}`;
+    return `${startTime.getHours()}:${startTime.getMinutes()} - ${endTime.getHours()}:${endTime.getMinutes()}`;
   };
 
   return (

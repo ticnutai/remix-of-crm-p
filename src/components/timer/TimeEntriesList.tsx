@@ -88,14 +88,12 @@ export function TimeEntriesList() {
 
     const hrs = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins}`;
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('he-IL', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date = new Date(dateString);
+    return `${date.getHours()}:${date.getMinutes()}`;
   };
 
   const handleDelete = async (id: string) => {

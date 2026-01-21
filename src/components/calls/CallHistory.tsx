@@ -362,10 +362,7 @@ export function CallHistory() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {new Date(log.started_at).toLocaleTimeString('he-IL', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
+                          {(() => { const d = new Date(log.started_at); return `${d.getHours()}:${d.getMinutes()}`; })()}
                         </span>
                         <span>{formatDuration(log.duration_seconds)}</span>
                       </div>
