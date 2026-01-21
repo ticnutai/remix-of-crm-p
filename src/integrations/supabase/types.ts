@@ -350,6 +350,36 @@ export type Database = {
         }
         Relationships: []
       }
+      client_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_custom_tabs: {
         Row: {
           allow_files: boolean | null
@@ -898,6 +928,7 @@ export type Database = {
         Row: {
           address: string | null
           budget_range: string | null
+          category_id: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -932,6 +963,7 @@ export type Database = {
         Insert: {
           address?: string | null
           budget_range?: string | null
+          category_id?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -966,6 +998,7 @@ export type Database = {
         Update: {
           address?: string | null
           budget_range?: string | null
+          category_id?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -997,7 +1030,15 @@ export type Database = {
           website?: string | null
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "client_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_amendments: {
         Row: {
