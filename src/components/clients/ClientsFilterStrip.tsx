@@ -23,6 +23,10 @@ import {
   Heart,
   Building,
   Handshake,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  SortAsc,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +38,7 @@ export interface ClientFilterState {
   hasMeetings: boolean | null;
   categories: string[];
   tags: string[];
+  sortBy: 'name_asc' | 'name_desc' | 'date_desc' | 'date_asc';
 }
 
 interface ClientStageDefinition {
@@ -82,6 +87,7 @@ export function ClientsFilterStrip({
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
+  const [sortDialogOpen, setSortDialogOpen] = useState(false);
 
   // Fetch unique stages from all clients
   useEffect(() => {
@@ -185,6 +191,7 @@ export function ClientsFilterStrip({
       hasMeetings: null,
       categories: [],
       tags: [],
+      sortBy: filters.sortBy, // Keep sort order when clearing
     });
   };
 
@@ -194,6 +201,13 @@ export function ClientsFilterStrip({
     week: 'השבוע',
     month: 'החודש',
     older: 'ישן יותר',
+  };
+
+  const sortByLabels: Record<ClientFilterState['sortBy'], string> = {
+    date_desc: 'חדשים ראשון',
+    date_asc: 'ישנים ראשון',
+    name_asc: 'שם א-ת',
+    name_desc: 'שם ת-א',
   };
 
   const filteredTags = allTags.filter(tag => 
@@ -211,6 +225,61 @@ export function ClientsFilterStrip({
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold text-foreground">סינון:</span>
         </div>
+
+        {/* Sort By Filter */}
+        <Popover open={sortDialogOpen} onOpenChange={setSortDialogOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 h-9"
+            >
+              <ArrowUpDown className="h-4 w-4" />
+              {sortByLabels[filters.sortBy]}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-[220px] p-0" 
+            dir="rtl" 
+            align="end"
+          >
+            <div className="p-3 border-b">
+              <div className="flex flex-row-reverse items-center gap-2">
+                <ArrowUpDown className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">מיין לפי</h3>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 ml-auto"
+                  onClick={() => setSortDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-2 space-y-1">
+              {(Object.entries(sortByLabels) as [ClientFilterState['sortBy'], string][]).map(([value, label]) => (
+                <Button
+                  key={value}
+                  variant={filters.sortBy === value ? "default" : "ghost"}
+                  className="w-full justify-start gap-2"
+                  onClick={() => {
+                    onFiltersChange({ ...filters, sortBy: value });
+                    setSortDialogOpen(false);
+                  }}
+                >
+                  {value.includes('date') ? (
+                    <CalendarDays className="h-4 w-4" />
+                  ) : (
+                    <SortAsc className="h-4 w-4" />
+                  )}
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Categories Filter */}
         <Popover open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
