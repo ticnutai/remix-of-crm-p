@@ -696,67 +696,6 @@ function FloatingTimerContent() {
           </div>
         </div>
         
-        {/* Stats Section - Time Summary with Edit */}
-        <div className="px-4 py-2 border-b overflow-hidden" style={{ backgroundColor: timerTheme.backgroundColor, borderColor: `${timerTheme.borderColor}33` }}>
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Clock className="h-3 w-3" style={{ color: timerTheme.labelsColor || timerTheme.accentColor }} />
-              <span className="font-medium" style={{ color: timerTheme.labelsColor || timerTheme.accentColor, fontSize: `${(timerTheme.labelsFontSize || 12) - 2}px` }}>סיכום:</span>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {/* Today Total */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      aria-label="סהכ שעות היום"
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-200",
-                        "border text-[11px]",
-                        "hover:scale-105 active:scale-95"
-                      )}
-                      style={{
-                        backgroundColor: `${timerTheme.accentColor}20`,
-                        borderColor: `${timerTheme.accentColor}50`,
-                        color: timerTheme.accentColor,
-                      }}
-                    >
-                      <Clock className="h-3 w-3" />
-                      <span className="font-medium">{formatMinutes(todayTotal)}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>היום</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              {/* Week Total */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      aria-label="סהכ שעות השבוע"
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all duration-200",
-                        "border text-[11px]",
-                        "hover:scale-105 active:scale-95"
-                      )}
-                      style={{
-                        backgroundColor: 'rgba(74, 222, 128, 0.15)',
-                        borderColor: 'rgba(74, 222, 128, 0.4)',
-                        color: 'rgb(134, 239, 172)',
-                      }}
-                    >
-                      <Star className="h-3 w-3" />
-                      <span className="font-medium">{formatMinutes(weekTotal)}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>השבוע</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        </div>
-        
         {/* Scrollable Content Area - No horizontal scroll */}
         <div className="overflow-y-auto overflow-x-hidden scrollbar-hide rounded-b-3xl" style={{ height: popoverSize.height - 200, maxWidth: '100%' }} dir="rtl">
           <div className="p-5 space-y-5 max-w-full overflow-hidden">
