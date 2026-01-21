@@ -967,7 +967,7 @@ export default function TimeLogs() {
 
   return (
     <AppLayout title="לוגי זמן">
-      <div className="p-6 space-y-6 animate-fade-in overflow-hidden isolate">
+      <div className="p-4 space-y-3 animate-fade-in overflow-hidden isolate">
         {/* Running Timer Alert */}
         {timeEntries.some(e => e.is_running) && (
           <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
@@ -1166,41 +1166,50 @@ export default function TimeLogs() {
           </CardContent>
         </Card>
 
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full" dir="rtl">
-          <TabsList className="grid w-full max-w-lg grid-cols-3 mr-0 ml-auto">
-            <TabsTrigger value="analytics">ניתוח מתקדם</TabsTrigger>
-            <TabsTrigger value="summary">סיכום לפי לקוח</TabsTrigger>
-            <TabsTrigger value="list">רשימה</TabsTrigger>
-          </TabsList>
-          
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="mt-4">
-            <TimeAnalyticsDashboard
-              timeEntries={timeEntries}
-              users={users}
-              clients={clients}
-              projects={projects}
-              onAddEntry={() => { resetForm(); setIsAddDialogOpen(true); }}
-              defaultHourlyRate={150}
-            />
-          </TabsContent>
-          
-          {/* List Tab */}
-          <TabsContent value="list" className="mt-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <Clock className="h-5 w-5 text-secondary" />
-                רישומי זמן
-                <Badge variant="secondary" className="ml-2">
-                  {filteredEntries.length} רישומים
-                </Badge>
-              </h2>
-              
-              {/* View Mode Selector */}
+        {/* Main Content - Unified Header with Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col" dir="rtl">
+          {/* Unified Header Bar */}
+          <div className="flex items-center justify-between gap-4 bg-card border border-border rounded-lg p-3 mb-3">
+            {/* Right side - Title and Badge */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-[hsl(45,80%,55%)]" />
+                <h2 className="text-lg font-bold text-foreground">רישומי זמן</h2>
+              </div>
+              <Badge 
+                className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] border-[hsl(45,80%,55%)]/30 font-bold"
+              >
+                {filteredEntries.length} רישומים
+              </Badge>
+            </div>
+
+            {/* Center - Tabs */}
+            <TabsList className="bg-muted/50 border border-border p-1 gap-1">
+              <TabsTrigger 
+                value="list" 
+                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
+              >
+                רשימה
+              </TabsTrigger>
+              <TabsTrigger 
+                value="summary" 
+                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
+              >
+                סיכום לפי לקוח
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analytics" 
+                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
+              >
+                ניתוח מתקדם
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Left side - View Mode Selector (only for list tab) */}
+            {activeTab === 'list' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2 border-border">
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'table' && <Grid3x3 className="h-4 w-4" />}
                     {viewMode === 'calendar' && <CalendarIcon className="h-4 w-4" />}
@@ -1255,9 +1264,23 @@ export default function TimeLogs() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            )}
+          </div>
 
-            {/* Render based on view mode */}
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="mt-2 flex-1">
+            <TimeAnalyticsDashboard
+              timeEntries={timeEntries}
+              users={users}
+              clients={clients}
+              projects={projects}
+              onAddEntry={() => { resetForm(); setIsAddDialogOpen(true); }}
+              defaultHourlyRate={150}
+            />
+          </TabsContent>
+
+          {/* List Tab - Maximum space for table */}
+          <TabsContent value="list" className="mt-2 flex-1">
             {viewMode === 'list' && (
               <TimeLogsModernTable
                 timeEntries={filteredEntries}
@@ -1407,7 +1430,7 @@ export default function TimeLogs() {
           </TabsContent>
           
           {/* Summary Tab */}
-          <TabsContent value="summary" className="mt-4">
+          <TabsContent value="summary" className="mt-2 flex-1">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
