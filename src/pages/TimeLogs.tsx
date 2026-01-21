@@ -674,6 +674,25 @@ export default function TimeLogs() {
     
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
+    // Check for duplicates before adding
+    const { checkTimeEntryDuplicate } = await import('@/lib/time-entry-duplicate-check');
+    const duplicateCheck = await checkTimeEntryDuplicate({
+      clientId: formData.client_id || null,
+      startTime,
+      durationMinutes: totalMinutes,
+      description: formData.description || null,
+    });
+    
+    if (duplicateCheck.isDuplicate) {
+      toast({
+        title: 'אזהרת כפילות',
+        description: duplicateCheck.message || 'נמצא רישום דומה. האם אתה בטוח שזה רישום חדש?',
+        variant: 'destructive',
+      });
+      // Still allow adding but warn - user can cancel manually
+      // If you want to block completely, add: return;
+    }
+    
     // Note: duration_minutes is a generated column - only set start_time and end_time
     const { error } = await supabase
       .from('time_entries')
