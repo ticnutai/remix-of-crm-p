@@ -3561,11 +3561,22 @@ export type Database = {
           default_payment_terms: string | null
           default_terms: string | null
           description: string | null
+          design_settings: Json | null
           id: string
+          important_notes: string[] | null
           is_active: boolean | null
+          items: Json | null
           name: string
+          notes: string | null
+          payment_schedule: Json | null
+          show_vat: boolean | null
+          stages: Json | null
           template_content: string | null
+          terms: string | null
+          timeline: Json | null
           updated_at: string | null
+          validity_days: number | null
+          vat_rate: number | null
         }
         Insert: {
           category?: string | null
@@ -3574,11 +3585,22 @@ export type Database = {
           default_payment_terms?: string | null
           default_terms?: string | null
           description?: string | null
+          design_settings?: Json | null
           id?: string
+          important_notes?: string[] | null
           is_active?: boolean | null
+          items?: Json | null
           name: string
+          notes?: string | null
+          payment_schedule?: Json | null
+          show_vat?: boolean | null
+          stages?: Json | null
           template_content?: string | null
+          terms?: string | null
+          timeline?: Json | null
           updated_at?: string | null
+          validity_days?: number | null
+          vat_rate?: number | null
         }
         Update: {
           category?: string | null
@@ -3587,11 +3609,22 @@ export type Database = {
           default_payment_terms?: string | null
           default_terms?: string | null
           description?: string | null
+          design_settings?: Json | null
           id?: string
+          important_notes?: string[] | null
           is_active?: boolean | null
+          items?: Json | null
           name?: string
+          notes?: string | null
+          payment_schedule?: Json | null
+          show_vat?: boolean | null
+          stages?: Json | null
           template_content?: string | null
+          terms?: string | null
+          timeline?: Json | null
           updated_at?: string | null
+          validity_days?: number | null
+          vat_rate?: number | null
         }
         Relationships: []
       }
