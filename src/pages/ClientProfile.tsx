@@ -884,26 +884,26 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Projects Tab */}
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader>
-                <CardTitle>פרויקטים</CardTitle>
+          <TabsContent value="projects" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">פרויקטים</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {projects.map(project => (
-                      <div key={project.id} className="p-4 border rounded-lg">
+                      <div key={project.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold">{project.name}</h3>
-                          <Badge variant="outline">{project.status}</Badge>
+                          <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{project.status}</Badge>
+                          <h3 className="font-semibold text-right">{project.name}</h3>
                         </div>
                         {project.description && (
-                          <p className="text-sm text-muted-foreground mt-2">{project.description}</p>
+                          <p className="text-sm text-muted-foreground mt-2 text-right">{project.description}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          {project.budget && <span>תקציב: ₪{project.budget.toLocaleString()}</span>}
+                        <div className="flex items-center justify-end gap-4 mt-2 text-sm text-muted-foreground">
                           {project.start_date && <span>התחלה: {format(new Date(project.start_date), 'dd/MM/yyyy', { locale: he })}</span>}
+                          {project.budget && <span>תקציב: ₪{project.budget.toLocaleString()}</span>}
                         </div>
                       </div>
                     ))}
@@ -930,31 +930,31 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Tasks Tab */}
-          <TabsContent value="tasks">
-            <Card>
-              <CardHeader>
-                <CardTitle>משימות</CardTitle>
+          <TabsContent value="tasks" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">משימות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {tasks.map(task => (
-                      <div key={task.id} className="p-4 border rounded-lg">
+                      <div key={task.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{task.status}</Badge>
+                            <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{task.priority}</Badge>
+                          </div>
+                          <div className="text-right">
                             <p className="font-medium">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.project_name && `${task.project_name} • `}
                               {task.assigned_to_name || 'לא משויך'}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{task.priority}</Badge>
-                            <Badge variant="outline">{task.status}</Badge>
-                          </div>
                         </div>
                         {task.due_date && (
-                          <p className="text-sm text-muted-foreground mt-2">
+                          <p className="text-sm text-muted-foreground mt-2 text-right">
                             יעד: {format(new Date(task.due_date), 'dd/MM/yyyy', { locale: he })}
                           </p>
                         )}
@@ -970,29 +970,29 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Meetings Tab */}
-          <TabsContent value="meetings">
-            <Card>
-              <CardHeader>
-                <CardTitle>פגישות</CardTitle>
+          <TabsContent value="meetings" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">פגישות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {meetings.map(meeting => (
-                      <div key={meeting.id} className="p-4 border rounded-lg">
+                      <div key={meeting.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{meeting.status}</Badge>
+                          <div className="text-right">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(new Date(meeting.start_time), 'dd/MM/yyyy HH:mm', { locale: he })} - {format(new Date(meeting.end_time), 'HH:mm', { locale: he })}
                             </p>
                           </div>
-                          <Badge variant="outline">{meeting.status}</Badge>
                         </div>
                         {meeting.location && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            <MapPin className="h-3 w-3 inline ml-1" />
+                          <p className="text-sm text-muted-foreground mt-2 text-right">
                             {meeting.location}
+                            <MapPin className="h-3 w-3 inline mr-1" />
                           </p>
                         )}
                       </div>
@@ -1007,10 +1007,9 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Files Tab */}
-          <TabsContent value="files">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>קבצים</CardTitle>
+          <TabsContent value="files" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
                 <div>
                   <input
                     ref={fileInputRef}
@@ -1024,6 +1023,7 @@ export default function ClientProfile() {
                     size="sm" 
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
+                    className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white"
                   >
                     {isUploading ? (
                       <Loader2 className="h-4 w-4 ml-2 animate-spin" />
@@ -1033,26 +1033,27 @@ export default function ClientProfile() {
                     העלאת קובץ
                   </Button>
                 </div>
+                <CardTitle className="text-lg">קבצים</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {files.map(file => (
-                      <div key={file.id} className="p-4 border rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-8 w-8 text-primary" />
-                          <div>
-                            <p className="font-medium">{file.file_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : ''} • {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: he })}
-                            </p>
-                          </div>
-                        </div>
+                      <div key={file.id} className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
                         <Button variant="ghost" size="sm" asChild>
                           <a href={file.file_url} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="font-medium">{file.file_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : ''} • {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: he })}
+                            </p>
+                          </div>
+                          <FileText className="h-8 w-8 text-[hsl(45,70%,55%)]" />
+                        </div>
                       </div>
                     ))}
                     {files.length === 0 && (
@@ -1065,23 +1066,23 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Messages Tab */}
-          <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <CardTitle>הודעות</CardTitle>
+          <TabsContent value="messages" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">הודעות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <ScrollArea className="h-96">
                   <div className="space-y-4">
                     {messages.map(message => (
-                      <div key={message.id} className={`p-4 border rounded-lg ${message.sender_type === 'staff' ? 'bg-primary/5 mr-8' : 'ml-8'}`}>
+                      <div key={message.id} className={`p-4 border rounded-lg ${message.sender_type === 'staff' ? 'bg-[hsl(222,47%,20%)]/5 ml-8' : 'mr-8'}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">{message.sender_type === 'staff' ? 'צוות' : 'לקוח'}</Badge>
                           <span className="text-sm text-muted-foreground">
                             {format(new Date(message.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
                           </span>
+                          <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{message.sender_type === 'staff' ? 'צוות' : 'לקוח'}</Badge>
                         </div>
-                        <p>{message.message}</p>
+                        <p className="text-right">{message.message}</p>
                       </div>
                     ))}
                     {messages.length === 0 && (
@@ -1094,30 +1095,30 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Reminders Tab */}
-          <TabsContent value="reminders">
-            <Card>
-              <CardHeader>
-                <CardTitle>תזכורות</CardTitle>
+          <TabsContent value="reminders" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">תזכורות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {reminders.map(reminder => (
-                      <div key={reminder.id} className="p-4 border rounded-lg">
+                      <div key={reminder.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{reminder.title}</p>
-                            {reminder.message && (
-                              <p className="text-sm text-muted-foreground">{reminder.message}</p>
-                            )}
-                          </div>
-                          <div className="text-end">
-                            <Badge variant={reminder.is_dismissed ? 'secondary' : 'default'}>
+                          <div className="text-start">
+                            <Badge variant={reminder.is_dismissed ? 'secondary' : 'default'} className="border-[hsl(222,47%,25%)]">
                               {reminder.is_dismissed ? 'נדחה' : reminder.is_sent ? 'נשלח' : 'ממתין'}
                             </Badge>
                             <p className="text-sm text-muted-foreground mt-1">
                               {format(new Date(reminder.remind_at), 'dd/MM/yyyy HH:mm', { locale: he })}
                             </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{reminder.title}</p>
+                            {reminder.message && (
+                              <p className="text-sm text-muted-foreground">{reminder.message}</p>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1132,24 +1133,24 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* WhatsApp Tab */}
-          <TabsContent value="whatsapp">
-            <Card>
-              <CardHeader>
-                <CardTitle>הודעות WhatsApp</CardTitle>
+          <TabsContent value="whatsapp" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">הודעות WhatsApp</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <ScrollArea className="h-96">
                   <div className="space-y-4">
                     {whatsappMessages.map(msg => (
-                      <div key={msg.id} className={`p-4 border rounded-lg ${msg.direction === 'outgoing' ? 'bg-green-50 dark:bg-green-950/20 mr-8' : 'ml-8'}`}>
+                      <div key={msg.id} className={`p-4 border rounded-lg ${msg.direction === 'outgoing' ? 'bg-green-50 dark:bg-green-950/20 ml-8' : 'mr-8'}`}>
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">{msg.direction === 'outgoing' ? 'יוצא' : 'נכנס'}</Badge>
                           <span className="text-sm text-muted-foreground">
                             {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
                           </span>
+                          <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{msg.direction === 'outgoing' ? 'יוצא' : 'נכנס'}</Badge>
                         </div>
-                        <p>{msg.message}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{msg.phone_number}</p>
+                        <p className="text-right">{msg.message}</p>
+                        <p className="text-sm text-muted-foreground mt-1 text-right">{msg.phone_number}</p>
                       </div>
                     ))}
                     {whatsappMessages.length === 0 && (
@@ -1162,13 +1163,12 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Invoices Tab */}
-          <TabsContent value="invoices">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>חשבוניות והכנסות</CardTitle>
+          <TabsContent value="invoices" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
                 <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white">
                       <Plus className="h-4 w-4 ml-2" />
                       חשבונית חדשה
                     </Button>
@@ -1252,33 +1252,35 @@ export default function ClientProfile() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                <CardTitle className="text-lg">חשבוניות והכנסות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
+                  <div className="divide-y divide-border/30">
                     {invoices.map(invoice => (
-                      <div key={invoice.id} className="p-4 border rounded-lg">
+                      <div key={invoice.id} className="p-4 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="text-start">
+                            <p className="font-semibold text-lg">₪{invoice.amount.toLocaleString()}</p>
+                            <InvoiceStatusBadge status={invoice.status} />
+                          </div>
+                          <div className="text-right">
                             <p className="font-medium">#{invoice.invoice_number}</p>
                             <p className="text-sm text-muted-foreground">
                               {invoice.project_name && `${invoice.project_name} • `}
                               {format(new Date(invoice.issue_date), 'dd/MM/yyyy', { locale: he })}
                             </p>
                           </div>
-                          <div className="text-end">
-                            <p className="font-semibold text-lg">₪{invoice.amount.toLocaleString()}</p>
-                            <InvoiceStatusBadge status={invoice.status} />
-                          </div>
                         </div>
                         {invoice.description && (
-                          <p className="text-sm text-muted-foreground mt-2">{invoice.description}</p>
+                          <p className="text-sm text-muted-foreground mt-2 text-right">{invoice.description}</p>
                         )}
                         {invoice.status === 'sent' && (
-                          <div className="mt-3">
+                          <div className="mt-3 text-right">
                             <Button
                               size="sm"
                               onClick={() => updateInvoiceStatus(invoice.id, 'paid', format(new Date(), 'yyyy-MM-dd'))}
+                              className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white"
                             >
                               סמן כשולם
                             </Button>
@@ -1296,17 +1298,17 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* All Tables Tab */}
-          <TabsContent value="custom">
-            <Card>
-              <CardHeader>
-                <CardTitle>נתוני הלקוח בטבלאות</CardTitle>
-                <CardDescription>כל השורות שבהן הלקוח מופיע מכלל הטבלאות במערכת</CardDescription>
+          <TabsContent value="custom" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">נתוני הלקוח בטבלאות</CardTitle>
+                <CardDescription className="text-right">כל השורות שבהן הלקוח מופיע מכלל הטבלאות במערכת</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 {allClientTables.length > 0 ? (
                   <div className="space-y-4">
                     {/* Table selection buttons */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 justify-end">
                       {allClientTables.map((table) => (
                         <Button
                           key={table.tableName}
@@ -1317,11 +1319,11 @@ export default function ClientProfile() {
                           )}
                           className="gap-2"
                         >
-                          <Table className="h-4 w-4" />
-                          {table.tableDisplayName}
-                          <Badge variant="secondary" className="mr-1">
+                          <Badge variant="secondary" className="ml-1">
                             {table.rows.length}
                           </Badge>
+                          {table.tableDisplayName}
+                          <Table className="h-4 w-4" />
                         </Button>
                       ))}
                     </div>
@@ -1331,12 +1333,12 @@ export default function ClientProfile() {
                       {allClientTables
                         .filter(table => !activeTableTab || activeTableTab === table.tableName)
                         .map((table) => (
-                          <div key={table.tableName} className="border rounded-lg overflow-hidden">
-                            <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                              <Badge variant="outline">{table.rows.length} שורות</Badge>
+                          <div key={table.tableName} className="border border-[hsl(222,47%,25%)]/30 rounded-lg overflow-hidden">
+                            <div className="bg-muted/30 px-4 py-2 border-b border-border/50 flex items-center justify-between">
+                              <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{table.rows.length} שורות</Badge>
                               <h4 className="font-semibold flex items-center gap-2 text-right">
-                                <Table className="h-4 w-4" />
                                 {table.tableDisplayName}
+                                <Table className="h-4 w-4" />
                               </h4>
                             </div>
                             <ScrollArea className="max-h-96">
@@ -1345,7 +1347,7 @@ export default function ClientProfile() {
                                   <thead className="bg-muted/50">
                                     <tr>
                                       {table.columns.map((col) => (
-                                        <th key={col.key} className="px-4 py-2 text-right font-medium border-b">
+                                        <th key={col.key} className="px-4 py-2 text-right font-medium border-b border-border/30">
                                           {col.label}
                                         </th>
                                       ))}
@@ -1353,7 +1355,7 @@ export default function ClientProfile() {
                                   </thead>
                                   <tbody>
                                     {table.rows.map((row, rowIndex) => (
-                                      <tr key={row.id || rowIndex} className="border-b last:border-0 hover:bg-muted/30">
+                                      <tr key={row.id || rowIndex} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
                                         {table.columns.map((col) => {
                                           let value = row[col.key];
                                           
