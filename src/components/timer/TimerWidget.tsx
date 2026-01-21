@@ -366,7 +366,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 text-[hsl(45,85%,65%)] hover:bg-[hsl(45,80%,50%)]/20 transition-all"
+              className="h-8 w-8 p-0 transition-all"
+              style={{
+                color: timerState.isRunning 
+                  ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
+                  : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
+              }}
               onClick={timerState.isRunning ? handlePause : isPaused ? handleResume : handleStart}
             >
               {timerState.isRunning ? (
@@ -381,7 +386,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0 text-[hsl(45,85%,65%)] hover:bg-[hsl(45,80%,50%)]/20 transition-all"
+                className="h-8 w-8 p-0 transition-all"
+                style={{
+                  color: timerState.isRunning 
+                    ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
+                    : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
+                }}
                 onClick={handleStop}
               >
                 <Square className="h-4 w-4" />
@@ -393,7 +403,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0 text-[hsl(45,85%,65%)] hover:bg-[hsl(45,80%,50%)]/20 transition-all"
+                className="h-8 w-8 p-0 transition-all"
+                style={{
+                  color: timerState.isRunning 
+                    ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
+                    : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
+                }}
                 onClick={handleReset}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -407,12 +422,15 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                   <Button
                     size="sm"
                     variant="outline"
-                    className={cn(
-                      "h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all",
-                      timerState.isRunning 
-                        ? "border-[hsl(45,80%,50%)]/50 text-[hsl(45,80%,60%)] hover:bg-[hsl(45,80%,50%)]/20"
-                        : "border-white/30 text-white hover:bg-white/10"
-                    )}
+                    className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
+                    style={{
+                      borderColor: timerState.isRunning 
+                        ? `${theme.controlButtonsActiveColor || 'hsl(45, 80%, 50%)'}80` 
+                        : 'rgba(255,255,255,0.3)',
+                      color: timerState.isRunning 
+                        ? (theme.controlButtonsActiveColor || 'hsl(45, 80%, 60%)') 
+                        : 'white',
+                    }}
                   >
                     <Save className="h-4 w-4" />
                   </Button>
