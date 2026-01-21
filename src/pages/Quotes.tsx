@@ -67,7 +67,9 @@ import { ContractForm } from '@/components/contracts/ContractForm';
 import { ContractDetails } from '@/components/contracts/ContractDetails';
 import { ContractTemplatesManager } from '@/components/contracts/ContractTemplatesManager';
 import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
+import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
 import { cn } from '@/lib/utils';
+import { ClipboardList, Settings2 } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
@@ -272,7 +274,7 @@ export default function Quotes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="quotes" className="gap-2">
               <FileText className="h-4 w-4" />
               הצעות מחיר
@@ -280,6 +282,14 @@ export default function Quotes() {
             <TabsTrigger value="contracts" className="gap-2">
               <FileSignature className="h-4 w-4" />
               חוזים
+            </TabsTrigger>
+            <TabsTrigger value="ready-templates" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              תבניות מוכנות
+            </TabsTrigger>
+            <TabsTrigger value="template-manager" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              ניהול תבניות
             </TabsTrigger>
           </TabsList>
 
@@ -717,6 +727,38 @@ export default function Quotes() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Ready Templates Tab - תבניות מוכנות */}
+          <TabsContent value="ready-templates" className="space-y-6 mt-6">
+            <QuoteTemplatesManager />
+          </TabsContent>
+
+          {/* Template Manager Tab - ניהול תבניות */}
+          <TabsContent value="template-manager" className="space-y-6 mt-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">ניהול תבניות חוזים</h2>
+                  <p className="text-muted-foreground">עריכה והגדרת תבניות חוזים</p>
+                </div>
+                <Button onClick={() => setIsTemplateManagerOpen(true)}>
+                  <Settings2 className="h-4 w-4 ml-2" />
+                  פתח מנהל תבניות חוזים
+                </Button>
+              </div>
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Settings2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    לחץ על הכפתור למעלה לניהול תבניות חוזים
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    תבניות הצעות מחיר מנוהלות בטאב "תבניות מוכנות"
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
