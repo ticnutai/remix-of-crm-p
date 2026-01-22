@@ -72,7 +72,8 @@ import * as XLSX from 'xlsx';
 import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Cloud, RefreshCw, Play } from 'lucide-react';
+import { Cloud, RefreshCw, Play, Contact } from 'lucide-react';
+import { ContactsImportDialog } from '@/components/backup/ContactsImportDialog';
 
 // Cloud backup interface
 interface CloudBackup {
@@ -344,6 +345,7 @@ export default function Backups() {
   const [selectedCloudBackup, setSelectedCloudBackup] = useState<CloudBackup | null>(null);
   const [restoringCloud, setRestoringCloud] = useState(false);
   const [runningManualBackup, setRunningManualBackup] = useState(false);
+  const [isContactsImportOpen, setIsContactsImportOpen] = useState(false);
   
   // Fetch cloud backups from storage
   const fetchCloudBackups = async () => {
@@ -3033,6 +3035,12 @@ export default function Backups() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Contacts Import Dialog */}
+        <ContactsImportDialog
+          open={isContactsImportOpen}
+          onOpenChange={setIsContactsImportOpen}
+        />
       </div>
     </AppLayout>
   );
