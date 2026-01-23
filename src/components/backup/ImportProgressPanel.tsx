@@ -62,6 +62,7 @@ const getIconBgClass = (color: string) => {
     case 'emerald-500': return 'bg-emerald-500/10 text-emerald-500';
     case 'indigo-500': return 'bg-indigo-500/10 text-indigo-500';
     case 'cyan-500': return 'bg-cyan-500/10 text-cyan-500';
+    case 'teal-500': return 'bg-teal-500/10 text-teal-500';
     case 'amber-500': return 'bg-amber-500/10 text-amber-500';
     case 'slate-500': return 'bg-slate-500/10 text-slate-500';
     case 'rose-500': return 'bg-rose-500/10 text-rose-500';
@@ -299,7 +300,8 @@ export function createImportPhases(
     { id: 'quotes', label: 'הצעות מחיר', icon: FileText, dataKey: 'Quote', color: 'orange-500', optionKey: 'quotes' },
     { id: 'invoices', label: 'חשבוניות', icon: FileSpreadsheet, dataKey: 'Invoice', color: 'emerald-500', optionKey: 'invoices' },
     { id: 'team_members', label: 'עובדים', icon: UserCheck, dataKey: 'TeamMember', color: 'indigo-500', optionKey: 'team_members' },
-    { id: 'custom_spreadsheets', label: 'טבלאות', icon: FileSpreadsheet, dataKey: 'CustomSpreadsheet', color: 'cyan-500', optionKey: 'custom_spreadsheets' },
+    { id: 'custom_tables', label: 'טבלאות מותאמות', icon: FileSpreadsheet, dataKey: 'CustomTable', color: 'cyan-500', optionKey: 'custom_tables' },
+    { id: 'custom_spreadsheets', label: 'גיליונות', icon: FileSpreadsheet, dataKey: 'CustomSpreadsheet', color: 'teal-500', optionKey: 'custom_spreadsheets' },
     { id: 'documents', label: 'מסמכים', icon: FileText, dataKey: 'Document', color: 'amber-500', optionKey: 'documents' },
     { id: 'user_preferences', label: 'הגדרות', icon: Settings2, dataKey: 'UserPreferences', color: 'slate-500', optionKey: 'user_preferences' },
     { id: 'access_control', label: 'הרשאות', icon: Shield, dataKey: 'AccessControl', color: 'rose-500', optionKey: 'access_control' },
