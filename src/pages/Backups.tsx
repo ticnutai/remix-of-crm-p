@@ -299,6 +299,8 @@ export default function Backups() {
     profiles: true,
     client_custom_tabs: true,
     client_tab_columns: true,
+    custom_tables: true,
+    custom_table_data: true,
     settings: true,
   });
   
@@ -319,6 +321,7 @@ export default function Backups() {
     quotes: true,
     invoices: true,
     custom_spreadsheets: true,
+    custom_tables: true,
     team_members: true,
     documents: true,
     client_feedback: true,
@@ -516,6 +519,8 @@ export default function Backups() {
     'profiles', 
     'client_custom_tabs',
     'client_tab_columns',
+    'custom_tables',
+    'custom_table_data',
   ] as const;
   
   // Topic labels for display
@@ -529,6 +534,8 @@ export default function Backups() {
     profiles: '👤 פרופילים',
     client_custom_tabs: '🗂️ טאבים מותאמים',
     client_tab_columns: '📊 עמודות מותאמות',
+    custom_tables: '📋 טבלאות מותאמות',
+    custom_table_data: '📝 נתוני טבלאות',
     settings: '⚙️ הגדרות',
   };
 
@@ -916,6 +923,8 @@ export default function Backups() {
         (importOptions.quotes ? (dataToImport.Quote?.length || 0) : 0) +
         (importOptions.invoices ? ((dataToImport as Record<string, unknown>).Invoice as unknown[] || []).length : 0) +
         (importOptions.custom_spreadsheets ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length : 0) +
+        (importOptions.custom_tables ? ((dataToImport as Record<string, unknown>).CustomTable as unknown[] || []).length : 0) +
+        (importOptions.custom_tables ? ((dataToImport as Record<string, unknown>).CustomTableData as unknown[] || []).length : 0) +
         (importOptions.team_members ? ((dataToImport as Record<string, unknown>).TeamMember as unknown[] || []).length : 0) +
         (importOptions.documents ? ((dataToImport as Record<string, unknown>).Document as unknown[] || []).length : 0) +
         (importOptions.client_feedback ? ((dataToImport as Record<string, unknown>).ClientFeedback as unknown[] || []).length : 0) +
@@ -957,6 +966,8 @@ export default function Backups() {
       if (importOptions.quotes && dataToImport.Quote) filteredData.Quote = dataToImport.Quote;
       if (importOptions.invoices && (dataToImport as Record<string, unknown>).Invoice) filteredData.Invoice = (dataToImport as Record<string, unknown>).Invoice;
       if (importOptions.custom_spreadsheets && (dataToImport as Record<string, unknown>).CustomSpreadsheet) filteredData.CustomSpreadsheet = (dataToImport as Record<string, unknown>).CustomSpreadsheet;
+      if (importOptions.custom_tables && (dataToImport as Record<string, unknown>).CustomTable) filteredData.CustomTable = (dataToImport as Record<string, unknown>).CustomTable;
+      if (importOptions.custom_tables && (dataToImport as Record<string, unknown>).CustomTableData) filteredData.CustomTableData = (dataToImport as Record<string, unknown>).CustomTableData;
       if (importOptions.team_members && (dataToImport as Record<string, unknown>).TeamMember) filteredData.TeamMember = (dataToImport as Record<string, unknown>).TeamMember;
       if (importOptions.documents && (dataToImport as Record<string, unknown>).Document) filteredData.Document = (dataToImport as Record<string, unknown>).Document;
       if (importOptions.client_feedback && (dataToImport as Record<string, unknown>).ClientFeedback) filteredData.ClientFeedback = (dataToImport as Record<string, unknown>).ClientFeedback;
