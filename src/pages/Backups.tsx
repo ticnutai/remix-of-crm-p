@@ -74,6 +74,7 @@ import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Cloud, RefreshCw, Play, Contact } from 'lucide-react';
 import { ContactsImportDialog } from '@/components/backup/ContactsImportDialog';
+import { ImportProgressPanel, createImportPhases, ImportPhase } from '@/components/backup/ImportProgressPanel';
 
 // Cloud backup interface
 interface CloudBackup {
@@ -346,6 +347,8 @@ export default function Backups() {
   const [restoringCloud, setRestoringCloud] = useState(false);
   const [runningManualBackup, setRunningManualBackup] = useState(false);
   const [isContactsImportOpen, setIsContactsImportOpen] = useState(false);
+  const [importPhases, setImportPhases] = useState<ImportPhase[]>([]);
+  const [currentImportPhase, setCurrentImportPhase] = useState<string>('');
   
   // Fetch cloud backups from storage
   const fetchCloudBackups = async () => {
@@ -2498,17 +2501,18 @@ export default function Backups() {
             </DialogHeader>
             
             {status === 'importing' ? (
-              <div className="py-6 space-y-4">
-                <div className="flex items-center justify-center">
-                  <Loader2 className="h-12 w-12 animate-spin text-secondary" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{progressMessage || 'מייבא נתונים...'}</span>
-                    <span className="font-medium text-secondary">{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                </div>
+              <div className="py-6">
+                <ImportProgressPanel
+                  phases={importPhases.length > 0 ? importPhases : createImportPhases(
+                    externalBackupData || { data: {} },
+                    importOptions
+                  )}
+                  currentPhaseId={currentImportPhase}
+                  overallProgress={progress}
+                  message={progressMessage || 'מייבא נתונים...'}
+                  isImporting={true}
+                  canResume={!!savedProgress && savedProgress.phase !== 'done'}
+                />
               </div>
             ) : status === 'success' && importStats ? (
               <div className="py-6 space-y-4">
