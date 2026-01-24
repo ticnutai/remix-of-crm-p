@@ -2318,6 +2318,65 @@ export type Database = {
         }
         Relationships: []
       }
+      employees: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          email: string | null
+          hire_date: string | null
+          hourly_rate: number | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          position: string | null
+          profile_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          hire_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          profile_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          hire_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          profile_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -4256,12 +4315,14 @@ export type Database = {
           custom_secondary_color: string | null
           custom_success_color: string | null
           custom_warning_color: string | null
+          date_format: string | null
           font_family: string | null
           font_size: number | null
           header_style: string | null
           heading_font: string | null
           id: string
           input_style: string | null
+          language: string | null
           letter_spacing: string | null
           line_height: string | null
           notification_email: string | null
@@ -4278,10 +4339,13 @@ export type Database = {
           table_density: string | null
           table_style: string | null
           theme_preset: string | null
+          time_format: string | null
+          timezone: string | null
           ui_preferences: Json | null
           updated_at: string | null
           user_id: string
           virtual_scroll_threshold: number | null
+          week_start: string | null
         }
         Insert: {
           animation_speed?: string | null
@@ -4298,12 +4362,14 @@ export type Database = {
           custom_secondary_color?: string | null
           custom_success_color?: string | null
           custom_warning_color?: string | null
+          date_format?: string | null
           font_family?: string | null
           font_size?: number | null
           header_style?: string | null
           heading_font?: string | null
           id?: string
           input_style?: string | null
+          language?: string | null
           letter_spacing?: string | null
           line_height?: string | null
           notification_email?: string | null
@@ -4320,10 +4386,13 @@ export type Database = {
           table_density?: string | null
           table_style?: string | null
           theme_preset?: string | null
+          time_format?: string | null
+          timezone?: string | null
           ui_preferences?: Json | null
           updated_at?: string | null
           user_id: string
           virtual_scroll_threshold?: number | null
+          week_start?: string | null
         }
         Update: {
           animation_speed?: string | null
@@ -4340,12 +4409,14 @@ export type Database = {
           custom_secondary_color?: string | null
           custom_success_color?: string | null
           custom_warning_color?: string | null
+          date_format?: string | null
           font_family?: string | null
           font_size?: number | null
           header_style?: string | null
           heading_font?: string | null
           id?: string
           input_style?: string | null
+          language?: string | null
           letter_spacing?: string | null
           line_height?: string | null
           notification_email?: string | null
@@ -4362,10 +4433,13 @@ export type Database = {
           table_density?: string | null
           table_style?: string | null
           theme_preset?: string | null
+          time_format?: string | null
+          timezone?: string | null
           ui_preferences?: Json | null
           updated_at?: string | null
           user_id?: string
           virtual_scroll_threshold?: number | null
+          week_start?: string | null
         }
         Relationships: []
       }
