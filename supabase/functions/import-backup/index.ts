@@ -138,6 +138,31 @@ interface BackupCustomSpreadsheet {
   updated_date?: string;
 }
 
+interface BackupCustomTable {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  icon?: string;
+  columns?: any[];
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface BackupCustomTableData {
+  id: string;
+  table_id: string;
+  table_name?: string;
+  data: Record<string, any>;
+  field_metadata?: Record<string, any>;
+  linked_client_id?: string;
+  linked_client_name?: string;
+  created_by?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 interface BackupTeamMember {
   id: string;
   name?: string;
@@ -204,6 +229,8 @@ interface BackupData {
   UserPreferences?: BackupUserPreferences[];
   CustomSpreadsheet?: BackupCustomSpreadsheet[];
   TeamMember?: BackupTeamMember[];
+  CustomTable?: BackupCustomTable[];
+  CustomTableData?: BackupCustomTableData[];
 }
 
 // Map Hebrew statuses to valid DB values
@@ -269,6 +296,8 @@ serve(async (req) => {
       customSpreadsheets: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       teamMembers: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       userPreferences: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      customTables: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      customTableData: { imported: 0, updated: 0, skipped: 0, errors: 0 },
     };
 
     // Map old IDs to new IDs and names to IDs
@@ -942,6 +971,138 @@ serve(async (req) => {
       }
     }
 
+    // Import CustomTables (advanced tables)
+    const tableIdMap = new Map<string, string>(); // Map old table IDs to new ones
+    const tableNameMap = new Map<string, string>(); // Map table names to new IDs
+
+    if (backupData.CustomTable && backupData.CustomTable.length > 0) {
+      console.log(`Importing ${backupData.CustomTable.length} custom tables...`);
+      
+      // Get existing tables to avoid duplicates
+      const { data: existingTables } = await supabase
+        .from("custom_tables")
+        .select("id, name, display_name");
+      
+      const existingTableNames = new Set(existingTables?.map(t => t.name?.toLowerCase()) || []);
+      const existingTableDisplayNames = new Set(existingTables?.map(t => t.display_name?.toLowerCase()) || []);
+      
+      // Also map existing tables
+      for (const table of existingTables || []) {
+        tableNameMap.set(table.name?.toLowerCase() || '', table.id);
+        tableNameMap.set(table.display_name?.toLowerCase() || '', table.id);
+      }
+      
+      for (const table of backupData.CustomTable as BackupCustomTable[]) {
+        try {
+          if (!table.name && !table.display_name) {
+            results.customTables.skipped++;
+            continue;
+          }
+
+          const tableName = table.name || table.display_name || 'imported_table';
+          const tableDisplayName = table.display_name || table.name || 'טבלה מיובאת';
+          const normalizedName = tableName.toLowerCase();
+          const normalizedDisplayName = tableDisplayName.toLowerCase();
+
+          // Check if table already exists
+          if (existingTableNames.has(normalizedName) || existingTableDisplayNames.has(normalizedDisplayName)) {
+            // Map the old ID to existing table
+            const existingId = tableNameMap.get(normalizedName) || tableNameMap.get(normalizedDisplayName);
+            if (existingId && table.id) {
+              tableIdMap.set(table.id, existingId);
+            }
+            results.customTables.skipped++;
+            continue;
+          }
+
+          const tableData = {
+            name: tableName,
+            display_name: tableDisplayName,
+            description: table.description || null,
+            icon: table.icon || 'Table',
+            columns: table.columns || [],
+            created_by: userId,
+          };
+
+          const { data: inserted, error } = await supabase
+            .from("custom_tables")
+            .insert(tableData)
+            .select("id")
+            .single();
+
+          if (error) {
+            console.error(`Error inserting custom table ${tableName}:`, error);
+            results.customTables.errors++;
+          } else {
+            if (table.id) tableIdMap.set(table.id, inserted.id);
+            tableNameMap.set(normalizedName, inserted.id);
+            tableNameMap.set(normalizedDisplayName, inserted.id);
+            existingTableNames.add(normalizedName);
+            existingTableDisplayNames.add(normalizedDisplayName);
+            results.customTables.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting custom table:`, e);
+          results.customTables.errors++;
+        }
+      }
+    }
+
+    // Import CustomTableData
+    if (backupData.CustomTableData && backupData.CustomTableData.length > 0) {
+      console.log(`Importing ${backupData.CustomTableData.length} custom table data rows...`);
+      
+      for (const row of backupData.CustomTableData as BackupCustomTableData[]) {
+        try {
+          // Find the new table ID
+          let newTableId: string | null = null;
+          
+          if (row.table_id && tableIdMap.has(row.table_id)) {
+            newTableId = tableIdMap.get(row.table_id)!;
+          } else if (row.table_name) {
+            const normalizedName = row.table_name.toLowerCase();
+            newTableId = tableNameMap.get(normalizedName) || null;
+          }
+
+          if (!newTableId) {
+            console.log(`Skipping table data - table not found: ${row.table_id || row.table_name}`);
+            results.customTableData.skipped++;
+            continue;
+          }
+
+          // Find linked client if specified
+          let linkedClientId: string | null = null;
+          if (row.linked_client_id) {
+            linkedClientId = clientIdMap.get(row.linked_client_id) || null;
+          } else if (row.linked_client_name) {
+            linkedClientId = findClientId(undefined, row.linked_client_name);
+          }
+
+          const rowData = {
+            table_id: newTableId,
+            data: row.data || {},
+            field_metadata: row.field_metadata || null,
+            linked_client_id: linkedClientId,
+            created_by: userId,
+          };
+
+          const { error } = await supabase
+            .from("custom_table_data")
+            .insert(rowData);
+
+          if (error) {
+            console.error(`Error inserting custom table data:`, error);
+            results.customTableData.errors++;
+          } else {
+            results.customTableData.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting custom table data:`, e);
+          results.customTableData.errors++;
+        }
+      }
+    }
+
     console.log("Import completed:", results);
 
     const summary = {
@@ -953,6 +1114,8 @@ serve(async (req) => {
       חשבוניות: `${results.invoices.imported} חדשים, ${results.invoices.skipped} דולגו, ${results.invoices.errors} שגיאות`,
       פרויקטים: `${results.projects.imported} חדשים, ${results.projects.skipped} דולגו, ${results.projects.errors} שגיאות`,
       טבלאות_מותאמות: `${results.customSpreadsheets.imported} חדשים, ${results.customSpreadsheets.skipped} דולגו, ${results.customSpreadsheets.errors} שגיאות`,
+      טבלאות_מתקדמות: `${results.customTables.imported} חדשים, ${results.customTables.skipped} דולגו, ${results.customTables.errors} שגיאות`,
+      נתוני_טבלאות: `${results.customTableData.imported} חדשים, ${results.customTableData.skipped} דולגו, ${results.customTableData.errors} שגיאות`,
       עובדים: `${results.teamMembers.imported} חדשים, ${results.teamMembers.skipped} דולגו, ${results.teamMembers.errors} שגיאות`,
       העדפות_משתמשים: `${results.userPreferences.imported} חדשים, ${results.userPreferences.updated} עודכנו, ${results.userPreferences.errors} שגיאות`,
     };
