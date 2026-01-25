@@ -166,11 +166,14 @@ interface BackupCustomTableData {
 interface BackupTeamMember {
   id: string;
   name?: string;
+  full_name?: string; // Support both name formats
   email?: string;
   role?: string;
   phone?: string;
   department?: string;
   position?: string;
+  hourly_rate?: number;
+  status?: string;
   user_id?: string;
   created_date?: string;
 }
@@ -298,6 +301,7 @@ serve(async (req) => {
       userPreferences: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       customTables: { imported: 0, updated: 0, skipped: 0, errors: 0 },
       customTableData: { imported: 0, updated: 0, skipped: 0, errors: 0 },
+      accessControl: { imported: 0, updated: 0, skipped: 0, errors: 0 },
     };
 
     // Map old IDs to new IDs and names to IDs
@@ -834,71 +838,208 @@ serve(async (req) => {
       }
     }
 
-    // Import CustomSpreadsheets
+    // Import CustomSpreadsheets -> Convert to custom_tables + custom_table_data
     if (backupData.CustomSpreadsheet && backupData.CustomSpreadsheet.length > 0) {
-      console.log(`Importing ${backupData.CustomSpreadsheet.length} custom spreadsheets...`);
+      console.log(`Converting ${backupData.CustomSpreadsheet.length} custom spreadsheets to advanced tables...`);
+      console.log("Sample spreadsheet:", JSON.stringify(backupData.CustomSpreadsheet[0]).slice(0, 500));
+      
+      // Get existing tables to avoid duplicates
+      const { data: existingTables } = await supabase
+        .from("custom_tables")
+        .select("id, name, display_name");
+      
+      const existingTableNames = new Set(existingTables?.map(t => t.name?.toLowerCase()) || []);
+      const existingDisplayNames = new Set(existingTables?.map(t => t.display_name?.toLowerCase()) || []);
+      const localTableIdMap = new Map<string, string>();
       
       for (const spreadsheet of backupData.CustomSpreadsheet as BackupCustomSpreadsheet[]) {
         try {
-          const spreadsheetData = {
-            name: spreadsheet.name,
-            description: spreadsheet.description || null,
-            columns: spreadsheet.columns || [],
-            rows: spreadsheet.rows || [],
+          const tableName = spreadsheet.name?.replace(/\s+/g, '_').toLowerCase() || `table_${Date.now()}`;
+          const displayName = spreadsheet.name || 'טבלה מיובאת';
+          
+          // Check for duplicates
+          if (existingTableNames.has(tableName) || existingDisplayNames.has(displayName.toLowerCase())) {
+            console.log(`Skipping duplicate spreadsheet: ${displayName}`);
+            results.customSpreadsheets.skipped++;
+            continue;
+          }
+          
+          // Convert columns from legacy format to new format
+          const legacyColumns = spreadsheet.columns || [];
+          const convertedColumns = legacyColumns.map((col: any, index: number) => {
+            // Map legacy column types to new types
+            let columnType = 'text';
+            const legacyType = (col.type || '').toLowerCase();
+            if (legacyType === 'number' || legacyType === 'currency' || legacyType === 'מספר') columnType = 'number';
+            else if (legacyType === 'boolean' || legacyType === 'checkbox' || legacyType === 'בוליאני') columnType = 'boolean';
+            else if (legacyType === 'date' || legacyType === 'תאריך') columnType = 'date';
+            else if (legacyType === 'select' || legacyType === 'בחירה') columnType = 'select';
+            
+            return {
+              id: col.key || col.id || `col_${index}`,
+              name: col.title || col.name || `עמודה ${index + 1}`,
+              type: columnType,
+              width: col.width || 150,
+              required: col.required || false,
+              options: col.options || [],
+            };
+          });
+          
+          // Insert to custom_tables
+          const tableData = {
+            name: tableName,
+            display_name: displayName,
+            description: spreadsheet.description || `מיובא מגיליון: ${spreadsheet.name}`,
+            icon: 'Table',
+            columns: convertedColumns,
             created_by: userId,
           };
 
-          const { error } = await supabase.from("custom_spreadsheets").insert(spreadsheetData);
+          const { data: inserted, error: tableError } = await supabase
+            .from("custom_tables")
+            .insert(tableData)
+            .select("id")
+            .single();
 
-          if (error) {
-            console.error(`Error inserting spreadsheet ${spreadsheet.name}:`, error);
+          if (tableError) {
+            console.error(`Error creating table from spreadsheet ${spreadsheet.name}:`, tableError);
             results.customSpreadsheets.errors++;
-          } else {
-            results.customSpreadsheets.imported++;
+            continue;
           }
+          
+          const newTableId = inserted.id;
+          localTableIdMap.set(spreadsheet.id, newTableId);
+          existingTableNames.add(tableName);
+          existingDisplayNames.add(displayName.toLowerCase());
+          
+          // Now import rows as custom_table_data
+          const rows = spreadsheet.rows || [];
+          let rowsImported = 0;
+          
+          for (const row of rows) {
+            // Row can be an object with column keys or an array
+            let rowData: Record<string, any> = {};
+            
+            if (Array.isArray(row)) {
+              // Convert array to object using column keys
+              convertedColumns.forEach((col: any, idx: number) => {
+                if (row[idx] !== undefined) {
+                  rowData[col.id] = row[idx];
+                }
+              });
+            } else if (typeof row === 'object') {
+              rowData = { ...row };
+              // Remove internal fields
+              delete rowData.id;
+              delete rowData._id;
+            }
+            
+            // Try to find linked client
+            let linkedClientId: string | null = null;
+            if (row.client_id) {
+              linkedClientId = clientIdMap.get(row.client_id) || null;
+            } else if (row.client_name) {
+              linkedClientId = findClientId(undefined, row.client_name);
+            }
+            
+            const { error: rowError } = await supabase
+              .from("custom_table_data")
+              .insert({
+                table_id: newTableId,
+                data: rowData,
+                linked_client_id: linkedClientId,
+                created_by: userId,
+              });
+              
+            if (!rowError) {
+              rowsImported++;
+            }
+          }
+          
+          console.log(`Converted spreadsheet "${displayName}": ${convertedColumns.length} columns, ${rowsImported}/${rows.length} rows`);
+          results.customSpreadsheets.imported++;
+          
         } catch (e) {
-          console.error(`Exception inserting spreadsheet:`, e);
+          console.error(`Exception converting spreadsheet:`, e);
           results.customSpreadsheets.errors++;
         }
       }
     }
 
-    // Import TeamMembers (Employees)
+    // Import TeamMembers (Employees) - with full_name support
     if (backupData.TeamMember && backupData.TeamMember.length > 0) {
       console.log(`Importing ${backupData.TeamMember.length} team members...`);
+      console.log("Sample team member:", JSON.stringify(backupData.TeamMember[0]).slice(0, 300));
       
       // Get existing employees to avoid duplicates
       const { data: existingEmployees } = await supabase
         .from("employees")
-        .select("email");
+        .select("id, email");
       
       const existingEmails = new Set(existingEmployees?.map(e => e.email?.toLowerCase()) || []);
+      const emailToIdMap = new Map(existingEmployees?.map(e => [e.email?.toLowerCase(), e.id]) || []);
       
       for (const member of backupData.TeamMember as BackupTeamMember[]) {
         try {
           if (!member.email) {
+            console.log("Skipping team member with no email");
             results.teamMembers.skipped++;
             continue;
           }
 
           const emailLower = member.email.toLowerCase();
+          
+          // Use full_name OR name (support both formats)
+          const memberName = member.full_name || member.name || member.email.split('@')[0];
+          
+          // Map role
+          let role = "employee";
+          const memberRole = member.role?.toLowerCase() || '';
+          if (memberRole === "admin" || memberRole === "מנהל" || memberRole === "super_admin") role = "admin";
+          else if (memberRole === "manager" || memberRole === "מנהל צוות") role = "manager";
+
+          // Map status
+          let status = "active";
+          if (member.status === "inactive" || member.status === "לא פעיל") status = "inactive";
+
           if (existingEmails.has(emailLower)) {
-            results.teamMembers.skipped++;
+            // Update existing employee
+            const existingId = emailToIdMap.get(emailLower);
+            if (existingId) {
+              const { error } = await supabase
+                .from("employees")
+                .update({
+                  name: memberName,
+                  phone: member.phone || null,
+                  department: member.department || null,
+                  position: member.position || null,
+                  hourly_rate: member.hourly_rate || null,
+                  role,
+                  status,
+                })
+                .eq("id", existingId);
+                
+              if (error) {
+                console.error(`Error updating team member ${member.email}:`, error);
+                results.teamMembers.errors++;
+              } else {
+                results.teamMembers.updated++;
+              }
+            } else {
+              results.teamMembers.skipped++;
+            }
             continue;
           }
 
-          // Map role
-          let role = "employee";
-          if (member.role === "admin" || member.role === "מנהל") role = "admin";
-          else if (member.role === "manager" || member.role === "מנהל צוות") role = "manager";
-
           const employeeData = {
-            name: member.name || member.email,
+            name: memberName,
             email: member.email,
             role,
+            status,
             phone: member.phone || null,
             department: member.department || null,
             position: member.position || null,
+            hourly_rate: member.hourly_rate || null,
           };
 
           const { error } = await supabase.from("employees").insert(employeeData);
@@ -1103,6 +1244,81 @@ serve(async (req) => {
       }
     }
 
+    // Import AccessControl (user roles and permissions)
+    if (backupData.AccessControl && backupData.AccessControl.length > 0) {
+      console.log(`Importing ${backupData.AccessControl.length} access control entries...`);
+      console.log("Sample access control:", JSON.stringify(backupData.AccessControl[0]).slice(0, 300));
+      
+      for (const access of backupData.AccessControl as BackupAccessControl[]) {
+        try {
+          if (!access.user_email) {
+            console.log("Skipping access control with no email");
+            results.accessControl.skipped++;
+            continue;
+          }
+
+          // Find user by email in profiles
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("email", access.user_email.toLowerCase())
+            .single();
+
+          if (!profile) {
+            console.log(`No profile found for ${access.user_email}`);
+            results.accessControl.skipped++;
+            continue;
+          }
+
+          // Map role
+          const roleMap: Record<string, string> = {
+            'super_admin': 'admin',
+            'admin': 'admin',
+            'manager': 'manager',
+            'user': 'employee',
+            'employee': 'employee',
+            'client': 'client',
+            'מנהל': 'admin',
+            'מנהל צוות': 'manager',
+            'עובד': 'employee',
+          };
+          
+          const mappedRole = roleMap[access.role?.toLowerCase() || ''] || 'employee';
+
+          // Check if role already exists
+          const { data: existingRole } = await supabase
+            .from("user_roles")
+            .select("id")
+            .eq("user_id", profile.id)
+            .eq("role", mappedRole)
+            .single();
+
+          if (existingRole) {
+            results.accessControl.skipped++;
+            continue;
+          }
+
+          // Insert role
+          const { error } = await supabase
+            .from("user_roles")
+            .insert({
+              user_id: profile.id,
+              role: mappedRole,
+            });
+
+          if (error) {
+            console.error(`Error inserting access control for ${access.user_email}:`, error);
+            results.accessControl.errors++;
+          } else {
+            results.accessControl.imported++;
+          }
+        } catch (e) {
+          console.error(`Exception inserting access control:`, e);
+          results.accessControl.errors++;
+        }
+      }
+    }
+
     console.log("Import completed:", results);
 
     const summary = {
@@ -1113,10 +1329,11 @@ serve(async (req) => {
       הצעות_מחיר: `${results.quotes.imported} חדשים, ${results.quotes.skipped} דולגו, ${results.quotes.errors} שגיאות`,
       חשבוניות: `${results.invoices.imported} חדשים, ${results.invoices.skipped} דולגו, ${results.invoices.errors} שגיאות`,
       פרויקטים: `${results.projects.imported} חדשים, ${results.projects.skipped} דולגו, ${results.projects.errors} שגיאות`,
-      טבלאות_מותאמות: `${results.customSpreadsheets.imported} חדשים, ${results.customSpreadsheets.skipped} דולגו, ${results.customSpreadsheets.errors} שגיאות`,
+      טבלאות_מותאמות: `${results.customSpreadsheets.imported} גיליונות הומרו לטבלאות, ${results.customSpreadsheets.skipped} דולגו, ${results.customSpreadsheets.errors} שגיאות`,
       טבלאות_מתקדמות: `${results.customTables.imported} חדשים, ${results.customTables.skipped} דולגו, ${results.customTables.errors} שגיאות`,
       נתוני_טבלאות: `${results.customTableData.imported} חדשים, ${results.customTableData.skipped} דולגו, ${results.customTableData.errors} שגיאות`,
-      עובדים: `${results.teamMembers.imported} חדשים, ${results.teamMembers.skipped} דולגו, ${results.teamMembers.errors} שגיאות`,
+      עובדים: `${results.teamMembers.imported} חדשים, ${results.teamMembers.updated || 0} עודכנו, ${results.teamMembers.skipped} דולגו, ${results.teamMembers.errors} שגיאות`,
+      הרשאות: `${results.accessControl.imported} חדשים, ${results.accessControl.skipped} דולגו, ${results.accessControl.errors} שגיאות`,
       העדפות_משתמשים: `${results.userPreferences.imported} חדשים, ${results.userPreferences.updated} עודכנו, ${results.userPreferences.errors} שגיאות`,
     };
 
