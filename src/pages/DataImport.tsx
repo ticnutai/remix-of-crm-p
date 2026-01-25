@@ -573,10 +573,33 @@ export default function DataImport() {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    const fileName = file.name.toLowerCase();
+    
+    // Block JSON files - redirect to /backups
+    if (fileName.endsWith('.json')) {
+      toast({
+        title: 'קובץ גיבוי JSON',
+        description: 'קבצי גיבוי JSON יש לייבא בעמוד הגיבויים. לחץ על הכפתור למעבר.',
+        variant: 'destructive',
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/backups'}
+          >
+            פתח גיבויים
+          </Button>
+        ),
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+    
     try {
       let parsed: { clients: ParsedClient[]; timeLogs: ParsedTimeLog[]; projects: ParsedProject[] };
       
-      const fileName = file.name.toLowerCase();
       if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         // Parse Excel file
         parsed = await parseExcelFile(file);
@@ -1101,11 +1124,15 @@ export default function DataImport() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 justify-end">
-              ייבוא מקובץ גיבוי
+              ייבוא נתונים (CSV / Excel)
               <Upload className="h-5 w-5" />
             </CardTitle>
             <CardDescription className="text-right">
-              העלה קובץ CSV או Excel - כולל לקוחות, פרויקטים, רישומי זמן ונתונים מותאמים אישית
+              העלה קובץ CSV או Excel - כולל לקוחות, פרויקטים ורישומי זמן.
+              <br />
+              <span className="text-muted-foreground text-xs">
+                לייבוא קבצי גיבוי JSON עבור ל<a href="/backups" className="text-primary underline hover:no-underline">עמוד הגיבויים</a>
+              </span>
             </CardDescription>
           </CardHeader>
           <CardContent>
