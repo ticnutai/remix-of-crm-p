@@ -75,6 +75,7 @@ import { cn } from '@/lib/utils';
 import { Cloud, RefreshCw, Play, Contact } from 'lucide-react';
 import { ContactsImportDialog } from '@/components/backup/ContactsImportDialog';
 import { ImportProgressPanel, createImportPhases, ImportPhase } from '@/components/backup/ImportProgressPanel';
+import { normalizeExternalBackup, getSupportedFormats, NormalizedBackup } from '@/utils/backupNormalizer';
 
 // Cloud backup interface
 interface CloudBackup {
@@ -352,6 +353,7 @@ export default function Backups() {
   const [isContactsImportOpen, setIsContactsImportOpen] = useState(false);
   const [importPhases, setImportPhases] = useState<ImportPhase[]>([]);
   const [currentImportPhase, setCurrentImportPhase] = useState<string>('');
+  const [lastImportError, setLastImportError] = useState<string | null>(null);
   
   // Fetch cloud backups from storage
   const fetchCloudBackups = async () => {
@@ -773,42 +775,71 @@ export default function Backups() {
     }
   };
 
-  // Handle external backup file selection
+  // Handle external backup file selection - supports multiple JSON formats
   const handleExternalFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setLastImportError(null);
+    
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
       
-      // Support both formats: old ArchFlow format and new ALL_DATA format
-      let normalizedData: ArchFlowBackup;
+      // Use the normalizer to handle various formats
+      const result = normalizeExternalBackup(text, file.name);
       
-      if (data.data && data.categories) {
-        // Old ArchFlow format
-        normalizedData = data as ArchFlowBackup;
-      } else if (data.Client || data.Task || data.TimeLog) {
-        // New ALL_DATA.json format (direct entities)
-        normalizedData = {
-          generated_at: new Date().toISOString(),
-          by: 'imported',
-          total_records: Object.values(data as Record<string, unknown[]>).reduce((sum: number, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
-          categories: Object.keys(data),
-          data: data,
-        };
-      } else {
-        throw new Error('Invalid backup format');
+      if (!result.success || !result.data) {
+        const supportedFormats = getSupportedFormats();
+        const errorDetails = [
+          `שם קובץ: ${file.name}`,
+          `פורמט שזוהה: ${result.detectedFormat || 'לא ידוע'}`,
+          result.detectedKeys?.length ? `מפתחות שנמצאו: ${result.detectedKeys.slice(0, 5).join(', ')}${result.detectedKeys.length > 5 ? '...' : ''}` : '',
+          '',
+          'פורמטים נתמכים:',
+          ...supportedFormats.map(f => `• ${f}`),
+        ].filter(Boolean).join('\n');
+        
+        setLastImportError(errorDetails);
+        
+        toast({
+          title: 'שגיאה בזיהוי פורמט הקובץ',
+          description: result.error || 'הקובץ אינו בפורמט תקין',
+          variant: 'destructive',
+        });
+        
+        if (externalFileInputRef.current) {
+          externalFileInputRef.current.value = '';
+        }
+        return;
       }
+      
+      // Convert NormalizedBackup to ArchFlowBackup format
+      const normalizedData: ArchFlowBackup = {
+        generated_at: result.data.generated_at,
+        by: result.data.by,
+        total_records: result.data.total_records,
+        categories: result.data.categories,
+        data: result.data.data as ArchFlowBackup['data'],
+      };
       
       setExternalBackupData(normalizedData);
       setIsExternalImportDialogOpen(true);
       setImportStats(null);
+      
+      // Show success message with detected format
+      toast({
+        title: 'קובץ נטען בהצלחה',
+        description: `זוהה פורמט: ${result.detectedFormat}. נמצאו ${result.data.total_records} רשומות ב-${result.data.categories.length} קטגוריות.`,
+      });
+      
     } catch (error) {
       console.error('Failed to parse backup file:', error);
+      const errorMessage = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+      setLastImportError(`שגיאה בפרסור JSON: ${errorMessage}`);
+      
       toast({
         title: 'שגיאה בקריאת הקובץ',
-        description: 'הקובץ אינו בפורמט תקין. נא להעלות קובץ JSON מהגיבוי.',
+        description: 'לא ניתן לקרוא את הקובץ. ודא שזהו קובץ JSON תקין.',
         variant: 'destructive',
       });
     }
