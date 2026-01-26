@@ -30,6 +30,8 @@ import {
   Loader2,
   GripVertical,
   Settings,
+  Play,
+  FileUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -42,6 +44,12 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { SqlEditor } from './SqlEditor';
+import { MigrationErrorPanel } from './MigrationErrorPanel';
+import { ScriptRunner } from './ScriptRunner';
+import { analyzeSql, getRiskLabel, getRiskBadgeVariant, type SqlAnalysis } from '@/utils/sqlAnalyzer';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
 const DEV_TOOLS_CONFIG_KEY = 'dev-tools-config';
@@ -506,6 +514,9 @@ export function DeveloperSettings() {
 
       {/* Migration Management Section */}
       <MigrationManagement />
+      
+      {/* Script Runner Section */}
+      <ScriptRunner />
 
       {/* Quick Actions - Premium Gold Design */}
       <Card className={cn(goldBg, goldBorder)}>

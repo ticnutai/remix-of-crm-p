@@ -3183,27 +3183,42 @@ export type Database = {
           error: string | null
           executed_at: string | null
           executed_by: string | null
+          execution_time_ms: number | null
           id: string
+          metadata: Json | null
+          mode: string | null
           name: string
+          rollback_sql: string | null
           sql_content: string | null
+          status: string | null
           success: boolean | null
         }
         Insert: {
           error?: string | null
           executed_at?: string | null
           executed_by?: string | null
+          execution_time_ms?: number | null
           id?: string
+          metadata?: Json | null
+          mode?: string | null
           name: string
+          rollback_sql?: string | null
           sql_content?: string | null
+          status?: string | null
           success?: boolean | null
         }
         Update: {
           error?: string | null
           executed_at?: string | null
           executed_by?: string | null
+          execution_time_ms?: number | null
           id?: string
+          metadata?: Json | null
+          mode?: string | null
           name?: string
+          rollback_sql?: string | null
           sql_content?: string | null
+          status?: string | null
           success?: boolean | null
         }
         Relationships: []
@@ -4237,6 +4252,7 @@ export type Database = {
           custom_data: Json | null
           description: string | null
           duration_minutes: number | null
+          employee_id: string | null
           end_time: string | null
           hourly_rate: number | null
           id: string
@@ -4254,6 +4270,7 @@ export type Database = {
           custom_data?: Json | null
           description?: string | null
           duration_minutes?: number | null
+          employee_id?: string | null
           end_time?: string | null
           hourly_rate?: number | null
           id?: string
@@ -4271,6 +4288,7 @@ export type Database = {
           custom_data?: Json | null
           description?: string | null
           duration_minutes?: number | null
+          employee_id?: string | null
           end_time?: string | null
           hourly_rate?: number | null
           id?: string
@@ -4288,6 +4306,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -4647,7 +4672,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      all_team_members: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          hourly_rate: number | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          phone: string | null
+          position: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          source: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_email_rate_limit: {
@@ -4697,6 +4739,7 @@ export type Database = {
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
       is_client: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { p_email: string }; Returns: boolean }
+      run_system_diagnostic: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "manager" | "employee" | "client"
