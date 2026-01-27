@@ -49,6 +49,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ErrorMonitor } from '@/components/dev/ErrorMonitor';
+import { useErrorMonitoring } from '@/hooks/useErrorMonitoring';
 import { ScriptRunner } from './ScriptRunner';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
@@ -607,6 +609,14 @@ export function DeveloperSettings() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Error Monitor */}
+      {devMode && (
+        <ErrorMonitor enabled={devMode} maxHeight="500px" />
+      )}
+
+      {/* Migration Management */}
+      {devMode && <MigrationManagement />}
     </div>
   );
 }
@@ -641,9 +651,12 @@ function MigrationManagement() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'history' | 'files'>('history');
   
-  // SQL sqlContent, setSqlContent] = useState<string>('');
+  const [sqlContent, setSqlContent] = useState<string>('');
   const [sqlFileName, setSqlFileName] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
+
+  // Error monitoring for migrations
+  const { logError } = useErrorMonitoring(true);
 
   const fetchMigrationLogs = async () => {
     setLoading(true);
@@ -780,6 +793,13 @@ function MigrationManagement() {
       
       if (execError) {
         console.error('Migration execution error:', execError);
+        logError({
+          type: 'migration',
+          severity: 'error',
+          message: `כשל בהרצת migration: ${fileName}`,
+          context: { fileName, error: execError },
+          source: 'executeFileFromGithub'
+        });
         toast.error('שגיאה בהרצת המיגרציה', {
           description: execError.message
         });
@@ -798,6 +818,13 @@ function MigrationManagement() {
           loadAvailableMigrations()
         ]);
       } else {
+        logError({
+          type: 'migration',
+          severity: 'error',
+          message: `Migration נכשל: ${fileName}`,
+          context: { fileName, error: result.error, result },
+          source: 'executeFileFromGithub'
+        });
         toast.error('המיגרציה נכשלה ❌', {
           description: result.error || 'שגיאה לא ידועה'
         });
@@ -805,6 +832,14 @@ function MigrationManagement() {
       }
     } catch (error: any) {
       console.error('Migration error:', error);
+      logError({
+        type: 'migration',
+        severity: 'error',
+        message: `Exception בהרצת migration: ${fileName}`,
+        stack: error.stack,
+        context: { fileName, error: error.message },
+        source: 'executeFileFromGithub'
+      });
       toast.error('שגיאה בהרצת המיגרציה', {
         description: error.message || 'שגיאה לא ידועה'
       });
