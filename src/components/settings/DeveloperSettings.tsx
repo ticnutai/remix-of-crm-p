@@ -48,6 +48,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { SqlEditor } from './SqlEditor';
 import { MigrationErrorPanel } from './MigrationErrorPanel';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ScriptRunner } from './ScriptRunner';
 import { analyzeSql, getRiskLabel, getRiskBadgeVariant, type SqlAnalysis } from '@/utils/sqlAnalyzer';
 
@@ -618,11 +625,15 @@ interface MigrationLog {
   executed_at: string;
   success: boolean;
   error: string | null;
+  sql_content?: string | null;
+  result_message?: string | null;
 }
 
 function MigrationManagement() {
   const [migrationLogs, setMigrationLogs] = useState<MigrationLog[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedMigration, setSelectedMigration] = useState<MigrationLog | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -959,6 +970,7 @@ function MigrationManagement() {
                     <TableHead className="text-right">סטטוס</TableHead>
                     <TableHead className="text-right">שם</TableHead>
                     <TableHead className="text-right">תאריך</TableHead>
+                    <TableHead className="text-right w-[80px]">פרטים</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -979,14 +991,23 @@ function MigrationManagement() {
                       </TableCell>
                       <TableCell className="font-mono text-xs max-w-[200px] truncate">
                         {log.name}
-                        {log.error && (
-                          <p className="text-xs text-red-500 truncate mt-1">
-                            {log.error}
-                          </p>
-                        )}
                       </TableCell>
                       <TableCell className="text-sm">
                         {formatDate(log.executed_at)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedMigration(log);
+                            setShowDetailDialog(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                          title="הצג פרטים מלאים"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1077,6 +1098,116 @@ function MigrationManagement() {
           </div>
         </div>
       </CardContent>
+
+      {/* Migration Details Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCode className="h-5 w-5" />
+              פרטי מיגרציה
+            </DialogTitle>
+            <DialogDescription>
+              מידע מפורט על הריצה של {selectedMigration?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedMigration && (
+            <div className="space-y-4">
+              {/* Status Section */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  סטטוס
+                </h3>
+                <div className="flex items-center gap-4">
+                  {selectedMigration.success ? (
+                    <Badge className="bg-green-500 text-white">
+                      <Check className="h-3 w-3 mr-1" />
+                      הצלחה
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      נכשל
+                    </Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {formatDate(selectedMigration.executed_at)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Migration Name */}
+              <div className="rounded-lg border p-4 space-y-2">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  שם המיגרציה
+                </h3>
+                <p className="font-mono text-sm bg-muted p-2 rounded">
+                  {selectedMigration.name}
+                </p>
+              </div>
+
+              {/* Error Message (if exists) */}
+              {selectedMigration.error && (
+                <div className="rounded-lg border-2 border-red-500/50 bg-red-500/10 p-4 space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-400">
+                    <AlertTriangle className="h-4 w-4" />
+                    שגיאה
+                  </h3>
+                  <pre className="text-sm bg-red-950/50 text-red-200 p-3 rounded overflow-auto max-h-40 whitespace-pre-wrap font-mono">
+                    {selectedMigration.error}
+                  </pre>
+                </div>
+              )}
+
+              {/* Result Message (if exists) */}
+              {selectedMigration.result_message && (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    תוצאה
+                  </h3>
+                  <pre className="text-sm bg-muted p-3 rounded overflow-auto max-h-40 whitespace-pre-wrap">
+                    {selectedMigration.result_message}
+                  </pre>
+                </div>
+              )}
+
+              {/* SQL Content (if exists) */}
+              {selectedMigration.sql_content && (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Code2 className="h-4 w-4" />
+                    קוד SQL
+                  </h3>
+                  <pre className="text-xs bg-gray-900 text-gray-100 p-4 rounded overflow-auto max-h-96 font-mono" dir="ltr">
+                    {selectedMigration.sql_content}
+                  </pre>
+                </div>
+              )}
+
+              {/* No additional info message */}
+              {!selectedMigration.error && !selectedMigration.result_message && !selectedMigration.sql_content && (
+                <div className="rounded-lg border p-4 text-center text-muted-foreground">
+                  <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">אין מידע נוסף זמין עבור מיגרציה זו</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowDetailDialog(false)}
+            >
+              סגור
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
