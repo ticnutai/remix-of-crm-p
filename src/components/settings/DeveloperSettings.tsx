@@ -646,16 +646,40 @@ function MigrationManagement() {
     setLoading(true);
     setError(null);
     try {
+      // Try direct query first (in case RPC function isn't updated)
+      const { data: directData, error: directError } = await supabase
+        .from('migration_logs')
+        .select('id, name, executed_at, success, error, sql_content')
+        .order('executed_at', { ascending: false })
+        .limit(50);
+      
+      if (!directError && directData) {
+        console.log('📊 Migration data (direct query):', directData);
+        setMigrationLogs(directData.map(item => ({
+          ...item,
+          result_message: null
+        })) as MigrationLog[]);
+        if (directData.length > 0) {
+          console.log(`✅ נמצאו ${directData.length} מיגרציות`);
+        }
+        setLoading(false);
+        return;
+      }
+      
+      // Fallback to RPC
       const { data, error: queryError } = await supabase
         .rpc('get_migration_history');
       
+      console.log('📊 Migration history data (RPC):', data);
+      
       if (queryError) {
-        console.log('Migration history query error:', queryError);
+        console.error('Migration history query error:', queryError);
         setError('לא נמצאו לוגים של מיגרציות עדיין');
         setMigrationLogs([]);
       } else {
         setMigrationLogs((data as MigrationLog[]) || []);
         if (data && data.length > 0) {
+          console.log(`✅ נמצאו ${data.length} מיגרציות`);
           toast.success(`נמצאו ${data.length} מיגרציות`);
         }
       }
@@ -1000,6 +1024,7 @@ function MigrationManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
+                            console.log('👁️ Opening details for migration:', log);
                             setSelectedMigration(log);
                             setShowDetailDialog(true);
                           }}
@@ -1120,21 +1145,29 @@ function MigrationManagement() {
                   <Info className="h-4 w-4" />
                   סטטוס
                 </h3>
-                <div className="flex items-center gap-4">
-                  {selectedMigration.success ? (
-                    <Badge className="bg-green-500 text-white">
-                      <Check className="h-3 w-3 mr-1" />
-                      הצלחה
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      נכשל
-                    </Badge>
-                  )}
-                  <span className="text-sm text-muted-foreground">
-                    {formatDate(selectedMigration.executed_at)}
-                  </span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-4">
+                    {selectedMigration.success ? (
+                      <Badge className="bg-green-500 text-white">
+                        <Check className="h-3 w-3 mr-1" />
+                        הצלחה
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        נכשל
+                      </Badge>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(selectedMigration.executed_at)}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">ID:</span>
+                    <span className="ml-2 font-mono text-xs bg-muted px-2 py-1 rounded">
+                      {selectedMigration.id}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1190,9 +1223,21 @@ function MigrationManagement() {
 
               {/* No additional info message */}
               {!selectedMigration.error && !selectedMigration.result_message && !selectedMigration.sql_content && (
-                <div className="rounded-lg border p-4 text-center text-muted-foreground">
-                  <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">אין מידע נוסף זמין עבור מיגרציה זו</p>
+                <div className="rounded-lg border-2 border-yellow-500/30 bg-yellow-500/10 p-4 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-yellow-700 dark:text-yellow-300 mb-2">
+                        מידע חלקי
+                      </h3>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                        מיגרציה זו הורצה בהצלחה, אך לא נשמר תוכן ה-SQL המלא במערכת.
+                      </p>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                        מיגרציות שמורצות דרך מערכת ניהול המיגרציות שומרות את כל הפרטים כולל קוד ה-SQL המלא.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
