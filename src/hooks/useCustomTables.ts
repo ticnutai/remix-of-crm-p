@@ -45,14 +45,27 @@ export interface TablePermission {
   can_delete: boolean;
 }
 
+// Cache for custom tables to prevent multiple fetches
+let tablesCache: CustomTable[] | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // 1 minute cache
+
 export function useCustomTables() {
-  const [tables, setTables] = useState<CustomTable[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [tables, setTables] = useState<CustomTable[]>(tablesCache || []);
+  const [isLoading, setIsLoading] = useState(!tablesCache);
   const { user, isAdmin, isManager } = useAuth();
   const { toast } = useToast();
 
-  const fetchTables = useCallback(async () => {
+  const fetchTables = useCallback(async (forceRefresh = false) => {
     if (!user) return;
+    
+    // Use cache if available and not expired
+    const now = Date.now();
+    if (!forceRefresh && tablesCache && (now - lastFetchTime) < CACHE_DURATION) {
+      setTables(tablesCache);
+      setIsLoading(false);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -70,6 +83,10 @@ export function useCustomTables() {
           ? JSON.parse(table.columns) 
           : table.columns || []
       })) as CustomTable[];
+      
+      // Update cache
+      tablesCache = parsedTables;
+      lastFetchTime = now;
       
       setTables(parsedTables);
     } catch (error) {
@@ -122,7 +139,9 @@ export function useCustomTables() {
         columns: (Array.isArray(data.columns) ? data.columns : []) as unknown as TableColumn[]
       } as CustomTable;
 
-      setTables(prev => [...prev, newTable]);
+      // Update cache and state
+      tablesCache = [...(tablesCache || []), newTable];
+      setTables(tablesCache);
       
       toast({
         title: 'טבלה נוצרה',

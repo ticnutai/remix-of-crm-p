@@ -293,24 +293,25 @@ export function useDashboardData() {
 
     fetchDashboardData();
 
-    // Set up realtime subscriptions for live updates
+    // Set up realtime subscriptions for live updates (debounced)
+    let updateTimeout: NodeJS.Timeout;
+    const debouncedFetch = () => {
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        fetchDashboardData();
+      }, 2000); // Wait 2 seconds before refetching
+    };
+
     const channel = supabase
       .channel('dashboard-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-        fetchDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        fetchDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
-        fetchDashboardData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries' }, () => {
-        fetchDashboardData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries' }, debouncedFetch)
       .subscribe();
 
     return () => {
+      clearTimeout(updateTimeout);
       supabase.removeChannel(channel);
     };
   }, [user]);

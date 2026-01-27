@@ -50,6 +50,7 @@ import {
   EyeOff,
   Edit,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 
 interface Employee {
@@ -74,7 +75,7 @@ const roleConfig = {
 
 export default function Employees() {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, isAdmin, isManager } = useAuth();
+  const { user, isLoading: authLoading, isAdmin, isManager, roles } = useAuth();
   const isMobile = useIsMobile();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,6 +118,13 @@ export default function Employees() {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  // Delete employee dialog
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({
+    open: false,
+    employee: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch employees with their roles
   const fetchEmployees = useCallback(async () => {
@@ -338,6 +346,91 @@ export default function Employees() {
     }
   };
 
+  // Handle delete employee
+  const handleDeleteEmployee = async () => {
+    if (!deleteDialog.employee) return;
+    
+    // Prevent deleting self
+    if (deleteDialog.employee.id === user?.id) {
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן למחוק את המשתמש שלך',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      // First, delete from user_roles
+      const { error: rolesError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', deleteDialog.employee.id);
+
+      if (rolesError) {
+        console.error('Error deleting roles:', rolesError);
+      }
+
+      // Delete from time_entries (if any)
+      const { error: timeError } = await supabase
+        .from('time_entries')
+        .delete()
+        .eq('user_id', deleteDialog.employee.id);
+
+      if (timeError) {
+        console.error('Error deleting time_entries:', timeError);
+      }
+
+      // Then delete from profiles
+      const { error: profileError, data: profileData } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteDialog.employee.id)
+        .select();
+
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        toast({
+          title: 'שגיאה',
+          description: `לא ניתן למחוק את העובד: ${profileError.message}`,
+          variant: 'destructive',
+        });
+        setIsDeleting(false);
+        return;
+      }
+
+      // Check if anything was actually deleted
+      if (!profileData || profileData.length === 0) {
+        toast({
+          title: 'שגיאה',
+          description: 'המחיקה נחסמה - אין לך הרשאות מספיקות',
+          variant: 'destructive',
+        });
+        setIsDeleting(false);
+        return;
+      }
+
+      toast({
+        title: 'עובד נמחק',
+        description: `${deleteDialog.employee.full_name} הוסר בהצלחה`,
+      });
+
+      setDeleteDialog({ open: false, employee: null });
+      setIsDeleting(false);
+      fetchEmployees();
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'אירעה שגיאה במחיקת העובד',
+        variant: 'destructive',
+      });
+      setIsDeleting(false);
+    }
+  };
+
   // Handle password reset
   const handleResetPassword = async () => {
     if (!resetPasswordDialog.employee || !newPassword) {
@@ -486,7 +579,7 @@ export default function Employees() {
       header: 'פעולות',
       accessorKey: 'id',
       cell: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 min-w-[200px]">
           <Button
             variant="outline"
             size="sm"
@@ -494,23 +587,33 @@ export default function Employees() {
               e.stopPropagation();
               handleEditClick(row);
             }}
-            disabled={!isManager}
           >
             עריכה
           </Button>
-          {isAdmin && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setResetPasswordDialog({ open: true, employee: row });
-              }}
-              title="איפוס סיסמה"
-            >
-              <KeyRound className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setResetPasswordDialog({ open: true, employee: row });
+            }}
+            title="איפוס סיסמה"
+          >
+            <KeyRound className="h-4 w-4 ml-1" />
+            סיסמה
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteDialog({ open: true, employee: row });
+            }}
+            title="מחיקת עובד"
+          >
+            <Trash2 className="h-4 w-4 ml-1" />
+            מחק
+          </Button>
         </div>
       ),
     },
@@ -542,7 +645,8 @@ export default function Employees() {
       ]}
       actions={[
         ...(isManager ? [{ label: 'ערוך', icon: Edit, onClick: () => handleEditClick(employee) }] : []),
-        ...(isAdmin ? [{ label: 'סיסמה', icon: KeyRound, onClick: () => setResetPasswordDialog({ open: true, employee }) }] : []),
+        ...(isManager ? [{ label: 'סיסמה', icon: KeyRound, onClick: () => setResetPasswordDialog({ open: true, employee }) }] : []),
+        ...(isManager ? [{ label: 'מחק', icon: Trash2, onClick: () => setDeleteDialog({ open: true, employee }), variant: 'destructive' as const }] : []),
       ]}
     />
   );
@@ -1182,6 +1286,49 @@ export default function Employees() {
             >
               {isResetting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
               אפס סיסמה
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Employee Dialog */}
+      <Dialog 
+        open={deleteDialog.open} 
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteDialog({ open, employee: open ? deleteDialog.employee : null });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px]" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              מחיקת עובד
+            </DialogTitle>
+            <DialogDescription className="text-right">
+              האם אתה בטוח שברצונך למחוק את{' '}
+              <span className="font-semibold">{deleteDialog.employee?.full_name}</span>?
+              <br />
+              <span className="text-red-600 font-semibold">פעולה זו היא בלתי הפיכה!</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialog({ open: false, employee: null })}
+              disabled={isDeleting}
+            >
+              ביטול
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteEmployee}
+              disabled={isDeleting}
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+              מחק עובד
             </Button>
           </DialogFooter>
         </DialogContent>

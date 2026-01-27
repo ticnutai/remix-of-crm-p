@@ -75,23 +75,33 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
 
   const fetchRoles = useCallback(async (userId: string) => {
+    console.log('🔐 [useAuth] Fetching roles for user:', userId);
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
 
+    console.log('🔐 [useAuth] Roles response:', { data, error });
+
     if (error) {
-      console.error('Error fetching roles:', error);
+      console.error('❌ Error fetching roles:', error);
       return;
     }
     
     if (data && data.length > 0) {
       const userRoles = data.map(r => r.role as AppRole);
+      console.log('✅ [useAuth] Setting roles:', userRoles);
       setRoles(userRoles);
+    } else {
+      console.warn('⚠️ [useAuth] No roles found for user, defaulting to employee');
+      // Default to employee if no roles found
+      setRoles(['employee']);
     }
   }, []);
 
   useEffect(() => {
+    let initialLoadDone = false;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -99,34 +109,44 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         setUser(session?.user ?? null);
         
         // Defer profile/roles fetch with setTimeout
-        if (session?.user) {
+        // Only fetch if this is a new event (not initial load)
+        if (session?.user && initialLoadDone) {
           setTimeout(() => {
             fetchProfile(session.user.id);
             fetchRoles(session.user.id);
             fetchClientId(session.user.id);
           }, 0);
-        } else {
+        } else if (!session?.user) {
           setProfile(null);
           setRoles([]);
           setClientId(null);
         }
         
-        setIsLoading(false);
+        if (initialLoadDone) {
+          setIsLoading(false);
+        }
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session (only once)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id);
-        fetchRoles(session.user.id);
-        fetchClientId(session.user.id);
+        // Fetch all user data in parallel
+        Promise.all([
+          fetchProfile(session.user.id),
+          fetchRoles(session.user.id),
+          fetchClientId(session.user.id),
+        ]).then(() => {
+          setIsLoading(false);
+          initialLoadDone = true;
+        });
+      } else {
+        setIsLoading(false);
+        initialLoadDone = true;
       }
-      
-      setIsLoading(false);
     });
 
     return () => {

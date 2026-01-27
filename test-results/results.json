@@ -1,7 +1,7 @@
 {
   "config": {
-    "configFile": "C:\\Users\\jj121\\Desktop\\n\\playwright.config.js",
-    "rootDir": "C:/Users/jj121/Desktop/n/tests",
+    "configFile": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\playwright.config.js",
+    "rootDir": "C:/Users/jj121/OneDrive - College Of Law And Business/שולחן העבודה/חילצו/ncrm/tests",
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -14,6 +14,25 @@
       "actualWorkers": 1
     },
     "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/jj121/OneDrive - College Of Law And Business/שולחן העבודה/חילצו/ncrm/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/jj121/OneDrive - College Of Law And Business/שולחן העבודה/חילצו/ncrm/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
     "reporter": [
       [
         "html",
@@ -37,30 +56,12 @@
       "max": 5,
       "threshold": 300000
     },
-    "quiet": false,
-    "projects": [
-      {
-        "outputDir": "C:/Users/jj121/Desktop/n/test-results",
-        "repeatEach": 1,
-        "retries": 1,
-        "metadata": {
-          "actualWorkers": 1
-        },
-        "id": "chromium",
-        "name": "chromium",
-        "testDir": "C:/Users/jj121/Desktop/n/tests",
-        "testIgnore": [],
-        "testMatch": [
-          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
-        ],
-        "timeout": 60000
-      }
-    ],
+    "runAgents": "none",
     "shard": null,
     "tags": [],
     "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
-    "version": "1.57.0",
+    "version": "1.58.0",
     "workers": 1,
     "webServer": null
   },
@@ -80,7 +81,7 @@
           "specs": [
             {
               "title": "✅ Sidebar לא חופף לתוכן בכל הדפים",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -93,82 +94,125 @@
                     {
                       "workerIndex": 0,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 11317,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 3185,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        }
+                      ],
                       "stdout": [
                         {
                           "text": "\n🚀 מתחבר למערכת...\n"
                         },
                         {
-                          "text": "🔐 נמצא דף התחברות\n"
-                        },
-                        {
-                          "text": "📝 ממלא פרטי התחברות...\n"
-                        },
-                        {
-                          "text": "✅ התחברות הצליחה\n"
-                        },
-                        {
-                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        },
-                        {
-                          "text": "🔍 בדיקת חפיפת Sidebar\n"
-                        },
-                        {
-                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        },
-                        {
-                          "text": "\n📄 בודק דף: home (/)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "  📸 צילום מסך נשמר: screenshots/home-layout.png\n"
-                        },
-                        {
-                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
-                        },
-                        {
-                          "text": "\n📄 בודק דף: customers (/customers)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "  📸 צילום מסך נשמר: screenshots/customers-layout.png\n"
-                        },
-                        {
-                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
-                        },
-                        {
-                          "text": "\n📄 בודק דף: dashboard (/dashboard)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "  📸 צילום מסך נשמר: screenshots/dashboard-layout.png\n"
-                        },
-                        {
-                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
                         }
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-01-14T22:40:43.462Z",
+                      "startTime": "2026-01-27T16:37:53.126Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium\\test-finished-1.png"
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium\\trace.zip"
                         }
-                      ]
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 4070,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-01-27T16:38:01.049Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "963fbe0a478353c78f96-82584515ff24b77903db",
@@ -178,7 +222,7 @@
             },
             {
               "title": "✅ עמוד לקוחות - אין גלילה אופקית בעמוד",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -189,78 +233,127 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 2,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 5094,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 3189,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        }
+                      ],
                       "stdout": [
                         {
                           "text": "\n🚀 מתחבר למערכת...\n"
                         },
                         {
-                          "text": "🔐 נמצא דף התחברות\n"
-                        },
-                        {
-                          "text": "📝 ממלא פרטי התחברות...\n"
-                        },
-                        {
-                          "text": "✅ התחברות הצליחה\n"
-                        },
-                        {
-                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        },
-                        {
-                          "text": "🔍 בדיקת גלילה אופקית - עמוד לקוחות\n"
-                        },
-                        {
-                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        },
-                        {
-                          "text": "📸 צילום מסך נשמר: screenshots/customers-scroll-check.png\n\n"
-                        },
-                        {
-                          "text": "📊 מידע גלילה של העמוד:\n"
-                        },
-                        {
-                          "text": "   Body: 1920px scroll vs 1920px client\n"
-                        },
-                        {
-                          "text": "   HTML: 1920px scroll vs 1920px client\n"
-                        },
-                        {
-                          "text": "   Window: 1920px\n"
-                        },
-                        {
-                          "text": "   Body overflow-x: hidden\n"
-                        },
-                        {
-                          "text": "   HTML overflow-x: visible\n"
-                        },
-                        {
-                          "text": "\n   ✅ אין גלילה אופקית בעמוד\n\n"
-                        },
-                        {
-                          "text": "✅ אין אלמנטים חורגים\n\n"
-                        },
-                        {
-                          "text": "✅ עמוד לקוחות עבר את בדיקת הגלילה!\n\n"
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
                         }
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-01-14T22:40:55.193Z",
+                      "startTime": "2026-01-27T16:38:09.783Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium\\test-finished-1.png"
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium\\trace.zip"
                         }
-                      ]
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
+                    },
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 3200,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-01-27T16:38:17.220Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium-retry1\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium-retry1\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "963fbe0a478353c78f96-35f046c1775010f0b0e8",
@@ -270,7 +363,7 @@
             },
             {
               "title": "✅ בדיקה ברזולוציות שונות",
-              "ok": true,
+              "ok": false,
               "tags": [],
               "tests": [
                 {
@@ -281,126 +374,126 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 0,
+                      "workerIndex": 4,
                       "parallelIndex": 0,
-                      "status": "passed",
-                      "duration": 10984,
-                      "errors": [],
+                      "status": "failed",
+                      "duration": 3767,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        }
+                      ],
                       "stdout": [
                         {
                           "text": "\n🚀 מתחבר למערכת...\n"
                         },
                         {
-                          "text": "🔐 נמצא דף התחברות\n"
-                        },
-                        {
-                          "text": "📝 ממלא פרטי התחברות...\n"
-                        },
-                        {
-                          "text": "✅ התחברות הצליחה\n"
-                        },
-                        {
-                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        },
-                        {
-                          "text": "🔍 בדיקה ברזולוציות מסך שונות\n"
-                        },
-                        {
-                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        },
-                        {
-                          "text": "📱 בודק ב-Full-HD (1920x1080)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "   1920px scroll vs 1920px client\n"
-                        },
-                        {
-                          "text": "   ✅ אין גלילה\n"
-                        },
-                        {
-                          "text": "\n"
-                        },
-                        {
-                          "text": "📱 בודק ב-Desktop-Wide (1680x1050)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "   1680px scroll vs 1680px client\n"
-                        },
-                        {
-                          "text": "   ✅ אין גלילה\n"
-                        },
-                        {
-                          "text": "\n"
-                        },
-                        {
-                          "text": "📱 בודק ב-MacBook-Pro (1440x900)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "   1440px scroll vs 1440px client\n"
-                        },
-                        {
-                          "text": "   ✅ אין גלילה\n"
-                        },
-                        {
-                          "text": "\n"
-                        },
-                        {
-                          "text": "📱 בודק ב-Laptop (1366x768)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "   1366px scroll vs 1366px client\n"
-                        },
-                        {
-                          "text": "   ✅ אין גלילה\n"
-                        },
-                        {
-                          "text": "\n"
-                        },
-                        {
-                          "text": "📱 בודק ב-HD (1280x720)\n"
-                        },
-                        {
-                          "text": "──────────────────────────────────────────────────\n"
-                        },
-                        {
-                          "text": "   1280px scroll vs 1280px client\n"
-                        },
-                        {
-                          "text": "   ✅ אין גלילה\n"
-                        },
-                        {
-                          "text": "\n"
-                        },
-                        {
-                          "text": "✅ כל הרזולוציות עברו!\n\n"
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
                         }
                       ],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-01-14T22:41:00.306Z",
+                      "startTime": "2026-01-27T16:38:25.000Z",
                       "annotations": [],
                       "attachments": [
                         {
                           "name": "screenshot",
                           "contentType": "image/png",
-                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium\\test-finished-1.png"
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium\\video.webm"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium\\trace.zip"
                         }
-                      ]
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
+                    },
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 2825,
+                      "error": {
+                        "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n",
+                        "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18",
+                        "location": {
+                          "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                          "column": 18,
+                          "line": 9
+                        },
+                        "snippet": "\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                            "column": 18,
+                            "line": 9
+                          },
+                          "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m  7 |\u001b[39m     \n \u001b[90m  8 |\u001b[39m     \u001b[36mtry\u001b[39m {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  9 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                  \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 10 |\u001b[39m       \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 11 |\u001b[39m     } \u001b[36mcatch\u001b[39m (error) {\n \u001b[90m 12 |\u001b[39m       console\u001b[33m.\u001b[39mlog(\u001b[32m'❌ שגיאה בטעינת הדף:'\u001b[39m\u001b[33m,\u001b[39m error\u001b[33m.\u001b[39mmessage)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js:9:18\u001b[22m"
+                        },
+                        {
+                          "message": "Error: apiRequestContext._wrapApiCall: ENOENT: no such file or directory, open 'C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\.playwright-artifacts-5\\traces\\963fbe0a478353c78f96-d3f863a0bbc9b5ec43c6-retry1.trace'"
+                        },
+                        {
+                          "message": "Error: ENOENT: no such file or directory, open 'C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\.playwright-artifacts-5\\8c3fef1fbbfb8ee2d32b8a10afd6700e.zip'"
+                        },
+                        {
+                          "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "❌ שגיאה בטעינת הדף: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8080/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8080/\", waiting until \"load\"\u001b[22m\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-01-27T16:38:33.092Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium-retry1\\test-failed-1.png"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\ui-layout.spec.js",
+                        "column": 18,
+                        "line": 9
+                      }
                     }
                   ],
-                  "status": "expected"
+                  "status": "unexpected"
                 }
               ],
               "id": "963fbe0a478353c78f96-d3f863a0bbc9b5ec43c6",
@@ -411,15 +504,151 @@
           ]
         }
       ]
+    },
+    {
+      "title": "visual-check.spec.ts",
+      "file": "visual-check.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "בדיקה ויזואלית של DataTable Pro עם המתנה",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6378,
+                  "error": {
+                    "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n",
+                    "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts:5:14",
+                    "location": {
+                      "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                      "column": 14,
+                      "line": 5
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 3 |\u001b[39m test(\u001b[32m'בדיקה ויזואלית של DataTable Pro עם המתנה'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   \u001b[90m// פתיחת העמוד\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   \n \u001b[90m 7 |\u001b[39m   \u001b[90m// המתנה לטעינה מלאה\u001b[39m\n \u001b[90m 8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                        "column": 14,
+                        "line": 5
+                      },
+                      "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 3 |\u001b[39m test(\u001b[32m'בדיקה ויזואלית של DataTable Pro עם המתנה'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   \u001b[90m// פתיחת העמוד\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   \n \u001b[90m 7 |\u001b[39m   \u001b[90m// המתנה לטעינה מלאה\u001b[39m\n \u001b[90m 8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts:5:14\u001b[22m"
+                    },
+                    {
+                      "message": "Error: ENOENT: no such file or directory, open 'C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\.playwright-artifacts-6\\4dd0698beea5a2f4daf9a76cffde7660.zip'"
+                    },
+                    {
+                      "message": "\u001b[31mTest timeout of 60000ms exceeded.\u001b[39m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-01-27T16:39:50.823Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\visual-check-בדיקה-ויזואלית-של-DataTable-Pro-עם-המתנה-chromium\\test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\visual-check-בדיקה-ויזואלית-של-DataTable-Pro-עם-המתנה-chromium\\video.webm"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                    "column": 14,
+                    "line": 5
+                  }
+                },
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 4403,
+                  "error": {
+                    "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n",
+                    "stack": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n\n    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts:5:14",
+                    "location": {
+                      "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                      "column": 14,
+                      "line": 5
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 3 |\u001b[39m test(\u001b[32m'בדיקה ויזואלית של DataTable Pro עם המתנה'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   \u001b[90m// פתיחת העמוד\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   \n \u001b[90m 7 |\u001b[39m   \u001b[90m// המתנה לטעינה מלאה\u001b[39m\n \u001b[90m 8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                        "column": 14,
+                        "line": 5
+                      },
+                      "message": "Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:8081/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:8081/\", waiting until \"load\"\u001b[22m\n\n\n\u001b[0m \u001b[90m 3 |\u001b[39m test(\u001b[32m'בדיקה ויזואלית של DataTable Pro עם המתנה'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\n \u001b[90m 4 |\u001b[39m   \u001b[90m// פתיחת העמוד\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m   |\u001b[39m              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 6 |\u001b[39m   \n \u001b[90m 7 |\u001b[39m   \u001b[90m// המתנה לטעינה מלאה\u001b[39m\n \u001b[90m 8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mwaitForLoadState(\u001b[32m'networkidle'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts:5:14\u001b[22m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-01-27T16:41:43.912Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\visual-check-בדיקה-ויזואלית-של-DataTable-Pro-עם-המתנה-chromium-retry1\\test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\visual-check-בדיקה-ויזואלית-של-DataTable-Pro-עם-המתנה-chromium-retry1\\video.webm"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\test-results\\visual-check-בדיקה-ויזואלית-של-DataTable-Pro-עם-המתנה-chromium-retry1\\trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\jj121\\OneDrive - College Of Law And Business\\שולחן העבודה\\חילצו\\ncrm\\tests\\visual-check.spec.ts",
+                    "column": 14,
+                    "line": 5
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "2ac572b54911df4be195-8e9c9d3c7ed2aa1fddde",
+          "file": "visual-check.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
     }
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-01-14T22:40:41.875Z",
-    "duration": 29773.433,
-    "expected": 3,
+    "startTime": "2026-01-27T16:37:49.504Z",
+    "duration": 245083.874,
+    "expected": 0,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 4,
     "flaky": 0
   }
 }

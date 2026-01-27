@@ -184,13 +184,6 @@ export function useCloudPreferences() {
     }
   }, [user?.id, applyToLocalStorage]);
 
-  // Auto-sync on mount and when user changes
-  useEffect(() => {
-    if (user?.id) {
-      loadFromCloud();
-    }
-  }, [user?.id, loadFromCloud]);
-
   // Listen for localStorage changes and sync
   useEffect(() => {
     if (!user?.id) return;
