@@ -1,5 +1,4 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +20,6 @@ import {
 import {
   Plus,
   Trash2,
-  GripVertical,
   ChevronUp,
   ChevronDown,
   Copy,
@@ -165,7 +163,7 @@ export function ItemsEditor({
                     <Input
                       type="number"
                       value={item.quantity}
-                      onChange={(e) => onUpdate(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => onUpdate(item.id, { quantity: Number.parseFloat(e.target.value) || 0 })}
                       min={0}
                       step={0.1}
                       className="text-center h-8"
@@ -196,7 +194,7 @@ export function ItemsEditor({
                     <Input
                       type="number"
                       value={item.unitPrice}
-                      onChange={(e) => onUpdate(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => onUpdate(item.id, { unitPrice: Number.parseFloat(e.target.value) || 0 })}
                       min={0}
                       className="text-left h-8"
                       dir="ltr"

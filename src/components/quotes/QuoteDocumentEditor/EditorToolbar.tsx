@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -26,14 +25,10 @@ import {
   ZoomOut,
   RotateCcw,
   Printer,
-  Send,
   ChevronDown,
   FileImage,
   FilePlus,
   FolderOpen,
-  Undo,
-  Redo,
-  Settings,
 } from 'lucide-react';
 import { ViewMode } from './types';
 
@@ -261,7 +256,7 @@ export function EditorToolbar({
         accept=".docx,.doc,.pdf"
         onChange={handleFileSelect}
         className="sr-only"
-        aria-hidden="true"
+        tabIndex={-1}
       />
     </div>
   );

@@ -48,18 +48,59 @@ export default defineConfig(({ mode }) => {
       // Code splitting for better caching
       rollupOptions: {
         output: {
-          manualChunks: {
+          manualChunks(id) {
             // Vendor chunks - rarely change, better caching
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover', '@radix-ui/react-tooltip'],
-            'vendor-utils': ['date-fns', 'clsx', 'tailwind-merge'],
-            'vendor-supabase': ['@supabase/supabase-js'],
-            'vendor-charts': ['recharts'],
-            // Split heavy libs to load on demand
-            'xlsx': ['xlsx'],
-            'jspdf': ['jspdf'],
-            'html2canvas': ['html2canvas'],
-            'dompurify': ['dompurify'],
+            if (id.includes('node_modules')) {
+              if (id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('react') && !id.includes('react-')) {
+                return 'vendor-react';
+              }
+              if (id.includes('@radix-ui')) {
+                return 'vendor-ui';
+              }
+              if (id.includes('@tanstack/react-query')) {
+                return 'vendor-query';
+              }
+              if (id.includes('@tanstack/react-table')) {
+                return 'vendor-table';
+              }
+              if (id.includes('date-fns')) {
+                return 'vendor-utils';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              if (id.includes('recharts') || id.includes('d3-')) {
+                return 'vendor-charts';
+              }
+              if (id.includes('xlsx')) {
+                return 'xlsx';
+              }
+              if (id.includes('jspdf')) {
+                return 'jspdf';
+              }
+              if (id.includes('html2canvas')) {
+                return 'html2canvas';
+              }
+              if (id.includes('dompurify')) {
+                return 'dompurify';
+              }
+              if (id.includes('pdfjs-dist')) {
+                return 'pdfjs';
+              }
+              if (id.includes('mammoth')) {
+                return 'mammoth';
+              }
+              if (id.includes('lucide-react')) {
+                return 'icons';
+              }
+              if (id.includes('@dnd-kit')) {
+                return 'dnd-kit';
+              }
+            }
+            return undefined;
           },
         },
       },
