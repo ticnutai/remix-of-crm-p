@@ -157,6 +157,7 @@ export default function TimeLogs() {
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('timelogs-search') || '');
   const [selectedClient, setSelectedClient] = useState<string>(() => localStorage.getItem('timelogs-client') || 'all');
   const [selectedProject, setSelectedProject] = useState<string>(() => localStorage.getItem('timelogs-project') || 'all');
+  const [selectedUser, setSelectedUser] = useState<string>(() => localStorage.getItem('timelogs-user') || 'all');
   const [dateFilter, setDateFilter] = useState<DateFilter>(() => (localStorage.getItem('timelogs-date-filter') as DateFilter) || 'all');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
     const saved = localStorage.getItem('timelogs-custom-range');
@@ -189,6 +190,10 @@ export default function TimeLogs() {
   useEffect(() => {
     localStorage.setItem('timelogs-project', selectedProject);
   }, [selectedProject]);
+  
+  useEffect(() => {
+    localStorage.setItem('timelogs-user', selectedUser);
+  }, [selectedUser]);
   
   useEffect(() => {
     localStorage.setItem('timelogs-date-filter', dateFilter);
@@ -390,6 +395,11 @@ export default function TimeLogs() {
         return false;
       }
       
+      // User filter
+      if (selectedUser !== 'all' && entry.user_id !== selectedUser) {
+        return false;
+      }
+      
       // Billable filter
       if (showBillableOnly && !entry.is_billable) {
         return false;
@@ -409,7 +419,7 @@ export default function TimeLogs() {
       
       return true;
     });
-  }, [timeEntries, dateFilter, customDateRange, selectedClient, selectedProject, showBillableOnly, searchTerm, clients, projects]);
+  }, [timeEntries, dateFilter, customDateRange, selectedClient, selectedProject, selectedUser, showBillableOnly, searchTerm, clients, projects]);
 
   // Calculate summaries by client
   const clientSummaries = useMemo(() => {
@@ -1131,7 +1141,7 @@ export default function TimeLogs() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-6">
               {/* Search */}
               <div className="relative md:col-span-2">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1160,7 +1170,7 @@ export default function TimeLogs() {
               {/* Client Filter */}
               <Select value={selectedClient} onValueChange={setSelectedClient}>
                 <SelectTrigger>
-                  <User className="h-4 w-4 ml-2" />
+                  <Briefcase className="h-4 w-4 ml-2" />
                   <SelectValue placeholder="לקוח" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1168,6 +1178,22 @@ export default function TimeLogs() {
                   {clients.map(client => (
                     <SelectItem key={client.id} value={client.id}>
                       {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* User Filter */}
+              <Select value={selectedUser} onValueChange={setSelectedUser}>
+                <SelectTrigger>
+                  <User className="h-4 w-4 ml-2" />
+                  <SelectValue placeholder="משתמש" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">כל המשתמשים</SelectItem>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
