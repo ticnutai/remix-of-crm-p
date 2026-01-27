@@ -639,17 +639,37 @@ interface MigrationFile {
   executionDetails?: MigrationLog | null;
 }
 
+// Pending migration from Copilot
+interface PendingMigration {
+  id: string;
+  name: string;
+  description: string;
+  sql: string;
+  createdAt: string;
+  priority: 'high' | 'normal' | 'low';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+}
+
+interface PendingMigrationsFile {
+  version: string;
+  lastUpdated: string;
+  description: string;
+  migrations: PendingMigration[];
+}
+
 function MigrationManagement() {
   const [migrationLogs, setMigrationLogs] = useState<MigrationLog[]>([]);
   const [availableMigrations, setAvailableMigrations] = useState<MigrationFile[]>([]);
+  const [pendingMigrations, setPendingMigrations] = useState<PendingMigration[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [loadingPending, setLoadingPending] = useState(false);
   const [selectedMigration, setSelectedMigration] = useState<MigrationLog | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showFilesDialog, setShowFilesDialog] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'history' | 'files'>('history');
+  const [viewMode, setViewMode] = useState<'pending' | 'history' | 'files'>('pending');
   
   const [sqlContent, setSqlContent] = useState<string>('');
   const [sqlFileName, setSqlFileName] = useState<string>('');
@@ -657,6 +677,112 @@ function MigrationManagement() {
 
   // Error monitoring for migrations
   const { logError } = useErrorMonitoring(true);
+
+  // Load pending migrations from Copilot
+  const loadPendingMigrations = async () => {
+    setLoadingPending(true);
+    try {
+      const response = await fetch('/pending-migrations.json?t=' + Date.now());
+      if (response.ok) {
+        const data: PendingMigrationsFile = await response.json();
+        const pending = data.migrations.filter(m => m.status === 'pending');
+        setPendingMigrations(pending);
+        if (pending.length > 0) {
+          toast.success(`🚀 ${pending.length} מיגרציות ממתינות מ-Copilot`, {
+            description: 'לחץ על "הרץ" להפעלה'
+          });
+        }
+      }
+    } catch (e) {
+      console.log('No pending migrations file found');
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  // Execute pending migration
+  const executePendingMigration = async (migration: PendingMigration) => {
+    if (!globalThis.confirm(`האם להריץ את המיגרציה "${migration.name}"?\n\n${migration.description}\n\nזו פעולה שלא ניתן לבטל!`)) {
+      return;
+    }
+    
+    setExecuting(true);
+    try {
+      const { data, error: execError } = await supabase
+        .rpc('execute_safe_migration', {
+          p_migration_name: migration.name,
+          p_migration_sql: migration.sql
+        });
+      
+      if (execError) {
+        logError({
+          type: 'migration',
+          severity: 'error',
+          message: `כשל בהרצת migration: ${migration.name}`,
+          context: { migration, error: execError },
+          source: 'executePendingMigration'
+        });
+        toast.error('שגיאה בהרצת המיגרציה', {
+          description: execError.message
+        });
+        return;
+      }
+      
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (result.success) {
+        toast.success('המיגרציה הורצה בהצלחה! ✅', {
+          description: migration.name
+        });
+        // Remove from pending list
+        setPendingMigrations(prev => prev.filter(m => m.id !== migration.id));
+        await fetchMigrationLogs();
+      } else {
+        logError({
+          type: 'migration',
+          severity: 'error',
+          message: `Migration נכשל: ${migration.name}`,
+          context: { migration, error: result.error, result },
+          source: 'executePendingMigration'
+        });
+        toast.error('המיגרציה נכשלה ❌', {
+          description: result.error || 'שגיאה לא ידועה'
+        });
+      }
+    } catch (error: any) {
+      logError({
+        type: 'migration',
+        severity: 'error',
+        message: `Exception בהרצת migration: ${migration.name}`,
+        stack: error.stack,
+        context: { migration, error: error.message },
+        source: 'executePendingMigration'
+      });
+      toast.error('שגיאה בהרצת המיגרציה', {
+        description: error.message
+      });
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // Execute all pending migrations
+  const executeAllPending = async () => {
+    if (pendingMigrations.length === 0) return;
+    
+    if (!globalThis.confirm(`האם להריץ את כל ${pendingMigrations.length} המיגרציות הממתינות?\n\nזו פעולה שלא ניתן לבטל!`)) {
+      return;
+    }
+    
+    for (const migration of pendingMigrations) {
+      await executePendingMigration(migration);
+    }
+  };
+
+  // Load pending on mount
+  useEffect(() => {
+    loadPendingMigrations();
+  }, []);
 
   const fetchMigrationLogs = async () => {
     setLoading(true);
@@ -1073,6 +1199,26 @@ function MigrationManagement() {
         {/* View Mode Tabs */}
         <div className="flex items-center gap-2 p-1 bg-muted/30 rounded-lg">
           <Button
+            variant={viewMode === 'pending' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              setViewMode('pending');
+              loadPendingMigrations();
+            }}
+            className={cn(
+              "flex-1 relative",
+              viewMode === 'pending' && "bg-purple-500 hover:bg-purple-600"
+            )}
+          >
+            <Zap className="h-4 w-4 mr-2" />
+            ממתינות מ-Copilot
+            {pendingMigrations.length > 0 && (
+              <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center bg-red-500">
+                {pendingMigrations.length}
+              </Badge>
+            )}
+          </Button>
+          <Button
             variant={viewMode === 'history' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setViewMode('history')}
@@ -1102,6 +1248,128 @@ function MigrationManagement() {
             קבצים ({availableMigrations.length})
           </Button>
         </div>
+
+        {/* Pending Migrations from Copilot */}
+        {viewMode === 'pending' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-purple-500" />
+                <span className="font-medium">מיגרציות ממתינות מ-Copilot</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadPendingMigrations}
+                  disabled={loadingPending}
+                >
+                  {loadingPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="h-4 w-4" />
+                  )}
+                  רענן
+                </Button>
+                {pendingMigrations.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={executeAllPending}
+                    disabled={executing}
+                    className="bg-purple-500 hover:bg-purple-600"
+                  >
+                    {executing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4 mr-2" />
+                    )}
+                    הרץ הכל ({pendingMigrations.length})
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {loadingPending ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+              </div>
+            ) : pendingMigrations.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-purple-200 rounded-xl bg-purple-50/50">
+                <Zap className="h-12 w-12 mx-auto mb-3 text-purple-300" />
+                <p className="text-lg font-medium text-purple-700">אין מיגרציות ממתינות</p>
+                <p className="text-sm text-purple-500 mt-1">
+                  כשאבקש להריץ מיגרציה, היא תופיע כאן
+                </p>
+                <p className="text-xs text-muted-foreground mt-4">
+                  💡 Copilot יכול להכניס מיגרציות לקובץ pending-migrations.json
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingMigrations.map((migration) => (
+                  <Card key={migration.id} className="border-purple-200 bg-purple-50/30">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={migration.priority === 'high' ? 'destructive' : 'outline'}
+                              className={migration.priority === 'high' ? '' : 'border-purple-300'}
+                            >
+                              {migration.priority === 'high' ? '⚡ דחוף' : migration.priority === 'normal' ? '📋 רגיל' : '📝 נמוך'}
+                            </Badge>
+                            <span className="font-medium">{migration.name}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{migration.description}</p>
+                          <div className="mt-2 p-2 bg-black/5 rounded font-mono text-xs max-h-20 overflow-y-auto">
+                            {migration.sql.slice(0, 200)}
+                            {migration.sql.length > 200 && '...'}
+                          </div>
+                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {new Date(migration.createdAt).toLocaleString('he-IL')}
+                            <span>•</span>
+                            <span>{migration.sql.length} תווים</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => executePendingMigration(migration)}
+                            disabled={executing}
+                            className="bg-purple-500 hover:bg-purple-600"
+                          >
+                            {executing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
+                            הרץ
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSqlContent(migration.sql);
+                              setSqlFileName(migration.name);
+                              setShowPreview(true);
+                              setViewMode('history');
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                            צפה
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {viewMode === 'history' ? (
           <>
