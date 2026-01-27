@@ -1,16 +1,18 @@
-// Error Monitoring Hook - Real-time error detection and tracking
-import { useState, useEffect, useCallback } from 'react';
+// Enhanced Error Monitoring Hook - Real-time error detection with Supabase integration
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ErrorLog {
   id: string;
   timestamp: Date;
-  type: 'console' | 'runtime' | 'network' | 'migration' | 'supabase';
+  type: 'console' | 'runtime' | 'network' | 'migration' | 'supabase' | 'auth';
   severity: 'error' | 'warning' | 'info';
   message: string;
   stack?: string;
   context?: Record<string, any>;
   source?: string;
+  resolved?: boolean;
 }
 
 export interface ErrorStats {
@@ -18,50 +20,67 @@ export interface ErrorStats {
   errors: number;
   warnings: number;
   lastError?: ErrorLog;
-  errorRate: number; // errors per minute
+  errorRate: number;
+  supabaseErrors: number;
+  networkErrors: number;
+  runtimeErrors: number;
+}
+
+// Global error storage for sharing between components
+const globalErrorStore: ErrorLog[] = [];
+const globalListeners: Set<(errors: ErrorLog[]) => void> = new Set();
+
+function notifyListeners() {
+  globalListeners.forEach(listener => listener([...globalErrorStore]));
+}
+
+function addGlobalError(error: ErrorLog) {
+  globalErrorStore.unshift(error);
+  if (globalErrorStore.length > 200) {
+    globalErrorStore.pop();
+  }
+  notifyListeners();
 }
 
 export function useErrorMonitoring(enabled: boolean = true) {
-  const [errors, setErrors] = useState<ErrorLog[]>([]);
+  const [errors, setErrors] = useState<ErrorLog[]>([...globalErrorStore]);
   const [stats, setStats] = useState<ErrorStats>({
     total: 0,
     errors: 0,
     warnings: 0,
-    errorRate: 0
+    errorRate: 0,
+    supabaseErrors: 0,
+    networkErrors: 0,
+    runtimeErrors: 0
   });
+  const initialized = useRef(false);
+  const originalConsoleError = useRef<typeof console.error | null>(null);
+  const originalConsoleWarn = useRef<typeof console.warn | null>(null);
+  const originalFetch = useRef<typeof fetch | null>(null);
 
   // Add new error to log
   const logError = useCallback((error: Omit<ErrorLog, 'id' | 'timestamp'>) => {
     const errorLog: ErrorLog = {
       ...error,
       id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date()
+      timestamp: new Date(),
+      resolved: false
     };
 
-    setErrors(prev => {
-      const updated = [errorLog, ...prev].slice(0, 100); // Keep last 100 errors
-      return updated;
-    });
-
-    // Update stats
-    setStats(prev => ({
-      total: prev.total + 1,
-      errors: prev.errors + (error.severity === 'error' ? 1 : 0),
-      warnings: prev.warnings + (error.severity === 'warning' ? 1 : 0),
-      lastError: errorLog,
-      errorRate: calculateErrorRate([errorLog, ...errors].slice(0, 100))
-    }));
+    addGlobalError(errorLog);
 
     // Show toast for critical errors
     if (error.severity === 'error' && enabled) {
-      toast.error('שגיאה זוהתה במערכת', {
-        description: error.message.slice(0, 100),
+      toast.error(`🔴 ${error.type.toUpperCase()}: שגיאה זוהתה`, {
+        description: error.message.slice(0, 150),
+        duration: 8000,
         action: {
-          label: 'פרטים',
+          label: 'פרטים בקונסול',
           onClick: () => {
-            console.group('🔴 Error Details');
+            console.group(`🔴 Error Details [${error.type}]`);
             console.error('Message:', error.message);
             console.error('Type:', error.type);
+            console.error('Source:', error.source);
             console.error('Stack:', error.stack);
             console.error('Context:', error.context);
             console.groupEnd();
@@ -71,92 +90,107 @@ export function useErrorMonitoring(enabled: boolean = true) {
     }
 
     return errorLog;
-  }, [enabled, errors]);
+  }, [enabled]);
 
-  // Calculate error rate (errors per minute)
-  const calculateErrorRate = (errorList: ErrorLog[]): number => {
-    if (errorList.length === 0) return 0;
-
+  // Calculate stats
+  const calculateStats = useCallback((errorList: ErrorLog[]): ErrorStats => {
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60000);
     const recentErrors = errorList.filter(e => e.timestamp > oneMinuteAgo);
 
-    return recentErrors.length;
-  };
-
-  // Clear all errors
-  const clearErrors = useCallback(() => {
-    setErrors([]);
-    setStats({
-      total: 0,
-      errors: 0,
-      warnings: 0,
-      errorRate: 0
-    });
-    toast.success('לוג השגיאות נוקה');
+    return {
+      total: errorList.length,
+      errors: errorList.filter(e => e.severity === 'error').length,
+      warnings: errorList.filter(e => e.severity === 'warning').length,
+      lastError: errorList[0],
+      errorRate: recentErrors.length,
+      supabaseErrors: errorList.filter(e => e.type === 'supabase').length,
+      networkErrors: errorList.filter(e => e.type === 'network').length,
+      runtimeErrors: errorList.filter(e => e.type === 'runtime').length
+    };
   }, []);
 
-  // Clear old errors (older than 5 minutes)
-  const clearOldErrors = useCallback(() => {
-    const fiveMinutesAgo = new Date(Date.now() - 300000);
-    setErrors(prev => prev.filter(e => e.timestamp > fiveMinutesAgo));
-    toast.info('שגיאות ישנות נוקו');
-  }, []);
+  // Subscribe to global error store
+  useEffect(() => {
+    const listener = (newErrors: ErrorLog[]) => {
+      setErrors(newErrors);
+      setStats(calculateStats(newErrors));
+    };
 
-  // Get errors by type
-  const getErrorsByType = useCallback((type: ErrorLog['type']) => {
-    return errors.filter(e => e.type === type);
-  }, [errors]);
+    globalListeners.add(listener);
+    setStats(calculateStats(globalErrorStore));
 
-  // Get errors by severity
-  const getErrorsBySeverity = useCallback((severity: ErrorLog['severity']) => {
-    return errors.filter(e => e.severity === severity);
-  }, [errors]);
+    return () => {
+      globalListeners.delete(listener);
+    };
+  }, [calculateStats]);
 
   // Monitor console errors
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || initialized.current) return;
+    initialized.current = true;
 
-    const originalError = console.error;
-    const originalWarn = console.warn;
+    // Store original functions
+    originalConsoleError.current = console.error;
+    originalConsoleWarn.current = console.warn;
 
     // Override console.error
     console.error = (...args: any[]) => {
-      originalError.apply(console, args);
+      originalConsoleError.current?.apply(console, args);
 
+      // Skip React internal errors and our own logs
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
 
+      // Filter out noise
+      if (message.includes('Warning:') || 
+          message.includes('🔴 Error Details') ||
+          message.includes('[vite]') ||
+          message.includes('HMR')) {
+        return;
+      }
+
       logError({
         type: 'console',
         severity: 'error',
-        message,
+        message: message.slice(0, 500),
         stack: new Error().stack,
         source: 'console.error'
       });
     };
 
-    // Override console.warn
+    // Override console.warn (only for important warnings)
     console.warn = (...args: any[]) => {
-      originalWarn.apply(console, args);
+      originalConsoleWarn.current?.apply(console, args);
 
       const message = args.map(arg => 
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
 
-      logError({
-        type: 'console',
-        severity: 'warning',
-        message,
-        source: 'console.warn'
-      });
+      // Only log significant warnings
+      if (message.includes('deprecated') || 
+          message.includes('Error') ||
+          message.includes('fail') ||
+          message.includes('Supabase')) {
+        logError({
+          type: 'console',
+          severity: 'warning',
+          message: message.slice(0, 500),
+          source: 'console.warn'
+        });
+      }
     };
 
     // Cleanup
     return () => {
-      console.error = originalError;
-      console.warn = originalWarn;
+      if (originalConsoleError.current) {
+        console.error = originalConsoleError.current;
+      }
+      if (originalConsoleWarn.current) {
+        console.warn = originalConsoleWarn.current;
+      }
+      initialized.current = false;
     };
   }, [enabled, logError]);
 
@@ -168,7 +202,7 @@ export function useErrorMonitoring(enabled: boolean = true) {
       logError({
         type: 'runtime',
         severity: 'error',
-        message: event.message,
+        message: event.message || 'Unknown error',
         stack: event.error?.stack,
         context: {
           filename: event.filename,
@@ -180,11 +214,22 @@ export function useErrorMonitoring(enabled: boolean = true) {
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
+      const message = event.reason?.message || String(event.reason);
+      
+      // Filter out specific errors
+      if (message.includes('ResizeObserver') || 
+          message.includes('Script error')) {
+        return;
+      }
+
       logError({
         type: 'runtime',
         severity: 'error',
-        message: event.reason?.message || String(event.reason),
+        message: message.slice(0, 500),
         stack: event.reason?.stack,
+        context: {
+          reason: String(event.reason)
+        },
         source: 'unhandledrejection'
       });
     };
@@ -198,25 +243,31 @@ export function useErrorMonitoring(enabled: boolean = true) {
     };
   }, [enabled, logError]);
 
-  // Monitor network errors
+  // Monitor fetch/network errors
   useEffect(() => {
     if (!enabled) return;
 
-    const originalFetch = globalThis.fetch;
+    originalFetch.current = globalThis.fetch;
 
     globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
+      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+      
       try {
-        const response = await originalFetch(...args);
+        const response = await originalFetch.current!(...args);
 
-        if (!response.ok) {
+        // Log failed HTTP requests (4xx, 5xx)
+        if (!response.ok && response.status >= 400) {
+          const isSupabase = url.includes('supabase');
+          
           logError({
-            type: 'network',
-            severity: 'error',
-            message: `HTTP ${response.status}: ${response.statusText}`,
+            type: isSupabase ? 'supabase' : 'network',
+            severity: response.status >= 500 ? 'error' : 'warning',
+            message: `HTTP ${response.status}: ${response.statusText} - ${url.slice(0, 100)}`,
             context: {
-              url: args[0],
+              url: url.slice(0, 200),
               status: response.status,
-              statusText: response.statusText
+              statusText: response.statusText,
+              method: (args[1] as RequestInit)?.method || 'GET'
             },
             source: 'fetch'
           });
@@ -230,7 +281,8 @@ export function useErrorMonitoring(enabled: boolean = true) {
           message: error.message || 'Network request failed',
           stack: error.stack,
           context: {
-            url: args[0]
+            url: url.slice(0, 200),
+            error: error.name
           },
           source: 'fetch'
         });
@@ -239,9 +291,92 @@ export function useErrorMonitoring(enabled: boolean = true) {
     };
 
     return () => {
-      globalThis.fetch = originalFetch;
+      if (originalFetch.current) {
+        globalThis.fetch = originalFetch.current;
+      }
     };
   }, [enabled, logError]);
+
+  // Monitor Supabase auth state changes for errors
+  useEffect(() => {
+    if (!enabled) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' && !session) {
+        // Only log if unexpected
+        const lastError = errors[0];
+        if (lastError?.type === 'supabase' && 
+            Date.now() - lastError.timestamp.getTime() < 5000) {
+          // Auth issue detected after Supabase error
+          logError({
+            type: 'auth',
+            severity: 'warning',
+            message: 'Session ended - possible authentication issue',
+            context: { event },
+            source: 'supabase.auth'
+          });
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [enabled, errors, logError]);
+
+  // Clear all errors
+  const clearErrors = useCallback(() => {
+    globalErrorStore.length = 0;
+    notifyListeners();
+    toast.success('לוג השגיאות נוקה');
+  }, []);
+
+  // Clear old errors (older than 5 minutes)
+  const clearOldErrors = useCallback(() => {
+    const fiveMinutesAgo = new Date(Date.now() - 300000);
+    const recentErrors = globalErrorStore.filter(e => e.timestamp > fiveMinutesAgo);
+    globalErrorStore.length = 0;
+    globalErrorStore.push(...recentErrors);
+    notifyListeners();
+    toast.info('שגיאות ישנות נוקו');
+  }, []);
+
+  // Get errors by type
+  const getErrorsByType = useCallback((type: ErrorLog['type']) => {
+    return errors.filter(e => e.type === type);
+  }, [errors]);
+
+  // Get errors by severity
+  const getErrorsBySeverity = useCallback((severity: ErrorLog['severity']) => {
+    return errors.filter(e => e.severity === severity);
+  }, [errors]);
+
+  // Test error logging
+  const testErrorLogging = useCallback(() => {
+    logError({
+      type: 'console',
+      severity: 'info',
+      message: '🧪 בדיקת מערכת - זו שגיאה לדוגמה',
+      context: { test: true, timestamp: new Date().toISOString() },
+      source: 'test'
+    });
+
+    // Test Supabase connection
+    supabase.from('profiles').select('count', { count: 'exact', head: true })
+      .then(({ error }) => {
+        if (error) {
+          logError({
+            type: 'supabase',
+            severity: 'error',
+            message: `Supabase test failed: ${error.message}`,
+            context: { code: error.code, details: error.details },
+            source: 'supabase.test'
+          });
+        } else {
+          toast.success('✅ Supabase מחובר ועובד');
+        }
+      });
+  }, [logError]);
 
   return {
     errors,
@@ -250,6 +385,7 @@ export function useErrorMonitoring(enabled: boolean = true) {
     clearErrors,
     clearOldErrors,
     getErrorsByType,
-    getErrorsBySeverity
+    getErrorsBySeverity,
+    testErrorLogging
   };
 }

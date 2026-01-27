@@ -15,7 +15,12 @@ import {
   Activity,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  TestTube,
+  Database,
+  Wifi,
+  Terminal,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useErrorMonitoring, ErrorLog } from '@/hooks/useErrorMonitoring';
@@ -34,7 +39,7 @@ interface ErrorMonitorProps {
 }
 
 export function ErrorMonitor({ enabled = true, maxHeight = '600px' }: ErrorMonitorProps) {
-  const { errors, stats, clearErrors, clearOldErrors, getErrorsByType, getErrorsBySeverity } = 
+  const { errors, stats, clearErrors, clearOldErrors, getErrorsByType, testErrorLogging, logError } = 
     useErrorMonitoring(enabled);
   
   const [selectedError, setSelectedError] = useState<ErrorLog | null>(null);
@@ -42,6 +47,20 @@ export function ErrorMonitor({ enabled = true, maxHeight = '600px' }: ErrorMonit
   const [filterType, setFilterType] = useState<ErrorLog['type'] | 'all'>('all');
   const [filterSeverity, setFilterSeverity] = useState<ErrorLog['severity'] | 'all'>('all');
   const [expandedErrors, setExpandedErrors] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Test button handler
+  const handleTestErrors = () => {
+    toast.info('מריץ בדיקות שגיאות...');
+    testErrorLogging();
+  };
+
+  // Manual refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 500);
+    toast.success('רשימת השגיאות עודכנה');
+  };
 
   const toggleExpand = (errorId: string) => {
     setExpandedErrors(prev => {
@@ -144,6 +163,25 @@ export function ErrorMonitor({ enabled = true, maxHeight = '600px' }: ErrorMonit
                   קצב גבוה: {stats.errorRate}/דקה
                 </Badge>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="gap-2"
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                רענן
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTestErrors}
+                className="gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <TestTube className="h-4 w-4" />
+                בדוק מערכת
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
