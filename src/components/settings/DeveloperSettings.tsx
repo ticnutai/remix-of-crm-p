@@ -29,9 +29,7 @@ import {
   Check,
   Loader2,
   GripVertical,
-  Settings,
   Play,
-  FileUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -44,10 +42,6 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { SqlEditor } from './SqlEditor';
-import { MigrationErrorPanel } from './MigrationErrorPanel';
 import {
   Dialog,
   DialogContent,
@@ -56,7 +50,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ScriptRunner } from './ScriptRunner';
-import { analyzeSql, getRiskLabel, getRiskBadgeVariant, type SqlAnalysis } from '@/utils/sqlAnalyzer';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
 const DEV_TOOLS_CONFIG_KEY = 'dev-tools-config';
@@ -629,16 +622,26 @@ interface MigrationLog {
   result_message?: string | null;
 }
 
+interface MigrationFile {
+  name: string;
+  path: string;
+  isExecuted: boolean;
+  executionDetails?: MigrationLog | null;
+}
+
 function MigrationManagement() {
   const [migrationLogs, setMigrationLogs] = useState<MigrationLog[]>([]);
+  const [availableMigrations, setAvailableMigrations] = useState<MigrationFile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(false);
   const [selectedMigration, setSelectedMigration] = useState<MigrationLog | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showFilesDialog, setShowFilesDialog] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'history' | 'files'>('history');
   
-  // SQL Upload state
-  const [sqlContent, setSqlContent] = useState<string>('');
+  // SQL sqlContent, setSqlContent] = useState<string>('');
   const [sqlFileName, setSqlFileName] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
 
@@ -651,7 +654,7 @@ function MigrationManagement() {
         .from('migration_logs')
         .select('id, name, executed_at, success, error, sql_content')
         .order('executed_at', { ascending: false })
-        .limit(50);
+        .limit(100);
       
       if (!directError && directData) {
         console.log('📊 Migration data (direct query):', directData);
@@ -688,6 +691,170 @@ function MigrationManagement() {
       setError('שגיאה בטעינת היסטוריית מיגרציות');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load all available migration files from the repository
+  const loadAvailableMigrations = async () => {
+    setLoadingFiles(true);
+    try {
+      // Get all migration files from the repository via GitHub API
+      const response = await fetch(
+        'https://api.github.com/repos/ticnutai/remix-of-crm-p/contents/supabase/migrations',
+        {
+          headers: {
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch migration files');
+      }
+      
+      const files = await response.json();
+      
+      // Filter SQL files only
+      const sqlFiles = files
+        .filter((file: any) => file.name.endsWith('.sql'))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      
+      // Match with executed migrations
+      const filesWithStatus: MigrationFile[] = sqlFiles.map((file: any) => {
+        const executionLog = migrationLogs.find(log => 
+          log.name === file.name || log.name.includes(file.name.replace('.sql', ''))
+        );
+        
+        return {
+          name: file.name,
+          path: file.path,
+          isExecuted: !!executionLog,
+          executionDetails: executionLog || null
+        };
+      });
+      
+      setAvailableMigrations(filesWithStatus);
+      toast.success(`נמצאו ${filesWithStatus.length} קבצי migration`, {
+        description: `${filesWithStatus.filter(f => f.isExecuted).length} הורצו, ${filesWithStatus.filter(f => !f.isExecuted).length} ממתינים`
+      });
+    } catch (error: any) {
+      console.error('Error loading migration files:', error);
+      toast.error('שגיאה בטעינת קבצי migration', {
+        description: error.message
+      });
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  // Execute a specific migration file from GitHub
+  const executeFileFromGithub = async (fileName: string) => {
+    if (!window.confirm(`האם להריץ את המיגרציה "${fileName}"?\n\nזו פעולה שלא ניתן לבטל!`)) {
+      return;
+    }
+    
+    setExecuting(true);
+    try {
+      // Fetch the file content from GitHub
+      const response = await fetch(
+        `https://raw.githubusercontent.com/ticnutai/remix-of-crm-p/main/supabase/migrations/${fileName}`,
+        {
+          headers: {
+            'Accept': 'text/plain'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch migration file content');
+      }
+      
+      const sqlContent = await response.text();
+      
+      // Execute via RPC
+      const { data, error: execError } = await supabase
+        .rpc('execute_safe_migration', {
+          p_migration_name: fileName,
+          p_migration_sql: sqlContent
+        });
+      
+      if (execError) {
+        console.error('Migration execution error:', execError);
+        toast.error('שגיאה בהרצת המיגרציה', {
+          description: execError.message
+        });
+        return;
+      }
+      
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (result.success) {
+        toast.success('המיגרציה הורצה בהצלחה! ✅', {
+          description: fileName
+        });
+        // Refresh both logs and file list
+        await Promise.all([
+          fetchMigrationLogs(),
+          loadAvailableMigrations()
+        ]);
+      } else {
+        toast.error('המיגרציה נכשלה ❌', {
+          description: result.error || 'שגיאה לא ידועה'
+        });
+        await fetchMigrationLogs();
+      }
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      toast.error('שגיאה בהרצת המיגרציה', {
+        description: error.message || 'שגיאה לא ידועה'
+      });
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  // Retry failed migration
+  const retryMigration = async (migration: MigrationLog) => {
+    if (!migration.sql_content) {
+      toast.error('אין תוכן SQL זמין להרצה מחדש');
+      return;
+    }
+    
+    if (!window.confirm(`האם להריץ מחדש את המיגרציה "${migration.name}"?\n\nזו פעולה שלא ניתן לבטל!`)) {
+      return;
+    }
+    
+    setExecuting(true);
+    try {
+      const { data, error: execError } = await supabase
+        .rpc('execute_safe_migration', {
+          p_migration_name: `retry_${migration.name}_${Date.now()}`,
+          p_migration_sql: migration.sql_content
+        });
+      
+      if (execError) {
+        toast.error('שגיאה בהרצה מחדש', {
+          description: execError.message
+        });
+        return;
+      }
+      
+      const result = data as { success: boolean; error?: string; message?: string };
+      
+      if (result.success) {
+        toast.success('המיגרציה הורצה מחדש בהצלחה! ✅');
+        await fetchMigrationLogs();
+      } else {
+        toast.error('המיגרציה נכשלה שוב ❌', {
+          description: result.error
+        });
+      }
+    } catch (error: any) {
+      toast.error('שגיאה בהרצה מחדש', {
+        description: error.message
+      });
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -823,86 +990,258 @@ function MigrationManagement() {
               Database
             </Badge>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchMigrationLogs}
-            disabled={loading}
-            className={cn(
-              "border-yellow-500/50 hover:bg-yellow-500/10"
-            )}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-            ) : (
-              <RefreshCcw className="h-4 w-4 ml-2" />
-            )}
-            בדוק סטטוס
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await fetchMigrationLogs();
+                if (viewMode === 'files') {
+                  await loadAvailableMigrations();
+                }
+              }}
+              disabled={loading || loadingFiles}
+              className={cn(
+                "border-yellow-500/50 hover:bg-yellow-500/10"
+              )}
+            >
+              {(loading || loadingFiles) ? (
+                <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+              ) : (
+                <RefreshCcw className="h-4 w-4 ml-2" />
+              )}
+              רענן
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setViewMode(viewMode === 'history' ? 'files' : 'history');
+                if (viewMode === 'history') {
+                  loadAvailableMigrations();
+                }
+              }}
+              className={cn(
+                "border-yellow-500/50 hover:bg-yellow-500/10"
+              )}
+            >
+              <FileCode className="h-4 w-4 ml-2" />
+              {viewMode === 'history' ? 'קבצי Migration' : 'היסטוריה'}
+            </Button>
+          </div>
         </div>
         <CardDescription>
-          העלה והרץ מיגרציות SQL ישירות מהממשק
+          העלה והרץ מיגרציות SQL ישירות מהממשק, או בחר מקבצים קיימים
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* SQL Upload Area */}
-        <div
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          className={cn(
-            "rounded-xl p-6 text-center transition-all cursor-pointer",
-            "border-2 border-dashed",
-            sqlContent 
-              ? "border-green-500/50 bg-green-500/5" 
-              : "border-yellow-500/30 hover:border-yellow-500/50 hover:bg-yellow-500/5"
-          )}
-          onClick={() => document.getElementById('sql-file-input')?.click()}
-        >
-          <input
-            id="sql-file-input"
-            type="file"
-            accept=".sql"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          
-          {sqlContent ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
-                <span className="font-medium text-green-700 dark:text-green-300">
-                  {sqlFileName}
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {sqlContent.length.toLocaleString()} תווים • 
-                {sqlContent.split('\n').length.toLocaleString()} שורות
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSqlContent('');
-                  setSqlFileName('');
-                  setShowPreview(false);
-                }}
-                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-              >
-                <XCircle className="h-4 w-4 mr-1" />
-                נקה
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <FileCode className={cn("h-10 w-10 mx-auto", goldIcon)} />
-              <p className="font-medium">גרור קובץ SQL לכאן</p>
-              <p className="text-sm text-muted-foreground">
-                או לחץ לבחירת קובץ
-              </p>
-            </div>
-          )}
+        {/* View Mode Tabs */}
+        <div className="flex items-center gap-2 p-1 bg-muted/30 rounded-lg">
+          <Button
+            variant={viewMode === 'history' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('history')}
+            className={cn(
+              "flex-1",
+              viewMode === 'history' && "bg-yellow-500 hover:bg-yellow-600"
+            )}
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            היסטוריה ({migrationLogs.length})
+          </Button>
+          <Button
+            variant={viewMode === 'files' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              setViewMode('files');
+              if (availableMigrations.length === 0) {
+                loadAvailableMigrations();
+              }
+            }}
+            className={cn(
+              "flex-1",
+              viewMode === 'files' && "bg-yellow-500 hover:bg-yellow-600"
+            )}
+          >
+            <Database className="h-4 w-4 mr-2" />
+            קבצים ({availableMigrations.length})
+          </Button>
         </div>
+
+        {viewMode === 'history' ? (
+          <>
+            {/* SQL Upload Area */}
+            <div
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={cn(
+                "rounded-xl p-6 text-center transition-all cursor-pointer",
+                "border-2 border-dashed",
+                sqlContent 
+                  ? "border-green-500/50 bg-green-500/5" 
+                  : "border-yellow-500/30 hover:border-yellow-500/50 hover:bg-yellow-500/5"
+              )}
+              onClick={() => document.getElementById('sql-file-input')?.click()}
+            >
+              <input
+                id="sql-file-input"
+                type="file"
+                accept=".sql"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              
+              {sqlContent ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                    <span className="font-medium text-green-700 dark:text-green-300">
+                      {sqlFileName}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {sqlContent.length.toLocaleString()} תווים • 
+                    {sqlContent.split('\n').length.toLocaleString()} שורות
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSqlContent('');
+                      setSqlFileName('');
+                      setShowPreview(false);
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    נקה
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <FileCode className={cn("h-10 w-10 mx-auto", goldIcon)} />
+                  <p className="font-medium">גרור קובץ SQL לכאן</p>
+                  <p className="text-sm text-muted-foreground">
+                    או לחץ לבחירת קובץ
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          /* Files View */
+          <div className="space-y-2">
+            {loadingFiles ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-yellow-500" />
+                <p className="text-sm text-muted-foreground mt-2">טוען קבצי migration...</p>
+              </div>
+            ) : availableMigrations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileCode className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>לא נמצאו קבצי migration</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadAvailableMigrations}
+                  className="mt-3"
+                >
+                  <RefreshCcw className="h-4 w-4 ml-2" />
+                  טען מחדש
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {availableMigrations.map((file, idx) => (
+                  <div
+                    key={file.name}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border",
+                      file.isExecuted
+                        ? "bg-green-500/5 border-green-500/30"
+                        : "bg-muted/30 border-border hover:border-yellow-500/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                        file.isExecuted ? "bg-green-500/20" : "bg-yellow-500/20"
+                      )}>
+                        {file.isExecuted ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <FileCode className="h-4 w-4 text-yellow-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono text-xs truncate">
+                          {file.name}
+                        </p>
+                        {file.executionDetails && (
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(file.executionDetails.executed_at)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {file.isExecuted ? (
+                        <>
+                          <Badge 
+                            variant={file.executionDetails?.success ? "default" : "destructive"}
+                            className="text-xs"
+                          >
+                            {file.executionDetails?.success ? 'הורץ' : 'נכשל'}
+                          </Badge>
+                          {file.executionDetails && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedMigration(file.executionDetails!);
+                                  setShowDetailDialog(true);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {!file.executionDetails.success && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => retryMigration(file.executionDetails!)}
+                                  disabled={executing}
+                                >
+                                  <RefreshCcw className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => executeFileFromGithub(file.name)}
+                          disabled={executing}
+                          className="border-yellow-500/50 hover:bg-yellow-500/10"
+                        >
+                          {executing ? (
+                            <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4 ml-2" />
+                          )}
+                          הרץ
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* SQL Preview */}
         {showPreview && sqlContent && (
