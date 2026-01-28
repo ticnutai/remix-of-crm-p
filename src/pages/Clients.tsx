@@ -133,6 +133,13 @@ export default function Clients() {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Pagination / Infinite Scroll state
+  const PAGE_SIZE = 50;
+  const [displayedCount, setDisplayedCount] = useState(PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
   // Keyboard navigation state
   const [keyboardSearch, setKeyboardSearch] = useState('');
   const [highlightedClientId, setHighlightedClientId] = useState<string | null>(null);
@@ -190,6 +197,34 @@ export default function Clients() {
   useEffect(() => {
     applyFilters();
   }, [searchQuery, clients, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
+  
+  // Reset displayed count when filters change
+  useEffect(() => {
+    setDisplayedCount(PAGE_SIZE);
+  }, [searchQuery, filters]);
+  
+  // Infinite Scroll with Intersection Observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && displayedCount < filteredClients.length && !isLoadingMore) {
+          setIsLoadingMore(true);
+          // Simulate small delay for smooth UX
+          setTimeout(() => {
+            setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length));
+            setIsLoadingMore(false);
+          }, 100);
+        }
+      },
+      { threshold: 0.1, rootMargin: '100px' }
+    );
+    
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [displayedCount, filteredClients.length, isLoadingMore]);
 
   // Keyboard navigation - jump to client by typing letters
   useEffect(() => {
@@ -1988,25 +2023,104 @@ export default function Clients() {
             </p>
           </div>
         ) : (
-          <div style={{
-            display: viewMode === 'list' ? 'flex' : viewMode === 'minimal' ? 'grid' : 'grid',
-            flexDirection: viewMode === 'list' ? 'column' : undefined,
-            gridTemplateColumns: 
-              viewMode === 'minimal'
-                ? `repeat(${minimalColumns}, 1fr)`
-                : viewMode === 'portrait' 
-                  ? 'repeat(auto-fill, minmax(160px, 1fr))'
-                  : viewMode === 'cards'
-                    ? 'repeat(auto-fill, minmax(320px, 1fr))'
-                    : viewMode === 'compact' 
-                      ? 'repeat(auto-fill, minmax(200px, 1fr))' 
-                      : 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: viewMode === 'list' ? '8px' : viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
-          }}>
-            {filteredClients.map((client) => (
-              <ClientCard key={client.id} client={client} />
-            ))}
-          </div>
+          <>
+            {/* Pagination Info Bar */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '12px',
+              padding: '8px 12px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '8px',
+              direction: 'rtl',
+            }}>
+              <span style={{ fontSize: '14px', color: '#64748b' }}>
+                מציג {Math.min(displayedCount, filteredClients.length)} מתוך {filteredClients.length} לקוחות
+              </span>
+              {displayedCount < filteredClients.length && (
+                <button
+                  onClick={() => setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length))}
+                  style={{
+                    padding: '6px 16px',
+                    backgroundColor: '#1e3a5f',
+                    color: '#d4a843',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  טען עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)}
+                </button>
+              )}
+            </div>
+            
+            <div 
+              ref={scrollContainerRef}
+              style={{
+                display: viewMode === 'list' ? 'flex' : viewMode === 'minimal' ? 'grid' : 'grid',
+                flexDirection: viewMode === 'list' ? 'column' : undefined,
+                gridTemplateColumns: 
+                  viewMode === 'minimal'
+                    ? `repeat(${minimalColumns}, 1fr)`
+                    : viewMode === 'portrait' 
+                      ? 'repeat(auto-fill, minmax(160px, 1fr))'
+                      : viewMode === 'cards'
+                        ? 'repeat(auto-fill, minmax(320px, 1fr))'
+                        : viewMode === 'compact' 
+                          ? 'repeat(auto-fill, minmax(200px, 1fr))' 
+                          : 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: viewMode === 'list' ? '8px' : viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
+              }}
+            >
+              {filteredClients.slice(0, displayedCount).map((client) => (
+                <ClientCard key={client.id} client={client} />
+              ))}
+            </div>
+            
+            {/* Infinite Scroll Trigger */}
+            {displayedCount < filteredClients.length && (
+              <div 
+                ref={loadMoreRef}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  padding: '24px',
+                  gap: '8px',
+                }}
+              >
+                {isLoadingMore ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span style={{ color: '#64748b' }}>טוען עוד לקוחות...</span>
+                  </>
+                ) : (
+                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>
+                    גלול למטה לטעינת עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)} לקוחות
+                  </span>
+                )}
+              </div>
+            )}
+            
+            {/* Show "All loaded" message when done */}
+            {displayedCount >= filteredClients.length && filteredClients.length > PAGE_SIZE && (
+              <div style={{
+                textAlign: 'center',
+                padding: '16px',
+                color: '#94a3b8',
+                fontSize: '14px',
+              }}>
+                ✓ כל {filteredClients.length} הלקוחות נטענו
+              </div>
+            )}
+          </>
         )}
       </div>
       
