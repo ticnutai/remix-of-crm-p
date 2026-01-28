@@ -212,7 +212,7 @@ export function SignatureDialog({
 }: SignatureDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent dir="rtl" className="max-w-lg">
         <SignaturePad
           documentType={documentType}
           documentId={documentId}

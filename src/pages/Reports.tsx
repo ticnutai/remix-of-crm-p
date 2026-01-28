@@ -256,7 +256,7 @@ const Reports = () => {
           <>
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="border-2 border-[hsl(220,60%,25%)]">
+              <Card dir="rtl" className="border-2 border-[hsl(220,60%,25%)]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -267,7 +267,7 @@ const Reports = () => {
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-2 border-[hsl(45,80%,45%)]">
+              <Card dir="rtl" className="border-2 border-[hsl(45,80%,45%)]">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>

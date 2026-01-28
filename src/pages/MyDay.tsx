@@ -272,7 +272,7 @@ export default function MyDay() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary/10">
                 <CheckSquare className="h-6 w-6 text-primary" />

@@ -69,7 +69,7 @@ export function TimeLogsTimelineView({
   };
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Clock className="h-5 w-5" />
@@ -124,7 +124,7 @@ export function TimeLogsTimelineView({
                             </p>
                           )}
                         </div>
-                        <div className="text-left">
+                        <div className="text-right">
                           <div className="text-sm font-medium">
                             {(() => { const d = new Date(entry.start_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
                             {entry.end_time && (

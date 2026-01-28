@@ -80,7 +80,7 @@ export function EmailPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex justify-between items-start">
             <div>

@@ -204,7 +204,7 @@ export function CalendarView() {
                 אירוע חדש
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent dir="rtl" className="max-w-md">
               <DialogHeader>
                 <DialogTitle>אירוע חדש</DialogTitle>
               </DialogHeader>

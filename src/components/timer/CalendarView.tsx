@@ -173,7 +173,7 @@ export function CalendarView({
   };
 
   return (
-    <Card>
+    <Card dir="rtl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

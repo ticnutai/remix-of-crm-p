@@ -313,7 +313,7 @@ export function KanbanBoard() {
               משימה חדשה
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent dir="rtl" className="max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editingTask ? 'עריכת משימה' : 'משימה חדשה'}

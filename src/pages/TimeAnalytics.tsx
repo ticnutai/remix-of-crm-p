@@ -382,7 +382,7 @@ export default function TimeAnalytics() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <Clock className="h-5 w-5 text-primary" />
@@ -401,7 +401,7 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
                 <DollarSign className="h-5 w-5 text-success" />
@@ -412,7 +412,7 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center mb-3">
                 <Target className="h-5 w-5 text-[hsl(45,80%,45%)]" />
@@ -422,7 +422,7 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center mb-3">
                 <Activity className="h-5 w-5 text-secondary" />
@@ -434,7 +434,7 @@ export default function TimeAnalytics() {
         </div>
 
         {/* Insights */}
-        <Card className="border-2 border-[hsl(45,80%,45%)]">
+        <Card dir="rtl" className="border-2 border-[hsl(45,80%,45%)]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Lightbulb className="h-5 w-5 text-[hsl(45,80%,45%)]" />

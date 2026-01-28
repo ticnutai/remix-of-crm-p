@@ -147,6 +147,7 @@ export function QuoteEditorSheet({
       <SheetContent 
         side="right" 
         hideClose
+        dir="rtl"
         className="flex flex-col gap-0 overflow-hidden border-0"
         style={{
           position: 'fixed',
@@ -160,7 +161,6 @@ export function QuoteEditorSheet({
           padding: 0,
           zIndex: 300,
         }}
-        dir="rtl"
       >
         <TooltipProvider>
           <div className="h-full w-full flex flex-col bg-muted/30 overflow-hidden">

@@ -1002,7 +1002,7 @@ export default function TimeLogs() {
       <div className="p-4 space-y-3 animate-fade-in overflow-hidden isolate">
         {/* Running Timer Alert */}
         {timeEntries.some(e => e.is_running) && (
-          <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+          <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20" dir="rtl">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1028,7 +1028,7 @@ export default function TimeLogs() {
         
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card dir="rtl">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-full bg-primary/10">
@@ -1042,7 +1042,7 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card dir="rtl">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-full bg-secondary/10">
@@ -1056,7 +1056,7 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card dir="rtl">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-full bg-green-500/10">
@@ -1070,7 +1070,7 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card>
+          <Card dir="rtl">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-full bg-blue-500/10">
@@ -1086,7 +1086,7 @@ export default function TimeLogs() {
         </div>
 
         {/* Filters & Actions */}
-        <Card>
+        <Card dir="rtl">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
@@ -1271,7 +1271,7 @@ export default function TimeLogs() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent dir="rtl" align="end" className="w-56">
                   <DropdownMenuLabel>בחר תצוגה</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setViewMode('list')}>
@@ -1479,7 +1479,7 @@ export default function TimeLogs() {
           
           {/* Summary Tab */}
           <TabsContent value="summary" className="mt-2 flex-1">
-            <Card>
+            <Card dir="rtl">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5 text-secondary" />
@@ -1596,7 +1596,7 @@ export default function TimeLogs() {
                       {format(formData.log_date, 'dd/MM/yyyy', { locale: he })}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent dir="rtl" className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
                       selected={formData.log_date}

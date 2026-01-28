@@ -127,6 +127,26 @@ export default function Settings() {
   
   const API_ACCESS_CODE = '543211';
 
+  const getTabFromUrl = () => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return tab || 'profile';
+  };
+
+  const [activeTab, setActiveTab] = useState(getTabFromUrl);
+
+  useEffect(() => {
+    const onPopState = () => setActiveTab(getTabFromUrl());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url.toString());
+  };
+
   // Initialize form with profile data
   useEffect(() => {
     if (profile) {
@@ -446,7 +466,7 @@ export default function Settings() {
   return (
     <AppLayout title="הגדרות">
       <div className="p-6 space-y-6 animate-fade-in" dir="rtl">
-        <Tabs defaultValue="profile" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted p-1 justify-end">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />

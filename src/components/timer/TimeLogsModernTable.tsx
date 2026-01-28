@@ -156,7 +156,7 @@ export function TimeLogsModernTable({
 
   if (loading) {
     return (
-      <Card className="p-8">
+      <Card dir="rtl" className="p-8">
         <div className="flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
@@ -166,7 +166,7 @@ export function TimeLogsModernTable({
 
   if (timeEntries.length === 0) {
     return (
-      <Card className="p-12">
+      <Card dir="rtl" className="p-12">
         <div className="flex flex-col items-center justify-center text-center">
           <Clock className="h-16 w-16 text-muted-foreground opacity-50 mb-4" />
           <h3 className="text-lg font-semibold mb-2">אין רישומי זמן</h3>
@@ -179,10 +179,10 @@ export function TimeLogsModernTable({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* Bulk Actions */}
       {selectedEntries.size > 0 && (
-        <Card className="p-4 border-yellow-500/50 bg-yellow-500/5">
+        <Card dir="rtl" className="p-4 border-yellow-500/50 bg-yellow-500/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Badge variant="secondary" className="bg-yellow-500 text-white">
@@ -286,7 +286,7 @@ export function TimeLogsModernTable({
 
             {/* Entries - Collapsible */}
             {expandedDates.has(date) && (
-              <Card className="overflow-hidden border-l-4 border-l-primary/20">
+              <Card dir="rtl" className="overflow-hidden border-l-4 border-l-primary/20">
                 <div className="divide-y divide-border">
                   {dateEntries.map((entry) => {
                     const projectName = getProjectName(entry.project_id);
@@ -421,7 +421,7 @@ export function TimeLogsModernTable({
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent dir="rtl" align="end" className="w-48">
                                 <DropdownMenuItem onClick={() => onEdit(entry)}>
                                   <Edit2 className="h-4 w-4 ml-2" />
                                   ערוך רישום

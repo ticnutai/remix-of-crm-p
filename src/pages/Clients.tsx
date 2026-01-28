@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +45,9 @@ import {
   UserPlus,
   Tag,
   Settings,
+  AlertTriangle,
+  Copy,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -169,6 +173,11 @@ export default function Clients() {
   // Quick Classification dialogs
   const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
+  
+  // Duplicate detection state
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
+  const [pendingClientData, setPendingClientData] = useState<any>(null);
 
   useEffect(() => {
     console.log('📡 [Clients Page] useEffect triggered - fetching clients...');
@@ -442,7 +451,48 @@ export default function Clients() {
     }
   };
 
-  // Add new client
+  // Check for duplicate clients
+  const checkForDuplicates = async (name: string, email: string | null, phone: string | null, idNumber: string | null) => {
+    const conditions = [];
+    
+    // Check by name (fuzzy match)
+    if (name.trim()) {
+      conditions.push(`name.ilike.%${name.trim()}%`);
+    }
+    
+    // Check by email (exact match)
+    if (email && email.trim()) {
+      conditions.push(`email.eq.${email.trim()}`);
+    }
+    
+    // Check by phone (exact match)
+    if (phone && phone.trim()) {
+      conditions.push(`phone.eq.${phone.trim()}`);
+    }
+    
+    // Check by ID number (exact match)
+    if (idNumber && idNumber.trim()) {
+      conditions.push(`id_number.eq.${idNumber.trim()}`);
+    }
+    
+    if (conditions.length === 0) return null;
+    
+    // Build OR query
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .or(conditions.join(','));
+    
+    if (error) {
+      console.error('Error checking duplicates:', error);
+      return null;
+    }
+    
+    // Return first matching duplicate
+    return data && data.length > 0 ? data[0] as Client : null;
+  };
+
+  // Add new client with duplicate check
   const handleAddClient = async () => {
     if (!newClientName.trim()) {
       toast({
@@ -454,10 +504,19 @@ export default function Clients() {
     }
 
     setIsAddingClient(true);
+    
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert({
+      // Check for duplicates first
+      const duplicate = await checkForDuplicates(
+        newClientName.trim(),
+        newClientEmail.trim() || null,
+        newClientPhone.trim() || null,
+        newClientIdNumber.trim() || null
+      );
+      
+      if (duplicate) {
+        // Store pending data and show duplicate dialog
+        setPendingClientData({
           name: newClientName.trim(),
           email: newClientEmail.trim() || null,
           phone: newClientPhone.trim() || null,
@@ -467,7 +526,42 @@ export default function Clients() {
           migrash: newClientMigrash.trim() || null,
           taba: newClientTaba.trim() || null,
           status: 'active',
-        })
+        });
+        setDuplicateClient(duplicate);
+        setDuplicateDialogOpen(true);
+        setIsAddingClient(false);
+        return;
+      }
+      
+      // No duplicate found, proceed with insert
+      await insertNewClient({
+        name: newClientName.trim(),
+        email: newClientEmail.trim() || null,
+        phone: newClientPhone.trim() || null,
+        id_number: newClientIdNumber.trim() || null,
+        gush: newClientGush.trim() || null,
+        helka: newClientHelka.trim() || null,
+        migrash: newClientMigrash.trim() || null,
+        taba: newClientTaba.trim() || null,
+        status: 'active',
+      });
+    } catch (error) {
+      console.error('Error adding client:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להוסיף את הלקוח',
+        variant: 'destructive',
+      });
+      setIsAddingClient(false);
+    }
+  };
+
+  // Insert new client (used after duplicate check)
+  const insertNewClient = async (clientData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(clientData)
         .select()
         .single();
 
@@ -475,18 +569,11 @@ export default function Clients() {
 
       toast({
         title: 'לקוח נוסף בהצלחה',
-        description: `הלקוח "${newClientName}" נוסף למערכת`,
+        description: `הלקוח "${clientData.name}" נוסף למערכת`,
       });
 
       // Reset form and close dialog
-      setNewClientName('');
-      setNewClientEmail('');
-      setNewClientPhone('');
-      setNewClientIdNumber('');
-      setNewClientGush('');
-      setNewClientHelka('');
-      setNewClientMigrash('');
-      setNewClientTaba('');
+      resetAddClientForm();
       setIsAddClientDialogOpen(false);
 
       // Refresh clients list
@@ -497,7 +584,7 @@ export default function Clients() {
         navigate(`/clients/${data.id}`);
       }
     } catch (error) {
-      console.error('Error adding client:', error);
+      console.error('Error inserting client:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן להוסיף את הלקוח',
@@ -506,6 +593,82 @@ export default function Clients() {
     } finally {
       setIsAddingClient(false);
     }
+  };
+
+  // Handle overwrite duplicate
+  const handleOverwriteDuplicate = async () => {
+    if (!duplicateClient || !pendingClientData) return;
+    
+    setIsAddingClient(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update(pendingClientData)
+        .eq('id', duplicateClient.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'לקוח עודכן בהצלחה',
+        description: `הלקוח "${pendingClientData.name}" עודכן במערכת`,
+      });
+
+      // Reset and close dialogs
+      resetAddClientForm();
+      setDuplicateDialogOpen(false);
+      setIsAddClientDialogOpen(false);
+      setDuplicateClient(null);
+      setPendingClientData(null);
+
+      // Refresh clients list
+      fetchClients();
+      
+      // Navigate to updated client
+      navigate(`/clients/${duplicateClient.id}`);
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן את הלקוח',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingClient(false);
+    }
+  };
+
+  // Handle skip duplicate (add anyway with different identifier)
+  const handleSkipDuplicate = () => {
+    setDuplicateDialogOpen(false);
+    setDuplicateClient(null);
+    setPendingClientData(null);
+    toast({
+      title: 'פעולה בוטלה',
+      description: 'הלקוח לא נוסף',
+    });
+  };
+
+  // Handle add anyway (force add despite duplicate)
+  const handleAddAnyway = async () => {
+    if (!pendingClientData) return;
+    
+    setDuplicateDialogOpen(false);
+    setDuplicateClient(null);
+    
+    await insertNewClient(pendingClientData);
+    setPendingClientData(null);
+  };
+
+  // Reset add client form
+  const resetAddClientForm = () => {
+    setNewClientName('');
+    setNewClientEmail('');
+    setNewClientPhone('');
+    setNewClientIdNumber('');
+    setNewClientGush('');
+    setNewClientHelka('');
+    setNewClientMigrash('');
+    setNewClientTaba('');
   };
 
   const getStatusConfig = (status: string | null) => {
@@ -1991,6 +2154,106 @@ export default function Clients() {
           fetchCategoriesAndTags();
         }}
       />
+
+      {/* Duplicate Detection Dialog */}
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <AlertDialogContent dir="rtl" className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              נמצא לקוח דומה במערכת
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-right space-y-4">
+              <p className="text-base">
+                נמצא לקוח עם פרטים דומים. מה תרצה לעשות?
+              </p>
+              
+              {duplicateClient && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-2">
+                  <div className="font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                    <Copy className="h-4 w-4" />
+                    לקוח קיים:
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">שם:</span>{' '}
+                      <span className="font-medium">{duplicateClient.name}</span>
+                    </div>
+                    {duplicateClient.email && (
+                      <div>
+                        <span className="text-muted-foreground">אימייל:</span>{' '}
+                        <span className="font-medium">{duplicateClient.email}</span>
+                      </div>
+                    )}
+                    {duplicateClient.phone && (
+                      <div>
+                        <span className="text-muted-foreground">טלפון:</span>{' '}
+                        <span className="font-medium">{duplicateClient.phone}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground">סטטוס:</span>{' '}
+                      <Badge variant="outline" className="mr-1">
+                        {duplicateClient.status === 'active' ? 'פעיל' : duplicateClient.status === 'pending' ? 'ממתין' : 'לא פעיל'}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pendingClientData && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
+                  <div className="font-semibold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    לקוח חדש שמנסים להוסיף:
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">שם:</span>{' '}
+                      <span className="font-medium">{pendingClientData.name}</span>
+                    </div>
+                    {pendingClientData.email && (
+                      <div>
+                        <span className="text-muted-foreground">אימייל:</span>{' '}
+                        <span className="font-medium">{pendingClientData.email}</span>
+                      </div>
+                    )}
+                    {pendingClientData.phone && (
+                      <div>
+                        <span className="text-muted-foreground">טלפון:</span>{' '}
+                        <span className="font-medium">{pendingClientData.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2 sm:flex-row-reverse">
+            <Button
+              variant="default"
+              onClick={handleOverwriteDuplicate}
+              disabled={isAddingClient}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <RefreshCw className="h-4 w-4 ml-2" />
+              {isAddingClient ? 'מעדכן...' : 'עדכן קיים (Overwrite)'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleAddAnyway}
+              disabled={isAddingClient}
+            >
+              <UserPlus className="h-4 w-4 ml-2" />
+              הוסף בכל זאת
+            </Button>
+            <AlertDialogCancel onClick={handleSkipDuplicate}>
+              <X className="h-4 w-4 ml-2" />
+              בטל (Skip)
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

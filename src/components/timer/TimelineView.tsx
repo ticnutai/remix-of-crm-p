@@ -148,7 +148,7 @@ export function TimelineView({
   const activeUsers = Array.from(entriesByUser.keys());
 
   return (
-    <Card>
+    <Card dir="rtl">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

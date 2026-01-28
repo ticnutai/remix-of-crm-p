@@ -3,6 +3,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +17,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,6 +43,10 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  Copy,
+  Search,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 
 interface DataCategory {
@@ -44,12 +59,34 @@ interface DataCategory {
   count?: number;
 }
 
+interface DuplicateGroup {
+  key: string;
+  field: string;
+  value: string;
+  items: any[];
+}
+
+interface DuplicateScanResult {
+  tableName: string;
+  tableLabel: string;
+  groups: DuplicateGroup[];
+  totalDuplicates: number;
+}
+
 export function DataCleanupTab() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [isLoadingCounts, setIsLoadingCounts] = useState(false);
+  
+  // Duplicate detection state
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [duplicateResults, setDuplicateResults] = useState<DuplicateScanResult[]>([]);
+  const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
+  const [selectedDuplicates, setSelectedDuplicates] = useState<Set<string>>(new Set());
+  const [isDeletingDuplicates, setIsDeletingDuplicates] = useState(false);
 
   const categories: DataCategory[] = [
     {
@@ -179,6 +216,187 @@ export function DataCleanupTab() {
     fetchCounts();
   }, []);
 
+  // Scan for duplicates
+  const scanForDuplicates = async () => {
+    setIsScanning(true);
+    setScanProgress(0);
+    setDuplicateResults([]);
+    
+    const tablesToScan = [
+      { name: 'clients', label: 'לקוחות', fields: ['name', 'email', 'phone', 'id_number'] },
+      { name: 'projects', label: 'פרויקטים', fields: ['name'] },
+      { name: 'tasks', label: 'משימות', fields: ['title'] },
+    ];
+    
+    const results: DuplicateScanResult[] = [];
+    
+    try {
+      for (let i = 0; i < tablesToScan.length; i++) {
+        const table = tablesToScan[i];
+        setScanProgress(Math.round(((i + 0.5) / tablesToScan.length) * 100));
+        
+        // Fetch all records from the table
+        const { data, error } = await supabase
+          .from(table.name as any)
+          .select('*');
+        
+        if (error || !data) continue;
+        
+        const groups: DuplicateGroup[] = [];
+        
+        // Check each field for duplicates
+        for (const field of table.fields) {
+          const valueMap = new Map<string, any[]>();
+          
+          for (const item of data) {
+            const value = item[field];
+            if (!value || value === '') continue;
+            
+            const normalizedValue = String(value).trim().toLowerCase();
+            if (!valueMap.has(normalizedValue)) {
+              valueMap.set(normalizedValue, []);
+            }
+            valueMap.get(normalizedValue)!.push(item);
+          }
+          
+          // Find groups with more than one item (duplicates)
+          for (const [value, items] of valueMap) {
+            if (items.length > 1) {
+              groups.push({
+                key: `${table.name}-${field}-${value}`,
+                field,
+                value: items[0][field], // Original value (not normalized)
+                items,
+              });
+            }
+          }
+        }
+        
+        if (groups.length > 0) {
+          const totalDuplicates = groups.reduce((sum, g) => sum + g.items.length - 1, 0);
+          results.push({
+            tableName: table.name,
+            tableLabel: table.label,
+            groups,
+            totalDuplicates,
+          });
+        }
+        
+        setScanProgress(Math.round(((i + 1) / tablesToScan.length) * 100));
+      }
+      
+      setDuplicateResults(results);
+      setShowDuplicatesDialog(true);
+      
+      const totalDuplicates = results.reduce((sum, r) => sum + r.totalDuplicates, 0);
+      
+      if (totalDuplicates === 0) {
+        toast({
+          title: 'לא נמצאו כפילויות',
+          description: 'המערכת נקייה מכפילויות',
+        });
+      } else {
+        toast({
+          title: 'נמצאו כפילויות',
+          description: `נמצאו ${totalDuplicates} רשומות כפולות`,
+        });
+      }
+    } catch (error) {
+      console.error('Error scanning for duplicates:', error);
+      toast({
+        title: 'שגיאה בסריקה',
+        description: 'לא ניתן לסרוק את הנתונים',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsScanning(false);
+      setScanProgress(100);
+    }
+  };
+
+  // Toggle duplicate selection
+  const toggleDuplicateSelection = (itemId: string) => {
+    setSelectedDuplicates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all duplicates (keep first, select rest)
+  const selectAllDuplicates = () => {
+    const allDuplicateIds = new Set<string>();
+    for (const result of duplicateResults) {
+      for (const group of result.groups) {
+        // Skip the first item (keep it), select the rest
+        for (let i = 1; i < group.items.length; i++) {
+          allDuplicateIds.add(`${result.tableName}:${group.items[i].id}`);
+        }
+      }
+    }
+    setSelectedDuplicates(allDuplicateIds);
+  };
+
+  // Clear selection
+  const clearDuplicateSelection = () => {
+    setSelectedDuplicates(new Set());
+  };
+
+  // Delete selected duplicates
+  const deleteSelectedDuplicates = async () => {
+    if (selectedDuplicates.size === 0) return;
+    
+    setIsDeletingDuplicates(true);
+    
+    try {
+      // Group by table
+      const byTable = new Map<string, string[]>();
+      for (const key of selectedDuplicates) {
+        const [table, id] = key.split(':');
+        if (!byTable.has(table)) {
+          byTable.set(table, []);
+        }
+        byTable.get(table)!.push(id);
+      }
+      
+      // Delete from each table
+      for (const [table, ids] of byTable) {
+        const { error } = await supabase
+          .from(table as any)
+          .delete()
+          .in('id', ids);
+        
+        if (error) {
+          console.error(`Error deleting from ${table}:`, error);
+        }
+      }
+      
+      toast({
+        title: 'הכפילויות נמחקו',
+        description: `${selectedDuplicates.size} רשומות כפולות נמחקו בהצלחה`,
+      });
+      
+      // Reset and rescan
+      setSelectedDuplicates(new Set());
+      setShowDuplicatesDialog(false);
+      fetchCounts();
+      
+    } catch (error) {
+      console.error('Error deleting duplicates:', error);
+      toast({
+        title: 'שגיאה במחיקה',
+        description: 'לא ניתן למחוק את הכפילויות',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingDuplicates(false);
+    }
+  };
+
   const handleDelete = async (category: DataCategory) => {
     if (!user) return;
     
@@ -264,6 +482,198 @@ export function DataCleanupTab() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      {/* Duplicate Detection Card */}
+      <Card className="border-amber-500/30">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-amber-600">
+                <Copy className="h-5 w-5" />
+                זיהוי כפילויות
+              </CardTitle>
+              <CardDescription>
+                סרוק ומחק רשומות כפולות במערכת
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={scanForDuplicates}
+              disabled={isScanning}
+              className="border-amber-500/50 hover:bg-amber-500/10"
+            >
+              {isScanning ? (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              ) : (
+                <Search className="h-4 w-4 ml-2" />
+              )}
+              סרוק כפילויות
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isScanning && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>סורק את המערכת...</span>
+                <span>{scanProgress}%</span>
+              </div>
+              <Progress value={scanProgress} className="h-2" />
+            </div>
+          )}
+          
+          {!isScanning && duplicateResults.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  נמצאו {duplicateResults.reduce((sum, r) => sum + r.totalDuplicates, 0)} כפילויות ב-{duplicateResults.length} טבלאות
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDuplicatesDialog(true)}
+                >
+                  צפה בפרטים
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {duplicateResults.map(result => (
+                  <Badge key={result.tableName} variant="outline" className="border-amber-500/50 text-amber-600">
+                    {result.tableLabel}: {result.totalDuplicates} כפילויות
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {!isScanning && duplicateResults.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              לחץ על "סרוק כפילויות" כדי לחפש רשומות כפולות במערכת
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Duplicates Dialog */}
+      <Dialog open={showDuplicatesDialog} onOpenChange={setShowDuplicatesDialog}>
+        <DialogContent dir="rtl" className="max-w-4xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5 text-amber-600" />
+              כפילויות שנמצאו
+            </DialogTitle>
+            <DialogDescription>
+              בחר את הרשומות הכפולות שברצונך למחוק. מומלץ להשאיר את הרשומה הראשונה (המקורית) ולמחוק את השאר.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center justify-between py-2 border-b">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={selectAllDuplicates}>
+                <CheckCircle2 className="h-4 w-4 ml-2" />
+                בחר את כל הכפילויות
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearDuplicateSelection}>
+                <XCircle className="h-4 w-4 ml-2" />
+                נקה בחירה
+              </Button>
+            </div>
+            <Badge variant="secondary">
+              {selectedDuplicates.size} נבחרו למחיקה
+            </Badge>
+          </div>
+          
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="space-y-6 py-4">
+              {duplicateResults.map(result => (
+                <div key={result.tableName} className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    {result.tableLabel}
+                    <Badge variant="outline" className="mr-2">
+                      {result.totalDuplicates} כפילויות
+                    </Badge>
+                  </h4>
+                  
+                  {result.groups.map(group => (
+                    <Card key={group.key} className="border-amber-200 dark:border-amber-800">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                          <Badge variant="secondary">{group.field}</Badge>
+                          <span>ערך: <strong>{group.value}</strong></span>
+                          <span>({group.items.length} רשומות)</span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {group.items.map((item, index) => {
+                            const itemKey = `${result.tableName}:${item.id}`;
+                            const isSelected = selectedDuplicates.has(itemKey);
+                            const isFirst = index === 0;
+                            
+                            return (
+                              <div
+                                key={item.id}
+                                className={`flex items-center gap-3 p-2 rounded-md border ${
+                                  isFirst 
+                                    ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' 
+                                    : isSelected 
+                                      ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+                                      : 'bg-muted/30 border-transparent'
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleDuplicateSelection(itemKey)}
+                                  disabled={isFirst}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    {isFirst && (
+                                      <Badge className="bg-green-500 text-white">מקורי</Badge>
+                                    )}
+                                    <span className="font-medium truncate">
+                                      {item.name || item.title || item.id}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground flex gap-3 mt-1">
+                                    {item.email && <span>📧 {item.email}</span>}
+                                    {item.phone && <span>📱 {item.phone}</span>}
+                                    {item.created_at && (
+                                      <span>📅 {new Date(item.created_at).toLocaleDateString('he-IL')}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setShowDuplicatesDialog(false)}>
+              סגור
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={deleteSelectedDuplicates}
+              disabled={selectedDuplicates.size === 0 || isDeletingDuplicates}
+            >
+              {isDeletingDuplicates ? (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 ml-2" />
+              )}
+              מחק {selectedDuplicates.size} נבחרים
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="border-destructive/30">
         <CardHeader>
           <div className="flex items-center justify-between">

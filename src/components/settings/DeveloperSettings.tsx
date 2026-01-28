@@ -1,6 +1,6 @@
 // Developer Settings Tab - e-control CRM Pro
 // הגדרות פיתוח משודרגות עם שליטה מלאה ועיצוב זהב פרימיום
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -52,6 +52,7 @@ import {
 import { ErrorMonitor } from '@/components/dev/ErrorMonitor';
 import { useErrorMonitoring } from '@/hooks/useErrorMonitoring';
 import { ScriptRunner } from './ScriptRunner';
+import { SystemHealthCheck } from './SystemHealthCheck';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
 const DEV_TOOLS_CONFIG_KEY = 'dev-tools-config';
@@ -615,6 +616,9 @@ export function DeveloperSettings() {
         <ErrorMonitor enabled={devMode} maxHeight="500px" />
       )}
 
+      {/* System Health Check */}
+      {devMode && <SystemHealthCheck />}
+
       {/* Migration Management */}
       {devMode && <MigrationManagement />}
     </div>
@@ -675,6 +679,8 @@ function MigrationManagement() {
   const [sqlFileName, setSqlFileName] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
 
+  const autorunOnceRef = useRef(false);
+
   // Error monitoring for migrations
   const { logError } = useErrorMonitoring(true);
 
@@ -687,10 +693,9 @@ function MigrationManagement() {
         const data: PendingMigrationsFile = await response.json();
         const pending = data.migrations.filter(m => m.status === 'pending');
         setPendingMigrations(pending);
+        // Log quietly without toast
         if (pending.length > 0) {
-          toast.success(`🚀 ${pending.length} מיגרציות ממתינות מ-Copilot`, {
-            description: 'לחץ על "הרץ" להפעלה'
-          });
+          console.log(`🚀 ${pending.length} מיגרציות ממתינות מ-Copilot`);
         }
       }
     } catch (e) {
@@ -701,9 +706,16 @@ function MigrationManagement() {
   };
 
   // Execute pending migration
-  const executePendingMigration = async (migration: PendingMigration) => {
-    if (!globalThis.confirm(`האם להריץ את המיגרציה "${migration.name}"?\n\n${migration.description}\n\nזו פעולה שלא ניתן לבטל!`)) {
-      return;
+  const executePendingMigration = useCallback(async (
+    migration: PendingMigration,
+    options?: { skipConfirm?: boolean }
+  ) => {
+    const skipConfirm = Boolean(options?.skipConfirm);
+
+    if (!skipConfirm) {
+      if (!globalThis.confirm(`האם להריץ את המיגרציה "${migration.name}"?\n\n${migration.description}\n\nזו פעולה שלא ניתן לבטל!`)) {
+        return;
+      }
     }
     
     setExecuting(true);
@@ -764,25 +776,53 @@ function MigrationManagement() {
     } finally {
       setExecuting(false);
     }
-  };
+  }, [logError]);
 
   // Execute all pending migrations
-  const executeAllPending = async () => {
+  const executeAllPending = useCallback(async (options?: { skipConfirm?: boolean }) => {
     if (pendingMigrations.length === 0) return;
-    
-    if (!globalThis.confirm(`האם להריץ את כל ${pendingMigrations.length} המיגרציות הממתינות?\n\nזו פעולה שלא ניתן לבטל!`)) {
-      return;
+
+    const skipConfirm = Boolean(options?.skipConfirm);
+
+    if (!skipConfirm) {
+      if (!globalThis.confirm(`האם להריץ את כל ${pendingMigrations.length} המיגרציות הממתינות?\n\nזו פעולה שלא ניתן לבטל!`)) {
+        return;
+      }
     }
-    
-    for (const migration of pendingMigrations) {
-      await executePendingMigration(migration);
+
+    const migrationsToRun = [...pendingMigrations];
+    for (const migration of migrationsToRun) {
+      await executePendingMigration(migration, { skipConfirm });
     }
-  };
+  }, [pendingMigrations, executePendingMigration]);
 
   // Load pending on mount
   useEffect(() => {
     loadPendingMigrations();
   }, []);
+
+  // Autorun pending migrations via URL param (DEV only)
+  // Example: /settings?tab=developer&autorun=pending
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (autorunOnceRef.current) return;
+
+    const autorun = new URLSearchParams(window.location.search).get('autorun');
+    if (!autorun) return;
+    if (autorun !== 'pending' && autorun !== 'all') return;
+    if (loadingPending) return;
+
+    autorunOnceRef.current = true;
+
+    if (pendingMigrations.length === 0) {
+      toast.info('Autorun: אין מיגרציות ממתינות');
+      return;
+    }
+
+    setViewMode('pending');
+    toast.info(`Autorun: מריץ ${pendingMigrations.length} מיגרציות ממתינות...`);
+    void executeAllPending({ skipConfirm: true });
+  }, [loadingPending, pendingMigrations.length, executeAllPending]);
 
   const fetchMigrationLogs = async () => {
     setLoading(true);
@@ -837,21 +877,42 @@ function MigrationManagement() {
   const loadAvailableMigrations = async () => {
     setLoadingFiles(true);
     try {
-      // Get all migration files from the repository via GitHub API
-      const response = await fetch(
-        'https://api.github.com/repos/ticnutai/remix-of-crm-p/contents/supabase/migrations',
-        {
-          headers: {
-            'Accept': 'application/vnd.github.v3+json'
-          }
+      type RepoFile = { name: string; path: string };
+
+      const loadFromLocalDev = async (): Promise<RepoFile[] | null> => {
+        if (!import.meta.env.DEV) return null;
+        try {
+          const resp = await fetch('/__dev/migrations?t=' + Date.now(), {
+            headers: { Accept: 'application/json' }
+          });
+          if (!resp.ok) return null;
+          const json = (await resp.json()) as { files?: RepoFile[] };
+          if (!json?.files?.length) return [];
+          return json.files;
+        } catch {
+          return null;
         }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch migration files');
-      }
-      
-      const files = await response.json();
+      };
+
+      const loadFromGitHub = async (): Promise<any[]> => {
+        const response = await fetch(
+          'https://api.github.com/repos/ticnutai/remix-of-crm-p/contents/supabase/migrations',
+          {
+            headers: {
+              Accept: 'application/vnd.github.v3+json'
+            }
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`GitHub API failed (${response.status})`);
+        }
+
+        return await response.json();
+      };
+
+      const localFiles = await loadFromLocalDev();
+      const files = localFiles ?? (await loadFromGitHub());
       
       // Filter SQL files only
       const sqlFiles = files
@@ -894,21 +955,34 @@ function MigrationManagement() {
     
     setExecuting(true);
     try {
-      // Fetch the file content from GitHub
-      const response = await fetch(
-        `https://raw.githubusercontent.com/ticnutai/remix-of-crm-p/main/supabase/migrations/${fileName}`,
-        {
-          headers: {
-            'Accept': 'text/plain'
-          }
+      const loadSqlFromLocalDev = async (): Promise<string | null> => {
+        if (!import.meta.env.DEV) return null;
+        try {
+          const resp = await fetch(
+            `/__dev/migrations/${encodeURIComponent(fileName)}?t=${Date.now()}`,
+            { headers: { Accept: 'text/plain' } }
+          );
+          if (!resp.ok) return null;
+          return await resp.text();
+        } catch {
+          return null;
         }
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch migration file content');
-      }
-      
-      const sqlContent = await response.text();
+      };
+
+      const loadSqlFromGitHub = async (): Promise<string> => {
+        const response = await fetch(
+          `https://raw.githubusercontent.com/ticnutai/remix-of-crm-p/main/supabase/migrations/${fileName}`,
+          { headers: { Accept: 'text/plain' } }
+        );
+
+        if (!response.ok) {
+          throw new Error(`GitHub raw failed (${response.status})`);
+        }
+
+        return await response.text();
+      };
+
+      const sqlContent = (await loadSqlFromLocalDev()) ?? (await loadSqlFromGitHub());
       
       // Execute via RPC
       const { data, error: execError } = await supabase
@@ -1275,7 +1349,7 @@ function MigrationManagement() {
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={executeAllPending}
+                    onClick={() => executeAllPending()}
                     disabled={executing}
                     className="bg-purple-500 hover:bg-purple-600"
                   >

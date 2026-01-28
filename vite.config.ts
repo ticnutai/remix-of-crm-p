@@ -1,7 +1,95 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { componentTagger } from "lovable-tagger";
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function devMigrationsPlugin() {
+  const migrationsDir = path.resolve(__dirname, "supabase", "migrations");
+  
+  return {
+    name: "dev-migrations-plugin",
+    apply: "serve" as const,
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        // Only handle our specific routes
+        if (!req?.url || typeof req.url !== "string") {
+          return next();
+        }
+        if (!req.url.startsWith("/__dev/migrations")) {
+          return next();
+        }
+
+        // Handle async operations
+        (async () => {
+          try {
+            if (req.method !== "GET") {
+              res.statusCode = 405;
+              res.setHeader("Content-Type", "text/plain; charset=utf-8");
+              res.end("Method Not Allowed");
+              return;
+            }
+
+            const url = new URL(req.url, "http://localhost");
+            const pathname = url.pathname;
+
+            // List migrations
+            if (pathname === "/__dev/migrations" || pathname === "/__dev/migrations/") {
+              const dirents = await fs.readdir(migrationsDir, { withFileTypes: true });
+              const files = dirents
+                .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".sql"))
+                .map((d) => ({
+                  name: d.name,
+                  path: `supabase/migrations/${d.name}`,
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+              res.statusCode = 200;
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify({ files }));
+              return;
+            }
+
+            // Read a specific migration content
+            const fileNameRaw = pathname.replace("/__dev/migrations/", "");
+            const fileName = decodeURIComponent(fileNameRaw);
+
+            // Prevent path traversal
+            if (!fileName || fileName.includes("/") || fileName.includes("\\") || fileName.includes("..")) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "text/plain; charset=utf-8");
+              res.end("Bad Request");
+              return;
+            }
+
+            const absoluteFilePath = path.resolve(migrationsDir, fileName);
+            if (!absoluteFilePath.startsWith(migrationsDir)) {
+              res.statusCode = 403;
+              res.setHeader("Content-Type", "text/plain; charset=utf-8");
+              res.end("Forbidden");
+              return;
+            }
+
+            const content = await fs.readFile(absoluteFilePath, "utf8");
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.end(content);
+          } catch (err: any) {
+            console.error("[dev-migrations-plugin] Error:", err.message);
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.end(`Server Error: ${err.message}`);
+          }
+        })();
+      });
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -36,7 +124,8 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(), 
-      mode === "development" && componentTagger()
+      mode === "development" && componentTagger(),
+      mode === "development" && devMigrationsPlugin(),
     ].filter(Boolean),      
     resolve: {
       alias: {

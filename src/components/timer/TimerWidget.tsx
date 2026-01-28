@@ -278,7 +278,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const isPaused = !timerState.isRunning && timerState.currentEntry && timerState.elapsed > 0;
 
   return (
-    <div className="relative">
+    <div className="relative" dir="rtl">
       {/* Main Content - Transparent background to blend with FloatingTimer */}
       <div className="flex flex-col gap-3">
         {/* Client Selection - Always Visible */}

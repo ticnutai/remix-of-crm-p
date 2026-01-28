@@ -116,7 +116,7 @@ export function TimeLogsKanbanView({
   };
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Kanban className="h-5 w-5" />
@@ -178,7 +178,7 @@ export function TimeLogsGroupedView({
   const totalMinutes = grouped.reduce((sum, g) => sum + g.totalMinutes, 0);
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />
@@ -258,7 +258,7 @@ export function TimeLogsInvoiceView({
   }), [billableData]);
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
@@ -325,7 +325,7 @@ export function TimeLogsCompactView({
   onEntryClick,
 }: TimeLogsCompactViewProps) {
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <List className="h-5 w-5" />

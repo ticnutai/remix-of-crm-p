@@ -74,7 +74,7 @@ export function TimeLogsHeatmapView({
   const weekDays = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">מפת חום</CardTitle>

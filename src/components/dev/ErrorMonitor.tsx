@@ -386,7 +386,7 @@ export function ErrorMonitor({ enabled = true, maxHeight = '600px' }: ErrorMonit
 
       {/* Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent dir="rtl" className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedError && getSeverityIcon(selectedError.severity)}

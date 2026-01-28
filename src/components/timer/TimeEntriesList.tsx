@@ -98,13 +98,13 @@ export function TimeEntriesList() {
     }
   };
   if (todayEntries.length === 0) {
-    return <div className="flex flex-col items-center justify-center py-8 text-center">
+    return <div className="flex flex-col items-center justify-center py-8 text-center" dir="rtl">
         
         <p className="text-[hsl(45,50%,65%)] text-base font-semibold">אין רישומי זמן להיום</p>
         <p className="text-[hsl(220,30%,55%)] text-sm mt-1">התחל את הטיימר כדי לתעד את העבודה שלך</p>
       </div>;
   }
-  return <div className="space-y-2">
+  return <div className="space-y-2" dir="rtl">
       {todayEntries.map(entry => <div key={entry.id} className={cn("group p-4 rounded-xl transition-all duration-200", "bg-[hsl(220,60%,20%)] hover:bg-[hsl(220,60%,24%)]", "border-2 border-[hsl(45,80%,50%)]/20 hover:border-[hsl(45,80%,50%)]/40", "hover:shadow-lg hover:shadow-[hsl(45,80%,50%)]/10", entry.is_running && "border-[hsl(45,80%,55%)] bg-[hsl(220,60%,22%)] shadow-md shadow-[hsl(45,80%,50%)]/20")}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">

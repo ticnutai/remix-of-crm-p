@@ -188,7 +188,7 @@ export function WorkflowManager() {
               אוטומציה חדשה
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent dir="rtl" className="max-w-lg">
             <DialogHeader>
               <DialogTitle>יצירת אוטומציה חדשה</DialogTitle>
             </DialogHeader>

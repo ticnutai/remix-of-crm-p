@@ -177,7 +177,7 @@ export function EmailSignatureManager() {
               חתימה חדשה
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent dir="rtl" className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingId ? 'ערוך חתימה' : 'חתימה חדשה'}</DialogTitle>
               <DialogDescription>

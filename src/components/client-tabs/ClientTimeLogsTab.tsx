@@ -733,7 +733,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                     }
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent dir="rtl" className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
                     selected={{ from: customDateRange.from, to: customDateRange.to }}
@@ -1224,7 +1224,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                     {format(formData.log_date, 'PPP', { locale: he })}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent dir="rtl" className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.log_date}

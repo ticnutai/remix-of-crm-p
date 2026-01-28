@@ -69,25 +69,8 @@ export function useErrorMonitoring(enabled: boolean = true) {
 
     addGlobalError(errorLog);
 
-    // Show toast for critical errors
-    if (error.severity === 'error' && enabled) {
-      toast.error(`🔴 ${error.type.toUpperCase()}: שגיאה זוהתה`, {
-        description: error.message.slice(0, 150),
-        duration: 8000,
-        action: {
-          label: 'פרטים בקונסול',
-          onClick: () => {
-            console.group(`🔴 Error Details [${error.type}]`);
-            console.error('Message:', error.message);
-            console.error('Type:', error.type);
-            console.error('Source:', error.source);
-            console.error('Stack:', error.stack);
-            console.error('Context:', error.context);
-            console.groupEnd();
-          }
-        }
-      });
-    }
+    // Don't log to console - it causes infinite loops with the console interceptor
+    // The error is already captured and shown in the error monitor UI
 
     return errorLog;
   }, [enabled]);
@@ -146,6 +129,11 @@ export function useErrorMonitoring(enabled: boolean = true) {
       // Filter out noise
       if (message.includes('Warning:') || 
           message.includes('🔴 Error Details') ||
+          message.includes('Message:') ||
+          message.includes('Type:') ||
+          message.includes('Source:') ||
+          message.includes('Stack:') ||
+          message.includes('Context:') ||
           message.includes('[vite]') ||
           message.includes('HMR')) {
         return;
@@ -247,13 +235,20 @@ export function useErrorMonitoring(enabled: boolean = true) {
   useEffect(() => {
     if (!enabled) return;
 
-    originalFetch.current = globalThis.fetch;
+    originalFetch.current = globalThis.fetch.bind(globalThis);
 
     globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
-      const url = typeof args[0] === 'string' ? args[0] : args[0]?.url || 'unknown';
+      let url = 'unknown';
+      if (typeof args[0] === 'string') {
+        url = args[0];
+      } else if (args[0] instanceof URL) {
+        url = args[0].toString();
+      } else if (args[0] instanceof Request) {
+        url = args[0].url;
+      }
       
       try {
-        const response = await originalFetch.current!(...args);
+        const response = await originalFetch.current!.apply(globalThis, args);
 
         // Log failed HTTP requests (4xx, 5xx)
         if (!response.ok && response.status >= 400) {
