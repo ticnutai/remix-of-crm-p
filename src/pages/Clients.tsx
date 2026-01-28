@@ -48,6 +48,8 @@ import {
   AlertTriangle,
   Copy,
   RefreshCw,
+  HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -140,6 +142,7 @@ export default function Clients() {
   
   // Add client dialog state
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
+  const [showFeaturesHelp, setShowFeaturesHelp] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -1516,6 +1519,38 @@ export default function Clients() {
                 <Rows3 style={{ width: '16px', height: '16px' }} />
                 טבלה
               </button>
+              
+              {/* Features Help Button - Gold */}
+              <button
+                onClick={() => setShowFeaturesHelp(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  backgroundColor: '#ffffff',
+                  border: '2px solid #d4a843',
+                  borderRadius: '50%',
+                  color: '#d4a843',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(212, 168, 67, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d4a843';
+                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ffffff';
+                  e.currentTarget.style.color = '#d4a843';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                title="תכונות זמינות"
+              >
+                <Sparkles style={{ width: '16px', height: '16px' }} />
+              </button>
             </div>
 
             {/* View Options & Search */}
@@ -2254,6 +2289,123 @@ export default function Clients() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Features Help Dialog */}
+      <Dialog open={showFeaturesHelp} onOpenChange={setShowFeaturesHelp}>
+        <DialogContent dir="rtl" style={{ maxWidth: '900px', maxHeight: '85vh', overflow: 'auto' }}>
+          <DialogHeader>
+            <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d4a843' }}>
+              <Settings style={{ width: '24px', height: '24px' }} />
+              תכונות זמינות
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(3, 1fr)', 
+            gap: '24px',
+            padding: '16px 0',
+          }}>
+            {/* תכונות ליבה */}
+            <div>
+              <h3 style={{ 
+                color: '#16a34a', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Check style={{ width: '18px', height: '18px' }} />
+                תכונות ליבה
+              </h3>
+              <ul style={{ 
+                listStyle: 'none', 
+                padding: 0, 
+                margin: 0,
+                fontSize: '14px',
+                color: '#374151',
+                lineHeight: '1.8'
+              }}>
+                <li>• מיון רב-עמודות (Shift+Click)</li>
+                <li>• סינון חכם לכל סוג נתון</li>
+                <li>• חיפוש גלובלי מהיר</li>
+                <li>• עימוד עם בחירת גודל</li>
+                <li>• בחירת שורות בודדת/מרובה</li>
+              </ul>
+            </div>
+
+            {/* תכונות מתקדמות */}
+            <div>
+              <h3 style={{ 
+                color: '#16a34a', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Check style={{ width: '18px', height: '18px' }} />
+                תכונות מתקדמות
+              </h3>
+              <ul style={{ 
+                listStyle: 'none', 
+                padding: 0, 
+                margin: 0,
+                fontSize: '14px',
+                color: '#374151',
+                lineHeight: '1.8'
+              }}>
+                <li>• עריכת תאים Inline - לחץ על תא לעריכה</li>
+                <li>• הוספת שורות - כפתור "הוסף שורה"</li>
+                <li>• הוספת עמודות - כפתור "הוסף עמודה"</li>
+                <li>• Undo/Redo - כפתורי ביטול/חזור</li>
+                <li>• גרירת שורות - חצים להזזת שורות</li>
+                <li>• מחיקת שורות - בחר ולחץ מחק</li>
+                <li>• שינוי גודל עמודות</li>
+                <li>• הסתרה/הצגת עמודות</li>
+              </ul>
+            </div>
+
+            {/* ביצועים ו-UX */}
+            <div>
+              <h3 style={{ 
+                color: '#16a34a', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Check style={{ width: '18px', height: '18px' }} />
+                ביצועים ו-UX
+              </h3>
+              <ul style={{ 
+                listStyle: 'none', 
+                padding: 0, 
+                margin: 0,
+                fontSize: '14px',
+                color: '#374151',
+                lineHeight: '1.8'
+              }}>
+                <li>• Virtual Scrolling לאלפי שורות</li>
+                <li>• ניווט מקלדת מלא</li>
+                <li>• RTL מושלם</li>
+                <li>• Loading Skeletons</li>
+                <li>• יצוא CSV, Excel, PDF</li>
+                <li>• הרחבת שורה לפרטים</li>
+                <li>• שורת סיכום (סה"כ, ממוצע)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowFeaturesHelp(false)} variant="outline">
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
