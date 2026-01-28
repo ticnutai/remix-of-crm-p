@@ -13,7 +13,7 @@ import { EmptyState } from './components/EmptyState';
 import { SummaryRow } from './components/SummaryRow';
 import { ActiveFilters } from './components/ColumnFilter';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, ChevronUp, Merge, Ungroup, Lock, Unlock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Merge, Ungroup, Lock, Unlock, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -111,6 +111,16 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
   
   // Local frozen columns state (number of columns to freeze from the right in RTL)
   const [frozenColumns, setFrozenColumns] = useState(0);
+
+  // Apply alignment to all selected cells
+  const applyAlignmentToSelectedCells = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+    if (!onCellStyleChange || cellSelection.selectedCells.size === 0) return;
+    
+    cellSelection.selectedCells.forEach((cellId) => {
+      const currentStyle = cellFormatting?.styles[cellId] || {};
+      onCellStyleChange(cellId, { ...currentStyle, align });
+    });
+  }, [cellSelection.selectedCells, onCellStyleChange, cellFormatting?.styles]);
 
   // Determine if we should use virtual scrolling (auto-enable for large datasets or explicit)
   // Enable virtualization for datasets > threshold rows when NOT paginated
@@ -290,6 +300,70 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
             {cellSelection.selectedCells.size} תאים נבחרו
           </span>
           <div className="flex items-center gap-1 mr-auto">
+            {/* Alignment Buttons */}
+            <div className="flex items-center border rounded-md">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyAlignmentToSelectedCells('right')}
+                      className="h-7 w-7 p-0"
+                    >
+                      <AlignRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>יישור לימין</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyAlignmentToSelectedCells('center')}
+                      className="h-7 w-7 p-0"
+                    >
+                      <AlignCenter className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>יישור למרכז</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyAlignmentToSelectedCells('left')}
+                      className="h-7 w-7 p-0"
+                    >
+                      <AlignLeft className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>יישור לשמאל</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyAlignmentToSelectedCells('justify')}
+                      className="h-7 w-7 p-0"
+                    >
+                      <AlignJustify className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>יישור מלא</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
