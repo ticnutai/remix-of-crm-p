@@ -1,5 +1,5 @@
 // Employees Management Page - e-control CRM Pro
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { ColumnDef } from '@/components/DataTable';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InfoTooltipButton } from '@/components/ui/info-tooltip-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ViewToggle, useViewMode, GridView, ListView, CompactView, type ViewMode } from '@/components/shared/ViewToggle';
 import { MobileCard } from '@/components/shared/MobileCard';
 import { PullToRefresh } from '@/components/shared/PullToRefresh';
@@ -51,7 +52,34 @@ import {
   Edit,
   Calendar,
   Trash2,
+  FileText,
+  Receipt,
+  Printer,
+  Calculator,
+  Clock,
+  Download,
 } from 'lucide-react';
+
+// Interface for time entries
+interface TimeEntry {
+  id: string;
+  user_id: string;
+  duration_minutes: number;
+  start_time: string;
+  description?: string;
+}
+
+// Interface for payroll calculation
+interface PayrollData {
+  employee: Employee;
+  totalHours: number;
+  hourlyRate: number;
+  grossAmount: number;
+  vatRate: number;
+  vatAmount: number;
+  netAmount: number;
+  entries: TimeEntry[];
+}
 
 interface Employee {
   id: string;
@@ -125,6 +153,124 @@ export default function Employees() {
     employee: null,
   });
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('employees');
+
+  // Payroll state
+  const [payrollMonth, setPayrollMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [selectedEmployeeForPayroll, setSelectedEmployeeForPayroll] = useState<string>('all');
+  const [payrollHourlyRate, setPayrollHourlyRate] = useState<string>('');
+  const [payrollVatRate, setPayrollVatRate] = useState<string>('17');
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [loadingPayroll, setLoadingPayroll] = useState(false);
+
+  // Fetch time entries for payroll
+  const fetchTimeEntries = useCallback(async () => {
+    setLoadingPayroll(true);
+    try {
+      const [year, month] = payrollMonth.split('-').map(Number);
+      const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+      let query = supabase
+        .from('time_entries')
+        .select('id, user_id, duration_minutes, start_time, description')
+        .gte('start_time', startDate)
+        .lte('start_time', endDate + 'T23:59:59');
+
+      if (selectedEmployeeForPayroll !== 'all') {
+        query = query.eq('user_id', selectedEmployeeForPayroll);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching time entries:', error);
+        toast({
+          title: 'שגיאה',
+          description: 'לא ניתן לטעון את רישומי הזמן',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoadingPayroll(false);
+    }
+  }, [payrollMonth, selectedEmployeeForPayroll]);
+
+  // Fetch time entries when payroll tab is active
+  useEffect(() => {
+    if (activeTab === 'payroll') {
+      fetchTimeEntries();
+    }
+  }, [activeTab, fetchTimeEntries]);
+
+  // Calculate payroll data
+  const payrollData = useMemo(() => {
+    const vatRate = parseFloat(payrollVatRate) || 0;
+    
+    // Group entries by employee
+    const entriesByEmployee: Record<string, TimeEntry[]> = {};
+    timeEntries.forEach(entry => {
+      if (!entriesByEmployee[entry.user_id]) {
+        entriesByEmployee[entry.user_id] = [];
+      }
+      entriesByEmployee[entry.user_id].push(entry);
+    });
+
+    // Calculate payroll for each employee
+    const result: PayrollData[] = [];
+    
+    const employeeList = selectedEmployeeForPayroll === 'all' 
+      ? employees 
+      : employees.filter(e => e.id === selectedEmployeeForPayroll);
+
+    employeeList.forEach(employee => {
+      const employeeEntries = entriesByEmployee[employee.id] || [];
+      const totalMinutes = employeeEntries.reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0);
+      const totalHours = totalMinutes / 60;
+      
+      // Use custom hourly rate if set, otherwise use employee's rate
+      const hourlyRate = payrollHourlyRate 
+        ? parseFloat(payrollHourlyRate) 
+        : (employee.hourly_rate || 0);
+      
+      const grossAmount = totalHours * hourlyRate;
+      const vatAmount = grossAmount * (vatRate / 100);
+      const netAmount = grossAmount + vatAmount;
+
+      if (totalHours > 0 || selectedEmployeeForPayroll !== 'all') {
+        result.push({
+          employee,
+          totalHours,
+          hourlyRate,
+          grossAmount,
+          vatRate,
+          vatAmount,
+          netAmount,
+          entries: employeeEntries,
+        });
+      }
+    });
+
+    return result.sort((a, b) => b.netAmount - a.netAmount);
+  }, [employees, timeEntries, payrollHourlyRate, payrollVatRate, selectedEmployeeForPayroll]);
+
+  // Format month display in Hebrew
+  const formatMonth = (monthStr: string) => {
+    const [year, month] = monthStr.split('-').map(Number);
+    const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 
+                       'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+    return `${monthNames[month - 1]} ${year}`;
+  };
 
   // Fetch employees with their roles
   const fetchEmployees = useCallback(async () => {
@@ -729,194 +875,474 @@ export default function Employees() {
 
   return (
     <AppLayout title="ניהול עובדים">
-      <div className="p-6 md:p-8 space-y-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="card-elegant">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">סה"כ עובדים</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                  <Users className="h-6 w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="p-6 md:p-8 space-y-6">
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6 w-full sm:w-auto bg-muted/50 p-1 rounded-lg">
+            <TabsTrigger value="employees" className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Users className="h-4 w-4" />
+              <span>עובדים</span>
+            </TabsTrigger>
+            <TabsTrigger value="payroll" className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Receipt className="h-4 w-4" />
+              <span>תלוש שכר</span>
+            </TabsTrigger>
+          </TabsList>
 
-          <Card className="card-elegant">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">עובדים פעילים</p>
-                  <p className="text-2xl font-bold text-success">{stats.active}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-success/10 text-success">
-                  <User className="h-6 w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Employees Tab */}
+          <TabsContent value="employees" className="space-y-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="card-elegant">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">סה"כ עובדים</p>
+                      <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                      <Users className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="card-elegant">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">מנהלים</p>
-                  <p className="text-2xl font-bold text-secondary">{stats.managers}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-secondary/10 text-secondary">
-                  <UserCog className="h-6 w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card className="card-elegant">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">עובדים פעילים</p>
+                      <p className="text-2xl font-bold text-success">{stats.active}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-success/10 text-success">
+                      <User className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card className="card-elegant">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">מנהלים ראשיים</p>
-                  <p className="text-2xl font-bold text-destructive">{stats.admins}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-destructive/10 text-destructive">
-                  <Crown className="h-6 w-6" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Card className="card-elegant">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">מנהלים</p>
+                      <p className="text-2xl font-bold text-secondary">{stats.managers}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary/10 text-secondary">
+                      <UserCog className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        {/* Employees Section */}
-        <div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-              <Users className="h-5 w-5 text-secondary" />
-              רשימת עובדים
-            </h2>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <ViewToggle
-                currentView={viewMode}
-                onViewChange={setViewMode}
-                isMobile={isMobile}
-                showLabel={!isMobile}
-              />
-              {isAdmin && (
-                <Button className="btn-gold flex-1 sm:flex-none" onClick={() => setAddDialog(true)}>
-                  <UserPlus className="h-4 w-4 ml-2" />
-                  {isMobile ? 'הוסף' : 'הזמן עובד חדש'}
-                </Button>
-              )}
+              <Card className="card-elegant">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">מנהלים ראשיים</p>
+                      <p className="text-2xl font-bold text-destructive">{stats.admins}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-destructive/10 text-destructive">
+                      <Crown className="h-6 w-6" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </div>
 
-          {/* View Mode Content */}
-          {employees.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                לא נמצאו עובדים
+            {/* Employees Section */}
+            <div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                  <Users className="h-5 w-5 text-secondary" />
+                  רשימת עובדים
+                </h2>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <ViewToggle
+                    currentView={viewMode}
+                    onViewChange={setViewMode}
+                    isMobile={isMobile}
+                    showLabel={!isMobile}
+                  />
+                  {isAdmin && (
+                    <Button className="btn-gold flex-1 sm:flex-none" onClick={() => setAddDialog(true)}>
+                      <UserPlus className="h-4 w-4 ml-2" />
+                      {isMobile ? 'הוסף' : 'הזמן עובד חדש'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* View Mode Content */}
+              {employees.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    לא נמצאו עובדים
+                  </CardContent>
+                </Card>
+              ) : viewMode === 'cards' ? (
+                <PullToRefresh onRefresh={fetchEmployees}>
+                  <div className="space-y-3">
+                    {employees.map(employee => renderEmployeeCard(employee))}
+                  </div>
+                </PullToRefresh>
+              ) : viewMode === 'grid' ? (
+                <GridView
+                  data={employees}
+                  renderItem={(employee) => renderEmployeeGrid(employee)}
+                  keyExtractor={(employee) => employee.id}
+                  columns={{ mobile: 1, tablet: 2, desktop: 3 }}
+                  gap={4}
+                />
+              ) : viewMode === 'list' ? (
+                <Card>
+                  <ListView
+                    data={employees}
+                    renderItem={(employee) => renderEmployeeList(employee)}
+                    keyExtractor={(employee) => employee.id}
+                    divided
+                  />
+                </Card>
+              ) : viewMode === 'compact' ? (
+                <Card>
+                  <CompactView
+                    data={employees}
+                    renderItem={(employee) => renderEmployeeCompact(employee)}
+                    keyExtractor={(employee) => employee.id}
+                  />
+                </Card>
+              ) : viewMode === 'table' ? (
+                <UniversalDataTable
+                  tableName="profiles"
+                  data={employees}
+                  setData={setEmployees}
+                  baseColumns={columns}
+                  variant="gold"
+                  paginated
+                  pageSize={10}
+                  pageSizeOptions={[5, 10, 25]}
+                  globalSearch
+                  columnToggle
+                  striped
+                  showSummary={!isMobile}
+                  exportable={!isMobile}
+                  filterable={!isMobile}
+                  emptyMessage="לא נמצאו עובדים"
+                  canAddColumns={isManager && !isMobile}
+                  canDeleteColumns={isAdmin && !isMobile}
+                />
+              ) : null}
+            </div>
+
+            {/* Permissions Info - Compact with tooltip */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Shield className="h-4 w-4" />
+                <span>מערכת הרשאות</span>
+              </div>
+              <InfoTooltipButton
+                sections={[
+                  {
+                    title: 'מנהל ראשי (Admin)',
+                    icon: <Crown className="h-4 w-4" />,
+                    variant: 'destructive',
+                    items: [
+                      'גישה מלאה לכל המערכת',
+                      'ניהול הרשאות עובדים',
+                      'מחיקת לקוחות ופרויקטים',
+                      'צפייה בכל רישומי הזמן',
+                    ],
+                  },
+                  {
+                    title: 'מנהל (Manager)',
+                    icon: <UserCog className="h-4 w-4" />,
+                    variant: 'secondary',
+                    items: [
+                      'הוספה ועריכת לקוחות',
+                      'הוספה ועריכת פרויקטים',
+                      'צפייה בכל רישומי הזמן',
+                      'עריכת פרטי עובדים',
+                    ],
+                  },
+                  {
+                    title: 'עובד (Employee)',
+                    icon: <User className="h-4 w-4" />,
+                    variant: 'muted',
+                    items: [
+                      'צפייה בלקוחות ופרויקטים',
+                      'ניהול רישומי הזמן שלו',
+                      'עריכת הפרופיל האישי',
+                      'שימוש בטיימר',
+                    ],
+                  },
+                ]}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Payroll Tab */}
+          <TabsContent value="payroll" className="space-y-6">
+            {/* Payroll Controls */}
+            <Card className="card-elegant">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5 text-primary" />
+                  הגדרות חישוב שכר
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      חודש
+                    </Label>
+                    <Input
+                      type="month"
+                      value={payrollMonth}
+                      onChange={(e) => setPayrollMonth(e.target.value)}
+                      className="text-center"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      עובד
+                    </Label>
+                    <Select
+                      value={selectedEmployeeForPayroll}
+                      onValueChange={setSelectedEmployeeForPayroll}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="בחר עובד" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">כל העובדים</SelectItem>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      תעריף שעתי (₪)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={payrollHourlyRate}
+                      onChange={(e) => setPayrollHourlyRate(e.target.value)}
+                      placeholder="מתעריף עובד"
+                      dir="ltr"
+                    />
+                    <p className="text-xs text-muted-foreground">השאר ריק לשימוש בתעריף העובד</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-muted-foreground" />
+                      מע"מ (%)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={payrollVatRate}
+                      onChange={(e) => setPayrollVatRate(e.target.value)}
+                      placeholder="17"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-4">
+                  <Button onClick={fetchTimeEntries} disabled={loadingPayroll}>
+                    {loadingPayroll && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+                    <Calculator className="h-4 w-4 ml-2" />
+                    חשב
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-          ) : viewMode === 'cards' ? (
-            <PullToRefresh onRefresh={fetchEmployees}>
-              <div className="space-y-3">
-                {employees.map(employee => renderEmployeeCard(employee))}
-              </div>
-            </PullToRefresh>
-          ) : viewMode === 'grid' ? (
-            <GridView
-              data={employees}
-              renderItem={(employee) => renderEmployeeGrid(employee)}
-              keyExtractor={(employee) => employee.id}
-              columns={{ mobile: 1, tablet: 2, desktop: 3 }}
-              gap={4}
-            />
-          ) : viewMode === 'list' ? (
-            <Card>
-              <ListView
-                data={employees}
-                renderItem={(employee) => renderEmployeeList(employee)}
-                keyExtractor={(employee) => employee.id}
-                divided
-              />
-            </Card>
-          ) : viewMode === 'compact' ? (
-            <Card>
-              <CompactView
-                data={employees}
-                renderItem={(employee) => renderEmployeeCompact(employee)}
-                keyExtractor={(employee) => employee.id}
-              />
-            </Card>
-          ) : viewMode === 'table' ? (
-            <UniversalDataTable
-              tableName="profiles"
-              data={employees}
-              setData={setEmployees}
-              baseColumns={columns}
-              variant="gold"
-              paginated
-              pageSize={10}
-              pageSizeOptions={[5, 10, 25]}
-              globalSearch
-              columnToggle
-              striped
-              showSummary={!isMobile}
-              exportable={!isMobile}
-              filterable={!isMobile}
-              emptyMessage="לא נמצאו עובדים"
-              canAddColumns={isManager && !isMobile}
-              canDeleteColumns={isAdmin && !isMobile}
-            />
-          ) : null}
-        </div>
 
-        {/* Permissions Info - Compact with tooltip */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Shield className="h-4 w-4" />
-            <span>מערכת הרשאות</span>
-          </div>
-          <InfoTooltipButton
-            sections={[
-              {
-                title: 'מנהל ראשי (Admin)',
-                icon: <Crown className="h-4 w-4" />,
-                variant: 'destructive',
-                items: [
-                  'גישה מלאה לכל המערכת',
-                  'ניהול הרשאות עובדים',
-                  'מחיקת לקוחות ופרויקטים',
-                  'צפייה בכל רישומי הזמן',
-                ],
-              },
-              {
-                title: 'מנהל (Manager)',
-                icon: <UserCog className="h-4 w-4" />,
-                variant: 'secondary',
-                items: [
-                  'הוספה ועריכת לקוחות',
-                  'הוספה ועריכת פרויקטים',
-                  'צפייה בכל רישומי הזמן',
-                  'עריכת פרטי עובדים',
-                ],
-              },
-              {
-                title: 'עובד (Employee)',
-                icon: <User className="h-4 w-4" />,
-                variant: 'muted',
-                items: [
-                  'צפייה בלקוחות ופרויקטים',
-                  'ניהול רישומי הזמן שלו',
-                  'עריכת הפרופיל האישי',
-                  'שימוש בטיימר',
-                ],
-              },
-            ]}
-          />
-        </div>
+            {/* Payroll Summary */}
+            {loadingPayroll ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : payrollData.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center text-muted-foreground">
+                  <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>לא נמצאו רישומי זמן לתקופה זו</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {payrollData.map((data) => (
+                  <Card key={data.employee.id} className="card-elegant overflow-hidden">
+                    {/* Payslip Header */}
+                    <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                            {data.employee.full_name?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold">{data.employee.full_name}</h3>
+                            <p className="text-sm opacity-90">{data.employee.position || data.employee.email}</p>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm opacity-90">תלוש שכר</p>
+                          <p className="text-lg font-bold">{formatMonth(payrollMonth)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payslip Body */}
+                    <CardContent className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Work Details */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
+                            <Clock className="h-5 w-5 text-primary" />
+                            פירוט שעות
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">סה"כ שעות עבודה</span>
+                              <span className="font-semibold text-lg">{data.totalHours.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">תעריף שעתי</span>
+                              <span className="font-semibold">₪{data.hourlyRate.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm text-muted-foreground">
+                              <span>מספר רישומים</span>
+                              <span>{data.entries.length}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Payment Details */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
+                            <DollarSign className="h-5 w-5 text-success" />
+                            פירוט תשלום
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">סכום ברוטו</span>
+                              <span className="font-semibold">₪{data.grossAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">מע"מ ({data.vatRate}%)</span>
+                              <span className="font-semibold text-orange-500">₪{data.vatAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="h-px bg-border my-2" />
+                            <div className="flex justify-between items-center">
+                              <span className="font-semibold text-lg">סה"כ לתשלום</span>
+                              <span className="font-bold text-2xl text-success">₪{data.netAmount.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const printContent = `
+                              <html dir="rtl">
+                              <head>
+                                <title>תלוש שכר - ${data.employee.full_name}</title>
+                                <style>
+                                  body { font-family: Arial, sans-serif; padding: 40px; }
+                                  .header { background: linear-gradient(to right, #3b82f6, #60a5fa); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
+                                  .header h1 { margin: 0; font-size: 24px; }
+                                  .header p { margin: 4px 0 0; opacity: 0.9; }
+                                  .section { margin-bottom: 24px; }
+                                  .section h3 { border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 16px; }
+                                  .row { display: flex; justify-content: space-between; padding: 8px 0; }
+                                  .total { font-size: 20px; font-weight: bold; color: #22c55e; }
+                                  .divider { border-top: 1px solid #e5e7eb; margin: 12px 0; }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="header">
+                                  <h1>${data.employee.full_name}</h1>
+                                  <p>תלוש שכר - ${formatMonth(payrollMonth)}</p>
+                                </div>
+                                <div class="section">
+                                  <h3>פירוט שעות</h3>
+                                  <div class="row"><span>סה"כ שעות עבודה</span><span>${data.totalHours.toFixed(2)}</span></div>
+                                  <div class="row"><span>תעריף שעתי</span><span>₪${data.hourlyRate.toFixed(2)}</span></div>
+                                  <div class="row"><span>מספר רישומים</span><span>${data.entries.length}</span></div>
+                                </div>
+                                <div class="section">
+                                  <h3>פירוט תשלום</h3>
+                                  <div class="row"><span>סכום ברוטו</span><span>₪${data.grossAmount.toFixed(2)}</span></div>
+                                  <div class="row"><span>מע"מ (${data.vatRate}%)</span><span>₪${data.vatAmount.toFixed(2)}</span></div>
+                                  <div class="divider"></div>
+                                  <div class="row"><span>סה"כ לתשלום</span><span class="total">₪${data.netAmount.toFixed(2)}</span></div>
+                                </div>
+                              </body>
+                              </html>
+                            `;
+                            const printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                              printWindow.document.write(printContent);
+                              printWindow.document.close();
+                              printWindow.print();
+                            }
+                          }}
+                        >
+                          <Printer className="h-4 w-4 ml-2" />
+                          הדפס
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {/* Total Summary */}
+                {payrollData.length > 1 && (
+                  <Card className="card-elegant bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                            <FileText className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg">סיכום כולל</h3>
+                            <p className="text-sm text-muted-foreground">{payrollData.length} עובדים • {formatMonth(payrollMonth)}</p>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm text-muted-foreground">סה"כ לתשלום</p>
+                          <p className="text-3xl font-bold text-primary">
+                            ₪{payrollData.reduce((sum, d) => sum + d.netAmount, 0).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {payrollData.reduce((sum, d) => sum + d.totalHours, 0).toFixed(1)} שעות
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Add Employee Dialog */}

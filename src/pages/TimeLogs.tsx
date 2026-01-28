@@ -467,6 +467,13 @@ export default function TimeLogs() {
     return projects.find(p => p.id === projectId)?.name || 'לא ידוע';
   };
 
+  // Get user name by ID
+  const getUserName = (userId: string | null) => {
+    if (!userId) return 'לא ידוע';
+    const foundUser = users.find(u => u.id === userId);
+    return foundUser?.name || foundUser?.email || 'לא ידוע';
+  };
+
   // Calculate date range based on filter
   const getDateRange = () => {
     const now = new Date();
@@ -657,6 +664,33 @@ export default function TimeLogs() {
           {getClientName(value)}
         </div>
       ),
+    },
+    {
+      id: 'user_id',
+      header: 'משתמש',
+      accessorKey: 'user_id',
+      width: 130,
+      sortable: true,
+      filterable: true,
+      cell: (value) => {
+        const foundUser = users.find(u => u.id === value);
+        return (
+          <div className="flex items-center gap-2">
+            {foundUser?.avatar_url ? (
+              <img 
+                src={foundUser.avatar_url} 
+                alt={foundUser.name} 
+                className="h-5 w-5 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                {(foundUser?.name || '?').charAt(0)}
+              </div>
+            )}
+            <span className="truncate">{getUserName(value)}</span>
+          </div>
+        );
+      },
     },
     {
       id: 'project_id',
@@ -1460,6 +1494,7 @@ export default function TimeLogs() {
                 timeEntries={filteredEntries}
                 clients={clients}
                 projects={projects}
+                users={users}
                 onEdit={openEditDialog}
                 onDelete={handleDeleteEntry}
                 onDuplicate={(entry) => {
@@ -1551,6 +1586,7 @@ export default function TimeLogs() {
               <TimeLogsTimelineView
                 timeEntries={filteredEntries}
                 clients={clients}
+                users={users}
                 getClientName={getClientName}
                 onEntryClick={openEditDialog}
               />
@@ -1572,6 +1608,7 @@ export default function TimeLogs() {
               <TimeLogsKanbanView
                 timeEntries={filteredEntries}
                 clients={clients}
+                users={users}
                 getClientName={getClientName}
                 onEntryClick={openEditDialog}
               />
@@ -1597,6 +1634,7 @@ export default function TimeLogs() {
             {viewMode === 'compact' && (
               <TimeLogsCompactView
                 timeEntries={filteredEntries}
+                users={users}
                 getClientName={getClientName}
                 onEntryClick={openEditDialog}
               />

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface TimeEntry {
   id: string;
+  user_id?: string;
   start_time: string;
   end_time?: string | null;
   duration_minutes?: number | null;
@@ -24,9 +25,17 @@ interface Client {
   name: string;
 }
 
+interface UserInfo {
+  id: string;
+  name: string;
+  email?: string;
+  avatar_url?: string;
+}
+
 interface TimeLogsTimelineViewProps {
   timeEntries: TimeEntry[];
   clients: Client[];
+  users?: UserInfo[];
   getClientName: (clientId: string | null) => string;
   onEntryClick?: (entry: TimeEntry) => void;
 }
@@ -34,9 +43,15 @@ interface TimeLogsTimelineViewProps {
 export function TimeLogsTimelineView({
   timeEntries,
   clients,
+  users = [],
   getClientName,
   onEntryClick,
 }: TimeLogsTimelineViewProps) {
+  // Get user info helper
+  const getUserInfo = (userId: string | undefined) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
   // Group entries by day
   const entriesByDay = useMemo(() => {
     const grouped = new Map<string, TimeEntry[]>();
@@ -120,9 +135,26 @@ export function TimeLogsTimelineView({
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{getClientName(entry.client_id)}</span>
+                            {/* User display */}
+                            {(() => {
+                              const userInfo = getUserInfo(entry.user_id);
+                              if (!userInfo) return null;
+                              return (
+                                <span className="flex items-center gap-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">
+                                  {userInfo.avatar_url ? (
+                                    <img src={userInfo.avatar_url} alt="" className="h-3 w-3 rounded-full" />
+                                  ) : (
+                                    <span className="h-3 w-3 rounded-full bg-purple-500/20 flex items-center justify-center text-[8px] font-bold">
+                                      {userInfo.name.charAt(0)}
+                                    </span>
+                                  )}
+                                  {userInfo.name}
+                                </span>
+                              );
+                            })()}
                           </div>
                           {entry.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2">

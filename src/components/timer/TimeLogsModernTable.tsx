@@ -59,10 +59,18 @@ interface Project {
   client_id: string | null;
 }
 
+interface UserInfo {
+  id: string;
+  name: string;
+  email?: string;
+  avatar_url?: string;
+}
+
 interface TimeLogsModernTableProps {
   timeEntries: TimeEntry[];
   clients: Client[];
   projects: Project[];
+  users?: UserInfo[];
   onEdit: (entry: TimeEntry) => void;
   onDelete: (id: string) => void;
   onDuplicate?: (entry: TimeEntry) => void;
@@ -74,6 +82,7 @@ export function TimeLogsModernTable({
   timeEntries,
   clients,
   projects,
+  users = [],
   onEdit,
   onDelete,
   onDuplicate,
@@ -116,6 +125,11 @@ export function TimeLogsModernTable({
   const getProjectName = (projectId: string | null) => {
     if (!projectId) return null;
     return projects.find(p => p.id === projectId)?.name || 'לא ידוע';
+  };
+
+  const getUserInfo = (userId: string | null) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
   };
 
   const formatDuration = (minutes: number | null) => {
@@ -348,7 +362,7 @@ export function TimeLogsModernTable({
 
                           {/* Content */}
                           <div className="flex-1 min-w-0 space-y-3">
-                            {/* Client & Project Row */}
+                            {/* Client & Project & User Row */}
                             <div className="flex items-center gap-2 flex-wrap">
                               <Badge variant="outline" className="gap-1.5 font-medium">
                                 <User className="h-3.5 w-3.5" />
@@ -360,6 +374,27 @@ export function TimeLogsModernTable({
                                   {projectName}
                                 </Badge>
                               )}
+                              {/* User Badge */}
+                              {(() => {
+                                const userInfo = getUserInfo(entry.user_id);
+                                if (!userInfo) return null;
+                                return (
+                                  <Badge variant="outline" className="gap-1.5 bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400">
+                                    {userInfo.avatar_url ? (
+                                      <img 
+                                        src={userInfo.avatar_url} 
+                                        alt={userInfo.name} 
+                                        className="h-3.5 w-3.5 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="h-3.5 w-3.5 rounded-full bg-purple-500/20 flex items-center justify-center text-[8px] font-bold">
+                                        {userInfo.name.charAt(0)}
+                                      </div>
+                                    )}
+                                    {userInfo.name}
+                                  </Badge>
+                                );
+                              })()}
                               {entry.is_billable && (
                                 <Badge className="gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0">
                                   <DollarSign className="h-3.5 w-3.5" />

@@ -47,10 +47,18 @@ interface Project {
   name: string;
 }
 
+interface UserInfo {
+  id: string;
+  name: string;
+  email?: string;
+  avatar_url?: string;
+}
+
 // Kanban View - by status/week
 interface TimeLogsKanbanViewProps {
   timeEntries: TimeEntry[];
   clients: Client[];
+  users?: UserInfo[];
   getClientName: (clientId: string | null) => string;
   onEntryClick?: (entry: TimeEntry) => void;
 }
@@ -58,10 +66,17 @@ interface TimeLogsKanbanViewProps {
 export function TimeLogsKanbanView({
   timeEntries,
   clients,
+  users = [],
   getClientName,
   onEntryClick,
 }: TimeLogsKanbanViewProps) {
   const today = new Date();
+  
+  // Get user info helper
+  const getUserInfo = (userId: string | undefined) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
   
   const { thisWeek, lastWeek, older } = useMemo(() => {
     const thisWeekStart = startOfWeek(today, { weekStartsOn: 0 });
@@ -109,7 +124,21 @@ export function TimeLogsKanbanView({
                 onClick={() => onEntryClick?.(entry)}
               >
                 <CardContent className="p-3">
-                  <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                    {/* User avatar */}
+                    {(() => {
+                      const userInfo = getUserInfo(entry.user_id);
+                      if (!userInfo) return null;
+                      return userInfo.avatar_url ? (
+                        <img src={userInfo.avatar_url} alt={userInfo.name} className="h-5 w-5 rounded-full" title={userInfo.name} />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full bg-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-700" title={userInfo.name}>
+                          {userInfo.name.charAt(0)}
+                        </div>
+                      );
+                    })()}
+                  </div>
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {entry.description}
@@ -328,15 +357,22 @@ export function TimeLogsInvoiceView({
 // Compact View - minimal list
 interface TimeLogsCompactViewProps {
   timeEntries: TimeEntry[];
+  users?: UserInfo[];
   getClientName: (clientId: string | null) => string;
   onEntryClick?: (entry: TimeEntry) => void;
 }
 
 export function TimeLogsCompactView({
   timeEntries,
+  users = [],
   getClientName,
   onEntryClick,
 }: TimeLogsCompactViewProps) {
+  // Get user info helper
+  const getUserInfo = (userId: string | undefined) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
   return (
     <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
@@ -348,7 +384,9 @@ export function TimeLogsCompactView({
       <CardContent className="p-0">
         <ScrollArea className="h-[600px]">
           <div className="divide-y">
-            {timeEntries.map(entry => (
+            {timeEntries.map(entry => {
+              const userInfo = getUserInfo(entry.user_id);
+              return (
               <div
                 key={entry.id}
                 onClick={() => onEntryClick?.(entry)}
@@ -357,7 +395,22 @@ export function TimeLogsCompactView({
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{getClientName(entry.client_id)}</span>
+                      {/* User badge */}
+                      {userInfo && (
+                        <span className="flex items-center gap-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
+                          {userInfo.avatar_url ? (
+                            <img src={userInfo.avatar_url} alt="" className="h-3 w-3 rounded-full" />
+                          ) : (
+                            <span className="h-3 w-3 rounded-full bg-purple-500/20 flex items-center justify-center text-[8px] font-bold">
+                              {userInfo.name.charAt(0)}
+                            </span>
+                          )}
+                          {userInfo.name}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {format(new Date(entry.start_time), 'dd/MM/yyyy HH:mm')}
                     </div>
@@ -372,7 +425,8 @@ export function TimeLogsCompactView({
                   </Badge>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {timeEntries.length === 0 && (
               <div className="text-center text-muted-foreground py-8">

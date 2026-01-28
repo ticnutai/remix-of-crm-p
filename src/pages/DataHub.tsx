@@ -1,6 +1,6 @@
 // DataHub - מרכז נתונים מאוחד (ייבוא וגיבויים)
 // e-control CRM Pro
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { useBackupRestore, BackupMetadata } from '@/hooks/useBackupRestore';
@@ -15,15 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +37,6 @@ import {
   Loader2,
   Upload,
   Database,
-  History,
   HardDrive,
   Cloud,
   FileSpreadsheet,
@@ -62,16 +52,10 @@ import {
   Calendar,
   CheckCircle,
   AlertCircle,
-  FileUp,
-  Timer,
-  Link,
+  AlertTriangle,
   FileText,
-  MessageSquare,
-  UserCheck,
   Settings2,
-  Mail,
   RefreshCw,
-  Play,
   Contact,
   XCircle,
   Eye,
@@ -81,8 +65,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ContactsImportDialog } from '@/components/backup/ContactsImportDialog';
-import { ImportProgressPanel, createImportPhases, ImportPhase } from '@/components/backup/ImportProgressPanel';
-import { normalizeExternalBackup, getSupportedFormats, NormalizedBackup } from '@/utils/backupNormalizer';
+import { normalizeExternalBackup, getSupportedFormats } from '@/utils/backupNormalizer';
 
 // =====================================
 // Types & Interfaces
@@ -155,15 +138,55 @@ interface ImportOptions {
 // Validation Types & Functions
 // =====================================
 
+type OperationType = 'import' | 'export' | 'backup' | 'restore';
+
 interface ValidationIssue {
   type: 'error' | 'warning' | 'info';
-  entity: 'client' | 'project' | 'timelog';
+  entity: 'client' | 'project' | 'timelog' | 'backup' | 'system';
   field: string;
   value: string;
   message: string;
-  row: number;
+  row?: number;
 }
 
+interface DataIntegrityCheck {
+  tableName: string;
+  totalRecords: number;
+  validRecords: number;
+  invalidRecords: number;
+  issues: ValidationIssue[];
+}
+
+interface ComprehensiveValidationResult {
+  isValid: boolean;
+  operation: OperationType;
+  timestamp: string;
+  summary: {
+    totalChecks: number;
+    passedChecks: number;
+    failedChecks: number;
+    warnings: number;
+  };
+  dataIntegrity: DataIntegrityCheck[];
+  schemaValidation: {
+    isValid: boolean;
+    missingTables: string[];
+    missingColumns: Record<string, string[]>;
+  };
+  referentialIntegrity: {
+    isValid: boolean;
+    orphanedRecords: { table: string; count: number }[];
+    brokenReferences: { from: string; to: string; count: number }[];
+  };
+  dataQuality: {
+    duplicates: { table: string; count: number }[];
+    emptyRequiredFields: { table: string; field: string; count: number }[];
+    invalidFormats: { table: string; field: string; count: number }[];
+  };
+  issues: ValidationIssue[];
+}
+
+// Legacy interface for backward compatibility
 interface ValidationSummary {
   isValid: boolean;
   errors: number;
@@ -202,7 +225,439 @@ const validateRequiredField = (value: any, fieldName: string): boolean => {
   if (value === null || value === undefined) return false;
   if (typeof value === 'string' && value.trim() === '') return false;
   return true;
-}
+};
+
+// =====================================
+// Comprehensive Validation Functions
+// =====================================
+
+const validateJsonStructure = (data: any): { isValid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  
+  if (!data || typeof data !== 'object') {
+    errors.push('הנתונים אינם אובייקט JSON תקין');
+    return { isValid: false, errors };
+  }
+  
+  // Check for circular references
+  try {
+    JSON.stringify(data);
+  } catch (e) {
+    errors.push('נמצאו הפניות מעגליות בנתונים');
+  }
+  
+  return { isValid: errors.length === 0, errors };
+};
+
+const validateBackupStructure = (backup: any): ValidationIssue[] => {
+  const issues: ValidationIssue[] = [];
+  
+  // Required fields for backup
+  if (!backup.generated_at && !backup.created_at && !backup.timestamp) {
+    issues.push({
+      type: 'warning',
+      entity: 'backup',
+      field: 'timestamp',
+      value: '',
+      message: 'חסר תאריך יצירת הגיבוי'
+    });
+  }
+  
+  if (!backup.data && !backup.tables && !backup.categories) {
+    issues.push({
+      type: 'error',
+      entity: 'backup',
+      field: 'data',
+      value: '',
+      message: 'חסרים נתונים בקובץ הגיבוי'
+    });
+  }
+  
+  // Validate each table
+  const tables = backup.data || backup.tables || {};
+  Object.entries(tables).forEach(([tableName, records]) => {
+    if (Array.isArray(records)) {
+      if (records.length === 0) {
+        issues.push({
+          type: 'info',
+          entity: 'backup',
+          field: tableName,
+          value: '0',
+          message: `טבלת ${tableName} ריקה`
+        });
+      }
+      
+      // Check for null/undefined records
+      const nullCount = records.filter(r => r === null || r === undefined).length;
+      if (nullCount > 0) {
+        issues.push({
+          type: 'error',
+          entity: 'backup',
+          field: tableName,
+          value: String(nullCount),
+          message: `${nullCount} רשומות ריקות בטבלת ${tableName}`
+        });
+      }
+    }
+  });
+  
+  return issues;
+};
+
+const validateDataIntegrity = async (
+  data: Record<string, any[]>,
+  operation: OperationType
+): Promise<DataIntegrityCheck[]> => {
+  const checks: DataIntegrityCheck[] = [];
+  
+  // Clients validation
+  if (data.Client || data.clients) {
+    const clients = data.Client || data.clients || [];
+    const clientIssues: ValidationIssue[] = [];
+    let validCount = 0;
+    
+    clients.forEach((client: any, idx: number) => {
+      let isValid = true;
+      
+      // Name is required
+      if (!client.name || client.name.trim() === '') {
+        clientIssues.push({
+          type: 'error',
+          entity: 'client',
+          field: 'name',
+          value: '',
+          message: 'שם לקוח חובה',
+          row: idx + 1
+        });
+        isValid = false;
+      }
+      
+      // Email validation
+      if (client.email && !validateEmail(client.email)) {
+        clientIssues.push({
+          type: 'warning',
+          entity: 'client',
+          field: 'email',
+          value: client.email,
+          message: 'כתובת אימייל לא תקינה',
+          row: idx + 1
+        });
+      }
+      
+      // Phone validation
+      if (client.phone && !validatePhone(client.phone)) {
+        clientIssues.push({
+          type: 'warning',
+          entity: 'client',
+          field: 'phone',
+          value: client.phone,
+          message: 'מספר טלפון לא תקין',
+          row: idx + 1
+        });
+      }
+      
+      if (isValid) validCount++;
+    });
+    
+    checks.push({
+      tableName: 'לקוחות',
+      totalRecords: clients.length,
+      validRecords: validCount,
+      invalidRecords: clients.length - validCount,
+      issues: clientIssues
+    });
+  }
+  
+  // Projects validation
+  if (data.Project || data.projects) {
+    const projects = data.Project || data.projects || [];
+    const projectIssues: ValidationIssue[] = [];
+    let validCount = 0;
+    
+    projects.forEach((project: any, idx: number) => {
+      let isValid = true;
+      
+      if (!project.name || project.name.trim() === '') {
+        projectIssues.push({
+          type: 'error',
+          entity: 'project',
+          field: 'name',
+          value: '',
+          message: 'שם פרויקט חובה',
+          row: idx + 1
+        });
+        isValid = false;
+      }
+      
+      // Date validation
+      if (project.start_date && !validateDate(project.start_date)) {
+        projectIssues.push({
+          type: 'warning',
+          entity: 'project',
+          field: 'start_date',
+          value: project.start_date,
+          message: 'תאריך התחלה לא תקין',
+          row: idx + 1
+        });
+      }
+      
+      if (project.end_date && !validateDate(project.end_date)) {
+        projectIssues.push({
+          type: 'warning',
+          entity: 'project',
+          field: 'end_date',
+          value: project.end_date,
+          message: 'תאריך סיום לא תקין',
+          row: idx + 1
+        });
+      }
+      
+      if (isValid) validCount++;
+    });
+    
+    checks.push({
+      tableName: 'פרויקטים',
+      totalRecords: projects.length,
+      validRecords: validCount,
+      invalidRecords: projects.length - validCount,
+      issues: projectIssues
+    });
+  }
+  
+  // Time entries validation
+  if (data.TimeLog || data.time_entries) {
+    const timeLogs = data.TimeLog || data.time_entries || [];
+    const timeIssues: ValidationIssue[] = [];
+    let validCount = 0;
+    
+    timeLogs.forEach((entry: any, idx: number) => {
+      let isValid = true;
+      
+      if (!entry.log_date && !entry.date) {
+        timeIssues.push({
+          type: 'error',
+          entity: 'timelog',
+          field: 'date',
+          value: '',
+          message: 'תאריך חובה לרישום זמן',
+          row: idx + 1
+        });
+        isValid = false;
+      }
+      
+      const duration = entry.duration_seconds || entry.duration;
+      if (duration !== undefined && (isNaN(duration) || duration < 0)) {
+        timeIssues.push({
+          type: 'error',
+          entity: 'timelog',
+          field: 'duration',
+          value: String(duration),
+          message: 'משך זמן לא תקין',
+          row: idx + 1
+        });
+        isValid = false;
+      }
+      
+      if (isValid) validCount++;
+    });
+    
+    checks.push({
+      tableName: 'רישומי זמן',
+      totalRecords: timeLogs.length,
+      validRecords: validCount,
+      invalidRecords: timeLogs.length - validCount,
+      issues: timeIssues
+    });
+  }
+  
+  // Tasks validation
+  if (data.Task || data.tasks) {
+    const tasks = data.Task || data.tasks || [];
+    const taskIssues: ValidationIssue[] = [];
+    let validCount = 0;
+    
+    tasks.forEach((task: any, idx: number) => {
+      let isValid = true;
+      
+      if (!task.title && !task.name) {
+        taskIssues.push({
+          type: 'error',
+          entity: 'system',
+          field: 'title',
+          value: '',
+          message: 'כותרת משימה חובה',
+          row: idx + 1
+        });
+        isValid = false;
+      }
+      
+      if (isValid) validCount++;
+    });
+    
+    checks.push({
+      tableName: 'משימות',
+      totalRecords: tasks.length,
+      validRecords: validCount,
+      invalidRecords: tasks.length - validCount,
+      issues: taskIssues
+    });
+  }
+  
+  // Meetings validation
+  if (data.Meeting || data.meetings) {
+    const meetings = data.Meeting || data.meetings || [];
+    const meetingIssues: ValidationIssue[] = [];
+    let validCount = 0;
+    
+    meetings.forEach((meeting: any, idx: number) => {
+      let isValid = true;
+      
+      if (meeting.start_time && !validateDate(meeting.start_time)) {
+        meetingIssues.push({
+          type: 'warning',
+          entity: 'system',
+          field: 'start_time',
+          value: meeting.start_time,
+          message: 'זמן התחלה לא תקין',
+          row: idx + 1
+        });
+      }
+      
+      if (isValid) validCount++;
+    });
+    
+    checks.push({
+      tableName: 'פגישות',
+      totalRecords: meetings.length,
+      validRecords: validCount,
+      invalidRecords: meetings.length - validCount,
+      issues: meetingIssues
+    });
+  }
+  
+  return checks;
+};
+
+const checkForDuplicates = (data: Record<string, any[]>): { table: string; count: number }[] => {
+  const duplicates: { table: string; count: number }[] = [];
+  
+  // Check clients duplicates by name
+  const clients = data.Client || data.clients || [];
+  if (clients.length > 0) {
+    const names = clients.map((c: any) => c.name?.toLowerCase().trim()).filter(Boolean);
+    const uniqueNames = new Set(names);
+    if (names.length > uniqueNames.size) {
+      duplicates.push({ table: 'לקוחות', count: names.length - uniqueNames.size });
+    }
+  }
+  
+  // Check projects duplicates
+  const projects = data.Project || data.projects || [];
+  if (projects.length > 0) {
+    const names = projects.map((p: any) => p.name?.toLowerCase().trim()).filter(Boolean);
+    const uniqueNames = new Set(names);
+    if (names.length > uniqueNames.size) {
+      duplicates.push({ table: 'פרויקטים', count: names.length - uniqueNames.size });
+    }
+  }
+  
+  return duplicates;
+};
+
+const performComprehensiveValidation = async (
+  data: any,
+  operation: OperationType
+): Promise<ComprehensiveValidationResult> => {
+  const timestamp = new Date().toISOString();
+  const issues: ValidationIssue[] = [];
+  
+  // JSON structure validation
+  const jsonCheck = validateJsonStructure(data);
+  if (!jsonCheck.isValid) {
+    jsonCheck.errors.forEach(err => {
+      issues.push({
+        type: 'error',
+        entity: 'system',
+        field: 'structure',
+        value: '',
+        message: err
+      });
+    });
+  }
+  
+  // Backup structure validation
+  const backupIssues = validateBackupStructure(data);
+  issues.push(...backupIssues);
+  
+  // Data integrity validation
+  const dataToValidate = data.data || data.tables || data;
+  const integrityChecks = await validateDataIntegrity(dataToValidate, operation);
+  
+  // Collect all issues from integrity checks
+  integrityChecks.forEach(check => {
+    issues.push(...check.issues);
+  });
+  
+  // Check for duplicates
+  const duplicates = checkForDuplicates(dataToValidate);
+  
+  // Calculate summary
+  const errors = issues.filter(i => i.type === 'error').length;
+  const warnings = issues.filter(i => i.type === 'warning').length;
+  
+  const result: ComprehensiveValidationResult = {
+    isValid: errors === 0,
+    operation,
+    timestamp,
+    summary: {
+      totalChecks: integrityChecks.length + 2, // +2 for json and backup structure
+      passedChecks: integrityChecks.filter(c => c.invalidRecords === 0).length + (jsonCheck.isValid ? 1 : 0) + (backupIssues.filter(i => i.type === 'error').length === 0 ? 1 : 0),
+      failedChecks: errors,
+      warnings
+    },
+    dataIntegrity: integrityChecks,
+    schemaValidation: {
+      isValid: true,
+      missingTables: [],
+      missingColumns: {}
+    },
+    referentialIntegrity: {
+      isValid: true,
+      orphanedRecords: [],
+      brokenReferences: []
+    },
+    dataQuality: {
+      duplicates,
+      emptyRequiredFields: integrityChecks
+        .flatMap(c => c.issues)
+        .filter(i => i.message.includes('חובה'))
+        .reduce((acc: { table: string; field: string; count: number }[], i) => {
+          const existing = acc.find(a => a.field === i.field);
+          if (existing) {
+            existing.count++;
+          } else {
+            acc.push({ table: i.entity, field: i.field, count: 1 });
+          }
+          return acc;
+        }, []),
+      invalidFormats: integrityChecks
+        .flatMap(c => c.issues)
+        .filter(i => i.message.includes('לא תקין'))
+        .reduce((acc: { table: string; field: string; count: number }[], i) => {
+          const existing = acc.find(a => a.field === i.field);
+          if (existing) {
+            existing.count++;
+          } else {
+            acc.push({ table: i.entity, field: i.field, count: 1 });
+          }
+          return acc;
+        }, [])
+    },
+    issues
+  };
+  
+  return result;
+};
 
 interface CloudBackup {
   name: string;
@@ -380,6 +835,11 @@ export default function DataHub() {
   // Validation state
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
   const [showValidationDetails, setShowValidationDetails] = useState(false);
+  
+  // Comprehensive validation state
+  const [comprehensiveValidation, setComprehensiveValidation] = useState<ComprehensiveValidationResult | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [showComprehensiveValidation, setShowComprehensiveValidation] = useState(false);
 
   // =====================================
   // Backup Tab State
@@ -1169,11 +1629,41 @@ export default function DataHub() {
   // JSON Backup Import Functions
   // =====================================
 
+  const runComprehensiveValidation = useCallback(async (data: any, operation: OperationType) => {
+    setIsValidating(true);
+    try {
+      const result = await performComprehensiveValidation(data, operation);
+      setComprehensiveValidation(result);
+      setShowComprehensiveValidation(true);
+      return result;
+    } finally {
+      setIsValidating(false);
+    }
+  }, []);
+
   const handleJsonImport = async () => {
     if (!externalBackupData || !user?.id) return;
     
     setIsJsonImporting(true);
     setJsonImportProgress(0);
+    setJsonImportMessage('מבצע ולידציה לפני ייבוא...');
+    
+    // Run comprehensive validation first
+    const validationResult = await runComprehensiveValidation(externalBackupData, 'import');
+    
+    // Check for critical errors
+    const criticalErrors = validationResult.issues.filter(i => i.type === 'error');
+    if (criticalErrors.length > 0) {
+      setJsonImportMessage('נמצאו שגיאות קריטיות - בדוק את הולידציה');
+      toast({
+        title: 'נמצאו שגיאות בקובץ',
+        description: `${criticalErrors.length} שגיאות קריטיות. בדוק את פרטי הולידציה לפני המשך`,
+        variant: 'destructive',
+      });
+      setIsJsonImporting(false);
+      return;
+    }
+    
     setJsonImportMessage('מתחיל ייבוא...');
     
     const stats: JsonImportStats = {
@@ -2143,12 +2633,143 @@ export default function DataHub() {
                         </Card>
                       )}
 
+                      {/* Comprehensive Validation Results */}
+                      {comprehensiveValidation && showComprehensiveValidation && (
+                        <Card className={cn(
+                          "border-2",
+                          comprehensiveValidation.isValid 
+                            ? "border-green-200 bg-green-50/50 dark:bg-green-900/10" 
+                            : "border-red-200 bg-red-50/50 dark:bg-red-900/10"
+                        )}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center justify-between">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setShowComprehensiveValidation(false)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                              <div className="flex items-center gap-2">
+                                תוצאות ולידציה
+                                {comprehensiveValidation.isValid ? (
+                                  <CheckCircle className="h-5 w-5 text-green-500" />
+                                ) : (
+                                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                                )}
+                              </div>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {/* Summary */}
+                            <div className="grid grid-cols-4 gap-2 text-sm">
+                              <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                <div className="font-bold text-blue-600">{comprehensiveValidation.summary.totalChecks}</div>
+                                <div className="text-xs">בדיקות</div>
+                              </div>
+                              <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                <div className="font-bold text-green-600">{comprehensiveValidation.summary.passedChecks}</div>
+                                <div className="text-xs">עברו</div>
+                              </div>
+                              <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                <div className="font-bold text-red-600">{comprehensiveValidation.summary.failedChecks}</div>
+                                <div className="text-xs">שגיאות</div>
+                              </div>
+                              <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                <div className="font-bold text-yellow-600">{comprehensiveValidation.summary.warnings}</div>
+                                <div className="text-xs">אזהרות</div>
+                              </div>
+                            </div>
+
+                            {/* Data Integrity */}
+                            {comprehensiveValidation.dataIntegrity.length > 0 && (
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-medium text-right">תקינות נתונים:</h4>
+                                {comprehensiveValidation.dataIntegrity.map((check, idx) => (
+                                  <div key={idx} className="flex items-center justify-between text-sm p-2 bg-white/30 dark:bg-black/20 rounded">
+                                    <div className="flex items-center gap-2">
+                                      {check.invalidRecords === 0 ? (
+                                        <CheckCircle className="h-4 w-4 text-green-500" />
+                                      ) : (
+                                        <AlertCircle className="h-4 w-4 text-red-500" />
+                                      )}
+                                      <span>{check.validRecords}/{check.totalRecords} תקינות</span>
+                                    </div>
+                                    <span className="font-medium">{check.tableName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Duplicates */}
+                            {comprehensiveValidation.dataQuality.duplicates.length > 0 && (
+                              <div className="p-2 bg-yellow-100/50 dark:bg-yellow-900/20 rounded text-sm text-right">
+                                <span className="font-medium">כפילויות זוהו: </span>
+                                {comprehensiveValidation.dataQuality.duplicates.map((d, idx) => (
+                                  <span key={idx}>{d.table}: {d.count} כפילויות{idx < comprehensiveValidation.dataQuality.duplicates.length - 1 ? ', ' : ''}</span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Issues List */}
+                            {comprehensiveValidation.issues.length > 0 && comprehensiveValidation.issues.length <= 10 && (
+                              <div className="space-y-1 max-h-40 overflow-y-auto">
+                                {comprehensiveValidation.issues.slice(0, 10).map((issue, idx) => (
+                                  <div key={idx} className={cn(
+                                    "text-xs p-2 rounded flex items-center justify-between",
+                                    issue.type === 'error' && "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+                                    issue.type === 'warning' && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
+                                    issue.type === 'info' && "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                  )}>
+                                    <span>{issue.row ? `שורה ${issue.row}` : ''}</span>
+                                    <span>{issue.message}</span>
+                                  </div>
+                                ))}
+                                {comprehensiveValidation.issues.length > 10 && (
+                                  <div className="text-xs text-muted-foreground text-center">
+                                    +{comprehensiveValidation.issues.length - 10} בעיות נוספות
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {comprehensiveValidation.isValid && (
+                              <div className="text-center text-sm text-green-600 dark:text-green-400 font-medium">
+                                ✓ כל הבדיקות עברו בהצלחה - ניתן להמשיך בייבוא
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Validate Button */}
+                      {!comprehensiveValidation && !jsonImportStats && (
+                        <Button
+                          variant="outline"
+                          onClick={() => runComprehensiveValidation(externalBackupData, 'import')}
+                          disabled={isValidating || isJsonImporting}
+                          className="w-full"
+                        >
+                          {isValidating ? (
+                            <>
+                              <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                              בודק תקינות...
+                            </>
+                          ) : (
+                            <>
+                              <Shield className="h-4 w-4 ml-2" />
+                              בדוק תקינות לפני ייבוא
+                            </>
+                          )}
+                        </Button>
+                      )}
+
                       {/* Start JSON Import Button */}
                       {!jsonImportStats && (
                         <Button
                           size="lg"
                           onClick={handleJsonImport}
-                          disabled={isJsonImporting}
+                          disabled={isJsonImporting || isValidating}
                           className="w-full btn-gold"
                         >
                           {isJsonImporting ? (
