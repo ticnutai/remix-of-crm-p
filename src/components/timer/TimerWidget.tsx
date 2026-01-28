@@ -436,6 +436,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent 
+                  dir="rtl"
                   className="w-[280px] bg-gradient-to-br from-[hsl(220,60%,18%)] to-[hsl(220,60%,22%)] border-[hsl(45,80%,50%)] text-white p-3 shadow-xl rounded-xl"
                   side="top"
                   align="end"

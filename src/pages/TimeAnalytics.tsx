@@ -464,7 +464,7 @@ export default function TimeAnalytics() {
         </Card>
 
         {/* Charts */}
-        <Tabs defaultValue="trend" className="space-y-6">
+        <Tabs defaultValue="trend" className="space-y-6" dir="rtl">
           <TabsList>
             <TabsTrigger value="trend" className="gap-2">
               <Activity className="h-4 w-4" />
