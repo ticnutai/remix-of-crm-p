@@ -78,7 +78,6 @@ interface ClientStageInfo {
 }
 
 export default function Clients() {
-  console.log('🎨 [Clients Page] Component mounting...');
   const navigate = useNavigate();
   const { isLoading: authLoading } = useAuth();
   
@@ -183,7 +182,6 @@ export default function Clients() {
   const [pendingClientData, setPendingClientData] = useState<any>(null);
 
   useEffect(() => {
-    console.log('📡 [Clients Page] useEffect triggered - fetching clients...');
     fetchClients();
     fetchFilterData();
     fetchCategoriesAndTags();

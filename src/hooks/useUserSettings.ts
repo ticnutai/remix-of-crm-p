@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -48,7 +48,11 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
   }, [user?.id, key]);
 
   // Save settings to database
-  const updateValue = useCallback(async (newValue: T) => {
+  const updateValue = useCallback(async (newValueOrUpdater: T | ((prev: T) => T)) => {
+    const newValue = typeof newValueOrUpdater === 'function' 
+      ? (newValueOrUpdater as (prev: T) => T)(value)
+      : newValueOrUpdater;
+    
     setValue(newValue);
 
     if (!user?.id) return;
@@ -77,7 +81,7 @@ export function useUserSettings<T>({ key, defaultValue }: UseUserSettingsOptions
     } finally {
       setIsSaving(false);
     }
-  }, [user?.id, key]);
+  }, [user?.id, key, value]);
 
   return {
     value,
@@ -100,18 +104,38 @@ export function useViewSettings(pageKey: string) {
     defaultValue: {},
   });
 
-  return {
+  const setViewMode = useCallback((mode: string) => {
+    setValue(prev => ({ ...prev, viewMode: mode }));
+  }, [setValue]);
+
+  const setColumns = useCallback((cols: number) => {
+    setValue(prev => ({ ...prev, columns: cols }));
+  }, [setValue]);
+
+  const setSortBy = useCallback((sort: string) => {
+    setValue(prev => ({ ...prev, sortBy: sort }));
+  }, [setValue]);
+
+  const setSortOrder = useCallback((order: 'asc' | 'desc') => {
+    setValue(prev => ({ ...prev, sortOrder: order }));
+  }, [setValue]);
+
+  const setFilters = useCallback((filters: Record<string, any>) => {
+    setValue(prev => ({ ...prev, filters }));
+  }, [setValue]);
+
+  return useMemo(() => ({
     viewMode: value.viewMode,
     columns: value.columns,
     sortBy: value.sortBy,
     sortOrder: value.sortOrder,
     filters: value.filters,
-    setViewMode: (mode: string) => setValue({ ...value, viewMode: mode }),
-    setColumns: (cols: number) => setValue({ ...value, columns: cols }),
-    setSortBy: (sort: string) => setValue({ ...value, sortBy: sort }),
-    setSortOrder: (order: 'asc' | 'desc') => setValue({ ...value, sortOrder: order }),
-    setFilters: (filters: Record<string, any>) => setValue({ ...value, filters }),
+    setViewMode,
+    setColumns,
+    setSortBy,
+    setSortOrder,
+    setFilters,
     updateSettings: setValue,
     isLoading,
-  };
+  }), [value, setViewMode, setColumns, setSortBy, setSortOrder, setFilters, setValue, isLoading]);
 }
