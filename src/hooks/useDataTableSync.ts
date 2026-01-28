@@ -111,26 +111,30 @@ export function useDataTableSync() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Fetch all data from Supabase - Optimized with lazy loading
+  // Fetch all data from Supabase - Load all records
   const fetchData = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
     try {
-      // Fetch only essential fields first for faster initial load
-      // Reduced to 25 for instant first render
+      // Fetch all records - removed limit for complete data
       const [projectsRes, clientsRes] = await Promise.all([
         supabase
           .from('projects')
           .select('id, name, client_id, status, priority, budget, start_date, end_date, description, assigned_to')
           .order('created_at', { ascending: false })
-          .limit(25), // Ultra-fast initial load
+          .limit(5000), // Load all projects
         supabase
           .from('clients')
           .select('id, name, email, phone, company, address, status, notes, created_at, custom_data')
           .order('name')
-          .limit(25), // Ultra-fast initial load
+          .limit(5000), // Load all clients
       ]);
+      
+      console.log('📊 [useDataTableSync] Loaded:', {
+        clients: clientsRes.data?.length || 0,
+        projects: projectsRes.data?.length || 0,
+      });
 
       if (clientsRes.data) {
         // Transform clients to ensure no null values for string fields
