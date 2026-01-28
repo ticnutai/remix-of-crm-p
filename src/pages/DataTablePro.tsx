@@ -2138,65 +2138,6 @@ export default function DataTablePro() {
           </Card>
         )}
 
-        {/* Feature highlights */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="bg-gradient-to-br from-cyan-500/20 border-cyan-500/50 to-transparent">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <Database className="h-8 w-8 text-cyan-400" />
-                <div>
-                  <p className="font-semibold">סינכרון DB</p>
-                  <p className="text-xs text-muted-foreground">מחובר ופעיל</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-green-500/10 to-transparent border-green-500/30">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <ArrowUpDown className="h-8 w-8 text-green-500" />
-                <div>
-                  <p className="font-semibold">מיון מתקדם</p>
-                  <p className="text-xs text-muted-foreground">רב-עמודות + Shift</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/30">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <Filter className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="font-semibold">סינון חכם</p>
-                  <p className="text-xs text-muted-foreground">טקסט, מספרים, תאריכים</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/30">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <Download className="h-8 w-8 text-purple-500" />
-                <div>
-                  <p className="font-semibold">ייצוא</p>
-                  <p className="text-xs text-muted-foreground">CSV, Excel, PDF</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/30">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <Layers className="h-8 w-8 text-amber-500" />
-                <div>
-                  <p className="font-semibold">Virtual Scroll</p>
-                  <p className="text-xs text-muted-foreground">אלפי רשומות בקלות</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Tabs for different demos */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
