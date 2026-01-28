@@ -465,14 +465,16 @@ export default function Clients() {
     console.log('🔄 [Clients Page] fetchClients started...');
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Fetch all clients without default limit (Supabase defaults to 1000)
+      const { data, error, count } = await supabase
         .from('clients')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .limit(5000); // Ensure we get all clients
 
       if (error) throw error;
 
-      console.log('✅ [Clients Page] Clients loaded successfully:', data?.length || 0);
+      console.log('✅ [Clients Page] Clients loaded successfully:', data?.length || 0, 'Total count:', count);
       setClients((data || []) as Client[]);
       setFilteredClients((data || []) as Client[]);
     } catch (error) {
@@ -2030,35 +2032,62 @@ export default function Clients() {
               justifyContent: 'space-between',
               alignItems: 'center',
               marginBottom: '12px',
-              padding: '8px 12px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '8px',
+              padding: '10px 16px',
+              backgroundColor: '#f1f5f9',
+              borderRadius: '10px',
               direction: 'rtl',
+              border: '1px solid #e2e8f0',
             }}>
-              <span style={{ fontSize: '14px', color: '#64748b' }}>
-                מציג {Math.min(displayedCount, filteredClients.length)} מתוך {filteredClients.length} לקוחות
-              </span>
-              {displayedCount < filteredClients.length && (
-                <button
-                  onClick={() => setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length))}
-                  style={{
-                    padding: '6px 16px',
-                    backgroundColor: '#1e3a5f',
-                    color: '#d4a843',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  טען עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)}
-                </button>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '14px', color: '#475569', fontWeight: '500' }}>
+                  📊 מציג <strong style={{ color: '#1e3a5f' }}>{Math.min(displayedCount, filteredClients.length)}</strong> מתוך <strong style={{ color: '#1e3a5f' }}>{filteredClients.length}</strong> לקוחות
+                </span>
+                {clients.length !== filteredClients.length && (
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    (סה"כ במערכת: {clients.length})
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {displayedCount < filteredClients.length && (
+                  <>
+                    <button
+                      onClick={() => setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length))}
+                      style={{
+                        padding: '6px 14px',
+                        backgroundColor: '#1e3a5f',
+                        color: '#d4a843',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      טען עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)}
+                    </button>
+                    <button
+                      onClick={() => setDisplayedCount(filteredClients.length)}
+                      style={{
+                        padding: '6px 14px',
+                        backgroundColor: '#059669',
+                        color: '#ffffff',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      טען הכל ({filteredClients.length})
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             
             <div 
