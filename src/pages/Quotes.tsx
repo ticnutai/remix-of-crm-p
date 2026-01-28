@@ -20,6 +20,7 @@ import {
   Calendar,
   AlertCircle,
   PenTool,
+  Download,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -70,6 +71,9 @@ import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteE
 import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
 import { cn } from '@/lib/utils';
 import { ClipboardList, Settings2 } from 'lucide-react';
+import { exportQuoteToPDF } from '@/lib/pdf-export';
+import { SignatureDialog, SignatureData } from '@/components/signature';
+import { toast } from '@/hooks/use-toast';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
@@ -134,6 +138,10 @@ export default function Quotes() {
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
   const [advancedEditorQuote, setAdvancedEditorQuote] = useState<Quote | null>(null);
   const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
+  
+  // Signature state
+  const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
   // Save filters to localStorage
   React.useEffect(() => {
@@ -218,6 +226,49 @@ export default function Quotes() {
     setPaymentQuote(null);
   };
   
+  // PDF Export handler
+  const handleExportQuotePDF = (quote: Quote) => {
+    exportQuoteToPDF({
+      id: quote.id,
+      quoteNumber: quote.quote_number,
+      clientName: quote.clients?.name || 'לקוח',
+      clientEmail: quote.clients?.email,
+      clientPhone: quote.clients?.phone,
+      items: quote.items || [],
+      subtotal: quote.subtotal || 0,
+      discount: quote.discount || 0,
+      vat: quote.vat || 0,
+      total: quote.total_amount,
+      validUntil: quote.valid_until,
+      notes: quote.notes,
+      terms: quote.terms,
+    });
+    toast({
+      title: 'ייצוא PDF',
+      description: 'ההצעה מיוצאת ל-PDF...',
+    });
+  };
+  
+  // Signature handler
+  const handleSignQuote = async (signature: SignatureData) => {
+    if (!signatureQuote) return;
+    
+    // Update quote status to signed
+    await updateQuote.mutateAsync({
+      id: signatureQuote.id,
+      status: 'signed',
+      // Store signature data in metadata or a dedicated field
+    });
+    
+    toast({
+      title: 'הצעה נחתמה',
+      description: `ההצעה ${signatureQuote.quote_number} נחתמה בהצלחה`,
+    });
+    
+    setSignatureQuote(null);
+    setIsSignatureDialogOpen(false);
+  };
+  
   // Contract handlers
   const handleCreateContract = async (data: ContractFormData) => {
     await createContract.mutateAsync(data);
@@ -263,9 +314,9 @@ export default function Quotes() {
 
   return (
     <AppLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 w-full overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold text-foreground">הצעות מחיר וחוזים</h1>
             <p className="text-muted-foreground">ניהול הצעות מחיר, חוזים ולוחות תשלומים</p>
@@ -472,6 +523,19 @@ export default function Quotes() {
                                     <Pencil className="h-4 w-4 ml-2" />
                                     עריכה מהירה
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleExportQuotePDF(quote)}>
+                                    <Download className="h-4 w-4 ml-2" />
+                                    ייצוא PDF
+                                  </DropdownMenuItem>
+                                  {quote.status !== 'signed' && quote.status !== 'cancelled' && (
+                                    <DropdownMenuItem onClick={() => {
+                                      setSignatureQuote(quote);
+                                      setIsSignatureDialogOpen(true);
+                                    }}>
+                                      <FileSignature className="h-4 w-4 ml-2" />
+                                      חתום על ההצעה
+                                    </DropdownMenuItem>
+                                  )}
                                   {quote.status === 'draft' && (
                                     <DropdownMenuItem onClick={() => sendQuote.mutate(quote.id)}>
                                       <Send className="h-4 w-4 ml-2" />
@@ -908,6 +972,16 @@ export default function Quotes() {
         onSaved={() => {
           setAdvancedEditorQuote(null);
         }}
+      />
+      
+      {/* Digital Signature Dialog */}
+      <SignatureDialog
+        open={isSignatureDialogOpen}
+        onOpenChange={setIsSignatureDialogOpen}
+        onSign={handleSignQuote}
+        documentTitle={signatureQuote?.title || 'הצעת מחיר'}
+        signerName={signatureQuote?.clients?.name}
+        signerEmail={signatureQuote?.clients?.email}
       />
     </AppLayout>
   );

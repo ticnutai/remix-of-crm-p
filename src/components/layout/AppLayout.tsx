@@ -1,5 +1,5 @@
 // App Layout - Full width content with overlay sidebar
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,7 +24,6 @@ import {
   UserCog,
   Clock,
   Table,
-  Upload,
   Bell,
   FileSpreadsheet,
   Wallet,
@@ -102,23 +101,27 @@ export function AppLayout({ children, title }: AppLayoutProps) {
     setMobileMenuOpen(false);
   };
 
-  // Content margin adjusts when sidebar is pinned OR showing
-  const contentMarginRight = !isMobile && (sidebarPinned || sidebarShowing) ? sidebarWidth : 0;
+  // Sidebar visibility state
+  const sidebarVisible = !isMobile && (sidebarPinned || sidebarShowing);
 
   return (
-    <div className="min-h-screen w-full bg-background overflow-x-hidden">
-      {/* Main Content - Adjusts margin when sidebar is pinned */}
+    <div className="min-h-screen bg-background overflow-x-hidden" dir="rtl">
+      {/* Main Content - Uses paddingRight instead of width calc to avoid scrollbar issues */}
       <div 
-        className="flex flex-col min-h-screen w-full max-w-full transition-all duration-300 ease-out"
-        style={{ marginRight: contentMarginRight }}
+        className="flex flex-col min-h-screen transition-all duration-300 ease-out"
+        style={{ 
+          paddingRight: sidebarVisible ? sidebarWidth : 0,
+        }}
       >
         <AppHeader 
           title={title} 
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
           isMobile={isMobile}
         />
-        <main className="flex-1 overflow-auto relative w-full max-w-full z-0">
-          {children}
+        <main className="flex-1 relative z-0 overflow-x-hidden overflow-y-auto">
+          <div className="w-full h-full">
+            {children}
+          </div>
         </main>
       </div>
       
