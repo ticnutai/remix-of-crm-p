@@ -31,6 +31,7 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignJustify,
   Trash2,
   Copy,
   ClipboardPaste,
@@ -42,7 +43,7 @@ export interface CellStyle {
   underline?: boolean;
   color?: string;
   backgroundColor?: string;
-  align?: 'left' | 'center' | 'right';
+  align?: 'left' | 'center' | 'right' | 'justify';
 }
 
 export interface CellNote {
@@ -281,6 +282,14 @@ export const CellContextMenu = forwardRef<HTMLDivElement, CellContextMenuProps>(
                 <AlignLeft className="h-4 w-4" />
                 <span>שמאל</span>
                 {cellStyle.align === 'left' && <span className="mr-auto text-primary">✓</span>}
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="flex items-center gap-2"
+                onClick={() => handleStyleToggle('align', 'justify')}
+              >
+                <AlignJustify className="h-4 w-4" />
+                <span>מוצמד (מלא)</span>
+                {cellStyle.align === 'justify' && <span className="mr-auto text-primary">✓</span>}
               </ContextMenuItem>
             </ContextMenuSubContent>
           </ContextMenuSub>
