@@ -11,6 +11,19 @@ import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Smart time formatting utility
+const formatDuration = (minutes: number) => {
+  if (!minutes || minutes === 0) return '0 דק\'';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  // Under 1 hour: show minutes only
+  if (hours === 0) return `${mins} דק'`;
+  // Full hours: show H:00
+  if (mins === 0) return `${hours}:00`;
+  // Hours + minutes: show H:MM
+  return `${hours}:${mins.toString().padStart(2, '0')}`;
+};
+
 interface TimeEntry {
   id: string;
   start_time: string;
@@ -75,7 +88,7 @@ export function TimeLogsKanbanView({
   }, [timeEntries]);
 
   const KanbanColumn = ({ title, entries, color }: { title: string; entries: TimeEntry[]; color: string }) => {
-    const totalHours = entries.reduce((sum, e) => sum + (e.duration_minutes || 0) / 60, 0);
+    const totalMinutes = entries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
     
     return (
       <div className="flex-1 min-w-[280px]">
@@ -83,7 +96,7 @@ export function TimeLogsKanbanView({
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-white">{title}</h3>
             <Badge variant="secondary" className="bg-white/20 text-white">
-              {entries.length} רשומות | {totalHours.toFixed(1)} שעות
+              {entries.length} רשומות | {formatDuration(totalMinutes)}
             </Badge>
           </div>
         </div>
@@ -104,7 +117,7 @@ export function TimeLogsKanbanView({
                   )}
                   <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                     <span>{format(new Date(entry.start_time), 'dd/MM HH:mm')}</span>
-                    <span>{((entry.duration_minutes || 0) / 60).toFixed(1)} שעות</span>
+                    <span>{formatDuration(entry.duration_minutes || 0)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -355,7 +368,7 @@ export function TimeLogsCompactView({
                     <DollarSign className="h-4 w-4 text-primary" />
                   )}
                   <Badge variant="secondary">
-                    {((entry.duration_minutes || 0) / 60).toFixed(1)}h
+                    {formatDuration(entry.duration_minutes || 0)}
                   </Badge>
                 </div>
               </div>

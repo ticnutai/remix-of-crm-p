@@ -5,6 +5,19 @@ import { format, startOfWeek, addDays, subWeeks, isSameDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Smart time formatting utility
+const formatDuration = (minutes: number) => {
+  if (!minutes || minutes === 0) return '0 דק\'';
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  // Under 1 hour: show minutes only
+  if (hours === 0) return `${mins} דק'`;
+  // Full hours: show H:00
+  if (mins === 0) return `${hours}:00`;
+  // Hours + minutes: show H:MM
+  return `${hours}:${mins.toString().padStart(2, '0')}`;
+};
+
 interface TimeEntry {
   id: string;
   start_time: string;
@@ -22,13 +35,13 @@ export function TimeLogsHeatmapView({
   onDayClick,
   weeks = 12,
 }: TimeLogsHeatmapViewProps) {
-  // Calculate hours per day
+  // Calculate hours per day (as minutes for formatting, but keep hours for color intensity)
   const hoursByDay = useMemo(() => {
     const map = new Map<string, number>();
     timeEntries.forEach(entry => {
       const day = format(new Date(entry.start_time), 'yyyy-MM-dd');
       const current = map.get(day) || 0;
-      map.set(day, current + (entry.duration_minutes || 0) / 60);
+      map.set(day, current + (entry.duration_minutes || 0));
     });
     return map;
   }, [timeEntries]);
@@ -50,8 +63,9 @@ export function TimeLogsHeatmapView({
     return result;
   }, [weeks]);
 
-  // Get color based on hours
-  const getHeatColor = (hours: number) => {
+  // Get color based on minutes (converted to hours for intensity)
+  const getHeatColor = (minutes: number) => {
+    const hours = minutes / 60;
     if (hours === 0) return 'bg-muted';
     if (hours < 2) return 'bg-primary/20';
     if (hours < 4) return 'bg-primary/40';
@@ -60,15 +74,15 @@ export function TimeLogsHeatmapView({
     return 'bg-primary';
   };
 
-  // Calculate max and total
-  const { maxHours, totalHours } = useMemo(() => {
+  // Calculate max and total (in minutes for display)
+  const { maxMinutes, totalMinutes } = useMemo(() => {
     let max = 0;
     let total = 0;
-    hoursByDay.forEach(hours => {
-      if (hours > max) max = hours;
-      total += hours;
+    hoursByDay.forEach(mins => {
+      if (mins > max) max = mins;
+      total += mins;
     });
-    return { maxHours: max, totalHours: total };
+    return { maxMinutes: max, totalMinutes: total };
   }, [hoursByDay]);
 
   const weekDays = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
@@ -79,7 +93,7 @@ export function TimeLogsHeatmapView({
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">מפת חום</CardTitle>
           <div className="text-sm text-muted-foreground">
-            סה״כ {totalHours.toFixed(1)} שעות | מקסימום ביום: {maxHours.toFixed(1)} שעות
+            סה״כ {formatDuration(totalMinutes)} | מקסימום ביום: {formatDuration(maxMinutes)}
           </div>
         </div>
       </CardHeader>
@@ -105,7 +119,7 @@ export function TimeLogsHeatmapView({
                   </div>
                   {week.map(day => {
                     const dayKey = format(day, 'yyyy-MM-dd');
-                    const hours = hoursByDay.get(dayKey) || 0;
+                    const minutes = hoursByDay.get(dayKey) || 0;
                     const isToday = isSameDay(day, new Date());
                     
                     return (
@@ -114,10 +128,10 @@ export function TimeLogsHeatmapView({
                         onClick={() => onDayClick?.(day)}
                         className={cn(
                           "w-4 h-4 rounded-sm cursor-pointer transition-all hover:scale-125",
-                          getHeatColor(hours),
+                          getHeatColor(minutes),
                           isToday && "ring-2 ring-primary ring-offset-1"
                         )}
-                        title={`${format(day, 'dd/MM/yyyy')}: ${hours.toFixed(1)} שעות`}
+                        title={`${format(day, 'dd/MM/yyyy')}: ${formatDuration(minutes)}`}
                       />
                     );
                   })}

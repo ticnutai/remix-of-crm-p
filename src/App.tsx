@@ -23,6 +23,7 @@ const Calendar = lazy(() => import("./pages/Calendar"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Backups = lazy(() => import("./pages/Backups"));
+const DataHub = lazy(() => import("./pages/DataHub"));
 const TimeLogs = lazy(() => import("./pages/TimeLogs"));
 const DataTablePro = lazy(() => import("./pages/DataTablePro"));
 const DataImport = lazy(() => import("./pages/DataImport"));
@@ -96,6 +97,7 @@ const App = () => {
                           <Route path="/reports" element={<Reports />} />
                           <Route path="/settings" element={<Settings />} />
                           <Route path="/backups" element={<Backups />} />
+                          <Route path="/data-hub" element={<DataHub />} />
                           <Route path="/time-logs" element={<TimeLogs />} />
                           <Route path="/datatable-pro" element={<DataTablePro />} />
                           <Route path="/data-import" element={<DataImport />} />

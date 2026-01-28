@@ -320,15 +320,29 @@ export function TimeAnalyticsDashboard({
     return Array.from(groups.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
   }, [filteredEntries, groupBy, users, clients, projects, defaultHourlyRate]);
 
-  // Format helpers
+  // Format helpers - smart formatting
   const formatDuration = (minutes: number) => {
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
   const formatHours = (minutes: number) => {
-    return (minutes / 60).toFixed(1);
+    if (!minutes || minutes === 0) return '0 דק\'';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00 
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
+    return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
   const formatMoney = (amount: number) => {

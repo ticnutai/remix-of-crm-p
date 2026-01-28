@@ -2857,55 +2857,6 @@ export default function DataTablePro() {
           ))}
         </Tabs>
 
-        {/* Features documentation */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              תכונות זמינות
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <h4 className="font-semibold mb-3 text-green-600">✓ תכונות ליבה</h4>
-                <ul className="space-y-1 text-sm">
-                  <li>• מיון רב-עמודות (Shift+Click)</li>
-                  <li>• סינון חכם לכל סוג נתון</li>
-                  <li>• חיפוש גלובלי מהיר</li>
-                  <li>• עימוד עם בחירת גודל</li>
-                  <li>• בחירת שורות בודדת/מרובה</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-3 text-blue-600">✓ תכונות מתקדמות</h4>
-                <ul className="space-y-1 text-sm">
-                  <li>• <strong>עריכת תאים Inline</strong> - לחץ על תא לעריכה</li>
-                  <li>• <strong>הוספת שורות</strong> - כפתור "הוסף שורה"</li>
-                  <li>• <strong>הוספת עמודות</strong> - כפתור "הוסף עמודה"</li>
-                  <li>• <strong>Undo/Redo</strong> - כפתורי ביטול/חזור</li>
-                  <li>• <strong>גרירת שורות</strong> - חצים להזזת שורות</li>
-                  <li>• <strong>מחיקת שורות</strong> - בחר ולחץ מחק</li>
-                  <li>• שינוי גודל עמודות</li>
-                  <li>• הסתרה/הצגת עמודות</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-3 text-purple-600">✓ ביצועים ו-UX</h4>
-                <ul className="space-y-1 text-sm">
-                  <li>• Virtual Scrolling לאלפי שורות</li>
-                  <li>• ניווט מקלדת מלא</li>
-                  <li>• RTL מושלם</li>
-                  <li>• Loading Skeletons</li>
-                  <li>• ייצוא CSV, Excel, PDF</li>
-                  <li>• הרחבת שורה לפרטים</li>
-                  <li>• שורת סיכום (סה״כ, ממוצע)</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Edit Client Name Dialog */}
         <Dialog open={isEditClientNameOpen} onOpenChange={setIsEditClientNameOpen}>
           <DialogContent dir="rtl">

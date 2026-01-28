@@ -1,10 +1,11 @@
 // Time Logs Page - e-control CRM Pro
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout';
 import { ColumnDef } from '@/components/DataTable';
 import { UniversalDataTable } from '@/components/tables/UniversalDataTable';
 import { TimeAnalyticsDashboard } from '@/components/timer/TimeAnalyticsDashboard';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserSettings } from '@/hooks/useUserSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -147,18 +148,46 @@ export default function TimeLogs() {
   const [users, setUsers] = useState<{ id: string; name: string; email: string; hourly_rate?: number; avatar_url?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Active tab state
-  const [activeTab, setActiveTab] = useState<'analytics' | 'list' | 'summary'>('list');
+  // ====================================================
+  // Cloud + Local persistence for view settings
+  // ====================================================
+  const { value: cloudSettings, setValue: setCloudSettings, isLoading: settingsLoading } = useUserSettings<{
+    activeTab?: 'analytics' | 'list' | 'summary';
+    viewMode?: ViewMode;
+    selectedClient?: string;
+    selectedProject?: string;
+    selectedUser?: string;
+    dateFilter?: DateFilter;
+    showBillableOnly?: boolean;
+  }>({
+    key: 'timelogs_view_settings',
+    defaultValue: {
+      activeTab: 'list',
+      viewMode: 'list',
+      selectedClient: 'all',
+      selectedProject: 'all',
+      selectedUser: 'all',
+      dateFilter: 'all',
+      showBillableOnly: false,
+    },
+  });
+
+  // Initialize from cloud or localStorage as fallback
+  const [activeTab, setActiveTabLocal] = useState<'analytics' | 'list' | 'summary'>(() => {
+    const local = localStorage.getItem('timelogs-active-tab') as 'analytics' | 'list' | 'summary';
+    return local || 'list';
+  });
   
-  // View mode state - persisted to localStorage
-  const [viewMode, setViewMode] = useState<ViewMode>(() => (localStorage.getItem('timelogs-view-mode') as ViewMode) || 'list');
+  const [viewMode, setViewModeLocal] = useState<ViewMode>(() => {
+    const local = localStorage.getItem('timelogs-view-mode') as ViewMode;
+    return local || 'list';
+  });
   
-  // Filter state - persisted to localStorage
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('timelogs-search') || '');
-  const [selectedClient, setSelectedClient] = useState<string>(() => localStorage.getItem('timelogs-client') || 'all');
-  const [selectedProject, setSelectedProject] = useState<string>(() => localStorage.getItem('timelogs-project') || 'all');
-  const [selectedUser, setSelectedUser] = useState<string>(() => localStorage.getItem('timelogs-user') || 'all');
-  const [dateFilter, setDateFilter] = useState<DateFilter>(() => (localStorage.getItem('timelogs-date-filter') as DateFilter) || 'all');
+  const [selectedClient, setSelectedClientLocal] = useState<string>(() => localStorage.getItem('timelogs-client') || 'all');
+  const [selectedProject, setSelectedProjectLocal] = useState<string>(() => localStorage.getItem('timelogs-project') || 'all');
+  const [selectedUser, setSelectedUserLocal] = useState<string>(() => localStorage.getItem('timelogs-user') || 'all');
+  const [dateFilter, setDateFilterLocal] = useState<DateFilter>(() => (localStorage.getItem('timelogs-date-filter') as DateFilter) || 'all');
   const [customDateRange, setCustomDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>(() => {
     const saved = localStorage.getItem('timelogs-custom-range');
     if (saved) {
@@ -209,6 +238,93 @@ export default function TimeLogs() {
   useEffect(() => {
     localStorage.setItem('timelogs-billable', String(showBillableOnly));
   }, [showBillableOnly]);
+
+  useEffect(() => {
+    localStorage.setItem('timelogs-active-tab', activeTab);
+  }, [activeTab]);
+
+  // ====================================================
+  // Sync FROM cloud when cloudSettings loads
+  // ====================================================
+  useEffect(() => {
+    if (!settingsLoading && cloudSettings) {
+      console.log('[TimeLogs] Loading settings from cloud:', cloudSettings);
+      
+      if (cloudSettings.activeTab) {
+        setActiveTabLocal(cloudSettings.activeTab);
+        localStorage.setItem('timelogs-active-tab', cloudSettings.activeTab);
+      }
+      if (cloudSettings.viewMode) {
+        setViewModeLocal(cloudSettings.viewMode);
+        localStorage.setItem('timelogs-view-mode', cloudSettings.viewMode);
+      }
+      if (cloudSettings.selectedClient) {
+        setSelectedClientLocal(cloudSettings.selectedClient);
+        localStorage.setItem('timelogs-client', cloudSettings.selectedClient);
+      }
+      if (cloudSettings.selectedProject) {
+        setSelectedProjectLocal(cloudSettings.selectedProject);
+        localStorage.setItem('timelogs-project', cloudSettings.selectedProject);
+      }
+      if (cloudSettings.selectedUser) {
+        setSelectedUserLocal(cloudSettings.selectedUser);
+        localStorage.setItem('timelogs-user', cloudSettings.selectedUser);
+      }
+      if (cloudSettings.dateFilter) {
+        setDateFilterLocal(cloudSettings.dateFilter);
+        localStorage.setItem('timelogs-date-filter', cloudSettings.dateFilter);
+      }
+      if (typeof cloudSettings.showBillableOnly === 'boolean') {
+        setShowBillableOnly(cloudSettings.showBillableOnly);
+        localStorage.setItem('timelogs-billable', String(cloudSettings.showBillableOnly));
+      }
+    }
+  }, [settingsLoading, cloudSettings]);
+
+  // ====================================================
+  // Wrapper functions that save to both local and cloud
+  // ====================================================
+  const setActiveTab = useCallback((tab: 'analytics' | 'list' | 'summary') => {
+    setActiveTabLocal(tab);
+    localStorage.setItem('timelogs-active-tab', tab);
+    setCloudSettings(prev => ({ ...prev, activeTab: tab }));
+  }, [setCloudSettings]);
+
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeLocal(mode);
+    localStorage.setItem('timelogs-view-mode', mode);
+    setCloudSettings(prev => ({ ...prev, viewMode: mode }));
+  }, [setCloudSettings]);
+
+  const setSelectedClient = useCallback((client: string) => {
+    setSelectedClientLocal(client);
+    localStorage.setItem('timelogs-client', client);
+    setCloudSettings(prev => ({ ...prev, selectedClient: client }));
+  }, [setCloudSettings]);
+
+  const setSelectedProject = useCallback((project: string) => {
+    setSelectedProjectLocal(project);
+    localStorage.setItem('timelogs-project', project);
+    setCloudSettings(prev => ({ ...prev, selectedProject: project }));
+  }, [setCloudSettings]);
+
+  const setSelectedUser = useCallback((userId: string) => {
+    setSelectedUserLocal(userId);
+    localStorage.setItem('timelogs-user', userId);
+    setCloudSettings(prev => ({ ...prev, selectedUser: userId }));
+  }, [setCloudSettings]);
+
+  const setDateFilter = useCallback((filter: DateFilter) => {
+    setDateFilterLocal(filter);
+    localStorage.setItem('timelogs-date-filter', filter);
+    setCloudSettings(prev => ({ ...prev, dateFilter: filter }));
+  }, [setCloudSettings]);
+
+  const setBillableOnly = useCallback((billable: boolean) => {
+    setShowBillableOnly(billable);
+    localStorage.setItem('timelogs-billable', String(billable));
+    setCloudSettings(prev => ({ ...prev, showBillableOnly: billable }));
+  }, [setCloudSettings]);
   
   // Dialog state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -464,19 +580,29 @@ export default function TimeLogs() {
     return total;
   }, [filteredEntries]);
 
-  // Format duration
+  // Format duration - smart formatting based on user's request
   const formatDuration = (minutes: number) => {
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    if (hours === 0) return `${mins} דקות`;
-    if (mins === 0) return `${hours} שעות`;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
-  // Format duration short
+  // Format duration short - same logic
   const formatDurationShort = (minutes: number) => {
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
@@ -999,13 +1125,13 @@ export default function TimeLogs() {
 
   return (
     <AppLayout title="לוגי זמן">
-      <div className="p-4 space-y-3 animate-fade-in overflow-hidden isolate">
+      <div className="p-4 space-y-3 animate-fade-in overflow-hidden isolate" dir="rtl">
         {/* Running Timer Alert */}
         {timeEntries.some(e => e.is_running) && (
-          <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20" dir="rtl">
+          <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between flex-row-reverse">
+                <div className="flex items-center gap-3 flex-row-reverse">
                   <div className="p-2 rounded-full bg-yellow-500/20 animate-pulse">
                     <Timer className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
@@ -1028,13 +1154,13 @@ export default function TimeLogs() {
         
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card dir="rtl">
+          <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-row-reverse">
                 <div className="p-3 rounded-full bg-primary/10">
                   <Clock className="h-6 w-6 text-primary" />
                 </div>
-                <div>
+                <div className="text-right">
                   <p className="text-2xl font-bold">{formatDurationShort(totalStats.minutes)}</p>
                   <p className="text-sm text-muted-foreground">סה"כ שעות</p>
                 </div>
@@ -1042,13 +1168,13 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card dir="rtl">
+          <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-row-reverse">
                 <div className="p-3 rounded-full bg-secondary/10">
                   <Timer className="h-6 w-6 text-secondary" />
                 </div>
-                <div>
+                <div className="text-right">
                   <p className="text-2xl font-bold">{totalStats.entries}</p>
                   <p className="text-sm text-muted-foreground">רישומים</p>
                 </div>
@@ -1056,13 +1182,13 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card dir="rtl">
+          <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-row-reverse">
                 <div className="p-3 rounded-full bg-green-500/10">
                   <DollarSign className="h-6 w-6 text-green-500" />
                 </div>
-                <div>
+                <div className="text-right">
                   <p className="text-2xl font-bold">{formatDurationShort(totalStats.billable)}</p>
                   <p className="text-sm text-muted-foreground">לחיוב</p>
                 </div>
@@ -1070,13 +1196,13 @@ export default function TimeLogs() {
             </CardContent>
           </Card>
           
-          <Card dir="rtl">
+          <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-row-reverse">
                 <div className="p-3 rounded-full bg-blue-500/10">
                   <Users className="h-6 w-6 text-blue-500" />
                 </div>
-                <div>
+                <div className="text-right">
                   <p className="text-2xl font-bold">{clientSummaries.length}</p>
                   <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
                 </div>
@@ -1086,14 +1212,22 @@ export default function TimeLogs() {
         </div>
 
         {/* Filters & Actions */}
-        <Card dir="rtl">
+        <Card>
           <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <CardTitle className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-4 flex-row-reverse">
+              <CardTitle className="flex items-center gap-2 flex-row-reverse">
                 <Filter className="h-5 w-5 text-muted-foreground" />
                 סינון וחיפוש
               </CardTitle>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-row-reverse">
+                <Button className="btn-gold" onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 ml-2" />
+                  הוסף רישום
+                </Button>
+                <Button variant="outline" onClick={handleExport}>
+                  <Download className="h-4 w-4 ml-2" />
+                  ייצוא
+                </Button>
                 <Button 
                   variant="outline" 
                   onClick={async () => {
@@ -1128,14 +1262,6 @@ export default function TimeLogs() {
                 >
                   <Timer className="h-4 w-4 ml-2" />
                   {isLoading ? 'טוען...' : 'רענן'}
-                </Button>
-                <Button variant="outline" onClick={handleExport}>
-                  <Download className="h-4 w-4 ml-2" />
-                  ייצוא
-                </Button>
-                <Button className="btn-gold" onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 ml-2" />
-                  הוסף רישום
                 </Button>
               </div>
             </div>
@@ -1204,7 +1330,7 @@ export default function TimeLogs() {
                 <Checkbox
                   id="billable-only"
                   checked={showBillableOnly}
-                  onCheckedChange={(checked) => setShowBillableOnly(checked as boolean)}
+                  onCheckedChange={(checked) => setBillableOnly(checked as boolean)}
                 />
                 <Label htmlFor="billable-only" className="cursor-pointer text-sm">
                   לחיוב בלבד
@@ -1215,12 +1341,12 @@ export default function TimeLogs() {
         </Card>
 
         {/* Main Content - Unified Header with Tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col" dir="rtl">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col">
           {/* Unified Header Bar */}
-          <div className="flex items-center justify-between gap-4 bg-card border border-border rounded-lg p-3 mb-3">
+          <div className="flex items-center justify-between gap-4 bg-card border border-border rounded-lg p-3 mb-3 flex-row-reverse">
             {/* Right side - Title and Badge */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-row-reverse">
+              <div className="flex items-center gap-2 flex-row-reverse">
                 <Clock className="h-5 w-5 text-[hsl(45,80%,55%)]" />
                 <h2 className="text-lg font-bold text-foreground">רישומי זמן</h2>
               </div>

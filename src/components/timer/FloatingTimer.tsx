@@ -293,10 +293,15 @@ function FloatingTimerContent() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   const formatMinutes = (minutes: number) => {
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    if (hrs > 0) return `${hrs} שעות ${mins} דק׳`;
-    return `${mins} דקות`;
+    // Under 1 hour: show minutes only
+    if (hrs === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hrs}:00`;
+    // Hours + minutes: show H:MM
+    return `${hrs}:${mins.toString().padStart(2, '0')}`;
   };
   const handleQuickAction = (e: React.MouseEvent) => {
     e.stopPropagation();

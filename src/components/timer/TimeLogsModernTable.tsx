@@ -119,10 +119,15 @@ export function TimeLogsModernTable({
   };
 
   const formatDuration = (minutes: number | null) => {
-    if (!minutes) return '0:0';
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours}:${mins}`;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
+    return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
   const formatTime = (dateString: string) => {

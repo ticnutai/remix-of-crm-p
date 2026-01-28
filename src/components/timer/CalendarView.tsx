@@ -146,10 +146,16 @@ export function CalendarView({
     return clients.find(c => c.id === clientId)?.name || 'לא ידוע';
   };
 
-  // Format duration
+  // Format duration - smart formatting
   const formatDuration = (minutes: number) => {
+    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
+    // Under 1 hour: show minutes only
+    if (hours === 0) return `${mins} דק'`;
+    // Full hours: show H:00
+    if (mins === 0) return `${hours}:00`;
+    // Hours + minutes: show H:MM
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
