@@ -338,7 +338,7 @@ export default function DataHub() {
   }, []);
 
   // =====================================
-  // Import Tab State
+  // Import Tab State (Unified for all file types)
   // =====================================
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -352,6 +352,11 @@ export default function DataHub() {
   } | null>(null);
   const [fileSelected, setFileSelected] = useState(false);
   const [previewTab, setPreviewTab] = useState<'clients' | 'projects' | 'timelogs'>('clients');
+  
+  // Detected file type
+  const [detectedFileType, setDetectedFileType] = useState<'csv' | 'excel' | 'json' | null>(null);
+  const [detectedFileName, setDetectedFileName] = useState<string>('');
+  const [detectedFormat, setDetectedFormat] = useState<string>('');
   
   const [importOptions, setImportOptions] = useState<ImportOptions>({
     importClients: true,
@@ -395,9 +400,7 @@ export default function DataHub() {
   // =====================================
   // JSON Backup Import State
   // =====================================
-  const jsonFileInputRef = useRef<HTMLInputElement>(null);
   const [externalBackupData, setExternalBackupData] = useState<ArchFlowBackup | null>(null);
-  const [isJsonImportDialogOpen, setIsJsonImportDialogOpen] = useState(false);
   const [isJsonImporting, setIsJsonImporting] = useState(false);
   const [jsonImportProgress, setJsonImportProgress] = useState(0);
   const [jsonImportMessage, setJsonImportMessage] = useState('');
@@ -828,15 +831,85 @@ export default function DataHub() {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    setDetectedFileName(file.name);
+    setLastImportError(null);
+    
     try {
       setIsProcessing(true);
-      setCurrentAction('קורא קובץ...');
+      setCurrentAction('מזהה סוג קובץ...');
       
-      const content = await file.text();
-      let parsed;
+      const fileName = file.name.toLowerCase();
       
-      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-        // Parse Excel
+      // =====================================
+      // JSON FILE HANDLING
+      // =====================================
+      if (fileName.endsWith('.json')) {
+        setDetectedFileType('json');
+        setCurrentAction('קורא קובץ JSON...');
+        
+        const text = await file.text();
+        const result = normalizeExternalBackup(text, file.name);
+        
+        if (!result.success || !result.data) {
+          const supportedFormats = getSupportedFormats();
+          const errorDetails = [
+            `שם קובץ: ${file.name}`,
+            `פורמט שזוהה: ${result.detectedFormat || 'לא ידוע'}`,
+            result.detectedKeys?.length ? `מפתחות שנמצאו: ${result.detectedKeys.slice(0, 5).join(', ')}${result.detectedKeys.length > 5 ? '...' : ''}` : '',
+            '',
+            'פורמטים נתמכים:',
+            ...supportedFormats.map(f => `• ${f}`),
+          ].filter(Boolean).join('\n');
+          
+          setLastImportError(errorDetails);
+          
+          toast({
+            title: 'שגיאה בזיהוי פורמט הקובץ',
+            description: result.error || 'הקובץ אינו בפורמט תקין',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        setDetectedFormat(result.detectedFormat || 'JSON גיבוי');
+        
+        // Convert to ArchFlowBackup format
+        const normalizedData: ArchFlowBackup = {
+          generated_at: result.data.generated_at,
+          by: result.data.by,
+          total_records: result.data.total_records,
+          categories: result.data.categories,
+          data: result.data.data as ArchFlowBackup['data'],
+        };
+        
+        setExternalBackupData(normalizedData);
+        setJsonImportStats(null);
+        setFileSelected(true);
+        
+        // Update JSON import options based on available data
+        setJsonImportOptions({
+          clients: !!normalizedData.data.Client?.length,
+          projects: !!normalizedData.data.Project?.length,
+          time_entries: !!normalizedData.data.TimeLog?.length,
+          tasks: !!normalizedData.data.Task?.length,
+          meetings: !!normalizedData.data.Meeting?.length,
+        });
+        
+        toast({
+          title: 'קובץ JSON נטען בהצלחה ✓',
+          description: `זוהה: ${result.detectedFormat}. ${result.data.total_records} רשומות ב-${result.data.categories.length} קטגוריות.`,
+        });
+        
+        return;
+      }
+      
+      // =====================================
+      // EXCEL FILE HANDLING
+      // =====================================
+      if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        setDetectedFileType('excel');
+        setCurrentAction('קורא קובץ Excel...');
+        
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const clients: ParsedClient[] = [];
@@ -859,16 +932,66 @@ export default function DataHub() {
               });
             }
           }
+          if (lowerName.includes('project') || lowerName.includes('פרויקט')) {
+            for (const row of data) {
+              projects.push({
+                name: row.name || row.שם || row.Name || '',
+                clientName: row.client || row.לקוח || row.client_name,
+                status: row.status || row.סטטוס,
+              });
+            }
+          }
+          if (lowerName.includes('time') || lowerName.includes('זמן') || lowerName.includes('log')) {
+            for (const row of data) {
+              timeLogs.push({
+                clientName: row.client || row.לקוח || row.client_name || '',
+                date: row.date || row.תאריך,
+                duration: parseInt(row.duration || row.duration_seconds || row.משך || '0'),
+                title: row.title || row.כותרת || row.description,
+                notes: row.notes || row.הערות,
+              });
+            }
+          }
         }
         
-        parsed = { clients, timeLogs, projects };
-      } else {
-        // Parse CSV/TXT
-        parsed = parseBackupFile(content);
+        const parsed = { clients, timeLogs, projects };
+        setParsedData(parsed);
+        setFileSelected(true);
+        setDetectedFormat(`Excel (${workbook.SheetNames.length} גליונות)`);
+        setExternalBackupData(null);
+        
+        setImportStats(prev => ({
+          ...prev,
+          totalClients: parsed.clients.length,
+          totalTimeLogs: parsed.timeLogs.length,
+          totalProjects: parsed.projects.length,
+        }));
+        
+        const validation = validateParsedData(parsed);
+        setValidationSummary(validation);
+        
+        toast({
+          title: 'קובץ Excel נטען בהצלחה ✓',
+          description: `${parsed.clients.length} לקוחות, ${parsed.projects.length} פרויקטים, ${parsed.timeLogs.length} רישומי זמן`,
+        });
+        
+        return;
       }
+      
+      // =====================================
+      // CSV/TXT FILE HANDLING
+      // =====================================
+      setDetectedFileType('csv');
+      setCurrentAction('קורא קובץ CSV...');
+      
+      const content = await file.text();
+      const parsed = parseBackupFile(content);
       
       setParsedData(parsed);
       setFileSelected(true);
+      setDetectedFormat('CSV / טקסט');
+      setExternalBackupData(null);
+      
       setImportStats(prev => ({
         ...prev,
         totalClients: parsed.clients.length,
@@ -876,7 +999,6 @@ export default function DataHub() {
         totalProjects: parsed.projects.length,
       }));
       
-      // Run validation
       const validation = validateParsedData(parsed);
       setValidationSummary(validation);
       
@@ -893,10 +1015,11 @@ export default function DataHub() {
         });
       } else {
         toast({
-          title: 'קובץ נטען בהצלחה ✓',
-          description: `${parsed.clients.length} לקוחות, ${parsed.projects.length} פרויקטים - תקין לייבוא`,
+          title: 'קובץ CSV נטען בהצלחה ✓',
+          description: `${parsed.clients.length} לקוחות, ${parsed.projects.length} פרויקטים`,
         });
       }
+      
     } catch (error) {
       toast({
         title: 'שגיאה בקריאת הקובץ',
@@ -1002,6 +1125,12 @@ export default function DataHub() {
     setProgress(0);
     setValidationSummary(null);
     setShowValidationDetails(false);
+    setDetectedFileType(null);
+    setDetectedFileName('');
+    setDetectedFormat('');
+    setExternalBackupData(null);
+    setJsonImportStats(null);
+    setLastImportError(null);
     setImportStats({
       totalClients: 0, totalTimeLogs: 0, totalProjects: 0,
       successClients: 0, successTimeLogs: 0, successProjects: 0,
@@ -1039,79 +1168,6 @@ export default function DataHub() {
   // =====================================
   // JSON Backup Import Functions
   // =====================================
-  
-  const handleJsonFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLastImportError(null);
-    
-    try {
-      const text = await file.text();
-      
-      // Use the normalizer to handle various formats
-      const result = normalizeExternalBackup(text, file.name);
-      
-      if (!result.success || !result.data) {
-        const supportedFormats = getSupportedFormats();
-        const errorDetails = [
-          `שם קובץ: ${file.name}`,
-          `פורמט שזוהה: ${result.detectedFormat || 'לא ידוע'}`,
-          result.detectedKeys?.length ? `מפתחות שנמצאו: ${result.detectedKeys.slice(0, 5).join(', ')}${result.detectedKeys.length > 5 ? '...' : ''}` : '',
-          '',
-          'פורמטים נתמכים:',
-          ...supportedFormats.map(f => `• ${f}`),
-        ].filter(Boolean).join('\n');
-        
-        setLastImportError(errorDetails);
-        
-        toast({
-          title: 'שגיאה בזיהוי פורמט הקובץ',
-          description: result.error || 'הקובץ אינו בפורמט תקין',
-          variant: 'destructive',
-        });
-        
-        if (jsonFileInputRef.current) {
-          jsonFileInputRef.current.value = '';
-        }
-        return;
-      }
-      
-      // Convert NormalizedBackup to ArchFlowBackup format
-      const normalizedData: ArchFlowBackup = {
-        generated_at: result.data.generated_at,
-        by: result.data.by,
-        total_records: result.data.total_records,
-        categories: result.data.categories,
-        data: result.data.data as ArchFlowBackup['data'],
-      };
-      
-      setExternalBackupData(normalizedData);
-      setIsJsonImportDialogOpen(true);
-      setJsonImportStats(null);
-      
-      // Show success message with detected format
-      toast({
-        title: 'קובץ נטען בהצלחה',
-        description: `זוהה פורמט: ${result.detectedFormat}. נמצאו ${result.data.total_records} רשומות ב-${result.data.categories.length} קטגוריות.`,
-      });
-      
-    } catch (error) {
-      console.error('Failed to parse backup file:', error);
-      const errorMessage = error instanceof Error ? error.message : 'שגיאה לא ידועה';
-      setLastImportError(`שגיאה בפרסור JSON: ${errorMessage}`);
-      
-      toast({
-        title: 'שגיאה בקריאת הקובץ',
-        description: 'לא ניתן לקרוא את הקובץ. ודא שזהו קובץ JSON תקין.',
-        variant: 'destructive',
-      });
-    }
-    
-    if (jsonFileInputRef.current) {
-      jsonFileInputRef.current.value = '';
-    }
-  };
 
   const handleJsonImport = async () => {
     if (!externalBackupData || !user?.id) return;
@@ -1493,7 +1549,7 @@ export default function DataHub() {
             >
               <Upload className="h-4 w-4" />
               <span>ייבוא נתונים</span>
-              <Badge variant="secondary" className="mr-2 text-xs">CSV / Excel</Badge>
+              <Badge variant="secondary" className="mr-2 text-xs">כל הפורמטים</Badge>
             </TabsTrigger>
             <TabsTrigger 
               value="backups" 
@@ -1506,17 +1562,17 @@ export default function DataHub() {
           </TabsList>
 
           {/* =====================================
-              IMPORT TAB
+              UNIFIED IMPORT TAB
               ===================================== */}
           <TabsContent value="import" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 justify-end">
-                  ייבוא נתונים (CSV / Excel)
+                  ייבוא נתונים - זיהוי אוטומטי
                   <Upload className="h-5 w-5" />
                 </CardTitle>
                 <CardDescription className="text-right">
-                  העלה קובץ CSV או Excel - כולל לקוחות, פרויקטים ורישומי זמן.
+                  העלה קובץ בכל פורמט - המערכת תזהה אוטומטית (JSON, Excel, CSV)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1526,45 +1582,94 @@ export default function DataHub() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv,.txt,.xlsx,.xls"
+                      accept=".csv,.txt,.xlsx,.xls,.json"
                       onChange={handleFileSelect}
                       className="hidden"
-                      disabled={isProcessing}
+                      disabled={isProcessing || isJsonImporting}
                     />
                     
                     {!fileSelected ? (
-                      <div className="w-full max-w-md space-y-3">
-                        <Button
-                          size="lg"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isProcessing}
-                          className="w-full"
+                      <div className="w-full max-w-lg space-y-4">
+                        {/* Main Upload Button */}
+                        <div 
+                          onClick={() => !isProcessing && fileInputRef.current?.click()}
+                          className={cn(
+                            "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                            "hover:border-primary hover:bg-muted/50",
+                            isProcessing && "opacity-50 cursor-not-allowed"
+                          )}
                         >
                           {isProcessing ? (
-                            <Loader2 className="h-5 w-5 ml-2 animate-spin" />
+                            <div className="space-y-3">
+                              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+                              <p className="text-lg font-medium">{currentAction}</p>
+                            </div>
                           ) : (
-                            <FileSpreadsheet className="h-5 w-5 ml-2" />
+                            <div className="space-y-3">
+                              <div className="flex justify-center gap-3">
+                                <FileJson className="h-10 w-10 text-green-500" />
+                                <FileSpreadsheet className="h-10 w-10 text-blue-500" />
+                                <FileText className="h-10 w-10 text-orange-500" />
+                              </div>
+                              <p className="text-xl font-medium">גרור קובץ לכאן או לחץ לבחירה</p>
+                              <div className="flex justify-center gap-2 flex-wrap">
+                                <Badge variant="outline" className="text-green-600 border-green-300">
+                                  <FileJson className="h-3 w-3 ml-1" />
+                                  JSON גיבוי
+                                </Badge>
+                                <Badge variant="outline" className="text-blue-600 border-blue-300">
+                                  <FileSpreadsheet className="h-3 w-3 ml-1" />
+                                  Excel
+                                </Badge>
+                                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                  <FileText className="h-3 w-3 ml-1" />
+                                  CSV
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                המערכת מזהה אוטומטית את סוג הקובץ ומציגה תצוגה מקדימה
+                              </p>
+                            </div>
                           )}
-                          {isProcessing ? currentAction : 'בחר קובץ (CSV / Excel)'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={downloadTemplate}
-                          className="w-full"
-                        >
-                          <Download className="h-4 w-4 ml-2" />
-                          הורד תבנית Excel
-                        </Button>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={downloadTemplate}
+                            className="flex-1"
+                          >
+                            <Download className="h-4 w-4 ml-2" />
+                            הורד תבנית Excel
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsContactsImportOpen(true)}
+                            className="flex-1"
+                          >
+                            <Contact className="h-4 w-4 ml-2" />
+                            ייבוא אנשי קשר
+                          </Button>
+                        </div>
                       </div>
                     ) : (
-                      <div className="w-full max-w-md space-y-4">
-                        <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+                      /* File Loaded State */
+                      <div className="w-full space-y-4">
+                        {/* File Info Bar */}
+                        <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-muted to-muted/50 border">
                           <Button variant="outline" size="sm" onClick={resetImport}>
+                            <RefreshCw className="h-4 w-4 ml-2" />
                             בחר קובץ אחר
                           </Button>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span>קובץ נטען בהצלחה</span>
-                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-medium">{detectedFileName}</p>
+                              <p className="text-sm text-muted-foreground">{detectedFormat}</p>
+                            </div>
+                            {detectedFileType === 'json' && <FileJson className="h-8 w-8 text-green-500" />}
+                            {detectedFileType === 'excel' && <FileSpreadsheet className="h-8 w-8 text-blue-500" />}
+                            {detectedFileType === 'csv' && <FileText className="h-8 w-8 text-orange-500" />}
+                            <CheckCircle className="h-6 w-6 text-green-500" />
                           </div>
                         </div>
                       </div>
@@ -1779,7 +1884,7 @@ export default function DataHub() {
                         size="lg"
                         onClick={handleImport}
                         disabled={isProcessing}
-                        className="w-full"
+                        className="w-full btn-gold"
                       >
                         {isProcessing ? (
                           <>
@@ -1793,6 +1898,272 @@ export default function DataHub() {
                           </>
                         )}
                       </Button>
+                    </>
+                  )}
+
+                  {/* =====================================
+                      JSON FILE PREVIEW
+                      ===================================== */}
+                  {fileSelected && externalBackupData && detectedFileType === 'json' && (
+                    <>
+                      <Separator />
+                      
+                      {/* JSON Stats */}
+                      <div className="grid grid-cols-5 gap-3">
+                        {externalBackupData.data.Client && (
+                          <Card className={cn(
+                            "transition-all",
+                            jsonImportOptions.clients && "ring-2 ring-primary"
+                          )}>
+                            <CardContent className="pt-4 text-center">
+                              <Users className="h-5 w-5 mx-auto mb-1 text-blue-500" />
+                              <div className="text-xl font-bold">{externalBackupData.data.Client.length}</div>
+                              <div className="text-xs text-muted-foreground">לקוחות</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {externalBackupData.data.Project && (
+                          <Card className={cn(
+                            "transition-all",
+                            jsonImportOptions.projects && "ring-2 ring-primary"
+                          )}>
+                            <CardContent className="pt-4 text-center">
+                              <FolderKanban className="h-5 w-5 mx-auto mb-1 text-purple-500" />
+                              <div className="text-xl font-bold">{externalBackupData.data.Project.length}</div>
+                              <div className="text-xs text-muted-foreground">פרויקטים</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {externalBackupData.data.TimeLog && (
+                          <Card className={cn(
+                            "transition-all",
+                            jsonImportOptions.time_entries && "ring-2 ring-primary"
+                          )}>
+                            <CardContent className="pt-4 text-center">
+                              <Clock className="h-5 w-5 mx-auto mb-1 text-green-500" />
+                              <div className="text-xl font-bold">{externalBackupData.data.TimeLog.length}</div>
+                              <div className="text-xs text-muted-foreground">רישומי זמן</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {externalBackupData.data.Task && (
+                          <Card className={cn(
+                            "transition-all",
+                            jsonImportOptions.tasks && "ring-2 ring-primary"
+                          )}>
+                            <CardContent className="pt-4 text-center">
+                              <CheckCircle className="h-5 w-5 mx-auto mb-1 text-orange-500" />
+                              <div className="text-xl font-bold">{externalBackupData.data.Task.length}</div>
+                              <div className="text-xs text-muted-foreground">משימות</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {externalBackupData.data.Meeting && (
+                          <Card className={cn(
+                            "transition-all",
+                            jsonImportOptions.meetings && "ring-2 ring-primary"
+                          )}>
+                            <CardContent className="pt-4 text-center">
+                              <Calendar className="h-5 w-5 mx-auto mb-1 text-pink-500" />
+                              <div className="text-xl font-bold">{externalBackupData.data.Meeting.length}</div>
+                              <div className="text-xs text-muted-foreground">פגישות</div>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+
+                      {/* JSON Import Options */}
+                      <Card className="bg-muted/30">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base flex items-center justify-end gap-2">
+                            בחר מה לייבא
+                            <Settings2 className="h-4 w-4" />
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex flex-wrap gap-4 justify-end">
+                            {externalBackupData.data.Client && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id="json-clients"
+                                  checked={jsonImportOptions.clients}
+                                  onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, clients: !!c }))}
+                                />
+                                <Label htmlFor="json-clients">לקוחות ({externalBackupData.data.Client.length})</Label>
+                              </div>
+                            )}
+                            {externalBackupData.data.Project && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id="json-projects"
+                                  checked={jsonImportOptions.projects}
+                                  onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, projects: !!c }))}
+                                />
+                                <Label htmlFor="json-projects">פרויקטים ({externalBackupData.data.Project.length})</Label>
+                              </div>
+                            )}
+                            {externalBackupData.data.TimeLog && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id="json-timelogs"
+                                  checked={jsonImportOptions.time_entries}
+                                  onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, time_entries: !!c }))}
+                                />
+                                <Label htmlFor="json-timelogs">רישומי זמן ({externalBackupData.data.TimeLog.length})</Label>
+                              </div>
+                            )}
+                            {externalBackupData.data.Task && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id="json-tasks"
+                                  checked={jsonImportOptions.tasks}
+                                  onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, tasks: !!c }))}
+                                />
+                                <Label htmlFor="json-tasks">משימות ({externalBackupData.data.Task.length})</Label>
+                              </div>
+                            )}
+                            {externalBackupData.data.Meeting && (
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id="json-meetings"
+                                  checked={jsonImportOptions.meetings}
+                                  onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, meetings: !!c }))}
+                                />
+                                <Label htmlFor="json-meetings">פגישות ({externalBackupData.data.Meeting.length})</Label>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* JSON Preview - First 5 clients */}
+                      {externalBackupData.data.Client && externalBackupData.data.Client.length > 0 && (
+                        <Card>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-base flex items-center justify-between">
+                              <Button variant="ghost" size="sm" onClick={() => setShowValidationDetails(!showValidationDetails)}>
+                                {showValidationDetails ? 'הסתר' : 'הצג עוד'}
+                              </Button>
+                              <div className="flex items-center gap-2">
+                                תצוגה מקדימה - לקוחות
+                                <Eye className="h-4 w-4" />
+                              </div>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ScrollArea className="h-48">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="text-right">שם</TableHead>
+                                    <TableHead className="text-right">אימייל</TableHead>
+                                    <TableHead className="text-right">טלפון</TableHead>
+                                    <TableHead className="text-right">סטטוס</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {externalBackupData.data.Client.slice(0, showValidationDetails ? 20 : 5).map((client, idx) => (
+                                    <TableRow key={idx}>
+                                      <TableCell className="font-medium">{client.name}</TableCell>
+                                      <TableCell className="text-muted-foreground">{client.email || '-'}</TableCell>
+                                      <TableCell className="text-muted-foreground">{client.phone || '-'}</TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{client.status || 'active'}</Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </ScrollArea>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* JSON Import Progress */}
+                      {isJsonImporting && (
+                        <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                          <Progress value={jsonImportProgress} />
+                          <p className="text-sm text-center text-muted-foreground">{jsonImportMessage}</p>
+                        </div>
+                      )}
+
+                      {/* JSON Import Stats */}
+                      {jsonImportStats && !isJsonImporting && (
+                        <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                          <CardContent className="pt-4">
+                            <h4 className="font-medium text-green-700 dark:text-green-400 mb-3 text-right flex items-center justify-end gap-2">
+                              סיכום ייבוא הושלם בהצלחה
+                              <CheckCircle className="h-5 w-5" />
+                            </h4>
+                            <div className="grid grid-cols-5 gap-2 text-sm">
+                              {jsonImportStats.clients.total > 0 && (
+                                <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                  <div className="font-bold text-green-600">{jsonImportStats.clients.imported}</div>
+                                  <div className="text-xs">לקוחות יובאו</div>
+                                </div>
+                              )}
+                              {jsonImportStats.projects.total > 0 && (
+                                <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                  <div className="font-bold text-green-600">{jsonImportStats.projects.imported}</div>
+                                  <div className="text-xs">פרויקטים</div>
+                                </div>
+                              )}
+                              {jsonImportStats.time_entries.total > 0 && (
+                                <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                  <div className="font-bold text-green-600">{jsonImportStats.time_entries.imported}</div>
+                                  <div className="text-xs">רישומי זמן</div>
+                                </div>
+                              )}
+                              {jsonImportStats.tasks.total > 0 && (
+                                <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                  <div className="font-bold text-green-600">{jsonImportStats.tasks.imported}</div>
+                                  <div className="text-xs">משימות</div>
+                                </div>
+                              )}
+                              {jsonImportStats.meetings.total > 0 && (
+                                <div className="text-center p-2 bg-white/50 dark:bg-black/20 rounded">
+                                  <div className="font-bold text-green-600">{jsonImportStats.meetings.imported}</div>
+                                  <div className="text-xs">פגישות</div>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Error Display */}
+                      {lastImportError && (
+                        <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+                          <CardContent className="pt-4">
+                            <h4 className="font-medium text-red-700 dark:text-red-400 mb-2 text-right">שגיאה:</h4>
+                            <pre className="text-sm whitespace-pre-wrap text-red-600 dark:text-red-300 text-right">
+                              {lastImportError}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Start JSON Import Button */}
+                      {!jsonImportStats && (
+                        <Button
+                          size="lg"
+                          onClick={handleJsonImport}
+                          disabled={isJsonImporting}
+                          className="w-full btn-gold"
+                        >
+                          {isJsonImporting ? (
+                            <>
+                              <Loader2 className="h-5 w-5 ml-2 animate-spin" />
+                              מייבא...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-5 w-5 ml-2" />
+                              התחל ייבוא מקובץ JSON
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -1949,27 +2320,6 @@ export default function DataHub() {
                     צור גיבוי חדש
                   </Button>
                   
-                  {/* Import from JSON Backup */}
-                  <Button 
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                    onClick={() => jsonFileInputRef.current?.click()}
-                    disabled={isJsonImporting}
-                  >
-                    {isJsonImporting ? (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4 ml-2" />
-                    )}
-                    ייבא מקובץ גיבוי (JSON)
-                  </Button>
-                  <input
-                    type="file"
-                    ref={jsonFileInputRef}
-                    onChange={handleJsonFileSelect}
-                    accept=".json"
-                    className="hidden"
-                  />
-                  
                   <Button variant="outline" onClick={refreshBackups}>
                     <RefreshCw className="h-4 w-4 ml-2" />
                     רענן רשימה
@@ -1977,6 +2327,13 @@ export default function DataHub() {
                   <Button variant="outline" onClick={() => setIsContactsImportOpen(true)}>
                     <Contact className="h-4 w-4 ml-2" />
                     ייבוא אנשי קשר
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setActiveTab('import')}
+                  >
+                    <Upload className="h-4 w-4 ml-2" />
+                    ייבא נתונים
                   </Button>
                 </div>
               </CardContent>
@@ -2101,187 +2458,6 @@ export default function DataHub() {
           open={isContactsImportOpen}
           onOpenChange={setIsContactsImportOpen}
         />
-
-        {/* JSON Import Dialog */}
-        <Dialog open={isJsonImportDialogOpen} onOpenChange={setIsJsonImportDialogOpen}>
-          <DialogContent dir="rtl" className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <FileJson className="h-5 w-5" />
-                ייבוא מקובץ גיבוי JSON
-              </DialogTitle>
-              <DialogDescription>
-                בחר מה לייבא מהקובץ
-              </DialogDescription>
-            </DialogHeader>
-            
-            {externalBackupData && (
-              <div className="space-y-4">
-                {/* Backup Info */}
-                <Card className="bg-muted/50">
-                  <CardContent className="pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">נוצר ב:</span>
-                        <span className="mr-2 font-medium">
-                          {externalBackupData.generated_at ? 
-                            format(new Date(externalBackupData.generated_at), 'dd/MM/yyyy HH:mm', { locale: he }) : 
-                            'לא ידוע'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">סה"כ רשומות:</span>
-                        <span className="mr-2 font-medium">{externalBackupData.total_records}</span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-muted-foreground">קטגוריות:</span>
-                        <span className="mr-2">{externalBackupData.categories.join(', ')}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Import Options */}
-                <div className="space-y-3">
-                  <h4 className="font-medium text-right">בחר מה לייבא:</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {externalBackupData.data.Client && (
-                      <div className="flex items-center gap-2 justify-end">
-                        <Label htmlFor="json-clients">לקוחות ({externalBackupData.data.Client.length})</Label>
-                        <Checkbox
-                          id="json-clients"
-                          checked={jsonImportOptions.clients}
-                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, clients: !!c }))}
-                        />
-                      </div>
-                    )}
-                    {externalBackupData.data.Project && (
-                      <div className="flex items-center gap-2 justify-end">
-                        <Label htmlFor="json-projects">פרויקטים ({externalBackupData.data.Project.length})</Label>
-                        <Checkbox
-                          id="json-projects"
-                          checked={jsonImportOptions.projects}
-                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, projects: !!c }))}
-                        />
-                      </div>
-                    )}
-                    {externalBackupData.data.TimeLog && (
-                      <div className="flex items-center gap-2 justify-end">
-                        <Label htmlFor="json-timelogs">רישומי זמן ({externalBackupData.data.TimeLog.length})</Label>
-                        <Checkbox
-                          id="json-timelogs"
-                          checked={jsonImportOptions.time_entries}
-                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, time_entries: !!c }))}
-                        />
-                      </div>
-                    )}
-                    {externalBackupData.data.Task && (
-                      <div className="flex items-center gap-2 justify-end">
-                        <Label htmlFor="json-tasks">משימות ({externalBackupData.data.Task.length})</Label>
-                        <Checkbox
-                          id="json-tasks"
-                          checked={jsonImportOptions.tasks}
-                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, tasks: !!c }))}
-                        />
-                      </div>
-                    )}
-                    {externalBackupData.data.Meeting && (
-                      <div className="flex items-center gap-2 justify-end">
-                        <Label htmlFor="json-meetings">פגישות ({externalBackupData.data.Meeting.length})</Label>
-                        <Checkbox
-                          id="json-meetings"
-                          checked={jsonImportOptions.meetings}
-                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, meetings: !!c }))}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Progress */}
-                {isJsonImporting && (
-                  <div className="space-y-2">
-                    <Progress value={jsonImportProgress} />
-                    <p className="text-sm text-center text-muted-foreground">{jsonImportMessage}</p>
-                  </div>
-                )}
-                
-                {/* Import Stats */}
-                {jsonImportStats && !isJsonImporting && (
-                  <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
-                    <CardContent className="pt-4">
-                      <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">סיכום ייבוא:</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        {jsonImportStats.clients.total > 0 && (
-                          <div className="flex justify-between">
-                            <span>לקוחות:</span>
-                            <span>{jsonImportStats.clients.imported} יובאו, {jsonImportStats.clients.skipped} דולגו</span>
-                          </div>
-                        )}
-                        {jsonImportStats.projects.total > 0 && (
-                          <div className="flex justify-between">
-                            <span>פרויקטים:</span>
-                            <span>{jsonImportStats.projects.imported} יובאו, {jsonImportStats.projects.skipped} דולגו</span>
-                          </div>
-                        )}
-                        {jsonImportStats.time_entries.total > 0 && (
-                          <div className="flex justify-between">
-                            <span>רישומי זמן:</span>
-                            <span>{jsonImportStats.time_entries.imported} יובאו, {jsonImportStats.time_entries.skipped} דולגו</span>
-                          </div>
-                        )}
-                        {jsonImportStats.tasks.total > 0 && (
-                          <div className="flex justify-between">
-                            <span>משימות:</span>
-                            <span>{jsonImportStats.tasks.imported} יובאו, {jsonImportStats.tasks.skipped} דולגו</span>
-                          </div>
-                        )}
-                        {jsonImportStats.meetings.total > 0 && (
-                          <div className="flex justify-between">
-                            <span>פגישות:</span>
-                            <span>{jsonImportStats.meetings.imported} יובאו, {jsonImportStats.meetings.skipped} דולגו</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {/* Error Display */}
-                {lastImportError && (
-                  <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
-                    <CardContent className="pt-4">
-                      <h4 className="font-medium text-red-700 dark:text-red-400 mb-2">שגיאה:</h4>
-                      <pre className="text-sm whitespace-pre-wrap text-red-600 dark:text-red-300">
-                        {lastImportError}
-                      </pre>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-            
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setIsJsonImportDialogOpen(false)}>
-                {jsonImportStats ? 'סגור' : 'ביטול'}
-              </Button>
-              {!jsonImportStats && (
-                <Button 
-                  onClick={handleJsonImport} 
-                  disabled={isJsonImporting}
-                  className="btn-gold"
-                >
-                  {isJsonImporting ? (
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4 ml-2" />
-                  )}
-                  התחל ייבוא
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </AppLayout>
   );
