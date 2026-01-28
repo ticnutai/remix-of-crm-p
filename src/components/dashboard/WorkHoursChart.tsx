@@ -136,15 +136,16 @@ export function WorkHoursChart({ byEmployee, byProject, isLoading }: WorkHoursCh
       );
     }
 
-    // Default: Bar chart
+    // Default: Bar chart - RTL layout
     return (
-      <BarChart data={data} layout="vertical" margin={{ top: 10, right: 10, left: 60, bottom: 0 }}>
+      <BarChart data={data} layout="vertical" margin={{ top: 10, right: 60, left: 10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridColor} horizontal={true} vertical={false} />
         <XAxis 
           type="number"
           tick={{ fill: chartColors.tickColor, fontSize: 12 }}
           axisLine={{ stroke: chartColors.gridColor }}
           tickFormatter={(value) => `${value}h`}
+          reversed
         />
         <YAxis 
           type="category"
@@ -152,11 +153,12 @@ export function WorkHoursChart({ byEmployee, byProject, isLoading }: WorkHoursCh
           tick={{ fill: chartColors.tickColor, fontSize: 12 }}
           axisLine={{ stroke: chartColors.gridColor }}
           width={80}
+          orientation="right"
         />
         <Tooltip content={<CustomTooltip />} />
         <Bar 
           dataKey="hours" 
-          radius={[0, 4, 4, 0]}
+          radius={[4, 0, 0, 4]}
           animationDuration={800}
         >
           {data.map((_, index) => (

@@ -364,13 +364,14 @@ export function WidgetGrid({ children, className }: WidgetGridProps) {
         </div>
       )}
       
-      {/* 4-column Grid with dense packing and configurable gap */}
+      {/* 4-column Grid with dense packing and configurable gap - RTL */}
       <div 
         className={cn(
           "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
           GAP_CLASSES[gridGap],
           "[grid-auto-flow:dense]"
         )}
+        dir="rtl"
       >
         {children}
       </div>

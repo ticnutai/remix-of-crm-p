@@ -209,11 +209,12 @@ function DashboardContent() {
         <div 
           style={dashboardStyle} 
           className="relative overflow-hidden z-0"
+          dir="rtl"
         >
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-2 sm:space-y-3 md:space-y-4">
             
             {/* Dashboard Header */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-row-reverse">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div 
                   className={cn(
