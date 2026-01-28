@@ -555,8 +555,8 @@ export function DataCleanupTab() {
 
       {/* Duplicates Dialog */}
       <Dialog open={showDuplicatesDialog} onOpenChange={setShowDuplicatesDialog}>
-        <DialogContent dir="rtl" className="max-w-4xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Copy className="h-5 w-5 text-amber-600" />
               כפילויות שנמצאו
@@ -566,8 +566,8 @@ export function DataCleanupTab() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex items-center justify-between py-2 border-b">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between py-2 border-b flex-shrink-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={selectAllDuplicates}>
                 <CheckCircle2 className="h-4 w-4 ml-2" />
                 בחר את כל הכפילויות
@@ -577,13 +577,14 @@ export function DataCleanupTab() {
                 נקה בחירה
               </Button>
             </div>
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="flex-shrink-0">
               {selectedDuplicates.size} נבחרו למחיקה
             </Badge>
           </div>
           
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="space-y-6 py-4">
+          <div className="flex-1 overflow-hidden min-h-0">
+            <ScrollArea className="h-full max-h-[55vh]">
+              <div className="space-y-6 py-4 px-1">
               {duplicateResults.map(result => (
                 <div key={result.tableName} className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">
@@ -652,9 +653,10 @@ export function DataCleanupTab() {
                 </div>
               ))}
             </div>
-          </ScrollArea>
+            </ScrollArea>
+          </div>
           
-          <DialogFooter className="border-t pt-4">
+          <DialogFooter className="border-t pt-4 flex-shrink-0">
             <Button variant="outline" onClick={() => setShowDuplicatesDialog(false)}>
               סגור
             </Button>

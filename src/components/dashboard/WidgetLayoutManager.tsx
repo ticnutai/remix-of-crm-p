@@ -1,7 +1,9 @@
 // Widget Layout Manager - מערכת ניהול פריסת ווידג'טים מאוחדת
 // e-control CRM Pro
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 // Widget Size Types
 export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
@@ -98,6 +100,8 @@ export const GAP_LABELS: Record<GridGap, string> = {
 interface WidgetLayoutContextType {
   layouts: WidgetLayout[];
   gridGap: GridGap;
+  isLoading: boolean;
+  isSaving: boolean;
   getLayout: (id: WidgetId) => WidgetLayout | undefined;
   isVisible: (id: WidgetId) => boolean;
   getGridClass: (id: WidgetId) => string;
@@ -115,24 +119,16 @@ interface WidgetLayoutContextType {
 
 const WidgetLayoutContext = createContext<WidgetLayoutContextType | undefined>(undefined);
 
+const CLOUD_SETTING_KEY = 'dashboard-widget-layouts';
+
 // Provider Component
 export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
-  const [layouts, setLayouts] = useState<WidgetLayout[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge with defaults to ensure all widgets exist
-        return DEFAULT_LAYOUTS.map(def => {
-          const savedLayout = parsed.find((p: WidgetLayout) => p.id === def.id);
-          return savedLayout ? { ...def, ...savedLayout } : def;
-        });
-      }
-    } catch (e) {
-      console.error('[WidgetLayout] Error loading:', e);
-    }
-    return DEFAULT_LAYOUTS;
-  });
+  const { user } = useAuth();
+  const [layouts, setLayouts] = useState<WidgetLayout[]>(DEFAULT_LAYOUTS);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialLoadDone = useRef(false);
 
   const [gridGap, setGridGapState] = useState<GridGap>(() => {
     try {
@@ -146,14 +142,112 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
     return 'normal';
   });
 
-  // Save to localStorage
+  // Load from cloud on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layouts));
-  }, [layouts]);
+    const loadFromCloud = async () => {
+      if (!user?.id) {
+        // Try localStorage fallback if no user
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const merged = DEFAULT_LAYOUTS.map(def => {
+              const savedLayout = parsed.find((p: WidgetLayout) => p.id === def.id);
+              return savedLayout ? { ...def, ...savedLayout } : def;
+            });
+            setLayouts(merged);
+          }
+        } catch (e) {
+          console.error('[WidgetLayout] Error loading from localStorage:', e);
+        }
+        setIsLoading(false);
+        return;
+      }
 
-  useEffect(() => {
-    localStorage.setItem(GAP_STORAGE_KEY, gridGap);
-  }, [gridGap]);
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('setting_value')
+          .eq('user_id', user.id)
+          .eq('setting_key', CLOUD_SETTING_KEY)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[WidgetLayout] Error loading from cloud:', error);
+          // Fallback to localStorage
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            setLayouts(JSON.parse(saved));
+          }
+        } else if (data?.setting_value?.layouts) {
+          // Merge with defaults to ensure all widgets exist
+          const merged = DEFAULT_LAYOUTS.map(def => {
+            const saved = data.setting_value.layouts.find((l: WidgetLayout) => l.id === def.id);
+            return saved ? { ...def, ...saved } : def;
+          });
+          setLayouts(merged);
+          // Also update localStorage as cache
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        }
+      } catch (err) {
+        console.error('[WidgetLayout] Failed to load:', err);
+      } finally {
+        setIsLoading(false);
+        initialLoadDone.current = true;
+      }
+    };
+
+    loadFromCloud();
+  }, [user?.id]);
+
+  // Save to cloud with debounce
+  const saveToCloud = useCallback(async (newLayouts: WidgetLayout[]) => {
+    // Always save to localStorage immediately
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newLayouts));
+
+    if (!user?.id) return;
+
+    // Debounce cloud save
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      setIsSaving(true);
+      try {
+        const { error } = await supabase
+          .from('user_settings')
+          .upsert(
+            {
+              user_id: user.id,
+              setting_key: CLOUD_SETTING_KEY,
+              setting_value: { layouts: newLayouts, gridGap, lastUpdated: new Date().toISOString() },
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,setting_key' }
+          );
+
+        if (error) {
+          console.error('[WidgetLayout] Error saving to cloud:', error);
+        } else {
+          console.log('[WidgetLayout] Saved to cloud successfully');
+        }
+      } catch (err) {
+        console.error('[WidgetLayout] Failed to save:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000); // 1 second debounce
+  }, [user?.id, gridGap]);
+
+  // Update layouts and save
+  const updateLayouts = useCallback((updater: (prev: WidgetLayout[]) => WidgetLayout[]) => {
+    setLayouts(prev => {
+      const newLayouts = updater(prev);
+      saveToCloud(newLayouts);
+      return newLayouts;
+    });
+  }, [saveToCloud]);
 
   // Set grid gap
   const setGridGap = useCallback((gap: GridGap) => {
@@ -185,7 +279,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   const swapWidgets = useCallback((id1: WidgetId, id2: WidgetId) => {
     if (id1 === id2) return;
     
-    setLayouts(prev => {
+    updateLayouts(prev => {
       const newLayouts = [...prev];
       const idx1 = newLayouts.findIndex(l => l.id === id1);
       const idx2 = newLayouts.findIndex(l => l.id === id2);
@@ -205,11 +299,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       description: "הווידג'טים הוחלפו בהצלחה",
       duration: 1500,
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Cycle through sizes
   const cycleSize = useCallback((id: WidgetId) => {
-    setLayouts(prev => {
+    updateLayouts(prev => {
       return prev.map(l => {
         if (l.id !== id) return l;
         const currentIdx = SIZE_CYCLE.indexOf(l.size);
@@ -225,11 +319,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
         return { ...l, size: newSize };
       });
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Set specific size
   const setSize = useCallback((id: WidgetId, size: WidgetSize) => {
-    setLayouts(prev => prev.map(l => l.id === id ? { ...l, size } : l));
+    updateLayouts(prev => prev.map(l => l.id === id ? { ...l, size } : l));
     
     const widget = layouts.find(l => l.id === id);
     toast({
@@ -237,11 +331,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       description: `${widget?.name || id}: ${SIZE_LABELS[size]}`,
       duration: 1500,
     });
-  }, [layouts]);
+  }, [layouts, updateLayouts]);
 
   // Toggle visibility
   const toggleVisibility = useCallback((id: WidgetId) => {
-    setLayouts(prev => {
+    updateLayouts(prev => {
       const widget = prev.find(l => l.id === id);
       const newVisible = !widget?.visible;
       
@@ -253,16 +347,16 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       
       return prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l);
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Toggle collapse
   const toggleCollapse = useCallback((id: WidgetId) => {
-    setLayouts(prev => prev.map(l => l.id === id ? { ...l, collapsed: !l.collapsed } : l));
-  }, []);
+    updateLayouts(prev => prev.map(l => l.id === id ? { ...l, collapsed: !l.collapsed } : l));
+  }, [updateLayouts]);
 
   // Move widget up or down
   const moveWidget = useCallback((id: WidgetId, direction: 'up' | 'down') => {
-    setLayouts(prev => {
+    updateLayouts(prev => {
       const sorted = [...prev].sort((a, b) => a.order - b.order);
       const idx = sorted.findIndex(l => l.id === id);
       
@@ -277,11 +371,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       
       return sorted;
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Balance row - make widgets in same row equal size
   const balanceRow = useCallback((widgetId: WidgetId) => {
-    setLayouts(prev => {
+    updateLayouts(prev => {
       const sorted = [...prev].filter(l => l.visible).sort((a, b) => a.order - b.order);
       const targetIdx = sorted.findIndex(l => l.id === widgetId);
       if (targetIdx === -1) return prev;
@@ -327,11 +421,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
 
       return prev.map(l => rowWidgetIds.includes(l.id) ? { ...l, size: balancedSize } : l);
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Auto-arrange widgets to eliminate gaps (pack efficiently in 4-column grid)
   const autoArrangeWidgets = useCallback(() => {
-    setLayouts(prev => {
+    updateLayouts(prev => {
       const visible = prev.filter(l => l.visible);
       const hidden = prev.filter(l => !l.visible);
       
@@ -383,25 +477,37 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       description: "הווידג'טים סודרו בצורה אופטימלית ללא רווחים",
       duration: 2000,
     });
-  }, []);
+  }, [updateLayouts]);
 
   // Reset all to defaults
-  const resetAll = useCallback(() => {
-    setLayouts(DEFAULT_LAYOUTS);
+  const resetAll = useCallback(async () => {
+    updateLayouts(() => DEFAULT_LAYOUTS);
     setGridGapState('normal');
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(GAP_STORAGE_KEY);
+    
+    // Also delete from cloud
+    if (user?.id) {
+      await supabase
+        .from('user_settings')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('setting_key', CLOUD_SETTING_KEY);
+    }
+    
     toast({
       title: "🔄 אופס לברירת מחדל",
       description: "כל הגדרות הווידג'טים אופסו",
       duration: 2000,
     });
-  }, []);
+  }, [updateLayouts, user?.id]);
 
   return (
     <WidgetLayoutContext.Provider value={{
       layouts,
       gridGap,
+      isLoading,
+      isSaving,
       getLayout,
       isVisible,
       getGridClass,
