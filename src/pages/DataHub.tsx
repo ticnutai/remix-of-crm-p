@@ -215,6 +215,96 @@ interface CloudBackup {
   };
 }
 
+// Interface for external ArchFlow backup format
+interface ArchFlowBackup {
+  generated_at: string;
+  by: string;
+  total_records: number;
+  categories: string[];
+  data: {
+    Client?: ArchFlowClient[];
+    Project?: ArchFlowProject[];
+    TimeLog?: ArchFlowTimeLog[];
+    Task?: ArchFlowTask[];
+    Meeting?: ArchFlowMeeting[];
+    [key: string]: unknown[] | undefined;
+  };
+}
+
+interface ArchFlowClient {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  company?: string;
+  status?: string;
+  stage?: string;
+  notes?: string;
+  custom_data?: Record<string, any>;
+  id: string;
+  created_date: string;
+  updated_date: string;
+}
+
+interface ArchFlowProject {
+  name: string;
+  description?: string;
+  client_id?: string;
+  client_name?: string;
+  status?: string;
+  priority?: string;
+  start_date?: string;
+  end_date?: string;
+  budget?: number;
+  id: string;
+  created_date: string;
+  updated_date: string;
+}
+
+interface ArchFlowTimeLog {
+  client_id?: string;
+  client_name?: string;
+  log_date: string;
+  duration_seconds: number;
+  title?: string;
+  notes?: string;
+  id: string;
+  created_date: string;
+  updated_date: string;
+}
+
+interface ArchFlowTask {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  due_date?: string;
+  client_id?: string;
+  project_id?: string;
+  tags?: string[];
+}
+
+interface ArchFlowMeeting {
+  id: string;
+  title?: string;
+  description?: string;
+  client_id?: string;
+  start_time?: string;
+  end_time?: string;
+  location?: string;
+  notes?: string;
+  status?: string;
+}
+
+interface JsonImportStats {
+  clients: { total: number; imported: number; skipped: number };
+  projects: { total: number; imported: number; skipped: number };
+  time_entries: { total: number; imported: number; skipped: number };
+  tasks: { total: number; imported: number; skipped: number };
+  meetings: { total: number; imported: number; skipped: number };
+}
+
 // =====================================
 // Main Component
 // =====================================
@@ -301,6 +391,25 @@ export default function DataHub() {
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
   const [loadingCloudBackups, setLoadingCloudBackups] = useState(false);
   const [isContactsImportOpen, setIsContactsImportOpen] = useState(false);
+
+  // =====================================
+  // JSON Backup Import State
+  // =====================================
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
+  const [externalBackupData, setExternalBackupData] = useState<ArchFlowBackup | null>(null);
+  const [isJsonImportDialogOpen, setIsJsonImportDialogOpen] = useState(false);
+  const [isJsonImporting, setIsJsonImporting] = useState(false);
+  const [jsonImportProgress, setJsonImportProgress] = useState(0);
+  const [jsonImportMessage, setJsonImportMessage] = useState('');
+  const [jsonImportStats, setJsonImportStats] = useState<JsonImportStats | null>(null);
+  const [lastImportError, setLastImportError] = useState<string | null>(null);
+  const [jsonImportOptions, setJsonImportOptions] = useState({
+    clients: true,
+    projects: true,
+    time_entries: true,
+    tasks: true,
+    meetings: true,
+  });
 
   // =====================================
   // Helper Functions
@@ -927,6 +1036,360 @@ export default function DataHub() {
     }
   };
 
+  // =====================================
+  // JSON Backup Import Functions
+  // =====================================
+  
+  const handleJsonFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLastImportError(null);
+    
+    try {
+      const text = await file.text();
+      
+      // Use the normalizer to handle various formats
+      const result = normalizeExternalBackup(text, file.name);
+      
+      if (!result.success || !result.data) {
+        const supportedFormats = getSupportedFormats();
+        const errorDetails = [
+          `שם קובץ: ${file.name}`,
+          `פורמט שזוהה: ${result.detectedFormat || 'לא ידוע'}`,
+          result.detectedKeys?.length ? `מפתחות שנמצאו: ${result.detectedKeys.slice(0, 5).join(', ')}${result.detectedKeys.length > 5 ? '...' : ''}` : '',
+          '',
+          'פורמטים נתמכים:',
+          ...supportedFormats.map(f => `• ${f}`),
+        ].filter(Boolean).join('\n');
+        
+        setLastImportError(errorDetails);
+        
+        toast({
+          title: 'שגיאה בזיהוי פורמט הקובץ',
+          description: result.error || 'הקובץ אינו בפורמט תקין',
+          variant: 'destructive',
+        });
+        
+        if (jsonFileInputRef.current) {
+          jsonFileInputRef.current.value = '';
+        }
+        return;
+      }
+      
+      // Convert NormalizedBackup to ArchFlowBackup format
+      const normalizedData: ArchFlowBackup = {
+        generated_at: result.data.generated_at,
+        by: result.data.by,
+        total_records: result.data.total_records,
+        categories: result.data.categories,
+        data: result.data.data as ArchFlowBackup['data'],
+      };
+      
+      setExternalBackupData(normalizedData);
+      setIsJsonImportDialogOpen(true);
+      setJsonImportStats(null);
+      
+      // Show success message with detected format
+      toast({
+        title: 'קובץ נטען בהצלחה',
+        description: `זוהה פורמט: ${result.detectedFormat}. נמצאו ${result.data.total_records} רשומות ב-${result.data.categories.length} קטגוריות.`,
+      });
+      
+    } catch (error) {
+      console.error('Failed to parse backup file:', error);
+      const errorMessage = error instanceof Error ? error.message : 'שגיאה לא ידועה';
+      setLastImportError(`שגיאה בפרסור JSON: ${errorMessage}`);
+      
+      toast({
+        title: 'שגיאה בקריאת הקובץ',
+        description: 'לא ניתן לקרוא את הקובץ. ודא שזהו קובץ JSON תקין.',
+        variant: 'destructive',
+      });
+    }
+    
+    if (jsonFileInputRef.current) {
+      jsonFileInputRef.current.value = '';
+    }
+  };
+
+  const handleJsonImport = async () => {
+    if (!externalBackupData || !user?.id) return;
+    
+    setIsJsonImporting(true);
+    setJsonImportProgress(0);
+    setJsonImportMessage('מתחיל ייבוא...');
+    
+    const stats: JsonImportStats = {
+      clients: { total: 0, imported: 0, skipped: 0 },
+      projects: { total: 0, imported: 0, skipped: 0 },
+      time_entries: { total: 0, imported: 0, skipped: 0 },
+      tasks: { total: 0, imported: 0, skipped: 0 },
+      meetings: { total: 0, imported: 0, skipped: 0 },
+    };
+    
+    const clientIdMap: Record<string, string> = {};
+    const projectIdMap: Record<string, string> = {};
+    
+    try {
+      // 1. Import Clients
+      if (jsonImportOptions.clients && externalBackupData.data.Client) {
+        const clients = externalBackupData.data.Client;
+        stats.clients.total = clients.length;
+        setJsonImportMessage(`מייבא לקוחות... (0/${clients.length})`);
+        
+        for (let i = 0; i < clients.length; i++) {
+          const client = clients[i];
+          setJsonImportProgress(Math.round((i / clients.length) * 20));
+          
+          // Check if client exists
+          const { data: existing } = await supabase
+            .from('clients')
+            .select('id, name')
+            .eq('user_id', user.id)
+            .ilike('name', client.name)
+            .maybeSingle();
+          
+          if (existing) {
+            clientIdMap[client.id] = existing.id;
+            stats.clients.skipped++;
+          } else {
+            const { data: inserted, error } = await supabase
+              .from('clients')
+              .insert({
+                user_id: user.id,
+                name: client.name,
+                email: client.email || null,
+                phone: client.phone || null,
+                address: client.address || null,
+                company: client.company || null,
+                status: client.status || 'active',
+                stage: client.stage || null,
+                notes: client.notes || null,
+              })
+              .select('id')
+              .single();
+            
+            if (inserted) {
+              clientIdMap[client.id] = inserted.id;
+              stats.clients.imported++;
+            }
+          }
+          
+          setJsonImportMessage(`מייבא לקוחות... (${i + 1}/${clients.length})`);
+        }
+      }
+      
+      // 2. Import Projects
+      if (jsonImportOptions.projects && externalBackupData.data.Project) {
+        const projects = externalBackupData.data.Project;
+        stats.projects.total = projects.length;
+        setJsonImportMessage(`מייבא פרויקטים... (0/${projects.length})`);
+        
+        for (let i = 0; i < projects.length; i++) {
+          const project = projects[i];
+          setJsonImportProgress(20 + Math.round((i / projects.length) * 20));
+          
+          // Map client_id if exists
+          let mappedClientId = project.client_id ? clientIdMap[project.client_id] : null;
+          
+          // If no mapping, try to find client by name
+          if (!mappedClientId && project.client_name) {
+            const { data: foundClient } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('user_id', user.id)
+              .ilike('name', project.client_name)
+              .maybeSingle();
+            if (foundClient) {
+              mappedClientId = foundClient.id;
+            }
+          }
+          
+          const { data: existing } = await supabase
+            .from('projects')
+            .select('id, name')
+            .eq('user_id', user.id)
+            .ilike('name', project.name)
+            .maybeSingle();
+          
+          if (existing) {
+            projectIdMap[project.id] = existing.id;
+            stats.projects.skipped++;
+          } else {
+            const { data: inserted } = await supabase
+              .from('projects')
+              .insert({
+                user_id: user.id,
+                name: project.name,
+                description: project.description || null,
+                client_id: mappedClientId,
+                status: project.status || 'active',
+                priority: project.priority || 'medium',
+                start_date: project.start_date || null,
+                end_date: project.end_date || null,
+                budget: project.budget || null,
+              })
+              .select('id')
+              .single();
+            
+            if (inserted) {
+              projectIdMap[project.id] = inserted.id;
+              stats.projects.imported++;
+            }
+          }
+          
+          setJsonImportMessage(`מייבא פרויקטים... (${i + 1}/${projects.length})`);
+        }
+      }
+      
+      // 3. Import Time Entries
+      if (jsonImportOptions.time_entries && externalBackupData.data.TimeLog) {
+        const timeLogs = externalBackupData.data.TimeLog;
+        stats.time_entries.total = timeLogs.length;
+        setJsonImportMessage(`מייבא רישומי זמן... (0/${timeLogs.length})`);
+        
+        for (let i = 0; i < timeLogs.length; i++) {
+          const timeLog = timeLogs[i];
+          setJsonImportProgress(40 + Math.round((i / timeLogs.length) * 20));
+          
+          // Map client_id
+          let mappedClientId = timeLog.client_id ? clientIdMap[timeLog.client_id] : null;
+          
+          // If no mapping, try to find client by name
+          if (!mappedClientId && timeLog.client_name) {
+            const { data: foundClient } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('user_id', user.id)
+              .ilike('name', timeLog.client_name)
+              .maybeSingle();
+            if (foundClient) {
+              mappedClientId = foundClient.id;
+            }
+          }
+          
+          if (mappedClientId) {
+            const { error } = await supabase
+              .from('time_entries')
+              .insert({
+                user_id: user.id,
+                client_id: mappedClientId,
+                date: timeLog.log_date,
+                duration: timeLog.duration_seconds,
+                description: timeLog.title || timeLog.notes || '',
+              });
+            
+            if (!error) {
+              stats.time_entries.imported++;
+            } else {
+              stats.time_entries.skipped++;
+            }
+          } else {
+            stats.time_entries.skipped++;
+          }
+          
+          setJsonImportMessage(`מייבא רישומי זמן... (${i + 1}/${timeLogs.length})`);
+        }
+      }
+      
+      // 4. Import Tasks
+      if (jsonImportOptions.tasks && externalBackupData.data.Task) {
+        const tasks = externalBackupData.data.Task;
+        stats.tasks.total = tasks.length;
+        setJsonImportMessage(`מייבא משימות... (0/${tasks.length})`);
+        
+        for (let i = 0; i < tasks.length; i++) {
+          const task = tasks[i];
+          setJsonImportProgress(60 + Math.round((i / tasks.length) * 20));
+          
+          const mappedClientId = task.client_id ? clientIdMap[task.client_id] : null;
+          const mappedProjectId = task.project_id ? projectIdMap[task.project_id] : null;
+          
+          const { error } = await supabase
+            .from('tasks')
+            .insert({
+              user_id: user.id,
+              title: task.title,
+              description: task.description || null,
+              status: task.status || 'pending',
+              priority: task.priority || 'medium',
+              due_date: task.due_date || null,
+              client_id: mappedClientId,
+              project_id: mappedProjectId,
+            });
+          
+          if (!error) {
+            stats.tasks.imported++;
+          } else {
+            stats.tasks.skipped++;
+          }
+          
+          setJsonImportMessage(`מייבא משימות... (${i + 1}/${tasks.length})`);
+        }
+      }
+      
+      // 5. Import Meetings
+      if (jsonImportOptions.meetings && externalBackupData.data.Meeting) {
+        const meetings = externalBackupData.data.Meeting;
+        stats.meetings.total = meetings.length;
+        setJsonImportMessage(`מייבא פגישות... (0/${meetings.length})`);
+        
+        for (let i = 0; i < meetings.length; i++) {
+          const meeting = meetings[i];
+          setJsonImportProgress(80 + Math.round((i / meetings.length) * 20));
+          
+          const mappedClientId = meeting.client_id ? clientIdMap[meeting.client_id] : null;
+          
+          const { error } = await supabase
+            .from('meetings')
+            .insert({
+              user_id: user.id,
+              title: meeting.title || 'פגישה',
+              description: meeting.description || null,
+              client_id: mappedClientId,
+              start_time: meeting.start_time || null,
+              end_time: meeting.end_time || null,
+              location: meeting.location || null,
+              notes: meeting.notes || null,
+              status: meeting.status || 'scheduled',
+            });
+          
+          if (!error) {
+            stats.meetings.imported++;
+          } else {
+            stats.meetings.skipped++;
+          }
+          
+          setJsonImportMessage(`מייבא פגישות... (${i + 1}/${meetings.length})`);
+        }
+      }
+      
+      setJsonImportProgress(100);
+      setJsonImportStats(stats);
+      setJsonImportMessage('ייבוא הושלם בהצלחה!');
+      
+      const totalImported = stats.clients.imported + stats.projects.imported + 
+        stats.time_entries.imported + stats.tasks.imported + stats.meetings.imported;
+      
+      toast({
+        title: 'ייבוא הושלם בהצלחה',
+        description: `יובאו ${totalImported} רשומות`,
+      });
+      
+    } catch (error) {
+      console.error('Import failed:', error);
+      setJsonImportMessage('שגיאה בייבוא');
+      toast({
+        title: 'שגיאה בייבוא',
+        description: error instanceof Error ? error.message : 'שגיאה לא ידועה',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsJsonImporting(false);
+    }
+  };
+
   const handleRestore = async () => {
     if (!selectedBackup) return;
     setIsRestoring(true);
@@ -1485,6 +1948,28 @@ export default function DataHub() {
                     )}
                     צור גיבוי חדש
                   </Button>
+                  
+                  {/* Import from JSON Backup */}
+                  <Button 
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => jsonFileInputRef.current?.click()}
+                    disabled={isJsonImporting}
+                  >
+                    {isJsonImporting ? (
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 ml-2" />
+                    )}
+                    ייבא מקובץ גיבוי (JSON)
+                  </Button>
+                  <input
+                    type="file"
+                    ref={jsonFileInputRef}
+                    onChange={handleJsonFileSelect}
+                    accept=".json"
+                    className="hidden"
+                  />
+                  
                   <Button variant="outline" onClick={refreshBackups}>
                     <RefreshCw className="h-4 w-4 ml-2" />
                     רענן רשימה
@@ -1616,6 +2101,187 @@ export default function DataHub() {
           open={isContactsImportOpen}
           onOpenChange={setIsContactsImportOpen}
         />
+
+        {/* JSON Import Dialog */}
+        <Dialog open={isJsonImportDialogOpen} onOpenChange={setIsJsonImportDialogOpen}>
+          <DialogContent dir="rtl" className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileJson className="h-5 w-5" />
+                ייבוא מקובץ גיבוי JSON
+              </DialogTitle>
+              <DialogDescription>
+                בחר מה לייבא מהקובץ
+              </DialogDescription>
+            </DialogHeader>
+            
+            {externalBackupData && (
+              <div className="space-y-4">
+                {/* Backup Info */}
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">נוצר ב:</span>
+                        <span className="mr-2 font-medium">
+                          {externalBackupData.generated_at ? 
+                            format(new Date(externalBackupData.generated_at), 'dd/MM/yyyy HH:mm', { locale: he }) : 
+                            'לא ידוע'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">סה"כ רשומות:</span>
+                        <span className="mr-2 font-medium">{externalBackupData.total_records}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">קטגוריות:</span>
+                        <span className="mr-2">{externalBackupData.categories.join(', ')}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Import Options */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-right">בחר מה לייבא:</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {externalBackupData.data.Client && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Label htmlFor="json-clients">לקוחות ({externalBackupData.data.Client.length})</Label>
+                        <Checkbox
+                          id="json-clients"
+                          checked={jsonImportOptions.clients}
+                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, clients: !!c }))}
+                        />
+                      </div>
+                    )}
+                    {externalBackupData.data.Project && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Label htmlFor="json-projects">פרויקטים ({externalBackupData.data.Project.length})</Label>
+                        <Checkbox
+                          id="json-projects"
+                          checked={jsonImportOptions.projects}
+                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, projects: !!c }))}
+                        />
+                      </div>
+                    )}
+                    {externalBackupData.data.TimeLog && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Label htmlFor="json-timelogs">רישומי זמן ({externalBackupData.data.TimeLog.length})</Label>
+                        <Checkbox
+                          id="json-timelogs"
+                          checked={jsonImportOptions.time_entries}
+                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, time_entries: !!c }))}
+                        />
+                      </div>
+                    )}
+                    {externalBackupData.data.Task && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Label htmlFor="json-tasks">משימות ({externalBackupData.data.Task.length})</Label>
+                        <Checkbox
+                          id="json-tasks"
+                          checked={jsonImportOptions.tasks}
+                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, tasks: !!c }))}
+                        />
+                      </div>
+                    )}
+                    {externalBackupData.data.Meeting && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <Label htmlFor="json-meetings">פגישות ({externalBackupData.data.Meeting.length})</Label>
+                        <Checkbox
+                          id="json-meetings"
+                          checked={jsonImportOptions.meetings}
+                          onCheckedChange={(c) => setJsonImportOptions(prev => ({ ...prev, meetings: !!c }))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Progress */}
+                {isJsonImporting && (
+                  <div className="space-y-2">
+                    <Progress value={jsonImportProgress} />
+                    <p className="text-sm text-center text-muted-foreground">{jsonImportMessage}</p>
+                  </div>
+                )}
+                
+                {/* Import Stats */}
+                {jsonImportStats && !isJsonImporting && (
+                  <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                    <CardContent className="pt-4">
+                      <h4 className="font-medium text-green-700 dark:text-green-400 mb-2">סיכום ייבוא:</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {jsonImportStats.clients.total > 0 && (
+                          <div className="flex justify-between">
+                            <span>לקוחות:</span>
+                            <span>{jsonImportStats.clients.imported} יובאו, {jsonImportStats.clients.skipped} דולגו</span>
+                          </div>
+                        )}
+                        {jsonImportStats.projects.total > 0 && (
+                          <div className="flex justify-between">
+                            <span>פרויקטים:</span>
+                            <span>{jsonImportStats.projects.imported} יובאו, {jsonImportStats.projects.skipped} דולגו</span>
+                          </div>
+                        )}
+                        {jsonImportStats.time_entries.total > 0 && (
+                          <div className="flex justify-between">
+                            <span>רישומי זמן:</span>
+                            <span>{jsonImportStats.time_entries.imported} יובאו, {jsonImportStats.time_entries.skipped} דולגו</span>
+                          </div>
+                        )}
+                        {jsonImportStats.tasks.total > 0 && (
+                          <div className="flex justify-between">
+                            <span>משימות:</span>
+                            <span>{jsonImportStats.tasks.imported} יובאו, {jsonImportStats.tasks.skipped} דולגו</span>
+                          </div>
+                        )}
+                        {jsonImportStats.meetings.total > 0 && (
+                          <div className="flex justify-between">
+                            <span>פגישות:</span>
+                            <span>{jsonImportStats.meetings.imported} יובאו, {jsonImportStats.meetings.skipped} דולגו</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* Error Display */}
+                {lastImportError && (
+                  <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+                    <CardContent className="pt-4">
+                      <h4 className="font-medium text-red-700 dark:text-red-400 mb-2">שגיאה:</h4>
+                      <pre className="text-sm whitespace-pre-wrap text-red-600 dark:text-red-300">
+                        {lastImportError}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+            
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setIsJsonImportDialogOpen(false)}>
+                {jsonImportStats ? 'סגור' : 'ביטול'}
+              </Button>
+              {!jsonImportStats && (
+                <Button 
+                  onClick={handleJsonImport} 
+                  disabled={isJsonImporting}
+                  className="btn-gold"
+                >
+                  {isJsonImporting ? (
+                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 ml-2" />
+                  )}
+                  התחל ייבוא
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
