@@ -67,6 +67,9 @@ export interface UniversalDataTableProps<T extends { id: string; custom_data?: R
   
   // Cell formatting (for context menu features)
   enableCellFormatting?: boolean;
+
+  // Optional: portal DataTable toolbar into an external container
+  toolbarPortalId?: string;
 }
 
 export function UniversalDataTable<T extends { id: string; custom_data?: Record<string, any> }>({
@@ -92,6 +95,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
   onCellEdit,
   canAddColumns = true,
   canDeleteColumns = true,
+  toolbarPortalId,
 }: UniversalDataTableProps<T>) {
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isBulkWizardOpen, setIsBulkWizardOpen] = useState(false);
@@ -559,6 +563,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         } : undefined}
         onQuickAddRows={canAddColumns ? () => setIsQuickAddRowsOpen(true) : undefined}
         onQuickAddColumns={canAddColumns ? () => setIsQuickAddColumnsOpen(true) : undefined}
+        toolbarPortalId={toolbarPortalId}
       />
 
       {/* Add Column Dialog */}

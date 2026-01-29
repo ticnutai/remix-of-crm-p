@@ -1216,7 +1216,7 @@ export default function TimeLogs() {
         {/* Main Content - Unified Header with Tabs, Filters & Actions */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col">
           {/* Single Unified Bar: Title + Tabs + Filters + Actions */}
-          <div className="flex flex-wrap items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 mb-2 flex-row-reverse">
+          <div className="flex flex-nowrap items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 mb-2 flex-row-reverse overflow-x-auto whitespace-nowrap no-scrollbar">
             {/* Title */}
             <div className="flex items-center gap-1.5 flex-row-reverse">
               <Clock className="h-4 w-4 text-[hsl(45,80%,55%)]" />
@@ -1316,15 +1316,24 @@ export default function TimeLogs() {
               <Plus className="h-3 w-3 ml-1" />
               חדש
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleExport}
-              title="ייצוא"
-            >
-              <Download className="h-3 w-3" />
-            </Button>
+
+            {/* DataTable toolbar gets portaled here in table view (prevents a second row above the table) */}
+            {activeTab === 'list' && viewMode === 'table' && (
+              <div id="timelogs-table-toolbar-slot" className="flex items-center gap-2 min-w-max" />
+            )}
+
+            {/* Keep page export button for non-table views (table view uses column tools + freezes) */}
+            {!(activeTab === 'list' && viewMode === 'table') && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleExport}
+                title="ייצוא"
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+            )}
             <Button 
               variant="outline" 
               size="icon"
@@ -1475,14 +1484,15 @@ export default function TimeLogs() {
                 variant="navy"
                 paginated={false}
                 pageSize={100}
-                globalSearch
+                globalSearch={false}
                 striped
                 columnToggle
                 showSummary
-                exportable
+                exportable={false}
                 filterable
                 loading={isLoading}
                 emptyMessage="אין רישומי זמן"
+                toolbarPortalId="timelogs-table-toolbar-slot"
                 onCellEdit={async (row, columnId, newValue) => {
                   const updateData: Record<string, any> = { [columnId]: newValue };
                   

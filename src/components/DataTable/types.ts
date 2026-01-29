@@ -169,6 +169,12 @@ export interface DataTableProps<T = any> {
   onQuickAddColumns?: () => void;
   // Field metadata for Ctrl+Click display
   rowFieldMetadata?: (row: T) => FieldMetadata | undefined;
+
+  /**
+   * Optional: render the table toolbar into an external DOM node (by id).
+   * Useful for placing all controls in a single page-level header row.
+   */
+  toolbarPortalId?: string;
 }
 
 export interface DataTableState<T = any> {

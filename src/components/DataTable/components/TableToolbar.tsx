@@ -45,6 +45,7 @@ import { cn } from '@/lib/utils';
 
 interface TableToolbarProps<T> {
   embedded?: boolean;
+  showSearch?: boolean;
   globalSearchTerm: string;
   onGlobalSearchChange: (term: string) => void;
   columns: ColumnDef<T>[];
@@ -69,6 +70,7 @@ interface TableToolbarProps<T> {
 
 export function TableToolbar<T>({
   embedded = false,
+  showSearch = true,
   globalSearchTerm,
   onGlobalSearchChange,
   columns,
@@ -89,7 +91,7 @@ export function TableToolbar<T>({
   onQuickAddRows,
   onQuickAddColumns,
 }: TableToolbarProps<T>) {
-  const hasActiveFilters = filters.length > 0 || globalSearchTerm.length > 0;
+  const hasActiveFilters = filters.length > 0 || (showSearch && globalSearchTerm.length > 0);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
@@ -187,25 +189,27 @@ export function TableToolbar<T>({
       dir="rtl"
     >
       {/* Compact Search */}
-      <div className="relative w-[120px]">
-        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-        <Input
-          placeholder="חיפוש..."
-          value={globalSearchTerm}
-          onChange={(e) => onGlobalSearchChange(e.target.value)}
-          className="pr-7 h-7 text-xs"
-        />
-        {globalSearchTerm && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-            onClick={() => onGlobalSearchChange('')}
-          >
-            <X className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
+      {showSearch && (
+        <div className="relative w-[120px]">
+          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            placeholder="חיפוש..."
+            value={globalSearchTerm}
+            onChange={(e) => onGlobalSearchChange(e.target.value)}
+            className="pr-7 h-7 text-xs"
+          />
+          {globalSearchTerm && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              onClick={() => onGlobalSearchChange('')}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Selection info */}
       {selectedCount > 0 && (
