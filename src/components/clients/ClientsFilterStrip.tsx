@@ -9,7 +9,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Layers,
-  Calendar,
   Bell,
   CheckSquare,
   Users,
@@ -24,9 +23,9 @@ import {
   Building,
   Handshake,
   ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   SortAsc,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -104,7 +103,7 @@ export function ClientsFilterStrip({
       if (error) throw error;
 
       const uniqueStages = data?.reduce((acc, stage) => {
-        if (!acc.find(s => s.stage_id === stage.stage_id)) {
+        if (!acc.some(s => s.stage_id === stage.stage_id)) {
           acc.push(stage);
         }
         return acc;
@@ -311,10 +310,23 @@ export function ClientsFilterStrip({
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <FolderOpen className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי קטגוריה</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 mr-auto bg-primary/10 hover:bg-primary/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // TODO: Open add category dialog
+                    console.log('Add category');
+                  }}
+                  title="הוסף קטגוריה"
+                >
+                  <Plus className="h-4 w-4 text-primary" />
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 ml-auto"
+                  className="h-6 w-6"
                   onClick={() => setCategoriesDialogOpen(false)}
                 >
                   <X className="h-4 w-4" />
@@ -337,26 +349,58 @@ export function ClientsFilterStrip({
                     <div
                       key={category.id}
                       className={cn(
-                        "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                        "group flex flex-row-reverse items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
                         filters.categories.includes(category.id)
                           ? "bg-primary/10 border-primary"
                           : "bg-background border-border hover:border-primary/50"
                       )}
-                      onClick={() => toggleCategory(category.id)}
                     >
                       <Checkbox
                         checked={filters.categories.includes(category.id)}
                         onCheckedChange={() => toggleCategory(category.id)}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div 
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white"
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-white flex-shrink-0"
                         style={{ backgroundColor: category.color }}
                       >
                         {iconMap[category.icon] || <FolderOpen className="h-3 w-3" />}
                       </div>
-                      <span className="font-medium flex-1">
+                      <button 
+                        className="font-medium flex-1 text-right cursor-pointer bg-transparent border-0 p-0"
+                        onClick={() => toggleCategory(category.id)}
+                        type="button"
+                      >
                         {category.name}
-                      </span>
+                      </button>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Edit category
+                            console.log('Edit category:', category.id);
+                          }}
+                          title="ערוך קטגוריה"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Delete category
+                            console.log('Delete category:', category.id);
+                          }}
+                          title="מחק קטגוריה"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))
                 )}

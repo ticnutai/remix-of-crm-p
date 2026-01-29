@@ -1701,66 +1701,10 @@ export default function Clients() {
                 </>
               ) : (
                 <>
-                  {/* Multi-Select Toggle Button */}
-                  <button
-                    onClick={toggleSelectionMode}
-                    style={{
-                      height: '40px',
-                      padding: '0 16px',
-                      borderRadius: '20px',
-                      backgroundColor: 'transparent',
-                      border: '2px solid #d4a843',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                    }}
-                    className="hover:bg-amber-500/20"
-                    title="בחירה מרובה"
-                  >
-                    <CheckCheck style={{ width: '18px', height: '18px', color: '#d4a843' }} />
-                    <span style={{ color: '#d4a843', fontSize: '14px', fontWeight: '500' }}>
-                      בחירה מרובה
-                    </span>
-                  </button>
-                  
-                  {/* Export to Google Sheets Button */}
-                  <button
-                    onClick={handleExportToGoogleSheets}
-                    disabled={googleSheetsLoading}
-                    style={{
-                      height: '40px',
-                      padding: '0 16px',
-                      borderRadius: '20px',
-                      backgroundColor: isGoogleSheetsConnected ? '#22c55e' : 'transparent',
-                      border: '2px solid #d4a843',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: googleSheetsLoading ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s',
-                      opacity: googleSheetsLoading ? 0.5 : 1,
-                    }}
-                    className="hover:bg-amber-500/20"
-                    title={isGoogleSheetsConnected ? 'ייצא ל-Google Sheets' : 'התחבר ל-Google Sheets'}
-                  >
-                    {googleSheetsLoading ? (
-                      <Loader2 style={{ width: '18px', height: '18px', color: '#d4a843', animation: 'spin 1s linear infinite' }} />
-                    ) : (
-                      <Sheet style={{ width: '18px', height: '18px', color: isGoogleSheetsConnected ? '#ffffff' : '#d4a843' }} />
-                    )}
-                    <span style={{ color: isGoogleSheetsConnected ? '#ffffff' : '#d4a843', fontSize: '14px', fontWeight: '500' }}>
-                      {isGoogleSheetsConnected ? 'ייצא לגוגל' : 'חבר לגוגל'}
-                    </span>
-                  </button>
-                </>
-              )}
-              
-              {/* View Mode Toggle Button */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setShowViewOptions(!showViewOptions)}
+                  {/* View Mode Toggle Button */}
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setShowViewOptions(!showViewOptions)}
                   style={{
                     width: '40px',
                     height: '40px',
@@ -1946,6 +1890,8 @@ export default function Clients() {
                   </div>
                 )}
               </div>
+              </>
+              )}
 
               {/* Search - White with gold border */}
               <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>

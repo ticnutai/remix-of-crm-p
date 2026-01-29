@@ -6,10 +6,15 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { DisplayOptions, HoverItemWrapper, ViewType } from '@/components/ui/display-options';
+import { QuickAddTask } from '@/components/layout/sidebar-tasks/QuickAddTask';
+import { QuickAddMeeting } from '@/components/layout/sidebar-tasks/QuickAddMeeting';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Calendar,
   CheckSquare,
@@ -28,12 +33,10 @@ import {
   Sun,
   Sunrise,
   CheckCircle2,
-  Circle,
   AlertCircle,
-  Edit2,
-  Trash2,
+  Plus,
 } from 'lucide-react';
-import { format, isToday, parseISO, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -99,6 +102,15 @@ const meetingTypeIcons = {
   phone: Phone,
 };
 
+const getTaskStatusLabel = (status: string) => {
+  switch (status) {
+    case 'pending': return 'ממתין';
+    case 'in_progress': return 'בביצוע';
+    case 'completed': return 'הושלם';
+    default: return status;
+  }
+};
+
 export default function MyDay() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
@@ -114,6 +126,15 @@ export default function MyDay() {
     return (localStorage.getItem('myday-tasks-view') as ViewType) || 'list';
   });
   
+  // Dialog states
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [timeDialogOpen, setTimeDialogOpen] = useState(false);
+  
+  // Clients for dropdowns
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  
   // Save view preferences to localStorage
   useEffect(() => {
     localStorage.setItem('myday-meetings-view', meetingsView);
@@ -122,6 +143,15 @@ export default function MyDay() {
   useEffect(() => {
     localStorage.setItem('myday-tasks-view', tasksView);
   }, [tasksView]);
+  
+  // Fetch clients
+  useEffect(() => {
+    const fetchClients = async () => {
+      const { data } = await supabase.from('clients').select('id, name').order('name');
+      if (data) setClients(data);
+    };
+    if (user) fetchClients();
+  }, [user]);
 
   // Delete handlers
   const handleDeleteMeeting = async (id: string) => {
@@ -151,6 +181,63 @@ export default function MyDay() {
     } else {
       setReminders(reminders.filter(r => r.id !== id));
       toast.success('התזכורת נמחקה');
+    }
+  };
+
+  // Create handlers
+  const handleCreateTask = async (taskData: any) => {
+    const { error } = await supabase.from('tasks').insert({
+      ...taskData,
+      user_id: user?.id,
+    });
+    if (error) {
+      toast.error('שגיאה ביצירת המשימה');
+    } else {
+      toast.success('המשימה נוצרה בהצלחה');
+      fetchTodayData();
+      setTaskDialogOpen(false);
+    }
+  };
+
+  const handleCreateMeeting = async (meetingData: any) => {
+    const { error } = await supabase.from('meetings').insert({
+      ...meetingData,
+      user_id: user?.id,
+    });
+    if (error) {
+      toast.error('שגיאה ביצירת הפגישה');
+    } else {
+      toast.success('הפגישה נוצרה בהצלחה');
+      fetchTodayData();
+      setMeetingDialogOpen(false);
+    }
+  };
+
+  const handleCreateReminder = async (reminderData: any) => {
+    const { error } = await supabase.from('reminders').insert({
+      ...reminderData,
+      user_id: user?.id,
+    });
+    if (error) {
+      toast.error('שגיאה ביצירת התזכורת');
+    } else {
+      toast.success('התזכורת נוצרה בהצלחה');
+      fetchTodayData();
+      setReminderDialogOpen(false);
+    }
+  };
+
+  const handleCreateTimeEntry = async (timeData: any) => {
+    const { error } = await supabase.from('time_entries').insert({
+      ...timeData,
+      user_id: user?.id,
+    });
+    if (error) {
+      toast.error('שגיאה ברישום הזמן');
+    } else {
+      toast.success('הזמן נרשם בהצלחה');
+      fetchTodayData();
+      setTimeDialogOpen(false);
     }
   };
 
@@ -238,7 +325,6 @@ export default function MyDay() {
 
   // Stats
   const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const pendingMeetings = meetings.filter(m => m.status === 'scheduled').length;
   const totalTimeMinutes = timeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
 
@@ -323,8 +409,15 @@ export default function MyDay() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Today's Schedule (Meetings) */}
-          <Card className="border-2 border-[hsl(45,80%,45%)]">
-            <CardHeader className="pb-3">
+          <Card className="border-2 border-[hsl(45,80%,45%)] relative">
+            <Button
+              size="icon"
+              onClick={() => setMeetingDialogOpen(true)}
+              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+            <CardHeader className="pb-3 pr-12">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Calendar className="h-5 w-5 text-[hsl(45,80%,45%)]" />
@@ -402,8 +495,15 @@ export default function MyDay() {
           </Card>
 
           {/* Tasks */}
-          <Card className="border-2 border-[hsl(220,60%,25%)]">
-            <CardHeader className="pb-3">
+          <Card className="border-2 border-[hsl(220,60%,25%)] relative">
+            <Button
+              size="icon"
+              onClick={() => setTaskDialogOpen(true)}
+              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+            <CardHeader className="pb-3 pr-12">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CheckSquare className="h-5 w-5 text-[hsl(220,60%,25%)]" />
@@ -470,7 +570,7 @@ export default function MyDay() {
                             variant={task.status === 'in_progress' ? 'default' : 'secondary'}
                             className="shrink-0 text-xs"
                           >
-                            {task.status === 'pending' ? 'ממתין' : task.status === 'in_progress' ? 'בביצוע' : 'הושלם'}
+                            {getTaskStatusLabel(task.status)}
                           </Badge>
                         </div>
                       </HoverItemWrapper>
@@ -487,8 +587,15 @@ export default function MyDay() {
           </Card>
 
           {/* Reminders */}
-          <Card>
-            <CardHeader className="pb-3">
+          <Card className="relative">
+            <Button
+              size="icon"
+              onClick={() => setReminderDialogOpen(true)}
+              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+            <CardHeader className="pb-3 pr-12">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Bell className="h-5 w-5 text-warning" />
                 תזכורות להיום
@@ -533,8 +640,15 @@ export default function MyDay() {
           </Card>
 
           {/* Time Logged */}
-          <Card>
-            <CardHeader className="pb-3">
+          <Card className="relative">
+            <Button
+              size="icon"
+              onClick={() => setTimeDialogOpen(true)}
+              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+            <CardHeader className="pb-3 pr-12">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5 text-success" />
                 זמן שנרשם היום
@@ -562,7 +676,7 @@ export default function MyDay() {
                           {entry.end_time && ` - ${formatTime(entry.end_time)}`}
                         </p>
                       </div>
-                      {entry.duration_minutes && (
+                      {entry.duration_minutes !== null && (
                         <Badge variant="outline" className="font-mono">
                           {formatMinutes(entry.duration_minutes)}
                         </Badge>
@@ -574,7 +688,231 @@ export default function MyDay() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Dialogs */}
+        <QuickAddTask
+          open={taskDialogOpen}
+          onOpenChange={setTaskDialogOpen}
+          onSubmit={handleCreateTask}
+          clients={clients}
+        />
+        
+        <QuickAddMeeting
+          open={meetingDialogOpen}
+          onOpenChange={setMeetingDialogOpen}
+          onSubmit={handleCreateMeeting}
+          clients={clients}
+        />
+        
+        <ReminderDialog
+          open={reminderDialogOpen}
+          onOpenChange={setReminderDialogOpen}
+          onSubmit={handleCreateReminder}
+          clients={clients}
+        />
+        
+        <TimeEntryDialog
+          open={timeDialogOpen}
+          onOpenChange={setTimeDialogOpen}
+          onSubmit={handleCreateTimeEntry}
+          clients={clients}
+        />
       </div>
     </AppLayout>
+  );
+}
+
+// Simple Reminder Dialog Component
+function ReminderDialog({ open, onOpenChange, onSubmit, clients }: any) {
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [remindAt, setRemindAt] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!title || !remindAt) {
+      toast.error('נא למלא את כל השדות החובה');
+      return;
+    }
+    setIsSubmitting(true);
+    await onSubmit({
+      title,
+      message,
+      remind_at: remindAt,
+      client_id: clientId || null,
+    });
+    setIsSubmitting(false);
+    setTitle('');
+    setMessage('');
+    setRemindAt('');
+    setClientId('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-warning" />
+            תזכורת חדשה
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="reminder-title">כותרת *</Label>
+            <Input
+              id="reminder-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="כותרת התזכורת"
+            />
+          </div>
+          <div>
+            <Label htmlFor="reminder-message">הודעה</Label>
+            <Textarea
+              id="reminder-message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="תוכן התזכורת"
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label htmlFor="reminder-date">תאריך ושעה *</Label>
+            <Input
+              id="reminder-date"
+              type="datetime-local"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="reminder-client">לקוח (אופציונלי)</Label>
+            <select
+              id="reminder-client"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option value="">בחר לקוח</option>
+              {clients.map((client: any) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            ביטול
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'צור תזכורת'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Simple Time Entry Dialog Component
+function TimeEntryDialog({ open, onOpenChange, onSubmit, clients }: any) {
+  const [description, setDescription] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!startTime) {
+      toast.error('נא למלא שעת התחלה');
+      return;
+    }
+    
+    let durationMinutes = null;
+    if (startTime && endTime) {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+    }
+    
+    setIsSubmitting(true);
+    await onSubmit({
+      description,
+      start_time: startTime,
+      end_time: endTime || null,
+      duration_minutes: durationMinutes,
+      client_id: clientId || null,
+    });
+    setIsSubmitting(false);
+    setDescription('');
+    setStartTime('');
+    setEndTime('');
+    setClientId('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-success" />
+            רישום זמן חדש
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="time-description">תיאור</Label>
+            <Textarea
+              id="time-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="תיאור העבודה"
+              rows={3}
+            />
+          </div>
+          <div>
+            <Label htmlFor="time-start">שעת התחלה *</Label>
+            <Input
+              id="time-start"
+              type="datetime-local"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="time-end">שעת סיום</Label>
+            <Input
+              id="time-end"
+              type="datetime-local"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="time-client">לקוח (אופציונלי)</Label>
+            <select
+              id="time-client"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2"
+            >
+              <option value="">בחר לקוח</option>
+              {clients.map((client: any) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            ביטול
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'רשום זמן'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
