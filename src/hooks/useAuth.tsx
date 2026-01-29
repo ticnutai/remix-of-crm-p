@@ -104,7 +104,21 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('[Auth] onAuthStateChange:', event, session?.user?.email);
+        
+        // Handle auth errors (like invalid refresh token)
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[Auth] Token refreshed successfully');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('[Auth] User signed out or session expired');
+          // Clear any stale data
+          localStorage.removeItem('supabase.auth.token');
+          setProfile(null);
+          setRoles([]);
+          setClientId(null);
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -129,7 +143,17 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     );
 
     // THEN check for existing session (only once)
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('[Auth] Error getting session:', error);
+        // If we have a refresh token error, clear storage
+        if (error.message.includes('refresh') || error.message.includes('Refresh Token')) {
+          console.log('[Auth] Clearing invalid auth data');
+          localStorage.removeItem('supabase.auth.token');
+          supabase.auth.signOut({ scope: 'local' });
+        }
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       

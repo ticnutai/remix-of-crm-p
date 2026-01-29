@@ -306,7 +306,7 @@ export default function Auth() {
                 </div>
 
                 <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                   שלח קישור לאיפוס סיסמה
                 </Button>
 
@@ -351,7 +351,7 @@ export default function Auth() {
                 </div>
 
                 <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                   עדכן סיסמה
                 </Button>
 
@@ -415,9 +415,7 @@ export default function Auth() {
                   </div>
 
                   <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : null}
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                     התחבר
                   </Button>
 
@@ -506,9 +504,7 @@ export default function Auth() {
                   </div>
 
                   <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : null}
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                     הירשם
                   </Button>
                 </form>
