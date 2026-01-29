@@ -175,89 +175,88 @@ export function TableToolbar<T>({
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 p-4 border-b border-table-border bg-card">
-      {/* Search */}
-      <div className="relative flex-1 max-w-md">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-table-border bg-card">
+      {/* Compact Search */}
+      <div className="relative w-[120px]">
+        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
         <Input
-          placeholder="חיפוש בטבלה..."
+          placeholder="חיפוש..."
           value={globalSearchTerm}
           onChange={(e) => onGlobalSearchChange(e.target.value)}
-          className="pr-10 pl-10"
+          className="pr-7 h-7 text-xs"
         />
         {globalSearchTerm && (
           <Button
             variant="ghost"
             size="sm"
-            className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
             onClick={() => onGlobalSearchChange('')}
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </Button>
         )}
       </div>
 
       {/* Selection info */}
       {selectedCount > 0 && (
-        <div className="text-sm text-muted-foreground bg-secondary/20 px-3 py-1 rounded-md">
-          נבחרו {selectedCount} מתוך {totalCount}
+        <div className="text-xs text-muted-foreground bg-secondary/20 px-2 py-0.5 rounded">
+          {selectedCount}/{totalCount}
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-2">
-        {/* Quick Add Rows */}
+      <div className="flex items-center gap-1">
+        {/* Quick Add Rows - icon only */}
         {onQuickAddRows && (
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={onQuickAddRows}
-            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+            className="h-7 w-7 border-primary/30 hover:border-primary"
+            title="+ שורות"
           >
-            <TableRowsSplit className="h-4 w-4 text-primary" />
-            <span className="hidden sm:inline">+ שורות</span>
+            <TableRowsSplit className="h-3.5 w-3.5 text-primary" />
           </Button>
         )}
 
-        {/* Quick Add Columns */}
+        {/* Quick Add Columns - icon only */}
         {onQuickAddColumns && (
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={onQuickAddColumns}
-            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+            className="h-7 w-7 border-primary/30 hover:border-primary"
+            title="+ עמודות"
           >
-            <Columns className="h-4 w-4 text-primary" />
-            <span className="hidden sm:inline">+ עמודות</span>
+            <Columns className="h-3.5 w-3.5 text-primary" />
           </Button>
         )}
 
-        {/* Clear filters */}
+        {/* Clear filters - icon only */}
         {hasActiveFilters && (
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={onClearFilters}
-            className="text-destructive hover:text-destructive"
+            className="h-7 w-7 text-destructive hover:text-destructive"
+            title="נקה סינון"
           >
-            <X className="h-4 w-4 ml-1" />
-            נקה סינון
+            <X className="h-3.5 w-3.5" />
           </Button>
         )}
 
-        {/* Refresh */}
+        {/* Refresh - icon only */}
         {onRefresh && (
-          <Button variant="ghost" size="sm" onClick={onRefresh}>
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} title="רענן">
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         )}
 
-        {/* Column visibility with drag & drop */}
+        {/* Column visibility - icon only */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="border-[#D4AF37] bg-white hover:bg-[#1e3a8a]/5 hover:border-[#D4AF37]/80 transition-all shadow-sm">
-              <Columns className="h-4 w-4 ml-1 text-[#D4AF37]" />
-              <span className="text-[#1e3a8a] font-semibold">עמודות</span>
+            <Button variant="outline" size="icon" className="h-7 w-7 border-[#D4AF37]" title="עמודות">
+              <Columns className="h-3.5 w-3.5 text-[#D4AF37]" />
             </Button>
           </PopoverTrigger>
           <PopoverContent

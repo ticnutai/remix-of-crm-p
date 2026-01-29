@@ -403,110 +403,46 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
         </div>
       )}
 
-      {/* Freeze Controls - Improved with rows and columns */}
+      {/* Freeze Controls - Compact inline */}
       {hasData && (
-        <div className="px-4 py-2 border-b border-table-border bg-muted/20 flex items-center gap-4 flex-wrap">
-          {/* Freeze Columns */}
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={frozenColumns > 0 ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setFrozenColumns(frozenColumns > 0 ? 0 : 1)}
-                    className={cn("h-7 text-xs gap-1", frozenColumns > 0 && "text-primary bg-primary/10")}
-                  >
-                    {frozenColumns > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                    עמודות
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{frozenColumns > 0 ? 'לחץ לביטול הקפאת עמודות' : 'הקפא עמודה ראשונה (מימין)'}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            {frozenColumns > 0 && (
-              <div className="flex items-center gap-1 bg-background rounded border px-1">
+        <div className="px-2 py-1 border-b border-table-border bg-muted/20 flex items-center gap-2 flex-wrap">
+          {/* Freeze Columns - compact */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant={frozenColumns > 0 ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setFrozenColumns(Math.max(0, frozenColumns - 1))}
-                  className="h-5 w-5 p-0 text-xs"
+                  onClick={() => setFrozenColumns(frozenColumns > 0 ? 0 : 1)}
+                  className={cn("h-6 px-2 text-xs gap-1", frozenColumns > 0 && "text-primary bg-primary/10")}
                 >
-                  -
+                  {frozenColumns > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  עמ'
+                  {frozenColumns > 0 && <span className="font-bold">{frozenColumns}</span>}
                 </Button>
-                <span className="text-xs font-medium w-4 text-center">{frozenColumns}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFrozenColumns(Math.min(visibleColumns.length - 1, frozenColumns + 1))}
-                  className="h-5 w-5 p-0 text-xs"
-                >
-                  +
-                </Button>
-              </div>
-            )}
-          </div>
+              </TooltipTrigger>
+              <TooltipContent>{frozenColumns > 0 ? 'ביטול הקפאה' : 'הקפא עמודה'}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          <div className="w-px h-5 bg-border" />
-
-          {/* Freeze Rows */}
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={frozenRows > 0 ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setFrozenRows(frozenRows > 0 ? 0 : 1)}
-                    className={cn("h-7 text-xs gap-1", frozenRows > 0 && "text-primary bg-primary/10")}
-                  >
-                    {frozenRows > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                    שורות
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{frozenRows > 0 ? 'לחץ לביטול הקפאת שורות' : 'הקפא שורה ראשונה'}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            {frozenRows > 0 && (
-              <div className="flex items-center gap-1 bg-background rounded border px-1">
+          {/* Freeze Rows - compact */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant={frozenRows > 0 ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setFrozenRows(Math.max(0, frozenRows - 1))}
-                  className="h-5 w-5 p-0 text-xs"
+                  onClick={() => setFrozenRows(frozenRows > 0 ? 0 : 1)}
+                  className={cn("h-6 px-2 text-xs gap-1", frozenRows > 0 && "text-primary bg-primary/10")}
                 >
-                  -
+                  {frozenRows > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  שו'
+                  {frozenRows > 0 && <span className="font-bold">{frozenRows}</span>}
                 </Button>
-                <span className="text-xs font-medium w-4 text-center">{frozenRows}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFrozenRows(Math.min(state.displayData.length, frozenRows + 1))}
-                  className="h-5 w-5 p-0 text-xs"
-                >
-                  +
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Summary when frozen */}
-          {(frozenColumns > 0 || frozenRows > 0) && (
-            <div className="text-xs text-muted-foreground mr-auto flex items-center gap-2">
-              <Lock className="h-3 w-3" />
-              {frozenColumns > 0 && <span>{frozenColumns} עמודות</span>}
-              {frozenColumns > 0 && frozenRows > 0 && <span>•</span>}
-              {frozenRows > 0 && <span>{frozenRows} שורות</span>}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setFrozenColumns(0); setFrozenRows(0); }}
-                className="h-5 text-xs text-destructive hover:text-destructive"
-              >
-                בטל הכל
-              </Button>
-            </div>
-          )}
+              </TooltipTrigger>
+              <TooltipContent>{frozenRows > 0 ? 'ביטול הקפאה' : 'הקפא שורה'}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
 

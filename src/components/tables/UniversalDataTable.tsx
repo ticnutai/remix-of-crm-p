@@ -516,20 +516,20 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
   }, [addColumnsInBulk, tableName, customColumns, generateColumnKey]);
 
   return (
-    <div className="space-y-4">
-      {/* Column Management Bar */}
+    <div className="space-y-2">
+      {/* Compact Column Management Bar - all in one line */}
       {canAddColumns && (
-        <div className="flex items-center justify-end gap-2 flex-wrap flex-row-reverse" dir="rtl">
-            {/* Hide empty columns toggle */}
+        <div className="flex items-center gap-1.5 flex-wrap flex-row-reverse" dir="rtl">
+            {/* Hide empty columns - compact */}
             {emptyCustomColumns.length > 0 && (
               <Button
                 variant={hideEmptyColumns ? "default" : "outline"}
                 size="sm"
                 onClick={() => setHideEmptyColumns(!hideEmptyColumns)}
-                className="gap-2"
+                className="h-7 px-2 text-xs gap-1"
               >
-                {hideEmptyColumns ? 'הצג עמודות ריקות' : 'הסתר עמודות ריקות'}
-                <Badge variant="secondary" className="text-xs">
+                {hideEmptyColumns ? 'הצג' : 'הסתר'}
+                <Badge variant="secondary" className="text-xs h-4 px-1">
                   {emptyCustomColumns.length}
                 </Badge>
               </Button>
@@ -538,9 +538,9 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
             {customColumns.length > 0 && canDeleteColumns && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-                    <Settings2 className="h-4 w-4" />
-                    {customColumns.length} עמודות מותאמות
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground">
+                    <Settings2 className="h-3.5 w-3.5" />
+                    {customColumns.length}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" dir="rtl" className="w-64 bg-popover text-popover-foreground border border-border shadow-lg z-50">
@@ -629,9 +629,9 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings2 className="h-4 w-4" />
-                ניהול עמודות
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1">
+                <Settings2 className="h-3.5 w-3.5" />
+                ניהול
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" dir="rtl" className="w-56 bg-popover text-popover-foreground border border-border shadow-lg z-50">

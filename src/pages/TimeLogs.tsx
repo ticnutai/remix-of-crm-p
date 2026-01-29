@@ -1186,257 +1186,197 @@ export default function TimeLogs() {
           </Card>
         )}
         
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="p-3 rounded-full bg-primary/10">
-                  <Clock className="h-6 w-6 text-primary" />
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">{formatDurationShort(totalStats.minutes)}</p>
-                  <p className="text-sm text-muted-foreground">סה"כ שעות</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3 flex-row-reverse">
-                <div className="p-2 rounded-full bg-secondary/10">
-                  <Timer className="h-5 w-5 text-secondary" />
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold">{totalStats.entries}</p>
-                  <p className="text-xs text-muted-foreground">רישומים</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3 flex-row-reverse">
-                <div className="p-2 rounded-full bg-green-500/10">
-                  <DollarSign className="h-5 w-5 text-green-500" />
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold">{formatDurationShort(totalStats.billable)}</p>
-                  <p className="text-xs text-muted-foreground">לחיוב</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-3 flex-row-reverse">
-                <div className="p-2 rounded-full bg-blue-500/10">
-                  <Users className="h-5 w-5 text-blue-500" />
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold">{clientSummaries.length}</p>
-                  <p className="text-xs text-muted-foreground">לקוחות פעילים</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Compact Stats Row */}
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-card border border-border rounded-lg flex-row-reverse">
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="font-bold">{formatDurationShort(totalStats.minutes)}</span>
+            <span className="text-xs text-muted-foreground">שעות</span>
+          </div>
+          <Separator orientation="vertical" className="h-5" />
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <Timer className="h-4 w-4 text-secondary" />
+            <span className="font-bold">{totalStats.entries}</span>
+            <span className="text-xs text-muted-foreground">רישומים</span>
+          </div>
+          <Separator orientation="vertical" className="h-5" />
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <DollarSign className="h-4 w-4 text-green-500" />
+            <span className="font-bold">{formatDurationShort(totalStats.billable)}</span>
+            <span className="text-xs text-muted-foreground">לחיוב</span>
+          </div>
+          <Separator orientation="vertical" className="h-5" />
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <Users className="h-4 w-4 text-blue-500" />
+            <span className="font-bold">{clientSummaries.length}</span>
+            <span className="text-xs text-muted-foreground">לקוחות</span>
+          </div>
         </div>
 
-        {/* Filters & Actions */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 flex-row-reverse">
-              <CardTitle className="flex items-center gap-2 flex-row-reverse text-base">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                סינון וחיפוש
-              </CardTitle>
-              <div className="flex gap-2 flex-row-reverse flex-wrap">
-                <Button 
-                  className="btn-gold h-9 px-4" 
-                  onClick={() => { resetForm(); setIsAddDialogOpen(true); }}
-                >
-                  <Plus className="h-4 w-4 ml-2" />
-                  הוסף רישום
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-9 px-4"
-                  onClick={handleExport}
-                >
-                  <Download className="h-4 w-4 ml-2" />
-                  ייצוא
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="h-9 px-4" 
-                  onClick={async () => {
-                    console.log('🔄 [TimeLogs] Manual refresh triggered');
-                    setIsLoading(true);
-                    try {
-                      const { data, error } = await supabase
-                        .from('time_entries')
-                        .select('*')
-                        .order('start_time', { ascending: false });
-                      
-                      if (error) throw error;
-                      
-                      console.log('✅ [TimeLogs] Manual refresh completed', { entries: data?.length });
-                      setTimeEntries(data as TimeEntry[]);
-                      toast({
-                        title: 'רענון הושלם',
-                        description: `נטענו ${data?.length || 0} רישומי זמן`,
-                      });
-                    } catch (error) {
-                      console.error('🔴 [TimeLogs] Refresh error:', error);
-                      toast({
-                        title: 'שגיאה',
-                        description: 'לא ניתן לרענן את הנתונים',
-                        variant: 'destructive',
-                      });
-                    } finally {
-                      setIsLoading(false);
-                    }
-                  }}
-                  disabled={isLoading}
-                >
-                  <Timer className="h-4 w-4 ml-2" />
-                  {isLoading ? 'טוען...' : 'רענן'}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-3">
-            <div className="grid gap-3 md:grid-cols-6">
-              {/* Search */}
-              <div className="relative md:col-span-2">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="חיפוש..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
-              
-              {/* Date Filter */}
-              <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
-                <SelectTrigger>
-                  <CalendarIcon className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder="תקופה" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">היום</SelectItem>
-                  <SelectItem value="week">השבוע</SelectItem>
-                  <SelectItem value="month">החודש</SelectItem>
-                  <SelectItem value="all">הכל</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Client Filter */}
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger>
-                  <Briefcase className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder="לקוח" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל הלקוחות</SelectItem>
-                  {clients.map(client => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* User Filter */}
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
-                <SelectTrigger>
-                  <User className="h-4 w-4 ml-2" />
-                  <SelectValue placeholder="משתמש" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">כל המשתמשים</SelectItem>
-                  {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Billable Filter */}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="billable-only"
-                  checked={showBillableOnly}
-                  onCheckedChange={(checked) => setBillableOnly(checked as boolean)}
-                />
-                <Label htmlFor="billable-only" className="cursor-pointer text-sm">
-                  לחיוב בלבד
-                </Label>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main Content - Unified Header with Tabs */}
+        {/* Main Content - Unified Header with Tabs, Filters & Actions */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col">
-          {/* Unified Header Bar */}
-          <div className="flex items-center justify-between gap-2 bg-card border border-border rounded-lg p-2 mb-2 flex-row-reverse">
-            {/* Right side - Title and Badge */}
-            <div className="flex items-center gap-2 flex-row-reverse">
-              <div className="flex items-center gap-2 flex-row-reverse">
-                <Clock className="h-4 w-4 text-[hsl(45,80%,55%)]" />
-                <h2 className="text-base font-bold text-foreground">רישומי זמן</h2>
-              </div>
-              <Badge 
-                className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] border-[hsl(45,80%,55%)]/30 font-bold text-xs"
-              >
-                {filteredEntries.length} רישומים
+          {/* Single Unified Bar: Title + Tabs + Filters + Actions */}
+          <div className="flex flex-wrap items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 mb-2 flex-row-reverse">
+            {/* Title */}
+            <div className="flex items-center gap-1.5 flex-row-reverse">
+              <Clock className="h-4 w-4 text-[hsl(45,80%,55%)]" />
+              <h2 className="text-sm font-bold">זמן</h2>
+              <Badge className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] text-xs px-1.5 py-0">
+                {filteredEntries.length}
               </Badge>
             </div>
-
-            {/* Center - Tabs */}
-            <TabsList className="bg-muted/50 border border-border p-1 gap-1">
-              <TabsTrigger 
-                value="list" 
-                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
-              >
+            
+            <Separator orientation="vertical" className="h-6" />
+            
+            {/* Tabs */}
+            <TabsList className="bg-muted/50 h-8 p-0.5 gap-0.5">
+              <TabsTrigger value="list" className="h-7 px-2 text-xs data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)]">
                 רשימה
               </TabsTrigger>
-              <TabsTrigger 
-                value="summary" 
-                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
-              >
-                סיכום לפי לקוח
+              <TabsTrigger value="summary" className="h-7 px-2 text-xs data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)]">
+                סיכום
               </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className="data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)] data-[state=active]:shadow-md px-4 py-2 text-sm font-medium transition-all"
-              >
-                ניתוח מתקדם
+              <TabsTrigger value="analytics" className="h-7 px-2 text-xs data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)]">
+                ניתוח
               </TabsTrigger>
             </TabsList>
-
-            {/* Left side - View Mode Selector (only for list tab) */}
+            
+            <Separator orientation="vertical" className="h-6" />
+            
+            {/* Search */}
+            <div className="relative w-[150px]">
+              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pr-7 h-7 text-xs"
+              />
+            </div>
+            
+            {/* Compact Filters */}
+            <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilter)}>
+              <SelectTrigger className="h-7 w-[90px] text-xs">
+                <SelectValue placeholder="תקופה" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">היום</SelectItem>
+                <SelectItem value="week">השבוע</SelectItem>
+                <SelectItem value="month">החודש</SelectItem>
+                <SelectItem value="all">הכל</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedClient} onValueChange={setSelectedClient}>
+              <SelectTrigger className="h-7 w-[100px] text-xs">
+                <SelectValue placeholder="לקוח" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">הכל</SelectItem>
+                {clients.map(client => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="h-7 w-[90px] text-xs">
+                <SelectValue placeholder="משתמש" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">הכל</SelectItem>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex items-center gap-1">
+              <Checkbox
+                id="billable-only"
+                checked={showBillableOnly}
+                onCheckedChange={(checked) => setBillableOnly(checked as boolean)}
+                className="h-3.5 w-3.5"
+              />
+              <Label htmlFor="billable-only" className="cursor-pointer text-xs">₪</Label>
+            </div>
+            
+            <Separator orientation="vertical" className="h-6" />
+            
+            {/* Action Buttons */}
+            <Button 
+              className="btn-gold h-7 px-2 text-xs" 
+              size="sm"
+              onClick={() => { resetForm(); setIsAddDialogOpen(true); }}
+            >
+              <Plus className="h-3 w-3 ml-1" />
+              חדש
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleExport}
+              title="ייצוא"
+            >
+              <Download className="h-3 w-3" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              className="h-7 w-7" 
+              onClick={async () => {
+                console.log('🔄 [TimeLogs] Manual refresh triggered');
+                setIsLoading(true);
+                try {
+                  const { data, error } = await supabase
+                    .from('time_entries')
+                    .select('*')
+                    .order('start_time', { ascending: false });
+                  
+                  if (error) throw error;
+                  
+                  console.log('✅ [TimeLogs] Manual refresh completed', { entries: data?.length });
+                  setTimeEntries(data as TimeEntry[]);
+                  toast({
+                    title: 'רענון הושלם',
+                    description: `נטענו ${data?.length || 0} רישומי זמן`,
+                  });
+                } catch (error) {
+                  console.error('🔴 [TimeLogs] Refresh error:', error);
+                  toast({
+                    title: 'שגיאה',
+                    description: 'לא ניתן לרענן את הנתונים',
+                    variant: 'destructive',
+                  });
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
+              title="רענן"
+            >
+              <Timer className="h-3 w-3" />
+            </Button>
+            
+            {/* View Mode (only for list tab) */}
             {activeTab === 'list' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 border-border h-9 px-4">
-                    {viewMode === 'list' && <List className="h-4 w-4" />}
-                    {viewMode === 'table' && <Grid3x3 className="h-4 w-4" />}
-                    {viewMode === 'calendar' && <CalendarIcon className="h-4 w-4" />}
-                    {viewMode === 'timeline' && <BarChart3 className="h-4 w-4" />}
-                    {viewMode === 'heatmap' && <MapIcon className="h-4 w-4" />}
-                    {viewMode === 'kanban' && <LayoutGrid className="h-4 w-4" />}
-                    {viewMode === 'grouped' && <Layers className="h-4 w-4" />}
-                    {viewMode === 'invoice' && <FileText className="h-4 w-4" />}
-                    {viewMode === 'compact' && <Minimize2 className="h-4 w-4" />}
-                    תצוגה
-                    <ChevronDown className="h-4 w-4" />
+                  <Button variant="outline" size="icon" className="h-7 w-7" title="תצוגה">
+                    {viewMode === 'list' && <List className="h-3 w-3" />}
+                    {viewMode === 'table' && <Grid3x3 className="h-3 w-3" />}
+                    {viewMode === 'calendar' && <CalendarIcon className="h-3 w-3" />}
+                    {viewMode === 'timeline' && <BarChart3 className="h-3 w-3" />}
+                    {viewMode === 'heatmap' && <MapIcon className="h-3 w-3" />}
+                    {viewMode === 'kanban' && <LayoutGrid className="h-3 w-3" />}
+                    {viewMode === 'grouped' && <Layers className="h-3 w-3" />}
+                    {viewMode === 'invoice' && <FileText className="h-3 w-3" />}
+                    {viewMode === 'compact' && <Minimize2 className="h-3 w-3" />}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent dir="rtl" align="end" className="w-56">
