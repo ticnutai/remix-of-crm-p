@@ -1253,17 +1253,25 @@ export default function TimeLogs() {
                 <Filter className="h-4 w-4 text-muted-foreground" />
                 סינון וחיפוש
               </CardTitle>
-              <div className="flex gap-2 flex-row-reverse">
-                <Button className="btn-gold" onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+              <div className="flex gap-2 flex-row-reverse flex-wrap">
+                <Button 
+                  className="btn-gold h-9 px-4" 
+                  onClick={() => { resetForm(); setIsAddDialogOpen(true); }}
+                >
                   <Plus className="h-4 w-4 ml-2" />
                   הוסף רישום
                 </Button>
-                <Button variant="outline" onClick={handleExport}>
+                <Button 
+                  variant="outline" 
+                  className="h-9 px-4"
+                  onClick={handleExport}
+                >
                   <Download className="h-4 w-4 ml-2" />
                   ייצוא
                 </Button>
                 <Button 
                   variant="outline" 
+                  className="h-9 px-4" 
                   onClick={async () => {
                     console.log('🔄 [TimeLogs] Manual refresh triggered');
                     setIsLoading(true);
@@ -1417,7 +1425,7 @@ export default function TimeLogs() {
             {activeTab === 'list' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 border-border">
+                  <Button variant="outline" className="gap-2 border-border h-9 px-4">
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'table' && <Grid3x3 className="h-4 w-4" />}
                     {viewMode === 'calendar' && <CalendarIcon className="h-4 w-4" />}
@@ -1828,10 +1836,10 @@ export default function TimeLogs() {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="h-9 px-6">
                 ביטול
               </Button>
-              <Button onClick={handleAddEntry} className="btn-gold">
+              <Button onClick={handleAddEntry} className="btn-gold h-9 px-6">
                 <Save className="h-4 w-4 ml-2" />
                 שמור
               </Button>
@@ -1943,10 +1951,10 @@ export default function TimeLogs() {
             </div>
             
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditingEntry(null); }}>
+              <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditingEntry(null); }} className="h-9 px-6">
                 ביטול
               </Button>
-              <Button onClick={handleEditEntry} className="btn-gold">
+              <Button onClick={handleEditEntry} className="btn-gold h-9 px-6">
                 <Save className="h-4 w-4 ml-2" />
                 עדכן
               </Button>
