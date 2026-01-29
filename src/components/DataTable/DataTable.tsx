@@ -61,6 +61,7 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
     virtualScroll = false,
     virtualScrollThreshold = 50,
     rowHeight = 48,
+    maxViewportHeightOffset = 400,
     // Cell formatting props
     cellFormatting,
     onCellStyleChange,
@@ -284,83 +285,93 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
   const toolbarEl = shouldRenderToolbar ? (
     <div
       className={cn(
-        'flex flex-nowrap items-center justify-start gap-2 whitespace-nowrap',
+        'flex items-center gap-2 whitespace-nowrap',
         toolbarPortalId
-          ? 'px-0 py-0 border-0 bg-transparent'
-          : 'px-3 py-1.5 border-b border-table-border bg-muted/20 overflow-x-auto scrollbar-thin'
+          ? 'w-full px-0 py-0 border-0 bg-transparent flex-row-reverse justify-between'
+          : 'px-3 py-1.5 border-b border-table-border bg-muted/20 flex-nowrap flex-row-reverse justify-start overflow-x-auto scrollbar-thin'
       )}
       dir="rtl"
     >
-      {(globalSearch || columnToggle || exportable) && (
-        <TableToolbar
-          embedded
-          showSearch={!!globalSearch}
-          globalSearchTerm={state.globalSearchTerm}
-          onGlobalSearchChange={actions.setGlobalSearch}
-          columns={columns}
-          hiddenColumns={state.hiddenColumns}
-          onToggleColumn={actions.toggleColumnVisibility}
-          onReorderColumns={actions.reorderColumn}
-          onAddColumn={onAddColumn}
-          onRenameColumn={onRenameColumn}
-          onDeleteColumn={onDeleteColumn}
-          onDeleteColumns={onDeleteColumns}
-          filters={state.filters}
-          onClearFilters={actions.clearFilters}
-          exportable={exportable}
-          onExport={handleExport}
-          selectedCount={state.selectedRows.size}
-          totalCount={totalRows}
-          onQuickAddRows={onQuickAddRows}
-          onQuickAddColumns={onQuickAddColumns}
-        />
-      )}
+      {/* Right side group (in RTL): main actions */}
+      <div className="flex items-center gap-2 min-w-max flex-row-reverse">
+        {(globalSearch || columnToggle || exportable) && (
+          <TableToolbar
+            embedded
+            showSearch={!!globalSearch}
+            globalSearchTerm={state.globalSearchTerm}
+            onGlobalSearchChange={actions.setGlobalSearch}
+            columns={columns}
+            hiddenColumns={state.hiddenColumns}
+            onToggleColumn={actions.toggleColumnVisibility}
+            onReorderColumns={actions.reorderColumn}
+            onAddColumn={onAddColumn}
+            onRenameColumn={onRenameColumn}
+            onDeleteColumn={onDeleteColumn}
+            onDeleteColumns={onDeleteColumns}
+            filters={state.filters}
+            onClearFilters={actions.clearFilters}
+            exportable={exportable}
+            onExport={handleExport}
+            selectedCount={state.selectedRows.size}
+            totalCount={totalRows}
+            onQuickAddRows={onQuickAddRows}
+            onQuickAddColumns={onQuickAddColumns}
+          />
+        )}
+      </div>
 
-      {/* Freeze Columns */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={frozenColumns > 0 ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setFrozenColumns(frozenColumns > 0 ? 0 : 1)}
-              className={cn('h-6 px-2 text-xs gap-1', frozenColumns > 0 && 'text-primary bg-primary/10')}
-            >
-              {frozenColumns > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-              עמ'
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{frozenColumns > 0 ? 'ביטול הקפאה' : 'הקפא עמודה'}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {/* Left side group: freeze + active filters */}
+      <div className="flex items-center gap-2 min-w-max flex-row-reverse">
+        {/* Freeze Columns */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={frozenColumns > 0 ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setFrozenColumns(frozenColumns > 0 ? 0 : 1)}
+                className={cn(
+                  'h-8 w-8',
+                  frozenColumns > 0 && 'text-primary bg-primary/10'
+                )}
+              >
+                {frozenColumns > 0 ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{frozenColumns > 0 ? 'ביטול הקפאת עמודה' : 'הקפא עמודה'}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-      {/* Freeze Rows */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant={frozenRows > 0 ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setFrozenRows(frozenRows > 0 ? 0 : 1)}
-              className={cn('h-6 px-2 text-xs gap-1', frozenRows > 0 && 'text-primary bg-primary/10')}
-            >
-              {frozenRows > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-              שו'
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{frozenRows > 0 ? 'ביטול הקפאה' : 'הקפא שורה'}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+        {/* Freeze Rows */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={frozenRows > 0 ? 'secondary' : 'outline'}
+                size="icon"
+                onClick={() => setFrozenRows(frozenRows > 0 ? 0 : 1)}
+                className={cn(
+                  'h-8 w-8',
+                  frozenRows > 0 && 'text-primary bg-primary/10'
+                )}
+              >
+                {frozenRows > 0 ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{frozenRows > 0 ? 'ביטול הקפאת שורה' : 'הקפא שורה'}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
-      {filterable && state.filters.length > 0 && (
-        <ActiveFilters
-          embedded
-          filters={state.filters}
-          columns={columns}
-          onRemoveFilter={(columnId) => actions.setFilter({ columnId, operator: 'eq', value: null })}
-          onClearAll={actions.clearFilters}
-        />
-      )}
+        {filterable && state.filters.length > 0 && (
+          <ActiveFilters
+            embedded
+            filters={state.filters}
+            columns={columns}
+            onRemoveFilter={(columnId) => actions.setFilter({ columnId, operator: 'eq', value: null })}
+            onClearAll={actions.clearFilters}
+          />
+        )}
+      </div>
     </div>
   ) : null;
 
@@ -381,11 +392,12 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
         dir="rtl"
         className={cn(
           "overflow-x-auto overflow-y-auto scrollbar-thin rounded-lg border",
-          !paginated && "max-h-[calc(100vh-400px)]"
+          !paginated && ""
         )}
         style={{
           scrollbarWidth: 'thin',
           WebkitOverflowScrolling: 'touch',
+          ...(paginated ? {} : { maxHeight: `calc(100vh - ${maxViewportHeightOffset}px)` }),
           // CSS-based RTL scroll positioning - instant, no JavaScript delay
           overflowAnchor: 'none',
           contain: 'layout style paint',

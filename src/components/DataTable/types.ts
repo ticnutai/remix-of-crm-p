@@ -140,6 +140,13 @@ export interface DataTableProps<T = any> {
   virtualScroll?: boolean;
   virtualScrollThreshold?: number;
   rowHeight?: number;
+
+  /**
+   * When `paginated` is false, the table body uses a max-height based on the viewport.
+   * This offset controls how much space to reserve for surrounding UI.
+   * Default is 400.
+   */
+  maxViewportHeightOffset?: number;
   // Keyboard navigation
   keyboardNavigation?: boolean;
   // Cell formatting

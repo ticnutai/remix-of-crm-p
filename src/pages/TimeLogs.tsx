@@ -1319,7 +1319,10 @@ export default function TimeLogs() {
 
             {/* DataTable toolbar gets portaled here in table view (prevents a second row above the table) */}
             {activeTab === 'list' && viewMode === 'table' && (
-              <div id="timelogs-table-toolbar-slot" className="flex items-center gap-2 min-w-max" />
+              <div
+                id="timelogs-table-toolbar-slot"
+                className="flex-1 flex items-center justify-between gap-2 min-w-[520px]"
+              />
             )}
 
             {/* Keep page export button for non-table views (table view uses column tools + freezes) */}
@@ -1493,6 +1496,7 @@ export default function TimeLogs() {
                 loading={isLoading}
                 emptyMessage="אין רישומי זמן"
                 toolbarPortalId="timelogs-table-toolbar-slot"
+                maxViewportHeightOffset={260}
                 onCellEdit={async (row, columnId, newValue) => {
                   const updateData: Record<string, any> = { [columnId]: newValue };
                   

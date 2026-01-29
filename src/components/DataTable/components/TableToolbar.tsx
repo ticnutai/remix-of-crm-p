@@ -226,7 +226,7 @@ export function TableToolbar<T>({
             variant="outline"
             size="icon"
             onClick={onQuickAddRows}
-            className="h-7 w-7 border-primary/30 hover:border-primary"
+            className="h-8 w-8 border-primary/30 hover:border-primary"
             title="+ שורות"
           >
             <TableRowsSplit className="h-3.5 w-3.5 text-primary" />
@@ -239,7 +239,7 @@ export function TableToolbar<T>({
             variant="outline"
             size="icon"
             onClick={onQuickAddColumns}
-            className="h-7 w-7 border-primary/30 hover:border-primary"
+            className="h-8 w-8 border-primary/30 hover:border-primary"
             title="+ עמודות"
           >
             <Columns className="h-3.5 w-3.5 text-primary" />
@@ -252,7 +252,7 @@ export function TableToolbar<T>({
             variant="ghost"
             size="icon"
             onClick={onClearFilters}
-            className="h-7 w-7 text-destructive hover:text-destructive"
+            className="h-8 w-8 text-destructive hover:text-destructive"
             title="נקה סינון"
           >
             <X className="h-3.5 w-3.5" />
@@ -261,7 +261,7 @@ export function TableToolbar<T>({
 
         {/* Refresh - icon only */}
         {onRefresh && (
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} title="רענן">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRefresh} title="רענן">
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         )}
@@ -269,7 +269,7 @@ export function TableToolbar<T>({
         {/* Column visibility - icon only */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-7 w-7 border-[#D4AF37]" title="עמודות">
+            <Button variant="outline" size="icon" className="h-8 w-8 border-[#D4AF37]" title="עמודות">
               <Columns className="h-3.5 w-3.5 text-[#D4AF37]" />
             </Button>
           </PopoverTrigger>

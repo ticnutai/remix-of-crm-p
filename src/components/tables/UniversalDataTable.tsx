@@ -68,6 +68,9 @@ export interface UniversalDataTableProps<T extends { id: string; custom_data?: R
   // Cell formatting (for context menu features)
   enableCellFormatting?: boolean;
 
+  // Increase visible table area (when not paginated)
+  maxViewportHeightOffset?: number;
+
   // Optional: portal DataTable toolbar into an external container
   toolbarPortalId?: string;
 }
@@ -95,6 +98,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
   onCellEdit,
   canAddColumns = true,
   canDeleteColumns = true,
+  maxViewportHeightOffset,
   toolbarPortalId,
 }: UniversalDataTableProps<T>) {
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
@@ -563,6 +567,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         } : undefined}
         onQuickAddRows={canAddColumns ? () => setIsQuickAddRowsOpen(true) : undefined}
         onQuickAddColumns={canAddColumns ? () => setIsQuickAddColumnsOpen(true) : undefined}
+        maxViewportHeightOffset={maxViewportHeightOffset}
         toolbarPortalId={toolbarPortalId}
       />
 
