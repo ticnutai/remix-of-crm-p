@@ -164,11 +164,11 @@ export function TimeLogsTimelineView({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-medium">
-                            {(() => { const d = new Date(entry.start_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
+                            {format(parseISO(entry.start_time), 'H:mm')}
                             {entry.end_time && (
                               <span className="text-muted-foreground">
                                 {' - '}
-                                {(() => { const d = new Date(entry.end_time); return `${d.getHours()}:${d.getMinutes()}`; })()}
+                                {format(parseISO(entry.end_time), 'H:mm')}
                               </span>
                             )}
                           </div>

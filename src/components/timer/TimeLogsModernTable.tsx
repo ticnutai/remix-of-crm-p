@@ -145,8 +145,7 @@ export function TimeLogsModernTable({
   };
 
   const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getHours()}:${date.getMinutes()}`;
+    return format(new Date(dateString), 'H:mm');
   };
 
   const formatDateFull = (dateString: string) => {

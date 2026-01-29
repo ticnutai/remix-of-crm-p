@@ -642,7 +642,7 @@ export default function TimeLogs() {
           <div className="flex flex-col gap-0.5">
             <div>{format(date, 'dd/MM/yy', { locale: he })}</div>
             <div className="text-xs text-muted-foreground">
-              {date.getHours()}:{date.getMinutes()}
+              {format(date, 'H:mm')}
             </div>
           </div>
         );
