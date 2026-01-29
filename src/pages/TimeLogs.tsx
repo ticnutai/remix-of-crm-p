@@ -341,6 +341,8 @@ export default function TimeLogs() {
     project_id: '',
     description: '',
     log_date: new Date(),
+    start_hour: new Date().getHours(),
+    start_minute: new Date().getMinutes(),
     duration_hours: 0,
     duration_minutes: 0,
     is_billable: true,
@@ -812,11 +814,14 @@ export default function TimeLogs() {
 
   // Reset form
   const resetForm = () => {
+    const now = new Date();
     setFormData({
       client_id: '',
       project_id: '',
       description: '',
-      log_date: new Date(),
+      log_date: now,
+      start_hour: now.getHours(),
+      start_minute: now.getMinutes(),
       duration_hours: 0,
       duration_minutes: 0,
       is_billable: true,
@@ -840,7 +845,7 @@ export default function TimeLogs() {
     }
     
     const startTime = new Date(formData.log_date);
-    startTime.setHours(9, 0, 0, 0);
+    startTime.setHours(formData.start_hour, formData.start_minute, 0, 0);
     
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
@@ -998,12 +1003,15 @@ export default function TimeLogs() {
 
   // Open edit dialog
   const openEditDialog = (entry: TimeEntry) => {
+    const entryDate = new Date(entry.start_time);
     setEditingEntry(entry);
     setFormData({
       client_id: entry.client_id || '',
       project_id: entry.project_id || '',
       description: entry.description || '',
-      log_date: new Date(entry.start_time),
+      log_date: entryDate,
+      start_hour: entryDate.getHours(),
+      start_minute: entryDate.getMinutes(),
       duration_hours: Math.floor((entry.duration_minutes || 0) / 60),
       duration_minutes: (entry.duration_minutes || 0) % 60,
       is_billable: entry.is_billable ?? true,
@@ -1458,12 +1466,15 @@ export default function TimeLogs() {
                 onEdit={openEditDialog}
                 onDelete={handleDeleteEntry}
                 onDuplicate={(entry) => {
-                  // Open add dialog with pre-filled data
+                  // Open add dialog with pre-filled data (current time, same duration)
+                  const now = new Date();
                   setFormData({
                     client_id: entry.client_id || '',
                     project_id: entry.project_id || '',
                     description: entry.description || '',
-                    log_date: new Date(),
+                    log_date: now,
+                    start_hour: now.getHours(),
+                    start_minute: now.getMinutes(),
                     duration_hours: Math.floor((entry.duration_minutes || 0) / 60),
                     duration_minutes: (entry.duration_minutes || 0) % 60,
                     is_billable: entry.is_billable ?? true,
@@ -1733,6 +1744,30 @@ export default function TimeLogs() {
                 </Popover>
               </div>
               
+              {/* Start Time */}
+              <div className="space-y-2">
+                <Label>שעת התחלה</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.start_hour}
+                    onChange={(e) => setFormData(prev => ({ ...prev, start_hour: parseInt(e.target.value) || 0 }))}
+                    className="w-16 text-center"
+                  />
+                  <span>:</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={formData.start_minute}
+                    onChange={(e) => setFormData(prev => ({ ...prev, start_minute: parseInt(e.target.value) || 0 }))}
+                    className="w-16 text-center"
+                  />
+                </div>
+              </div>
+              
               {/* Duration */}
               <div className="space-y-2">
                 <Label>משך זמן</Label>
@@ -1846,6 +1881,30 @@ export default function TimeLogs() {
                       ))}
                   </SelectContent>
                 </Select>
+              </div>
+              
+              {/* Start Time for Edit Dialog */}
+              <div className="space-y-2">
+                <Label>שעת התחלה</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.start_hour}
+                    onChange={(e) => setFormData(prev => ({ ...prev, start_hour: parseInt(e.target.value) || 0 }))}
+                    className="w-16 text-center"
+                  />
+                  <span>:</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={formData.start_minute}
+                    onChange={(e) => setFormData(prev => ({ ...prev, start_minute: parseInt(e.target.value) || 0 }))}
+                    className="w-16 text-center"
+                  />
+                </div>
               </div>
               
               {/* Duration */}
