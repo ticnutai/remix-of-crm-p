@@ -271,8 +271,14 @@ export function TableToolbar<T>({
         {/* Column visibility - icon only */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 border-[#D4AF37]" title="עמודות">
-              <Columns className="h-3.5 w-3.5 text-[#D4AF37]" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 gap-2 border-[#D4AF37]"
+              title="עמודות"
+            >
+              <Columns className="h-4 w-4 text-[#D4AF37]" />
+              <span className="hidden md:inline text-xs text-[#D4AF37]">עמודות</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent
