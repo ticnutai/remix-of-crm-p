@@ -1816,14 +1816,33 @@ export default function DataHub() {
           }
           
           if (mappedClientId) {
+            // Calculate start_time and end_time from the backup data
+            const startTime = timeLog.start_time 
+              ? new Date(timeLog.start_time) 
+              : timeLog.log_date 
+                ? new Date(timeLog.log_date) 
+                : new Date();
+            
+            // Calculate end_time from duration
+            let endTime: Date | null = null;
+            if (timeLog.end_time) {
+              endTime = new Date(timeLog.end_time);
+            } else if (timeLog.duration_seconds) {
+              endTime = new Date(startTime.getTime() + timeLog.duration_seconds * 1000);
+            } else if (timeLog.duration_minutes) {
+              endTime = new Date(startTime.getTime() + timeLog.duration_minutes * 60 * 1000);
+            }
+            
             const { error } = await supabase
               .from('time_entries')
               .insert({
                 user_id: user.id,
                 client_id: mappedClientId,
-                date: timeLog.log_date,
-                duration: timeLog.duration_seconds,
-                description: timeLog.title || timeLog.notes || '',
+                start_time: startTime.toISOString(),
+                end_time: endTime ? endTime.toISOString() : null,
+                description: timeLog.title || timeLog.notes || timeLog.description || '',
+                is_billable: timeLog.is_billable ?? true,
+                hourly_rate: timeLog.hourly_rate || null,
               });
             
             if (!error) {
