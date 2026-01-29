@@ -1203,42 +1203,42 @@ export default function TimeLogs() {
           </Card>
           
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="p-3 rounded-full bg-secondary/10">
-                  <Timer className="h-6 w-6 text-secondary" />
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3 flex-row-reverse">
+                <div className="p-2 rounded-full bg-secondary/10">
+                  <Timer className="h-5 w-5 text-secondary" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">{totalStats.entries}</p>
-                  <p className="text-sm text-muted-foreground">רישומים</p>
+                  <p className="text-xl font-bold">{totalStats.entries}</p>
+                  <p className="text-xs text-muted-foreground">רישומים</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="p-3 rounded-full bg-green-500/10">
-                  <DollarSign className="h-6 w-6 text-green-500" />
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3 flex-row-reverse">
+                <div className="p-2 rounded-full bg-green-500/10">
+                  <DollarSign className="h-5 w-5 text-green-500" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">{formatDurationShort(totalStats.billable)}</p>
-                  <p className="text-sm text-muted-foreground">לחיוב</p>
+                  <p className="text-xl font-bold">{formatDurationShort(totalStats.billable)}</p>
+                  <p className="text-xs text-muted-foreground">לחיוב</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="p-3 rounded-full bg-blue-500/10">
-                  <Users className="h-6 w-6 text-blue-500" />
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-3 flex-row-reverse">
+                <div className="p-2 rounded-full bg-blue-500/10">
+                  <Users className="h-5 w-5 text-blue-500" />
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">{clientSummaries.length}</p>
-                  <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
+                  <p className="text-xl font-bold">{clientSummaries.length}</p>
+                  <p className="text-xs text-muted-foreground">לקוחות פעילים</p>
                 </div>
               </div>
             </CardContent>
@@ -1247,10 +1247,10 @@ export default function TimeLogs() {
 
         {/* Filters & Actions */}
         <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-4 flex-row-reverse">
-              <CardTitle className="flex items-center gap-2 flex-row-reverse">
-                <Filter className="h-5 w-5 text-muted-foreground" />
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 flex-row-reverse">
+              <CardTitle className="flex items-center gap-2 flex-row-reverse text-base">
+                <Filter className="h-4 w-4 text-muted-foreground" />
                 סינון וחיפוש
               </CardTitle>
               <div className="flex gap-2 flex-row-reverse">
@@ -1300,8 +1300,8 @@ export default function TimeLogs() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-6">
+          <CardContent className="pt-3">
+            <div className="grid gap-3 md:grid-cols-6">
               {/* Search */}
               <div className="relative md:col-span-2">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1377,15 +1377,15 @@ export default function TimeLogs() {
         {/* Main Content - Unified Header with Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full flex-1 flex flex-col">
           {/* Unified Header Bar */}
-          <div className="flex items-center justify-between gap-4 bg-card border border-border rounded-lg p-3 mb-3 flex-row-reverse">
+          <div className="flex items-center justify-between gap-2 bg-card border border-border rounded-lg p-2 mb-2 flex-row-reverse">
             {/* Right side - Title and Badge */}
-            <div className="flex items-center gap-3 flex-row-reverse">
+            <div className="flex items-center gap-2 flex-row-reverse">
               <div className="flex items-center gap-2 flex-row-reverse">
-                <Clock className="h-5 w-5 text-[hsl(45,80%,55%)]" />
-                <h2 className="text-lg font-bold text-foreground">רישומי זמן</h2>
+                <Clock className="h-4 w-4 text-[hsl(45,80%,55%)]" />
+                <h2 className="text-base font-bold text-foreground">רישומי זמן</h2>
               </div>
               <Badge 
-                className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] border-[hsl(45,80%,55%)]/30 font-bold"
+                className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] border-[hsl(45,80%,55%)]/30 font-bold text-xs"
               >
                 {filteredEntries.length} רישומים
               </Badge>
