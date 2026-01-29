@@ -296,9 +296,10 @@ interface ActiveFiltersProps {
   columns: ColumnDef<any>[];
   onRemoveFilter: (columnId: string) => void;
   onClearAll: () => void;
+  embedded?: boolean;
 }
 
-export function ActiveFilters({ filters, columns, onRemoveFilter, onClearAll }: ActiveFiltersProps) {
+export function ActiveFilters({ filters, columns, onRemoveFilter, onClearAll, embedded = false }: ActiveFiltersProps) {
   if (filters.length === 0) return null;
 
   const getColumnHeader = (columnId: string) => {
@@ -321,17 +322,27 @@ export function ActiveFilters({ filters, columns, onRemoveFilter, onClearAll }: 
   };
 
   return (
-    <div className="flex flex-wrap gap-2 items-center py-2">
-      <span className="text-sm text-muted-foreground">פילטרים פעילים:</span>
+    <div
+      className={cn(
+        'flex items-center',
+        embedded ? 'flex-nowrap whitespace-nowrap min-w-max gap-1.5 py-0' : 'flex-wrap gap-2 py-2'
+      )}
+    >
+      {!embedded && (
+        <span className="text-sm text-muted-foreground">פילטרים פעילים:</span>
+      )}
       {filters.map((filter) => (
         <Badge
           key={filter.columnId}
           variant="secondary"
-          className="flex items-center gap-1 pl-1"
+          className={cn(
+            'flex items-center gap-1 pl-1',
+            embedded && 'h-6 text-[11px]'
+          )}
         >
           <span>{getColumnHeader(filter.columnId)}</span>
           <span className="text-muted-foreground">{getOperatorLabel(filter.operator)}</span>
-          <span className="font-medium">{String(filter.value).substring(0, 15)}</span>
+          <span className="font-medium">{String(filter.value).substring(0, embedded ? 10 : 15)}</span>
           <button
             onClick={() => onRemoveFilter(filter.columnId)}
             className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
@@ -340,7 +351,12 @@ export function ActiveFilters({ filters, columns, onRemoveFilter, onClearAll }: 
           </button>
         </Badge>
       ))}
-      <Button variant="ghost" size="sm" onClick={onClearAll} className="h-6 text-xs">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onClearAll}
+        className={cn('h-6', embedded ? 'px-2 text-[11px]' : 'text-xs')}
+      >
         נקה הכל
       </Button>
     </div>

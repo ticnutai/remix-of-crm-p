@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { DataTableProps, ColumnDef, FilterState, CellStyle, CellNote, CellReminder } from './types';
+import { DataTableProps } from './types';
 import { useDataTableState } from './hooks/useDataTableState';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import { useVirtualScroll } from './hooks/useVirtualScroll';
@@ -7,21 +7,15 @@ import { useCellSelection } from './hooks/useCellSelection';
 import { TableHeader } from './components/TableHeader';
 import { MemoizedTableCell as TableCell } from './components/TableCell';
 import { TablePagination } from './components/TablePagination';
+import { TableToolbar } from './components/TableToolbar';
 import { TableSkeleton } from './components/TableSkeleton';
 import { EmptyState } from './components/EmptyState';
 import { SummaryRow } from './components/SummaryRow';
 import { ActiveFilters } from './components/ColumnFilter';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { ChevronDown, ChevronUp, Merge, Ungroup, Lock, Unlock, AlignLeft, AlignCenter, AlignRight, AlignJustify, Download, Search, Columns, Grid3x3, TableRowsSplit } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Unlock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -276,81 +270,33 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
   return (
     <div className={containerClasses}>
       {/* Single Unified Toolbar - All controls in one row, aligned right */}
-      {hasData && (
-        <div className="px-2 py-1.5 border-b border-table-border bg-muted/20 flex items-center gap-1.5 flex-row-reverse flex-wrap">
-          {/* Search - compact */}
-          {globalSearch && (
-            <div className="relative w-[100px]">
-              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-              <Input
-                placeholder="חיפוש..."
-                value={state.globalSearchTerm}
-                onChange={(e) => actions.setGlobalSearch(e.target.value)}
-                className="pr-7 h-6 text-xs"
-              />
-            </div>
-          )}
-          
-          {/* Export */}
-          {exportable && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-6 px-2 text-xs gap-1">
-                  <Download className="h-3 w-3" />
-                  ייצוא
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" dir="rtl">
-                <DropdownMenuItem onClick={() => handleExport('csv')}>
-                  CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('excel')}>
-                  Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                  PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* Quick Add Rows */}
-          {onQuickAddRows && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={onQuickAddRows}
-              className="h-6 w-6"
-              title="+ שורות"
-            >
-              <TableRowsSplit className="h-3 w-3" />
-            </Button>
-          )}
-
-          {/* Quick Add Columns */}
-          {onQuickAddColumns && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={onQuickAddColumns}
-              className="h-6 w-6"
-              title="+ עמודות"
-            >
-              <Columns className="h-3 w-3" />
-            </Button>
-          )}
-
-          {/* Column Toggle */}
-          {columnToggle && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {/* Will be handled by popover */}}
-              className="h-6 w-6"
-              title="עמודות"
-            >
-              <Grid3x3 className="h-3 w-3" />
-            </Button>
+      {(hasData || globalSearch || columnToggle || exportable || (filterable && hasFilters)) && (
+        <div
+          className="px-3 py-1.5 border-b border-table-border bg-muted/20 flex flex-nowrap items-center justify-start gap-2 overflow-x-auto whitespace-nowrap scrollbar-thin"
+          dir="rtl"
+        >
+          {(globalSearch || columnToggle || exportable) && (
+            <TableToolbar
+              embedded
+              globalSearchTerm={state.globalSearchTerm}
+              onGlobalSearchChange={actions.setGlobalSearch}
+              columns={columns}
+              hiddenColumns={state.hiddenColumns}
+              onToggleColumn={actions.toggleColumnVisibility}
+              onReorderColumns={actions.reorderColumn}
+              onAddColumn={onAddColumn}
+              onRenameColumn={onRenameColumn}
+              onDeleteColumn={onDeleteColumn}
+              onDeleteColumns={onDeleteColumns}
+              filters={state.filters}
+              onClearFilters={actions.clearFilters}
+              exportable={exportable}
+              onExport={handleExport}
+              selectedCount={state.selectedRows.size}
+              totalCount={totalRows}
+              onQuickAddRows={onQuickAddRows}
+              onQuickAddColumns={onQuickAddColumns}
+            />
           )}
 
           {/* Freeze Columns */}
@@ -388,18 +334,18 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
               <TooltipContent>{frozenRows > 0 ? 'ביטול הקפאה' : 'הקפא שורה'}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </div>
-      )}
 
-      {/* Active Filters Display */}
-      {filterable && state.filters.length > 0 && (
-        <div className="px-4 border-b border-table-border">
-          <ActiveFilters
-            filters={state.filters}
-            columns={columns}
-            onRemoveFilter={(columnId) => actions.setFilter({ columnId, operator: 'eq', value: null })}
-            onClearAll={actions.clearFilters}
-          />
+          {filterable && state.filters.length > 0 && (
+            <ActiveFilters
+              embedded
+              filters={state.filters}
+              columns={columns}
+              onRemoveFilter={(columnId) =>
+                actions.setFilter({ columnId, operator: 'eq', value: null })
+              }
+              onClearAll={actions.clearFilters}
+            />
+          )}
         </div>
       )}
 

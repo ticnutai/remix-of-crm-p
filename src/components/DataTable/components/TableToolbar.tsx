@@ -44,6 +44,7 @@ import { ColumnDef, FilterState } from '../types';
 import { cn } from '@/lib/utils';
 
 interface TableToolbarProps<T> {
+  embedded?: boolean;
   globalSearchTerm: string;
   onGlobalSearchChange: (term: string) => void;
   columns: ColumnDef<T>[];
@@ -67,6 +68,7 @@ interface TableToolbarProps<T> {
 }
 
 export function TableToolbar<T>({
+  embedded = false,
   globalSearchTerm,
   onGlobalSearchChange,
   columns,
@@ -175,7 +177,15 @@ export function TableToolbar<T>({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-table-border bg-card">
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        embedded
+          ? "flex-nowrap min-w-max"
+          : "flex-wrap px-2 py-1.5 border-b border-table-border bg-card"
+      )}
+      dir="rtl"
+    >
       {/* Compact Search */}
       <div className="relative w-[120px]">
         <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
