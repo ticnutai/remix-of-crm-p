@@ -413,11 +413,11 @@ export default function MyDay() {
             <Button
               size="icon"
               onClick={() => setMeetingDialogOpen(true)}
-              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </Button>
-            <CardHeader className="pb-3 pr-12">
+            <CardHeader className="pb-14">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Calendar className="h-5 w-5 text-[hsl(45,80%,45%)]" />
@@ -495,15 +495,15 @@ export default function MyDay() {
           </Card>
 
           {/* Tasks */}
-          <Card className="border-2 border-[hsl(220,60%,25%)] relative">
+          <Card className="border-2 border-[hsl(45,80%,45%)] relative">
             <Button
               size="icon"
               onClick={() => setTaskDialogOpen(true)}
-              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </Button>
-            <CardHeader className="pb-3 pr-12">
+            <CardHeader className="pb-14">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <CheckSquare className="h-5 w-5 text-[hsl(220,60%,25%)]" />
@@ -587,15 +587,15 @@ export default function MyDay() {
           </Card>
 
           {/* Reminders */}
-          <Card className="relative">
+          <Card className="border-2 border-[hsl(45,80%,45%)] relative">
             <Button
               size="icon"
               onClick={() => setReminderDialogOpen(true)}
-              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </Button>
-            <CardHeader className="pb-3 pr-12">
+            <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Bell className="h-5 w-5 text-warning" />
                 תזכורות להיום
@@ -640,15 +640,15 @@ export default function MyDay() {
           </Card>
 
           {/* Time Logged */}
-          <Card className="relative">
+          <Card className="border-2 border-[hsl(45,80%,45%)] relative">
             <Button
               size="icon"
               onClick={() => setTimeDialogOpen(true)}
-              className="absolute left-3 top-3 h-6 w-6 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,20%)] text-white z-10"
+              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-4 w-4" />
             </Button>
-            <CardHeader className="pb-3 pr-12">
+            <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Clock className="h-5 w-5 text-success" />
                 זמן שנרשם היום
