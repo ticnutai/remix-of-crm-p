@@ -158,6 +158,50 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
   }, [user, fetchRunningEntry, fetchTodayEntries, fetchWeekTotal]);
 
+  // Subscribe to real-time changes in time_entries
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('timer-time-entries-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'time_entries',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('🔔 [useTimer] Real-time update:', payload.eventType);
+          
+          if (payload.eventType === 'DELETE') {
+            const deletedEntry = payload.old as TimeEntry;
+            // Remove from todayEntries if it's there
+            setTodayEntries(prev => prev.filter(e => e.id !== deletedEntry.id));
+            // Refresh week total
+            fetchWeekTotal();
+          } else if (payload.eventType === 'INSERT') {
+            // Refresh both
+            fetchTodayEntries();
+            fetchWeekTotal();
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedEntry = payload.new as TimeEntry;
+            // Update in todayEntries if it exists there
+            setTodayEntries(prev => 
+              prev.map(e => e.id === updatedEntry.id ? updatedEntry : e)
+            );
+            fetchWeekTotal();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, fetchTodayEntries, fetchWeekTotal]);
+
   // Timer tick
   useEffect(() => {
     let interval: NodeJS.Timeout;
