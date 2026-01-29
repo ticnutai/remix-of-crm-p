@@ -7,15 +7,21 @@ import { useCellSelection } from './hooks/useCellSelection';
 import { TableHeader } from './components/TableHeader';
 import { MemoizedTableCell as TableCell } from './components/TableCell';
 import { TablePagination } from './components/TablePagination';
-import { TableToolbar } from './components/TableToolbar';
 import { TableSkeleton } from './components/TableSkeleton';
 import { EmptyState } from './components/EmptyState';
 import { SummaryRow } from './components/SummaryRow';
 import { ActiveFilters } from './components/ColumnFilter';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronDown, ChevronUp, Merge, Ungroup, Lock, Unlock, AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ChevronDown, ChevronUp, Merge, Ungroup, Lock, Unlock, AlignLeft, AlignCenter, AlignRight, AlignJustify, Download, Search, Columns, Grid3x3, TableRowsSplit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -269,144 +275,85 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
 
   return (
     <div className={containerClasses}>
-      {/* Toolbar */}
-      {(globalSearch || columnToggle || exportable) && (
-        <TableToolbar
-          globalSearchTerm={state.globalSearchTerm}
-          onGlobalSearchChange={actions.setGlobalSearch}
-          columns={columns}
-          hiddenColumns={state.hiddenColumns}
-          onToggleColumn={actions.toggleColumnVisibility}
-          onReorderColumns={actions.reorderColumn}
-          onAddColumn={onAddColumn}
-          onRenameColumn={onRenameColumn}
-          onDeleteColumn={onDeleteColumn}
-          onDeleteColumns={onDeleteColumns}
-          filters={state.filters}
-          onClearFilters={actions.clearFilters}
-          exportable={exportable}
-          onExport={handleExport}
-          selectedCount={state.selectedRows.size}
-          totalCount={totalRows}
-          onQuickAddRows={onQuickAddRows}
-          onQuickAddColumns={onQuickAddColumns}
-        />
-      )}
-
-      {/* Selection Actions Bar */}
-      {multiCellSelect && cellSelection.selectedCells.size > 1 && (
-        <div className="px-4 py-2 border-b border-table-border bg-muted/30 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {cellSelection.selectedCells.size} תאים נבחרו
-          </span>
-          <div className="flex items-center gap-1 mr-auto">
-            {/* Alignment Buttons */}
-            <div className="flex items-center border rounded-md">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyAlignmentToSelectedCells('right')}
-                      className="h-7 w-7 p-0"
-                    >
-                      <AlignRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>יישור לימין</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyAlignmentToSelectedCells('center')}
-                      className="h-7 w-7 p-0"
-                    >
-                      <AlignCenter className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>יישור למרכז</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyAlignmentToSelectedCells('left')}
-                      className="h-7 w-7 p-0"
-                    >
-                      <AlignLeft className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>יישור לשמאל</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => applyAlignmentToSelectedCells('justify')}
-                      className="h-7 w-7 p-0"
-                    >
-                      <AlignJustify className="h-3.5 w-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>יישור מלא</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      onMergeCells?.(cellSelection.selectedCells);
-                      cellSelection.mergeCells();
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    <Merge className="h-3 w-3 ml-1" />
-                    מזג
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>מזג תאים נבחרים</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => cellSelection.clearSelection()}
-                    className="h-7 text-xs"
-                  >
-                    בטל בחירה
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>בטל בחירת תאים</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-      )}
-
-      {/* Freeze Controls - Compact inline */}
+      {/* Single Unified Toolbar - All controls in one row, aligned right */}
       {hasData && (
-        <div className="px-2 py-1 border-b border-table-border bg-muted/20 flex items-center gap-2 flex-wrap">
-          {/* Freeze Columns - compact */}
+        <div className="px-2 py-1.5 border-b border-table-border bg-muted/20 flex items-center gap-1.5 flex-row-reverse flex-wrap">
+          {/* Search - compact */}
+          {globalSearch && (
+            <div className="relative w-[100px]">
+              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש..."
+                value={state.globalSearchTerm}
+                onChange={(e) => actions.setGlobalSearch(e.target.value)}
+                className="pr-7 h-6 text-xs"
+              />
+            </div>
+          )}
+          
+          {/* Export */}
+          {exportable && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-6 px-2 text-xs gap-1">
+                  <Download className="h-3 w-3" />
+                  ייצוא
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" dir="rtl">
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Quick Add Rows */}
+          {onQuickAddRows && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onQuickAddRows}
+              className="h-6 w-6"
+              title="+ שורות"
+            >
+              <TableRowsSplit className="h-3 w-3" />
+            </Button>
+          )}
+
+          {/* Quick Add Columns */}
+          {onQuickAddColumns && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onQuickAddColumns}
+              className="h-6 w-6"
+              title="+ עמודות"
+            >
+              <Columns className="h-3 w-3" />
+            </Button>
+          )}
+
+          {/* Column Toggle */}
+          {columnToggle && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {/* Will be handled by popover */}}
+              className="h-6 w-6"
+              title="עמודות"
+            >
+              <Grid3x3 className="h-3 w-3" />
+            </Button>
+          )}
+
+          {/* Freeze Columns */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -418,14 +365,13 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                 >
                   {frozenColumns > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                   עמ'
-                  {frozenColumns > 0 && <span className="font-bold">{frozenColumns}</span>}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{frozenColumns > 0 ? 'ביטול הקפאה' : 'הקפא עמודה'}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          {/* Freeze Rows - compact */}
+          {/* Freeze Rows */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -437,7 +383,6 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                 >
                   {frozenRows > 0 ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                   שו'
-                  {frozenRows > 0 && <span className="font-bold">{frozenRows}</span>}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{frozenRows > 0 ? 'ביטול הקפאה' : 'הקפא שורה'}</TooltipContent>
