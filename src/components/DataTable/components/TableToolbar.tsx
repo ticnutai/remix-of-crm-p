@@ -224,12 +224,13 @@ export function TableToolbar<T>({
         {onQuickAddRows && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={onQuickAddRows}
-            className="h-8 w-8 border-primary/30 hover:border-primary"
+            className="h-8 px-3 gap-2 border-primary/30 hover:border-primary"
             title="+ שורות"
           >
-            <TableRowsSplit className="h-3.5 w-3.5 text-primary" />
+            <TableRowsSplit className="h-4 w-4 text-primary" />
+            <span className="hidden md:inline text-xs">+ שורות</span>
           </Button>
         )}
 
@@ -237,12 +238,13 @@ export function TableToolbar<T>({
         {onQuickAddColumns && (
           <Button
             variant="outline"
-            size="icon"
+            size="sm"
             onClick={onQuickAddColumns}
-            className="h-8 w-8 border-primary/30 hover:border-primary"
+            className="h-8 px-3 gap-2 border-primary/30 hover:border-primary"
             title="+ עמודות"
           >
-            <Columns className="h-3.5 w-3.5 text-primary" />
+            <Columns className="h-4 w-4 text-primary" />
+            <span className="hidden md:inline text-xs">+ עמודות</span>
           </Button>
         )}
 
