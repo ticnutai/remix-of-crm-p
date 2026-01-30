@@ -140,10 +140,10 @@ export function useInactiveClients(config: InactiveClientsConfig = { daysThresho
         if (daysSinceActivity >= config.daysThreshold) {
           inactiveClients.push({
             id: client.id,
-            name: client.name || client.contact_name || 'ללא שם',
+            name: client.name || 'ללא שם',
             email: client.email,
             phone: client.phone,
-            company: client.company_name,
+            company: client.company,
             lastActivity: lastActivity || new Date(client.created_at),
             lastActivityType: lastActivity ? 'פעילות' : 'יצירה',
             daysSinceActivity,

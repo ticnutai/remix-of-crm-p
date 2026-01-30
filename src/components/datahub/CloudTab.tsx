@@ -85,14 +85,14 @@ export function CloudTab({ onRestore }: CloudTabProps) {
   // Load cloud backups
   const fetchCloudBackups = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('cloud_backups')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
       
-      setCloudBackups(data || []);
+      setCloudBackups((data || []) as CloudBackup[]);
     } catch (error: any) {
       console.error('Error fetching cloud backups:', error);
       // Table might not exist yet

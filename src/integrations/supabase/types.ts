@@ -4516,6 +4516,45 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_goals: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          current_value: number
+          id: string
+          target_value: number
+          title: string
+          unit: string | null
+          updated_at: string | null
+          user_id: string | null
+          week_start: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          target_value?: number
+          title: string
+          unit?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_start: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          current_value?: number
+          id?: string
+          target_value?: number
+          title?: string
+          unit?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          week_start?: string
+        }
+        Relationships: []
+      }
       whatsapp_log: {
         Row: {
           client_id: string | null
@@ -4739,7 +4778,9 @@ export type Database = {
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
       is_client: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { p_email: string }; Returns: boolean }
+      quick_health_check: { Args: never; Returns: Json }
       run_system_diagnostic: { Args: never; Returns: Json }
+      run_system_health_check: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "manager" | "employee" | "client"
