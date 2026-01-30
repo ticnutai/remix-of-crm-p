@@ -186,11 +186,12 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           if (saved) {
             setLayouts(JSON.parse(saved));
           }
-        } else if (data?.setting_value?.layouts) {
-          console.log('[WidgetLayout DEBUG] Found', data.setting_value.layouts.length, 'layouts in cloud');
+        } else if ((data?.setting_value as any)?.layouts) {
+          const settingValue = data.setting_value as any;
+          console.log('[WidgetLayout DEBUG] Found', settingValue.layouts.length, 'layouts in cloud');
           // Merge with defaults to ensure all widgets exist
           const merged = DEFAULT_LAYOUTS.map(def => {
-            const saved = data.setting_value.layouts.find((l: WidgetLayout) => l.id === def.id);
+            const saved = settingValue.layouts.find((l: WidgetLayout) => l.id === def.id);
             return saved ? { ...def, ...saved } : def;
           });
           setLayouts(merged);
@@ -243,7 +244,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
         };
         console.log('[WidgetLayout DEBUG] Upsert payload:', { ...payload, user_id: payload.user_id.substring(0, 8) + '...' });
         
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('user_settings')
           .upsert(
             payload,

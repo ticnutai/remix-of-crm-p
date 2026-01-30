@@ -91,23 +91,29 @@ interface UserWithRole {
 
 // Push Notifications Settings Component
 function PushNotificationsSettings() {
+  const { user } = useAuth();
   const { 
     isSupported, 
-    isSubscribed, 
-    isLoading, 
     subscribe, 
     unsubscribe 
-  } = usePushNotifications();
+  } = usePushNotifications(user?.id);
   const { toast } = useToast();
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleToggle = async () => {
+    setIsLoading(true);
     try {
       if (isSubscribed) {
         await unsubscribe();
+        setIsSubscribed(false);
         toast({ title: 'התראות Push כובו' });
       } else {
-        await subscribe();
-        toast({ title: 'התראות Push הופעלו בהצלחה' });
+        const result = await subscribe();
+        if (result) {
+          setIsSubscribed(true);
+          toast({ title: 'התראות Push הופעלו בהצלחה' });
+        }
       }
     } catch (error) {
       toast({ 
@@ -115,6 +121,8 @@ function PushNotificationsSettings() {
         description: 'לא הצלחנו לעדכן את הגדרות ההתראות',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 

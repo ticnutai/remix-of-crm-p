@@ -216,7 +216,7 @@ function useRevenueChart() {
 export function ManagerDashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: revenueData = [] } = useRevenueChart();
-  const { isSupported, isSubscribed, subscribe } = usePushNotifications();
+  const { isSupported, subscribe } = usePushNotifications(undefined);
   const [showForecast, setShowForecast] = useState(false);
   const [dashboardView, setDashboardView] = useState<'full' | 'compact'>('full');
   
@@ -263,8 +263,8 @@ export function ManagerDashboard() {
             </Button>
           </div>
           {/* Push Notifications Enable Button */}
-          {isSupported && !isSubscribed && (
-            <Button variant="outline" size="sm" onClick={subscribe} className="gap-2">
+          {isSupported && (
+            <Button variant="outline" size="sm" onClick={() => subscribe()} className="gap-2">
               <Bell className="h-4 w-4" />
               הפעל התראות
             </Button>

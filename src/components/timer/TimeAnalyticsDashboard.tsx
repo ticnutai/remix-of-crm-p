@@ -604,7 +604,7 @@ export function TimeAnalyticsDashboard({
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="end">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setViewMode('cards')}>
                 <LayoutGrid className="h-4 w-4 ml-2" />
                 כרטיסים
@@ -637,7 +637,7 @@ export function TimeAnalyticsDashboard({
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="end">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setGroupBy('user')}>
                 <Users className="h-4 w-4 ml-2" />
                 משתמשים
@@ -675,7 +675,7 @@ export function TimeAnalyticsDashboard({
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="end">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setDateRange('today')}>היום</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDateRange('week')}>השבוע</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setDateRange('month')}>החודש</DropdownMenuItem>
@@ -698,7 +698,7 @@ export function TimeAnalyticsDashboard({
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="end" className="w-64">
+            <DropdownMenuContent align="end" className="w-64">
               <div className="p-2 space-y-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs">משתמש</Label>

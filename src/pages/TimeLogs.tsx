@@ -1399,7 +1399,7 @@ export default function TimeLogs() {
                     {viewMode === 'compact' && <Minimize2 className="h-3 w-3" />}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent dir="rtl" align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>בחר תצוגה</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setViewMode('list')}>

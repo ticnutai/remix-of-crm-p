@@ -128,7 +128,7 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
   }, [toolbarPortalId]);
 
   // Apply alignment to all selected cells
-  const applyAlignmentToSelectedCells = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+  const applyAlignmentToSelectedCells = useCallback((align: 'left' | 'center' | 'right') => {
     if (!onCellStyleChange || cellSelection.selectedCells.size === 0) return;
     
     cellSelection.selectedCells.forEach((cellId) => {
