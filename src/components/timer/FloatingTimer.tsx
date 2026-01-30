@@ -14,6 +14,7 @@ import { TimeEntriesList } from './TimeEntriesList';
 import { TimerSettingsDialog } from './TimerSettingsDialog';
 import { TimerThemeProvider, useTimerTheme } from './TimerThemeContext';
 import { Timer, Play, Square, Clock, Sparkles, Gem, Star, Palette, Pause, Save, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { QuickInputTabs } from './QuickInputTabs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -653,6 +654,14 @@ function FloatingTimerContent() {
                 </div>
               )}
             </div>
+            
+            {/* Quick Input Tabs */}
+            <QuickInputTabs
+              onSelectTitle={(title) => setStopDescription(prev => prev ? `${prev}, ${title}` : title)}
+              onSelectNote={(note) => setStopNotes(prev => prev ? `${prev}, ${note}` : note)}
+              selectedTitle={stopDescription}
+              selectedNote={stopNotes}
+            />
             
             {/* Description */}
             <div className="space-y-2">
