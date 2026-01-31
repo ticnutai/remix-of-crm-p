@@ -455,7 +455,7 @@ export function ImportTab({ onComplete }: ImportTabProps) {
     }
     
     // Insert
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from(tableName)
       .insert(transformedRecord);
     
@@ -472,7 +472,7 @@ export function ImportTab({ onComplete }: ImportTabProps) {
     record: Record<string, any>, 
     matchFields: string[]
   ): Promise<boolean> => {
-    let query = supabase.from(tableName).select('id');
+    let query = (supabase as any).from(tableName).select('id');
     
     for (const field of matchFields) {
       const value = record[field];

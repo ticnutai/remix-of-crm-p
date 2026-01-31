@@ -522,26 +522,26 @@ export default function Files() {
           <div className="flex gap-2 w-full md:w-auto">
             {hasLoaded ? (
               <>
-                <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
-                  <RefreshCw className={`h-4 w-4 ml-2 ${isLoading ? 'animate-spin' : ''}`} />
+                <Button variant="outline" onClick={handleRefresh} disabled={isDriveLoading}>
+                  <RefreshCw className={`h-4 w-4 ml-2 ${isDriveLoading ? 'animate-spin' : ''}`} />
                   רענון
                 </Button>
-                <Button variant="outline" asChild disabled={isUploading}>
+                <Button variant="outline" asChild disabled={isDriveUploading}>
                   <label className="cursor-pointer">
                     <Upload className="h-4 w-4 ml-2" />
-                    {isUploading ? 'מעלה...' : 'העלאת קובץ'}
+                    {isDriveUploading ? 'מעלה...' : 'העלאת קובץ'}
                     <input 
                       type="file" 
                       className="hidden" 
-                      onChange={handleFileUpload}
-                      disabled={isUploading}
+                      onChange={handleFileSelect}
+                      disabled={isDriveUploading}
                     />
                   </label>
                 </Button>
               </>
             ) : (
-              <Button onClick={handleConnect} disabled={isLoading} className="w-full md:w-auto">
-                {isLoading ? (
+              <Button onClick={handleConnect} disabled={isDriveLoading} className="w-full md:w-auto">
+                {isDriveLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                     מתחבר...
@@ -558,7 +558,7 @@ export default function Files() {
         </div>
 
         {/* Not Connected State */}
-        {!hasLoaded && !isLoading && (
+        {!hasLoaded && !isDriveLoading && (
           <Card className="text-center py-16">
             <CardContent>
               <HardDrive className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -575,7 +575,7 @@ export default function Files() {
         )}
 
         {/* Loading State */}
-        {isLoading && !hasLoaded && (
+        {isDriveLoading && !hasLoaded && (
           <Card>
             <CardContent className="py-8">
               <div className="space-y-4">
@@ -665,17 +665,17 @@ export default function Files() {
               )}
 
               {/* Folders - Grid View */}
-              {!searchQuery && folders.length > 0 && (
+              {!searchQuery && driveFolders.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                     <Folder className="h-4 w-4 text-yellow-500" />
-                    תיקיות ({folders.length})
+                    תיקיות ({driveFolders.length})
                   </h3>
                   <div className={viewMode === 'grid' 
                     ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
                     : "space-y-1"
                   }>
-                    {folders.map((folder) => (
+                    {driveFolders.map((folder) => (
                       <Button
                         key={folder.id}
                         variant="outline"
@@ -698,7 +698,7 @@ export default function Files() {
 
               {/* Files */}
               <div>
-                {!searchQuery && files.length > 0 && (
+                {!searchQuery && driveFiles.length > 0 && (
                   <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                     <File className="h-4 w-4" />
                     קבצים ({displayFiles.length})
@@ -706,7 +706,7 @@ export default function Files() {
                 )}
                 
                 <ScrollArea className="h-[500px]">
-                  {displayFiles.length === 0 && folders.length === 0 ? (
+                  {displayFiles.length === 0 && driveFolders.length === 0 ? (
                     <div className="text-center py-16 text-muted-foreground">
                       <File className="h-12 w-12 mx-auto mb-4 opacity-50" />
                       <p>אין קבצים בתיקייה זו</p>
@@ -717,7 +717,8 @@ export default function Files() {
                       : "space-y-1"
                     }>
                       {displayFiles.map((file) => {
-                        const FileIcon = getFileIcon(file.mimeType);
+                        const fileConfig = getFileTypeConfig(file.mimeType);
+                        const FileIcon = fileConfig.icon;
                         return viewMode === 'grid' ? (
                           <div
                             key={file.id}

@@ -229,19 +229,21 @@ export default function Quotes() {
   // PDF Export handler
   const handleExportQuotePDF = (quote: Quote) => {
     exportQuoteToPDF({
-      id: quote.id,
-      quoteNumber: quote.quote_number,
-      clientName: quote.clients?.name || 'לקוח',
-      clientEmail: quote.clients?.email,
-      clientPhone: quote.clients?.phone,
-      items: quote.items || [],
+      quote_number: quote.quote_number,
+      client_name: quote.clients?.name || 'לקוח',
+      items: (quote.items || []).map((item: any) => ({
+        description: item.name || item.description || '',
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0,
+        total: item.total || 0,
+      })),
       subtotal: quote.subtotal || 0,
-      discount: quote.discount || 0,
-      vat: quote.vat || 0,
-      total: quote.total_amount,
-      validUntil: quote.valid_until,
+      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.17 / 1.17),
+      total: quote.total_amount || 0,
       notes: quote.notes,
-      terms: quote.terms,
+      valid_until: quote.valid_until,
+    }, {
+      companyName: 'e-control CRM',
     });
     toast({
       title: 'ייצוא PDF',
