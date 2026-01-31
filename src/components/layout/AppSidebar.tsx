@@ -129,7 +129,7 @@ const systemNavItems = [
   { title: 'אנליטיקס', url: '/analytics', icon: FileSpreadsheet, color: iconColors.gold },
   { title: 'לוג שינויים', url: '/audit-log', icon: History, color: iconColors.navy },
   { title: 'תבניות הצעות', url: '/quote-templates', icon: FileSpreadsheet, color: iconColors.gold },
-  { title: 'מרכז נתונים', url: '/data-hub', icon: Database, color: iconColors.navy },
+  { title: 'גיבויים וייבוא', url: '/backups', icon: Database, color: iconColors.navy },
   { title: 'היסטוריה', url: '/history', icon: History, color: iconColors.gold },
   { title: 'הגדרות', url: '/settings', icon: Settings, color: iconColors.navy },
   { title: 'עזרה', url: '/help', icon: HelpCircle, color: iconColors.gray },

@@ -68,9 +68,24 @@ function detectFormat(data: any, fileName: string): { format: string; confidence
     return { format: 'archflow', confidence: 1 };
   }
   
+  // Format 1b: ArchFlow format with metadata/statistics (new format)
+  if (data.data && (data.metadata || data.statistics)) {
+    // Check if data contains entities in either PascalCase or camelCase
+    const dataObj = data.data;
+    if (dataObj.Client || dataObj.clients || dataObj.TimeLog || dataObj.timeLogs || 
+        dataObj.Task || dataObj.tasks || dataObj.Meeting || dataObj.meetings) {
+      return { format: 'archflow_metadata', confidence: 1 };
+    }
+  }
+  
   // Format 2: ALL_DATA format (direct entities at root)
   if (data.Client || data.Task || data.TimeLog || data.Project || data.Meeting) {
     return { format: 'all_data', confidence: 0.9 };
+  }
+  
+  // Format 2b: ALL_DATA format with camelCase
+  if (data.clients || data.tasks || data.timeLogs || data.projects || data.meetings) {
+    return { format: 'all_data_camel', confidence: 0.9 };
   }
   
   // Format 3: Spreadsheets full backup
@@ -336,6 +351,29 @@ export function normalizeExternalBackup(rawText: string, fileName: string): Norm
           data: data.data || {},
         };
         break;
+      
+      case 'archflow_metadata':
+        // Format with metadata/statistics - normalize camelCase to PascalCase
+        const archflowRawData = data.data || {};
+        const archflowNormalizedData: NormalizedBackup['data'] = {
+          Client: archflowRawData.Client || archflowRawData.clients || [],
+          Project: archflowRawData.Project || archflowRawData.projects || [],
+          TimeLog: archflowRawData.TimeLog || archflowRawData.timeLogs || [],
+          Task: archflowRawData.Task || archflowRawData.tasks || [],
+          Meeting: archflowRawData.Meeting || archflowRawData.meetings || [],
+          Quote: archflowRawData.Quote || archflowRawData.quotes || [],
+          Invoice: archflowRawData.Invoice || archflowRawData.invoices || [],
+        };
+        normalizedData = {
+          generated_at: data.metadata?.timestamp || data.metadata?.created_at || new Date().toISOString(),
+          by: data.metadata?.user || 'imported',
+          total_records: data.statistics?.total_records || 0,
+          categories: Object.keys(archflowNormalizedData).filter(k => 
+            Array.isArray(archflowNormalizedData[k]) && archflowNormalizedData[k]!.length > 0
+          ),
+          data: archflowNormalizedData,
+        };
+        break;
         
       case 'all_data':
         // Direct entities at root level
@@ -345,6 +383,26 @@ export function normalizeExternalBackup(rawText: string, fileName: string): Norm
           total_records: Object.values(data).reduce<number>((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
           categories: Object.keys(data).filter(k => Array.isArray(data[k])),
           data: data,
+        };
+        break;
+      
+      case 'all_data_camel':
+        // Direct entities at root level in camelCase - normalize to PascalCase
+        const camelData: NormalizedBackup['data'] = {
+          Client: data.clients || [],
+          Project: data.projects || [],
+          TimeLog: data.timeLogs || [],
+          Task: data.tasks || [],
+          Meeting: data.meetings || [],
+          Quote: data.quotes || [],
+          Invoice: data.invoices || [],
+        };
+        normalizedData = {
+          generated_at: new Date().toISOString(),
+          by: 'imported',
+          total_records: Object.values(camelData).reduce<number>((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0),
+          categories: Object.keys(camelData).filter(k => Array.isArray(camelData[k]) && camelData[k]!.length > 0),
+          data: camelData,
         };
         break;
         

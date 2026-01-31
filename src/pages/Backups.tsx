@@ -170,18 +170,38 @@ const parseCSVLine = (line: string): string[] => {
 
 type BackupStatus = 'idle' | 'creating' | 'restoring' | 'importing' | 'success' | 'error';
 
-// Interface for external ArchFlow backup format
+// Interface for external ArchFlow backup format (supports both PascalCase and camelCase)
 interface ArchFlowBackup {
-  generated_at: string;
-  by: string;
-  total_records: number;
-  categories: string[];
+  generated_at?: string;
+  by?: string;
+  total_records?: number;
+  categories?: string[];
+  metadata?: {
+    exported_at: string;
+    exported_by: string;
+    version: string;
+  };
+  statistics?: {
+    users: number;
+    clients: number;
+    projects: number;
+    tasks: number;
+    timeLogs: number;
+    meetings: number;
+  };
   data: {
+    // PascalCase format (backup-2026-01-20)
     Client?: ArchFlowClient[];
     Project?: ArchFlowProject[];
     TimeLog?: ArchFlowTimeLog[];
     Task?: ArchFlowTask[];
     Meeting?: ArchFlowMeeting[];
+    // camelCase format (backup_2026-01-27)
+    clients?: ArchFlowClient[];
+    projects?: ArchFlowProject[];
+    timeLogs?: ArchFlowTimeLog[];
+    tasks?: ArchFlowTask[];
+    meetings?: ArchFlowMeeting[];
     [key: string]: unknown[] | undefined;
   };
 }
@@ -936,7 +956,7 @@ export default function Backups() {
     }
   };
 
-  // Import external backup to database using Edge Function
+  // Import external backup to database using LOCAL import (no Edge Function)
   const handleExternalImport = async () => {
     if (!externalBackupData || !user) return;
 
@@ -945,133 +965,415 @@ export default function Backups() {
     setProgressMessage('מתחיל ייבוא מקיף...');
     
     try {
-      // Calculate total items for progress
-      const dataToImport = externalBackupData.data;
-      const totalItems = 
-        (importOptions.clients ? (dataToImport.Client?.length || 0) : 0) +
-        (importOptions.tasks ? (dataToImport.Task?.length || 0) : 0) +
-        (importOptions.time_entries ? (dataToImport.TimeLog?.length || 0) : 0) +
-        (importOptions.meetings ? (dataToImport.Meeting?.length || 0) : 0) +
-        (importOptions.quotes ? (dataToImport.Quote?.length || 0) : 0) +
-        (importOptions.invoices ? ((dataToImport as Record<string, unknown>).Invoice as unknown[] || []).length : 0) +
-        (importOptions.custom_spreadsheets ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[] || []).length : 0) +
-        (importOptions.custom_tables ? ((dataToImport as Record<string, unknown>).CustomTable as unknown[] || []).length : 0) +
-        (importOptions.custom_tables ? ((dataToImport as Record<string, unknown>).CustomTableData as unknown[] || []).length : 0) +
-        (importOptions.team_members ? ((dataToImport as Record<string, unknown>).TeamMember as unknown[] || []).length : 0) +
-        (importOptions.documents ? ((dataToImport as Record<string, unknown>).Document as unknown[] || []).length : 0) +
-        (importOptions.client_feedback ? ((dataToImport as Record<string, unknown>).ClientFeedback as unknown[] || []).length : 0) +
-        (importOptions.internal_messages ? ((dataToImport as Record<string, unknown>).InternalMessage as unknown[] || []).length : 0) +
-        (importOptions.chat_conversations ? ((dataToImport as Record<string, unknown>).ChatConversation as unknown[] || []).length : 0) +
-        (importOptions.user_preferences ? ((dataToImport as Record<string, unknown>).UserPreferences as unknown[] || []).length : 0) +
-        (importOptions.access_control ? ((dataToImport as Record<string, unknown>).AccessControl as unknown[] || []).length : 0);
+      const rawData = externalBackupData.data;
       
-      setProgress(5);
-      setProgressMessage(`מכין ${totalItems} רשומות לייבוא...`);
+      // Normalize data - support both PascalCase and camelCase formats
+      const dataToImport = {
+        Client: rawData.Client || rawData.clients || [],
+        Project: rawData.Project || rawData.projects || [],
+        TimeLog: rawData.TimeLog || rawData.timeLogs || [],
+        Task: rawData.Task || rawData.tasks || [],
+        Meeting: rawData.Meeting || rawData.meetings || [],
+      };
       
-      // Log what we're sending
-      console.log('Importing data categories:', Object.keys(dataToImport));
-      console.log('Data counts:', {
+      // Log what we're importing
+      console.log('Importing data categories:', Object.keys(rawData));
+      console.log('Normalized data counts:', {
         Client: dataToImport.Client?.length || 0,
         Task: dataToImport.Task?.length || 0,
         TimeLog: dataToImport.TimeLog?.length || 0,
         Meeting: dataToImport.Meeting?.length || 0,
         Quote: dataToImport.Quote?.length || 0,
         Project: dataToImport.Project?.length || 0,
-        Invoice: (dataToImport as Record<string, unknown>).Invoice ? ((dataToImport as Record<string, unknown>).Invoice as unknown[]).length : 0,
-        CustomSpreadsheet: (dataToImport as Record<string, unknown>).CustomSpreadsheet ? ((dataToImport as Record<string, unknown>).CustomSpreadsheet as unknown[]).length : 0,
-        TeamMember: (dataToImport as Record<string, unknown>).TeamMember ? ((dataToImport as Record<string, unknown>).TeamMember as unknown[]).length : 0,
-        Document: (dataToImport as Record<string, unknown>).Document ? ((dataToImport as Record<string, unknown>).Document as unknown[]).length : 0,
-        ClientFeedback: (dataToImport as Record<string, unknown>).ClientFeedback ? ((dataToImport as Record<string, unknown>).ClientFeedback as unknown[]).length : 0,
-        InternalMessage: (dataToImport as Record<string, unknown>).InternalMessage ? ((dataToImport as Record<string, unknown>).InternalMessage as unknown[]).length : 0,
-        ChatConversation: (dataToImport as Record<string, unknown>).ChatConversation ? ((dataToImport as Record<string, unknown>).ChatConversation as unknown[]).length : 0,
-        UserPreferences: (dataToImport as Record<string, unknown>).UserPreferences ? ((dataToImport as Record<string, unknown>).UserPreferences as unknown[]).length : 0,
-        AccessControl: (dataToImport as Record<string, unknown>).AccessControl ? ((dataToImport as Record<string, unknown>).AccessControl as unknown[]).length : 0,
       });
       
-      // Filter data based on import options
-      const filteredData: Record<string, unknown> = {};
-      if (importOptions.clients && dataToImport.Client) filteredData.Client = dataToImport.Client;
-      if (importOptions.projects && dataToImport.Project) filteredData.Project = dataToImport.Project;
-      if (importOptions.time_entries && dataToImport.TimeLog) filteredData.TimeLog = dataToImport.TimeLog;
-      if (importOptions.tasks && dataToImport.Task) filteredData.Task = dataToImport.Task;
-      if (importOptions.meetings && dataToImport.Meeting) filteredData.Meeting = dataToImport.Meeting;
-      if (importOptions.quotes && dataToImport.Quote) filteredData.Quote = dataToImport.Quote;
-      if (importOptions.invoices && (dataToImport as Record<string, unknown>).Invoice) filteredData.Invoice = (dataToImport as Record<string, unknown>).Invoice;
-      if (importOptions.custom_spreadsheets && (dataToImport as Record<string, unknown>).CustomSpreadsheet) filteredData.CustomSpreadsheet = (dataToImport as Record<string, unknown>).CustomSpreadsheet;
-      if (importOptions.custom_tables && (dataToImport as Record<string, unknown>).CustomTable) filteredData.CustomTable = (dataToImport as Record<string, unknown>).CustomTable;
-      if (importOptions.custom_tables && (dataToImport as Record<string, unknown>).CustomTableData) filteredData.CustomTableData = (dataToImport as Record<string, unknown>).CustomTableData;
-      if (importOptions.team_members && (dataToImport as Record<string, unknown>).TeamMember) filteredData.TeamMember = (dataToImport as Record<string, unknown>).TeamMember;
-      if (importOptions.documents && (dataToImport as Record<string, unknown>).Document) filteredData.Document = (dataToImport as Record<string, unknown>).Document;
-      if (importOptions.client_feedback && (dataToImport as Record<string, unknown>).ClientFeedback) filteredData.ClientFeedback = (dataToImport as Record<string, unknown>).ClientFeedback;
-      if (importOptions.internal_messages && (dataToImport as Record<string, unknown>).InternalMessage) filteredData.InternalMessage = (dataToImport as Record<string, unknown>).InternalMessage;
-      if (importOptions.chat_conversations && (dataToImport as Record<string, unknown>).ChatConversation) filteredData.ChatConversation = (dataToImport as Record<string, unknown>).ChatConversation;
-      if (importOptions.user_preferences && (dataToImport as Record<string, unknown>).UserPreferences) filteredData.UserPreferences = (dataToImport as Record<string, unknown>).UserPreferences;
-      if (importOptions.access_control && (dataToImport as Record<string, unknown>).AccessControl) filteredData.AccessControl = (dataToImport as Record<string, unknown>).AccessControl;
+      // Initialize stats
+      const stats: ImportStats = {
+        clients: { total: 0, imported: 0, skipped: 0 },
+        projects: { total: 0, imported: 0, skipped: 0 },
+        time_entries: { total: 0, imported: 0, skipped: 0 },
+        tasks: { total: 0, imported: 0, skipped: 0 },
+        meetings: { total: 0, imported: 0, skipped: 0 },
+      };
+
+      // Map old IDs to new IDs
+      const clientIdMap = new Map<string, string>();
+      const projectIdMap = new Map<string, string>();
       
-      setProgress(15);
-      setProgressMessage('שולח נתונים לשרת...');
+      const BATCH_SIZE = 20;
       
-      // Simulate progress during import
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev < 85) return prev + 5;
-          return prev;
-        });
-      }, 1000);
+      // Load ALL existing clients and projects upfront for efficient duplicate checking
+      console.log('Loading existing clients and projects...');
+      const { data: existingClients } = await supabase
+        .from('clients')
+        .select('id, name, name_clean, email');
       
-      setProgress(25);
-      setProgressMessage('מייבא נתונים לדאטהבייס...');
+      const { data: existingProjects } = await supabase
+        .from('projects')
+        .select('id, name, client_id');
       
-      // Call the comprehensive edge function with filtered data
-      const { data: result, error } = await supabase.functions.invoke('import-backup', {
-        body: { data: filteredData, userId: user.id }
-      });
+      // Create lookup maps for duplicates
+      const clientNameMap = new Map<string, string>();
+      const clientEmailMap = new Map<string, string>();
+      const projectNameMap = new Map<string, string>();
       
-      // Clear the progress interval
-      clearInterval(progressInterval);
-      
-      if (error) {
-        throw error;
+      for (const client of existingClients || []) {
+        if (client.name) clientNameMap.set(client.name.toLowerCase().trim(), client.id);
+        if (client.name_clean) clientNameMap.set(client.name_clean.toLowerCase().trim(), client.id);
+        if (client.email) clientEmailMap.set(client.email.toLowerCase().trim(), client.id);
       }
       
+      for (const project of existingProjects || []) {
+        if (project.name) projectNameMap.set(project.name.toLowerCase().trim(), project.id);
+      }
+      
+      console.log(`Found ${existingClients?.length || 0} existing clients, ${existingProjects?.length || 0} existing projects`);
+      
+      // Map Hebrew status to valid English status
+      const mapClientStatus = (status: string | undefined): string => {
+        const statusMap: Record<string, string> = {
+          'פוטנציאלי': 'pending',
+          'פעיל': 'active',
+          'לא_פעיל': 'inactive',
+          'מ_פעיל': 'inactive',
+          'לא פעיל': 'inactive',
+          'כליש': 'active',
+          'מילן': 'active',
+          'סיום': 'inactive',
+          'active': 'active',
+          'inactive': 'inactive',
+          'pending': 'pending',
+        };
+        return statusMap[status || ''] || 'pending';
+      };
+
+      // ===== IMPORT CLIENTS =====
+      if (importOptions.clients && dataToImport.Client) {
+        const clients = dataToImport.Client;
+        stats.clients.total = clients.length;
+        
+        for (let i = 0; i < clients.length; i += BATCH_SIZE) {
+          const batch = clients.slice(i, i + BATCH_SIZE);
+          setProgress(((i + batch.length) / clients.length) * 25);
+          setProgressMessage(`מייבא לקוחות (${Math.min(i + BATCH_SIZE, clients.length)}/${clients.length})...`);
+          
+          for (const client of batch) {
+            // Check for duplicates using in-memory maps (MUCH faster!)
+            const normalizedName = client.name?.toLowerCase().trim();
+            const normalizedEmail = client.email?.toLowerCase().trim();
+            
+            let existingId = normalizedName ? clientNameMap.get(normalizedName) : null;
+            if (!existingId && normalizedEmail) {
+              existingId = clientEmailMap.get(normalizedEmail) || null;
+            }
+            
+            if (existingId) {
+              clientIdMap.set(client.id, existingId);
+              stats.clients.skipped++;
+              continue;
+            }
+            
+            // Build notes with custom_data
+            let fullNotes = client.notes || '';
+            if (client.custom_data && Object.keys(client.custom_data).length > 0) {
+              const customDataStr = Object.entries(client.custom_data)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join('; ');
+              fullNotes = fullNotes ? `${fullNotes}\n\n--- נתונים נוספים ---\n${customDataStr}` : customDataStr;
+            }
+            
+            const { data: inserted, error } = await supabase
+              .from('clients')
+              .insert({
+                name: client.name,
+                name_clean: client.name_clean || client.name,
+                email: client.email || null,
+                phone: client.phone || null,
+                address: client.address || null,
+                company: client.company || null,
+                status: mapClientStatus(client.status),
+                stage: client.stage || 'ליד',
+                source: client.source || 'imported',
+                notes: fullNotes || null,
+                tags: client.tags || [],
+                position: client.position || null,
+                phone_secondary: client.phone_secondary || null,
+                whatsapp: client.whatsapp || null,
+                website: client.website || null,
+                linkedin: client.linkedin || null,
+                preferred_contact: client.preferred_contact || null,
+                budget_range: client.budget_range || null,
+              })
+              .select('id')
+              .single();
+            
+            if (inserted && !error) {
+              clientIdMap.set(client.id, inserted.id);
+              // Add to in-memory map to prevent duplicates in same import
+              if (normalizedName) clientNameMap.set(normalizedName, inserted.id);
+              if (normalizedEmail) clientEmailMap.set(normalizedEmail, inserted.id);
+              stats.clients.imported++;
+            } else {
+              console.error('Failed to import client:', client.name, error);
+              stats.clients.skipped++;
+            }
+          }
+        }
+      }
+
+      // ===== IMPORT PROJECTS =====
+      if (importOptions.projects && dataToImport.Project) {
+        const projects = dataToImport.Project;
+        stats.projects.total = projects.length;
+        
+        for (let i = 0; i < projects.length; i += BATCH_SIZE) {
+          const batch = projects.slice(i, i + BATCH_SIZE);
+          setProgress(25 + ((i + batch.length) / projects.length) * 15);
+          setProgressMessage(`מייבא פרויקטים (${Math.min(i + BATCH_SIZE, projects.length)}/${projects.length})...`);
+          
+          for (const project of batch) {
+            // Check for duplicates using in-memory map
+            const normalizedProjectName = project.name?.toLowerCase().trim();
+            const existingProjectId = normalizedProjectName ? projectNameMap.get(normalizedProjectName) : null;
+            
+            if (existingProjectId) {
+              projectIdMap.set(project.id, existingProjectId);
+              stats.projects.skipped++;
+              continue;
+            }
+            
+            const mappedClientId = project.client_id ? clientIdMap.get(project.client_id) || null : null;
+            
+            const { data: inserted, error } = await supabase
+              .from('projects')
+              .insert({
+                name: project.name,
+                description: project.description || null,
+                client_id: mappedClientId,
+                status: project.status || 'פעיל',
+                start_date: project.start_date || null,
+                end_date: project.end_date || null,
+              })
+              .select('id')
+              .single();
+            
+            if (inserted && !error) {
+              projectIdMap.set(project.id, inserted.id);
+              // Add to in-memory map to prevent duplicates in same import
+              if (normalizedProjectName) projectNameMap.set(normalizedProjectName, inserted.id);
+              stats.projects.imported++;
+            } else {
+              stats.projects.skipped++;
+            }
+          }
+        }
+      }
+
+      // ===== IMPORT TIME ENTRIES =====
+      if (importOptions.time_entries && dataToImport.TimeLog) {
+        const timeLogs = dataToImport.TimeLog;
+        stats.time_entries.total = timeLogs.length;
+        
+        // Fetch existing entries for duplicate checking
+        const { data: existingEntries } = await supabase
+          .from('time_entries')
+          .select('start_time, client_id, description')
+          .eq('user_id', user.id);
+        
+        const existingSet = new Set(
+          (existingEntries || []).map(e => 
+            `${e.start_time?.substring(0, 10)}|${e.client_id || 'null'}|${e.description || ''}`
+          )
+        );
+        
+        console.log(`Using ${clientNameMap.size} clients from memory for time entry matching`);
+        
+        const timeEntriesToInsert: Array<{
+          user_id: string;
+          client_id: string | null;
+          start_time: string;
+          end_time: string;
+          description: string | null;
+          is_billable: boolean;
+          is_running: boolean;
+        }> = [];
+        
+        for (let i = 0; i < timeLogs.length; i++) {
+          const timeLog = timeLogs[i];
+          
+          if (i % 100 === 0) {
+            setProgress(40 + ((i + 1) / timeLogs.length) * 20);
+            setProgressMessage(`מעבד רישומי זמן (${i + 1}/${timeLogs.length})...`);
+          }
+          
+          // Try ID mapping first, then fallback to name lookup
+          let mappedClientId = timeLog.client_id ? clientIdMap.get(timeLog.client_id) || null : null;
+          
+          // Fallback: lookup by client_name if ID mapping failed
+          if (!mappedClientId && timeLog.client_name) {
+            const normalizedClientName = timeLog.client_name.toLowerCase().trim();
+            mappedClientId = clientNameMap.get(normalizedClientName) || null;
+            if (!mappedClientId) {
+              console.log(`Could not find client for time entry: "${timeLog.client_name}"`);
+            }
+          }
+          
+          const startTime = new Date(timeLog.log_date);
+          startTime.setHours(9, 0, 0, 0);
+          
+          const endTime = new Date(startTime.getTime() + (timeLog.duration_seconds || 0) * 1000);
+          const description = [timeLog.title, timeLog.notes].filter(Boolean).join(' - ') || null;
+          
+          const key = `${startTime.toISOString().substring(0, 10)}|${mappedClientId || 'null'}|${description || ''}`;
+          if (existingSet.has(key)) {
+            stats.time_entries.skipped++;
+            continue;
+          }
+          existingSet.add(key);
+          
+          timeEntriesToInsert.push({
+            user_id: user.id,
+            client_id: mappedClientId,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            description,
+            is_billable: true,
+            is_running: false,
+          });
+        }
+        
+        // Batch insert
+        const TIME_BATCH_SIZE = 50;
+        for (let i = 0; i < timeEntriesToInsert.length; i += TIME_BATCH_SIZE) {
+          const batch = timeEntriesToInsert.slice(i, i + TIME_BATCH_SIZE);
+          setProgress(60 + ((i + batch.length) / timeEntriesToInsert.length) * 20);
+          setProgressMessage(`מייבא רישומי זמן (${Math.min(i + TIME_BATCH_SIZE, timeEntriesToInsert.length)}/${timeEntriesToInsert.length})...`);
+          
+          const { error } = await supabase.from('time_entries').insert(batch);
+          
+          if (!error) {
+            stats.time_entries.imported += batch.length;
+          } else {
+            console.error('Failed to import time entries batch:', error);
+            stats.time_entries.skipped += batch.length;
+          }
+        }
+      }
+
+      // ===== IMPORT TASKS =====
+      if (importOptions.tasks && dataToImport.Task) {
+        const tasks = dataToImport.Task;
+        stats.tasks.total = tasks.length;
+        
+        // Load existing tasks to prevent duplicates
+        const { data: existingTasks } = await supabase
+          .from('tasks')
+          .select('title, client_id, due_date')
+          .eq('assigned_to', user.id);
+        
+        const existingTasksSet = new Set(
+          (existingTasks || []).map(t => 
+            `${t.title}|${t.client_id || 'null'}|${t.due_date || 'null'}`
+          )
+        );
+        
+        for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+          const batch = tasks.slice(i, i + BATCH_SIZE);
+          setProgress(80 + ((i + batch.length) / tasks.length) * 10);
+          setProgressMessage(`מייבא משימות (${Math.min(i + BATCH_SIZE, tasks.length)}/${tasks.length})...`);
+          
+          for (const task of batch) {
+            const mappedClientId = task.client_id ? clientIdMap.get(task.client_id) || null : null;
+            
+            // Check for duplicates
+            const taskKey = `${task.title}|${mappedClientId || 'null'}|${task.due_date || 'null'}`;
+            if (existingTasksSet.has(taskKey)) {
+              stats.tasks.skipped++;
+              continue;
+            }
+            
+            const { error } = await supabase.from('tasks').insert({
+              title: task.title,
+              description: task.description || null,
+              client_id: mappedClientId,
+              status: task.status || 'pending',
+              priority: task.priority || 'medium',
+              due_date: task.due_date || null,
+              assigned_to: user.id,
+            });
+            
+            if (!error) {
+              existingTasksSet.add(taskKey);
+              stats.tasks.imported++;
+            } else {
+              stats.tasks.skipped++;
+            }
+          }
+        }
+      }
+
+      // ===== IMPORT MEETINGS =====
+      if (importOptions.meetings && dataToImport.Meeting) {
+        const meetings = dataToImport.Meeting;
+        stats.meetings.total = meetings.length;
+        
+        // Load existing meetings to prevent duplicates
+        const { data: existingMeetings } = await supabase
+          .from('meetings')
+          .select('title, client_id, meeting_date')
+          .eq('created_by', user.id);
+        
+        const existingMeetingsSet = new Set(
+          (existingMeetings || []).map(m => 
+            `${m.title}|${m.client_id || 'null'}|${m.meeting_date || 'null'}`
+          )
+        );
+        
+        for (let i = 0; i < meetings.length; i += BATCH_SIZE) {
+          const batch = meetings.slice(i, i + BATCH_SIZE);
+          setProgress(90 + ((i + batch.length) / meetings.length) * 10);
+          setProgressMessage(`מייבא פגישות (${Math.min(i + BATCH_SIZE, meetings.length)}/${meetings.length})...`);
+          
+          for (const meeting of batch) {
+            const mappedClientId = meeting.client_id ? clientIdMap.get(meeting.client_id) || null : null;
+            
+            // Check for duplicates
+            const meetingKey = `${meeting.title}|${mappedClientId || 'null'}|${meeting.meeting_date || 'null'}`;
+            if (existingMeetingsSet.has(meetingKey)) {
+              stats.meetings.skipped++;
+              continue;
+            }
+            
+            const { error } = await supabase.from('meetings').insert({
+              title: meeting.title,
+              description: meeting.description || null,
+              client_id: mappedClientId,
+              meeting_date: meeting.meeting_date || null,
+              location: meeting.location || null,
+              created_by: user.id,
+            });
+            
+            if (!error) {
+              existingMeetingsSet.add(meetingKey);
+              stats.meetings.imported++;
+            } else {
+              stats.meetings.skipped++;
+            }
+          }
+        }
+      }
+
       setProgress(100);
       setProgressMessage('הייבוא הושלם!');
-      
-      // Build stats from result
-      const stats: ImportStats = {
-        clients: { 
-          total: (result?.results?.clients?.imported || 0) + (result?.results?.clients?.updated || 0) + (result?.results?.clients?.skipped || 0),
-          imported: (result?.results?.clients?.imported || 0) + (result?.results?.clients?.updated || 0), 
-          skipped: result?.results?.clients?.skipped || 0 
-        },
-        projects: { total: 0, imported: 0, skipped: 0 },
-        time_entries: { 
-          total: (result?.results?.timeLogs?.imported || 0) + (result?.results?.timeLogs?.skipped || 0),
-          imported: result?.results?.timeLogs?.imported || 0, 
-          skipped: result?.results?.timeLogs?.skipped || 0 
-        },
-        tasks: { 
-          total: (result?.results?.tasks?.imported || 0) + (result?.results?.tasks?.skipped || 0),
-          imported: result?.results?.tasks?.imported || 0, 
-          skipped: result?.results?.tasks?.skipped || 0 
-        },
-        meetings: { 
-          total: (result?.results?.meetings?.imported || 0) + (result?.results?.meetings?.skipped || 0),
-          imported: result?.results?.meetings?.imported || 0, 
-          skipped: result?.results?.meetings?.skipped || 0 
-        },
-      };
-      
       setImportStats(stats);
       setStatus('success');
       
-      // Build detailed description
       const importedItems = [];
       if (stats.clients.imported > 0) importedItems.push(`${stats.clients.imported} לקוחות`);
+      if (stats.projects.imported > 0) importedItems.push(`${stats.projects.imported} פרויקטים`);
       if (stats.tasks.imported > 0) importedItems.push(`${stats.tasks.imported} משימות`);
       if (stats.meetings.imported > 0) importedItems.push(`${stats.meetings.imported} פגישות`);
       if (stats.time_entries.imported > 0) importedItems.push(`${stats.time_entries.imported} רישומי זמן`);
-      if (result?.results?.quotes?.imported > 0) importedItems.push(`${result.results.quotes.imported} הצעות מחיר`);
       
       toast({
         title: 'הייבוא הושלם בהצלחה! 🎉',
@@ -1079,9 +1381,6 @@ export default function Backups() {
           ? `יובאו: ${importedItems.join(', ')}`
           : 'כל הנתונים כבר קיימים במערכת',
       });
-      
-      // Log the full summary for debugging
-      console.log('Import summary:', result?.summary);
       
     } catch (error) {
       console.error('Import failed:', error);

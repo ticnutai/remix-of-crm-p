@@ -52,7 +52,7 @@ const mainNavItems = [
 ];
 
 const systemNavItems = [
-  { title: 'מרכז נתונים', url: '/data-hub', icon: Database },
+  { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
   { title: 'היסטוריה', url: '/history', icon: History },
   { title: 'הגדרות', url: '/settings', icon: Settings },
   { title: 'עזרה', url: '/help', icon: HelpCircle },
