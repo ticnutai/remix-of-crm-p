@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS weekly_goals (
 ALTER TABLE weekly_goals ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can manage their own goals, or anyone if no user_id
+DROP POLICY IF EXISTS "weekly_goals_policy" ON weekly_goals;
 CREATE POLICY "weekly_goals_policy" ON weekly_goals
   FOR ALL USING (true) WITH CHECK (true);
 

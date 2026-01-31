@@ -289,15 +289,24 @@ DECLARE
   v_year_part text;
   v_counter integer;
 BEGIN
-  -- Get schedule and contract
-  SELECT ps.*, c.*
-  INTO v_schedule, v_contract
+  -- Get schedule
+  SELECT ps.*
+  INTO v_schedule
   FROM payment_schedules ps
-  JOIN contracts c ON ps.contract_id = c.id
   WHERE ps.id = p_payment_schedule_id;
   
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Payment schedule not found: %', p_payment_schedule_id;
+  END IF;
+  
+  -- Get contract
+  SELECT c.*
+  INTO v_contract
+  FROM contracts c
+  WHERE c.id = v_schedule.contract_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Contract not found: %', v_schedule.contract_id;
   END IF;
   
   -- Check if invoice already created

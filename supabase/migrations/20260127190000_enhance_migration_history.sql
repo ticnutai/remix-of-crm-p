@@ -1,4 +1,7 @@
 -- Enhance get_migration_history to include sql_content and more details
+-- Drop the old version first because the return type is changing
+DROP FUNCTION IF EXISTS public.get_migration_history() CASCADE;
+
 CREATE OR REPLACE FUNCTION public.get_migration_history()
 RETURNS TABLE (
   id UUID,
