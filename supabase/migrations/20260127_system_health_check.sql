@@ -306,6 +306,8 @@ BEGIN
 END;
 $$;
 
+GRANT EXECUTE ON FUNCTION public.run_system_health_check() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.run_system_health_check() TO service_role;
 GRANT EXECUTE ON FUNCTION public.quick_health_check() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.quick_health_check() TO service_role;
 
