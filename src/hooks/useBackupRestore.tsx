@@ -17,12 +17,14 @@ export interface BackupData {
 
 interface BackupContextType {
   backups: BackupMetadata[];
-  createBackup: (name: string, data: Record<string, any>) => BackupData;
+  isLoading: boolean;
+  createBackup: (name: string, data?: Record<string, any>) => BackupData;
   restoreBackup: (backupId: string) => BackupData | null;
   deleteBackup: (backupId: string) => void;
   exportBackup: (backup: BackupData) => void;
   importBackup: (file: File) => Promise<BackupData | null>;
   clearAllBackups: () => void;
+  refreshBackups: () => void;
 }
 
 const BackupContext = createContext<BackupContextType | null>(null);
@@ -31,6 +33,7 @@ const STORAGE_KEY = 'ten-arch-crm-backups';
 const VERSION = '1.0.0';
 
 export function BackupProvider({ children }: { children: ReactNode }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [backups, setBackups] = useState<BackupData[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -50,6 +53,27 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     return [];
   });
 
+  const refreshBackups = useCallback(() => {
+    setIsLoading(true);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setBackups(parsed.map((b: BackupData) => ({
+          ...b,
+          metadata: {
+            ...b.metadata,
+            createdAt: new Date(b.metadata.createdAt),
+          },
+        })));
+      }
+    } catch (e) {
+      console.error('Failed to refresh backups:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const saveToStorage = useCallback((newBackups: BackupData[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newBackups));
@@ -63,7 +87,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createBackup = useCallback((name: string, data: Record<string, any>): BackupData => {
+  const createBackup = useCallback((name: string, data: Record<string, any> = {}): BackupData => {
     const backup: BackupData = {
       metadata: {
         id: crypto.randomUUID(),
@@ -194,12 +218,14 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     <BackupContext.Provider
       value={{
         backups: backups.map(b => b.metadata),
+        isLoading,
         createBackup,
         restoreBackup,
         deleteBackup,
         exportBackup,
         importBackup,
         clearAllBackups,
+        refreshBackups,
       }}
     >
       {children}

@@ -637,7 +637,7 @@ export function DataHubProvider({ children }: { children: React.ReactNode }) {
           }
           
           // Insert time entry
-          const { error } = await supabase
+          const { error } = await (supabase as any)
             .from('time_entries')
             .insert({
               client_id: clientId,
@@ -647,7 +647,7 @@ export function DataHubProvider({ children }: { children: React.ReactNode }) {
               duration_seconds: log.duration_seconds,
               is_billable: log.is_billable ?? true,
               custom_data: log.created_by_id ? { created_by_id: log.created_by_id } : null,
-            });
+            } as any);
           
           if (error) {
             stats.time_entries.errors++;

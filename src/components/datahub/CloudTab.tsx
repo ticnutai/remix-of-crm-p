@@ -122,7 +122,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
         const tableName = settings.selectedTables[i];
         setProgress((i / settings.selectedTables.length) * 70);
         
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from(tableName)
           .select('*');
         
@@ -142,7 +142,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
       // Create backup record
       const backupName = `גיבוי אוטומטי - ${new Date().toLocaleDateString('he-IL')}`;
       
-      const { data: backup, error: createError } = await supabase
+      const { data: backup, error: createError } = await (supabase as any)
         .from('cloud_backups')
         .insert({
           name: backupName,
@@ -194,7 +194,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
   // Delete cloud backup
   const deleteCloudBackup = async (backupId: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('cloud_backups')
         .delete()
         .eq('id', backupId);
@@ -221,7 +221,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
   // Download backup as JSON
   const downloadBackup = async (backup: CloudBackup) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('cloud_backups')
         .select('backup_data')
         .eq('id', backup.id)
@@ -236,7 +236,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
           tablesCount: backup.tables_count,
           recordsCount: backup.records_count,
         },
-        data: data.backup_data,
+        data: (data as any)?.backup_data,
       };
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });

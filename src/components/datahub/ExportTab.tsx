@@ -86,7 +86,7 @@ export function ExportTab({ onComplete }: ExportTabProps) {
   
   // Fetch data from selected tables
   const fetchTableData = async (tableName: string): Promise<any[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from(tableName)
       .select('*');
     

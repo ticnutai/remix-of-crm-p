@@ -1396,7 +1396,7 @@ export default function DataHub() {
             for (const row of data) {
               projects.push({
                 name: row.name || row.שם || row.Name || '',
-                clientName: row.client || row.לקוח || row.client_name,
+                client_name: row.client || row.לקוח || row.client_name,
                 status: row.status || row.סטטוס,
               });
             }
@@ -1404,9 +1404,10 @@ export default function DataHub() {
           if (lowerName.includes('time') || lowerName.includes('זמן') || lowerName.includes('log')) {
             for (const row of data) {
               timeLogs.push({
-                clientName: row.client || row.לקוח || row.client_name || '',
-                date: row.date || row.תאריך,
-                duration: parseInt(row.duration || row.duration_seconds || row.משך || '0'),
+                client_id_ref: '',
+                client_name: row.client || row.לקוח || row.client_name || '',
+                log_date: row.date || row.תאריך,
+                duration_seconds: parseInt(row.duration || row.duration_seconds || row.משך || '0'),
                 title: row.title || row.כותרת || row.description,
                 notes: row.notes || row.הערות,
               });
@@ -1752,7 +1753,7 @@ export default function DataHub() {
             }
           }
           
-          const { data: existing } = await supabase
+          const { data: existing } = await (supabase as any)
             .from('projects')
             .select('id, name')
             .eq('user_id', user.id)
@@ -1816,33 +1817,34 @@ export default function DataHub() {
           }
           
           if (mappedClientId) {
-            // Calculate start_time and end_time from the backup data
-            const startTime = timeLog.start_time 
-              ? new Date(timeLog.start_time) 
-              : timeLog.log_date 
-                ? new Date(timeLog.log_date) 
+            // Calculate start_time and end_time from the backup data (use any to access dynamic properties)
+            const log: any = timeLog;
+            const startTime = log.start_time 
+              ? new Date(log.start_time) 
+              : log.log_date 
+                ? new Date(log.log_date) 
                 : new Date();
             
             // Calculate end_time from duration
             let endTime: Date | null = null;
-            if (timeLog.end_time) {
-              endTime = new Date(timeLog.end_time);
-            } else if (timeLog.duration_seconds) {
-              endTime = new Date(startTime.getTime() + timeLog.duration_seconds * 1000);
-            } else if (timeLog.duration_minutes) {
-              endTime = new Date(startTime.getTime() + timeLog.duration_minutes * 60 * 1000);
+            if (log.end_time) {
+              endTime = new Date(log.end_time);
+            } else if (log.duration_seconds) {
+              endTime = new Date(startTime.getTime() + log.duration_seconds * 1000);
+            } else if (log.duration_minutes) {
+              endTime = new Date(startTime.getTime() + log.duration_minutes * 60 * 1000);
             }
             
-            const { error } = await supabase
+            const { error } = await (supabase as any)
               .from('time_entries')
               .insert({
                 user_id: user.id,
                 client_id: mappedClientId,
                 start_time: startTime.toISOString(),
                 end_time: endTime ? endTime.toISOString() : null,
-                description: timeLog.title || timeLog.notes || timeLog.description || '',
-                is_billable: timeLog.is_billable ?? true,
-                hourly_rate: timeLog.hourly_rate || null,
+                description: log.title || log.notes || log.description || '',
+                is_billable: log.is_billable ?? true,
+                hourly_rate: log.hourly_rate || null,
               });
             
             if (!error) {
@@ -1871,10 +1873,10 @@ export default function DataHub() {
           const mappedClientId = task.client_id ? clientIdMap[task.client_id] : null;
           const mappedProjectId = task.project_id ? projectIdMap[task.project_id] : null;
           
-          const { error } = await supabase
+          const { error } = await (supabase as any)
             .from('tasks')
             .insert({
-              user_id: user.id,
+              created_by: user.id,
               title: task.title,
               description: task.description || null,
               status: task.status || 'pending',
@@ -1906,15 +1908,15 @@ export default function DataHub() {
           
           const mappedClientId = meeting.client_id ? clientIdMap[meeting.client_id] : null;
           
-          const { error } = await supabase
+          const { error } = await (supabase as any)
             .from('meetings')
             .insert({
-              user_id: user.id,
+              created_by: user.id,
               title: meeting.title || 'פגישה',
               description: meeting.description || null,
               client_id: mappedClientId,
-              start_time: meeting.start_time || null,
-              end_time: meeting.end_time || null,
+              start_time: meeting.start_time || new Date().toISOString(),
+              end_time: meeting.end_time || new Date().toISOString(),
               location: meeting.location || null,
               notes: meeting.notes || null,
               status: meeting.status || 'scheduled',
@@ -2931,7 +2933,7 @@ export default function DataHub() {
                     <div>
                       <p className="text-2xl font-bold">
                         {backups.length > 0 
-                          ? formatDistanceToNow(new Date(backups[0].created_at), { addSuffix: true, locale: he })
+                          ? formatDistanceToNow(new Date(backups[0].createdAt), { addSuffix: true, locale: he })
                           : 'אין'}
                       </p>
                       <p className="text-sm text-muted-foreground">גיבוי אחרון</p>
@@ -3013,14 +3015,14 @@ export default function DataHub() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {format(new Date(backup.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+                              {format(new Date(backup.createdAt), 'dd/MM/yyyy HH:mm', { locale: he })}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{backup.type || 'ידני'}</Badge>
+                            <Badge variant="outline">ידני</Badge>
                           </TableCell>
                           <TableCell>{formatSize(backup.size)}</TableCell>
-                          <TableCell>{backup.metadata?.totalRecords || '-'}</TableCell>
+                          <TableCell>-</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
