@@ -47,6 +47,53 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -116,6 +163,42 @@ export type Database = {
           user_agent?: string | null
           user_email?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      backups: {
+        Row: {
+          backup_id: string
+          created_at: string | null
+          data: Json
+          id: string
+          name: string
+          size: number
+          updated_at: string | null
+          user_id: string | null
+          version: string
+        }
+        Insert: {
+          backup_id: string
+          created_at?: string | null
+          data: Json
+          id?: string
+          name: string
+          size: number
+          updated_at?: string | null
+          user_id?: string | null
+          version?: string
+        }
+        Update: {
+          backup_id?: string
+          created_at?: string | null
+          data?: Json
+          id?: string
+          name?: string
+          size?: number
+          updated_at?: string | null
+          user_id?: string | null
+          version?: string
         }
         Relationships: []
       }
@@ -379,6 +462,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      client_contacts: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          is_primary: boolean | null
+          mobile: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean | null
+          mobile?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_primary?: boolean | null
+          mobile?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_contacts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       client_custom_tabs: {
         Row: {
@@ -644,6 +777,36 @@ export type Database = {
           last_accessed_at?: string | null
           permissions?: Json | null
           token?: string
+        }
+        Relationships: []
+      }
+      client_sources: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -1245,6 +1408,7 @@ export type Database = {
           start_date: string
           status: string | null
           tags: string[] | null
+          template_id: string | null
           terminated_at: string | null
           termination_reason: string | null
           terms_and_conditions: string | null
@@ -1280,6 +1444,7 @@ export type Database = {
           start_date: string
           status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           terminated_at?: string | null
           termination_reason?: string | null
           terms_and_conditions?: string | null
@@ -1315,6 +1480,7 @@ export type Database = {
           start_date?: string
           status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           terminated_at?: string | null
           termination_reason?: string | null
           terms_and_conditions?: string | null
@@ -1341,6 +1507,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -3382,6 +3555,39 @@ export type Database = {
         }
         Relationships: []
       }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          module: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          module: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          module?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3748,7 +3954,7 @@ export type Database = {
           converted_to_contract_id?: string | null
           converted_to_invoice_id?: string | null
           created_at?: string | null
-          created_by: string
+          created_by?: string
           currency?: string | null
           description?: string | null
           discount_amount?: number | null
@@ -3955,6 +4161,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_system: boolean | null
+          name: string
+          permissions: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_system?: boolean | null
+          name: string
+          permissions?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          permissions?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       signatures: {
         Row: {
@@ -4320,6 +4559,66 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_logs: {
+        Row: {
+          billable: boolean | null
+          client_id: string | null
+          created_at: string | null
+          description: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          hourly_rate: number | null
+          id: string
+          project_name: string | null
+          start_time: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          billable?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hourly_rate?: number | null
+          id?: string
+          project_name?: string | null
+          start_time: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          billable?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          hourly_rate?: number | null
+          id?: string
+          project_name?: string | null
+          start_time?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -4735,7 +5034,17 @@ export type Database = {
         Args: { p_user_id: string; p_user_role?: string }
         Returns: Json
       }
+      check_overdue_payments: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      convert_quote_to_contract: {
+        Args: {
+          p_end_date?: string
+          p_quote_id: string
+          p_signed_date?: string
+          p_start_date: string
+        }
+        Returns: string
+      }
       create_employee_user: {
         Args: {
           p_department?: string
@@ -4748,11 +5057,30 @@ export type Database = {
         }
         Returns: Json
       }
+      create_invoice_from_schedule: {
+        Args: { p_payment_schedule_id: string }
+        Returns: string
+      }
+      create_payment_schedule: {
+        Args: {
+          p_contract_id: string
+          p_first_payment_date: string
+          p_num_payments: number
+          p_payment_amounts?: number[]
+        }
+        Returns: undefined
+      }
       execute_safe_migration: {
         Args: { p_migration_name: string; p_migration_sql: string }
         Returns: Json
       }
+      execute_safe_migration_v2: {
+        Args: { p_migration_name: string; p_migration_sql: string }
+        Returns: Json
+      }
+      generate_contract_number: { Args: never; Returns: string }
       get_client_id: { Args: { _user_id: string }; Returns: string }
+      get_contract_summary: { Args: { p_contract_id: string }; Returns: Json }
       get_migration_history: {
         Args: never
         Returns: {
@@ -4760,6 +5088,8 @@ export type Database = {
           executed_at: string
           id: string
           name: string
+          result_message: string
+          sql_content: string
           success: boolean
         }[]
       }
@@ -4774,7 +5104,9 @@ export type Database = {
         Args: { p_count?: number; p_user_id: string }
         Returns: undefined
       }
-      is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
       is_client: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { p_email: string }; Returns: boolean }
