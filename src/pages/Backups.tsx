@@ -208,13 +208,23 @@ interface ArchFlowBackup {
 
 interface ArchFlowClient {
   name: string;
+  name_clean?: string;
   email?: string;
   phone?: string;
+  phone_secondary?: string;
   address?: string;
   company?: string;
   status?: string;
   stage?: string;
+  source?: string;
   notes?: string;
+  tags?: string[];
+  position?: string;
+  whatsapp?: string;
+  website?: string;
+  linkedin?: string;
+  preferred_contact?: string;
+  budget_range?: string;
   custom_data?: Record<string, any>;
   id: string;
   created_date: string;
@@ -267,6 +277,7 @@ interface ArchFlowMeeting {
   client_id?: string;
   start_time?: string;
   end_time?: string;
+  meeting_date?: string; // Legacy field support
   location?: string;
   notes?: string;
   status?: string;
@@ -983,7 +994,6 @@ export default function Backups() {
         Task: dataToImport.Task?.length || 0,
         TimeLog: dataToImport.TimeLog?.length || 0,
         Meeting: dataToImport.Meeting?.length || 0,
-        Quote: dataToImport.Quote?.length || 0,
         Project: dataToImport.Project?.length || 0,
       });
       
@@ -1300,7 +1310,8 @@ export default function Backups() {
               priority: task.priority || 'medium',
               due_date: task.due_date || null,
               assigned_to: user.id,
-            });
+              created_by: user.id,
+            } as any);
             
             if (!error) {
               existingTasksSet.add(taskKey);
@@ -1320,12 +1331,12 @@ export default function Backups() {
         // Load existing meetings to prevent duplicates
         const { data: existingMeetings } = await supabase
           .from('meetings')
-          .select('title, client_id, meeting_date')
+          .select('title, client_id, start_time')
           .eq('created_by', user.id);
         
         const existingMeetingsSet = new Set(
           (existingMeetings || []).map(m => 
-            `${m.title}|${m.client_id || 'null'}|${m.meeting_date || 'null'}`
+            `${m.title}|${m.client_id || 'null'}|${m.start_time || 'null'}`
           )
         );
         
@@ -1337,21 +1348,26 @@ export default function Backups() {
           for (const meeting of batch) {
             const mappedClientId = meeting.client_id ? clientIdMap.get(meeting.client_id) || null : null;
             
+            // Use start_time or fallback to meeting_date for legacy data
+            const meetingStartTime = meeting.start_time || meeting.meeting_date || new Date().toISOString();
+            const meetingEndTime = meeting.end_time || (meetingStartTime ? new Date(new Date(meetingStartTime).getTime() + 3600000).toISOString() : new Date().toISOString());
+            
             // Check for duplicates
-            const meetingKey = `${meeting.title}|${mappedClientId || 'null'}|${meeting.meeting_date || 'null'}`;
+            const meetingKey = `${meeting.title}|${mappedClientId || 'null'}|${meetingStartTime}`;
             if (existingMeetingsSet.has(meetingKey)) {
               stats.meetings.skipped++;
               continue;
             }
             
             const { error } = await supabase.from('meetings').insert({
-              title: meeting.title,
+              title: meeting.title || 'פגישה',
               description: meeting.description || null,
               client_id: mappedClientId,
-              meeting_date: meeting.meeting_date || null,
+              start_time: meetingStartTime,
+              end_time: meetingEndTime,
               location: meeting.location || null,
               created_by: user.id,
-            });
+            } as any);
             
             if (!error) {
               existingMeetingsSet.add(meetingKey);
