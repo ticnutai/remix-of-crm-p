@@ -55,6 +55,7 @@ import {
   Files,
   LayoutGrid,
   Gauge,
+  TestTube,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -126,6 +127,7 @@ const mainNavItems = [
 
 const systemNavItems = [
   { title: 'אוטומציות', url: '/workflows', icon: Zap, color: iconColors.gold },
+  { title: '🧪 בדיקות', url: '/tests', icon: TestTube, color: iconColors.gold },
   { title: 'אנליטיקס', url: '/analytics', icon: FileSpreadsheet, color: iconColors.gold },
   { title: 'לוג שינויים', url: '/audit-log', icon: History, color: iconColors.navy },
   { title: 'תבניות הצעות', url: '/quote-templates', icon: FileSpreadsheet, color: iconColors.gold },

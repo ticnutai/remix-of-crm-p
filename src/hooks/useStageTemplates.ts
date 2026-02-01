@@ -96,6 +96,10 @@ export function useStageTemplates() {
           t => t.template_id === template.id && !t.template_stage_id
         );
 
+        // Debug log
+        console.log(`Template "${template.name}": ${templateStages.length} stages, tasks per stage:`, 
+          templateStages.map(s => `${s.stage_name}: ${s.tasks?.length || 0}`));
+
         return {
           ...template,
           stages: templateStages,

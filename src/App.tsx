@@ -13,6 +13,7 @@ import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
 import { PWAInstallBanner, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 
 // Lazy load pages for better performance
@@ -42,6 +43,7 @@ const Quotes = lazy(() => import("./pages/Quotes"));
 // Contracts moved into Quotes page as a tab
 const Gmail = lazy(() => import("./pages/Gmail"));
 const Files = lazy(() => import("./pages/Files"));
+const AdvancedFiles = lazy(() => import("./pages/AdvancedFiles"));
 const EmailAnalytics = lazy(() => import("./pages/EmailAnalytics"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const AuditLogPage = lazy(() => import("./pages/AuditLog"));
@@ -55,6 +57,8 @@ const Workflows = lazy(() => import("./pages/Workflows"));
 const CustomReports = lazy(() => import("./pages/CustomReports"));
 const Documents = lazy(() => import("./pages/Documents"));
 const Calls = lazy(() => import("./pages/Calls"));
+const Tests = lazy(() => import("./pages/Tests"));
+const SmartTools = lazy(() => import("./pages/SmartTools"));
 
 // Optimized QueryClient with caching
 const queryClient = new QueryClient({
@@ -70,16 +74,17 @@ const queryClient = new QueryClient({
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <AuthProvider>
-            <CloudSyncProvider>
-              <TimerProvider>
-                <UndoRedoProvider>
-                  <BackupProvider>
-                    <Toaster />
-                    <Sonner />
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              <CloudSyncProvider>
+                <TimerProvider>
+                  <UndoRedoProvider>
+                    <BackupProvider>
+                      <Toaster />
+                      <Sonner />
                     <BrowserRouter
                       future={{
                         v7_startTransition: true,
@@ -116,6 +121,8 @@ const App = () => {
                           {/* Contracts integrated into Quotes page */}
                           <Route path="/gmail" element={<Gmail />} />
                           <Route path="/files" element={<Files />} />
+                          {/* Redirect old advanced-files to unified files page */}
+                          <Route path="/advanced-files" element={<Files />} />
                           <Route path="/email-analytics" element={<EmailAnalytics />} />
                           <Route path="/analytics" element={<Analytics />} />
                           <Route path="/audit-log" element={<AuditLogPage />} />
@@ -124,9 +131,11 @@ const App = () => {
                           <Route path="/kanban" element={<TasksKanban />} />
                           <Route path="/dashboard" element={<Dashboard />} />
                           <Route path="/workflows" element={<Workflows />} />
+                          <Route path="/tests" element={<Tests />} />
                           <Route path="/custom-reports" element={<CustomReports />} />
                           <Route path="/documents" element={<Documents />} />
                           <Route path="/calls" element={<Calls />} />
+                          <Route path="/smart-tools" element={<SmartTools />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </Suspense>
@@ -146,6 +155,7 @@ const App = () => {
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 

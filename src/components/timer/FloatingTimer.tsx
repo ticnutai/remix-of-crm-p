@@ -1,5 +1,5 @@
 // Floating Timer Button - e-control CRM Pro - Luxurious Navy & Gold Design
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTimer } from '@/hooks/useTimer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,9 +12,9 @@ import { Label } from '@/components/ui/label';
 import { TimerWidget } from './TimerWidget';
 import { TimeEntriesList } from './TimeEntriesList';
 import { TimerSettingsDialog } from './TimerSettingsDialog';
+import { QuickInputSection } from './QuickInputSection';
 import { TimerThemeProvider, useTimerTheme } from './TimerThemeContext';
 import { Timer, Play, Square, Clock, Sparkles, Gem, Star, Palette, Pause, Save, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
-import { QuickInputTabs } from './QuickInputTabs';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -46,8 +46,7 @@ function FloatingTimerContent() {
     startTimer,
     pauseTimer,
     resetTimer,
-    saveEntry,
-    updateDescription
+    saveEntry
   } = useTimer();
   const {
     theme: timerTheme,
@@ -298,16 +297,13 @@ function FloatingTimerContent() {
       window.removeEventListener('touchend', handleEnd);
     };
   }, [isDragging]);
-  
-  // Memoize formatTime to prevent re-renders
-  const formatTime = useCallback((seconds: number) => {
+  const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor(seconds % 3600 / 60);
     const secs = seconds % 60;
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }, []);
-  
-  const formatMinutes = useCallback((minutes: number) => {
+  };
+  const formatMinutes = (minutes: number) => {
     if (!minutes || minutes === 0) return '0 דק\'';
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -317,38 +313,11 @@ function FloatingTimerContent() {
     if (mins === 0) return `${hrs}:00`;
     // Hours + minutes: show H:MM
     return `${hrs}:${mins.toString().padStart(2, '0')}`;
-  }, []);
-  
-  // Open stop dialog instead of directly stopping
-  const handleOpenStopDialog = useCallback((e?: React.MouseEvent) => {
-    if (e) {
-      e.stopPropagation();
-    }
-    // Pre-fill with current description if exists
-    setStopDescription(timerState.currentEntry?.description || '');
-    setStopNotes('');
-    setIsStopDialogOpen(true);
-  }, [timerState.currentEntry?.description]);
-  
-  // Confirm stop and save
-  const handleConfirmStop = useCallback(async () => {
-    // Update description if changed
-    if (stopDescription && stopDescription !== timerState.currentEntry?.description) {
-      await updateDescription(stopDescription);
-    }
-    // Stop the timer (this saves to DB)
-    await stopTimer();
-    // Reset dialog state
-    setStopDescription('');
-    setStopNotes('');
-    setIsStopDialogOpen(false);
-    toast.success('הזמן נשמר בהצלחה');
-  }, [stopDescription, timerState.currentEntry?.description, updateDescription, stopTimer]);
-  
+  };
   const handleQuickAction = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (timerState.isRunning) {
-      handleOpenStopDialog(e);
+      stopTimer();
     } else if (timerState.currentEntry) {
       resumeTimer();
     }
@@ -393,7 +362,7 @@ function FloatingTimerContent() {
                 {/* Stop Button */}
                 {(timerState.isRunning || timerState.currentEntry) && <button onClick={e => {
               e.stopPropagation();
-              handleOpenStopDialog(e);
+              stopTimer();
             }} className={cn("h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200", "hover:scale-105 active:scale-95", "bg-gradient-to-br from-red-500 to-red-700 text-white shadow-md shadow-red-500/30")}>
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>}
@@ -428,17 +397,7 @@ function FloatingTimerContent() {
         </div>
       </PopoverTrigger>
       
-      <PopoverContent 
-      forceMount
-      side="top" 
-      align="start" 
-      sideOffset={16} 
-      className={cn(
-        "p-0 rounded-3xl overflow-visible shadow-[0_0_60px_rgba(180,140,50,0.3),0_25px_60px_-15px_rgba(0,0,0,0.5)] relative",
-        "transition-all duration-200 ease-out",
-        !open && "opacity-0 pointer-events-none scale-95"
-      )}
-      style={{
+      <PopoverContent side="top" align="start" sideOffset={16} className="p-0 rounded-3xl overflow-visible shadow-[0_0_60px_rgba(180,140,50,0.3),0_25px_60px_-15px_rgba(0,0,0,0.5)] relative" style={{
       width: popoverSize.width,
       minHeight: popoverSize.height,
       backgroundColor: timerTheme.backgroundColor,
@@ -516,8 +475,10 @@ function FloatingTimerContent() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button onClick={() => {
-                    handleOpenStopDialog();
-                  }} disabled={!timerState.isRunning && timerState.elapsed === 0} className={cn("h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200", "hover:scale-110 active:scale-95 border", "disabled:opacity-30 disabled:cursor-not-allowed", "bg-white/10 border-white/30 hover:bg-white/20")}>
+                      if (timerState.isRunning || timerState.elapsed > 0) {
+                        setIsStopDialogOpen(true);
+                      }
+                    }} disabled={!timerState.isRunning && timerState.elapsed === 0} className={cn("h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200", "hover:scale-110 active:scale-95 border", "disabled:opacity-30 disabled:cursor-not-allowed", "bg-white/10 border-white/30 hover:bg-white/20")}>
                       <Square className="h-4 w-4 text-white" />
                     </button>
                   </TooltipTrigger>
@@ -633,39 +594,37 @@ function FloatingTimerContent() {
       {/* Timer Settings Dialog */}
       <TimerSettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} theme={timerTheme} onThemeChange={setTimerTheme} />
       
-      {/* Stop Timer Dialog */}
-      <Dialog open={isStopDialogOpen} onOpenChange={setIsStopDialogOpen}>
+      {/* Stop Timer Dialog - Non-Modal */}
+      <Dialog open={isStopDialogOpen} onOpenChange={setIsStopDialogOpen} modal={false}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-right">
               <Clock className="h-5 w-5 text-[#D4AF37]" />
-              סיום רישום זמן
+              סיום רישום זמן ⏱️
             </DialogTitle>
           </DialogHeader>
+          
           <div className="space-y-4 py-4">
             {/* Time display */}
             <div className="text-center p-4 rounded-xl bg-gradient-to-br from-[hsl(220,60%,20%)] to-[hsl(220,60%,15%)] border border-[#D4AF37]/30">
               <div className="text-3xl font-mono font-light text-[#D4AF37] tracking-wider">
-                {formatTime(timerState.elapsed)}
+                {(() => {
+                  const hours = Math.floor(timerState.elapsed / 3600000);
+                  const minutes = Math.floor((timerState.elapsed % 3600000) / 60000);
+                  const seconds = Math.floor((timerState.elapsed % 60000) / 1000);
+                  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                })()}
               </div>
-              {timerState.currentEntry?.client_id && (
-                <div className="text-sm text-white/70 mt-2">
-                  {/* Client name would show here if we had it */}
-                </div>
-              )}
             </div>
             
-            {/* Quick Input Tabs */}
-            <QuickInputTabs
-              onSelectTitle={(title) => setStopDescription(prev => prev ? `${prev}, ${title}` : title)}
-              onSelectNote={(note) => setStopNotes(prev => prev ? `${prev}, ${note}` : note)}
-              selectedTitle={stopDescription}
-              selectedNote={stopNotes}
-            />
-            
-            {/* Description */}
+            {/* Title with quick options */}
             <div className="space-y-2">
               <Label htmlFor="stop-description">כותרת / תיאור</Label>
+              <QuickInputSection 
+                type="title"
+                onSelect={(title) => setStopDescription(prev => prev ? `${prev}, ${title}` : title)}
+                selectedValue={stopDescription}
+              />
               <Input
                 id="stop-description"
                 value={stopDescription}
@@ -675,9 +634,14 @@ function FloatingTimerContent() {
               />
             </div>
             
-            {/* Notes */}
+            {/* Notes with quick options */}
             <div className="space-y-2">
               <Label htmlFor="stop-notes">הערות (אופציונלי)</Label>
+              <QuickInputSection 
+                type="note"
+                onSelect={(note) => setStopNotes(prev => prev ? `${prev}, ${note}` : note)}
+                selectedValue={stopNotes}
+              />
               <Textarea
                 id="stop-notes"
                 value={stopNotes}
@@ -687,6 +651,7 @@ function FloatingTimerContent() {
               />
             </div>
           </div>
+          
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
@@ -695,7 +660,13 @@ function FloatingTimerContent() {
               ביטול
             </Button>
             <Button
-              onClick={handleConfirmStop}
+              onClick={async () => {
+                await stopTimer();
+                setStopDescription('');
+                setStopNotes('');
+                setIsStopDialogOpen(false);
+                toast.success('רישום הזמן נשמר בהצלחה! ✅');
+              }}
               className="bg-[#D4AF37] hover:bg-[#B8973A] text-white"
             >
               <Save className="h-4 w-4 ml-2" />

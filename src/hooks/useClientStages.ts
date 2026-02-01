@@ -26,6 +26,47 @@ export interface ClientStage {
   tasks?: ClientStageTask[];
 }
 
+// Helper function to remove duplicate tasks (same stage_id + title)
+// Keeps the oldest task (by created_at) and marks newer duplicates for deletion
+function removeDuplicateTasks(tasks: ClientStageTask[]): ClientStageTask[] {
+  const seen = new Map<string, ClientStageTask>();
+  const duplicateIds: string[] = [];
+  
+  // Sort by created_at to keep oldest
+  const sorted = [...tasks].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  
+  for (const task of sorted) {
+    const key = `${task.stage_id}:${task.title.trim().toLowerCase()}`;
+    if (seen.has(key)) {
+      // This is a duplicate - mark for deletion
+      duplicateIds.push(task.id);
+    } else {
+      seen.set(key, task);
+    }
+  }
+  
+  // Delete duplicates from database in background
+  if (duplicateIds.length > 0) {
+    console.log(`Found ${duplicateIds.length} duplicate tasks, removing...`);
+    supabase
+      .from('client_stage_tasks')
+      .delete()
+      .in('id', duplicateIds)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Error removing duplicate tasks:', error);
+        } else {
+          console.log(`Removed ${duplicateIds.length} duplicate tasks`);
+        }
+      });
+  }
+  
+  // Return unique tasks only
+  return Array.from(seen.values());
+}
+
 export function useClientStages(clientId: string) {
   const [stages, setStages] = useState<ClientStage[]>([]);
   const [tasks, setTasks] = useState<ClientStageTask[]>([]);
@@ -66,6 +107,8 @@ export function useClientStages(clientId: string) {
         return newStages || [];
       }
 
+      // Note: We no longer auto-restore deleted default stages
+      // Users can now delete any stage including defaults
       return existingStages;
     } catch (error: unknown) {
       console.error('Error initializing stages:', error);
@@ -93,7 +136,10 @@ export function useClientStages(clientId: string) {
         .order('sort_order');
 
       if (tasksError) throw tasksError;
-      setTasks(loadedTasks || []);
+      
+      // Remove duplicates (same stage_id + title) - keep oldest
+      const uniqueTasks = removeDuplicateTasks(loadedTasks || []);
+      setTasks(uniqueTasks);
     } catch (error: unknown) {
       console.error('Error loading data:', error);
     } finally {
@@ -431,6 +477,75 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Copy a stage with all its tasks (returns data for clipboard)
+  const copyStageData = (stageId: string) => {
+    const stage = stages.find(s => s.stage_id === stageId);
+    if (!stage) return null;
+    
+    const stageTasks = tasks.filter(t => t.stage_id === stageId);
+    return {
+      stage_name: stage.stage_name,
+      stage_icon: stage.stage_icon,
+      tasks: stageTasks.map(t => ({ title: t.title, completed: t.completed })),
+    };
+  };
+
+  // Paste a stage from clipboard data
+  const pasteStageData = async (stageData: { stage_name: string; stage_icon: string | null; tasks: { title: string; completed: boolean }[] }) => {
+    try {
+      const maxSortOrder = stages.reduce((max, s) => Math.max(max, s.sort_order), -1);
+      const stageId = `custom_${Date.now()}`;
+
+      // Create the stage
+      const { data: newStage, error: stageError } = await supabase
+        .from('client_stages')
+        .insert({
+          client_id: clientId,
+          stage_id: stageId,
+          stage_name: `${stageData.stage_name} (עותק)`,
+          stage_icon: stageData.stage_icon || 'Phone',
+          sort_order: maxSortOrder + 1,
+        })
+        .select()
+        .single();
+
+      if (stageError) throw stageError;
+
+      // Create tasks
+      if (stageData.tasks.length > 0) {
+        const newTasks = stageData.tasks.map((task, index) => ({
+          client_id: clientId,
+          stage_id: stageId,
+          title: task.title,
+          completed: false, // Always start as uncompleted
+          sort_order: index,
+        }));
+
+        const { error: tasksError } = await supabase
+          .from('client_stage_tasks')
+          .insert(newTasks);
+
+        if (tasksError) throw tasksError;
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: `השלב "${stageData.stage_name}" הודבק עם ${stageData.tasks.length} משימות`,
+      });
+
+      await loadData();
+      return true;
+    } catch (error: unknown) {
+      console.error('Error pasting stage:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להדביק שלב',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   // Reorder stages
   const reorderStages = async (stageIds: string[]) => {
     try {
@@ -493,6 +608,8 @@ export function useClientStages(clientId: string) {
     deleteStage,
     reorderTasks,
     reorderStages,
+    copyStageData,
+    pasteStageData,
     refresh: loadData,
   };
 }

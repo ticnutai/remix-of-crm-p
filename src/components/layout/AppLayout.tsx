@@ -30,6 +30,7 @@ import {
   X,
   Mail,
   HardDrive,
+  Bot,
 } from 'lucide-react';
 
 // Navigation items for mobile
@@ -48,7 +49,8 @@ const mainNavItems = [
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: 'קבצים', url: '/files', icon: HardDrive },
+  { title: '📁 קבצים', url: '/files', icon: HardDrive },
+  { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
 ];
 
 const systemNavItems = [

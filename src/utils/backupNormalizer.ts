@@ -22,6 +22,11 @@ export interface NormalizedBackup {
     UserPreferences?: any[];
     Document?: any[];
     AuditLog?: any[];
+    ClientStage?: any[];
+    ClientStageTask?: any[];
+    StageTemplate?: any[];
+    StageTemplateStage?: any[];
+    StageTemplateTask?: any[];
     [key: string]: any[] | undefined;
   };
 }
@@ -363,6 +368,11 @@ export function normalizeExternalBackup(rawText: string, fileName: string): Norm
           Meeting: archflowRawData.Meeting || archflowRawData.meetings || [],
           Quote: archflowRawData.Quote || archflowRawData.quotes || [],
           Invoice: archflowRawData.Invoice || archflowRawData.invoices || [],
+          ClientStage: archflowRawData.ClientStage || archflowRawData.client_stages || [],
+          ClientStageTask: archflowRawData.ClientStageTask || archflowRawData.client_stage_tasks || [],
+          StageTemplate: archflowRawData.StageTemplate || archflowRawData.stage_templates || [],
+          StageTemplateStage: archflowRawData.StageTemplateStage || archflowRawData.stage_template_stages || [],
+          StageTemplateTask: archflowRawData.StageTemplateTask || archflowRawData.stage_template_tasks || [],
         };
         normalizedData = {
           generated_at: data.metadata?.timestamp || data.metadata?.created_at || new Date().toISOString(),
@@ -396,6 +406,11 @@ export function normalizeExternalBackup(rawText: string, fileName: string): Norm
           Meeting: data.meetings || [],
           Quote: data.quotes || [],
           Invoice: data.invoices || [],
+          ClientStage: data.client_stages || [],
+          ClientStageTask: data.client_stage_tasks || [],
+          StageTemplate: data.stage_templates || [],
+          StageTemplateStage: data.stage_template_stages || [],
+          StageTemplateTask: data.stage_template_tasks || [],
         };
         normalizedData = {
           generated_at: new Date().toISOString(),

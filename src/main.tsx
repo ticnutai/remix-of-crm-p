@@ -1,6 +1,20 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+
+// Environment validation
+const requiredEnvVars = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY'] as const;
+const missingEnvVars = requiredEnvVars.filter(
+  (key) => !import.meta.env[key]
+);
+
+if (missingEnvVars.length > 0 && import.meta.env.DEV) {
+  console.warn(
+    `⚠️ Missing environment variables: ${missingEnvVars.join(', ')}\n` +
+    'Using fallback values from vite.config.ts'
+  );
+}
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
@@ -38,4 +52,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);

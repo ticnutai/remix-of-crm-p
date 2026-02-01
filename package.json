@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "ncrm-pro",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,16 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "vite build --mode development 2>&1 && echo BUILD_OK || echo BUILD_FAILED",
-    "verify": "npm run build && echo ✅ BUILD SUCCESS"
+    "verify": "npm run build && echo ✅ BUILD SUCCESS",
+    "test": "playwright test",
+    "test:sidebar": "playwright test tests/sidebar",
+    "test:sidebar:main": "playwright test tests/sidebar/mainNavItems.test.ts",
+    "test:sidebar:system": "playwright test tests/sidebar/systemNavItems.test.ts",
+    "test:sidebar:custom": "playwright test tests/sidebar/customTables.test.ts",
+    "test:sidebar:app": "playwright test tests/sidebar/appSidebar.test.ts",
+    "test:sidebar:integration": "playwright test tests/sidebar/index.test.ts",
+    "test:sidebar:coverage": "playwright test tests/sidebar --coverage",
+    "test:sidebar:watch": "playwright test tests/sidebar --watch"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -64,6 +73,7 @@
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
+    "react-dropzone": "^14.4.0",
     "react-hook-form": "^7.61.1",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",

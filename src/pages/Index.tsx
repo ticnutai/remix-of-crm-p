@@ -29,8 +29,10 @@ import {
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useBackupRestore } from '@/hooks/useBackupRestore';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardData } from '@/hooks/useDashboardData';
+// שימוש ב-hook מאופטם עם React Query וcaching
+import { useDashboardData } from '@/hooks/useDashboardDataOptimized';
 import { usePrefetchCommonRoutes } from '@/hooks/usePrefetch';
+import { DashboardStatsSkeleton } from '@/components/dashboard/DashboardSkeletons';
 
 import { 
   Users, 
@@ -47,6 +49,7 @@ import {
   Keyboard,
   HardDrive,
   LayoutGrid,
+  Bell,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -138,6 +141,7 @@ function DashboardContent() {
   
   const {
     isLoading: dashboardLoading,
+    isChartsLoading,
     stats,
     revenueData,
     projectsStatusData,
@@ -267,7 +271,10 @@ function DashboardContent() {
             {/* Settings Dialog */}
             <DashboardSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
-            {/* Stats Cards */}
+            {/* Stats Cards - מציג skeleton בזמן טעינה */}
+            {dashboardLoading ? (
+              <DashboardStatsSkeleton />
+            ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               <ThemedStatCard
                 widgetId="stats-clients"
@@ -310,6 +317,60 @@ function DashboardContent() {
                 onClick={() => navigate('/time-logs')}
               />
             </div>
+            )}
+
+            {/* Smart Tools Quick Access Card */}
+            <FadeIn delay={0.45}>
+              <Card 
+                className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-2"
+                style={{
+                  borderColor: themeConfig.colors.accent,
+                  background: `linear-gradient(135deg, ${themeConfig.colors.cardBackground} 0%, ${themeConfig.colors.background} 100%)`,
+                }}
+                onClick={() => navigate('/smart-tools')}
+              >
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center gap-4">
+                    <div 
+                      className="h-16 w-16 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style={{
+                        background: `linear-gradient(135deg, ${themeConfig.colors.accent} 0%, ${themeConfig.colors.primary} 100%)`,
+                      }}
+                    >
+                      <Bell className="h-8 w-8 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 
+                        className="text-xl font-bold mb-1 flex items-center gap-2"
+                        style={{ color: themeConfig.colors.text }}
+                      >
+                        🤖 כלים חכמים
+                        <Badge variant="secondary" className="text-xs">חדש!</Badge>
+                      </h3>
+                      <p 
+                        className="text-sm mb-3"
+                        style={{ color: themeConfig.colors.textMuted }}
+                      >
+                        התראות אוטומטיות וצ'אט AI לשליפת מידע מהיר
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          <Bell className="h-3 w-3 mr-1" />
+                          התראות חכמות
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          צ'אט AI
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          ⚡ מהיר ומדויק
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </FadeIn>
 
             {/* Widget Grid Section - Dynamic Order Based on Layouts */}
             <WidgetGrid>

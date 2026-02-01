@@ -112,7 +112,7 @@ export function MeetingsListView({ meetings, onEdit, onDelete }: MeetingsListVie
 
                         {/* Content */}
                         <div className="flex-1 text-right">
-                          <div className="flex items-center gap-2 justify-end mb-1">
+                          <div className="flex items-center gap-2 justify-end mb-1 flex-row-reverse">
                             <TypeIcon className="h-4 w-4 text-amber-500" />
                             <h4 className="font-medium">{meeting.title}</h4>
                           </div>

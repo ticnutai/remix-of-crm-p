@@ -111,7 +111,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
 
           {/* Content */}
           <div className="flex-1 text-right">
-            <div className="flex items-center gap-2 justify-end mb-1">
+            <div className="flex items-center gap-2 justify-end mb-1 flex-row-reverse">
               <Badge variant="outline" className="text-xs font-mono">
                 #{index + 1}
               </Badge>

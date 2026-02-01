@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   DndContext, 
   closestCenter, 
@@ -49,7 +49,9 @@ import {
   Copy,
   Layers,
   BookTemplate,
-  Eye
+  Eye,
+  Clipboard,
+  ClipboardPaste
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages, ClientStage, ClientStageTask } from '@/hooks/useClientStages';
@@ -408,6 +410,10 @@ interface SortableStageItemProps {
   isFirst: boolean;
   isLast: boolean;
   Icon: React.ComponentType<{ className?: string }>;
+  onAddTasks: (stageId: string) => void;
+  addingTaskInManage: { stageId: string; mode: 'single' | 'bulk'; value: string } | null;
+  setAddingTaskInManage: React.Dispatch<React.SetStateAction<{ stageId: string; mode: 'single' | 'bulk'; value: string } | null>>;
+  onSaveTask: (stageId: string, value: string, mode: 'single' | 'bulk') => void;
 }
 
 function SortableStageItem({
@@ -422,6 +428,10 @@ function SortableStageItem({
   isFirst,
   isLast,
   Icon,
+  onAddTasks,
+  addingTaskInManage,
+  setAddingTaskInManage,
+  onSaveTask,
 }: SortableStageItemProps) {
   const {
     attributes,
@@ -438,15 +448,18 @@ function SortableStageItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const isAddingTask = addingTaskInManage?.stageId === stage.stage_id;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border bg-card transition-all",
+        "flex flex-col gap-2 p-3 rounded-lg border bg-card transition-all",
         isDragging && "shadow-lg ring-2 ring-primary/20"
       )}
     >
+      <div className="flex items-center gap-3">
       {/* Drag Handle */}
       <button
         {...attributes}
@@ -556,6 +569,111 @@ function SortableStageItem({
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+
+          {/* Add Tasks */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setAddingTaskInManage({ stageId: stage.stage_id, mode: 'single', value: '' })}
+            className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+            title="הוסף משימות"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      </div>
+
+      {/* Task count info */}
+      <div className="text-xs text-muted-foreground mr-10">
+        {stage.tasks?.length || 0} משימות
+      </div>
+
+      {/* Add task input area */}
+      {isAddingTask && (
+        <div className="mr-10 mt-2 space-y-2 border-t pt-2">
+          <div className="flex gap-2 mb-2">
+            <Button
+              size="sm"
+              variant={addingTaskInManage?.mode === 'single' ? 'default' : 'outline'}
+              onClick={() => setAddingTaskInManage(prev => prev ? { ...prev, mode: 'single' } : null)}
+              className="text-xs"
+            >
+              משימה בודדת
+            </Button>
+            <Button
+              size="sm"
+              variant={addingTaskInManage?.mode === 'bulk' ? 'default' : 'outline'}
+              onClick={() => setAddingTaskInManage(prev => prev ? { ...prev, mode: 'bulk' } : null)}
+              className="text-xs"
+            >
+              <ListPlus className="h-3 w-3 ml-1" />
+              רשימת משימות
+            </Button>
+          </div>
+          
+          {addingTaskInManage?.mode === 'single' ? (
+            <div className="flex gap-2">
+              <Input
+                value={addingTaskInManage?.value || ''}
+                onChange={(e) => setAddingTaskInManage(prev => prev ? { ...prev, value: e.target.value } : null)}
+                placeholder="שם המשימה..."
+                className="flex-1 text-right h-8"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && addingTaskInManage?.value.trim()) {
+                    onSaveTask(stage.stage_id, addingTaskInManage.value, 'single');
+                  }
+                  if (e.key === 'Escape') setAddingTaskInManage(null);
+                }}
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (addingTaskInManage?.value.trim()) {
+                    onSaveTask(stage.stage_id, addingTaskInManage.value, 'single');
+                  }
+                }}
+                disabled={!addingTaskInManage?.value.trim()}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setAddingTaskInManage(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Textarea
+                value={addingTaskInManage?.value || ''}
+                onChange={(e) => setAddingTaskInManage(prev => prev ? { ...prev, value: e.target.value } : null)}
+                placeholder="הכנס משימות, כל שורה משימה חדשה..."
+                className="min-h-[100px] text-right"
+                autoFocus
+              />
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">
+                  {addingTaskInManage?.value.split('\n').filter(l => l.trim()).length || 0} משימות
+                </span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setAddingTaskInManage(null)}>
+                    ביטול
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (addingTaskInManage?.value.trim()) {
+                        onSaveTask(stage.stage_id, addingTaskInManage.value, 'bulk');
+                      }
+                    }}
+                    disabled={!addingTaskInManage?.value.trim()}
+                  >
+                    הוסף משימות
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -576,7 +694,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     updateStage,
     deleteStage,
     reorderTasks,
-    reorderStages
+    reorderStages,
+    copyStageData,
+    pasteStageData,
+    refresh,
   } = useClientStages(clientId);
   
   const [addingTask, setAddingTask] = useState<{ stageId: string; title: string } | null>(null);
@@ -594,14 +715,20 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
   const [manageStagesDialog, setManageStagesDialog] = useState(false);
   const [editingStage, setEditingStage] = useState<{ stageId: string; name: string; icon: string } | null>(null);
   
-  // Show only contact stage by default
-  const [showAllStages, setShowAllStages] = useState(false);
+  // State for adding tasks from manage stages dialog
+  const [addingTaskInManage, setAddingTaskInManage] = useState<{ stageId: string; mode: 'single' | 'bulk'; value: string } | null>(null);
+  
+  // Show all stages by default
+  const [showAllStages, setShowAllStages] = useState(true);
   
   // Template dialogs state
   const [applyTemplateDialog, setApplyTemplateDialog] = useState(false);
   const [saveAllStagesDialog, setSaveAllStagesDialog] = useState(false);
   const [copyStagesDialog, setCopyStagesDialog] = useState(false);
   const [saveAsTemplateDialog, setSaveAsTemplateDialog] = useState<string | null>(null);
+  
+  // Clipboard state for copy/paste
+  const [copiedStage, setCopiedStage] = useState<{ stage_name: string; stage_icon: string | null; tasks: { title: string; completed: boolean }[] } | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -757,6 +884,55 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     }));
   };
 
+  // Copy stage handler
+  const handleCopyStage = (stageId: string) => {
+    const data = copyStageData(stageId);
+    if (data) {
+      setCopiedStage(data);
+      // Also copy to system clipboard as JSON for cross-client paste
+      navigator.clipboard.writeText(JSON.stringify(data)).catch(() => {});
+    }
+  };
+
+  // Paste stage handler
+  const handlePasteStage = async () => {
+    if (copiedStage) {
+      await pasteStageData(copiedStage);
+    } else {
+      // Try to read from system clipboard
+      try {
+        const text = await navigator.clipboard.readText();
+        const data = JSON.parse(text);
+        if (data.stage_name && Array.isArray(data.tasks)) {
+          await pasteStageData(data);
+        }
+      } catch {
+        // Clipboard doesn't contain valid stage data
+      }
+    }
+  };
+
+  // Keyboard shortcut for Ctrl+V to paste stage
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Only handle Ctrl+V when not in an input field
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        const activeElement = document.activeElement;
+        const isInput = activeElement instanceof HTMLInputElement || 
+                       activeElement instanceof HTMLTextAreaElement ||
+                       activeElement?.getAttribute('contenteditable') === 'true';
+        
+        if (!isInput && copiedStage) {
+          e.preventDefault();
+          await handlePasteStage();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [copiedStage, pasteStageData]);
+
   const calculateProgress = (stage: typeof stages[0]) => {
     if (!stage.tasks || stage.tasks.length === 0) return 0;
     const completed = stage.tasks.filter(t => t.completed).length;
@@ -850,6 +1026,18 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
           העתק מלקוח
         </Button>
         
+        {/* Paste Stage Button */}
+        {copiedStage && (
+          <Button
+            variant="outline"
+            onClick={handlePasteStage}
+            className="gap-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            הדבק שלב ({copiedStage.stage_name})
+          </Button>
+        )}
+        
         {/* Toggle show all stages */}
         <div className="border-r border-border pr-2 mr-2" />
         <Button
@@ -933,6 +1121,59 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     "absolute top-2 left-2 flex gap-1",
                     isActiveStage && !isStageCompleted && "text-white"
                   )}>
+                    {/* Edit Stage Button */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingStage({ 
+                          stageId: stage.stage_id, 
+                          name: stage.stage_name, 
+                          icon: stage.stage_icon || 'Phone' 
+                        });
+                        setManageStagesDialog(true);
+                      }}
+                      className={cn(
+                        "h-7 w-7 p-0",
+                        isActiveStage && !isStageCompleted && "hover:bg-white/20"
+                      )}
+                      title="ערוך שלב"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    {/* Delete Stage Button */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteStage(stage.stage_id);
+                      }}
+                      className={cn(
+                        "h-7 w-7 p-0 hover:text-destructive",
+                        isActiveStage && !isStageCompleted && "hover:bg-white/20"
+                      )}
+                      title="מחק שלב"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    {/* Copy Stage Button */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopyStage(stage.stage_id);
+                      }}
+                      className={cn(
+                        "h-7 w-7 p-0 hover:text-green-600",
+                        isActiveStage && !isStageCompleted && "hover:bg-white/20"
+                      )}
+                      title="העתק שלב (Ctrl+C)"
+                    >
+                      <Clipboard className="h-3.5 w-3.5" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -978,23 +1219,6 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     >
                       <BookTemplate className="h-3.5 w-3.5" />
                     </Button>
-                    {isCustomStage && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteStage(stage.stage_id);
-                        }}
-                        className={cn(
-                          "h-7 w-7 p-0 hover:text-destructive",
-                          isActiveStage && !isStageCompleted && "hover:bg-white/20"
-                        )}
-                        title="מחק שלב"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
                   </div>
                 )}
 
@@ -1592,9 +1816,22 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
       <Dialog open={manageStagesDialog} onOpenChange={setManageStagesDialog}>
         <DialogContent className="max-w-2xl" dir="rtl">
           <DialogHeader className="text-right">
-            <DialogTitle className="text-right">ניהול שלבים</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>ניהול שלבים</span>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setManageStagesDialog(false);
+                  setAddStageDialog(true);
+                }}
+                className="gap-1 bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4" />
+                הוסף שלב חדש
+              </Button>
+            </DialogTitle>
             <DialogDescription className="text-right">
-              ערוך, מחק או שנה את סדר השלבים. גרור כדי לשנות סדר או השתמש בחיצים.
+              ערוך, מחק או שנה את סדר השלבים. לחץ על + להוספת משימות לשלב.
             </DialogDescription>
           </DialogHeader>
           
@@ -1628,6 +1865,20 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                       isFirst={isFirst}
                       isLast={isLast}
                       Icon={Icon}
+                      onAddTasks={(stageId) => setAddingTaskInManage({ stageId, mode: 'single', value: '' })}
+                      addingTaskInManage={addingTaskInManage}
+                      setAddingTaskInManage={setAddingTaskInManage}
+                      onSaveTask={async (stageId, value, mode) => {
+                        if (mode === 'single') {
+                          await addTask(stageId, value.trim());
+                        } else {
+                          const tasks = value.split('\n').filter(t => t.trim());
+                          if (tasks.length > 0) {
+                            await addBulkTasks(stageId, tasks);
+                          }
+                        }
+                        setAddingTaskInManage(null);
+                      }}
                     />
                   );
                 })}
@@ -1649,18 +1900,21 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
         onOpenChange={setApplyTemplateDialog}
         clientId={clientId}
         existingStagesCount={sortedStages.length}
+        onApplied={refresh}
       />
       
       <SaveAllStagesDialog
         open={saveAllStagesDialog}
         onOpenChange={setSaveAllStagesDialog}
         stages={sortedStages}
+        onSaved={refresh}
       />
       
       <CopyStagesDialog
         open={copyStagesDialog}
         onOpenChange={setCopyStagesDialog}
         targetClientId={clientId}
+        onCopied={refresh}
       />
       
       {saveAsTemplateDialog && (

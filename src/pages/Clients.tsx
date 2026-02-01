@@ -214,18 +214,44 @@ export default function Clients() {
         const [entry] = entries;
         if (entry.isIntersecting && displayedCount < filteredClients.length && !isLoadingMore) {
           setIsLoadingMore(true);
-          // Simulate small delay for smooth UX
+          // Load more quickly for smoother experience
           setTimeout(() => {
             setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length));
             setIsLoadingMore(false);
-          }, 100);
+          }, 50);
         }
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { 
+        threshold: 0.1, 
+        rootMargin: '200px' // Increased margin to trigger earlier
+      }
     );
     
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
+  }, [displayedCount, filteredClients.length, isLoadingMore]);
+
+  // Additional scroll event listener for cases where IntersectionObserver doesn't trigger
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isLoadingMore || displayedCount >= filteredClients.length) return;
+      
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // Load more when user is within 300px of the bottom
+      if (scrollTop + windowHeight >= documentHeight - 300) {
+        setIsLoadingMore(true);
+        setTimeout(() => {
+          setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length));
+          setIsLoadingMore(false);
+        }, 50);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [displayedCount, filteredClients.length, isLoadingMore]);
 
   // Keyboard navigation - jump to client by typing letters

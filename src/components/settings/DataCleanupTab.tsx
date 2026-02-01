@@ -402,11 +402,25 @@ export function DataCleanupTab() {
     
     setIsLoading(category.id);
     try {
-      // Delete all records from the table
-      const { error } = await supabase
-        .from(category.tableName as any)
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // This will match all records
+      // Tables that have user_id column and RLS based on user_id
+      const tablesWithUserId = new Set(['time_entries', 'tasks', 'reminders', 'meetings', 'expenses']);
+      
+      let error;
+      if (tablesWithUserId.has(category.tableName)) {
+        // For tables with user_id RLS, filter by user_id
+        const result = await supabase
+          .from(category.tableName as any)
+          .delete()
+          .eq('user_id', user.id);
+        error = result.error;
+      } else {
+        // For other tables, use the standard approach
+        const result = await supabase
+          .from(category.tableName as any)
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // This will match all records
+        error = result.error;
+      }
 
       if (error) throw error;
 
@@ -434,6 +448,9 @@ export function DataCleanupTab() {
     
     setIsLoading('all');
     try {
+      // Tables that have user_id column and RLS based on user_id
+      const tablesWithUserId = new Set(['time_entries', 'tasks', 'reminders', 'meetings', 'expenses']);
+      
       // Delete from all tables in order (respect foreign keys)
       const deleteOrder = [
         'invoice_payments',
@@ -455,10 +472,19 @@ export function DataCleanupTab() {
       ];
 
       for (const tableName of deleteOrder) {
-        await supabase
-          .from(tableName as any)
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
+        if (tablesWithUserId.has(tableName)) {
+          // For tables with user_id RLS, filter by user_id
+          await supabase
+            .from(tableName as any)
+            .delete()
+            .eq('user_id', user.id);
+        } else {
+          // For other tables, use the standard approach
+          await supabase
+            .from(tableName as any)
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        }
       }
 
       toast({

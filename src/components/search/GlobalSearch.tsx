@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useDebouncedEffect } from '@/lib/performanceUtils';
 import {
   Command,
   CommandEmpty,
@@ -49,17 +50,23 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Debounce search query - prevent search on every keystroke
+  useDebouncedEffect(() => {
+    setDebouncedQuery(query);
+  }, [query], 300);
+
   // חיפוש
   const { data: results = [], isLoading } = useQuery({
-    queryKey: ['global-search', query],
+    queryKey: ['global-search', debouncedQuery],
     queryFn: async () => {
-      if (!query || query.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       
       const searchResults: SearchResult[] = [];
-      const searchQuery = `%${query}%`;
+      const searchQuery = `%${debouncedQuery}%`;
       
       // חיפוש לקוחות
       const { data: clients } = await supabase

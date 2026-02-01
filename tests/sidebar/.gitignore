@@ -1,0 +1,20 @@
+# תיקיות ודוחות זמניים
+playwright-report/
+test-results/
+*.log
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Temporary files
+*.tmp
+*.temp

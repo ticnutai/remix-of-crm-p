@@ -187,7 +187,7 @@ const TasksAndMeetings = () => {
         <TasksStatsHeader tasks={tasks} meetings={meetings} />
 
         {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" dir="rtl">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <TabsList className="w-fit">
               <TabsTrigger value="tasks" className="gap-2">

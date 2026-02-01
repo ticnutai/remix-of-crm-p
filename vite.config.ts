@@ -126,7 +126,11 @@ export default defineConfig(({ mode }) => {
       react(), 
       mode === "development" && componentTagger(),
       mode === "development" && devMigrationsPlugin(),
-    ].filter(Boolean),      
+    ].filter(Boolean),
+    // Remove console.log and debugger in production
+    esbuild: {
+      drop: mode === 'production' ? ['console', 'debugger'] : [],
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

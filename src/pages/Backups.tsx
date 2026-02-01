@@ -168,6 +168,64 @@ const parseCSVLine = (line: string): string[] => {
   return result;
 };
 
+// Parse time logs CSV format (from external export)
+// Format: לקוח,תאריך,שעה,כותרת,הערות,עובד,משך (שעות:דקות),משך שעות,שכר שעתי,עלות,פרויקט
+interface ParsedTimeLogEntry {
+  clientName: string;
+  date: string;
+  time: string;
+  title: string;
+  notes: string;
+  worker: string;
+  durationHours: number;
+  hourlyRate: number;
+  project: string;
+}
+
+const parseTimeLogsCSV = (csvContent: string): ParsedTimeLogEntry[] => {
+  const lines = csvContent.split('\n');
+  const entries: ParsedTimeLogEntry[] = [];
+  
+  // Expected headers (Hebrew): לקוח,תאריך,שעה,כותרת,הערות,עובד,משך (שעות:דקות),משך שעות,שכר שעתי,עלות,פרויקט
+  // We skip the first line (header) and summary lines (containing === or סה"כ)
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines, summary lines, and header rows
+    if (!line || line.includes('===') || line.includes('סה"כ') || line.startsWith('לקוח,')) {
+      continue;
+    }
+    
+    const fields = parseCSVLine(line);
+    
+    // Minimum required fields: clientName, date
+    if (fields.length < 2 || !fields[0] || !fields[1]) continue;
+    
+    const [clientName, date, time, title, notes, worker, durationHM, durationHoursStr, hourlyRateStr, cost, project] = fields;
+    
+    // Parse duration hours (e.g., "4.37")
+    const durationHours = parseFloat(durationHoursStr) || 0;
+    
+    // Skip entries without duration
+    if (durationHours <= 0) continue;
+    
+    entries.push({
+      clientName: clientName.trim(),
+      date: date.trim(),
+      time: time?.trim() || '',
+      title: title?.trim() || '',
+      notes: notes?.trim() || '',
+      worker: worker?.trim() || '',
+      durationHours,
+      hourlyRate: parseFloat(hourlyRateStr) || 0,
+      project: project?.trim() || '',
+    });
+  }
+  
+  return entries;
+};
+
 type BackupStatus = 'idle' | 'creating' | 'restoring' | 'importing' | 'success' | 'error';
 
 // Interface for external ArchFlow backup format (supports both PascalCase and camelCase)
@@ -333,6 +391,11 @@ export default function Backups() {
     custom_tables: true,
     custom_table_data: true,
     settings: true,
+    client_stages: true,
+    client_stage_tasks: true,
+    stage_templates: true,
+    stage_template_stages: true,
+    stage_template_tasks: true,
   });
   
   // Export format selection
@@ -361,6 +424,11 @@ export default function Backups() {
     user_preferences: true,
     access_control: true,
     skipDuplicates: true,
+    client_stages: true,
+    client_stage_tasks: true,
+    stage_templates: true,
+    stage_template_stages: true,
+    stage_template_tasks: true,
   });
   const [importStats, setImportStats] = useState<ImportStats | null>(null);
   const [isAutoImporting, setIsAutoImporting] = useState(false);
@@ -553,6 +621,11 @@ export default function Backups() {
     'client_tab_columns',
     'custom_tables',
     'custom_table_data',
+    'client_stages',
+    'client_stage_tasks',
+    'stage_templates',
+    'stage_template_stages',
+    'stage_template_tasks',
   ] as const;
   
   // Topic labels for display
@@ -569,6 +642,11 @@ export default function Backups() {
     custom_tables: '📋 טבלאות מותאמות',
     custom_table_data: '📝 נתוני טבלאות',
     settings: '⚙️ הגדרות',
+    client_stages: '🚦 שלבי לקוחות',
+    client_stage_tasks: '✅ משימות בשלבים',
+    stage_templates: '📜 תבניות שלבים',
+    stage_template_stages: '🎯 שלבים בתבניות',
+    stage_template_tasks: '📌 משימות בתבניות',
   };
 
   // Fetch all data from Supabase for backup (with topic selection)
@@ -985,6 +1063,11 @@ export default function Backups() {
         TimeLog: rawData.TimeLog || rawData.timeLogs || [],
         Task: rawData.Task || rawData.tasks || [],
         Meeting: rawData.Meeting || rawData.meetings || [],
+        ClientStage: rawData.ClientStage || rawData.client_stages || [],
+        ClientStageTask: rawData.ClientStageTask || rawData.client_stage_tasks || [],
+        StageTemplate: rawData.StageTemplate || rawData.stage_templates || [],
+        StageTemplateStage: rawData.StageTemplateStage || rawData.stage_template_stages || [],
+        StageTemplateTask: rawData.StageTemplateTask || rawData.stage_template_tasks || [],
       };
       
       // Log what we're importing
@@ -995,6 +1078,11 @@ export default function Backups() {
         TimeLog: dataToImport.TimeLog?.length || 0,
         Meeting: dataToImport.Meeting?.length || 0,
         Project: dataToImport.Project?.length || 0,
+        ClientStage: dataToImport.ClientStage?.length || 0,
+        ClientStageTask: dataToImport.ClientStageTask?.length || 0,
+        StageTemplate: dataToImport.StageTemplate?.length || 0,
+        StageTemplateStage: dataToImport.StageTemplateStage?.length || 0,
+        StageTemplateTask: dataToImport.StageTemplateTask?.length || 0,
       });
       
       // Initialize stats
@@ -1004,6 +1092,11 @@ export default function Backups() {
         time_entries: { total: 0, imported: 0, skipped: 0 },
         tasks: { total: 0, imported: 0, skipped: 0 },
         meetings: { total: 0, imported: 0, skipped: 0 },
+        client_stages: { total: 0, imported: 0, skipped: 0 },
+        client_stage_tasks: { total: 0, imported: 0, skipped: 0 },
+        stage_templates: { total: 0, imported: 0, skipped: 0 },
+        stage_template_stages: { total: 0, imported: 0, skipped: 0 },
+        stage_template_tasks: { total: 0, imported: 0, skipped: 0 },
       };
 
       // Map old IDs to new IDs
@@ -1379,6 +1472,149 @@ export default function Backups() {
         }
       }
 
+      // ===== IMPORT CLIENT STAGES =====
+      if (importOptions.client_stages && dataToImport.ClientStage) {
+        const stages = dataToImport.ClientStage;
+        stats.client_stages.total = stages.length;
+        
+        for (let i = 0; i < stages.length; i += BATCH_SIZE) {
+          const batch = stages.slice(i, i + BATCH_SIZE);
+          setProgressMessage(`מייבא שלבי לקוחות (${Math.min(i + BATCH_SIZE, stages.length)}/${stages.length})...`);
+          
+          for (const stage of batch) {
+            const mappedClientId = stage.client_id ? clientIdMap.get(stage.client_id) || stage.client_id : null;
+            
+            const { error } = await supabase.from('client_stages').insert({
+              client_id: mappedClientId,
+              stage_id: stage.stage_id,
+              stage_name: stage.stage_name,
+              stage_order: stage.stage_order,
+              stage_icon: stage.stage_icon,
+              is_completed: stage.is_completed || false,
+              completed_at: stage.completed_at || null,
+              created_at: stage.created_at || new Date().toISOString(),
+            });
+            
+            if (!error) {
+              stats.client_stages.imported++;
+            } else {
+              stats.client_stages.skipped++;
+            }
+          }
+        }
+      }
+
+      // ===== IMPORT CLIENT STAGE TASKS =====
+      if (importOptions.client_stage_tasks && dataToImport.ClientStageTask) {
+        const tasks = dataToImport.ClientStageTask;
+        stats.client_stage_tasks.total = tasks.length;
+        
+        for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+          const batch = tasks.slice(i, i + BATCH_SIZE);
+          setProgressMessage(`מייבא משימות שלבים (${Math.min(i + BATCH_SIZE, tasks.length)}/${tasks.length})...`);
+          
+          for (const task of batch) {
+            const mappedClientId = task.client_id ? clientIdMap.get(task.client_id) || task.client_id : null;
+            
+            const { error } = await supabase.from('client_stage_tasks').insert({
+              client_id: mappedClientId,
+              stage_id: task.stage_id,
+              task_title: task.task_title,
+              task_order: task.task_order,
+              is_completed: task.is_completed || false,
+              completed_at: task.completed_at || null,
+              created_at: task.created_at || new Date().toISOString(),
+            });
+            
+            if (!error) {
+              stats.client_stage_tasks.imported++;
+            } else {
+              stats.client_stage_tasks.skipped++;
+            }
+          }
+        }
+      }
+
+      // ===== IMPORT STAGE TEMPLATES =====
+      const templateIdMap = new Map<string, string>();
+      if (importOptions.stage_templates && dataToImport.StageTemplate) {
+        const templates = dataToImport.StageTemplate;
+        stats.stage_templates.total = templates.length;
+        
+        for (const template of templates) {
+          const newId = crypto.randomUUID();
+          const { error } = await supabase.from('stage_templates').insert({
+            id: newId,
+            name: template.name,
+            description: template.description || null,
+            category: template.category || null,
+            created_at: template.created_at || new Date().toISOString(),
+          });
+          
+          if (!error) {
+            templateIdMap.set(template.id, newId);
+            stats.stage_templates.imported++;
+          } else {
+            stats.stage_templates.skipped++;
+          }
+        }
+      }
+
+      // ===== IMPORT STAGE TEMPLATE STAGES =====
+      const templateStageIdMap = new Map<string, string>();
+      if (importOptions.stage_template_stages && dataToImport.StageTemplateStage) {
+        const stages = dataToImport.StageTemplateStage;
+        stats.stage_template_stages.total = stages.length;
+        
+        for (const stage of stages) {
+          const mappedTemplateId = stage.template_id ? templateIdMap.get(stage.template_id) || stage.template_id : null;
+          if (!mappedTemplateId) continue;
+          
+          const newId = crypto.randomUUID();
+          const { error } = await supabase.from('stage_template_stages').insert({
+            id: newId,
+            template_id: mappedTemplateId,
+            stage_id: stage.stage_id,
+            stage_name: stage.stage_name,
+            stage_order: stage.stage_order,
+            stage_icon: stage.stage_icon,
+          });
+          
+          if (!error) {
+            templateStageIdMap.set(stage.id, newId);
+            stats.stage_template_stages.imported++;
+          } else {
+            stats.stage_template_stages.skipped++;
+          }
+        }
+      }
+
+      // ===== IMPORT STAGE TEMPLATE TASKS =====
+      if (importOptions.stage_template_tasks && dataToImport.StageTemplateTask) {
+        const tasks = dataToImport.StageTemplateTask;
+        stats.stage_template_tasks.total = tasks.length;
+        
+        for (const task of tasks) {
+          const mappedTemplateId = task.template_id ? templateIdMap.get(task.template_id) || task.template_id : null;
+          const mappedTemplateStageId = task.template_stage_id ? templateStageIdMap.get(task.template_stage_id) || task.template_stage_id : null;
+          if (!mappedTemplateId) continue;
+          
+          const { error } = await supabase.from('stage_template_tasks').insert({
+            template_id: mappedTemplateId,
+            template_stage_id: mappedTemplateStageId,
+            stage_id: task.stage_id,
+            task_title: task.task_title,
+            task_order: task.task_order,
+          });
+          
+          if (!error) {
+            stats.stage_template_tasks.imported++;
+          } else {
+            stats.stage_template_tasks.skipped++;
+          }
+        }
+      }
+
       setProgress(100);
       setProgressMessage('הייבוא הושלם!');
       setImportStats(stats);
@@ -1390,6 +1626,8 @@ export default function Backups() {
       if (stats.tasks.imported > 0) importedItems.push(`${stats.tasks.imported} משימות`);
       if (stats.meetings.imported > 0) importedItems.push(`${stats.meetings.imported} פגישות`);
       if (stats.time_entries.imported > 0) importedItems.push(`${stats.time_entries.imported} רישומי זמן`);
+      if (stats.client_stages.imported > 0) importedItems.push(`${stats.client_stages.imported} שלבי לקוחות`);
+      if (stats.stage_templates.imported > 0) importedItems.push(`${stats.stage_templates.imported} תבניות שלבים`);
       
       toast({
         title: 'הייבוא הושלם בהצלחה! 🎉',
@@ -1801,6 +2039,198 @@ export default function Backups() {
   const [isFixingUnlinked, setIsFixingUnlinked] = useState(false);
   const [fixProgress, setFixProgress] = useState({ total: 0, fixed: 0, notFound: 0 });
   const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const timeLogsCSVInputRef = useRef<HTMLInputElement>(null);
+
+  // Import time logs from simple CSV format (לקוח,תאריך,שעה,כותרת...)
+  const handleTimeLogsCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setStatus('importing');
+    setProgress(0);
+    setProgressMessage('קורא קובץ CSV לוגי זמן...');
+    setIsExternalImportDialogOpen(true);
+
+    try {
+      const csvContent = await file.text();
+      
+      // Parse using new function for simple CSV format
+      const timeLogs = parseTimeLogsCSV(csvContent);
+      if (timeLogs.length === 0) {
+        throw new Error('לא נמצאו רשומות זמן בקובץ CSV');
+      }
+
+      setProgressMessage(`נמצאו ${timeLogs.length} רשומות זמן. מייבא...`);
+      setProgress(5);
+
+      // Group by client name for summary
+      const clientSummary = new Map<string, number>();
+      timeLogs.forEach(log => {
+        const count = clientSummary.get(log.clientName) || 0;
+        clientSummary.set(log.clientName, count + 1);
+      });
+      console.log(`Found ${clientSummary.size} unique clients in CSV`);
+
+      // Fetch all existing clients
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, name');
+      
+      const clientNameMap = new Map<string, string>();
+      (clients || []).forEach(c => {
+        clientNameMap.set(c.name.trim().toLowerCase(), c.id);
+      });
+
+      setProgress(10);
+      setProgressMessage('בודק לקוחות קיימים ויוצר חדשים...');
+
+      // Create missing clients
+      let clientsCreated = 0;
+      const clientNamesFromCSV = [...clientSummary.keys()];
+      
+      for (const clientName of clientNamesFromCSV) {
+        if (!clientNameMap.has(clientName.toLowerCase())) {
+          const { data: newClient, error } = await supabase
+            .from('clients')
+            .insert({
+              name: clientName,
+              user_id: user.id,
+              status: 'active',
+            })
+            .select('id')
+            .single();
+          
+          if (!error && newClient) {
+            clientNameMap.set(clientName.toLowerCase(), newClient.id);
+            clientsCreated++;
+          }
+        }
+      }
+
+      setProgress(20);
+      setProgressMessage(`נוצרו ${clientsCreated} לקוחות חדשים. מייבא רישומי זמן...`);
+
+      // Fetch existing time entries for duplicate checking
+      const { data: existingEntries } = await supabase
+        .from('time_entries')
+        .select('date, client_id, description')
+        .eq('user_id', user.id);
+
+      const existingSet = new Set(
+        (existingEntries || []).map(e => 
+          `${e.date}|${e.client_id || 'null'}|${(e.description || '').substring(0, 50)}`
+        )
+      );
+
+      const stats: ImportStats = {
+        clients: { total: clientNamesFromCSV.length, imported: clientsCreated, skipped: clientNamesFromCSV.length - clientsCreated },
+        projects: { total: 0, imported: 0, skipped: 0 },
+        time_entries: { total: timeLogs.length, imported: 0, skipped: 0 },
+        tasks: { total: 0, imported: 0, skipped: 0 },
+        meetings: { total: 0, imported: 0, skipped: 0 },
+      };
+
+      // Prepare time entries for batch insert
+      const timeEntriesToInsert: Array<{
+        user_id: string;
+        client_id: string | null;
+        date: string;
+        start_time: string | null;
+        duration_minutes: number;
+        description: string | null;
+        notes: string | null;
+        is_billable: boolean;
+        hourly_rate: number | null;
+      }> = [];
+
+      let clientsLinked = 0;
+      let clientsNotFound = 0;
+
+      for (let i = 0; i < timeLogs.length; i++) {
+        const log = timeLogs[i];
+        
+        if (i % 50 === 0) {
+          setProgress(20 + ((i + 1) / timeLogs.length) * 50);
+          setProgressMessage(`מעבד רשומות (${i + 1}/${timeLogs.length})...`);
+        }
+
+        // Find client by NAME
+        const clientName = log.clientName.trim().toLowerCase();
+        const mappedClientId = clientNameMap.get(clientName) || null;
+
+        if (mappedClientId) {
+          clientsLinked++;
+        } else {
+          clientsNotFound++;
+        }
+
+        // Build description
+        const description = [log.title, log.notes].filter(Boolean).join(' - ') || 'יובא מקובץ CSV';
+        
+        // Convert hours to minutes
+        const durationMinutes = Math.round(log.durationHours * 60);
+
+        // Check for duplicates
+        const key = `${log.date}|${mappedClientId || 'null'}|${description.substring(0, 50)}`;
+        if (existingSet.has(key)) {
+          stats.time_entries.skipped++;
+          continue;
+        }
+        existingSet.add(key);
+
+        timeEntriesToInsert.push({
+          user_id: user.id,
+          client_id: mappedClientId,
+          date: log.date,
+          start_time: log.time || null,
+          duration_minutes: durationMinutes,
+          description,
+          notes: log.notes || null,
+          is_billable: log.hourlyRate > 0,
+          hourly_rate: log.hourlyRate > 0 ? log.hourlyRate : null,
+        });
+      }
+
+      // Batch insert
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < timeEntriesToInsert.length; i += BATCH_SIZE) {
+        const batch = timeEntriesToInsert.slice(i, i + BATCH_SIZE);
+        setProgress(70 + ((i + batch.length) / timeEntriesToInsert.length) * 30);
+        setProgressMessage(`מייבא (${Math.min(i + BATCH_SIZE, timeEntriesToInsert.length)}/${timeEntriesToInsert.length})...`);
+
+        const { error } = await supabase.from('time_entries').insert(batch);
+        if (!error) {
+          stats.time_entries.imported += batch.length;
+        } else {
+          console.error('Batch insert error:', error);
+          stats.time_entries.skipped += batch.length;
+        }
+      }
+
+      setProgress(100);
+      setProgressMessage('הייבוא הושלם!');
+      setImportStats(stats);
+      setStatus('success');
+
+      toast({
+        title: 'ייבוא לוגי זמן הושלם! 🎉',
+        description: `יובאו ${stats.time_entries.imported} רשומות זמן, נוצרו ${clientsCreated} לקוחות חדשים. ${stats.time_entries.skipped} כפילויות דולגו.`,
+      });
+
+    } catch (error) {
+      console.error('Time logs CSV import failed:', error);
+      setStatus('error');
+      toast({
+        title: 'שגיאה בייבוא CSV',
+        description: error instanceof Error ? error.message : 'שגיאה לא ידועה',
+        variant: 'destructive',
+      });
+    }
+
+    if (timeLogsCSVInputRef.current) {
+      timeLogsCSVInputRef.current.value = '';
+    }
+  };
 
   // Import from CSV file with client name mapping
   const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2468,6 +2898,27 @@ export default function Backups() {
                 ref={excelFileInputRef}
                 onChange={handleExcelFileSelect}
                 accept=".xlsx,.xls"
+                className="hidden"
+              />
+
+              {/* Import Time Logs from CSV */}
+              <Button 
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                onClick={() => timeLogsCSVInputRef.current?.click()}
+                disabled={status === 'importing'}
+              >
+                {status === 'importing' ? (
+                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                ) : (
+                  <Clock className="h-4 w-4 ml-2" />
+                )}
+                ייבא לוגי זמן (CSV)
+              </Button>
+              <input
+                type="file"
+                ref={timeLogsCSVInputRef}
+                onChange={handleTimeLogsCSVImport}
+                accept=".csv"
                 className="hidden"
               />
 

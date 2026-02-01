@@ -19,6 +19,8 @@ import {
   Building2,
   Mail,
   HardDrive,
+  TestTube,
+  Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -45,13 +47,15 @@ const mainNavItems = [
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: 'קבצים', url: '/files', icon: HardDrive },
+  { title: '📁 קבצים', url: '/files', icon: HardDrive },
+  { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
 ];
 
 const systemNavItems = [
   { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
   { title: 'היסטוריה', url: '/history', icon: History },
   { title: 'הגדרות', url: '/settings', icon: Settings },
+  { title: '🧪 בדיקות', url: '/tests', icon: TestTube },
 ];
 
 interface OverlaySidebarProps {

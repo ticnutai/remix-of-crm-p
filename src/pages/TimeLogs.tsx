@@ -1,5 +1,6 @@
 // Time Logs Page - e-control CRM Pro
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useBatchedLocalStorage } from '@/lib/performanceUtils';
 import { AppLayout } from '@/components/layout';
 import { ColumnDef } from '@/components/DataTable';
 import { UniversalDataTable } from '@/components/tables/UniversalDataTable';
@@ -203,45 +204,21 @@ export default function TimeLogs() {
   });
   const [showBillableOnly, setShowBillableOnly] = useState(() => localStorage.getItem('timelogs-billable') === 'true');
   
-  // Save filters to localStorage
-  useEffect(() => {
-    localStorage.setItem('timelogs-search', searchTerm);
-  }, [searchTerm]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-view-mode', viewMode);
-  }, [viewMode]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-client', selectedClient);
-  }, [selectedClient]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-project', selectedProject);
-  }, [selectedProject]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-user', selectedUser);
-  }, [selectedUser]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-date-filter', dateFilter);
-  }, [dateFilter]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-custom-range', JSON.stringify({
+  // Batched localStorage save - prevents 8 separate re-renders!
+  useBatchedLocalStorage({
+    'timelogs-search': searchTerm,
+    'timelogs-view-mode': viewMode,
+    'timelogs-client': selectedClient,
+    'timelogs-project': selectedProject,
+    'timelogs-user': selectedUser,
+    'timelogs-date-filter': dateFilter,
+    'timelogs-custom-range': {
       from: customDateRange.from?.toISOString(),
       to: customDateRange.to?.toISOString(),
-    }));
-  }, [customDateRange]);
-  
-  useEffect(() => {
-    localStorage.setItem('timelogs-billable', String(showBillableOnly));
-  }, [showBillableOnly]);
-
-  useEffect(() => {
-    localStorage.setItem('timelogs-active-tab', activeTab);
-  }, [activeTab]);
+    },
+    'timelogs-billable': showBillableOnly,
+    'timelogs-active-tab': activeTab,
+  }, 500);
 
   // ====================================================
   // Sync FROM cloud when cloudSettings loads

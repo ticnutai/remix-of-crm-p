@@ -355,6 +355,7 @@ export function ApplyTemplateDialog({
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [showAllTasks, setShowAllTasks] = useState<Record<string, boolean>>({});
 
   const filteredTemplates = templates.filter(t => 
     t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -520,38 +521,51 @@ export function ApplyTemplateDialog({
 
                       {/* Expanded content */}
                       {isExpanded && (
-                        <div className="border-t bg-muted/30 p-3">
+                        <div className="border-t bg-muted/30 p-3 text-right" dir="rtl">
                           {template.description && (
-                            <p className="text-sm text-muted-foreground mb-3">
+                            <p className="text-sm text-muted-foreground mb-3 text-right">
                               {template.description}
                             </p>
                           )}
                           
                           {template.stages && template.stages.length > 0 && (
-                            <div className="space-y-2 mb-3">
-                              {template.stages.map(stage => {
+                            <div className="space-y-3 mb-3 max-h-[250px] overflow-y-auto">
+                              {template.stages.map((stage, stageIndex) => {
                                 const StageIcon = STAGE_ICONS[stage.stage_icon] || FolderOpen;
+                                const stageKey = `${template.id}-${stage.id}`;
+                                const showAll = showAllTasks[stageKey];
+                                const tasksToShow = showAll ? stage.tasks : stage.tasks?.slice(0, 3);
+                                
                                 return (
-                                  <div key={stage.id} className="text-sm">
-                                    <div className="flex items-center gap-2 font-medium">
-                                      <StageIcon className="h-3.5 w-3.5" />
-                                      {stage.stage_name}
-                                      <span className="text-xs text-muted-foreground">
-                                        ({stage.tasks?.length || 0})
-                                      </span>
+                                  <div key={stage.id} className="text-sm text-right border-b border-muted pb-2 last:border-b-0">
+                                    <div className="flex items-center gap-2 font-medium justify-start mb-1">
+                                      <StageIcon className="h-4 w-4 text-primary" />
+                                      <span>{stage.stage_name}</span>
+                                      <Badge variant="outline" className="text-[10px] mr-auto">
+                                        {stage.tasks?.length || 0} משימות
+                                      </Badge>
                                     </div>
                                     {stage.tasks && stage.tasks.length > 0 && (
-                                      <div className="mr-5 mt-1 space-y-0.5">
-                                        {stage.tasks.slice(0, 3).map(task => (
-                                          <div key={task.id} className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <CheckSquare className="h-2.5 w-2.5" />
-                                            {task.title}
+                                      <div className="mr-6 mt-1 space-y-1">
+                                        {tasksToShow?.map(task => (
+                                          <div key={task.id} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                                            <CheckSquare className="h-3 w-3 text-muted-foreground/60" />
+                                            <span>{task.title}</span>
                                           </div>
                                         ))}
                                         {stage.tasks.length > 3 && (
-                                          <div className="text-xs text-muted-foreground">
-                                            +{stage.tasks.length - 3} נוספות
-                                          </div>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowAllTasks(prev => ({
+                                                ...prev,
+                                                [stageKey]: !prev[stageKey]
+                                              }));
+                                            }}
+                                            className="text-xs text-primary hover:underline mt-1"
+                                          >
+                                            {showAll ? 'הסתר' : `+${stage.tasks.length - 3} נוספות`}
+                                          </button>
                                         )}
                                       </div>
                                     )}
@@ -567,7 +581,7 @@ export function ApplyTemplateDialog({
                             disabled={applying}
                           >
                             {applying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            החל תבנית
+                            החל תבנית ({template.stages?.length || 0} שלבים, {totalTasks} משימות)
                           </Button>
                         </div>
                       )}

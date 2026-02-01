@@ -1,6 +1,19 @@
 // Page Transition Wrapper - e-control CRM Pro
+// עם תמיכה ב-reduced motion לשיפור ביצועים
 import React from 'react';
 import { cn } from '@/lib/utils';
+
+// בדיקה מיידית אם יש העדפה לביטול אנימציות
+function shouldReduceMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  
+  // בדיקת הגדרה שמורה
+  const saved = localStorage.getItem('ncrm-reduced-motion');
+  if (saved === 'true') return true;
+  
+  // בדיקת העדפת מערכת
+  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+}
 
 interface PageTransitionProps {
   children: React.ReactNode;
@@ -8,10 +21,12 @@ interface PageTransitionProps {
 }
 
 export function PageTransition({ children, className }: PageTransitionProps) {
+  const reduceMotion = shouldReduceMotion();
+  
   return (
     <div 
       className={cn(
-        "animate-fade-in",
+        reduceMotion ? "opacity-100" : "animate-fade-in",
         className
       )}
     >
@@ -27,12 +42,14 @@ interface StaggeredListProps {
 }
 
 export function StaggeredList({ children, className, staggerDelay = 0.05 }: StaggeredListProps) {
+  const reduceMotion = shouldReduceMotion();
+  
   return (
     <div className={className}>
       {React.Children.map(children, (child, index) => (
         <div
-          className="animate-fade-in"
-          style={{ 
+          className={reduceMotion ? "opacity-100" : "animate-fade-in"}
+          style={reduceMotion ? undefined : { 
             animationDelay: `${index * staggerDelay}s`,
             animationFillMode: 'both'
           }}
@@ -51,10 +68,12 @@ interface FadeInProps {
 }
 
 export function FadeIn({ children, delay = 0, className }: FadeInProps) {
+  const reduceMotion = shouldReduceMotion();
+  
   return (
     <div
-      className={cn("animate-fade-in", className)}
-      style={{ 
+      className={cn(reduceMotion ? "opacity-100" : "animate-fade-in", className)}
+      style={reduceMotion ? undefined : { 
         animationDelay: `${delay}s`,
         animationFillMode: 'both'
       }}
@@ -72,13 +91,17 @@ interface SlideInProps {
 }
 
 export function SlideIn({ children, direction = 'right', delay = 0, className }: SlideInProps) {
+  const reduceMotion = shouldReduceMotion();
+  
   return (
     <div
       className={cn(
-        direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left',
+        reduceMotion 
+          ? "opacity-100" 
+          : direction === 'right' ? 'animate-slide-in-right' : 'animate-slide-in-left',
         className
       )}
-      style={{ 
+      style={reduceMotion ? undefined : { 
         animationDelay: `${delay}s`,
         animationFillMode: 'both'
       }}
@@ -95,10 +118,12 @@ interface ScaleInProps {
 }
 
 export function ScaleIn({ children, delay = 0, className }: ScaleInProps) {
+  const reduceMotion = shouldReduceMotion();
+  
   return (
     <div
-      className={cn("animate-scale-in", className)}
-      style={{ 
+      className={cn(reduceMotion ? "opacity-100" : "animate-scale-in", className)}
+      style={reduceMotion ? undefined : { 
         animationDelay: `${delay}s`,
         animationFillMode: 'both'
       }}

@@ -1,6 +1,7 @@
 // Backup & Restore System - e-control CRM Pro
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface BackupMetadata {
   id: string;
@@ -18,13 +19,13 @@ export interface BackupData {
 interface BackupContextType {
   backups: BackupMetadata[];
   isLoading: boolean;
-  createBackup: (name: string, data?: Record<string, any>) => BackupData;
+  createBackup: (name: string, data?: Record<string, any>) => Promise<BackupData>;
   restoreBackup: (backupId: string) => BackupData | null;
-  deleteBackup: (backupId: string) => void;
+  deleteBackup: (backupId: string) => Promise<void>;
   exportBackup: (backup: BackupData) => void;
   importBackup: (file: File) => Promise<BackupData | null>;
-  clearAllBackups: () => void;
-  refreshBackups: () => void;
+  clearAllBackups: () => Promise<void>;
+  refreshBackups: () => Promise<void>;
 }
 
 const BackupContext = createContext<BackupContextType | null>(null);
@@ -53,27 +54,6 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     return [];
   });
 
-  const refreshBackups = useCallback(() => {
-    setIsLoading(true);
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setBackups(parsed.map((b: BackupData) => ({
-          ...b,
-          metadata: {
-            ...b.metadata,
-            createdAt: new Date(b.metadata.createdAt),
-          },
-        })));
-      }
-    } catch (e) {
-      console.error('Failed to refresh backups:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   const saveToStorage = useCallback((newBackups: BackupData[]) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newBackups));
@@ -87,7 +67,117 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createBackup = useCallback((name: string, data: Record<string, any> = {}): BackupData => {
+  const loadCloudBackups = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('backups')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load cloud backups:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const cloudBackups: BackupData[] = data.map(b => ({
+          metadata: {
+            id: b.backup_id,
+            name: b.name,
+            createdAt: new Date(b.created_at),
+            size: b.size,
+            version: b.version,
+          },
+          data: b.data,
+        }));
+
+        // Merge with local backups (prefer cloud)
+        const localBackups = [...backups];
+        const mergedBackups = [...cloudBackups];
+        
+        localBackups.forEach(local => {
+          if (!cloudBackups.find(c => c.metadata.id === local.metadata.id)) {
+            mergedBackups.push(local);
+          }
+        });
+
+        setBackups(mergedBackups);
+        saveToStorage(mergedBackups);
+      }
+    } catch (e) {
+      console.error('Failed to sync with cloud:', e);
+    }
+  }, [backups, saveToStorage]);
+
+  // Load backups from Supabase on mount
+  useEffect(() => {
+    loadCloudBackups();
+  }, [loadCloudBackups]);
+
+  const refreshBackups = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Load from localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      let localBackups: BackupData[] = [];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localBackups = parsed.map((b: BackupData) => ({
+          ...b,
+          metadata: {
+            ...b.metadata,
+            createdAt: new Date(b.metadata.createdAt),
+          },
+        }));
+      }
+
+      // Load from cloud
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('backups')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const cloudBackups: BackupData[] = data.map(b => ({
+            metadata: {
+              id: b.backup_id,
+              name: b.name,
+              createdAt: new Date(b.created_at),
+              size: b.size,
+              version: b.version,
+            },
+            data: b.data,
+          }));
+
+          // Merge local and cloud
+          const mergedBackups = [...cloudBackups];
+          localBackups.forEach(local => {
+            if (!cloudBackups.find(c => c.metadata.id === local.metadata.id)) {
+              mergedBackups.push(local);
+            }
+          });
+
+          setBackups(mergedBackups);
+          saveToStorage(mergedBackups);
+        } else {
+          setBackups(localBackups);
+        }
+      } else {
+        setBackups(localBackups);
+      }
+    } catch (e) {
+      console.error('Failed to refresh backups:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [saveToStorage]);
+
+  const createBackup = useCallback(async (name: string, data: Record<string, any> = {}): Promise<BackupData> => {
     const backup: BackupData = {
       metadata: {
         id: crypto.randomUUID(),
@@ -99,16 +189,52 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       data,
     };
 
+    // Save to localStorage
     setBackups(prev => {
       const newBackups = [backup, ...prev];
       saveToStorage(newBackups);
       return newBackups;
     });
 
-    toast({
-      title: 'גיבוי נוצר בהצלחה',
-      description: `הגיבוי "${name}" נשמר`,
-    });
+    // Save to Supabase cloud
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('backups').insert({
+          backup_id: backup.metadata.id,
+          name: backup.metadata.name,
+          size: backup.metadata.size,
+          version: backup.metadata.version,
+          data: backup.data,
+          user_id: user.id,
+        });
+
+        if (error) {
+          console.error('Failed to save to cloud:', error);
+          toast({
+            title: 'גיבוי נשמר מקומית',
+            description: 'הגיבוי נשמר במחשב בלבד (שגיאה בשמירה לענן)',
+            variant: 'default',
+          });
+        } else {
+          toast({
+            title: 'גיבוי נוצר בהצלחה',
+            description: `הגיבוי "${name}" נשמר במחשב ובענן ☁️`,
+          });
+        }
+      } else {
+        toast({
+          title: 'גיבוי נשמר מקומית',
+          description: `הגיבוי "${name}" נשמר במחשב בלבד`,
+        });
+      }
+    } catch (e) {
+      console.error('Cloud backup error:', e);
+      toast({
+        title: 'גיבוי נשמר מקומית',
+        description: `הגיבוי "${name}" נשמר במחשב בלבד`,
+      });
+    }
 
     return backup;
   }, [saveToStorage]);
@@ -132,16 +258,35 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     return backup;
   }, [backups]);
 
-  const deleteBackup = useCallback((backupId: string) => {
+  const deleteBackup = useCallback(async (backupId: string) => {
+    // Delete from localStorage
     setBackups(prev => {
       const newBackups = prev.filter(b => b.metadata.id !== backupId);
       saveToStorage(newBackups);
       return newBackups;
     });
 
+    // Delete from Supabase cloud
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('backups')
+          .delete()
+          .eq('backup_id', backupId)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Failed to delete from cloud:', error);
+        }
+      }
+    } catch (e) {
+      console.error('Cloud delete error:', e);
+    }
+
     toast({
       title: 'הגיבוי נמחק',
-      description: 'הגיבוי הוסר מהמערכת',
+      description: 'הגיבוי הוסר מהמערכת והענן',
     });
   }, [saveToStorage]);
 
@@ -205,12 +350,31 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     }
   }, [saveToStorage]);
 
-  const clearAllBackups = useCallback(() => {
+  const clearAllBackups = useCallback(async () => {
+    // Clear localStorage
     setBackups([]);
     localStorage.removeItem(STORAGE_KEY);
+
+    // Clear from Supabase cloud
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('backups')
+          .delete()
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Failed to clear cloud backups:', error);
+        }
+      }
+    } catch (e) {
+      console.error('Cloud clear error:', e);
+    }
+
     toast({
       title: 'כל הגיבויים נמחקו',
-      description: 'האחסון המקומי רוקן',
+      description: 'האחסון המקומי והענן רוקנו',
     });
   }, []);
 
