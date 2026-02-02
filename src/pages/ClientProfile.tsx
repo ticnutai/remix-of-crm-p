@@ -535,7 +535,7 @@ export default function ClientProfile() {
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <TrendingUp className="h-4 w-4" />
-              סקירה
+              שלבי עבודה
             </TabsTrigger>
             <TabsTrigger 
               value="all-data" 

@@ -228,29 +228,18 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                     
                     <TableCell className="text-right">
                       {editingTask?.taskId === task.id ? (
-                        <div className="flex gap-2">
-                          <Input
-                            value={editingTask.title}
-                            onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleUpdateTask(task.id, editingTask.title);
-                              } else if (e.key === 'Escape') {
-                                setEditingTask(null);
-                              }
-                            }}
-                            className="h-8 text-right flex-1"
-                            autoFocus
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 text-xs"
-                            onClick={() => handleUpdateTask(task.id, editingTask.title)}
-                          >
-                            שמור
-                          </Button>
-                        </div>
+                        <Input
+                          value={editingTask.title}
+                          onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === 'Escape') {
+                              handleUpdateTask(task.id, editingTask.title);
+                            }
+                          }}
+                          onBlur={() => handleUpdateTask(task.id, editingTask.title)}
+                          className="h-8 text-right flex-1"
+                          autoFocus
+                        />
                       ) : (
                         <span className={cn(task.completed && "line-through text-muted-foreground")}>
                           {task.title}
