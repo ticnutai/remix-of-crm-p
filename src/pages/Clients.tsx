@@ -106,7 +106,7 @@ export default function Clients() {
     isLoading: settingsLoading 
   } = useViewSettings('clients');
   
-  const [viewMode, setViewModeLocal] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait'>('grid');
+  const [viewMode, setViewModeLocal] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury'>('grid');
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   
   // Sync with cloud settings when loaded
@@ -120,7 +120,7 @@ export default function Clients() {
   }, [settingsLoading, savedViewMode, savedColumns]);
   
   // Wrapper functions to save to cloud
-  const setViewMode = (mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait') => {
+  const setViewMode = (mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury') => {
     setViewModeLocal(mode);
     saveViewMode(mode);
   };
@@ -899,6 +899,13 @@ export default function Clients() {
             borderRadius: '10px',
             padding: '12px',
           };
+        case 'luxury':
+          return {
+            minHeight: '200px',
+            flexDirection: 'column' as const,
+            borderRadius: '20px',
+            padding: '20px',
+          };
         default: // grid
           return {
             minHeight: '180px',
@@ -1171,6 +1178,225 @@ export default function Clients() {
                 <Edit className="w-4 h-4 text-white" />
               </button>
               <button onClick={(e) => handleDeleteClient(e, client.id)} className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700">
+                <Trash2 className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Luxury view - elegant white-gold design
+    if (viewMode === 'luxury') {
+      return (
+        <div
+          ref={cardRef}
+          className="group relative cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+          onClick={handleCardClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '20px',
+            border: isHighlighted ? '3px solid #f59e0b' : isSelected ? '3px solid #3b82f6' : '3px solid #c9a227',
+            boxShadow: isHighlighted 
+              ? '0 0 25px rgba(245, 158, 11, 0.5)' 
+              : isSelected 
+                ? '0 8px 30px rgba(59, 130, 246, 0.3)' 
+                : '0 8px 30px rgba(201, 162, 39, 0.15), 0 0 0 1px rgba(201, 162, 39, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+            minHeight: '200px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: '24px 20px',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Luxury corner decorations */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '40px',
+            height: '40px',
+            borderTop: '3px solid #c9a227',
+            borderLeft: '3px solid #c9a227',
+            borderTopLeftRadius: '20px',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '40px',
+            height: '40px',
+            borderTop: '3px solid #c9a227',
+            borderRight: '3px solid #c9a227',
+            borderTopRightRadius: '20px',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '40px',
+            height: '40px',
+            borderBottom: '3px solid #c9a227',
+            borderLeft: '3px solid #c9a227',
+            borderBottomLeftRadius: '20px',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            right: 0,
+            width: '40px',
+            height: '40px',
+            borderBottom: '3px solid #c9a227',
+            borderRight: '3px solid #c9a227',
+            borderBottomRightRadius: '20px',
+          }} />
+          
+          {/* Selection Checkbox */}
+          <SelectionCheckbox position="top-left" />
+          
+          {/* Indicators */}
+          {(hasReminder || hasTask || hasMeeting) && (
+            <div className="absolute top-3 right-3 flex gap-1.5">
+              {hasReminder && <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-md"><Bell className="w-3 h-3 text-white" /></div>}
+              {hasTask && <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md"><CheckSquare className="w-3 h-3 text-white" /></div>}
+              {hasMeeting && <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-md"><Calendar className="w-3 h-3 text-white" /></div>}
+            </div>
+          )}
+          
+          {/* Luxury Avatar */}
+          <div 
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e3a5f 100%)',
+              border: '4px solid #c9a227',
+              boxShadow: '0 4px 15px rgba(201, 162, 39, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: '8px',
+            }}
+          >
+            <span style={{ 
+              fontSize: '32px', 
+              fontWeight: '700', 
+              color: '#c9a227',
+              textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+            }}>
+              {client.name.charAt(0)}
+            </span>
+          </div>
+          
+          {/* Name - Navy Blue */}
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: '700', 
+            color: '#1e3a5f',
+            textAlign: 'center',
+            marginTop: '16px',
+            lineHeight: '1.4',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            letterSpacing: '0.5px',
+          }}>
+            {client.name}
+          </h3>
+          
+          {/* Decorative line */}
+          <div style={{
+            width: '60px',
+            height: '2px',
+            background: 'linear-gradient(90deg, transparent, #c9a227, transparent)',
+            margin: '12px 0',
+          }} />
+          
+          {/* Status Badge - Luxury Style */}
+          <span 
+            style={{
+              background: statusConfig.bgColor === '#1e3a5f' 
+                ? 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' 
+                : statusConfig.bgColor,
+              color: statusConfig.textColor,
+              fontSize: '11px',
+              fontWeight: '600',
+              padding: '5px 16px',
+              borderRadius: '20px',
+              border: '1px solid #c9a227',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              letterSpacing: '0.5px',
+            }}
+          >
+            {statusConfig.label}
+          </span>
+          
+          {/* Contact Info */}
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: '6px', 
+            marginTop: 'auto', 
+            paddingTop: '12px',
+          }}>
+            {isValidPhoneForDisplay(client.phone) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f' }} dir="ltr">
+                <Phone style={{ width: '14px', height: '14px', color: '#c9a227' }} />
+                <span style={{ fontSize: '13px', fontWeight: '500' }}>{client.phone}</span>
+              </div>
+            )}
+            {client.email && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f' }}>
+                <Mail style={{ width: '14px', height: '14px', color: '#c9a227' }} />
+                <span style={{ fontSize: '12px', fontWeight: '500', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.email}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Hover Actions - Luxury Style */}
+          {showActions && (
+            <div className="absolute bottom-3 left-3 flex gap-2">
+              <button 
+                onClick={(e) => handleEditClient(e, client.id)} 
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  backgroundColor: '#1e3a5f',
+                  border: '2px solid #c9a227',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                }}
+                className="hover:bg-amber-600"
+              >
+                <Edit className="w-4 h-4 text-white" />
+              </button>
+              <button 
+                onClick={(e) => handleDeleteClient(e, client.id)} 
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  backgroundColor: '#dc2626',
+                  border: '2px solid #c9a227',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                }}
+                className="hover:bg-red-700"
+              >
                 <Trash2 className="w-4 h-4 text-white" />
               </button>
             </div>
@@ -1786,6 +2012,7 @@ export default function Clients() {
                         { mode: 'grid' as const, icon: LayoutGrid, label: 'רשת גדולה', desc: 'כרטיסים רחבים עם כל הפרטים' },
                         { mode: 'cards' as const, icon: Rows3, label: 'כרטיסים אופקיים', desc: 'תצוגה מלבנית עם אווטאר' },
                         { mode: 'portrait' as const, icon: CircleUser, label: 'פורטרט', desc: 'תמונות פרופיל גדולות' },
+                        { mode: 'luxury' as const, icon: Sparkles, label: '✨ יוקרתי', desc: 'עיצוב לבן-זהב מעוצב' },
                       ].map(({ mode, icon: Icon, label, desc }) => (
                         <button
                           key={mode}
@@ -2078,9 +2305,11 @@ export default function Clients() {
                       ? 'repeat(auto-fill, minmax(160px, 1fr))'
                       : viewMode === 'cards'
                         ? 'repeat(auto-fill, minmax(320px, 1fr))'
-                        : viewMode === 'compact' 
-                          ? 'repeat(auto-fill, minmax(200px, 1fr))' 
-                          : 'repeat(auto-fill, minmax(280px, 1fr))',
+                        : viewMode === 'luxury'
+                          ? 'repeat(auto-fill, minmax(280px, 1fr))'
+                          : viewMode === 'compact' 
+                            ? 'repeat(auto-fill, minmax(200px, 1fr))' 
+                            : 'repeat(auto-fill, minmax(280px, 1fr))',
                 gap: viewMode === 'list' ? '8px' : viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
                 // גלילה אנכית
                 overflowY: 'auto',
