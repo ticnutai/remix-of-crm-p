@@ -912,7 +912,7 @@ export default function Clients() {
       switch (viewMode) {
         case 'portrait':
           return {
-            minHeight: '220px',
+            minHeight: '200px',
             width: '160px',
             flexDirection: 'column' as const,
             borderRadius: '16px',
@@ -920,42 +920,42 @@ export default function Clients() {
           };
         case 'cards':
           return {
-            minHeight: '140px',
+            minHeight: '110px',
             flexDirection: 'column' as const,
             borderRadius: '16px',
             padding: '16px',
           };
         case 'minimal':
           return {
-            minHeight: '60px',
+            minHeight: '50px',
             flexDirection: 'row' as const,
             borderRadius: '8px',
             padding: '8px 12px',
           };
         case 'list':
           return {
-            minHeight: '80px',
+            minHeight: '70px',
             flexDirection: 'row' as const,
             borderRadius: '12px',
             padding: '12px 16px',
           };
         case 'compact':
           return {
-            minHeight: '120px',
+            minHeight: '100px',
             flexDirection: 'column' as const,
             borderRadius: '10px',
             padding: '12px',
           };
         case 'luxury':
           return {
-            minHeight: '200px',
+            minHeight: '180px',
             flexDirection: 'column' as const,
             borderRadius: '20px',
             padding: '20px',
           };
         default: // grid
           return {
-            minHeight: '180px',
+            minHeight: '160px',
             flexDirection: 'column' as const,
             borderRadius: '12px',
             padding: '16px',
@@ -1083,21 +1083,6 @@ export default function Clients() {
             {client.name}
           </h3>
           
-          {/* Status */}
-          <span 
-            style={{
-              backgroundColor: statusConfig.bgColor,
-              color: statusConfig.textColor,
-              fontSize: '10px',
-              fontWeight: '600',
-              padding: '3px 10px',
-              borderRadius: '20px',
-              marginTop: '8px',
-            }}
-          >
-            {statusConfig.label}
-          </span>
-          
           {/* Phone */}
           {isValidPhoneForDisplay(client.phone) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', marginTop: 'auto', paddingTop: '8px' }} dir="ltr">
@@ -1135,7 +1120,7 @@ export default function Clients() {
             borderRadius: '16px',
             border: isHighlighted ? '3px solid #f59e0b' : isSelected ? '3px solid #3b82f6' : '2px solid #d4a843',
             boxShadow: isHighlighted ? '0 0 20px rgba(245, 158, 11, 0.5)' : isSelected ? '0 4px 20px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(212, 168, 67, 0.3)',
-            minHeight: '140px',
+            minHeight: '110px',
             display: 'flex',
             flexDirection: 'row',
             overflow: 'hidden',
@@ -1172,19 +1157,6 @@ export default function Clients() {
                 {client.name.charAt(0)}
               </span>
             </div>
-            <span 
-              style={{
-                backgroundColor: statusConfig.bgColor,
-                color: statusConfig.textColor,
-                fontSize: '9px',
-                fontWeight: '600',
-                padding: '2px 8px',
-                borderRadius: '10px',
-                marginTop: '8px',
-              }}
-            >
-              {statusConfig.label}
-            </span>
           </div>
           
           {/* Right content */}
@@ -1362,25 +1334,6 @@ export default function Clients() {
             margin: '12px 0',
           }} />
           
-          {/* Status Badge - Luxury Style */}
-          <span 
-            style={{
-              background: statusConfig.bgColor === '#1e3a5f' 
-                ? 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' 
-                : statusConfig.bgColor,
-              color: statusConfig.textColor,
-              fontSize: '11px',
-              fontWeight: '600',
-              padding: '5px 16px',
-              borderRadius: '20px',
-              border: '1px solid #c9a227',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              letterSpacing: '0.5px',
-            }}
-          >
-            {statusConfig.label}
-          </span>
-          
           {/* Contact Info */}
           <div style={{ 
             display: 'flex', 
@@ -1518,9 +1471,6 @@ export default function Clients() {
           <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1e3a5f', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {client.name}
           </h3>
-          
-          {/* Status dot */}
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusConfig.bgColor }} title={statusConfig.label} />
 
           {/* Hover Actions */}
           {showActions && (
@@ -1679,22 +1629,7 @@ export default function Clients() {
 
         {/* Card Content */}
         <div style={{ flex: 1, padding: viewMode === 'list' ? '12px 16px' : '16px', display: 'flex', flexDirection: viewMode === 'list' ? 'row' : 'column', justifyContent: 'space-between', alignItems: viewMode === 'list' ? 'center' : 'stretch' }}>
-          {/* Top Section - Status Badge */}
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginLeft: viewMode === 'list' ? '16px' : '0' }}>
-            <span 
-              style={{
-                backgroundColor: statusConfig.bgColor,
-                color: statusConfig.textColor,
-                fontSize: '12px',
-                fontWeight: '600',
-                padding: '4px 12px',
-                borderRadius: '20px',
-              }}
-            >
-              {statusConfig.label}
-            </span>
-          </div>
-
+          
           {/* Center Section - Name */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: viewMode === 'list' ? 'flex-start' : 'center', padding: viewMode === 'list' ? '0 16px' : '12px 0' }}>
             <h3 style={{ 
