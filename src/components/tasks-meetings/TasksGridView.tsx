@@ -1,5 +1,5 @@
 import React from 'react';
-import { Task } from '@/hooks/useTasks';
+import { Task } from '@/hooks/useTasksOptimized';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';

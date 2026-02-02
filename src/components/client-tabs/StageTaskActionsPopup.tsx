@@ -34,8 +34,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
-import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
+import { useTasksOptimized as useTasks, Task, TaskInsert } from '@/hooks/useTasksOptimized';
+import { useMeetingsOptimized as useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetingsOptimized';
 import { useReminders, Reminder, ReminderInsert } from '@/hooks/useReminders';
 import { format, parseISO, isPast, isToday, isTomorrow } from 'date-fns';
 import { he } from 'date-fns/locale';

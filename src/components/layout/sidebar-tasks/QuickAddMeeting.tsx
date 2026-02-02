@@ -1,6 +1,6 @@
 // QuickAddMeeting - Quick Add Meeting Dialog for Sidebar
-import React, { useState, useEffect } from 'react';
-import { MeetingInsert } from '@/hooks/useMeetings';
+import React, { useState, useEffect, forwardRef } from 'react';
+import { MeetingInsert } from '@/hooks/useMeetingsOptimized';
 import {
   Dialog,
   DialogContent,
@@ -92,13 +92,13 @@ interface QuickAddMeetingProps {
   };
 }
 
-export function QuickAddMeeting({
+export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(function QuickAddMeeting({
   open,
   onOpenChange,
   onSubmit,
   clients = [],
   initialData,
-}: QuickAddMeetingProps) {
+}, _ref) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -485,6 +485,6 @@ export function QuickAddMeeting({
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default QuickAddMeeting;

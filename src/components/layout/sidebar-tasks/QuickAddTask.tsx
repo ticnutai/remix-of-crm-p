@@ -1,6 +1,6 @@
 // QuickAddTask - Quick Add Task Dialog for Sidebar
-import React, { useState, useEffect } from 'react';
-import { TaskInsert } from '@/hooks/useTasks';
+import React, { useState, useEffect, forwardRef } from 'react';
+import { TaskInsert } from '@/hooks/useTasksOptimized';
 import {
   Dialog,
   DialogContent,
@@ -77,13 +77,13 @@ interface QuickAddTaskProps {
   };
 }
 
-export function QuickAddTask({
+export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(function QuickAddTask({
   open,
   onOpenChange,
   onSubmit,
   clients = [],
   initialData,
-}: QuickAddTaskProps) {
+}, _ref) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -345,6 +345,6 @@ export function QuickAddTask({
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 export default QuickAddTask;

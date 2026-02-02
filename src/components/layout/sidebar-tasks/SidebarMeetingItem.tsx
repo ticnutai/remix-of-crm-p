@@ -1,6 +1,6 @@
 // SidebarMeetingItem - Mini Meeting Card for Sidebar
 import React, { useState, useEffect } from 'react';
-import { Meeting } from '@/hooks/useMeetings';
+import { Meeting } from '@/hooks/useMeetingsOptimized';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {

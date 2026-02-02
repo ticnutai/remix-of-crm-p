@@ -14,6 +14,7 @@ import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
 import { PWAInstallBanner, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AutoPreload } from "@/components/AutoPreload";
 
 
 // Lazy load pages for better performance
@@ -60,14 +61,21 @@ const Calls = lazy(() => import("./pages/Calls"));
 const Tests = lazy(() => import("./pages/Tests"));
 const SmartTools = lazy(() => import("./pages/SmartTools"));
 
-// Optimized QueryClient with caching
+// Optimized QueryClient with aggressive caching and performance settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
-      gcTime: 30 * 60 * 1000, // 30 minutes - cache time (formerly cacheTime)
+      gcTime: 30 * 60 * 1000, // 30 minutes - cache time
       refetchOnWindowFocus: false, // Don't refetch on tab switch
-      retry: 1, // Only retry once on failure
+      refetchOnReconnect: 'always', // Refetch when connection restored
+      retry: 2, // Retry twice on failure
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      networkMode: 'offlineFirst', // Use cache first when offline
+    },
+    mutations: {
+      retry: 1,
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -141,6 +149,9 @@ const App = () => {
                       </Suspense>
                       
                       <UnifiedDevTools />
+                      
+                      {/* Auto Preload - Background data prefetching */}
+                      <AutoPreload />
                       
                       {/* PWA Components */}
                       <PWAInstallBanner />

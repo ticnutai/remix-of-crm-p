@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
-import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
+import { useTasksOptimized as useTasks, Task, TaskInsert } from '@/hooks/useTasksOptimized';
+import { useMeetingsOptimized as useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetingsOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, CheckSquare, Calendar, Search, Filter, ClipboardList, Loader2 } from 'lucide-react';
 import {

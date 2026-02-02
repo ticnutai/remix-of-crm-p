@@ -1,6 +1,6 @@
 // My Day Page - e-control CRM Pro
 // Shows today's meetings, tasks, reminders and schedule
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -723,7 +723,7 @@ export default function MyDay() {
 }
 
 // Simple Reminder Dialog Component
-function ReminderDialog({ open, onOpenChange, onSubmit, clients }: any) {
+const ReminderDialog = forwardRef<HTMLDivElement, any>(function ReminderDialog({ open, onOpenChange, onSubmit, clients }, _ref) {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [remindAt, setRemindAt] = useState('');
@@ -813,10 +813,10 @@ function ReminderDialog({ open, onOpenChange, onSubmit, clients }: any) {
       </DialogContent>
     </Dialog>
   );
-}
+});
 
 // Simple Time Entry Dialog Component
-function TimeEntryDialog({ open, onOpenChange, onSubmit, clients }: any) {
+const TimeEntryDialog = forwardRef<HTMLDivElement, any>(function TimeEntryDialog({ open, onOpenChange, onSubmit, clients }, _ref) {
   const [description, setDescription] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
@@ -915,4 +915,4 @@ function TimeEntryDialog({ open, onOpenChange, onSubmit, clients }: any) {
       </DialogContent>
     </Dialog>
   );
-}
+});

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Task } from '@/hooks/useTasks';
-import { Meeting } from '@/hooks/useMeetings';
+import { Task } from '@/hooks/useTasksOptimized';
+import { Meeting } from '@/hooks/useMeetingsOptimized';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

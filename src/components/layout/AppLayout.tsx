@@ -1,5 +1,5 @@
 // App Layout - Full width content with overlay sidebar
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, forwardRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -65,7 +65,7 @@ interface AppLayoutProps {
   title?: string;
 }
 
-export function AppLayout({ children, title }: AppLayoutProps) {
+export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title }, ref) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -265,4 +265,4 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       <FloatingTimer />
     </div>
   );
-}
+});

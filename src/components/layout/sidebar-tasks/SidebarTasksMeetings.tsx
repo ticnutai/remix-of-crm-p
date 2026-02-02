@@ -1,8 +1,8 @@
 // SidebarTasksMeetings - Main Tasks & Meetings Widget for Sidebar
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
-import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
+import { useTasksOptimized as useTasks, Task, TaskInsert } from '@/hooks/useTasksOptimized';
+import { useMeetingsOptimized as useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetingsOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';

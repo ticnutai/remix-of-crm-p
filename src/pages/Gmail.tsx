@@ -76,8 +76,8 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmailMetadata } from '@/hooks/useEmailMetadata';
-import { useTasks } from '@/hooks/useTasks';
-import { useMeetings } from '@/hooks/useMeetings';
+import { useTasksOptimized as useTasks } from '@/hooks/useTasksOptimized';
+import { useMeetingsOptimized as useMeetings } from '@/hooks/useMeetingsOptimized';
 import { QuickAddTask } from '@/components/layout/sidebar-tasks/QuickAddTask';
 import { QuickAddMeeting } from '@/components/layout/sidebar-tasks/QuickAddMeeting';
 import { 
