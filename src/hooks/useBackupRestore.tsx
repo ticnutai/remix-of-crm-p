@@ -32,6 +32,27 @@ const BackupContext = createContext<BackupContextType | null>(null);
 
 const STORAGE_KEY = 'ten-arch-crm-backups';
 const VERSION = '1.0.0';
+const MAX_LOCAL_BACKUPS = 5; // Keep only last 5 backups locally
+
+// Helper to check localStorage size
+const getLocalStorageSize = (): number => {
+  let total = 0;
+  for (const key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      total += localStorage[key].length * 2; // UTF-16 = 2 bytes per char
+    }
+  }
+  return total;
+};
+
+// Helper to clean old backups from localStorage
+const cleanOldLocalBackups = (backups: BackupData[]): BackupData[] => {
+  // Sort by date descending and keep only MAX_LOCAL_BACKUPS
+  const sorted = [...backups].sort((a, b) => 
+    new Date(b.metadata.createdAt).getTime() - new Date(a.metadata.createdAt).getTime()
+  );
+  return sorted.slice(0, MAX_LOCAL_BACKUPS);
+};
 
 export function BackupProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -56,14 +77,45 @@ export function BackupProvider({ children }: { children: ReactNode }) {
 
   const saveToStorage = useCallback((newBackups: BackupData[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newBackups));
-    } catch (e) {
+      // Try to save with limited backups first
+      const limitedBackups = cleanOldLocalBackups(newBackups);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(limitedBackups));
+    } catch (e: any) {
       console.error('Failed to save backups:', e);
-      toast({
-        title: 'שגיאה בשמירה',
-        description: 'לא ניתן לשמור את הגיבוי באחסון המקומי',
-        variant: 'destructive',
-      });
+      
+      // Check if it's a quota exceeded error
+      if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
+        // Try to clean more aggressively - keep only last 2 backups
+        try {
+          const minimalBackups = newBackups
+            .sort((a, b) => new Date(b.metadata.createdAt).getTime() - new Date(a.metadata.createdAt).getTime())
+            .slice(0, 2);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalBackups));
+          toast({
+            title: 'אחסון מקומי מוגבל',
+            description: 'נמחקו גיבויים ישנים לפינוי מקום. הגיבויים שלך נשמרים בענן.',
+            variant: 'default',
+          });
+          return;
+        } catch (e2) {
+          // Clear local storage for backups entirely
+          localStorage.removeItem(STORAGE_KEY);
+          console.warn('Cleared local backup storage due to quota');
+        }
+        
+        const usedMB = (getLocalStorageSize() / 1024 / 1024).toFixed(2);
+        toast({
+          title: 'האחסון המקומי מלא',
+          description: `נוצל ${usedMB}MB מהאחסון. הגיבויים נשמרים בענן בלבד.`,
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'שגיאה בשמירה מקומית',
+          description: 'הגיבוי נשמר בענן בלבד',
+          variant: 'default',
+        });
+      }
     }
   }, []);
 
