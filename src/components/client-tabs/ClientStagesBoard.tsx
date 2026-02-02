@@ -432,7 +432,7 @@ function SortableTaskItem({
                 <Timer className="h-4 w-4" />
                 <span>טיימר ימי עבודה</span>
               </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-48">
+              <ContextMenuSubContent className="w-56 p-2">
                 {task.started_at && stopTaskTimer ? (
                   <ContextMenuItem 
                     onClick={() => stopTaskTimer(task.id)}
@@ -442,16 +442,62 @@ function SortableTaskItem({
                     <span>עצור טיימר</span>
                   </ContextMenuItem>
                 ) : startTaskTimer && (
-                  TARGET_DAYS_OPTIONS.map(option => (
-                    <ContextMenuItem 
-                      key={option.value}
-                      onClick={() => startTaskTimer(task.id, option.value)}
-                      className="flex items-center gap-2"
-                    >
-                      <Play className="h-4 w-4 text-green-600" />
-                      <span>{option.label}</span>
-                    </ContextMenuItem>
-                  ))
+                  <div className="space-y-2">
+                    {/* Predefined options - compact grid */}
+                    <div className="grid grid-cols-2 gap-1">
+                      {TARGET_DAYS_OPTIONS.slice(0, 6).map(option => (
+                        <Button
+                          key={option.value}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs justify-center"
+                          onClick={() => startTaskTimer(task.id, option.value)}
+                        >
+                          {option.value} ימים
+                        </Button>
+                      ))}
+                    </div>
+                    
+                    {/* Custom days input */}
+                    <div className="border-t pt-2">
+                      <p className="text-xs text-muted-foreground mb-1 text-center">מספר ימים אישי:</p>
+                      <div className="flex gap-1">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="365"
+                          placeholder="ימים"
+                          className="h-7 text-xs text-center"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === 'Enter') {
+                              const days = parseInt((e.target as HTMLInputElement).value);
+                              if (days > 0 && days <= 365) {
+                                startTaskTimer(task.id, days);
+                              }
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                            if (input?.value) {
+                              const days = parseInt(input.value);
+                              if (days > 0 && days <= 365) {
+                                startTaskTimer(task.id, days);
+                              }
+                            }
+                          }}
+                        >
+                          <Play className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </ContextMenuSubContent>
             </ContextMenuSub>
@@ -1017,6 +1063,9 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
   
   // Clipboard state for copy/paste
   const [copiedStage, setCopiedStage] = useState<{ stage_name: string; stage_icon: string | null; tasks: { title: string; completed: boolean }[] } | null>(null);
+  
+  // Custom timer days input state
+  const [customTimerDays, setCustomTimerDays] = useState<{ stageId: string; days: string } | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -1563,21 +1612,65 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                         הפעל טיימר
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-48 p-2" align="end">
-                      <div className="space-y-1">
+                    <PopoverContent className="w-56 p-2" align="end">
+                      <div className="space-y-2">
                         <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
-                        {TARGET_DAYS_OPTIONS.map(option => (
-                          <Button
-                            key={option.value}
-                            variant="ghost"
-                            size="sm"
-                            className="w-full justify-start text-xs h-7"
-                            onClick={() => startStageTimer(stage.stage_id, option.value)}
-                          >
-                            <Play className="h-3 w-3 ml-2 text-green-600" />
-                            {option.label}
-                          </Button>
-                        ))}
+                        
+                        {/* Predefined options */}
+                        <div className="grid grid-cols-2 gap-1">
+                          {TARGET_DAYS_OPTIONS.map(option => (
+                            <Button
+                              key={option.value}
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-center text-xs h-7"
+                              onClick={() => startStageTimer(stage.stage_id, option.value)}
+                            >
+                              {option.value} ימים
+                            </Button>
+                          ))}
+                        </div>
+                        
+                        {/* Custom days input */}
+                        <div className="border-t pt-2 mt-2">
+                          <p className="text-xs text-muted-foreground mb-1 text-center">או הזן מספר אישי:</p>
+                          <div className="flex gap-1">
+                            <Input
+                              type="number"
+                              min="1"
+                              max="365"
+                              placeholder="ימים"
+                              className="h-7 text-xs text-center"
+                              value={customTimerDays?.stageId === stage.stage_id ? customTimerDays.days : ''}
+                              onChange={(e) => setCustomTimerDays({ stageId: stage.stage_id, days: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && customTimerDays?.days) {
+                                  const days = parseInt(customTimerDays.days);
+                                  if (days > 0 && days <= 365) {
+                                    startStageTimer(stage.stage_id, days);
+                                    setCustomTimerDays(null);
+                                  }
+                                }
+                              }}
+                            />
+                            <Button
+                              size="sm"
+                              className="h-7 px-2"
+                              disabled={!customTimerDays?.days || parseInt(customTimerDays.days) <= 0}
+                              onClick={() => {
+                                if (customTimerDays?.days) {
+                                  const days = parseInt(customTimerDays.days);
+                                  if (days > 0 && days <= 365) {
+                                    startStageTimer(stage.stage_id, days);
+                                    setCustomTimerDays(null);
+                                  }
+                                }
+                              }}
+                            >
+                              <Play className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </PopoverContent>
                   </Popover>

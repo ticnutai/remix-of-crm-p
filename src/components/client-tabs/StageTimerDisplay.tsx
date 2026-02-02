@@ -108,12 +108,17 @@ export function StageTimerDisplay({
     lg: 'text-sm px-4 py-2',
   };
 
-  // Format display text
+  // Format display text - show X/Y format (current day / target days)
   const displayText = result.isOverdue 
-    ? `איחור ${Math.abs(result.daysRemaining)} ימים`
+    ? `${result.currentWorkingDay}/${targetDays} ⚠️`
+    : `${result.currentWorkingDay}/${targetDays}`;
+
+  // Additional info for tooltip
+  const statusText = result.isOverdue 
+    ? `איחור של ${Math.abs(result.daysRemaining)} ימי עבודה`
     : result.daysRemaining === 0 
-      ? 'היום!' 
-      : `${result.daysRemaining} ימים`;
+      ? 'היום האחרון!' 
+      : `נותרו ${result.daysRemaining} ימי עבודה`;
 
   return (
     <div
@@ -122,7 +127,7 @@ export function StageTimerDisplay({
         onStyleChange?.();
       }}
       className={cn(style.getClasses(result), sizeClasses[size], className)}
-      title={`לחץ לשינוי עיצוב | התחלה: ${new Date(startedAt).toLocaleDateString('he-IL')} | יעד: ${targetDays} ימי עבודה`}
+      title={`${statusText} | התחלה: ${new Date(startedAt).toLocaleDateString('he-IL')} | יעד: ${targetDays} ימי עבודה | לחץ לשינוי עיצוב`}
     >
       <Icon className={cn(
         "shrink-0",

@@ -178,6 +178,8 @@ export interface DayCounterResult {
   isOverdue: boolean; // האם עבר הזמן
   daysRemaining: number; // ימים שנותרו (עבודה)
   daysRemainingTotal: number; // ימים שנותרו (סה"כ)
+  currentWorkingDay: number; // יום עבודה נוכחי (לתצוגת X/Y)
+  targetWorkingDays?: number; // סה"כ ימי עבודה מוגדרים
 }
 
 // Calculate days elapsed from a start date to today (or a target date)
@@ -260,6 +262,8 @@ export function calculateDayCounter(
     isOverdue,
     daysRemaining: Math.abs(daysRemaining),
     daysRemainingTotal: Math.abs(daysRemainingTotal),
+    currentWorkingDay: workingDays, // יום העבודה הנוכחי (כמה ימי עבודה עברו)
+    targetWorkingDays, // סה"כ ימים מוגדרים
   };
 }
 
