@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { DialogButtonsTest } from '@/components/timer/DialogButtonsTest';
 
 // Sample data types
 interface Client {
@@ -627,6 +628,7 @@ const Index = () => {
     <DashboardThemeProvider>
       <WidgetLayoutProvider>
         <DashboardContent />
+        <DialogButtonsTest />
       </WidgetLayoutProvider>
     </DashboardThemeProvider>
   );
