@@ -1,4 +1,4 @@
-// Optimized Tasks Hook with React Query - e-control CRM Pro
+// Optimized Tasks Hook with React Query - tenarch CRM Pro
 // Features: Optimistic updates, caching, prefetching, background sync
 import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

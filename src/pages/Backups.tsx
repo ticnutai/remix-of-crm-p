@@ -1,4 +1,4 @@
-// Backup & Restore Page - e-control CRM Pro
+// Backup & Restore Page - tenarch CRM Pro
 import React, { useState, useRef } from 'react';
 import { AppLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';

@@ -1,4 +1,4 @@
-// Digital Signature Component - e-control CRM Pro
+// Digital Signature Component - tenarch CRM Pro
 // קומפוננט חתימה דיגיטלית על מסמכים
 
 import React, { useRef, useState, useEffect } from 'react';

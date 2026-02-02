@@ -1,4 +1,4 @@
-// Backup & Restore System - e-control CRM Pro
+// Backup & Restore System - tenarch CRM Pro
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';

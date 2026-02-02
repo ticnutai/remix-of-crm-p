@@ -1,4 +1,4 @@
-// Page Transition Wrapper - e-control CRM Pro
+// Page Transition Wrapper - tenarch CRM Pro
 // עם תמיכה ב-reduced motion לשיפור ביצועים
 import React from 'react';
 import { cn } from '@/lib/utils';

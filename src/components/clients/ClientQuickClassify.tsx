@@ -1,4 +1,4 @@
-// Quick Classification Popover - e-control CRM Pro
+// Quick Classification Popover - tenarch CRM Pro
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

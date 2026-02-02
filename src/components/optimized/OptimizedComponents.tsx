@@ -1,4 +1,4 @@
-// Optimized Components with React.memo - e-control CRM Pro
+// Optimized Components with React.memo - tenarch CRM Pro
 // Performance-focused components that prevent unnecessary re-renders
 import React, { memo, useMemo, useCallback } from 'react';
 import { cn } from '@/lib/utils';

@@ -360,7 +360,7 @@ export function analyzeImportData(data: any, fileName?: string): ImportAnalysis 
   let sourceFormat = 'לא ידוע';
   switch (sourceType) {
     case 'archflow':
-      sourceFormat = 'ArchFlow / e-control';
+      sourceFormat = 'ArchFlow / tenarch';
       break;
     case 'supabase':
       sourceFormat = 'Supabase Export';

@@ -166,7 +166,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'נרשמת בהצלחה!',
-        description: 'ברוך הבא למערכת e-control',
+        description: 'ברוך הבא למערכת tenarch',
       });
     }
   };
@@ -274,7 +274,10 @@ export default function Auth() {
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground shadow-lg mb-4">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">e-control</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">ten</span>
+            <span className="text-foreground">arch</span>
+          </h1>
           <p className="text-muted-foreground mt-1">טכנולוגיות מתקדמות</p>
         </div>
 
@@ -515,7 +518,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2024 טכנולוגיות מתקדמות e-control. כל הזכויות שמורות.
+          © 2026 טכנולוגיות מתקדמות tenarch. כל הזכויות שמורות.
         </p>
       </div>
     </div>

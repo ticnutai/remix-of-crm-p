@@ -1,4 +1,4 @@
-// Git Operations Handler - e-control CRM Pro
+// Git Operations Handler - tenarch CRM Pro
 // מטפל בפעולות Git (pull, push) דרך הדפדפן
 // מעתיק פקודות Git ללוח כדי שהמשתמש יוכל להריץ בטרמינל
 

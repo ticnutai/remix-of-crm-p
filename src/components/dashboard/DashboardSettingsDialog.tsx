@@ -1,5 +1,5 @@
 // Dashboard Settings Dialog - Professional Widget & Theme Management
-// e-control CRM Pro - Rebuilt for clarity and functionality
+// tenarch CRM Pro - Rebuilt for clarity and functionality
 import React, { useState, useMemo } from 'react';
 import {
   Dialog,

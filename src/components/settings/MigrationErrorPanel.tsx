@@ -1,5 +1,5 @@
 // Migration Error Panel - פאנל פרטי שגיאה מורחב
-// e-control CRM Pro
+// tenarch CRM Pro
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

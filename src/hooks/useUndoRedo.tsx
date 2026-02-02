@@ -1,4 +1,4 @@
-// Global Undo/Redo System - e-control CRM Pro
+// Global Undo/Redo System - tenarch CRM Pro
 import React, { createContext, useContext, useReducer, useCallback, ReactNode, useMemo } from 'react';
 
 export interface HistoryAction {

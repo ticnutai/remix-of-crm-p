@@ -1,4 +1,4 @@
-// Settings Page - e-control CRM Pro
+// Settings Page - tenarch CRM Pro
 import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';

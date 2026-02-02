@@ -207,7 +207,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                 <Building2 className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-lg text-white">e-control</span>
+                <span className="font-bold text-lg"><span style={{ color: '#ffd700' }}>ten</span><span className="text-white">arch</span></span>
                 <span className="text-xs" style={{ color: '#ffd700' }}>CRM Pro Max</span>
               </div>
             </div>

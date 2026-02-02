@@ -1,4 +1,4 @@
-// Push Notifications Service - e-control CRM Pro
+// Push Notifications Service - tenarch CRM Pro
 // שירות התראות Push עם תמיכה ב-Web Push API
 
 import { supabase } from '@/integrations/supabase/client';

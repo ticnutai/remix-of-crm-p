@@ -1,5 +1,5 @@
 // SQL Analyzer Utility - ניתוח SQL אוטומטי
-// e-control CRM Pro
+// tenarch CRM Pro
 
 export interface SqlAnalysis {
   statementCount: number;

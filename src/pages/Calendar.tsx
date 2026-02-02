@@ -1,4 +1,4 @@
-// Calendar Page - e-control CRM Pro
+// Calendar Page - tenarch CRM Pro
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';

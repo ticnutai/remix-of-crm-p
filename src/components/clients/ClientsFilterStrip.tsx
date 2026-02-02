@@ -1,4 +1,4 @@
-// Clients Filter Strip Component - e-control CRM Pro
+// Clients Filter Strip Component - tenarch CRM Pro
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

@@ -1,4 +1,4 @@
-// Revenue Forecast Component - e-control CRM Pro
+// Revenue Forecast Component - tenarch CRM Pro
 // קומפוננט לחיזוי הכנסות עתידיות על בסיס נתונים היסטוריים
 
 import React, { useMemo, useState } from 'react';

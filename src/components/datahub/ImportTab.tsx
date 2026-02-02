@@ -553,7 +553,7 @@ export function ImportTab({ onComplete }: ImportTabProps) {
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-start gap-2">
             <Badge className="bg-green-100 text-green-800">ArchFlow</Badge>
-            <span>גיבוי מערכת e-control או ArchFlow</span>
+            <span>גיבוי מערכת tenarch או ArchFlow</span>
           </div>
           <div className="flex items-start gap-2">
             <Badge className="bg-blue-100 text-blue-800">Supabase</Badge>

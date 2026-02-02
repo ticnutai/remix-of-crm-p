@@ -1,4 +1,4 @@
-// Time Logs Page - e-control CRM Pro
+// Time Logs Page - tenarch CRM Pro
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBatchedLocalStorage } from '@/lib/performanceUtils';
 import { AppLayout } from '@/components/layout';

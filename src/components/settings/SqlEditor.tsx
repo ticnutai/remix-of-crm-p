@@ -1,5 +1,5 @@
 // SQL Editor Component - עורך SQL מובנה עם Syntax Highlighting
-// e-control CRM Pro
+// tenarch CRM Pro
 
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';

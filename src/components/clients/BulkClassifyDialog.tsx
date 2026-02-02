@@ -1,4 +1,4 @@
-// Bulk Classification Dialog - e-control CRM Pro
+// Bulk Classification Dialog - tenarch CRM Pro
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';

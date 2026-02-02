@@ -1,4 +1,4 @@
-// My Day Page - e-control CRM Pro
+// My Day Page - tenarch CRM Pro
 // Shows today's meetings, tasks, reminders and schedule
 import React, { useState, useEffect, useCallback, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';

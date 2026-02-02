@@ -1,5 +1,5 @@
 // Script Runner Component - ממשק הרצת סקריפטים
-// e-control CRM Pro
+// tenarch CRM Pro
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

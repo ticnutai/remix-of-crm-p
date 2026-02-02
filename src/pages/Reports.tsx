@@ -1,4 +1,4 @@
-// Reports Page - e-control CRM Pro
+// Reports Page - tenarch CRM Pro
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';

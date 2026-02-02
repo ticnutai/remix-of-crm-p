@@ -1,4 +1,4 @@
-// Authentication Hook - e-control CRM Pro
+// Authentication Hook - tenarch CRM Pro
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';

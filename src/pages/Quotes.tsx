@@ -243,7 +243,7 @@ export default function Quotes() {
       notes: quote.notes,
       valid_until: quote.valid_until,
     }, {
-      companyName: 'e-control CRM',
+      companyName: 'tenarch CRM',
     });
     toast({
       title: 'ייצוא PDF',

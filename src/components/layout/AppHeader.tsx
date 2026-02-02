@@ -63,7 +63,7 @@ interface AppHeaderProps {
   isMobile?: boolean;
 }
 
-export function AppHeader({ title = 'e-control CRM Pro', onMobileMenuToggle, isMobile }: AppHeaderProps) {
+export function AppHeader({ title = 'tenarch CRM Pro', onMobileMenuToggle, isMobile }: AppHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { canUndo, canRedo, undo, redo, pastActions } = useUndoRedo();

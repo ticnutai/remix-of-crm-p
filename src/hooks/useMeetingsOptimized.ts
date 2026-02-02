@@ -1,4 +1,4 @@
-// Optimized Meetings Hook with React Query - e-control CRM Pro
+// Optimized Meetings Hook with React Query - tenarch CRM Pro
 // Features: Optimistic updates, caching, calendar sync
 import { useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

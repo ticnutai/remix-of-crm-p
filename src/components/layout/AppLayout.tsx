@@ -157,7 +157,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
                   </div>
                   <div className="flex flex-col items-end flex-1 min-w-0">
                     <SheetTitle className="font-bold tracking-tight text-base truncate">
-                      e-control
+                      <span className="text-primary">ten</span><span>arch</span>
                     </SheetTitle>
                     <span className="text-[10px] text-muted-foreground truncate">
                       CRM Pro Max

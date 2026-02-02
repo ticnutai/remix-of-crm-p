@@ -1,4 +1,4 @@
-// Employees Management Page - e-control CRM Pro
+// Employees Management Page - tenarch CRM Pro
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';

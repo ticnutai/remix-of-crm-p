@@ -1,4 +1,4 @@
-// Cloud Preferences Sync Hook - e-control CRM
+// Cloud Preferences Sync Hook - tenarch CRM
 // Syncs all user preferences between localStorage and Supabase cloud
 
 import { useCallback, useEffect, useRef } from 'react';

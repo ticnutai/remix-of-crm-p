@@ -1,5 +1,5 @@
 // Quick Input Tabs - טאבים מהירים לבחירת כותרות והערות
-// e-control CRM Pro
+// tenarch CRM Pro
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';

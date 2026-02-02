@@ -1,4 +1,4 @@
-// Optimized Components Index - e-control CRM Pro
+// Optimized Components Index - tenarch CRM Pro
 export { 
   TaskCard, 
   MeetingCard, 

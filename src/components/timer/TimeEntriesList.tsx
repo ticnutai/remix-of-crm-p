@@ -1,4 +1,4 @@
-// Time Entries List - e-control CRM Pro - Navy & Gold Theme
+// Time Entries List - tenarch CRM Pro - Navy & Gold Theme
 import React, { useEffect, useState } from 'react';
 import { useTimer } from '@/hooks/useTimer';
 import { Badge } from '@/components/ui/badge';

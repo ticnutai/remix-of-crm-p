@@ -1,4 +1,4 @@
-// Gantt Chart View Component - e-control CRM Pro
+// Gantt Chart View Component - tenarch CRM Pro
 // תצוגת Gantt לפרויקטים ומשימות
 
 import React, { useState, useMemo } from 'react';

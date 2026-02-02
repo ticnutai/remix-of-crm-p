@@ -1,4 +1,4 @@
-// Developer Settings Tab - e-control CRM Pro
+// Developer Settings Tab - tenarch CRM Pro
 // הגדרות פיתוח משודרגות עם שליטה מלאה ועיצוב זהב פרימיום
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

@@ -499,10 +499,10 @@ export function AppSidebar() {
                   className="font-bold tracking-wide"
                   style={{ 
                     fontSize: `${sidebarTheme.titleFontSize || 18}px`,
-                    color: '#FFFFFF',
                   }}
                 >
-                  e-control
+                  <span style={{ color: sidebarColors.gold }}>ten</span>
+                  <span style={{ color: '#FFFFFF' }}>arch</span>
                 </span>
                 <span 
                   className="text-xs font-medium"
@@ -932,7 +932,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
               </div>
               <div className="flex flex-col items-end flex-1 min-w-0">
                 <SheetTitle className="font-bold tracking-tight text-base sm:text-lg truncate">
-                  e-control
+                  <span className="text-primary">ten</span><span>arch</span>
                 </SheetTitle>
                 <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   CRM Pro Max

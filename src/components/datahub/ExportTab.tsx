@@ -105,7 +105,7 @@ export function ExportTab({ onComplete }: ExportTabProps) {
         createdAt: new Date().toISOString(),
         createdBy: user?.email,
         version: '2.0.0',
-        format: 'e-control-crm',
+        format: 'tenarch-crm',
         tables: Object.fromEntries(
           Object.entries(data).map(([k, v]) => [k, v?.length || 0])
         ),

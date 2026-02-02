@@ -1,4 +1,4 @@
-// Theme Hook - e-control CRM Pro
+// Theme Hook - tenarch CRM Pro
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';

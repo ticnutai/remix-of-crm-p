@@ -1,4 +1,4 @@
-// Timer Widget - e-control CRM Pro - Unified Luxurious Design
+// Timer Widget - tenarch CRM Pro - Unified Luxurious Design
 import React, { useState, useEffect } from 'react';
 import { useTimer } from '@/hooks/useTimer';
 import { Button } from '@/components/ui/button';

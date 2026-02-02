@@ -1,4 +1,4 @@
-// Floating Timer Button - e-control CRM Pro - Luxurious Navy & Gold Design
+// Floating Timer Button - tenarch CRM Pro - Luxurious Navy & Gold Design
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTimer } from '@/hooks/useTimer';
 import { useIsMobile } from '@/hooks/use-mobile';

@@ -1,4 +1,4 @@
-// PDF Export Utility - e-control CRM Pro
+// PDF Export Utility - tenarch CRM Pro
 // יצירת PDF מדוחות והצעות מחיר
 
 import { format } from 'date-fns';
@@ -168,7 +168,7 @@ function generatePDFHTML(sections: PDFSection[], options: PDFExportOptions): str
       </div>
       
       <div class="footer">
-        מסמך זה הופק אוטומטית על ידי e-control CRM Pro | ${currentDate}
+        מסמך זה הופק אוטומטית על ידי tenarch CRM Pro | ${currentDate}
       </div>
     </body>
     </html>

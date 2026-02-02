@@ -1,4 +1,4 @@
-// Loading Spinner Component - e-control CRM Pro
+// Loading Spinner Component - tenarch CRM Pro
 import React from 'react';
 import { cn } from '@/lib/utils';
 

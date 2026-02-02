@@ -1,5 +1,5 @@
 // Auto Preload Component - Silently preloads data in background
-// e-control CRM Pro - Performance Optimization
+// tenarch CRM Pro - Performance Optimization
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePrefetchCommonRoutes, usePrefetchData } from '@/hooks/usePrefetch';

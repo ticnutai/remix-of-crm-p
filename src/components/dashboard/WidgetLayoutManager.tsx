@@ -1,5 +1,5 @@
 // Widget Layout Manager - מערכת ניהול פריסת ווידג'טים מאוחדת
-// e-control CRM Pro
+// tenarch CRM Pro
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';

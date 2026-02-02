@@ -1,4 +1,4 @@
-// Elegant Clients Gallery - e-control CRM Pro
+// Elegant Clients Gallery - tenarch CRM Pro
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';

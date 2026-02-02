@@ -1,4 +1,4 @@
-# e-control CRM Pro ✨
+# tenarch CRM Pro ✨
 
 מערכת CRM מתקדמת עם תמיכה מלאה במובייל ו-RTL
 

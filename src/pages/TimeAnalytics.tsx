@@ -1,4 +1,4 @@
-// Time Analytics Page - e-control CRM Pro
+// Time Analytics Page - tenarch CRM Pro
 // Professional time log analysis with insights and recommendations
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';

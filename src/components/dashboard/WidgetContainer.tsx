@@ -1,5 +1,5 @@
 // Dashboard Widget Container - רכיב עטיפה לווידג'טים עם drag-drop ו-resize
-// e-control CRM Pro
+// tenarch CRM Pro
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { GripVertical, Maximize2, ChevronUp, ChevronDown, Eye, EyeOff, Scale } from 'lucide-react';

@@ -1,4 +1,4 @@
-// Stats Card Component - e-control CRM Pro
+// Stats Card Component - tenarch CRM Pro
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';

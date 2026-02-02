@@ -1,4 +1,4 @@
-// Inactive Clients Alert System - e-control CRM Pro
+// Inactive Clients Alert System - tenarch CRM Pro
 // מערכת התראות על לקוחות ללא פעילות
 
 import React, { useState, useEffect, useMemo } from 'react';
