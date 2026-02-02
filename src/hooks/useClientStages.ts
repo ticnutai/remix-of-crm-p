@@ -285,6 +285,50 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Update task completion date (for managers)
+  const updateTaskCompletedDate = async (taskId: string, completedAt: string | null) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      // If setting a date, mark as completed. If clearing, mark as not completed.
+      const completed = completedAt !== null;
+      
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update({
+          completed,
+          completed_at: completedAt,
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                completed,
+                completed_at: completedAt,
+              }
+            : t
+        )
+      );
+      toast({
+        title: 'הצלחה',
+        description: 'תאריך ההשלמה עודכן בהצלחה',
+      });
+    } catch (error: unknown) {
+      console.error('Error updating task completion date:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן תאריך',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Delete task
   const deleteTask = async (taskId: string) => {
     try {
@@ -601,6 +645,7 @@ export function useClientStages(clientId: string) {
     addBulkTasks,
     toggleTask,
     updateTask,
+    updateTaskCompletedDate,
     deleteTask,
     bulkDeleteTasks,
     addStage,

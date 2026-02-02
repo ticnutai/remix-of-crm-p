@@ -20,6 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle2, 
@@ -31,13 +37,16 @@ import {
   Loader2,
   Search,
   MoreHorizontal,
+  CalendarIcon,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ClientStagesTableProps {
   clientId: string;
@@ -49,13 +58,18 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
     loading, 
     toggleTask, 
     updateTask,
+    updateTaskCompletedDate,
     deleteTask,
   } = useClientStages(clientId);
+  
+  const { profile } = useAuth();
+  const isManager = profile?.role === 'admin' || profile?.role === 'manager';
   
   const [filterStage, setFilterStage] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingTask, setEditingTask] = useState<{ taskId: string; title: string } | null>(null);
+  const [editingDate, setEditingDate] = useState<string | null>(null);
 
   // Flatten all tasks with stage info
   const allTasks = useMemo(() => {
@@ -260,12 +274,70 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                     </TableCell>
                     
                     <TableCell className="text-center text-sm">
-                      {task.completed && task.completed_at ? (
-                        <span className="text-green-600 dark:text-green-400">
-                          {format(new Date(task.completed_at), 'dd/MM/yyyy', { locale: he })}
-                        </span>
+                      {isManager ? (
+                        <Popover open={editingDate === task.id} onOpenChange={(open) => setEditingDate(open ? task.id : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={cn(
+                                "h-8 px-2 text-sm font-normal hover:bg-muted",
+                                task.completed && task.completed_at && "text-green-600 dark:text-green-400"
+                              )}
+                            >
+                              {task.completed && task.completed_at ? (
+                                <>
+                                  {format(new Date(task.completed_at), 'dd/MM/yyyy', { locale: he })}
+                                  <CalendarIcon className="h-3 w-3 mr-1 opacity-50" />
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-muted-foreground">-</span>
+                                  <CalendarIcon className="h-3 w-3 mr-1 opacity-50" />
+                                </>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="center">
+                            <div className="p-2 border-b flex items-center justify-between">
+                              <span className="text-sm font-medium">בחר תאריך</span>
+                              {task.completed_at && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                                  onClick={() => {
+                                    updateTaskCompletedDate(task.id, null);
+                                    setEditingDate(null);
+                                  }}
+                                >
+                                  <X className="h-3 w-3 ml-1" />
+                                  נקה
+                                </Button>
+                              )}
+                            </div>
+                            <Calendar
+                              mode="single"
+                              selected={task.completed_at ? parseISO(task.completed_at) : undefined}
+                              onSelect={(date) => {
+                                if (date) {
+                                  updateTaskCompletedDate(task.id, date.toISOString());
+                                }
+                                setEditingDate(null);
+                              }}
+                              locale={he}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        task.completed && task.completed_at ? (
+                          <span className="text-green-600 dark:text-green-400">
+                            {format(new Date(task.completed_at), 'dd/MM/yyyy', { locale: he })}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )
                       )}
                     </TableCell>
                     
