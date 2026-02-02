@@ -25,11 +25,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Play, Square, Clock, Target, Briefcase, User, 
   Pause, RotateCcw, Save, FileText,
-  Check, X, ChevronDown, ChevronUp, Settings, Plus, Trash2
+  Check, X, ChevronDown, ChevronUp, Settings, Plus, Trash2, Edit, ListPlus
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -121,6 +122,14 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [newTitleInput, setNewTitleInput] = useState('');
   const [newNoteInput, setNewNoteInput] = useState('');
+  const [bulkTitlesInput, setBulkTitlesInput] = useState('');
+  const [bulkNotesInput, setBulkNotesInput] = useState('');
+  const [showBulkTitles, setShowBulkTitles] = useState(false);
+  const [showBulkNotes, setShowBulkNotes] = useState(false);
+  const [editingTitleIndex, setEditingTitleIndex] = useState<number | null>(null);
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [editingTitleValue, setEditingTitleValue] = useState('');
+  const [editingNoteValue, setEditingNoteValue] = useState('');
 
   // Save quick titles to localStorage
   useEffect(() => {
@@ -158,6 +167,68 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
   const selectQuickNote = (note: string) => {
     setNotes(note);
+  };
+
+  // Add bulk titles (multiple lines)
+  const addBulkTitles = () => {
+    if (bulkTitlesInput.trim()) {
+      const newTitles = bulkTitlesInput
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t && !quickTitles.includes(t));
+      if (newTitles.length > 0) {
+        setQuickTitles([...quickTitles, ...newTitles]);
+      }
+      setBulkTitlesInput('');
+      setShowBulkTitles(false);
+    }
+  };
+
+  // Add bulk notes (multiple lines)
+  const addBulkNotes = () => {
+    if (bulkNotesInput.trim()) {
+      const newNotes = bulkNotesInput
+        .split('\n')
+        .map(n => n.trim())
+        .filter(n => n && !quickNotes.includes(n));
+      if (newNotes.length > 0) {
+        setQuickNotes([...quickNotes, ...newNotes]);
+      }
+      setBulkNotesInput('');
+      setShowBulkNotes(false);
+    }
+  };
+
+  // Edit title
+  const startEditTitle = (index: number, value: string) => {
+    setEditingTitleIndex(index);
+    setEditingTitleValue(value);
+  };
+
+  const saveEditTitle = () => {
+    if (editingTitleIndex !== null && editingTitleValue.trim()) {
+      const newTitles = [...quickTitles];
+      newTitles[editingTitleIndex] = editingTitleValue.trim();
+      setQuickTitles(newTitles);
+    }
+    setEditingTitleIndex(null);
+    setEditingTitleValue('');
+  };
+
+  // Edit note
+  const startEditNote = (index: number, value: string) => {
+    setEditingNoteIndex(index);
+    setEditingNoteValue(value);
+  };
+
+  const saveEditNote = () => {
+    if (editingNoteIndex !== null && editingNoteValue.trim()) {
+      const newNotes = [...quickNotes];
+      newNotes[editingNoteIndex] = editingNoteValue.trim();
+      setQuickNotes(newNotes);
+    }
+    setEditingNoteIndex(null);
+    setEditingNoteValue('');
   };
 
   // Save collapsed state
@@ -460,8 +531,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
             {/* Save Button */}
             {timerState.elapsed > 0 && (
-              <Popover open={showSavePanel} onOpenChange={setShowSavePanel}>
-                <PopoverTrigger asChild>
+              <Dialog open={showSavePanel} onOpenChange={setShowSavePanel}>
+                <DialogTrigger asChild>
                   <Button
                     size="sm"
                     variant="outline"
@@ -474,103 +545,267 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                         ? (theme.controlButtonsActiveColor || 'hsl(45, 80%, 60%)') 
                         : 'white',
                     }}
+                    onClick={async () => {
+                      // Stop timer first, then dialog opens automatically
+                      if (timerState.isRunning) {
+                        await stopTimer();
+                      }
+                    }}
                   >
                     <Save className="h-4 w-4" />
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent 
+                </DialogTrigger>
+                <DialogContent 
                   dir="rtl"
-                  className="w-[280px] bg-gradient-to-br from-[hsl(220,60%,18%)] to-[hsl(220,60%,22%)] border-[hsl(45,80%,50%)] text-white p-3 shadow-xl rounded-xl"
-                  side="top"
-                  align="end"
+                  className="max-w-lg bg-gradient-to-br from-[hsl(220,60%,15%)] to-[hsl(220,60%,20%)] border-2 border-[hsl(45,80%,50%)] text-white shadow-2xl rounded-2xl"
                 >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-sm text-[hsl(45,80%,60%)] flex items-center gap-2">
-                        <Save className="h-3.5 w-3.5" />
-                        שמירת רישום
-                      </h4>
-                      <button
-                        onClick={() => { setShowSavePanel(false); setShowSettingsDialog(true); }}
-                        className="p-1 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
-                        title="הגדרות כותרות והערות"
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    
-                    {/* Quick Titles */}
-                    <div>
-                      <div className="text-[10px] text-white/60 mb-1.5">כותרת:</div>
-                      <div className="flex flex-wrap gap-1">
-                        {quickTitles.map((title) => (
-                          <button
-                            key={title}
-                            onClick={() => selectQuickTitle(title)}
-                            className={cn(
-                              "px-2 py-1 text-[10px] rounded border transition-all",
-                              description === title
-                                ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] border-[hsl(45,80%,60%)]"
-                                : "bg-[hsl(220,60%,30%)] border-white/20 hover:border-[hsl(45,80%,50%)]/50"
-                            )}
-                          >
-                            {title}
-                          </button>
-                        ))}
+                  <DialogHeader>
+                    <DialogTitle className="text-[hsl(45,80%,60%)] flex items-center gap-2 text-lg">
+                      <Save className="h-5 w-5" />
+                      שמירת רישום זמן
+                    </DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-5 mt-4">
+                    {/* TITLES SECTION */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-[hsl(45,80%,65%)] flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          כותרת
+                        </h3>
+                        <button
+                          onClick={() => setShowBulkTitles(!showBulkTitles)}
+                          className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
+                          title="הוספה מרובה"
+                        >
+                          <ListPlus className="h-3.5 w-3.5" />
+                          הוספה מרובה
+                        </button>
                       </div>
+                      
+                      {/* Quick Title Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {quickTitles.map((title, index) => (
+                          editingTitleIndex === index ? (
+                            <div key={index} className="flex gap-1">
+                              <Input
+                                value={editingTitleValue}
+                                onChange={(e) => setEditingTitleValue(e.target.value)}
+                                className="h-8 w-32 bg-white/10 border-[hsl(45,80%,50%)] text-white text-xs"
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditTitle(); if (e.key === 'Escape') setEditingTitleIndex(null); }}
+                              />
+                              <Button size="sm" onClick={saveEditTitle} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
+                                <Check className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div key={index} className="group relative">
+                              <button
+                                onClick={() => selectQuickTitle(title)}
+                                className={cn(
+                                  "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
+                                  description === title
+                                    ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] border-[hsl(45,80%,60%)] shadow-lg"
+                                    : "bg-white/5 border-white/20 hover:border-[hsl(45,80%,50%)]/60 hover:bg-white/10"
+                                )}
+                              >
+                                {title}
+                              </button>
+                              <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
+                                <button
+                                  onClick={() => startEditTitle(index, title)}
+                                  className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
+                                >
+                                  <Edit className="h-2.5 w-2.5" />
+                                </button>
+                                <button
+                                  onClick={() => removeQuickTitle(index)}
+                                  className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
+                                >
+                                  <Trash2 className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        ))}
+                        {/* Add single title */}
+                        <div className="flex gap-1">
+                          <Input
+                            value={newTitleInput}
+                            onChange={(e) => setNewTitleInput(e.target.value)}
+                            placeholder="הוסף כותרת..."
+                            className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
+                            onKeyDown={(e) => { if (e.key === 'Enter') addQuickTitle(); }}
+                          />
+                          <Button size="sm" onClick={addQuickTitle} className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]">
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Bulk titles input */}
+                      {showBulkTitles && (
+                        <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
+                          <div className="text-[10px] text-white/60">הכנס כל כותרת בשורה נפרדת:</div>
+                          <Textarea
+                            value={bulkTitlesInput}
+                            onChange={(e) => setBulkTitlesInput(e.target.value)}
+                            placeholder="חוזה&#10;בקרת תכן&#10;תשלום לקוח&#10;..."
+                            className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={addBulkTitles} className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)]">
+                              <Plus className="h-3 w-3 ml-1" />
+                              הוסף הכל
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowBulkTitles(false)} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
+                              ביטול
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual title input */}
+                      <Input
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="או הקלד כותרת ידנית..."
+                        className="h-9 bg-white/5 border-white/20 text-white text-sm"
+                      />
                     </div>
 
-                    {/* Quick Notes */}
-                    <div>
-                      <div className="text-[10px] text-white/60 mb-1.5">הערות מהירות:</div>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {quickNotes.map((note) => (
-                          <button
-                            key={note}
-                            onClick={() => selectQuickNote(note)}
-                            className={cn(
-                              "px-2 py-1 text-[10px] rounded border transition-all",
-                              notes === note
-                                ? "bg-[hsl(200,70%,50%)] text-white border-[hsl(200,70%,60%)]"
-                                : "bg-[hsl(220,60%,30%)] border-white/20 hover:border-[hsl(200,70%,50%)]/50"
-                            )}
-                          >
-                            {note}
-                          </button>
-                        ))}
+                    {/* NOTES SECTION */}
+                    <div className="space-y-3 pt-3 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-[hsl(200,70%,60%)] flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          הערות
+                        </h3>
+                        <button
+                          onClick={() => setShowBulkNotes(!showBulkNotes)}
+                          className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
+                          title="הוספה מרובה"
+                        >
+                          <ListPlus className="h-3.5 w-3.5" />
+                          הוספה מרובה
+                        </button>
                       </div>
-                    </div>
+                      
+                      {/* Quick Note Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        {quickNotes.map((note, index) => (
+                          editingNoteIndex === index ? (
+                            <div key={index} className="flex gap-1">
+                              <Input
+                                value={editingNoteValue}
+                                onChange={(e) => setEditingNoteValue(e.target.value)}
+                                className="h-8 w-32 bg-white/10 border-[hsl(200,70%,50%)] text-white text-xs"
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditNote(); if (e.key === 'Escape') setEditingNoteIndex(null); }}
+                              />
+                              <Button size="sm" onClick={saveEditNote} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
+                                <Check className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div key={index} className="group relative">
+                              <button
+                                onClick={() => selectQuickNote(note)}
+                                className={cn(
+                                  "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
+                                  notes === note
+                                    ? "bg-[hsl(200,70%,50%)] text-white border-[hsl(200,70%,60%)] shadow-lg"
+                                    : "bg-white/5 border-white/20 hover:border-[hsl(200,70%,50%)]/60 hover:bg-white/10"
+                                )}
+                              >
+                                {note}
+                              </button>
+                              <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
+                                <button
+                                  onClick={() => startEditNote(index, note)}
+                                  className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
+                                >
+                                  <Edit className="h-2.5 w-2.5" />
+                                </button>
+                                <button
+                                  onClick={() => removeQuickNote(index)}
+                                  className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
+                                >
+                                  <Trash2 className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        ))}
+                        {/* Add single note */}
+                        <div className="flex gap-1">
+                          <Input
+                            value={newNoteInput}
+                            onChange={(e) => setNewNoteInput(e.target.value)}
+                            placeholder="הוסף הערה..."
+                            className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
+                            onKeyDown={(e) => { if (e.key === 'Enter') addQuickNote(); }}
+                          />
+                          <Button size="sm" onClick={addQuickNote} className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]">
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
 
-                    {/* Notes Input */}
-                    <Input
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="או הקלד הערה חופשית..."
-                      className="h-8 bg-[hsl(220,60%,30%)] border-white/20 text-white text-xs rounded-lg"
-                    />
+                      {/* Bulk notes input */}
+                      {showBulkNotes && (
+                        <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
+                          <div className="text-[10px] text-white/60">הכנס כל הערה בשורה נפרדת:</div>
+                          <Textarea
+                            value={bulkNotesInput}
+                            onChange={(e) => setBulkNotesInput(e.target.value)}
+                            placeholder="מיילים&#10;מסמכים&#10;פיקוח&#10;..."
+                            className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={addBulkNotes} className="h-7 text-xs bg-[hsl(200,70%,50%)] text-white">
+                              <Plus className="h-3 w-3 ml-1" />
+                              הוסף הכל
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setShowBulkNotes(false)} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
+                              ביטול
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual notes input */}
+                      <Input
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="או הקלד הערה ידנית..."
+                        className="h-9 bg-white/5 border-white/20 text-white text-sm"
+                      />
+                    </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-3 border-t border-white/10">
                       <Button
-                        size="sm"
                         onClick={handleSave}
-                        className="flex-1 h-8 text-xs bg-gradient-to-r from-[hsl(45,80%,50%)] to-[hsl(45,90%,45%)] text-[hsl(220,60%,15%)] hover:from-[hsl(45,80%,55%)] hover:to-[hsl(45,90%,50%)] rounded-lg"
+                        className="flex-1 h-11 text-base bg-gradient-to-r from-[hsl(45,80%,50%)] to-[hsl(45,90%,45%)] text-[hsl(220,60%,15%)] hover:from-[hsl(45,80%,55%)] hover:to-[hsl(45,90%,50%)] rounded-xl font-semibold shadow-lg"
                       >
-                        <Check className="h-3.5 w-3.5 ml-1" />
-                        שמור
+                        <Check className="h-5 w-5 ml-2" />
+                        שמור רישום
                       </Button>
                       <Button
-                        size="sm"
                         variant="outline"
                         onClick={() => setShowSavePanel(false)}
-                        className="h-8 w-8 p-0 border-white/30 text-white hover:bg-white/10 rounded-lg"
+                        className="h-11 px-5 border-white/30 text-white hover:bg-white/10 rounded-xl"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        <X className="h-4 w-4 ml-1" />
+                        ביטול
                       </Button>
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
             )}
           </div>
         </div>

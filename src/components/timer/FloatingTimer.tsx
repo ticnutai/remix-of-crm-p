@@ -359,10 +359,12 @@ function FloatingTimerContent() {
                   {timerState.isRunning ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current mr-[-1px]" />}
                 </button>
 
-                {/* Stop Button */}
-                {(timerState.isRunning || timerState.currentEntry) && <button onClick={e => {
+                {/* Stop Button - Stops timer and opens save dialog */}
+                {(timerState.isRunning || timerState.currentEntry) && <button onClick={async e => {
               e.stopPropagation();
-              stopTimer();
+              // First stop the timer, then open save dialog
+              await stopTimer();
+              setIsStopDialogOpen(true);
             }} className={cn("h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200", "hover:scale-105 active:scale-95", "bg-gradient-to-br from-red-500 to-red-700 text-white shadow-md shadow-red-500/30")}>
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>}
@@ -661,7 +663,10 @@ function FloatingTimerContent() {
             </Button>
             <Button
               onClick={async () => {
-                await stopTimer();
+                // Combine description and notes for saving
+                const combinedNotes = [stopDescription, stopNotes].filter(Boolean).join(' | ');
+                // Timer already stopped, just save the entry
+                await saveEntry(combinedNotes || undefined);
                 setStopDescription('');
                 setStopNotes('');
                 setIsStopDialogOpen(false);
@@ -670,7 +675,7 @@ function FloatingTimerContent() {
               className="bg-[#D4AF37] hover:bg-[#B8973A] text-white"
             >
               <Save className="h-4 w-4 ml-2" />
-              שמור וסיים
+              שמור
             </Button>
           </DialogFooter>
         </DialogContent>
