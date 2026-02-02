@@ -485,15 +485,25 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                   align="end"
                 >
                   <div className="space-y-3">
-                    <h4 className="font-medium text-sm text-[hsl(45,80%,60%)] flex items-center gap-2">
-                      <Save className="h-3.5 w-3.5" />
-                      שמירת רישום
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm text-[hsl(45,80%,60%)] flex items-center gap-2">
+                        <Save className="h-3.5 w-3.5" />
+                        שמירת רישום
+                      </h4>
+                      <button
+                        onClick={() => { setShowSavePanel(false); setShowSettingsDialog(true); }}
+                        className="p-1 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
+                        title="הגדרות כותרות והערות"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                     
                     {/* Quick Titles */}
                     <div>
+                      <div className="text-[10px] text-white/60 mb-1.5">כותרת:</div>
                       <div className="flex flex-wrap gap-1">
-                        {quickTitles.slice(0, 4).map((title) => (
+                        {quickTitles.map((title) => (
                           <button
                             key={title}
                             onClick={() => selectQuickTitle(title)}
@@ -510,11 +520,32 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                       </div>
                     </div>
 
+                    {/* Quick Notes */}
+                    <div>
+                      <div className="text-[10px] text-white/60 mb-1.5">הערות מהירות:</div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {quickNotes.map((note) => (
+                          <button
+                            key={note}
+                            onClick={() => selectQuickNote(note)}
+                            className={cn(
+                              "px-2 py-1 text-[10px] rounded border transition-all",
+                              notes === note
+                                ? "bg-[hsl(200,70%,50%)] text-white border-[hsl(200,70%,60%)]"
+                                : "bg-[hsl(220,60%,30%)] border-white/20 hover:border-[hsl(200,70%,50%)]/50"
+                            )}
+                          >
+                            {note}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Notes Input */}
                     <Input
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="הערות..."
+                      placeholder="או הקלד הערה חופשית..."
                       className="h-8 bg-[hsl(220,60%,30%)] border-white/20 text-white text-xs rounded-lg"
                     />
 
