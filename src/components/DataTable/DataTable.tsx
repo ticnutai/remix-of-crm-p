@@ -397,7 +397,8 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
         style={{
           scrollbarWidth: 'thin',
           WebkitOverflowScrolling: 'touch',
-          ...(paginated ? {} : { maxHeight: `calc(100vh - ${maxViewportHeightOffset}px)` }),
+          // גלילה אנכית - תמיד עם maxHeight
+          maxHeight: `calc(100vh - ${maxViewportHeightOffset}px)`,
           // CSS-based RTL scroll positioning - instant, no JavaScript delay
           overflowAnchor: 'none',
           contain: 'layout style paint',

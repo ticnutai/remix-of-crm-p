@@ -205,9 +205,9 @@ export default function Clients() {
     setDisplayedCount(PAGE_SIZE);
   }, [searchQuery, filters]);
   
-  // Infinite Scroll with Intersection Observer
+  // Infinite Scroll with Intersection Observer - uses scroll container
   useEffect(() => {
-    if (!loadMoreRef.current) return;
+    if (!loadMoreRef.current || !scrollContainerRef.current) return;
     
     const observer = new IntersectionObserver(
       (entries) => {
@@ -222,6 +222,7 @@ export default function Clients() {
         }
       },
       { 
+        root: scrollContainerRef.current, // Use the scroll container as root
         threshold: 0.1, 
         rootMargin: '200px' // Increased margin to trigger earlier
       }
@@ -229,29 +230,6 @@ export default function Clients() {
     
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [displayedCount, filteredClients.length, isLoadingMore]);
-
-  // Additional scroll event listener for cases where IntersectionObserver doesn't trigger
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isLoadingMore || displayedCount >= filteredClients.length) return;
-      
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const windowHeight = window.innerHeight;
-      const documentHeight = document.documentElement.scrollHeight;
-      
-      // Load more when user is within 300px of the bottom
-      if (scrollTop + windowHeight >= documentHeight - 300) {
-        setIsLoadingMore(true);
-        setTimeout(() => {
-          setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length));
-          setIsLoadingMore(false);
-        }, 50);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [displayedCount, filteredClients.length, isLoadingMore]);
 
   // Keyboard navigation - jump to client by typing letters
@@ -1499,7 +1477,10 @@ export default function Clients() {
         border: '3px solid #d4a843',
         boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
         padding: '24px',
-        minHeight: '80vh',
+        height: 'calc(100vh - 100px)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
       }}>
         
         {/* Navy Header Bar */}
@@ -1989,6 +1970,8 @@ export default function Clients() {
           </div>
         )}
 
+        {/* Clients Content Area - Scrollable */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {filteredClients.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0' }}>
             <Users style={{ width: '64px', height: '64px', color: '#cbd5e1', margin: '0 auto 16px' }} />
@@ -2066,7 +2049,26 @@ export default function Clients() {
             
             <div 
               ref={scrollContainerRef}
+              onScroll={(e) => {
+                // Infinite scroll on container scroll
+                if (isLoadingMore || displayedCount >= filteredClients.length) return;
+                const target = e.target as HTMLDivElement;
+                const scrollTop = target.scrollTop;
+                const scrollHeight = target.scrollHeight;
+                const clientHeight = target.clientHeight;
+                
+                // Load more when user is within 200px of the bottom
+                if (scrollTop + clientHeight >= scrollHeight - 200) {
+                  setIsLoadingMore(true);
+                  setTimeout(() => {
+                    setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length));
+                    setIsLoadingMore(false);
+                  }, 50);
+                }
+              }}
               style={{
+                flex: 1,
+                minHeight: 0,
                 display: viewMode === 'list' ? 'flex' : viewMode === 'minimal' ? 'grid' : 'grid',
                 flexDirection: viewMode === 'list' ? 'column' : undefined,
                 gridTemplateColumns: 
@@ -2080,52 +2082,61 @@ export default function Clients() {
                           ? 'repeat(auto-fill, minmax(200px, 1fr))' 
                           : 'repeat(auto-fill, minmax(280px, 1fr))',
                 gap: viewMode === 'list' ? '8px' : viewMode === 'minimal' ? '8px' : viewMode === 'portrait' ? '12px' : '16px',
+                // גלילה אנכית
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                scrollBehavior: 'smooth',
+                alignContent: 'flex-start',
               }}
             >
               {filteredClients.slice(0, displayedCount).map((client) => (
                 <ClientCard key={client.id} client={client} />
               ))}
+              {/* Infinite Scroll Trigger - inside scroll container */}
+              {displayedCount < filteredClients.length && (
+                <div 
+                  ref={loadMoreRef}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: '24px',
+                    gap: '8px',
+                    width: '100%',
+                    gridColumn: viewMode !== 'list' ? '1 / -1' : undefined,
+                  }}
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <span style={{ color: '#64748b' }}>טוען עוד לקוחות...</span>
+                    </>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '14px' }}>
+                      גלול למטה לטעינת עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)} לקוחות
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Show "All loaded" message when done */}
+              {displayedCount >= filteredClients.length && filteredClients.length > PAGE_SIZE && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '16px',
+                  color: '#94a3b8',
+                  fontSize: '14px',
+                  width: '100%',
+                  gridColumn: viewMode !== 'list' ? '1 / -1' : undefined,
+                }}>
+                  ✓ כל {filteredClients.length} הלקוחות נטענו
+                </div>
+              )}
             </div>
-            
-            {/* Infinite Scroll Trigger */}
-            {displayedCount < filteredClients.length && (
-              <div 
-                ref={loadMoreRef}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: '24px',
-                  gap: '8px',
-                }}
-              >
-                {isLoadingMore ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span style={{ color: '#64748b' }}>טוען עוד לקוחות...</span>
-                  </>
-                ) : (
-                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>
-                    גלול למטה לטעינת עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)} לקוחות
-                  </span>
-                )}
-              </div>
-            )}
-            
-            {/* Show "All loaded" message when done */}
-            {displayedCount >= filteredClients.length && filteredClients.length > PAGE_SIZE && (
-              <div style={{
-                textAlign: 'center',
-                padding: '16px',
-                color: '#94a3b8',
-                fontSize: '14px',
-              }}>
-                ✓ כל {filteredClients.length} הלקוחות נטענו
-              </div>
-            )}
           </>
         )}
-      </div>
+        </div>{/* End of Clients Content Area */}
+      </div>{/* End of Main Container */}
       
       {/* Add Client Dialog */}
       <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>

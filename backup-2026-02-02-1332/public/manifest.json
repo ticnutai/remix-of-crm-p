@@ -1,0 +1,70 @@
+{
+  "name": "ArchFlow CRM",
+  "short_name": "ArchFlow",
+  "description": "מערכת ניהול לקוחות ופרויקטים לאדריכלים",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "dir": "rtl",
+  "lang": "he",
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "לקוחות",
+      "short_name": "לקוחות",
+      "description": "ניהול לקוחות",
+      "url": "/clients",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "פרויקטים",
+      "short_name": "פרויקטים",
+      "description": "ניהול פרויקטים",
+      "url": "/kanban",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "משימות",
+      "short_name": "משימות",
+      "description": "ניהול משימות",
+      "url": "/tasks",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "דשבורד",
+      "short_name": "דשבורד",
+      "description": "לוח בקרה ראשי",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "פיננסים",
+      "short_name": "פיננסים",
+      "description": "ניהול פיננסי",
+      "url": "/finance",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}
