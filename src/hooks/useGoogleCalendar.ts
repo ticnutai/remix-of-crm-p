@@ -45,18 +45,22 @@ const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const STORAGE_KEY = 'google_calendar_config';
 const TOKEN_STORAGE_KEY = 'google_calendar_token';
+const EMAIL_STORAGE_KEY = 'google_calendar_email';
 
 // Default Google OAuth Config
 const DEFAULT_CLIENT_ID = '203713636858-0bn66n8rd2gpkkvmhg233hs6ufeaml2s.apps.googleusercontent.com';
 
 // Token storage utilities (outside hook to avoid hook ordering issues)
-const saveTokenToStorage = (token: any) => {
+const saveTokenToStorage = (token: any, email?: string) => {
   if (token) {
     const tokenData = {
       ...token,
       saved_at: Date.now(),
     };
     localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokenData));
+    if (email) {
+      localStorage.setItem(EMAIL_STORAGE_KEY, email);
+    }
   }
 };
 
@@ -65,25 +69,29 @@ const loadTokenFromStorage = (): any | null => {
     const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (savedToken) {
       const tokenData = JSON.parse(savedToken);
-      // Check if token is less than 50 minutes old (tokens expire in 1 hour)
+      // Check if token is less than 55 minutes old (tokens expire in 1 hour)
       const tokenAge = Date.now() - (tokenData.saved_at || 0);
-      const maxAge = 50 * 60 * 1000; // 50 minutes
+      const maxAge = 55 * 60 * 1000; // 55 minutes
       if (tokenAge < maxAge) {
         return tokenData;
       } else {
-        // Token expired, remove it
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
+        // Token expired, but don't remove it yet - we might need the email for hint
+        log('Token expired, will try to refresh');
       }
     }
   } catch (e) {
     console.error('Failed to load saved token:', e);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }
   return null;
 };
 
+const loadSavedEmail = (): string | null => {
+  return localStorage.getItem(EMAIL_STORAGE_KEY);
+};
+
 const clearTokenFromStorage = () => {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  // Note: We keep the email for next time user connects
 };
 
 // Load Google API script
@@ -267,7 +275,7 @@ export function useGoogleCalendar() {
             variant: 'destructive',
           });
         },
-        callback: (response: any) => {
+        callback: async (response: any) => {
           log('OAuth callback received:', response);
           if (response.error) {
             logError('OAuth error in callback:', response);
@@ -284,11 +292,27 @@ export function useGoogleCalendar() {
           // Save the token
           const token = window.gapi.client.getToken();
           log('Token to save:', token ? 'exists' : 'null');
-          saveTokenToStorage(token);
+          
+          // Try to get the user's email for future silent auth
+          let userEmail: string | undefined;
+          try {
+            const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+              headers: { Authorization: `Bearer ${token.access_token}` }
+            });
+            if (userInfoResponse.ok) {
+              const userInfo = await userInfoResponse.json();
+              userEmail = userInfo.email;
+              log('User email saved:', userEmail);
+            }
+          } catch (e) {
+            log('Could not fetch user email:', e);
+          }
+          
+          saveTokenToStorage(token, userEmail);
           setIsConnected(true);
           toast({
             title: 'מחובר ל-Google Calendar',
-            description: 'הסנכרון פעיל',
+            description: userEmail ? `מחובר כ-${userEmail}` : 'הסנכרון פעיל',
           });
         },
       });
@@ -325,17 +349,35 @@ export function useGoogleCalendar() {
     }
   }, [config]);
 
-  // Auto-connect on mount if we have a saved token
+  // Auto-connect on mount if we have a saved token or email
   useEffect(() => {
     if (config && !hasTriedAutoConnect && !isConnected) {
       const savedToken = loadTokenFromStorage();
-      if (savedToken) {
+      const savedEmail = loadSavedEmail();
+      
+      if (savedToken || savedEmail) {
         setHasTriedAutoConnect(true);
+        log('Auto-connecting with saved credentials...');
         // Initialize and restore connection
-        initializeGoogleApi();
+        initializeGoogleApi().then(() => {
+          // If we have a saved email but no valid token, try silent auth
+          if (!savedToken && savedEmail) {
+            log('No valid token but have email, attempting silent reconnect');
+            // Small delay to ensure token client is ready
+            setTimeout(() => {
+              if (tokenClient) {
+                tokenClient.requestAccessToken({ 
+                  prompt: '', 
+                  hint: savedEmail,
+                  login_hint: savedEmail 
+                });
+              }
+            }, 500);
+          }
+        });
       }
     }
-  }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi]);
+  }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi, tokenClient]);
 
   // Connect to Google Calendar
   const connect = useCallback(async () => {
@@ -357,11 +399,24 @@ export function useGoogleCalendar() {
       const existingToken = window.gapi.client.getToken();
       log('Existing token:', existingToken ? 'yes' : 'no');
       
+      // Get saved email for login hint
+      const savedEmail = loadSavedEmail();
+      log('Saved email for hint:', savedEmail || 'none');
+      
       try {
         if (existingToken === null) {
-          // Request access token with consent
-          log('Requesting new token with consent prompt');
-          tokenClient.requestAccessToken({ prompt: 'consent' });
+          // Request access token - use hint if we have saved email
+          if (savedEmail) {
+            log('Requesting token with login hint:', savedEmail);
+            tokenClient.requestAccessToken({ 
+              prompt: '', 
+              hint: savedEmail,
+              login_hint: savedEmail 
+            });
+          } else {
+            log('Requesting new token with consent prompt');
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+          }
         } else {
           // Token exists, try without consent first
           log('Requesting token refresh (no prompt)');
