@@ -131,7 +131,7 @@ export function SecurityTests() {
       for (const table of tables) {
         try {
           // ניסיון גישה לטבלה
-          const { error } = await supabase.from(table).select('count', { count: 'exact', head: true });
+          const { error } = await (supabase.from(table as any) as any).select('count', { count: 'exact', head: true });
           if (!error) rlsEnabled++;
         } catch {
           // אם יש שגיאת גישה, זה טוב - RLS עובד

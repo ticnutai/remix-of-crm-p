@@ -357,7 +357,7 @@ export default function AdvancedFiles() {
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" dir="rtl">
+                          <DropdownMenuContent align="end" className="rtl">
                             <DropdownMenuItem onClick={() => handleFileClick(file)}>
                               <Eye className="h-4 w-4 ml-2" />
                               תצוגה מקדימה
@@ -426,7 +426,7 @@ export default function AdvancedFiles() {
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" dir="rtl">
+                            <DropdownMenuContent align="end" className="rtl">
                               <DropdownMenuItem onClick={() => handleDownload(file)}>
                                 <Download className="h-4 w-4 ml-2" />
                                 הורדה
@@ -461,10 +461,9 @@ export default function AdvancedFiles() {
           {/* Tab: Search */}
           <TabsContent value="search">
             <AdvancedFileSearch
-              onSearch={handleSearch}
-              isSearching={isSearching}
-              results={searchResults}
-              onFileClick={handleFileClick}
+              onSearch={(filters) => handleSearch(filters?.query || '', filters)}
+              availableTags={[]}
+              isLoading={isSearching}
             />
           </TabsContent>
 
@@ -512,7 +511,6 @@ export default function AdvancedFiles() {
         {showUploadDialog && (
           <AdvancedFileUpload
             onUpload={handleUpload}
-            onClose={() => setShowUploadDialog(false)}
             folderId={currentFolder}
           />
         )}
@@ -520,35 +518,22 @@ export default function AdvancedFiles() {
         {showPreview && selectedFile && (
           <FilePreview
             file={selectedFile}
-            files={displayFiles}
+            isOpen={showPreview}
             onClose={() => setShowPreview(false)}
-            onNext={() => {
-              const currentIndex = displayFiles.findIndex(f => f.id === selectedFile.id);
-              if (currentIndex < displayFiles.length - 1) {
-                setSelectedFile(displayFiles[currentIndex + 1]);
-              }
-            }}
-            onPrevious={() => {
-              const currentIndex = displayFiles.findIndex(f => f.id === selectedFile.id);
-              if (currentIndex > 0) {
-                setSelectedFile(displayFiles[currentIndex - 1]);
-              }
-            }}
             onDownload={() => handleDownload(selectedFile)}
-            onShare={() => handleShare(selectedFile)}
-            onDelete={() => handleDelete(selectedFile)}
-            onToggleStar={() => handleToggleStar(selectedFile)}
           />
         )}
 
         {showShareDialog && sharingFile && (
           <FileSharingDialog
+            isOpen={showShareDialog}
             file={sharingFile}
             onClose={() => setShowShareDialog(false)}
             onShare={async (userIds, permissions) => {
               await shareFile(sharingFile.id, userIds, permissions);
               setShowShareDialog(false);
             }}
+            onCreateLink={async () => ''}
           />
         )}
 

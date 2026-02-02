@@ -1151,7 +1151,7 @@ export default function ClientProfile() {
                           <Badge variant="outline" className="border-[hsl(222,47%,25%)]">{msg.direction === 'outgoing' ? 'יוצא' : 'נכנס'}</Badge>
                         </div>
                         <p className="text-right">{msg.message}</p>
-                        {isValidPhoneForDisplay(msg.phone_number) && (
+                        {msg.phone_number && (
                           <p className="text-sm text-muted-foreground mt-1 text-right">{msg.phone_number}</p>
                         )}
                       </div>

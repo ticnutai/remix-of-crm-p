@@ -2639,60 +2639,240 @@ export type Database = {
       }
       file_folders: {
         Row: {
-          category_id: string | null
           color: string | null
-          created_at: string
-          description: string | null
+          created_at: string | null
+          created_by: string | null
+          file_count: number | null
+          icon: string | null
           id: string
-          is_pinned: boolean | null
+          is_shared: boolean | null
           name: string
-          parent_folder_id: string | null
+          parent_id: string | null
           path: string
-          sort_order: number | null
-          updated_at: string
-          user_id: string
+          total_size: number | null
+          updated_at: string | null
         }
         Insert: {
-          category_id?: string | null
           color?: string | null
-          created_at?: string
-          description?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          file_count?: number | null
+          icon?: string | null
           id?: string
-          is_pinned?: boolean | null
+          is_shared?: boolean | null
           name: string
-          parent_folder_id?: string | null
-          path?: string
-          sort_order?: number | null
-          updated_at?: string
-          user_id: string
+          parent_id?: string | null
+          path: string
+          total_size?: number | null
+          updated_at?: string | null
         }
         Update: {
-          category_id?: string | null
           color?: string | null
-          created_at?: string
-          description?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          file_count?: number | null
+          icon?: string | null
           id?: string
-          is_pinned?: boolean | null
+          is_shared?: boolean | null
           name?: string
-          parent_folder_id?: string | null
+          parent_id?: string | null
           path?: string
-          sort_order?: number | null
-          updated_at?: string
-          user_id?: string
+          total_size?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      file_metadata: {
+        Row: {
+          category: string | null
+          client_id: string | null
+          created_at: string | null
+          download_count: number | null
+          extension: string | null
+          folder_id: string | null
+          id: string
+          is_shared: boolean | null
+          is_starred: boolean | null
+          last_accessed: string | null
+          metadata: Json | null
+          mime_type: string | null
+          name: string
+          path: string
+          size: number
+          tags: string[] | null
+          thumbnail: string | null
+          type: string
+          updated_at: string | null
+          uploaded_by: string | null
+          version: number | null
+          view_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          download_count?: number | null
+          extension?: string | null
+          folder_id?: string | null
+          id?: string
+          is_shared?: boolean | null
+          is_starred?: boolean | null
+          last_accessed?: string | null
+          metadata?: Json | null
+          mime_type?: string | null
+          name: string
+          path: string
+          size?: number
+          tags?: string[] | null
+          thumbnail?: string | null
+          type?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+          view_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          download_count?: number | null
+          extension?: string | null
+          folder_id?: string | null
+          id?: string
+          is_shared?: boolean | null
+          is_starred?: boolean | null
+          last_accessed?: string | null
+          metadata?: Json | null
+          mime_type?: string | null
+          name?: string
+          path?: string
+          size?: number
+          tags?: string[] | null
+          thumbnail?: string | null
+          type?: string
+          updated_at?: string | null
+          uploaded_by?: string | null
+          version?: number | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      file_public_links: {
+        Row: {
+          access_count: number | null
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          file_id: string
+          id: string
+          is_active: boolean | null
+          link_token: string
+        }
+        Insert: {
+          access_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          file_id: string
+          id?: string
+          is_active?: boolean | null
+          link_token?: string
+        }
+        Update: {
+          access_count?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          file_id?: string
+          id?: string
+          is_active?: boolean | null
+          link_token?: string
         }
         Relationships: [
           {
-            foreignKeyName: "file_folders_category_id_fkey"
-            columns: ["category_id"]
+            foreignKeyName: "file_public_links_file_id_fkey"
+            columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: "file_categories"
+            referencedRelation: "file_metadata"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      file_shares: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          file_id: string
+          id: string
+          permissions: string | null
+          shared_by: string | null
+          shared_with: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          file_id: string
+          id?: string
+          permissions?: string | null
+          shared_by?: string | null
+          shared_with: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          file_id?: string
+          id?: string
+          permissions?: string | null
+          shared_by?: string | null
+          shared_with?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "file_folders_parent_folder_id_fkey"
-            columns: ["parent_folder_id"]
+            foreignKeyName: "file_shares_file_id_fkey"
+            columns: ["file_id"]
             isOneToOne: false
-            referencedRelation: "file_folders"
+            referencedRelation: "file_metadata"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      file_versions: {
+        Row: {
+          changes: string | null
+          created_at: string | null
+          file_id: string
+          id: string
+          path: string
+          size: number
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          changes?: string | null
+          created_at?: string | null
+          file_id: string
+          id?: string
+          path: string
+          size: number
+          uploaded_by?: string | null
+          version: number
+        }
+        Update: {
+          changes?: string | null
+          created_at?: string | null
+          file_id?: string
+          id?: string
+          path?: string
+          size?: number
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_versions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "file_metadata"
             referencedColumns: ["id"]
           },
         ]
@@ -2780,13 +2960,6 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "files_folder_id_fkey"
-            columns: ["folder_id"]
-            isOneToOne: false
-            referencedRelation: "file_folders"
             referencedColumns: ["id"]
           },
           {
@@ -5081,6 +5254,7 @@ export type Database = {
       generate_contract_number: { Args: never; Returns: string }
       get_client_id: { Args: { _user_id: string }; Returns: string }
       get_contract_summary: { Args: { p_contract_id: string }; Returns: Json }
+      get_file_statistics: { Args: { p_user_id?: string }; Returns: Json }
       get_migration_history: {
         Args: never
         Returns: {
@@ -5093,6 +5267,13 @@ export type Database = {
           success: boolean
         }[]
       }
+      get_popular_tags: {
+        Args: { p_limit?: number }
+        Returns: {
+          count: number
+          tag: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5100,19 +5281,70 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_download_count: {
+        Args: { p_file_id: string }
+        Returns: undefined
+      }
       increment_email_rate_limit: {
         Args: { p_count?: number; p_user_id: string }
         Returns: undefined
       }
+      increment_view_count: { Args: { p_file_id: string }; Returns: undefined }
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
       is_client: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { p_email: string }; Returns: boolean }
+      move_file_to_folder: {
+        Args: { p_file_id: string; p_folder_id: string }
+        Returns: boolean
+      }
       quick_health_check: { Args: never; Returns: Json }
       run_system_diagnostic: { Args: never; Returns: Json }
       run_system_health_check: { Args: never; Returns: Json }
+      search_files: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_folder_id?: string
+          p_limit?: number
+          p_max_size?: number
+          p_min_size?: number
+          p_offset?: number
+          p_query?: string
+          p_starred_only?: boolean
+          p_tags?: string[]
+          p_type?: string
+          p_user_id?: string
+        }
+        Returns: {
+          category: string
+          client_id: string
+          created_at: string
+          download_count: number
+          extension: string
+          folder_id: string
+          id: string
+          is_shared: boolean
+          is_starred: boolean
+          mime_type: string
+          name: string
+          path: string
+          size: number
+          tags: string[]
+          thumbnail: string
+          type: string
+          updated_at: string
+          uploaded_by: string
+          view_count: number
+        }[]
+      }
+      toggle_file_star: { Args: { p_file_id: string }; Returns: boolean }
+      toggle_file_tag: {
+        Args: { p_file_id: string; p_tag: string }
+        Returns: string[]
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "employee" | "client"
