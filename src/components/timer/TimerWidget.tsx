@@ -558,6 +558,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 <DialogContent 
                   dir="rtl"
                   className="max-w-lg bg-gradient-to-br from-[hsl(220,60%,15%)] to-[hsl(220,60%,20%)] border-2 border-[hsl(45,80%,50%)] text-white shadow-2xl rounded-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
                 >
                   <DialogHeader>
                     <DialogTitle className="text-[hsl(45,80%,60%)] flex items-center gap-2 text-lg">
@@ -575,7 +577,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                           כותרת
                         </h3>
                         <button
-                          onClick={() => setShowBulkTitles(!showBulkTitles)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setShowBulkTitles(!showBulkTitles);
+                          }}
                           className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
                           title="הוספה מרובה"
                         >
@@ -588,22 +595,24 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                       <div className="flex flex-wrap gap-2">
                         {quickTitles.map((title, index) => (
                           editingTitleIndex === index ? (
-                            <div key={index} className="flex gap-1">
+                            <div key={index} className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                               <Input
                                 value={editingTitleValue}
                                 onChange={(e) => setEditingTitleValue(e.target.value)}
                                 className="h-8 w-32 bg-white/10 border-[hsl(45,80%,50%)] text-white text-xs"
                                 autoFocus
-                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditTitle(); if (e.key === 'Escape') setEditingTitleIndex(null); }}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); saveEditTitle(); } if (e.key === 'Escape') setEditingTitleIndex(null); }}
                               />
-                              <Button size="sm" onClick={saveEditTitle} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
+                              <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); saveEditTitle(); }} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
                                 <Check className="h-3 w-3" />
                               </Button>
                             </div>
                           ) : (
                             <div key={index} className="group relative">
                               <button
-                                onClick={() => selectQuickTitle(title)}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); selectQuickTitle(title); }}
                                 className={cn(
                                   "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                                   description === title
@@ -615,13 +624,15 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                               </button>
                               <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
                                 <button
-                                  onClick={() => startEditTitle(index, title)}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); startEditTitle(index, title); }}
                                   className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
                                 >
                                   <Edit className="h-2.5 w-2.5" />
                                 </button>
                                 <button
-                                  onClick={() => removeQuickTitle(index)}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeQuickTitle(index); }}
                                   className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
                                 >
                                   <Trash2 className="h-2.5 w-2.5" />
@@ -631,15 +642,16 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                           )
                         ))}
                         {/* Add single title */}
-                        <div className="flex gap-1">
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Input
                             value={newTitleInput}
                             onChange={(e) => setNewTitleInput(e.target.value)}
                             placeholder="הוסף כותרת..."
                             className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
-                            onKeyDown={(e) => { if (e.key === 'Enter') addQuickTitle(); }}
+                            onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickTitle(); } }}
+                            onClick={(e) => e.stopPropagation()}
                           />
-                          <Button size="sm" onClick={addQuickTitle} className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]">
+                          <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addQuickTitle(); }} className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]">
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -655,12 +667,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             placeholder="חוזה&#10;בקרת תכן&#10;תשלום לקוח&#10;..."
                             className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
                           />
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={addBulkTitles} className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)]">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addBulkTitles(); }} className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)]">
                               <Plus className="h-3 w-3 ml-1" />
                               הוסף הכל
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => setShowBulkTitles(false)} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
+                            <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setShowBulkTitles(false); }} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
                               ביטול
                             </Button>
                           </div>
@@ -684,7 +696,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                           הערות
                         </h3>
                         <button
-                          onClick={() => setShowBulkNotes(!showBulkNotes)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setShowBulkNotes(!showBulkNotes);
+                          }}
                           className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
                           title="הוספה מרובה"
                         >
@@ -697,22 +714,24 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                       <div className="flex flex-wrap gap-2">
                         {quickNotes.map((note, index) => (
                           editingNoteIndex === index ? (
-                            <div key={index} className="flex gap-1">
+                            <div key={index} className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                               <Input
                                 value={editingNoteValue}
                                 onChange={(e) => setEditingNoteValue(e.target.value)}
                                 className="h-8 w-32 bg-white/10 border-[hsl(200,70%,50%)] text-white text-xs"
                                 autoFocus
-                                onKeyDown={(e) => { if (e.key === 'Enter') saveEditNote(); if (e.key === 'Escape') setEditingNoteIndex(null); }}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); saveEditNote(); } if (e.key === 'Escape') setEditingNoteIndex(null); }}
                               />
-                              <Button size="sm" onClick={saveEditNote} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
+                              <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); saveEditNote(); }} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
                                 <Check className="h-3 w-3" />
                               </Button>
                             </div>
                           ) : (
                             <div key={index} className="group relative">
                               <button
-                                onClick={() => selectQuickNote(note)}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); selectQuickNote(note); }}
                                 className={cn(
                                   "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                                   notes === note
@@ -724,13 +743,15 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                               </button>
                               <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
                                 <button
-                                  onClick={() => startEditNote(index, note)}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); startEditNote(index, note); }}
                                   className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
                                 >
                                   <Edit className="h-2.5 w-2.5" />
                                 </button>
                                 <button
-                                  onClick={() => removeQuickNote(index)}
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeQuickNote(index); }}
                                   className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
                                 >
                                   <Trash2 className="h-2.5 w-2.5" />
@@ -740,15 +761,16 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                           )
                         ))}
                         {/* Add single note */}
-                        <div className="flex gap-1">
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Input
                             value={newNoteInput}
                             onChange={(e) => setNewNoteInput(e.target.value)}
                             placeholder="הוסף הערה..."
                             className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
-                            onKeyDown={(e) => { if (e.key === 'Enter') addQuickNote(); }}
+                            onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickNote(); } }}
+                            onClick={(e) => e.stopPropagation()}
                           />
-                          <Button size="sm" onClick={addQuickNote} className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]">
+                          <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addQuickNote(); }} className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]">
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -764,12 +786,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             placeholder="מיילים&#10;מסמכים&#10;פיקוח&#10;..."
                             className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
                           />
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={addBulkNotes} className="h-7 text-xs bg-[hsl(200,70%,50%)] text-white">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addBulkNotes(); }} className="h-7 text-xs bg-[hsl(200,70%,50%)] text-white">
                               <Plus className="h-3 w-3 ml-1" />
                               הוסף הכל
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => setShowBulkNotes(false)} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
+                            <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setShowBulkNotes(false); }} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
                               ביטול
                             </Button>
                           </div>
