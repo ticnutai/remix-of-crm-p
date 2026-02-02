@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { GripVertical, Maximize2, ChevronUp, ChevronDown, Eye, EyeOff, Scale } from 'lucide-react';
-import { useWidgetLayout, WidgetId, SIZE_LABELS, GAP_CLASSES } from './WidgetLayoutManager';
+import { useWidgetLayout, WidgetId, SIZE_LABELS, GAP_CLASSES, SIZE_WEIGHTS } from './WidgetLayoutManager';
 import { useDashboardTheme } from './DashboardThemeProvider';
 import { Button } from '@/components/ui/button';
 import {
@@ -333,9 +333,49 @@ interface WidgetGridProps {
 
 export function WidgetGrid({ children, className }: WidgetGridProps) {
   const { currentTheme } = useDashboardTheme();
-  const { gridGap } = useWidgetLayout();
+  const { gridGap, equalizeHeights, autoExpand, layouts } = useWidgetLayout();
   const isDarkTheme = currentTheme === 'navy-gold' || currentTheme === 'modern-dark';
   const editMode = useWidgetEditMode();
+
+  // Calculate auto-expand classes for widgets
+  // This fills empty space in rows by expanding last widget
+  const getAutoExpandClass = useCallback(() => {
+    if (!autoExpand) return '';
+    
+    // Get visible widgets sorted by order
+    const visibleWidgets = layouts
+      .filter(l => l.visible)
+      .sort((a, b) => a.order - b.order);
+    
+    // Calculate row usage and identify widgets that should expand
+    const expandIds: string[] = [];
+    let currentRowWeight = 0;
+    let rowStart = 0;
+    
+    for (let i = 0; i < visibleWidgets.length; i++) {
+      const weight = SIZE_WEIGHTS[visibleWidgets[i].size];
+      
+      if (currentRowWeight + weight > 4) {
+        // Check if previous row has empty space
+        if (currentRowWeight < 4 && rowStart < i) {
+          expandIds.push(visibleWidgets[i - 1].id);
+        }
+        currentRowWeight = weight;
+        rowStart = i;
+      } else {
+        currentRowWeight += weight;
+      }
+    }
+    
+    // Check last row
+    if (currentRowWeight < 4 && visibleWidgets.length > 0) {
+      expandIds.push(visibleWidgets[visibleWidgets.length - 1].id);
+    }
+    
+    return expandIds;
+  }, [autoExpand, layouts]);
+
+  const expandIds = getAutoExpandClass();
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -369,11 +409,31 @@ export function WidgetGrid({ children, className }: WidgetGridProps) {
         className={cn(
           "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
           GAP_CLASSES[gridGap],
-          "[grid-auto-flow:dense]"
+          "[grid-auto-flow:dense]",
+          // Equal heights for all widgets in same row
+          equalizeHeights && "[grid-auto-rows:1fr]"
         )}
         dir="rtl"
+        style={{
+          // CSS Grid auto-fill to ensure equal heights in rows
+          gridAutoRows: equalizeHeights ? 'minmax(auto, 1fr)' : undefined,
+        }}
       >
-        {children}
+        {React.Children.map(children, (child) => {
+          if (!React.isValidElement(child)) return child;
+          
+          // Check if this widget should auto-expand
+          const widgetId = child.props?.widgetId;
+          const shouldExpand = autoExpand && expandIds.includes(widgetId);
+          
+          if (shouldExpand) {
+            return React.cloneElement(child as React.ReactElement<any>, {
+              className: cn(child.props?.className, 'lg:col-end-[-1]'),
+            });
+          }
+          
+          return child;
+        })}
       </div>
     </div>
   );

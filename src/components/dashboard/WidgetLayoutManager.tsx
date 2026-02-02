@@ -102,6 +102,8 @@ interface WidgetLayoutContextType {
   gridGap: GridGap;
   isLoading: boolean;
   isSaving: boolean;
+  equalizeHeights: boolean;
+  autoExpand: boolean;
   getLayout: (id: WidgetId) => WidgetLayout | undefined;
   isVisible: (id: WidgetId) => boolean;
   getGridClass: (id: WidgetId) => string;
@@ -115,6 +117,8 @@ interface WidgetLayoutContextType {
   autoArrangeWidgets: () => void;
   setGridGap: (gap: GridGap) => void;
   balanceRow: (widgetId: WidgetId) => void;
+  setEqualizeHeights: (enabled: boolean) => void;
+  setAutoExpand: (enabled: boolean) => void;
 }
 
 const WidgetLayoutContext = createContext<WidgetLayoutContextType | undefined>(undefined);
@@ -140,6 +144,26 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       console.error('[WidgetLayout] Error loading gap:', e);
     }
     return 'normal';
+  });
+
+  // Equalize heights option - makes all widgets in a row same height
+  const [equalizeHeights, setEqualizeHeightsState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('widget-equalize-heights');
+      return saved === 'true';
+    } catch (e) {
+      return true; // Default to true
+    }
+  });
+
+  // Auto expand option - expand last widget in row to fill empty space
+  const [autoExpand, setAutoExpandState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('widget-auto-expand');
+      return saved !== 'false'; // Default to true
+    } catch (e) {
+      return true;
+    }
   });
 
   // Load from cloud on mount
@@ -276,9 +300,32 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   // Set grid gap
   const setGridGap = useCallback((gap: GridGap) => {
     setGridGapState(gap);
+    localStorage.setItem(GAP_STORAGE_KEY, gap);
     toast({
       title: "📐 מרווח שונה",
       description: `מרווח: ${GAP_LABELS[gap]}`,
+      duration: 1500,
+    });
+  }, []);
+
+  // Set equalize heights
+  const setEqualizeHeights = useCallback((enabled: boolean) => {
+    setEqualizeHeightsState(enabled);
+    localStorage.setItem('widget-equalize-heights', String(enabled));
+    toast({
+      title: enabled ? "⚖️ יישור גבהים מופעל" : "⚖️ יישור גבהים כבוי",
+      description: enabled ? "ווידג'טים באותה שורה יהיו באותו גובה" : "כל ווידג'ט בגובה שלו",
+      duration: 1500,
+    });
+  }, []);
+
+  // Set auto expand
+  const setAutoExpand = useCallback((enabled: boolean) => {
+    setAutoExpandState(enabled);
+    localStorage.setItem('widget-auto-expand', String(enabled));
+    toast({
+      title: enabled ? "↔️ הרחבה אוטומטית מופעלת" : "↔️ הרחבה אוטומטית כבויה",
+      description: enabled ? "ווידג'טים יתרחבו למלא שטח ריק" : "ווידג'טים ישמרו על גודלם המוגדר",
       duration: 1500,
     });
   }, []);
@@ -532,6 +579,8 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       gridGap,
       isLoading,
       isSaving,
+      equalizeHeights,
+      autoExpand,
       getLayout,
       isVisible,
       getGridClass,
@@ -545,6 +594,8 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       autoArrangeWidgets,
       setGridGap,
       balanceRow,
+      setEqualizeHeights,
+      setAutoExpand,
     }}>
       {children}
     </WidgetLayoutContext.Provider>

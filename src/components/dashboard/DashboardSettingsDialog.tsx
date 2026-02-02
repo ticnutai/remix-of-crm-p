@@ -94,6 +94,10 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     gridGap,
     setGridGap,
     balanceRow,
+    equalizeHeights,
+    setEqualizeHeights,
+    autoExpand,
+    setAutoExpand,
   } = useWidgetLayout();
   const { toast } = useToast();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -378,6 +382,30 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                 </div>
 
                 <div className="flex-1" />
+              </div>
+
+              {/* Layout Options - Equalize Heights & Auto Expand */}
+              <div className="flex flex-wrap gap-4 p-3 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="equalize-heights"
+                    checked={equalizeHeights}
+                    onCheckedChange={setEqualizeHeights}
+                  />
+                  <Label htmlFor="equalize-heights" className="text-xs cursor-pointer">
+                    ⚖️ יישור גבהים אוטומטי
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="auto-expand"
+                    checked={autoExpand}
+                    onCheckedChange={setAutoExpand}
+                  />
+                  <Label htmlFor="auto-expand" className="text-xs cursor-pointer">
+                    ↔️ הרחבה אוטומטית לשטח ריק
+                  </Label>
+                </div>
               </div>
 
               {/* Action Buttons */}
