@@ -166,7 +166,8 @@ export default defineConfig(({ mode }) => {
               if (id.includes('react-resizable-panels')) {
                 return 'vendor-panels';
               }
-              if (id.includes('react') && !id.includes('react-') && !id.includes('recharts')) {
+              // Keep react core small - don't catch other react-* packages
+              if (id.match(/[\\/]node_modules[\\/]react[\\/]/)) {
                 return 'vendor-react-core';
               }
               
@@ -327,6 +328,44 @@ export default defineConfig(({ mode }) => {
               // Animation
               if (id.includes('framer-motion') || id.includes('motion')) {
                 return 'vendor-motion';
+              }
+              
+              // Additional heavy libraries - split more granularly
+              if (id.includes('lodash')) {
+                return 'vendor-lodash';
+              }
+              if (id.includes('uuid') || id.includes('nanoid')) {
+                return 'vendor-ids';
+              }
+              if (id.includes('immer')) {
+                return 'vendor-immer';
+              }
+              if (id.includes('react-intersection-observer') || id.includes('react-resize')) {
+                return 'vendor-observers';
+              }
+              if (id.includes('react-virtualized') || id.includes('react-window')) {
+                return 'vendor-virtualization';
+              }
+              if (id.includes('react-error-boundary')) {
+                return 'vendor-error-boundary';
+              }
+              if (id.includes('react-dropzone')) {
+                return 'vendor-dropzone';
+              }
+              if (id.includes('react-beautiful-dnd')) {
+                return 'vendor-dnd-beautiful';
+              }
+              if (id.includes('react-icons')) {
+                return 'vendor-react-icons';
+              }
+              if (id.includes('i18n') || id.includes('intl')) {
+                return 'vendor-i18n';
+              }
+              if (id.includes('prop-types')) {
+                return 'vendor-prop-types';
+              }
+              if (id.includes('hoist-non-react-statics')) {
+                return 'vendor-hoist';
               }
               
               // Everything else from node_modules
