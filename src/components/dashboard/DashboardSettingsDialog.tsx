@@ -98,6 +98,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     setEqualizeHeights,
     autoExpand,
     setAutoExpand,
+    setDashboardTheme,
   } = useWidgetLayout();
   const { toast } = useToast();
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -174,6 +175,13 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
       return true;
     });
 
+  // Handle theme change - also sync to cloud
+  const handleThemeChange = (theme: DashboardTheme) => {
+    setTheme(theme);
+    // Also save to cloud via WidgetLayoutManager
+    setDashboardTheme(theme);
+  };
+
   const themePreview = (theme: DashboardTheme) => {
     const config = dashboardThemes[theme];
     return (
@@ -186,7 +194,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
           background: config.colors.background,
           borderColor: config.colors.border,
         }}
-        onClick={() => setTheme(theme)}
+        onClick={() => handleThemeChange(theme)}
       >
         {/* Mini Preview Layout */}
         <div className="space-y-2">

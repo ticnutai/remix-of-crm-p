@@ -104,6 +104,7 @@ interface WidgetLayoutContextType {
   isSaving: boolean;
   equalizeHeights: boolean;
   autoExpand: boolean;
+  dashboardTheme: string;
   getLayout: (id: WidgetId) => WidgetLayout | undefined;
   isVisible: (id: WidgetId) => boolean;
   getGridClass: (id: WidgetId) => string;
@@ -119,6 +120,7 @@ interface WidgetLayoutContextType {
   balanceRow: (widgetId: WidgetId) => void;
   setEqualizeHeights: (enabled: boolean) => void;
   setAutoExpand: (enabled: boolean) => void;
+  setDashboardTheme: (theme: string) => void;
 }
 
 const WidgetLayoutContext = createContext<WidgetLayoutContextType | undefined>(undefined);
@@ -163,6 +165,16 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       return saved !== 'false'; // Default to true
     } catch (e) {
       return true;
+    }
+  });
+
+  // Dashboard theme - synced to cloud
+  const [dashboardTheme, setDashboardThemeState] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard-theme');
+      return saved || 'navy-gold';
+    } catch (e) {
+      return 'navy-gold';
     }
   });
 
@@ -221,6 +233,27 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           setLayouts(merged);
           // Also update localStorage as cache
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          
+          // Load display settings from cloud
+          if (settingValue.gridGap && ['tight', 'normal', 'wide'].includes(settingValue.gridGap)) {
+            setGridGapState(settingValue.gridGap);
+            localStorage.setItem(GAP_STORAGE_KEY, settingValue.gridGap);
+          }
+          if (typeof settingValue.equalizeHeights === 'boolean') {
+            setEqualizeHeightsState(settingValue.equalizeHeights);
+            localStorage.setItem('widget-equalize-heights', String(settingValue.equalizeHeights));
+          }
+          if (typeof settingValue.autoExpand === 'boolean') {
+            setAutoExpandState(settingValue.autoExpand);
+            localStorage.setItem('widget-auto-expand', String(settingValue.autoExpand));
+          }
+          // Load dashboard theme from cloud
+          if (settingValue.dashboardTheme) {
+            setDashboardThemeState(settingValue.dashboardTheme);
+            localStorage.setItem('dashboard-theme', settingValue.dashboardTheme);
+            // Dispatch event for DashboardThemeProvider to sync
+            window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: settingValue.dashboardTheme }));
+          }
         } else {
           console.log('[WidgetLayout DEBUG] No data in cloud, using defaults');
         }
@@ -236,7 +269,10 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   // Save to cloud with debounce
-  const saveToCloud = useCallback(async (newLayouts: WidgetLayout[]) => {
+  const saveToCloud = useCallback(async (
+    newLayouts: WidgetLayout[],
+    overrideSettings?: { gridGap?: GridGap; equalizeHeights?: boolean; autoExpand?: boolean; dashboardTheme?: string }
+  ) => {
     console.log('[WidgetLayout DEBUG] saveToCloud called with', newLayouts.length, 'layouts');
     console.log('[WidgetLayout DEBUG] User ID:', user?.id ? user.id.substring(0, 8) + '...' : 'NO USER');
     
@@ -248,6 +284,14 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       console.log('[WidgetLayout DEBUG] No user, skipping cloud save');
       return;
     }
+
+    // Use overrideSettings if provided, otherwise use current state
+    const settingsToSave = {
+      gridGap: overrideSettings?.gridGap ?? gridGap,
+      equalizeHeights: overrideSettings?.equalizeHeights ?? equalizeHeights,
+      autoExpand: overrideSettings?.autoExpand ?? autoExpand,
+      dashboardTheme: overrideSettings?.dashboardTheme ?? dashboardTheme,
+    };
 
     // Debounce cloud save
     if (saveTimeoutRef.current) {
@@ -263,7 +307,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
         const payload = {
           user_id: user.id,
           setting_key: CLOUD_SETTING_KEY,
-          setting_value: { layouts: newLayouts, gridGap, lastUpdated: new Date().toISOString() },
+          setting_value: { 
+            layouts: newLayouts, 
+            ...settingsToSave,
+            lastUpdated: new Date().toISOString() 
+          },
           updated_at: new Date().toISOString(),
         };
         console.log('[WidgetLayout DEBUG] Upsert payload:', { ...payload, user_id: payload.user_id.substring(0, 8) + '...' });
@@ -286,7 +334,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
         setIsSaving(false);
       }
     }, 1000); // 1 second debounce
-  }, [user?.id, gridGap]);
+  }, [user?.id, gridGap, equalizeHeights, autoExpand, dashboardTheme]);
 
   // Update layouts and save
   const updateLayouts = useCallback((updater: (prev: WidgetLayout[]) => WidgetLayout[]) => {
@@ -301,34 +349,50 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   const setGridGap = useCallback((gap: GridGap) => {
     setGridGapState(gap);
     localStorage.setItem(GAP_STORAGE_KEY, gap);
+    // Trigger cloud save with the new gridGap value
+    saveToCloud(layouts, { gridGap: gap });
     toast({
       title: "📐 מרווח שונה",
       description: `מרווח: ${GAP_LABELS[gap]}`,
       duration: 1500,
     });
-  }, []);
+  }, [layouts, saveToCloud]);
 
   // Set equalize heights
   const setEqualizeHeights = useCallback((enabled: boolean) => {
     setEqualizeHeightsState(enabled);
     localStorage.setItem('widget-equalize-heights', String(enabled));
+    // Trigger cloud save with the new equalizeHeights value
+    saveToCloud(layouts, { equalizeHeights: enabled });
     toast({
       title: enabled ? "⚖️ יישור גבהים מופעל" : "⚖️ יישור גבהים כבוי",
       description: enabled ? "ווידג'טים באותה שורה יהיו באותו גובה" : "כל ווידג'ט בגובה שלו",
       duration: 1500,
     });
-  }, []);
+  }, [layouts, saveToCloud]);
 
   // Set auto expand
   const setAutoExpand = useCallback((enabled: boolean) => {
     setAutoExpandState(enabled);
     localStorage.setItem('widget-auto-expand', String(enabled));
+    // Trigger cloud save with the new autoExpand value
+    saveToCloud(layouts, { autoExpand: enabled });
     toast({
       title: enabled ? "↔️ הרחבה אוטומטית מופעלת" : "↔️ הרחבה אוטומטית כבויה",
       description: enabled ? "ווידג'טים יתרחבו למלא שטח ריק" : "ווידג'טים ישמרו על גודלם המוגדר",
       duration: 1500,
     });
-  }, []);
+  }, [layouts, saveToCloud]);
+
+  // Set dashboard theme - synced to cloud for cross-device persistence
+  const setDashboardTheme = useCallback((theme: string) => {
+    setDashboardThemeState(theme);
+    localStorage.setItem('dashboard-theme', theme);
+    // Dispatch event for DashboardThemeProvider to sync
+    window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: theme }));
+    // Trigger cloud save with the new theme value
+    saveToCloud(layouts, { dashboardTheme: theme });
+  }, [layouts, saveToCloud]);
 
   // Get single layout
   const getLayout = useCallback((id: WidgetId) => {
@@ -581,6 +645,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       isSaving,
       equalizeHeights,
       autoExpand,
+      dashboardTheme,
       getLayout,
       isVisible,
       getGridClass,
@@ -596,6 +661,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       balanceRow,
       setEqualizeHeights,
       setAutoExpand,
+      setDashboardTheme,
     }}>
       {children}
     </WidgetLayoutContext.Provider>
