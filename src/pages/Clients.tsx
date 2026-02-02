@@ -284,10 +284,15 @@ export default function Clients() {
         return;
       }
       
-      // Only handle letter keys (Hebrew and English)
-      const isLetter = /^[a-zA-Zא-ת]$/.test(key);
+      // Only handle letter keys (Hebrew and English) and space
+      const isLetter = /^[a-zA-Zא-ת ]$/.test(key);
       
       if (!isLetter) return;
+      
+      // Prevent default for space to avoid page scroll
+      if (key === ' ') {
+        e.preventDefault();
+      }
       
       // Clear previous timeout
       if (keyboardTimeoutRef.current) {
