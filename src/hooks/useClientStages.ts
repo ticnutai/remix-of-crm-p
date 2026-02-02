@@ -909,10 +909,80 @@ export function useClientStages(clientId: string) {
     }
   };
 
-  // Load data on mount
+  // Load data on mount and subscribe to realtime changes
   useEffect(() => {
     if (clientId) {
       loadData();
+      
+      // Subscribe to realtime changes on stages
+      const stagesChannel = supabase
+        .channel(`client_stages_${clientId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'client_stages',
+            filter: `client_id=eq.${clientId}`,
+          },
+          (payload) => {
+            console.log('Stage change received:', payload);
+            if (payload.eventType === 'UPDATE') {
+              const updated = payload.new as ClientStage;
+              setStages(prev =>
+                prev.map(s => s.stage_id === updated.stage_id ? { ...s, ...updated } : s)
+              );
+            } else if (payload.eventType === 'INSERT') {
+              const inserted = payload.new as ClientStage;
+              setStages(prev => {
+                if (prev.some(s => s.stage_id === inserted.stage_id)) return prev;
+                return [...prev, inserted].sort((a, b) => a.sort_order - b.sort_order);
+              });
+            } else if (payload.eventType === 'DELETE') {
+              const deleted = payload.old as ClientStage;
+              setStages(prev => prev.filter(s => s.stage_id !== deleted.stage_id));
+            }
+          }
+        )
+        .subscribe();
+      
+      // Subscribe to realtime changes on tasks
+      const tasksChannel = supabase
+        .channel(`client_stage_tasks_${clientId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'client_stage_tasks',
+            filter: `client_id=eq.${clientId}`,
+          },
+          (payload) => {
+            console.log('Task change received:', payload);
+            if (payload.eventType === 'UPDATE') {
+              const updated = payload.new as ClientStageTask;
+              setTasks(prev =>
+                prev.map(t => t.id === updated.id ? { ...t, ...updated } : t)
+              );
+            } else if (payload.eventType === 'INSERT') {
+              const inserted = payload.new as ClientStageTask;
+              setTasks(prev => {
+                if (prev.some(t => t.id === inserted.id)) return prev;
+                return [...prev, inserted];
+              });
+            } else if (payload.eventType === 'DELETE') {
+              const deleted = payload.old as ClientStageTask;
+              setTasks(prev => prev.filter(t => t.id !== deleted.id));
+            }
+          }
+        )
+        .subscribe();
+      
+      // Cleanup subscriptions on unmount
+      return () => {
+        supabase.removeChannel(stagesChannel);
+        supabase.removeChannel(tasksChannel);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
