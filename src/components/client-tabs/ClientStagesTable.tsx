@@ -52,11 +52,15 @@ import {
   Palette,
   Type,
   Bold,
+  Timer,
+  Play,
+  Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
+import { DayCounterCell } from '@/components/tables/DayCounterCell';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
@@ -84,6 +88,17 @@ const TEXT_COLORS = [
   { value: '#0891b2', label: 'טורקיז', color: '#0891b2' },
 ];
 
+// Predefined target days for common task types
+const TARGET_DAYS_OPTIONS = [
+  { value: 7, label: '7 ימי עבודה' },
+  { value: 14, label: '14 ימי עבודה' },
+  { value: 21, label: '21 ימי עבודה' },
+  { value: 30, label: '30 ימי עבודה' },
+  { value: 45, label: '45 ימי עבודה (בקרה מרחבית)' },
+  { value: 60, label: '60 ימי עבודה' },
+  { value: 90, label: '90 ימי עבודה' },
+];
+
 interface ClientStagesTableProps {
   clientId: string;
 }
@@ -96,6 +111,8 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
     updateTask,
     updateTaskCompletedDate,
     updateTaskStyle,
+    startTaskTimer,
+    stopTaskTimer,
     deleteTask,
   } = useClientStages(clientId);
   
@@ -226,6 +243,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                 <TableHead className="text-right w-36">שלב</TableHead>
                 <TableHead className="text-right">משימה</TableHead>
                 <TableHead className="text-center w-24">סטטוס</TableHead>
+                <TableHead className="text-center w-40">ימי עבודה</TableHead>
                 <TableHead className="text-center w-32">תאריך השלמה</TableHead>
                 <TableHead className="text-center w-24">קשורים</TableHead>
                 <TableHead className="text-center w-32">פעולות</TableHead>
@@ -234,7 +252,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
             <TableBody>
               {filteredTasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                     {allTasks.length === 0 ? 'אין משימות' : 'לא נמצאו משימות התואמות לחיפוש'}
                   </TableCell>
                 </TableRow>
@@ -307,6 +325,57 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                           <Circle className="h-5 w-5 text-muted-foreground" />
                         )}
                       </Button>
+                    </TableCell>
+                    
+                    {/* Working Days Timer Cell */}
+                    <TableCell className="text-center">
+                      {task.started_at && task.target_working_days ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <DayCounterCell 
+                            startDate={task.started_at}
+                            config={{ targetDays: task.target_working_days }}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:text-destructive"
+                            onClick={() => stopTaskTimer(task.id)}
+                            title="עצור טיימר"
+                          >
+                            <Square className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-muted-foreground hover:text-primary"
+                            >
+                              <Timer className="h-4 w-4 ml-1" />
+                              <span className="text-xs">הפעל</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-2" align="center">
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
+                              {TARGET_DAYS_OPTIONS.map(option => (
+                                <Button
+                                  key={option.value}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start text-xs h-7"
+                                  onClick={() => startTaskTimer(task.id, option.value)}
+                                >
+                                  <Play className="h-3 w-3 ml-2 text-green-600" />
+                                  {option.label}
+                                </Button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </TableCell>
                     
                     <TableCell className="text-center text-sm">
@@ -509,6 +578,38 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                           <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
                         )}
                       </ContextMenuItem>
+                      
+                      <ContextMenuSeparator />
+                      
+                      {/* Timer Submenu */}
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger className="flex items-center gap-2">
+                          <Timer className="h-4 w-4" />
+                          <span>טיימר ימי עבודה</span>
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-48">
+                          {task.started_at ? (
+                            <ContextMenuItem 
+                              onClick={() => stopTaskTimer(task.id)}
+                              className="flex items-center gap-2 text-destructive"
+                            >
+                              <Square className="h-4 w-4" />
+                              <span>עצור טיימר</span>
+                            </ContextMenuItem>
+                          ) : (
+                            TARGET_DAYS_OPTIONS.map(option => (
+                              <ContextMenuItem 
+                                key={option.value}
+                                onClick={() => startTaskTimer(task.id, option.value)}
+                                className="flex items-center gap-2"
+                              >
+                                <Play className="h-4 w-4 text-green-600" />
+                                <span>{option.label}</span>
+                              </ContextMenuItem>
+                            ))
+                          )}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
                     </ContextMenuContent>
                   </ContextMenu>
                 ))
@@ -531,6 +632,10 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
             <span className="text-muted-foreground">
               <Circle className="h-4 w-4 inline ml-1" />
               {filteredTasks.filter(t => !t.completed).length} בתהליך
+            </span>
+            <span className="text-amber-600">
+              <Timer className="h-4 w-4 inline ml-1" />
+              {filteredTasks.filter(t => t.started_at && t.target_working_days).length} עם טיימר
             </span>
           </div>
         </div>

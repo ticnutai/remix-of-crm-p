@@ -16,6 +16,9 @@ export interface ClientStageTask {
   background_color?: string | null;
   text_color?: string | null;
   is_bold?: boolean;
+  // Timer/Working days tracking
+  started_at?: string | null;
+  target_working_days?: number | null;
 }
 
 export interface ClientStage {
@@ -363,6 +366,116 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Start task timer - sets started_at and target_working_days
+  const startTaskTimer = async (taskId: string, targetDays: number) => {
+    try {
+      const now = new Date().toISOString();
+      
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update({
+          started_at: now,
+          target_working_days: targetDays,
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                started_at: now,
+                target_working_days: targetDays,
+              }
+            : t
+        )
+      );
+      toast({
+        title: 'הצלחה',
+        description: `טיימר הופעל - ${targetDays} ימי עבודה`,
+      });
+    } catch (error: unknown) {
+      console.error('Error starting task timer:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להפעיל טיימר',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Stop/clear task timer
+  const stopTaskTimer = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update({
+          started_at: null,
+          target_working_days: null,
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                started_at: null,
+                target_working_days: null,
+              }
+            : t
+        )
+      );
+      toast({
+        title: 'הצלחה',
+        description: 'הטיימר הופסק',
+      });
+    } catch (error: unknown) {
+      console.error('Error stopping task timer:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להפסיק טיימר',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Update task timer settings
+  const updateTaskTimer = async (taskId: string, targetDays: number) => {
+    try {
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update({
+          target_working_days: targetDays,
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                target_working_days: targetDays,
+              }
+            : t
+        )
+      );
+    } catch (error: unknown) {
+      console.error('Error updating task timer:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן טיימר',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Delete task
   const deleteTask = async (taskId: string) => {
     try {
@@ -681,6 +794,9 @@ export function useClientStages(clientId: string) {
     updateTask,
     updateTaskCompletedDate,
     updateTaskStyle,
+    startTaskTimer,
+    stopTaskTimer,
+    updateTaskTimer,
     deleteTask,
     bulkDeleteTasks,
     addStage,
