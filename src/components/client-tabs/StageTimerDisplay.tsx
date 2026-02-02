@@ -125,8 +125,8 @@ export function StageTimerDisplay({
 
   // Navy Clean style (style 1) - special rendering
   if (style.name === 'navy-clean') {
-    const textSizeClass = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-3xl' : 'text-xl';
-    const iconSizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-7 h-7' : 'w-5 h-5';
+    const textSizeClass = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-4xl' : 'text-xl';
+    const iconSizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-8 h-8' : 'w-5 h-5';
     
     return (
       <div
@@ -135,7 +135,8 @@ export function StageTimerDisplay({
           onStyleChange?.();
         }}
         className={cn(
-          "inline-flex items-center gap-1.5 cursor-pointer transition-all hover:opacity-70",
+          "inline-flex items-center gap-2 cursor-pointer transition-all hover:opacity-70",
+          size === 'lg' && "bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl shadow-lg border border-[#1e3a5f]/20",
           className
         )}
         title={`${statusText} | התחלה: ${new Date(startedAt).toLocaleDateString('he-IL')} | יעד: ${targetDays} ימי עבודה | לחץ לשינוי עיצוב`}

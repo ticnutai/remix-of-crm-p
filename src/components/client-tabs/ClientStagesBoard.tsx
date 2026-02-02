@@ -1452,10 +1452,23 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                   </div>
                 )}
 
-                {/* Header Actions - visible on hover */}
+                {/* Timer Display - Top Left - Always visible if timer is active */}
+                {Boolean(stage.started_at && stage.target_working_days) && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <StageTimerDisplay
+                      startedAt={stage.started_at}
+                      targetDays={stage.target_working_days}
+                      displayStyle={stage.timer_display_style}
+                      onStyleChange={() => cycleStageTimerStyle(stage.stage_id)}
+                      size="lg"
+                    />
+                  </div>
+                )}
+
+                {/* Header Actions - visible on hover - Bottom Right */}
                 {isHovered && (
                   <div className={cn(
-                    "absolute top-2 left-2 flex gap-1",
+                    "absolute bottom-2 right-2 flex gap-1",
                     isActiveStage && !isStageCompleted && "text-white"
                   )}>
                     {/* Edit Stage Button */}
@@ -1556,6 +1569,102 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     >
                       <BookTemplate className="h-3.5 w-3.5" />
                     </Button>
+                    
+                    {/* Timer Controls - in hover actions */}
+                    {!stage.started_at ? (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className={cn(
+                              "h-7 w-7 p-0",
+                              isActiveStage && !isStageCompleted && "hover:bg-white/20"
+                            )}
+                            title="הפעל טיימר ימים"
+                          >
+                            <Timer className="h-3.5 w-3.5" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-2" align="end">
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
+                            
+                            {/* Predefined options */}
+                            <div className="grid grid-cols-2 gap-1">
+                              {TARGET_DAYS_OPTIONS.map(option => (
+                                <Button
+                                  key={option.value}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-center text-xs h-7"
+                                  onClick={() => startStageTimer(stage.stage_id, option.value)}
+                                >
+                                  {option.value} ימים
+                                </Button>
+                              ))}
+                            </div>
+                            
+                            {/* Custom days input */}
+                            <div className="border-t pt-2 mt-2">
+                              <p className="text-xs text-muted-foreground mb-1 text-center">או הזן מספר אישי:</p>
+                              <div className="flex gap-1">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="365"
+                                  placeholder="ימים"
+                                  className="h-7 text-xs text-center"
+                                  value={customTimerDays?.stageId === stage.stage_id ? customTimerDays.days : ''}
+                                  onChange={(e) => setCustomTimerDays({ stageId: stage.stage_id, days: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && customTimerDays?.days) {
+                                      const days = parseInt(customTimerDays.days);
+                                      if (days > 0 && days <= 365) {
+                                        startStageTimer(stage.stage_id, days);
+                                        setCustomTimerDays(null);
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  className="h-7 px-2"
+                                  disabled={!customTimerDays?.days || parseInt(customTimerDays.days) <= 0}
+                                  onClick={() => {
+                                    if (customTimerDays?.days) {
+                                      const days = parseInt(customTimerDays.days);
+                                      if (days > 0 && days <= 365) {
+                                        startStageTimer(stage.stage_id, days);
+                                        setCustomTimerDays(null);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Play className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          stopStageTimer(stage.stage_id);
+                        }}
+                        className={cn(
+                          "h-7 w-7 p-0 hover:text-red-500",
+                          isActiveStage && !isStageCompleted && "hover:bg-white/20"
+                        )}
+                        title="עצור טיימר"
+                      >
+                        <Square className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
 
@@ -1580,122 +1689,6 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 )}>
                   {stage.stage_name}
                 </h3>
-
-                {/* Stage Timer Display - click to change style */}
-                {Boolean(stage.started_at && stage.target_working_days) && (
-                  <div className="mb-2 flex justify-end">
-                    <StageTimerDisplay
-                      startedAt={stage.started_at}
-                      targetDays={stage.target_working_days}
-                      displayStyle={stage.timer_display_style}
-                      onStyleChange={() => cycleStageTimerStyle(stage.stage_id)}
-                      size="md"
-                    />
-                  </div>
-                )}
-
-                {/* Stage Timer Controls in Context Menu */}
-                {!stage.started_at && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          "h-7 mb-2 text-xs",
-                          isActiveStage && !isStageCompleted 
-                            ? "text-white/70 hover:text-white hover:bg-white/20" 
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        <Timer className="h-3.5 w-3.5 ml-1" />
-                        הפעל טיימר
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2" align="end">
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
-                        
-                        {/* Predefined options */}
-                        <div className="grid grid-cols-2 gap-1">
-                          {TARGET_DAYS_OPTIONS.map(option => (
-                            <Button
-                              key={option.value}
-                              variant="ghost"
-                              size="sm"
-                              className="w-full justify-center text-xs h-7"
-                              onClick={() => startStageTimer(stage.stage_id, option.value)}
-                            >
-                              {option.value} ימים
-                            </Button>
-                          ))}
-                        </div>
-                        
-                        {/* Custom days input */}
-                        <div className="border-t pt-2 mt-2">
-                          <p className="text-xs text-muted-foreground mb-1 text-center">או הזן מספר אישי:</p>
-                          <div className="flex gap-1">
-                            <Input
-                              type="number"
-                              min="1"
-                              max="365"
-                              placeholder="ימים"
-                              className="h-7 text-xs text-center"
-                              value={customTimerDays?.stageId === stage.stage_id ? customTimerDays.days : ''}
-                              onChange={(e) => setCustomTimerDays({ stageId: stage.stage_id, days: e.target.value })}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && customTimerDays?.days) {
-                                  const days = parseInt(customTimerDays.days);
-                                  if (days > 0 && days <= 365) {
-                                    startStageTimer(stage.stage_id, days);
-                                    setCustomTimerDays(null);
-                                  }
-                                }
-                              }}
-                            />
-                            <Button
-                              size="sm"
-                              className="h-7 px-2"
-                              disabled={!customTimerDays?.days || parseInt(customTimerDays.days) <= 0}
-                              onClick={() => {
-                                if (customTimerDays?.days) {
-                                  const days = parseInt(customTimerDays.days);
-                                  if (days > 0 && days <= 365) {
-                                    startStageTimer(stage.stage_id, days);
-                                    setCustomTimerDays(null);
-                                  }
-                                }
-                              }}
-                            >
-                              <Play className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-
-                {/* Stop Timer Button */}
-                {stage.started_at && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-6 mb-2 text-xs",
-                      isActiveStage && !isStageCompleted 
-                        ? "text-white/70 hover:text-red-300 hover:bg-white/20" 
-                        : "text-muted-foreground hover:text-red-500"
-                    )}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      stopStageTimer(stage.stage_id);
-                    }}
-                  >
-                    <Square className="h-3 w-3 ml-1" />
-                    עצור טיימר
-                  </Button>
-                )}
 
                 <div className="flex items-center gap-2 justify-end">
                   {/* Progress Circle */}
