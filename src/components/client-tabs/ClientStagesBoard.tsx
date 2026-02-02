@@ -24,6 +24,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   Phone, 
   FolderOpen, 
@@ -51,8 +67,18 @@ import {
   BookTemplate,
   Eye,
   Clipboard,
-  ClipboardPaste
+  ClipboardPaste,
+  Palette,
+  Type,
+  Bold,
+  Timer,
+  Play,
+  Square,
+  CalendarIcon,
 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { DayCounterCell } from '@/components/tables/DayCounterCell';
 import { cn } from '@/lib/utils';
 import { useClientStages, ClientStage, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
@@ -83,6 +109,40 @@ const iconOptions = [
   { value: 'MapPin', icon: MapPin, label: 'מיקום' },
 ];
 
+// Predefined colors for background and text
+const BACKGROUND_COLORS = [
+  { value: null, label: 'ללא', color: 'transparent' },
+  { value: '#fef3c7', label: 'צהוב', color: '#fef3c7' },
+  { value: '#dcfce7', label: 'ירוק', color: '#dcfce7' },
+  { value: '#dbeafe', label: 'כחול', color: '#dbeafe' },
+  { value: '#fce7f3', label: 'ורוד', color: '#fce7f3' },
+  { value: '#fed7aa', label: 'כתום', color: '#fed7aa' },
+  { value: '#e9d5ff', label: 'סגול', color: '#e9d5ff' },
+  { value: '#fecaca', label: 'אדום', color: '#fecaca' },
+  { value: '#d1d5db', label: 'אפור', color: '#d1d5db' },
+];
+
+const TEXT_COLORS = [
+  { value: null, label: 'רגיל', color: 'inherit' },
+  { value: '#dc2626', label: 'אדום', color: '#dc2626' },
+  { value: '#16a34a', label: 'ירוק', color: '#16a34a' },
+  { value: '#2563eb', label: 'כחול', color: '#2563eb' },
+  { value: '#d97706', label: 'כתום', color: '#d97706' },
+  { value: '#9333ea', label: 'סגול', color: '#9333ea' },
+  { value: '#0891b2', label: 'טורקיז', color: '#0891b2' },
+];
+
+// Predefined target days for common task types
+const TARGET_DAYS_OPTIONS = [
+  { value: 7, label: '7 ימי עבודה' },
+  { value: 14, label: '14 ימי עבודה' },
+  { value: 21, label: '21 ימי עבודה' },
+  { value: 30, label: '30 ימי עבודה' },
+  { value: 45, label: '45 ימי עבודה (בקרה מרחבית)' },
+  { value: 60, label: '60 ימי עבודה' },
+  { value: 90, label: '90 ימי עבודה' },
+];
+
 // Sortable Task Item Component
 interface SortableTaskProps {
   task: ClientStageTask;
@@ -95,6 +155,10 @@ interface SortableTaskProps {
   handleToggleTask: (task: ClientStageTask) => void;
   handleUpdateTask: (taskId: string, title: string) => void;
   handleDeleteTask: (taskId: string) => void;
+  updateTaskStyle?: (taskId: string, style: { background_color?: string | null; text_color?: string | null; is_bold?: boolean }) => void;
+  updateTaskCompletedDate?: (taskId: string, date: string | null) => void;
+  startTaskTimer?: (taskId: string, targetDays: number) => void;
+  stopTaskTimer?: (taskId: string) => void;
 }
 
 function SortableTaskItem({
@@ -108,7 +172,12 @@ function SortableTaskItem({
   handleToggleTask,
   handleUpdateTask,
   handleDeleteTask,
+  updateTaskStyle,
+  updateTaskCompletedDate,
+  startTaskTimer,
+  stopTaskTimer,
 }: SortableTaskProps) {
+  const [editingDate, setEditingDate] = useState(false);
   const {
     attributes,
     listeners,
@@ -122,20 +191,23 @@ function SortableTaskItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    backgroundColor: task.background_color || undefined,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-start gap-2 p-2 rounded-md transition-all group",
-        task.completed 
-          ? "bg-white dark:bg-gray-900 border border-[#85868C]" 
-          : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-transparent",
-        isDragging && "shadow-lg ring-2 ring-primary/20"
-      )}
-    >
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          style={style}
+          className={cn(
+            "flex items-start gap-2 p-2 rounded-md transition-all group cursor-context-menu",
+            task.completed && !task.background_color
+              ? "bg-white dark:bg-gray-900 border border-[#85868C]" 
+              : !task.background_color && "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-transparent",
+            isDragging && "shadow-lg ring-2 ring-primary/20"
+          )}
+        >
       {/* Drag Handle */}
       <button
         {...attributes}
@@ -206,11 +278,23 @@ function SortableTaskItem({
       ) : (
         <div className="flex-1 min-w-0">
           <p className={cn(
-            "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200 font-medium",
-            task.completed && "line-through text-emerald-600 dark:text-emerald-400"
-          )}>
+            "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200",
+            task.completed && "line-through text-emerald-600 dark:text-emerald-400",
+            task.is_bold && "font-bold"
+          )}
+          style={{ color: task.text_color || undefined }}
+          >
             {task.title}
           </p>
+          {/* Day Counter - if timer is active */}
+          {task.started_at && task.target_working_days && (
+            <div className="flex items-center gap-1 mt-1">
+              <DayCounterCell 
+                startDate={task.started_at}
+                config={{ targetDays: task.target_working_days }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -251,7 +335,197 @@ function SortableTaskItem({
           }
         />
       </div>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52">
+        {/* Background Color Submenu */}
+        {updateTaskStyle && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              <span>צבע רקע</span>
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-40">
+              {BACKGROUND_COLORS.map((color) => (
+                <ContextMenuItem 
+                  key={color.value || 'none'} 
+                  onClick={() => updateTaskStyle(task.id, { background_color: color.value })}
+                  className="flex items-center gap-2"
+                >
+                  <div 
+                    className={cn(
+                      "h-4 w-4 rounded border",
+                      !color.value && "bg-background"
+                    )}
+                    style={{ backgroundColor: color.value || undefined }}
+                  />
+                  <span>{color.label}</span>
+                  {task.background_color === color.value && (
+                    <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+                  )}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        )}
+        
+        {/* Text Color Submenu */}
+        {updateTaskStyle && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger className="flex items-center gap-2">
+              <Type className="h-4 w-4" />
+              <span>צבע טקסט</span>
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="w-40">
+              {TEXT_COLORS.map((color) => (
+                <ContextMenuItem 
+                  key={color.value || 'none'} 
+                  onClick={() => updateTaskStyle(task.id, { text_color: color.value })}
+                  className="flex items-center gap-2"
+                >
+                  <div 
+                    className={cn(
+                      "h-4 w-4 rounded border flex items-center justify-center",
+                      !color.value && "bg-background"
+                    )}
+                    style={{ backgroundColor: color.value || undefined }}
+                  >
+                    <span className="text-[8px] font-bold" style={{ color: color.value ? '#fff' : '#000' }}>A</span>
+                  </div>
+                  <span>{color.label}</span>
+                  {task.text_color === color.value && (
+                    <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+                  )}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        )}
+        
+        {updateTaskStyle && <ContextMenuSeparator />}
+        
+        {/* Bold Toggle */}
+        {updateTaskStyle && (
+          <ContextMenuItem 
+            onClick={() => updateTaskStyle(task.id, { is_bold: !task.is_bold })}
+            className="flex items-center gap-2"
+          >
+            <Bold className="h-4 w-4" />
+            <span>טקסט מודגש</span>
+            {task.is_bold && (
+              <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+            )}
+          </ContextMenuItem>
+        )}
+        
+        {/* Timer Submenu */}
+        {(startTaskTimer || stopTaskTimer) && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="flex items-center gap-2">
+                <Timer className="h-4 w-4" />
+                <span>טיימר ימי עבודה</span>
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48">
+                {task.started_at && stopTaskTimer ? (
+                  <ContextMenuItem 
+                    onClick={() => stopTaskTimer(task.id)}
+                    className="flex items-center gap-2 text-destructive"
+                  >
+                    <Square className="h-4 w-4" />
+                    <span>עצור טיימר</span>
+                  </ContextMenuItem>
+                ) : startTaskTimer && (
+                  TARGET_DAYS_OPTIONS.map(option => (
+                    <ContextMenuItem 
+                      key={option.value}
+                      onClick={() => startTaskTimer(task.id, option.value)}
+                      className="flex items-center gap-2"
+                    >
+                      <Play className="h-4 w-4 text-green-600" />
+                      <span>{option.label}</span>
+                    </ContextMenuItem>
+                  ))
+                )}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        )}
+        
+        {/* Completion Date */}
+        {updateTaskCompletedDate && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem 
+              onClick={() => setEditingDate(true)}
+              className="flex items-center gap-2"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              <span>שנה תאריך ביצוע</span>
+            </ContextMenuItem>
+          </>
+        )}
+        
+        <ContextMenuSeparator />
+        
+        {/* Edit Task */}
+        <ContextMenuItem 
+          onClick={() => setEditingTask({ stageId: stage.stage_id, taskId: task.id, title: task.title })}
+          className="flex items-center gap-2"
+        >
+          <Edit className="h-4 w-4" />
+          <span>עריכת משימה</span>
+        </ContextMenuItem>
+        
+        {/* Delete Task */}
+        <ContextMenuItem 
+          onClick={() => handleDeleteTask(task.id)}
+          className="flex items-center gap-2 text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>מחיקת משימה</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+      
+      {/* Date Picker Dialog */}
+      {editingDate && updateTaskCompletedDate && (
+        <Dialog open={editingDate} onOpenChange={setEditingDate}>
+          <DialogContent className="sm:max-w-[350px]">
+            <DialogHeader>
+              <DialogTitle>בחר תאריך ביצוע</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center">
+              <Calendar
+                mode="single"
+                selected={task.completed_at ? parseISO(task.completed_at) : undefined}
+                onSelect={(date) => {
+                  if (date) {
+                    updateTaskCompletedDate(task.id, date.toISOString());
+                  }
+                  setEditingDate(false);
+                }}
+                locale={he}
+                initialFocus
+              />
+              {task.completed_at && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-destructive"
+                  onClick={() => {
+                    updateTaskCompletedDate(task.id, null);
+                    setEditingDate(false);
+                  }}
+                >
+                  <X className="h-4 w-4 ml-1" />
+                  נקה תאריך
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </ContextMenu>
   );
 }
 
@@ -688,6 +962,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     addBulkTasks,
     toggleTask, 
     updateTask,
+    updateTaskCompletedDate,
+    updateTaskStyle,
+    startTaskTimer,
+    stopTaskTimer,
     deleteTask,
     bulkDeleteTasks,
     addStage,
@@ -1330,6 +1608,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                             handleToggleTask={handleToggleTask}
                             handleUpdateTask={handleUpdateTask}
                             handleDeleteTask={handleDeleteTask}
+                            updateTaskStyle={updateTaskStyle}
+                            updateTaskCompletedDate={updateTaskCompletedDate}
+                            startTaskTimer={startTaskTimer}
+                            stopTaskTimer={stopTaskTimer}
                           />
                         ))}
                       </div>
