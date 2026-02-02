@@ -29,8 +29,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   Play, Square, Clock, Target, Briefcase, User, 
   Pause, RotateCcw, Save, FileText,
-  Check, X, ChevronDown, ChevronUp
+  Check, X, ChevronDown, ChevronUp, Settings, Plus, Trash2
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useTimerTheme, TIMER_COLOR_MAP } from './TimerThemeContext';
@@ -68,6 +70,7 @@ const QUICK_NOTES = [
 const TIMER_COLLAPSED_KEY = 'timer-widget-collapsed';
 const RECENT_CLIENTS_KEY = 'timer-recent-clients';
 const QUICK_TITLES_KEY = 'timer-quick-titles';
+const QUICK_NOTES_KEY = 'timer-quick-notes';
 
 interface TimerWidgetProps {
   showTimerDisplay?: boolean;
@@ -109,13 +112,53 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     const saved = localStorage.getItem(QUICK_TITLES_KEY);
     return saved ? JSON.parse(saved) : DEFAULT_QUICK_TITLES;
   });
+  const [quickNotes, setQuickNotes] = useState<string[]>(() => {
+    const saved = localStorage.getItem(QUICK_NOTES_KEY);
+    return saved ? JSON.parse(saved) : QUICK_NOTES;
+  });
   const [editingTabIndex, setEditingTabIndex] = useState<number | null>(null);
   const [editingTabValue, setEditingTabValue] = useState('');
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [newTitleInput, setNewTitleInput] = useState('');
+  const [newNoteInput, setNewNoteInput] = useState('');
 
   // Save quick titles to localStorage
   useEffect(() => {
     localStorage.setItem(QUICK_TITLES_KEY, JSON.stringify(quickTitles));
   }, [quickTitles]);
+
+  // Save quick notes to localStorage
+  useEffect(() => {
+    localStorage.setItem(QUICK_NOTES_KEY, JSON.stringify(quickNotes));
+  }, [quickNotes]);
+
+  // Functions to manage quick titles
+  const addQuickTitle = () => {
+    if (newTitleInput.trim() && !quickTitles.includes(newTitleInput.trim())) {
+      setQuickTitles([...quickTitles, newTitleInput.trim()]);
+      setNewTitleInput('');
+    }
+  };
+
+  const removeQuickTitle = (index: number) => {
+    setQuickTitles(quickTitles.filter((_, i) => i !== index));
+  };
+
+  // Functions to manage quick notes
+  const addQuickNote = () => {
+    if (newNoteInput.trim() && !quickNotes.includes(newNoteInput.trim())) {
+      setQuickNotes([...quickNotes, newNoteInput.trim()]);
+      setNewNoteInput('');
+    }
+  };
+
+  const removeQuickNote = (index: number) => {
+    setQuickNotes(quickNotes.filter((_, i) => i !== index));
+  };
+
+  const selectQuickNote = (note: string) => {
+    setNotes(note);
+  };
 
   // Save collapsed state
   useEffect(() => {
@@ -586,6 +629,22 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               ))}
             </div>
 
+            {/* Quick Notes Tabs */}
+            <div className="grid grid-cols-2 gap-2">
+              {quickNotes.slice(0, 6).map((note, index) => (
+                <button
+                  key={index}
+                  onClick={() => selectQuickNote(note)}
+                  className={cn(
+                    "px-2 py-1.5 text-[10px] text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[hsl(200,70%,50%)]/30 rounded-lg transition-all",
+                    notes === note && "bg-[hsl(200,70%,50%)]/20 border-[hsl(200,70%,50%)]/50 text-white"
+                  )}
+                >
+                  {note}
+                </button>
+              ))}
+            </div>
+
             {/* Project Selector */}
             <Select
               value={selectedProject || "__none__"}
@@ -619,6 +678,108 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
             </Select>
           </CollapsibleContent>
         </Collapsible>
+
+        {/* Settings Icon - Bottom Left */}
+        <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+          <DialogTrigger asChild>
+            <button
+              className="absolute bottom-1 left-1 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
+              title="הגדרות כותרות והערות"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </DialogTrigger>
+          <DialogContent 
+            dir="rtl"
+            className="max-w-md bg-gradient-to-br from-[hsl(220,60%,18%)] to-[hsl(220,60%,22%)] border-[hsl(45,80%,50%)] text-white"
+          >
+            <DialogHeader>
+              <DialogTitle className="text-[hsl(45,80%,60%)] flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                הגדרות כותרות והערות מוצעות
+              </DialogTitle>
+            </DialogHeader>
+            
+            <Tabs defaultValue="titles" className="w-full mt-4">
+              <TabsList className="grid w-full grid-cols-2 bg-white/10">
+                <TabsTrigger value="titles" className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]">
+                  כותרות
+                </TabsTrigger>
+                <TabsTrigger value="notes" className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]">
+                  הערות
+                </TabsTrigger>
+              </TabsList>
+              
+              {/* Titles Tab */}
+              <TabsContent value="titles" className="space-y-3 mt-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newTitleInput}
+                    onChange={(e) => setNewTitleInput(e.target.value)}
+                    placeholder="הוסף כותרת חדשה..."
+                    className="flex-1 h-9 bg-white/10 border-white/20 text-white text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && addQuickTitle()}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addQuickTitle}
+                    className="h-9 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {quickTitles.map((title, index) => (
+                    <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                      <span className="text-sm">{title}</span>
+                      <button
+                        onClick={() => removeQuickTitle(index)}
+                        className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-white/40">* לחיצה כפולה על כותרת בווידג'ט מאפשרת עריכה ישירה</p>
+              </TabsContent>
+              
+              {/* Notes Tab */}
+              <TabsContent value="notes" className="space-y-3 mt-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={newNoteInput}
+                    onChange={(e) => setNewNoteInput(e.target.value)}
+                    placeholder="הוסף הערה חדשה..."
+                    className="flex-1 h-9 bg-white/10 border-white/20 text-white text-sm"
+                    onKeyDown={(e) => e.key === 'Enter' && addQuickNote()}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addQuickNote}
+                    className="h-9 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {quickNotes.map((note, index) => (
+                    <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                      <span className="text-sm">{note}</span>
+                      <button
+                        onClick={() => removeQuickNote(index)}
+                        className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-white/40">* ההערות יופיעו כטאבים לבחירה מהירה</p>
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
