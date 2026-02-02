@@ -657,20 +657,20 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickTitle(); } }}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <Button 
+                          <button 
                             type="button" 
-                            size="sm" 
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               e.preventDefault(); 
-                              console.log('Plus button clicked for title'); 
+                              console.log('Plus button clicked for title, input:', newTitleInput); 
                               addQuickTitle(); 
                             }} 
                             onMouseDown={(e) => e.stopPropagation()}
-                            className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="h-8 w-8 p-0 flex items-center justify-center rounded-md bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)] cursor-pointer"
                           >
                             <Plus className="h-3.5 w-3.5" />
-                          </Button>
+                          </button>
                         </div>
                       </div>
 
@@ -793,20 +793,20 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickNote(); } }}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <Button 
+                          <button 
                             type="button" 
-                            size="sm" 
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               e.preventDefault(); 
-                              console.log('Plus button clicked for note'); 
+                              console.log('Plus button clicked for note, input:', newNoteInput); 
                               addQuickNote(); 
                             }} 
                             onMouseDown={(e) => e.stopPropagation()}
-                            className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="h-8 w-8 p-0 flex items-center justify-center rounded-md bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)] cursor-pointer"
                           >
                             <Plus className="h-3.5 w-3.5" />
-                          </Button>
+                          </button>
                         </div>
                       </div>
 
