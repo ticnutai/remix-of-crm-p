@@ -373,7 +373,14 @@ export default function Backups() {
   const [status, setStatus] = useState<BackupStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
-  const [backupName, setBackupName] = useState('');
+  // ברירת מחדל לשם גיבוי: tenarc + תאריך
+  const getDefaultBackupName = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('he-IL').replace(/\//g, '-');
+    const timeStr = now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }).replace(':', '');
+    return `tenarc-${dateStr}-${timeStr}`;
+  };
+  const [backupName, setBackupName] = useState(getDefaultBackupName);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isRestoreDialogOpen, setIsRestoreDialogOpen] = useState(false);
   const [isExternalImportDialogOpen, setIsExternalImportDialogOpen] = useState(false);
@@ -407,6 +414,12 @@ export default function Backups() {
   const [exportFormats, setExportFormats] = useState({
     json: true,
     excel: true,
+  });
+  
+  // Save location selection - ברירת מחדל: שניהם
+  const [saveLocations, setSaveLocations] = useState({
+    local: true,   // שמירה למחשב
+    cloud: true,   // שמירה לענן
   });
   
   // External backup import state
@@ -766,6 +779,16 @@ export default function Backups() {
       });
       return;
     }
+    
+    // Check if at least one save location is selected
+    if (!saveLocations.local && !saveLocations.cloud) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש לבחור לפחות מיקום שמירה אחד',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setStatus('creating');
     setProgress(0);
@@ -773,34 +796,73 @@ export default function Backups() {
 
     try {
       const data = await fetchAllData(backupTopics);
-      setProgress(70);
+      setProgress(50);
       setProgressMessage('שומר גיבוי...');
       
       // Generate filename with date
       const dateStr = new Date().toISOString().split('T')[0];
+      const timeStr = new Date().toTimeString().slice(0, 5).replace(':', '');
       const safeBackupName = backupName.replace(/[^a-zA-Z0-9א-ת\s-]/g, '').trim();
-      const filename = `backup-${safeBackupName}-${dateStr}`;
+      const filename = `backup-${safeBackupName}-${dateStr}-${timeStr}`;
       
       // Count what we're backing up
       const totalRecords = Object.values(data).reduce((sum, arr) => sum + (arr?.length || 0), 0);
       const tableCount = Object.keys(data).filter(k => data[k]?.length > 0).length;
       
-      // Save to local storage
-      createBackup(backupName, {
+      const backupData = {
         ...data,
         exportedBy: user?.email,
         exportedAt: new Date().toISOString(),
-      });
+        backupName: backupName,
+      };
       
-      setProgress(85);
+      // Save to local storage (browser)
+      if (saveLocations.local) {
+        setProgressMessage('שומר למחשב...');
+        createBackup(backupName, backupData);
+      }
       
-      // Export files based on selected formats
+      setProgress(65);
+      
+      // Save to cloud (Supabase Storage)
+      if (saveLocations.cloud) {
+        setProgressMessage('מעלה לענן...');
+        try {
+          const jsonBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+          const cloudFilename = `${filename}.json`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('backups')
+            .upload(cloudFilename, jsonBlob, {
+              contentType: 'application/json',
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Cloud upload error:', uploadError);
+            toast({
+              title: 'אזהרה',
+              description: 'הגיבוי נשמר במחשב אך נכשל בהעלאה לענן',
+              variant: 'destructive',
+            });
+          } else {
+            // Refresh cloud backups list
+            await fetchCloudBackups();
+          }
+        } catch (cloudError) {
+          console.error('Cloud backup error:', cloudError);
+        }
+      }
+      
+      setProgress(80);
+      
+      // Export files based on selected formats (download to computer)
       if (exportFormats.json) {
         setProgressMessage('מייצא JSON...');
         exportToJSON(data, filename);
       }
       
-      setProgress(95);
+      setProgress(90);
       
       if (exportFormats.excel) {
         setProgressMessage('מייצא Excel...');
@@ -815,16 +877,21 @@ export default function Backups() {
         exportFormats.excel && 'Excel',
       ].filter(Boolean).join(' + ');
       
+      const locationsList = [
+        saveLocations.local && 'מחשב',
+        saveLocations.cloud && 'ענן',
+      ].filter(Boolean).join(' + ');
+      
       toast({
         title: 'גיבוי נוצר בהצלחה! 🎉',
-        description: `נשמרו ${totalRecords} רשומות מ-${tableCount} טבלאות (${formatsList})`,
+        description: `נשמרו ${totalRecords} רשומות מ-${tableCount} טבלאות (${formatsList}) ל: ${locationsList}`,
       });
       
       setTimeout(() => {
         setStatus('idle');
         setProgress(0);
         setProgressMessage('');
-        setBackupName('');
+        setBackupName(getDefaultBackupName());
         setIsCreateDialogOpen(false);
       }, 2000);
     } catch (error) {
@@ -2706,6 +2773,44 @@ export default function Backups() {
                           </div>
                           <p className="text-xs text-muted-foreground">
                             JSON מומלץ לשחזור מלא • Excel מומלץ לצפייה ועריכה ידנית
+                          </p>
+                        </div>
+                        
+                        <Separator />
+                        
+                        {/* Save Location Selection */}
+                        <div className="space-y-3">
+                          <Label className="text-base font-semibold">מיקום שמירה</Label>
+                          <div className="flex gap-6">
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <Checkbox
+                                id="save-local"
+                                checked={saveLocations.local}
+                                onCheckedChange={(val) => 
+                                  setSaveLocations(prev => ({ ...prev, local: !!val }))
+                                }
+                              />
+                              <Label htmlFor="save-local" className="flex items-center gap-2 cursor-pointer">
+                                <HardDrive className="h-4 w-4 text-blue-500" />
+                                מחשב (Local)
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2 space-x-reverse">
+                              <Checkbox
+                                id="save-cloud"
+                                checked={saveLocations.cloud}
+                                onCheckedChange={(val) => 
+                                  setSaveLocations(prev => ({ ...prev, cloud: !!val }))
+                                }
+                              />
+                              <Label htmlFor="save-cloud" className="flex items-center gap-2 cursor-pointer">
+                                <Cloud className="h-4 w-4 text-sky-500" />
+                                ענן (Cloud)
+                              </Label>
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            מומלץ לשמור בשניהם לגיבוי כפול ומוגן
                           </p>
                         </div>
                       </div>
