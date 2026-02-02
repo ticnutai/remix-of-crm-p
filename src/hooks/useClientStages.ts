@@ -19,6 +19,7 @@ export interface ClientStageTask {
   // Timer/Working days tracking
   started_at?: string | null;
   target_working_days?: number | null;
+  timer_display_style?: number;
 }
 
 export interface ClientStage {
@@ -31,6 +32,10 @@ export interface ClientStage {
   created_at: string;
   updated_at: string;
   tasks?: ClientStageTask[];
+  // Timer/Working days tracking for stages
+  started_at?: string | null;
+  target_working_days?: number | null;
+  timer_display_style?: number;
 }
 
 // Helper function to remove duplicate tasks (same stage_id + title)
@@ -476,6 +481,139 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Cycle task timer display style (1-5)
+  const cycleTaskTimerStyle = async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    const currentStyle = task?.timer_display_style || 1;
+    const newStyle = currentStyle >= 5 ? 1 : currentStyle + 1;
+    
+    try {
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update({ timer_display_style: newStyle })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? { ...t, timer_display_style: newStyle }
+            : t
+        )
+      );
+    } catch (error: unknown) {
+      console.error('Error cycling task timer style:', error);
+    }
+  };
+
+  // Start stage timer - sets started_at and target_working_days for a stage
+  const startStageTimer = async (stageId: string, targetDays: number) => {
+    try {
+      const now = new Date().toISOString();
+      
+      const { error } = await supabase
+        .from('client_stages')
+        .update({
+          started_at: now,
+          target_working_days: targetDays,
+        })
+        .eq('stage_id', stageId)
+        .eq('client_id', clientId);
+
+      if (error) throw error;
+
+      setStages(prev =>
+        prev.map(s =>
+          s.stage_id === stageId
+            ? {
+                ...s,
+                started_at: now,
+                target_working_days: targetDays,
+              }
+            : s
+        )
+      );
+      toast({
+        title: 'הצלחה',
+        description: `טיימר שלב הופעל - ${targetDays} ימי עבודה`,
+      });
+    } catch (error: unknown) {
+      console.error('Error starting stage timer:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להפעיל טיימר לשלב',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Stop/clear stage timer
+  const stopStageTimer = async (stageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('client_stages')
+        .update({
+          started_at: null,
+          target_working_days: null,
+        })
+        .eq('stage_id', stageId)
+        .eq('client_id', clientId);
+
+      if (error) throw error;
+
+      setStages(prev =>
+        prev.map(s =>
+          s.stage_id === stageId
+            ? {
+                ...s,
+                started_at: null,
+                target_working_days: null,
+              }
+            : s
+        )
+      );
+      toast({
+        title: 'הצלחה',
+        description: 'טיימר השלב הופסק',
+      });
+    } catch (error: unknown) {
+      console.error('Error stopping stage timer:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להפסיק טיימר שלב',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Cycle stage timer display style (1-5)
+  const cycleStageTimerStyle = async (stageId: string) => {
+    const stage = stages.find(s => s.stage_id === stageId);
+    const currentStyle = stage?.timer_display_style || 1;
+    const newStyle = currentStyle >= 5 ? 1 : currentStyle + 1;
+    
+    try {
+      const { error } = await supabase
+        .from('client_stages')
+        .update({ timer_display_style: newStyle })
+        .eq('stage_id', stageId)
+        .eq('client_id', clientId);
+
+      if (error) throw error;
+
+      setStages(prev =>
+        prev.map(s =>
+          s.stage_id === stageId
+            ? { ...s, timer_display_style: newStyle }
+            : s
+        )
+      );
+    } catch (error: unknown) {
+      console.error('Error cycling stage timer style:', error);
+    }
+  };
+
   // Delete task
   const deleteTask = async (taskId: string) => {
     try {
@@ -797,6 +935,10 @@ export function useClientStages(clientId: string) {
     startTaskTimer,
     stopTaskTimer,
     updateTaskTimer,
+    cycleTaskTimerStyle,
+    startStageTimer,
+    stopStageTimer,
+    cycleStageTimerStyle,
     deleteTask,
     bulkDeleteTasks,
     addStage,

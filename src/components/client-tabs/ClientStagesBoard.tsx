@@ -83,6 +83,7 @@ import { cn } from '@/lib/utils';
 import { useClientStages, ClientStage, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
+import { StageTimerDisplay, TaskTimerBadge } from './StageTimerDisplay';
 import { 
   SaveAsTemplateDialog, 
   SaveAllStagesDialog, 
@@ -159,6 +160,7 @@ interface SortableTaskProps {
   updateTaskCompletedDate?: (taskId: string, date: string | null) => void;
   startTaskTimer?: (taskId: string, targetDays: number) => void;
   stopTaskTimer?: (taskId: string) => void;
+  cycleTaskTimerStyle?: (taskId: string) => void;
 }
 
 function SortableTaskItem({
@@ -176,6 +178,7 @@ function SortableTaskItem({
   updateTaskCompletedDate,
   startTaskTimer,
   stopTaskTimer,
+  cycleTaskTimerStyle,
 }: SortableTaskProps) {
   const [editingDate, setEditingDate] = useState(false);
   const {
@@ -286,12 +289,14 @@ function SortableTaskItem({
           >
             {task.title}
           </p>
-          {/* Day Counter - if timer is active */}
-          {task.started_at && task.target_working_days && (
+          {/* Day Counter - if timer is active - click to change style */}
+          {Boolean(task.started_at && task.target_working_days) && (
             <div className="flex items-center gap-1 mt-1">
-              <DayCounterCell 
-                startDate={task.started_at}
-                config={{ targetDays: task.target_working_days }}
+              <TaskTimerBadge 
+                startedAt={task.started_at}
+                targetDays={task.target_working_days}
+                displayStyle={task.timer_display_style}
+                onStyleChange={() => cycleTaskTimerStyle?.(task.id)}
               />
             </div>
           )}
@@ -335,6 +340,7 @@ function SortableTaskItem({
           }
         />
       </div>
+        </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
         {/* Background Color Submenu */}
@@ -966,6 +972,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     updateTaskStyle,
     startTaskTimer,
     stopTaskTimer,
+    cycleTaskTimerStyle,
+    startStageTimer,
+    stopStageTimer,
+    cycleStageTimerStyle,
     deleteTask,
     bulkDeleteTasks,
     addStage,
@@ -1522,6 +1532,78 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                   {stage.stage_name}
                 </h3>
 
+                {/* Stage Timer Display - click to change style */}
+                {Boolean(stage.started_at && stage.target_working_days) && (
+                  <div className="mb-2 flex justify-end">
+                    <StageTimerDisplay
+                      startedAt={stage.started_at}
+                      targetDays={stage.target_working_days}
+                      displayStyle={stage.timer_display_style}
+                      onStyleChange={() => cycleStageTimerStyle(stage.stage_id)}
+                      size="md"
+                    />
+                  </div>
+                )}
+
+                {/* Stage Timer Controls in Context Menu */}
+                {!stage.started_at && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-7 mb-2 text-xs",
+                          isActiveStage && !isStageCompleted 
+                            ? "text-white/70 hover:text-white hover:bg-white/20" 
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Timer className="h-3.5 w-3.5 ml-1" />
+                        הפעל טיימר
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2" align="end">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
+                        {TARGET_DAYS_OPTIONS.map(option => (
+                          <Button
+                            key={option.value}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-xs h-7"
+                            onClick={() => startStageTimer(stage.stage_id, option.value)}
+                          >
+                            <Play className="h-3 w-3 ml-2 text-green-600" />
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                {/* Stop Timer Button */}
+                {stage.started_at && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-6 mb-2 text-xs",
+                      isActiveStage && !isStageCompleted 
+                        ? "text-white/70 hover:text-red-300 hover:bg-white/20" 
+                        : "text-muted-foreground hover:text-red-500"
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      stopStageTimer(stage.stage_id);
+                    }}
+                  >
+                    <Square className="h-3 w-3 ml-1" />
+                    עצור טיימר
+                  </Button>
+                )}
+
                 <div className="flex items-center gap-2 justify-end">
                   {/* Progress Circle */}
                   <div className="relative w-12 h-12">
@@ -1612,6 +1694,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                             updateTaskCompletedDate={updateTaskCompletedDate}
                             startTaskTimer={startTaskTimer}
                             stopTaskTimer={stopTaskTimer}
+                            cycleTaskTimerStyle={cycleTaskTimerStyle}
                           />
                         ))}
                       </div>
