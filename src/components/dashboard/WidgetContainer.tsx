@@ -139,12 +139,12 @@ export function WidgetContainer({
     <div
       ref={containerRef}
       className={cn(
-        "relative group transition-all duration-300",
+        "relative group transition-all duration-300 h-full",
         getGridClass(widgetId),
         isDragging && "opacity-50 scale-[0.98] z-50",
         isDragOver && "ring-2 ring-offset-2 ring-offset-background scale-[1.01]",
         isDragOver && (isDarkTheme ? "ring-amber-400" : "ring-primary"),
-        layout.collapsed && "h-16 overflow-hidden",
+        layout.collapsed && "!h-16 overflow-hidden",
         className
       )}
       draggable={canDrag}
@@ -410,13 +410,13 @@ export function WidgetGrid({ children, className }: WidgetGridProps) {
           "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
           GAP_CLASSES[gridGap],
           "[grid-auto-flow:dense]",
-          // Equal heights for all widgets in same row
-          equalizeHeights && "[grid-auto-rows:1fr]"
+          // Equal heights for all widgets using align-items stretch
+          equalizeHeights && "items-stretch [&>*]:h-full"
         )}
         dir="rtl"
         style={{
-          // CSS Grid auto-fill to ensure equal heights in rows
-          gridAutoRows: equalizeHeights ? 'minmax(auto, 1fr)' : undefined,
+          // Use a minimum row height when equalizing
+          gridAutoRows: equalizeHeights ? 'minmax(280px, auto)' : 'auto',
         }}
       >
         {React.Children.map(children, (child) => {
