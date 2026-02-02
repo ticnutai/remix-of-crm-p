@@ -1359,7 +1359,7 @@ export default function DataTablePro() {
       editable: isManager || isAdmin,
       editType: 'text',
       cell: (value) => {
-        const phone = formatPhoneDisplay(value);
+        const phone = value ? String(value) : '-';
         return phone !== '-' ? (
           <span dir="ltr" className="font-mono">{phone}</span>
         ) : (
@@ -1856,7 +1856,7 @@ export default function DataTablePro() {
           </div>
           <div className="flex justify-between">
             <dt className="text-muted-foreground">טלפון:</dt>
-            <dd dir="ltr" className="font-mono">{formatPhoneDisplay(row.phone)}</dd>
+            <dd dir="ltr" className="font-mono">{row.phone || '-'}</dd>
           </div>
         </dl>
       </div>

@@ -84,7 +84,7 @@ const initialClients: Client[] = [
 const clientColumns: ColumnDef<Client>[] = [
   { id: 'name', header: 'שם לקוח', accessorKey: 'name', sortable: true, editable: true, editType: 'text' },
   { id: 'email', header: 'אימייל', subHeader: 'כתובת דוא"ל', accessorKey: 'email', sortable: true },
-  { id: 'phone', header: 'טלפון', accessorKey: 'phone', cell: (value) => <span dir="ltr" className="font-mono">{formatPhoneDisplay(value)}</span> },
+  { id: 'phone', header: 'טלפון', accessorKey: 'phone', cell: (value) => <span dir="ltr" className="font-mono">{value || '-'}</span> },
   { 
     id: 'status', 
     header: 'סטטוס', 
@@ -167,8 +167,8 @@ function DashboardContent() {
     setClients(prev => prev.map(client => client.id === row.id ? { ...client, [columnId]: newValue } : client));
   }, [pushAction]);
 
-  const handleCreateBackup = useCallback(() => {
-    const backup = createBackup(`גיבוי לקוחות - ${new Date().toLocaleDateString('he-IL')}`, { clients });
+  const handleCreateBackup = useCallback(async () => {
+    const backup = await createBackup(`גיבוי לקוחות - ${new Date().toLocaleDateString('he-IL')}`, { clients });
     if (backup) {
       exportBackup(backup);
     }
@@ -335,7 +335,7 @@ function DashboardContent() {
                     <div 
                       className="h-16 w-16 rounded-2xl flex items-center justify-center flex-shrink-0"
                       style={{
-                        background: `linear-gradient(135deg, ${themeConfig.colors.accent} 0%, ${themeConfig.colors.primary} 100%)`,
+                        background: `linear-gradient(135deg, ${themeConfig.colors.accent} 0%, ${themeConfig.colors.accent} 100%)`,
                       }}
                     >
                       <Bell className="h-8 w-8 text-white" />

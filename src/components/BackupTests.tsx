@@ -124,7 +124,7 @@ export function BackupTests() {
 
       for (const table of tables) {
         console.log(`  📦 [DEBUG] מגבה טבלה: ${table}...`);
-        const { data, error } = await supabase.from(table).select('*');
+        const { data, error } = await (supabase.from(table as any) as any).select('*');
         if (error) {
           // בדיקה אם הטבלה לא קיימת (מספר סוגי הודעות שגיאה)
           const tableNotExists = 

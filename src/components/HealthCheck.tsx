@@ -127,7 +127,7 @@ export function HealthCheck() {
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
-          const { error } = await supabase.from(table).select('count', { count: 'exact', head: true });
+          const { error } = await (supabase.from(table as any) as any).select('count', { count: 'exact', head: true });
           return { table, accessible: !error, error: error?.message };
         } catch {
           return { table, accessible: false, error: 'שגיאת חיבור' };

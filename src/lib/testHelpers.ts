@@ -149,8 +149,8 @@ export const checkAllDatabaseTables = async (): Promise<{
 
   for (const table of commonTables) {
     try {
-      const { error } = await supabase
-        .from(table)
+      const { error } = await (supabase
+        .from(table as any) as any)
         .select('*', { count: 'exact', head: true })
         .limit(0);
 

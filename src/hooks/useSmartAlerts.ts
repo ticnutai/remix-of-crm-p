@@ -139,7 +139,7 @@ export function useSmartAlerts() {
 
     const { data: invoices } = await supabase
       .from('invoices')
-      .select('id, invoice_number, total_amount, due_date, clients(name)')
+      .select('id, invoice_number, amount, due_date, clients(name)')
       .eq('status', 'pending')
       .lt('due_date', today.toISOString());
 
@@ -148,7 +148,7 @@ export function useSmartAlerts() {
       type: 'danger' as const,
       category: 'payment' as const,
       title: 'תשלום באיחור',
-      message: `חשבונית ${invoice.invoice_number} באיחור - ₪${invoice.total_amount}`,
+      message: `חשבונית ${invoice.invoice_number} באיחור - ₪${invoice.amount || 0}`,
       actionLabel: 'צפה בחשבונית',
       actionUrl: `/invoices/${invoice.id}`,
       data: invoice,
@@ -195,9 +195,9 @@ export function useSmartAlerts() {
 
     const { data: meetings } = await supabase
       .from('meetings')
-      .select('id, title, scheduled_at, clients(name)')
-      .gte('scheduled_at', startOfDay.toISOString())
-      .lte('scheduled_at', endOfDay.toISOString())
+      .select('id, title, start_time, clients(name)')
+      .gte('start_time', startOfDay.toISOString())
+      .lte('start_time', endOfDay.toISOString())
       .eq('status', 'scheduled');
 
     return (meetings || []).map(meeting => ({
@@ -205,7 +205,7 @@ export function useSmartAlerts() {
       type: 'info' as const,
       category: 'meeting' as const,
       title: 'פגישה היום',
-      message: `${meeting.title} ב-${new Date(meeting.scheduled_at).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
+      message: `${meeting.title} ב-${new Date(meeting.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
       actionLabel: 'צפה בפגישה',
       actionUrl: `/meetings/${meeting.id}`,
       data: meeting,
