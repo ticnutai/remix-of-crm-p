@@ -241,8 +241,50 @@ export default function Clients() {
         return;
       }
       
-      // Only handle letter keys (Hebrew and English)
       const key = e.key;
+      
+      // Handle Escape - clear search
+      if (key === 'Escape') {
+        setKeyboardSearch('');
+        setHighlightedClientId(null);
+        if (keyboardTimeoutRef.current) {
+          clearTimeout(keyboardTimeoutRef.current);
+        }
+        return;
+      }
+      
+      // Handle Backspace/Delete - remove last character
+      if (key === 'Backspace' || key === 'Delete') {
+        e.preventDefault();
+        if (keyboardSearch.length > 0) {
+          const newSearch = keyboardSearch.slice(0, -1);
+          setKeyboardSearch(newSearch);
+          
+          if (newSearch.length === 0) {
+            setHighlightedClientId(null);
+          } else {
+            // Find matching client with new search
+            const matchingClient = filteredClients.find(client => 
+              client.name.toLowerCase().startsWith(newSearch.toLowerCase())
+            );
+            if (matchingClient) {
+              setHighlightedClientId(matchingClient.id);
+            }
+          }
+          
+          // Reset timeout
+          if (keyboardTimeoutRef.current) {
+            clearTimeout(keyboardTimeoutRef.current);
+          }
+          keyboardTimeoutRef.current = setTimeout(() => {
+            setKeyboardSearch('');
+            setHighlightedClientId(null);
+          }, 3000);
+        }
+        return;
+      }
+      
+      // Only handle letter keys (Hebrew and English)
       const isLetter = /^[a-zA-Zא-ת]$/.test(key);
       
       if (!isLetter) return;
