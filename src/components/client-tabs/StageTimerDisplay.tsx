@@ -15,7 +15,23 @@ interface StageTimerDisplayProps {
 
 // 5 different visual styles for the timer
 const TIMER_STYLES = [
-  // Style 1: Badge style - compact with icon
+  // Style 1: Navy Clean - Large text, no background, navy color (DEFAULT)
+  {
+    name: 'navy-clean',
+    icon: Timer,
+    getClasses: (result: DayCounterResult) => cn(
+      "inline-flex items-center gap-2 transition-all cursor-pointer hover:opacity-80",
+      result.isOverdue 
+        ? "text-red-600"
+        : "text-[#1e3a5f]" // Navy blue
+    ),
+    textClasses: (result: DayCounterResult, size: string) => cn(
+      "font-bold tracking-tight",
+      size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-3xl' : 'text-2xl',
+      result.isOverdue ? "text-red-600" : "text-[#1e3a5f]"
+    ),
+  },
+  // Style 2: Badge style - compact with icon
   {
     name: 'badge',
     icon: Timer,
@@ -28,7 +44,7 @@ const TIMER_STYLES = [
           : "bg-emerald-100 text-emerald-700 border border-emerald-300"
     ),
   },
-  // Style 2: Pill style - elongated with gradient
+  // Style 3: Pill style - elongated with gradient
   {
     name: 'pill',
     icon: Clock,
@@ -41,7 +57,7 @@ const TIMER_STYLES = [
           : "bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-emerald-200"
     ),
   },
-  // Style 3: Card style - with border and shadow
+  // Style 4: Card style - with border and shadow
   {
     name: 'card',
     icon: Calendar,
@@ -52,19 +68,6 @@ const TIMER_STYLES = [
         : result.daysRemaining <= 5 
           ? "bg-amber-50 text-amber-800 border-amber-400 shadow-lg shadow-amber-100"
           : "bg-emerald-50 text-emerald-800 border-emerald-400 shadow-lg shadow-emerald-100"
-    ),
-  },
-  // Style 4: Neon/Glow style - vibrant with glow effect
-  {
-    name: 'neon',
-    icon: Zap,
-    getClasses: (result: DayCounterResult) => cn(
-      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-      result.isOverdue 
-        ? "bg-red-900/90 text-red-100 ring-2 ring-red-400 shadow-[0_0_15px_rgba(239,68,68,0.5)]"
-        : result.daysRemaining <= 5 
-          ? "bg-amber-900/90 text-amber-100 ring-2 ring-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
-          : "bg-emerald-900/90 text-emerald-100 ring-2 ring-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
     ),
   },
   // Style 5: Minimal - clean and simple
@@ -101,7 +104,7 @@ export function StageTimerDisplay({
   const style = TIMER_STYLES[styleIndex];
   const Icon = style.icon;
 
-  // Size adjustments
+  // Size adjustments for regular styles
   const sizeClasses = {
     sm: 'text-[10px]',
     md: '',
@@ -110,7 +113,7 @@ export function StageTimerDisplay({
 
   // Format display text - show X/Y format (current day / target days)
   const displayText = result.isOverdue 
-    ? `${result.currentWorkingDay}/${targetDays} ⚠️`
+    ? `${result.currentWorkingDay}/${targetDays}`
     : `${result.currentWorkingDay}/${targetDays}`;
 
   // Additional info for tooltip
@@ -120,6 +123,41 @@ export function StageTimerDisplay({
       ? 'היום האחרון!' 
       : `נותרו ${result.daysRemaining} ימי עבודה`;
 
+  // Navy Clean style (style 1) - special rendering
+  if (style.name === 'navy-clean') {
+    const textSizeClass = size === 'sm' ? 'text-base' : size === 'lg' ? 'text-3xl' : 'text-xl';
+    const iconSizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-7 h-7' : 'w-5 h-5';
+    
+    return (
+      <div
+        onClick={(e) => {
+          e.stopPropagation();
+          onStyleChange?.();
+        }}
+        className={cn(
+          "inline-flex items-center gap-1.5 cursor-pointer transition-all hover:opacity-70",
+          className
+        )}
+        title={`${statusText} | התחלה: ${new Date(startedAt).toLocaleDateString('he-IL')} | יעד: ${targetDays} ימי עבודה | לחץ לשינוי עיצוב`}
+      >
+        <Icon className={cn(
+          iconSizeClass,
+          "shrink-0",
+          result.isOverdue ? "text-red-600" : "text-[#1e3a5f]"
+        )} />
+        <span className={cn(
+          textSizeClass,
+          "font-bold tracking-tight",
+          result.isOverdue ? "text-red-600" : "text-[#1e3a5f]"
+        )}>
+          {displayText}
+        </span>
+        {result.isOverdue && <span className="text-red-500">⚠️</span>}
+      </div>
+    );
+  }
+
+  // Regular styles rendering
   return (
     <div
       onClick={(e) => {
@@ -134,6 +172,7 @@ export function StageTimerDisplay({
         size === 'sm' ? 'w-3 h-3' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'
       )} />
       <span>{displayText}</span>
+      {result.isOverdue && <span>⚠️</span>}
     </div>
   );
 }
