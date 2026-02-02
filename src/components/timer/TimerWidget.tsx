@@ -558,8 +558,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 <DialogContent 
                   dir="rtl"
                   className="max-w-lg bg-gradient-to-br from-[hsl(220,60%,15%)] to-[hsl(220,60%,20%)] border-2 border-[hsl(45,80%,50%)] text-white shadow-2xl rounded-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
+                  onPointerDownOutside={(e) => e.preventDefault()}
+                  onInteractOutside={(e) => e.preventDefault()}
                 >
                   <DialogHeader>
                     <DialogTitle className="text-[hsl(45,80%,60%)] flex items-center gap-2 text-lg">
@@ -612,7 +612,13 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             <div key={index} className="group relative">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); selectQuickTitle(title); }}
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  e.preventDefault();
+                                  console.log('Title selected:', title);
+                                  selectQuickTitle(title); 
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 className={cn(
                                   "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                                   description === title
@@ -651,7 +657,18 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickTitle(); } }}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addQuickTitle(); }} className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]">
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              e.preventDefault(); 
+                              console.log('Plus button clicked for title'); 
+                              addQuickTitle(); 
+                            }} 
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="h-8 w-8 p-0 bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)]"
+                          >
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -731,7 +748,13 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             <div key={index} className="group relative">
                               <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); selectQuickNote(note); }}
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  e.preventDefault();
+                                  console.log('Note selected:', note);
+                                  selectQuickNote(note); 
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
                                 className={cn(
                                   "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                                   notes === note
@@ -770,7 +793,18 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                             onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickNote(); } }}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addQuickNote(); }} className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]">
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              e.preventDefault(); 
+                              console.log('Plus button clicked for note'); 
+                              addQuickNote(); 
+                            }} 
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="h-8 w-8 p-0 bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)]"
+                          >
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
