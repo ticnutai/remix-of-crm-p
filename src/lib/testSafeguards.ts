@@ -59,8 +59,8 @@ export class TestSafeguards {
     const criticalTables = ['clients', 'tasks', 'profiles'];
     for (const table of criticalTables) {
       try {
-        const { error } = await supabase
-          .from(table)
+        const { error } = await (supabase
+          .from(table as any) as any)
           .select('id', { count: 'exact', head: true });
         
         if (error) {
@@ -254,8 +254,8 @@ export class TestSafeguards {
    */
   static async checkTableExists(tableName: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from(tableName)
+      const { error } = await (supabase
+        .from(tableName as any) as any)
         .select('id', { count: 'exact', head: true });
       
       if (error) {

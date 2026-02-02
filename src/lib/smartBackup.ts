@@ -219,8 +219,8 @@ export class SmartBackupSystem {
         );
 
         try {
-          const { data, error } = await supabase
-            .from(tableName)
+          const { data, error } = await (supabase
+            .from(tableName as any) as any)
             .select('*');
 
           if (error) {

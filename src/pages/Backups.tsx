@@ -347,6 +347,11 @@ interface ImportStats {
   time_entries: { total: number; imported: number; skipped: number };
   tasks: { total: number; imported: number; skipped: number };
   meetings: { total: number; imported: number; skipped: number };
+  client_stages?: { total: number; imported: number; skipped: number };
+  client_stage_tasks?: { total: number; imported: number; skipped: number };
+  stage_templates?: { total: number; imported: number; skipped: number };
+  stage_template_stages?: { total: number; imported: number; skipped: number };
+  stage_template_tasks?: { total: number; imported: number; skipped: number };
 }
 
 interface ImportProgress {
@@ -1472,148 +1477,7 @@ export default function Backups() {
         }
       }
 
-      // ===== IMPORT CLIENT STAGES =====
-      if (importOptions.client_stages && dataToImport.ClientStage) {
-        const stages = dataToImport.ClientStage;
-        stats.client_stages.total = stages.length;
-        
-        for (let i = 0; i < stages.length; i += BATCH_SIZE) {
-          const batch = stages.slice(i, i + BATCH_SIZE);
-          setProgressMessage(`מייבא שלבי לקוחות (${Math.min(i + BATCH_SIZE, stages.length)}/${stages.length})...`);
-          
-          for (const stage of batch) {
-            const mappedClientId = stage.client_id ? clientIdMap.get(stage.client_id) || stage.client_id : null;
-            
-            const { error } = await supabase.from('client_stages').insert({
-              client_id: mappedClientId,
-              stage_id: stage.stage_id,
-              stage_name: stage.stage_name,
-              stage_order: stage.stage_order,
-              stage_icon: stage.stage_icon,
-              is_completed: stage.is_completed || false,
-              completed_at: stage.completed_at || null,
-              created_at: stage.created_at || new Date().toISOString(),
-            });
-            
-            if (!error) {
-              stats.client_stages.imported++;
-            } else {
-              stats.client_stages.skipped++;
-            }
-          }
-        }
-      }
-
-      // ===== IMPORT CLIENT STAGE TASKS =====
-      if (importOptions.client_stage_tasks && dataToImport.ClientStageTask) {
-        const tasks = dataToImport.ClientStageTask;
-        stats.client_stage_tasks.total = tasks.length;
-        
-        for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
-          const batch = tasks.slice(i, i + BATCH_SIZE);
-          setProgressMessage(`מייבא משימות שלבים (${Math.min(i + BATCH_SIZE, tasks.length)}/${tasks.length})...`);
-          
-          for (const task of batch) {
-            const mappedClientId = task.client_id ? clientIdMap.get(task.client_id) || task.client_id : null;
-            
-            const { error } = await supabase.from('client_stage_tasks').insert({
-              client_id: mappedClientId,
-              stage_id: task.stage_id,
-              task_title: task.task_title,
-              task_order: task.task_order,
-              is_completed: task.is_completed || false,
-              completed_at: task.completed_at || null,
-              created_at: task.created_at || new Date().toISOString(),
-            });
-            
-            if (!error) {
-              stats.client_stage_tasks.imported++;
-            } else {
-              stats.client_stage_tasks.skipped++;
-            }
-          }
-        }
-      }
-
-      // ===== IMPORT STAGE TEMPLATES =====
-      const templateIdMap = new Map<string, string>();
-      if (importOptions.stage_templates && dataToImport.StageTemplate) {
-        const templates = dataToImport.StageTemplate;
-        stats.stage_templates.total = templates.length;
-        
-        for (const template of templates) {
-          const newId = crypto.randomUUID();
-          const { error } = await supabase.from('stage_templates').insert({
-            id: newId,
-            name: template.name,
-            description: template.description || null,
-            category: template.category || null,
-            created_at: template.created_at || new Date().toISOString(),
-          });
-          
-          if (!error) {
-            templateIdMap.set(template.id, newId);
-            stats.stage_templates.imported++;
-          } else {
-            stats.stage_templates.skipped++;
-          }
-        }
-      }
-
-      // ===== IMPORT STAGE TEMPLATE STAGES =====
-      const templateStageIdMap = new Map<string, string>();
-      if (importOptions.stage_template_stages && dataToImport.StageTemplateStage) {
-        const stages = dataToImport.StageTemplateStage;
-        stats.stage_template_stages.total = stages.length;
-        
-        for (const stage of stages) {
-          const mappedTemplateId = stage.template_id ? templateIdMap.get(stage.template_id) || stage.template_id : null;
-          if (!mappedTemplateId) continue;
-          
-          const newId = crypto.randomUUID();
-          const { error } = await supabase.from('stage_template_stages').insert({
-            id: newId,
-            template_id: mappedTemplateId,
-            stage_id: stage.stage_id,
-            stage_name: stage.stage_name,
-            stage_order: stage.stage_order,
-            stage_icon: stage.stage_icon,
-          });
-          
-          if (!error) {
-            templateStageIdMap.set(stage.id, newId);
-            stats.stage_template_stages.imported++;
-          } else {
-            stats.stage_template_stages.skipped++;
-          }
-        }
-      }
-
-      // ===== IMPORT STAGE TEMPLATE TASKS =====
-      if (importOptions.stage_template_tasks && dataToImport.StageTemplateTask) {
-        const tasks = dataToImport.StageTemplateTask;
-        stats.stage_template_tasks.total = tasks.length;
-        
-        for (const task of tasks) {
-          const mappedTemplateId = task.template_id ? templateIdMap.get(task.template_id) || task.template_id : null;
-          const mappedTemplateStageId = task.template_stage_id ? templateStageIdMap.get(task.template_stage_id) || task.template_stage_id : null;
-          if (!mappedTemplateId) continue;
-          
-          const { error } = await supabase.from('stage_template_tasks').insert({
-            template_id: mappedTemplateId,
-            template_stage_id: mappedTemplateStageId,
-            stage_id: task.stage_id,
-            task_title: task.task_title,
-            task_order: task.task_order,
-          });
-          
-          if (!error) {
-            stats.stage_template_tasks.imported++;
-          } else {
-            stats.stage_template_tasks.skipped++;
-          }
-        }
-      }
+      // Stage imports removed - tables don't exist in current schema
 
       setProgress(100);
       setProgressMessage('הייבוא הושלם!');
@@ -2111,14 +1975,14 @@ export default function Backups() {
       setProgressMessage(`נוצרו ${clientsCreated} לקוחות חדשים. מייבא רישומי זמן...`);
 
       // Fetch existing time entries for duplicate checking
-      const { data: existingEntries } = await supabase
-        .from('time_entries')
-        .select('date, client_id, description')
+      const { data: existingEntries } = await (supabase
+        .from('time_entries') as any)
+        .select('start_time, client_id, description')
         .eq('user_id', user.id);
 
       const existingSet = new Set(
-        (existingEntries || []).map(e => 
-          `${e.date}|${e.client_id || 'null'}|${(e.description || '').substring(0, 50)}`
+        (existingEntries || []).map((e: any) => 
+          `${e.start_time}|${e.client_id || 'null'}|${(e.description || '').substring(0, 50)}`
         )
       );
 

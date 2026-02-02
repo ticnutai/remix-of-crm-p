@@ -87,11 +87,11 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           metadata: {
             id: b.backup_id,
             name: b.name,
-            createdAt: new Date(b.created_at),
+            createdAt: new Date(b.created_at || Date.now()),
             size: b.size,
             version: b.version,
           },
-          data: b.data,
+          data: (typeof b.data === 'object' && b.data !== null ? b.data : {}) as Record<string, any>,
         }));
 
         // Merge with local backups (prefer cloud)
@@ -147,11 +147,11 @@ export function BackupProvider({ children }: { children: ReactNode }) {
             metadata: {
               id: b.backup_id,
               name: b.name,
-              createdAt: new Date(b.created_at),
+              createdAt: new Date(b.created_at || Date.now()),
               size: b.size,
               version: b.version,
             },
-            data: b.data,
+            data: (typeof b.data === 'object' && b.data !== null ? b.data : {}) as Record<string, any>,
           }));
 
           // Merge local and cloud

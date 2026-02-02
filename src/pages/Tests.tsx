@@ -435,8 +435,8 @@ export function TestsContent() {
   }> => {
     const startTime = performance.now();
     try {
-      const { data, error, count } = await supabase
-        .from(table)
+      const { data, error, count } = await (supabase
+        .from(table as any) as any)
         .select('*', { count: 'exact', head: true });
       
       const duration = performance.now() - startTime;

@@ -198,6 +198,13 @@ export function QuickTestRunner() {
   const totalDuration = suites.reduce((sum, s) => sum + s.duration, 0);
   const successRate = totalTests > 0 ? (totalPassed / totalTests) * 100 : 0;
 
+  // Helper functions for summary report
+  const getTotalTests = () => totalTests;
+  const getPassedTests = () => totalPassed;
+  const getFailedTests = () => totalFailed;
+  const getTotalDuration = () => totalDuration;
+  const getSuccessRate = () => successRate.toFixed(1);
+
   const toggleSuite = (suiteId: string) => {
     setExpandedSuites(prev => {
       const newSet = new Set(prev);
