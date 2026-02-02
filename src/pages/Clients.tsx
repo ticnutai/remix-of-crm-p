@@ -1294,18 +1294,15 @@ export default function Clients() {
           
           {/* Name - Navy Blue */}
           <h3 style={{ 
-            fontSize: '18px', 
+            fontSize: '14px', 
             fontWeight: '700', 
             color: '#1e3a5f',
             textAlign: 'center',
-            marginTop: '16px',
-            lineHeight: '1.4',
+            marginTop: '14px',
+            lineHeight: '1.3',
             maxWidth: '100%',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            letterSpacing: '0.5px',
+            wordBreak: 'break-word',
+            letterSpacing: '0.3px',
           }}>
             {client.name}
           </h3>
@@ -2230,46 +2227,6 @@ export default function Clients() {
                   <span style={{ fontSize: '12px', color: '#94a3b8' }}>
                     (סה"כ במערכת: {clients.length})
                   </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {displayedCount < filteredClients.length && (
-                  <>
-                    <button
-                      onClick={() => setDisplayedCount(prev => Math.min(prev + PAGE_SIZE, filteredClients.length))}
-                      style={{
-                        padding: '6px 14px',
-                        backgroundColor: '#1e3a5f',
-                        color: '#d4a843',
-                        borderRadius: '6px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      טען עוד {Math.min(PAGE_SIZE, filteredClients.length - displayedCount)}
-                    </button>
-                    <button
-                      onClick={() => setDisplayedCount(filteredClients.length)}
-                      style={{
-                        padding: '6px 14px',
-                        backgroundColor: '#059669',
-                        color: '#ffffff',
-                        borderRadius: '6px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      טען הכל ({filteredClients.length})
-                    </button>
-                  </>
                 )}
               </div>
             </div>
