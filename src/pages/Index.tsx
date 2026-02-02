@@ -54,8 +54,6 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { DialogButtonsTest } from '@/components/timer/DialogButtonsTest';
-import { QuickInputSectionTestDialog } from '@/components/timer/QuickInputSectionTestDialog';
 
 // Sample data types
 interface Client {
@@ -629,12 +627,6 @@ const Index = () => {
     <DashboardThemeProvider>
       <WidgetLayoutProvider>
         <DashboardContent />
-        {import.meta.env.DEV && (
-          <>
-            <DialogButtonsTest />
-            <QuickInputSectionTestDialog />
-          </>
-        )}
       </WidgetLayoutProvider>
     </DashboardThemeProvider>
   );
