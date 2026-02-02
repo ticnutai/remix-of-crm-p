@@ -25,6 +25,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
 import { Calendar } from '@/components/ui/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -39,6 +49,9 @@ import {
   MoreHorizontal,
   CalendarIcon,
   X,
+  Palette,
+  Type,
+  Bold,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
@@ -47,6 +60,29 @@ import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPop
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+
+// Predefined colors for background and text
+const BACKGROUND_COLORS = [
+  { value: null, label: 'ללא', color: 'transparent' },
+  { value: '#fef3c7', label: 'צהוב', color: '#fef3c7' },
+  { value: '#dcfce7', label: 'ירוק', color: '#dcfce7' },
+  { value: '#dbeafe', label: 'כחול', color: '#dbeafe' },
+  { value: '#fce7f3', label: 'ורוד', color: '#fce7f3' },
+  { value: '#fed7aa', label: 'כתום', color: '#fed7aa' },
+  { value: '#e9d5ff', label: 'סגול', color: '#e9d5ff' },
+  { value: '#fecaca', label: 'אדום', color: '#fecaca' },
+  { value: '#d1d5db', label: 'אפור', color: '#d1d5db' },
+];
+
+const TEXT_COLORS = [
+  { value: null, label: 'רגיל', color: 'inherit' },
+  { value: '#dc2626', label: 'אדום', color: '#dc2626' },
+  { value: '#16a34a', label: 'ירוק', color: '#16a34a' },
+  { value: '#2563eb', label: 'כחול', color: '#2563eb' },
+  { value: '#d97706', label: 'כתום', color: '#d97706' },
+  { value: '#9333ea', label: 'סגול', color: '#9333ea' },
+  { value: '#0891b2', label: 'טורקיז', color: '#0891b2' },
+];
 
 interface ClientStagesTableProps {
   clientId: string;
@@ -59,6 +95,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
     toggleTask, 
     updateTask,
     updateTaskCompletedDate,
+    updateTaskStyle,
     deleteTask,
   } = useClientStages(clientId);
   
@@ -203,49 +240,59 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                 </TableRow>
               ) : (
                 filteredTasks.map((task, index) => (
-                  <TableRow 
-                    key={task.id}
-                    className={cn(
-                      "transition-colors",
-                      task.completed && "bg-green-50/50 dark:bg-green-950/10"
-                    )}
-                  >
-                    <TableCell className="text-center text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      <Badge 
-                        variant="outline"
+                  <ContextMenu key={task.id}>
+                    <ContextMenuTrigger asChild>
+                      <TableRow 
                         className={cn(
-                          "text-xs",
-                          task.stageOrder === 0 && "border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20"
+                          "transition-colors cursor-context-menu",
+                          task.completed && !task.background_color && "bg-green-50/50 dark:bg-green-950/10"
                         )}
+                        style={{ 
+                          backgroundColor: task.background_color || undefined,
+                        }}
                       >
-                        {task.stageName}
-                      </Badge>
-                    </TableCell>
-                    
-                    <TableCell className="text-right">
-                      {editingTask?.taskId === task.id ? (
-                        <Input
-                          value={editingTask.title}
-                          onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === 'Escape') {
-                              handleUpdateTask(task.id, editingTask.title);
-                            }
-                          }}
-                          onBlur={() => handleUpdateTask(task.id, editingTask.title)}
-                          className="h-8 text-right flex-1"
-                          autoFocus
-                        />
-                      ) : (
-                        <span className={cn(task.completed && "line-through text-muted-foreground")}>
-                          {task.title}
-                        </span>
-                      )}
-                    </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {index + 1}
+                        </TableCell>
+                        
+                        <TableCell className="text-right">
+                          <Badge 
+                            variant="outline"
+                            className={cn(
+                              "text-xs",
+                              task.stageOrder === 0 && "border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20"
+                            )}
+                          >
+                            {task.stageName}
+                          </Badge>
+                        </TableCell>
+                        
+                        <TableCell className="text-right">
+                          {editingTask?.taskId === task.id ? (
+                            <Input
+                              value={editingTask.title}
+                              onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === 'Escape') {
+                                  handleUpdateTask(task.id, editingTask.title);
+                                }
+                              }}
+                              onBlur={() => handleUpdateTask(task.id, editingTask.title)}
+                              className="h-8 text-right flex-1"
+                              autoFocus
+                            />
+                          ) : (
+                            <span 
+                              className={cn(
+                                task.completed && "line-through text-muted-foreground",
+                                task.is_bold && "font-bold"
+                              )}
+                              style={{ color: task.text_color || undefined }}
+                            >
+                              {task.title}
+                            </span>
+                          )}
+                        </TableCell>
                     
                     <TableCell className="text-center">
                       <Button
@@ -387,6 +434,83 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                       </div>
                     </TableCell>
                   </TableRow>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-48">
+                      {/* Background Color Submenu */}
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger className="flex items-center gap-2">
+                          <Palette className="h-4 w-4" />
+                          <span>צבע רקע</span>
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-40">
+                          {BACKGROUND_COLORS.map((color) => (
+                            <ContextMenuItem 
+                              key={color.value || 'none'} 
+                              onClick={() => updateTaskStyle(task.id, { background_color: color.value })}
+                              className="flex items-center gap-2"
+                            >
+                              <div 
+                                className={cn(
+                                  "h-4 w-4 rounded border",
+                                  !color.value && "bg-background"
+                                )}
+                                style={{ backgroundColor: color.value || undefined }}
+                              />
+                              <span>{color.label}</span>
+                              {task.background_color === color.value && (
+                                <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+                              )}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                      
+                      {/* Text Color Submenu */}
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger className="flex items-center gap-2">
+                          <Type className="h-4 w-4" />
+                          <span>צבע טקסט</span>
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent className="w-40">
+                          {TEXT_COLORS.map((color) => (
+                            <ContextMenuItem 
+                              key={color.value || 'none'} 
+                              onClick={() => updateTaskStyle(task.id, { text_color: color.value })}
+                              className="flex items-center gap-2"
+                            >
+                              <div 
+                                className={cn(
+                                  "h-4 w-4 rounded border flex items-center justify-center",
+                                  !color.value && "bg-background"
+                                )}
+                                style={{ backgroundColor: color.value || undefined }}
+                              >
+                                <span className="text-[8px] font-bold" style={{ color: color.value ? '#fff' : '#000' }}>A</span>
+                              </div>
+                              <span>{color.label}</span>
+                              {task.text_color === color.value && (
+                                <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+                              )}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
+                      
+                      <ContextMenuSeparator />
+                      
+                      {/* Bold Toggle */}
+                      <ContextMenuItem 
+                        onClick={() => updateTaskStyle(task.id, { is_bold: !task.is_bold })}
+                        className="flex items-center gap-2"
+                      >
+                        <Bold className="h-4 w-4" />
+                        <span>טקסט מודגש</span>
+                        {task.is_bold && (
+                          <CheckCircle2 className="h-3 w-3 mr-auto text-green-600" />
+                        )}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))
               )}
             </TableBody>

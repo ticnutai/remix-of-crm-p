@@ -12,6 +12,10 @@ export interface ClientStageTask {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  // Styling options
+  background_color?: string | null;
+  text_color?: string | null;
+  is_bold?: boolean;
 }
 
 export interface ClientStage {
@@ -324,6 +328,36 @@ export function useClientStages(clientId: string) {
       toast({
         title: 'שגיאה',
         description: 'לא ניתן לעדכן תאריך',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Update task styling (background color, text color, bold)
+  const updateTaskStyle = async (
+    taskId: string, 
+    style: { background_color?: string | null; text_color?: string | null; is_bold?: boolean }
+  ) => {
+    try {
+      const { error } = await supabase
+        .from('client_stage_tasks')
+        .update(style)
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === taskId
+            ? { ...t, ...style }
+            : t
+        )
+      );
+    } catch (error: unknown) {
+      console.error('Error updating task style:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן עיצוב',
         variant: 'destructive',
       });
     }
@@ -646,6 +680,7 @@ export function useClientStages(clientId: string) {
     toggleTask,
     updateTask,
     updateTaskCompletedDate,
+    updateTaskStyle,
     deleteTask,
     bulkDeleteTasks,
     addStage,
