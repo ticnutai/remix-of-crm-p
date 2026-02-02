@@ -4,6 +4,13 @@ import { useTimer } from '@/hooks/useTimer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -11,32 +18,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Textarea } from '@/components/ui/textarea';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  Play, Square, Clock, Target, Briefcase, User, 
+  Play, Square, Briefcase, User, 
   Pause, RotateCcw, Save, FileText,
-  Check, X, ChevronDown, ChevronUp, Settings, Plus, Trash2, Edit, ListPlus
+  ChevronDown, ChevronUp, Settings, Plus, Trash2
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useTimerTheme, TIMER_COLOR_MAP } from './TimerThemeContext';
+import { useTimerTheme } from './TimerThemeContext';
+import { SaveTimeDialog } from './SaveTimeDialog';
 
 // Get hooks outside component to use in render
 
@@ -495,7 +496,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               )}
             </Button>
 
-            {/* Stop Button */}
+            {/* Stop Button - Pauses and opens save dialog */}
             {(timerState.isRunning || isPaused) && (
               <Button
                 size="sm"
@@ -506,7 +507,11 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
                     : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
                 }}
-                onClick={handleStop}
+                onClick={() => {
+                  // Pause timer and show save dialog
+                  pauseTimer();
+                  setShowSavePanel(true);
+                }}
               >
                 <Square className="h-4 w-4" />
               </Button>
@@ -531,337 +536,50 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
             {/* Save Button */}
             {timerState.elapsed > 0 && (
-              <Dialog open={showSavePanel} onOpenChange={setShowSavePanel}>
-                <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
-                    style={{
-                      borderColor: timerState.isRunning 
-                        ? `${theme.controlButtonsActiveColor || 'hsl(45, 80%, 50%)'}80` 
-                        : 'rgba(255,255,255,0.3)',
-                      color: timerState.isRunning 
-                        ? (theme.controlButtonsActiveColor || 'hsl(45, 80%, 60%)') 
-                        : 'white',
-                    }}
-                    onClick={async () => {
-                      // Stop timer first, then dialog opens automatically
-                      if (timerState.isRunning) {
-                        await stopTimer();
-                      }
-                    }}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent 
-                  dir="rtl"
-                  className="max-w-lg bg-gradient-to-br from-[hsl(220,60%,15%)] to-[hsl(220,60%,20%)] border-2 border-[hsl(45,80%,50%)] text-white shadow-2xl rounded-2xl"
-                  onPointerDownOutside={(e) => e.preventDefault()}
-                  onInteractOutside={(e) => e.preventDefault()}
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
+                  style={{
+                    borderColor: timerState.isRunning 
+                      ? `${theme.controlButtonsActiveColor || 'hsl(45, 80%, 50%)'}80` 
+                      : 'rgba(255,255,255,0.3)',
+                    color: timerState.isRunning 
+                      ? (theme.controlButtonsActiveColor || 'hsl(45, 80%, 60%)') 
+                      : 'white',
+                  }}
+                  onClick={() => {
+                    // Pause timer and show save dialog
+                    pauseTimer();
+                    setShowSavePanel(true);
+                  }}
                 >
-                  <DialogHeader>
-                    <DialogTitle className="text-[hsl(45,80%,60%)] flex items-center gap-2 text-lg">
-                      <Save className="h-5 w-5" />
-                      שמירת רישום זמן
-                    </DialogTitle>
-                  </DialogHeader>
-                  
-                  <div className="space-y-5 mt-4">
-                    {/* TITLES SECTION */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-[hsl(45,80%,65%)] flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          כותרת
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setShowBulkTitles(!showBulkTitles);
-                          }}
-                          className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
-                          title="הוספה מרובה"
-                        >
-                          <ListPlus className="h-3.5 w-3.5" />
-                          הוספה מרובה
-                        </button>
-                      </div>
-                      
-                      {/* Quick Title Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {quickTitles.map((title, index) => (
-                          editingTitleIndex === index ? (
-                            <div key={index} className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Input
-                                value={editingTitleValue}
-                                onChange={(e) => setEditingTitleValue(e.target.value)}
-                                className="h-8 w-32 bg-white/10 border-[hsl(45,80%,50%)] text-white text-xs"
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); saveEditTitle(); } if (e.key === 'Escape') setEditingTitleIndex(null); }}
-                              />
-                              <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); saveEditTitle(); }} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
-                                <Check className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div key={index} className="group relative">
-                              <button
-                                type="button"
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  e.preventDefault();
-                                  console.log('Title selected:', title);
-                                  selectQuickTitle(title); 
-                                }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className={cn(
-                                  "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
-                                  description === title
-                                    ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] border-[hsl(45,80%,60%)] shadow-lg"
-                                    : "bg-white/5 border-white/20 hover:border-[hsl(45,80%,50%)]/60 hover:bg-white/10"
-                                )}
-                              >
-                                {title}
-                              </button>
-                              <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); startEditTitle(index, title); }}
-                                  className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
-                                >
-                                  <Edit className="h-2.5 w-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeQuickTitle(index); }}
-                                  className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
-                                >
-                                  <Trash2 className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        ))}
-                        {/* Add single title */}
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            value={newTitleInput}
-                            onChange={(e) => setNewTitleInput(e.target.value)}
-                            placeholder="הוסף כותרת..."
-                            className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
-                            onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickTitle(); } }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <button 
-                            type="button" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              e.preventDefault(); 
-                              console.log('Plus button clicked for title, input:', newTitleInput); 
-                              addQuickTitle(); 
-                            }} 
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="h-8 w-8 p-0 flex items-center justify-center rounded-md bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,60%)] cursor-pointer"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bulk titles input */}
-                      {showBulkTitles && (
-                        <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div className="text-[10px] text-white/60">הכנס כל כותרת בשורה נפרדת:</div>
-                          <Textarea
-                            value={bulkTitlesInput}
-                            onChange={(e) => setBulkTitlesInput(e.target.value)}
-                            placeholder="חוזה&#10;בקרת תכן&#10;תשלום לקוח&#10;..."
-                            className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
-                          />
-                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addBulkTitles(); }} className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)]">
-                              <Plus className="h-3 w-3 ml-1" />
-                              הוסף הכל
-                            </Button>
-                            <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setShowBulkTitles(false); }} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
-                              ביטול
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Manual title input */}
-                      <Input
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="או הקלד כותרת ידנית..."
-                        className="h-9 bg-white/5 border-white/20 text-white text-sm"
-                      />
-                    </div>
-
-                    {/* NOTES SECTION */}
-                    <div className="space-y-3 pt-3 border-t border-white/10">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-[hsl(200,70%,60%)] flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          הערות
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setShowBulkNotes(!showBulkNotes);
-                          }}
-                          className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
-                          title="הוספה מרובה"
-                        >
-                          <ListPlus className="h-3.5 w-3.5" />
-                          הוספה מרובה
-                        </button>
-                      </div>
-                      
-                      {/* Quick Note Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {quickNotes.map((note, index) => (
-                          editingNoteIndex === index ? (
-                            <div key={index} className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Input
-                                value={editingNoteValue}
-                                onChange={(e) => setEditingNoteValue(e.target.value)}
-                                className="h-8 w-32 bg-white/10 border-[hsl(200,70%,50%)] text-white text-xs"
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); saveEditNote(); } if (e.key === 'Escape') setEditingNoteIndex(null); }}
-                              />
-                              <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); saveEditNote(); }} className="h-8 w-8 p-0 bg-green-600 hover:bg-green-500">
-                                <Check className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div key={index} className="group relative">
-                              <button
-                                type="button"
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  e.preventDefault();
-                                  console.log('Note selected:', note);
-                                  selectQuickNote(note); 
-                                }}
-                                onMouseDown={(e) => e.stopPropagation()}
-                                className={cn(
-                                  "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
-                                  notes === note
-                                    ? "bg-[hsl(200,70%,50%)] text-white border-[hsl(200,70%,60%)] shadow-lg"
-                                    : "bg-white/5 border-white/20 hover:border-[hsl(200,70%,50%)]/60 hover:bg-white/10"
-                                )}
-                              >
-                                {note}
-                              </button>
-                              <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); startEditNote(index, note); }}
-                                  className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
-                                >
-                                  <Edit className="h-2.5 w-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); removeQuickNote(index); }}
-                                  className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
-                                >
-                                  <Trash2 className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        ))}
-                        {/* Add single note */}
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            value={newNoteInput}
-                            onChange={(e) => setNewNoteInput(e.target.value)}
-                            placeholder="הוסף הערה..."
-                            className="h-8 w-28 bg-white/5 border-white/20 text-white text-xs"
-                            onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addQuickNote(); } }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <button 
-                            type="button" 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              e.preventDefault(); 
-                              console.log('Plus button clicked for note, input:', newNoteInput); 
-                              addQuickNote(); 
-                            }} 
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="h-8 w-8 p-0 flex items-center justify-center rounded-md bg-[hsl(200,70%,50%)] text-white hover:bg-[hsl(200,70%,60%)] cursor-pointer"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Bulk notes input */}
-                      {showBulkNotes && (
-                        <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
-                          <div className="text-[10px] text-white/60">הכנס כל הערה בשורה נפרדת:</div>
-                          <Textarea
-                            value={bulkNotesInput}
-                            onChange={(e) => setBulkNotesInput(e.target.value)}
-                            placeholder="מיילים&#10;מסמכים&#10;פיקוח&#10;..."
-                            className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
-                          />
-                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button type="button" size="sm" onClick={(e) => { e.stopPropagation(); e.preventDefault(); addBulkNotes(); }} className="h-7 text-xs bg-[hsl(200,70%,50%)] text-white">
-                              <Plus className="h-3 w-3 ml-1" />
-                              הוסף הכל
-                            </Button>
-                            <Button type="button" size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setShowBulkNotes(false); }} className="h-7 text-xs border-white/20 text-white hover:bg-white/10">
-                              ביטול
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Manual notes input */}
-                      <Input
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="או הקלד הערה ידנית..."
-                        className="h-9 bg-white/5 border-white/20 text-white text-sm"
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 pt-3 border-t border-white/10">
-                      <Button
-                        onClick={handleSave}
-                        className="flex-1 h-11 text-base bg-gradient-to-r from-[hsl(45,80%,50%)] to-[hsl(45,90%,45%)] text-[hsl(220,60%,15%)] hover:from-[hsl(45,80%,55%)] hover:to-[hsl(45,90%,50%)] rounded-xl font-semibold shadow-lg"
-                      >
-                        <Check className="h-5 w-5 ml-2" />
-                        שמור רישום
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowSavePanel(false)}
-                        className="h-11 px-5 border-white/30 text-white hover:bg-white/10 rounded-xl"
-                      >
-                        <X className="h-4 w-4 ml-1" />
-                        ביטול
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  <Save className="h-4 w-4" />
+                </Button>
+                <SaveTimeDialog
+                  open={showSavePanel}
+                  onOpenChange={setShowSavePanel}
+                  elapsedTime={timerState.elapsed}
+                  onCancel={() => {
+                    // Resume timer when user cancels
+                    resumeTimer();
+                  }}
+                  onSave={async (title, notesText) => {
+                    try {
+                      // Stop and save
+                      await stopTimer();
+                      setDescription(title);
+                      setNotes(notesText);
+                      await saveEntry(title + (notesText ? ` | ${notesText}` : ''));
+                      toast.success('רישום הזמן נשמר בהצלחה! ✅');
+                    } catch (error) {
+                      toast.error('שגיאה בשמירת רישום הזמן');
+                      console.error('Save error:', error);
+                    }
+                  }}
+                />
+              </>
             )}
           </div>
         </div>

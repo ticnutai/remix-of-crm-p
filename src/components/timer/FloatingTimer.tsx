@@ -359,11 +359,11 @@ function FloatingTimerContent() {
                   {timerState.isRunning ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current mr-[-1px]" />}
                 </button>
 
-                {/* Stop Button - Stops timer and opens save dialog */}
+                {/* Stop Button - Pauses timer and opens save dialog */}
                 {(timerState.isRunning || timerState.currentEntry) && <button onClick={async e => {
               e.stopPropagation();
-              // First stop the timer, then open save dialog
-              await stopTimer();
+              // Pause the timer (don't stop), then open save dialog
+              pauseTimer();
               setIsStopDialogOpen(true);
             }} className={cn("h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200", "hover:scale-105 active:scale-95", "bg-gradient-to-br from-red-500 to-red-700 text-white shadow-md shadow-red-500/30")}>
                     <Square className="h-3.5 w-3.5 fill-current" />
@@ -657,7 +657,11 @@ function FloatingTimerContent() {
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              onClick={() => setIsStopDialogOpen(false)}
+              onClick={() => {
+                // Resume timer on cancel
+                resumeTimer();
+                setIsStopDialogOpen(false);
+              }}
             >
               ביטול
             </Button>
@@ -665,7 +669,8 @@ function FloatingTimerContent() {
               onClick={async () => {
                 // Combine description and notes for saving
                 const combinedNotes = [stopDescription, stopNotes].filter(Boolean).join(' | ');
-                // Timer already stopped, just save the entry
+                // Stop the timer and save the entry
+                await stopTimer();
                 await saveEntry(combinedNotes || undefined);
                 setStopDescription('');
                 setStopNotes('');
