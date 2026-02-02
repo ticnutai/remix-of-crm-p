@@ -72,7 +72,11 @@ export function FadeIn({ children, delay = 0, className }: FadeInProps) {
   
   return (
     <div
-      className={cn(reduceMotion ? "opacity-100" : "animate-fade-in", className)}
+      className={cn(
+        reduceMotion ? "opacity-100" : "animate-fade-in",
+        "h-full", // Ensure height passes through
+        className
+      )}
       style={reduceMotion ? undefined : { 
         animationDelay: `${delay}s`,
         animationFillMode: 'both'

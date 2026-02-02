@@ -94,7 +94,8 @@ export const ThemedWidget = memo(function ThemedWidget({
   return (
     <div 
       className={cn(
-        "relative overflow-hidden transition-all duration-300 group h-full flex flex-col",
+        "relative overflow-hidden transition-all duration-300 group flex flex-col min-h-0",
+        "h-full",
         "hover:scale-[1.005]",
         className
       )}
@@ -188,7 +189,7 @@ export const ThemedWidget = memo(function ThemedWidget({
 
       {/* Content */}
       {!isCollapsed && (
-        <div className={cn(!noPadding && "p-5", "flex-1")}>
+        <div className={cn(!noPadding && "p-5", "flex-1 min-h-0 overflow-auto")}>
           {children}
         </div>
       )}
