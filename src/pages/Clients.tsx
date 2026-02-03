@@ -15,6 +15,7 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
 import { ClientQuickClassify } from '@/components/clients/ClientQuickClassify';
+import { ClientsByStageView } from '@/components/clients/ClientsByStageView';
 import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
 import { CategoryTagsManager } from '@/components/clients/CategoryTagsManager';
 import { isValidPhoneForDisplay } from '@/lib/phone-utils';
@@ -52,6 +53,7 @@ import {
   HelpCircle,
   Sparkles,
   Clock,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -108,6 +110,7 @@ export default function Clients() {
   
   const [viewMode, setViewModeLocal] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury'>('grid');
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
+  const [showStagesView, setShowStagesView] = useState(false);
   
   // Sync with cloud settings when loaded
   useEffect(() => {
@@ -1768,6 +1771,42 @@ export default function Clients() {
                 <Rows3 style={{ width: '16px', height: '16px' }} />
                 טבלה
               </button>
+
+              {/* Stages View Toggle Button */}
+              <button
+                onClick={() => setShowStagesView(!showStagesView)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  backgroundColor: showStagesView ? '#d4a843' : '#ffffff',
+                  border: '2px solid #d4a843',
+                  borderRadius: '8px',
+                  color: showStagesView ? '#1e293b' : '#d4a843',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(212, 168, 67, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!showStagesView) {
+                    e.currentTarget.style.backgroundColor = '#d4a843';
+                    e.currentTarget.style.color = '#1e293b';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showStagesView) {
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.color = '#d4a843';
+                  }
+                }}
+                title="תצוגה לפי שלבים"
+              >
+                <Layers style={{ width: '16px', height: '16px' }} />
+                לפי שלבים
+              </button>
               
               {/* Features Help Button - Gold */}
               <button
@@ -2138,9 +2177,14 @@ export default function Clients() {
           allTags={allTags}
         />
 
-        {/* Clients Grid */}
-        {/* Minimal View Column Selector */}
-        {viewMode === 'minimal' && (
+        {/* Stages View - When Enabled */}
+        {showStagesView ? (
+          <ClientsByStageView className="flex-1" />
+        ) : (
+          <>
+            {/* Clients Grid */}
+            {/* Minimal View Column Selector */}
+            {viewMode === 'minimal' && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -2304,6 +2348,8 @@ export default function Clients() {
           </>
         )}
         </div>{/* End of Clients Content Area */}
+        </>
+        )}
       </div>{/* End of Main Container */}
       
       {/* Add Client Dialog */}
