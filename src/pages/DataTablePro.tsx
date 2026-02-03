@@ -14,13 +14,14 @@ import { useEmployeesSync, SyncedEmployee } from '@/hooks/useEmployeesSync';
 import { useCustomTables, useCustomTableData, CustomTable, CustomTableData, TableColumn } from '@/hooks/useCustomTables';
 import { useTableCustomColumns, useCustomData } from '@/hooks/useTableCustomColumns';
 import { useClientClassification, ClientFilter } from '@/hooks/useClientClassification';
+import { useClientStagesTable } from '@/hooks/useClientStagesTable';
 import { CreateTableDialog } from '@/components/custom-tables/CreateTableDialog';
 import { CustomTableTab } from '@/components/custom-tables/CustomTableTab';
 import { ManageTablesDialog } from '@/components/custom-tables/ManageTablesDialog';
 import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
 import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
 import { ClientFilterPanel } from '@/components/clients/ClientFilterPanel';
-import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen } from 'lucide-react';
+import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen, Layers } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -297,6 +298,15 @@ export default function DataTablePro() {
   // Client filter state
   const [clientFilter, setClientFilter] = useState<ClientFilter>({});
   const [filteredClients, setFilteredClients] = useState<SyncedClient[] | null>(null);
+  
+  // Client stages for table display
+  const {
+    clientStages: clientStagesMap,
+    allStages: availableStages,
+    loading: stagesLoading,
+    updateClientStage,
+    getClientStageInfo,
+  } = useClientStagesTable();
   
   // Employees sync hook
   const {
@@ -817,6 +827,17 @@ export default function DataTablePro() {
 
   // Handle client cell edit - supports both base columns and custom columns
   const handleClientCellEdit = useCallback(async (row: SyncedClient, columnId: string, newValue: any) => {
+    // Special handling for current_stage column
+    if (columnId === 'current_stage') {
+      const success = await updateClientStage(row.id, newValue);
+      if (success) {
+        toast({ title: 'עודכן', description: `השלב שונה ל-${newValue}` });
+      } else {
+        toast({ title: 'שגיאה', description: 'לא ניתן לעדכן את השלב', variant: 'destructive' });
+      }
+      return;
+    }
+    
     // Check if this is a custom column (stored in custom_data)
     const customColumn = clientCustomColumns.find(col => col.column_key === columnId || `custom_data.${col.column_key}` === columnId);
     
@@ -836,7 +857,7 @@ export default function DataTablePro() {
       // Base column - update via updateClient
       await updateClient(row.id, columnId, newValue);
     }
-  }, [updateClient, clientCustomColumns, updateClientCustomData, toast]);
+  }, [updateClient, clientCustomColumns, updateClientCustomData, toast, updateClientStage]);
 
   // Add new client
   const handleAddClient = useCallback(async () => {
@@ -1683,6 +1704,69 @@ export default function DataTablePro() {
           { value: 'pending', label: 'ממתין', color: '#ca8a04', bgColor: '#fef9c3' },
         ],
       },
+      // Current Stage column - shows client's current progress stage
+      {
+        id: 'current_stage',
+        header: createClientHeader('current_stage', 'שלב נוכחי'),
+        accessorKey: 'id', // We use id to lookup in clientStagesMap
+        sortable: true,
+        filterable: true,
+        groupable: true,
+        width: 180,
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('current_stage', val),
+        cell: (value, row) => {
+          const stageInfo = getClientStageInfo(row.id);
+          if (!stageInfo || !stageInfo.current_stage_name) {
+            return (
+              <span className="text-muted-foreground text-xs italic">
+                ללא שלבים
+              </span>
+            );
+          }
+          
+          const progress = stageInfo.total_tasks > 0 
+            ? Math.round((stageInfo.completed_tasks / stageInfo.total_tasks) * 100)
+            : 0;
+          
+          return (
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">{stageInfo.current_stage_name}</div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{stageInfo.completed_tasks}/{stageInfo.total_tasks} משימות</span>
+                  {stageInfo.total_tasks > 0 && (
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden max-w-[60px]">
+                      <div 
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        },
+        // Make it editable via dropdown
+        editable: true,
+        editType: 'select',
+        editOptions: availableStages.map(s => ({
+          value: s.stage_name,
+          label: s.stage_name,
+        })),
+        // Custom sort function - sort by stage name
+        sortFn: (a, b) => {
+          const stageA = getClientStageInfo(a.id)?.current_stage_name || '';
+          const stageB = getClientStageInfo(b.id)?.current_stage_name || '';
+          return stageA.localeCompare(stageB, 'he');
+        },
+        // Custom filter value getter
+        filterValue: (row) => getClientStageInfo(row.id)?.current_stage_name || '',
+        // Custom group value getter
+        groupValue: (row) => getClientStageInfo(row.id)?.current_stage_name || 'ללא שלבים',
+      },
       {
         id: 'address',
         header: createClientHeader('address', 'כתובת'),
@@ -1832,7 +1916,7 @@ export default function DataTablePro() {
     });
 
     return [...visibleBaseColumns, ...dynamicCols];
-  }, [navigate, clientCustomColumns, handleDeleteClientColumn, clientColumnHeaders, hiddenClientColumns, handleClientHeaderChange, handleHideClientColumn]);
+  }, [navigate, clientCustomColumns, handleDeleteClientColumn, clientColumnHeaders, hiddenClientColumns, handleClientHeaderChange, handleHideClientColumn, getClientStageInfo, availableStages]);
 
   // Employee columns with editable fields + dynamic columns from DB
   const employeeColumnsWithDynamic: ColumnDef<SyncedEmployee>[] = useMemo(() => {
