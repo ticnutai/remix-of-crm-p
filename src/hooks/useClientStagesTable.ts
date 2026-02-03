@@ -200,6 +200,26 @@ export function useClientStagesTable() {
     }
   }, [fetchClientStages]);
 
+  // Update multiple clients' stages at once
+  const updateMultipleClientsStage = useCallback(async (clientIds: string[], newStageName: string) => {
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const clientId of clientIds) {
+      const success = await updateClientStage(clientId, newStageName);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    // Refresh data once after all updates
+    await fetchClientStages();
+
+    return { successCount, failCount };
+  }, [updateClientStage, fetchClientStages]);
+
   // Initial fetch
   useEffect(() => {
     fetchClientStages();
@@ -228,6 +248,7 @@ export function useClientStagesTable() {
     loading,
     fetchClientStages,
     updateClientStage,
+    updateMultipleClientsStage,
     getClientStageInfo: (clientId: string) => clientStages.get(clientId) || null,
   };
 }

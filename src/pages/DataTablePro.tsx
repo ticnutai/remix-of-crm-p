@@ -305,6 +305,7 @@ export default function DataTablePro() {
     allStages: availableStages,
     loading: stagesLoading,
     updateClientStage,
+    updateMultipleClientsStage,
     getClientStageInfo,
   } = useClientStagesTable();
   
@@ -894,6 +895,27 @@ export default function DataTablePro() {
     }
     setSelectedClients([]);
   }, [selectedClients, deleteDbClient]);
+
+  // Set stage for multiple selected clients
+  const handleBulkSetStage = useCallback(async (stageName: string) => {
+    if (selectedClients.length === 0) return;
+    
+    const clientIds = selectedClients.map(c => c.id);
+    const { successCount, failCount } = await updateMultipleClientsStage(clientIds, stageName);
+    
+    if (successCount > 0) {
+      toast({
+        title: 'השלב עודכן',
+        description: `${successCount} לקוחות עודכנו לשלב "${stageName}"${failCount > 0 ? ` (${failCount} נכשלו)` : ''}`,
+      });
+    } else {
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן את השלבים',
+        variant: 'destructive',
+      });
+    }
+  }, [selectedClients, updateMultipleClientsStage, toast]);
 
   // Client cell formatting handlers
   const handleClientCellStyleChange = useCallback((cellId: string, style: any) => {
@@ -2521,14 +2543,51 @@ export default function DataTablePro() {
                   </div>
                   
                   {selectedClients.length > 0 && (
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={handleDeleteSelectedClients}
-                    >
-                      <Trash2 className="h-4 w-4 ml-2" />
-                      מחק ({selectedClients.length})
-                    </Button>
+                    <>
+                      {/* Bulk Set Stage Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="border-primary bg-white hover:bg-primary/5"
+                          >
+                            <Layers className="h-4 w-4 ml-2 text-primary" />
+                            קבע שלב ({selectedClients.length})
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" dir="rtl" className="max-h-[300px] overflow-y-auto">
+                          <DropdownMenuLabel>בחר שלב עבור {selectedClients.length} לקוחות</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {availableStages.length > 0 ? (
+                            availableStages.map((stage) => (
+                              <DropdownMenuItem
+                                key={stage.stage_id}
+                                onClick={() => handleBulkSetStage(stage.stage_name)}
+                                className="flex items-center gap-2"
+                              >
+                                <Layers className="h-4 w-4 text-primary" />
+                                {stage.stage_name}
+                              </DropdownMenuItem>
+                            ))
+                          ) : (
+                            <DropdownMenuItem disabled>
+                              אין שלבים זמינים
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      {/* Delete Button */}
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={handleDeleteSelectedClients}
+                      >
+                        <Trash2 className="h-4 w-4 ml-2" />
+                        מחק ({selectedClients.length})
+                      </Button>
+                    </>
                   )}
                   
                   {/* Add Client Column Button and Dialog */}
