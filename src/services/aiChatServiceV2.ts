@@ -1,9 +1,11 @@
 /**
  * AI Chat Service V2 - שירות צ'אט AI חכם ומשודרג
  * מבוסס על NLP פשוט עם זיהוי כוונות מתקדם
+ * כולל יכולת ביצוע פעולות: יצירת פגישות, משימות, לקוחות ועוד
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { aiChatActionsService, ActionResult } from './aiChatActionsService';
 
 export interface ChatMessage {
   id: string;
@@ -12,6 +14,8 @@ export interface ChatMessage {
   timestamp: Date;
   data?: any;
   suggestions?: string[];
+  isAction?: boolean;
+  actionResult?: ActionResult;
 }
 
 export interface DataContext {
@@ -44,10 +48,19 @@ const SYNONYMS: Record<string, string[]> = {
   'באיחור': ['מאחר', 'איחור', 'overdue', 'late'],
 };
 
+// מילות פעולה ליצירה
+const CREATE_WORDS = ['צור', 'הוסף', 'תיצור', 'תוסיף', 'יצירת', 'הוספת', 'create', 'add', 'עשה', 'תעשה', 'קבע', 'תקבע', 'רשום', 'תרשום'];
+
+// מילות פעולה לעדכון
+const UPDATE_WORDS = ['עדכן', 'שנה', 'תעדכן', 'תשנה', 'העבר', 'סמן', 'סגור', 'השלם', 'בטל'];
+
+// מילות פעולה למחיקה
+const DELETE_WORDS = ['מחק', 'תמחק', 'הסר', 'תסיר', 'בטל', 'delete', 'remove'];
+
 // מילות שאלה
 const QUESTION_WORDS = ['כמה', 'מה', 'מי', 'איפה', 'מתי', 'למה', 'האם', 'איזה', 'אילו'];
 
-// מילות פעולה
+// מילות פעולה כלליות
 const ACTION_WORDS = ['הראה', 'תן', 'מצא', 'חפש', 'סכם', 'ספר', 'רשום', 'הצג'];
 
 class AIChatServiceV2 {
@@ -119,6 +132,27 @@ class AIChatServiceV2 {
   }
 
   /**
+   * בדיקה אם יש מילת פעולה ליצירה
+   */
+  private hasCreateWord(query: string): boolean {
+    return CREATE_WORDS.some(word => query.includes(word));
+  }
+
+  /**
+   * בדיקה אם יש מילת פעולה לעדכון
+   */
+  private hasUpdateWord(query: string): boolean {
+    return UPDATE_WORDS.some(word => query.includes(word));
+  }
+
+  /**
+   * בדיקה אם יש מילת פעולה למחיקה
+   */
+  private hasDeleteWord(query: string): boolean {
+    return DELETE_WORDS.some(word => query.includes(word));
+  }
+
+  /**
    * עיבוד שאלה ראשי
    */
   async processQuery(query: string): Promise<ChatMessage> {
@@ -132,39 +166,54 @@ class AIChatServiceV2 {
 
     let response: string;
     let suggestions: string[] = [];
+    let isAction = false;
+    let actionResult: ActionResult | undefined;
 
     try {
-      switch (intent.type) {
-        // === לקוחות ===
-        case 'client-count':
-        case 'client-stats':
-          response = this.getClientStats();
-          suggestions = ['הראה רשימת לקוחות', 'לקוחות פעילים', 'לקוח חדש היום'];
-          break;
-        case 'client-search':
-          response = this.searchClients(intent.params.searchTerm);
-          suggestions = ['כמה לקוחות יש?', 'לקוחות פעילים'];
-          break;
-        case 'client-list':
-          response = this.getClientList(intent.params);
-          suggestions = ['כמה לקוחות יש?', 'לקוחות לא פעילים'];
-          break;
+      // בדיקה אם זו פקודת פעולה
+      if (intent.type.startsWith('action-')) {
+        isAction = true;
+        actionResult = await this.executeAction(intent);
+        response = actionResult.message;
+        suggestions = this.getActionSuggestions(intent.type);
+        
+        // רענון נתונים אחרי פעולה מוצלחת
+        if (actionResult.success) {
+          await this.refresh();
+        }
+      } else {
+        // טיפול בשאילתות רגילות
+        switch (intent.type) {
+          // === לקוחות ===
+          case 'client-count':
+          case 'client-stats':
+            response = this.getClientStats();
+            suggestions = ['הראה רשימת לקוחות', 'לקוחות פעילים', 'צור לקוח חדש'];
+            break;
+          case 'client-search':
+            response = this.searchClients(intent.params.searchTerm);
+            suggestions = ['כמה לקוחות יש?', 'לקוחות פעילים'];
+            break;
+          case 'client-list':
+            response = this.getClientList(intent.params);
+            suggestions = ['כמה לקוחות יש?', 'לקוחות לא פעילים'];
+            break;
 
-        // === פרויקטים ===
-        case 'project-count':
-        case 'project-stats':
-          response = this.getProjectStats();
-          suggestions = ['פרויקטים פעילים', 'פרויקטים שהושלמו'];
-          break;
-        case 'project-search':
-          response = this.searchProjects(intent.params.searchTerm);
-          break;
-        case 'project-list':
-          response = this.getProjectList(intent.params);
-          break;
+          // === פרויקטים ===
+          case 'project-count':
+          case 'project-stats':
+            response = this.getProjectStats();
+            suggestions = ['פרויקטים פעילים', 'פרויקטים שהושלמו', 'צור פרויקט חדש'];
+            break;
+          case 'project-search':
+            response = this.searchProjects(intent.params.searchTerm);
+            break;
+          case 'project-list':
+            response = this.getProjectList(intent.params);
+            break;
 
-        // === משימות ===
-        case 'task-count':
+          // === משימות ===
+          case 'task-count':
         case 'task-stats':
           response = this.getTaskStats();
           suggestions = ['משימות באיחור', 'משימות להיום'];
@@ -264,6 +313,32 @@ class AIChatServiceV2 {
           suggestions = ['סיכום', 'לקוחות', 'משימות'];
           break;
 
+        // ========== פעולות ==========
+        case 'action-create-meeting':
+        case 'action-create-task':
+        case 'action-create-client':
+        case 'action-create-project':
+        case 'action-create-time-entry':
+        case 'action-create-reminder':
+        case 'action-update-task':
+        case 'action-delete-task':
+        case 'action-update-meeting':
+        case 'action-cancel-meeting':
+          const actionResult = await this.executeAction(intent.type, intent.params);
+          response = actionResult.message;
+          suggestions = actionResult.suggestions || [];
+          const actionMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: response,
+            timestamp: new Date(),
+            suggestions,
+            isAction: true,
+            actionResult: actionResult
+          };
+          this.conversationHistory.push(actionMessage);
+          return actionMessage;
+
         default:
           response = this.handleUnknown(query);
           suggestions = ['עזרה', 'סיכום', 'כמה לקוחות יש?'];
@@ -283,6 +358,155 @@ class AIChatServiceV2 {
 
     this.conversationHistory.push(message);
     return message;
+  }
+
+  /**
+   * ביצוע פעולה במערכת
+   */
+  private async executeAction(actionType: string, params: any): Promise<ActionResult> {
+    console.log('🤖 Executing action:', actionType, params);
+    
+    try {
+      switch (actionType) {
+        case 'action-create-meeting': {
+          const scheduledAt = this.buildDateTime(params.date, params.time);
+          return await aiChatActionsService.createMeeting({
+            title: params.title || 'פגישה חדשה',
+            clientName: params.clientName,
+            scheduledAt,
+          });
+        }
+          
+        case 'action-create-task': {
+          const dueDate = params.dueDate ? new Date(params.dueDate) : undefined;
+          return await aiChatActionsService.createTask({
+            title: params.title || 'משימה חדשה',
+            projectName: params.projectName,
+            dueDate,
+            priority: params.priority || 'medium',
+          });
+        }
+          
+        case 'action-create-client':
+          return await aiChatActionsService.createClient({
+            name: params.name || 'לקוח חדש',
+            email: params.email,
+            phone: params.phone,
+          });
+          
+        case 'action-create-project':
+          return await aiChatActionsService.createProject({
+            name: params.name || 'פרויקט חדש',
+            clientName: params.clientName,
+          });
+          
+        case 'action-create-time-entry': {
+          return await aiChatActionsService.createTimeEntry({
+            hours: params.hours || 1,
+            description: params.description || 'עבודה',
+            projectName: params.projectName,
+          });
+        }
+          
+        case 'action-create-reminder': {
+          const reminderDate = this.buildDateTime(params.date, params.time);
+          return await aiChatActionsService.createReminder({
+            title: params.title || 'תזכורת',
+            reminderDate,
+          });
+        }
+          
+        case 'action-update-task':
+          if (!params.title) {
+            return {
+              success: false,
+              message: '❓ לא הצלחתי לזהות איזו משימה לעדכן. אנא ציין את שם המשימה.',
+              actionType: 'update-task',
+              suggestions: ['הצג משימות', 'משימות להיום']
+            };
+          }
+          return await aiChatActionsService.updateTaskStatus({
+            taskTitle: params.title,
+            status: params.status || 'completed',
+          });
+          
+        case 'action-delete-task':
+          if (!params.title) {
+            return {
+              success: false,
+              message: '❓ לא הצלחתי לזהות איזו משימה למחוק. אנא ציין את שם המשימה.',
+              actionType: 'delete-task',
+              suggestions: ['הצג משימות', 'משימות להיום']
+            };
+          }
+          return await aiChatActionsService.deleteTask({
+            taskTitle: params.title,
+          });
+          
+        case 'action-update-meeting': {
+          if (!params.title) {
+            return {
+              success: false,
+              message: '❓ לא הצלחתי לזהות איזו פגישה לעדכן. אנא ציין את שם הפגישה.',
+              actionType: 'update-meeting',
+              suggestions: ['פגישות היום', 'פגישות השבוע']
+            };
+          }
+          const newDate = params.date ? this.buildDateTime(params.date, params.time) : undefined;
+          return await aiChatActionsService.updateMeeting({
+            meetingTitle: params.title,
+            newDate,
+          });
+        }
+          
+        case 'action-cancel-meeting':
+          if (!params.title) {
+            return {
+              success: false,
+              message: '❓ לא הצלחתי לזהות איזו פגישה לבטל. אנא ציין את שם הפגישה.',
+              actionType: 'cancel-meeting',
+              suggestions: ['פגישות היום', 'פגישות השבוע']
+            };
+          }
+          return await aiChatActionsService.updateMeeting({
+            meetingTitle: params.title,
+            status: 'cancelled',
+          });
+          
+        default:
+          return {
+            success: false,
+            message: '❓ לא הצלחתי לזהות את הפעולה המבוקשת.',
+            actionType: 'unknown',
+            suggestions: ['עזרה', 'מה אתה יכול לעשות?']
+          };
+      }
+    } catch (error) {
+      console.error('Error executing action:', error);
+      return {
+        success: false,
+        message: '😕 אופס, משהו השתבש בביצוע הפעולה. נסה שוב.',
+        actionType: 'error',
+        suggestions: ['עזרה', 'סיכום']
+      };
+    }
+  }
+
+  /**
+   * בניית תאריך ושעה
+   */
+  private buildDateTime(dateStr?: string, timeStr?: string): Date {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    
+    if (timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      date.setHours(hours || 9, minutes || 0, 0, 0);
+    } else {
+      // ברירת מחדל - 9:00
+      date.setHours(9, 0, 0, 0);
+    }
+    
+    return date;
   }
 
   /**
@@ -438,7 +662,275 @@ class AIChatServiceV2 {
       return { type: 'summary', params: {} };
     }
 
+    // ========== פעולות - יצירה, עדכון, מחיקה ==========
+    
+    // === יצירת פגישה ===
+    if (this.hasCreateWord(query) && this.hasWord(query, 'פגישה')) {
+      const params = this.extractMeetingParams(query);
+      return { type: 'action-create-meeting', params };
+    }
+
+    // === יצירת משימה ===
+    if (this.hasCreateWord(query) && this.hasWord(query, 'משימה')) {
+      const params = this.extractTaskParams(query);
+      return { type: 'action-create-task', params };
+    }
+
+    // === יצירת לקוח ===
+    if (this.hasCreateWord(query) && this.hasWord(query, 'לקוח')) {
+      const params = this.extractClientParams(query);
+      return { type: 'action-create-client', params };
+    }
+
+    // === יצירת פרויקט ===
+    if (this.hasCreateWord(query) && this.hasWord(query, 'פרויקט')) {
+      const params = this.extractProjectParams(query);
+      return { type: 'action-create-project', params };
+    }
+
+    // === רישום שעות ===
+    if (this.hasCreateWord(query) && (this.hasWord(query, 'שעות') || query.includes('זמן') || query.includes('עבודה'))) {
+      const params = this.extractTimeEntryParams(query);
+      return { type: 'action-create-time-entry', params };
+    }
+
+    // === יצירת תזכורת ===
+    if (this.hasCreateWord(query) && (query.includes('תזכורת') || query.includes('תזכיר') || query.includes('הזכר'))) {
+      const params = this.extractReminderParams(query);
+      return { type: 'action-create-reminder', params };
+    }
+
+    // === עדכון משימה ===
+    if (this.hasUpdateWord(query) && this.hasWord(query, 'משימה')) {
+      const params = this.extractTaskUpdateParams(query);
+      return { type: 'action-update-task', params };
+    }
+
+    // === סגירת/השלמת משימה ===
+    if ((query.includes('סגור') || query.includes('השלם') || query.includes('סיים')) && this.hasWord(query, 'משימה')) {
+      const params = this.extractTaskUpdateParams(query);
+      params.status = 'completed';
+      return { type: 'action-update-task', params };
+    }
+
+    // === מחיקת משימה ===
+    if (this.hasDeleteWord(query) && this.hasWord(query, 'משימה')) {
+      const params = this.extractTaskParams(query);
+      return { type: 'action-delete-task', params };
+    }
+
+    // === עדכון פגישה ===
+    if (this.hasUpdateWord(query) && this.hasWord(query, 'פגישה')) {
+      const params = this.extractMeetingParams(query);
+      return { type: 'action-update-meeting', params };
+    }
+
+    // === ביטול פגישה ===
+    if ((query.includes('בטל') || this.hasDeleteWord(query)) && this.hasWord(query, 'פגישה')) {
+      const params = this.extractMeetingParams(query);
+      return { type: 'action-cancel-meeting', params };
+    }
+
     return { type: 'unknown', params: { query } };
+  }
+
+  // ========== פונקציות עזר לזיהוי פעולות ==========
+
+  private hasCreateWord(query: string): boolean {
+    return CREATE_WORDS.some(word => query.includes(word));
+  }
+
+  private hasUpdateWord(query: string): boolean {
+    return UPDATE_WORDS.some(word => query.includes(word));
+  }
+
+  private hasDeleteWord(query: string): boolean {
+    return DELETE_WORDS.some(word => query.includes(word));
+  }
+
+  // ========== פונקציות חילוץ פרמטרים לפעולות ==========
+
+  private extractMeetingParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ כותרת - מה שאחרי "בנושא" או "על"
+    const titleMatch = query.match(/(?:בנושא|על|עם|בעניין)\s+([^,]+)/);
+    if (titleMatch) {
+      params.title = titleMatch[1].trim();
+    }
+    
+    // חילוץ תאריך
+    if (query.includes('היום')) {
+      params.date = new Date().toISOString().split('T')[0];
+    } else if (query.includes('מחר')) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      params.date = tomorrow.toISOString().split('T')[0];
+    }
+    
+    // חילוץ שעה
+    const timeMatch = query.match(/(?:בשעה|ב-?)\s*(\d{1,2}):?(\d{2})?/);
+    if (timeMatch) {
+      const hours = timeMatch[1].padStart(2, '0');
+      const minutes = timeMatch[2] || '00';
+      params.time = `${hours}:${minutes}`;
+    }
+    
+    // חילוץ שם לקוח
+    const clientMatch = query.match(/(?:עם|ללקוח|של)\s+([א-ת\w\s]+?)(?:\s+(?:בנושא|על|בשעה|היום|מחר)|$)/);
+    if (clientMatch) {
+      params.clientName = clientMatch[1].trim();
+    }
+    
+    return params;
+  }
+
+  private extractTaskParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ כותרת
+    const titleMatch = query.match(/(?:משימה|משימת)\s+([^,]+?)(?:\s+(?:ל|עד|לפרויקט)|$)/);
+    if (titleMatch) {
+      params.title = titleMatch[1].trim();
+    }
+    
+    // חילוץ תאריך יעד
+    if (query.includes('היום')) {
+      params.dueDate = new Date().toISOString().split('T')[0];
+    } else if (query.includes('מחר')) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      params.dueDate = tomorrow.toISOString().split('T')[0];
+    } else if (query.includes('השבוע')) {
+      const endOfWeek = new Date();
+      endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+      params.dueDate = endOfWeek.toISOString().split('T')[0];
+    }
+    
+    // חילוץ עדיפות
+    if (query.includes('דחוף') || query.includes('חשוב')) {
+      params.priority = 'high';
+    } else if (query.includes('נמוך')) {
+      params.priority = 'low';
+    }
+    
+    // חילוץ פרויקט
+    const projectMatch = query.match(/(?:לפרויקט|בפרויקט|של פרויקט)\s+([א-ת\w\s]+?)(?:\s+|$)/);
+    if (projectMatch) {
+      params.projectName = projectMatch[1].trim();
+    }
+    
+    return params;
+  }
+
+  private extractClientParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ שם
+    const nameMatch = query.match(/(?:לקוח|לקוחה)\s+(?:בשם\s+)?([א-ת\w\s]+?)(?:\s+(?:עם|טלפון|מייל)|$)/);
+    if (nameMatch) {
+      params.name = nameMatch[1].trim();
+    }
+    
+    // חילוץ טלפון
+    const phoneMatch = query.match(/(?:טלפון|נייד|פלאפון)\s*:?\s*([\d-]+)/);
+    if (phoneMatch) {
+      params.phone = phoneMatch[1].trim();
+    }
+    
+    // חילוץ אימייל
+    const emailMatch = query.match(/(?:מייל|אימייל|email)\s*:?\s*([\w@.-]+)/);
+    if (emailMatch) {
+      params.email = emailMatch[1].trim();
+    }
+    
+    return params;
+  }
+
+  private extractProjectParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ שם פרויקט
+    const nameMatch = query.match(/(?:פרויקט|פרוייקט)\s+(?:בשם\s+)?([א-ת\w\s]+?)(?:\s+(?:ללקוח|של|עם)|$)/);
+    if (nameMatch) {
+      params.name = nameMatch[1].trim();
+    }
+    
+    // חילוץ לקוח
+    const clientMatch = query.match(/(?:ללקוח|של לקוח|עם)\s+([א-ת\w\s]+?)(?:\s+|$)/);
+    if (clientMatch) {
+      params.clientName = clientMatch[1].trim();
+    }
+    
+    return params;
+  }
+
+  private extractTimeEntryParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ מספר שעות
+    const hoursMatch = query.match(/(\d+(?:\.\d+)?)\s*(?:שעות|שעה)/);
+    if (hoursMatch) {
+      params.hours = parseFloat(hoursMatch[1]);
+    }
+    
+    // חילוץ תיאור
+    const descMatch = query.match(/(?:על|בנושא|עבור)\s+([^,]+?)(?:\s+(?:לפרויקט|ללקוח)|$)/);
+    if (descMatch) {
+      params.description = descMatch[1].trim();
+    }
+    
+    // חילוץ פרויקט
+    const projectMatch = query.match(/(?:לפרויקט|בפרויקט)\s+([א-ת\w\s]+?)(?:\s+|$)/);
+    if (projectMatch) {
+      params.projectName = projectMatch[1].trim();
+    }
+    
+    return params;
+  }
+
+  private extractReminderParams(query: string): any {
+    const params: any = {};
+    
+    // חילוץ תוכן התזכורת
+    const contentMatch = query.match(/(?:תזכורת|להזכיר|תזכיר)\s+(?:לי\s+)?(?:ש|ל)?([^,]+?)(?:\s+(?:ב|מחר|היום)|$)/);
+    if (contentMatch) {
+      params.title = contentMatch[1].trim();
+    }
+    
+    // חילוץ תאריך
+    if (query.includes('היום')) {
+      params.date = new Date().toISOString().split('T')[0];
+    } else if (query.includes('מחר')) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      params.date = tomorrow.toISOString().split('T')[0];
+    }
+    
+    // חילוץ שעה
+    const timeMatch = query.match(/(?:בשעה|ב-?)\s*(\d{1,2}):?(\d{2})?/);
+    if (timeMatch) {
+      const hours = timeMatch[1].padStart(2, '0');
+      const minutes = timeMatch[2] || '00';
+      params.time = `${hours}:${minutes}`;
+    }
+    
+    return params;
+  }
+
+  private extractTaskUpdateParams(query: string): any {
+    const params: any = this.extractTaskParams(query);
+    
+    // חילוץ סטטוס
+    if (query.includes('סגור') || query.includes('השלם') || query.includes('סיים')) {
+      params.status = 'completed';
+    } else if (query.includes('בטל')) {
+      params.status = 'cancelled';
+    } else if (query.includes('בתהליך') || query.includes('התחל')) {
+      params.status = 'in_progress';
+    }
+    
+    return params;
   }
 
   // ========== פונקציות עזר ==========
@@ -979,29 +1471,27 @@ ${overdue > 0 ? `• **באיחור: ${overdue}** ⚠️` : ''}`;
   private getHelp(): string {
     return `🤖 **איך אני יכול לעזור:**
 
-**לקוחות:**
-• "כמה לקוחות יש?" - סטטיסטיקות
-• "חפש לקוח X" - חיפוש
-• "לקוחות פעילים" - רשימה
-
-**משימות:**
-• "משימות באיחור" - דחופות
-• "משימות להיום" - יומיות
-• "כמה משימות יש?" - סטטיסטיקות
-
-**פגישות:**
+**📊 שאילתות ומידע:**
+• "כמה לקוחות/משימות/פרויקטים יש?"
+• "משימות באיחור" / "משימות להיום"
 • "פגישות היום/השבוע"
-
-**זמנים:**
 • "שעות היום/השבוע/החודש"
+• "הכנסות" / "חשבוניות לא שולמו"
+• "סיכום" - מצב המערכת
 
-**כספים:**
-• "הכנסות" - סיכום
-• "חשבוניות לא שולמו"
-• "הצעות מחיר ממתינות"
+**🎯 פעולות - אני יכול לבצע:**
+• "צור פגישה עם [לקוח] מחר בשעה 10:00"
+• "הוסף משימה [תיאור] לפרויקט [שם]"
+• "צור לקוח חדש בשם [שם]"
+• "רשום 3 שעות על [תיאור] לפרויקט [שם]"
+• "צור תזכורת [תוכן] מחר בשעה 9"
+• "סגור משימה [שם]" / "מחק משימה [שם]"
+• "בטל פגישה [שם]"
 
-**כללי:**
-• "סיכום" - מצב המערכת`;
+**💡 טיפים:**
+• ציין שמות לקוחות/פרויקטים ואמצא אותם
+• הוסף תאריכים (היום/מחר) ושעות
+• ציין עדיפות (דחוף/חשוב) למשימות`;
   }
 
   private handleUnknown(query: string): string {
