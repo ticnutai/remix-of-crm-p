@@ -57,6 +57,74 @@ function normalizeNameForSearch(name: string): string[] {
   return [...new Set(variations)];
 }
 
+// Smart action detection
+interface SmartAction {
+  type: 'send_email' | 'create_task' | 'schedule_meeting' | 'search_client' | 'none';
+  data: Record<string, any>;
+}
+
+function detectSmartAction(message: string): SmartAction {
+  const lowerMessage = message.toLowerCase();
+  
+  // Email patterns: "שלח מייל ל[לקוח] על [נושא]" or "שלח אימייל ל[כתובת]"
+  const emailPatterns = [
+    /שלח\s+(?:מייל|אימייל|דואר)\s+(?:ל|אל)\s*([^\s,]+(?:@[^\s,]+)?)\s*(?:על|בנושא|עם הודעה)?\s*(.*)?/i,
+    /(?:מייל|אימייל)\s+(?:ל|אל)\s*([^\s,]+(?:@[^\s,]+)?)\s*(?:על|בנושא|עם הודעה)?\s*(.*)?/i,
+  ];
+  
+  for (const pattern of emailPatterns) {
+    const match = message.match(pattern);
+    if (match) {
+      return {
+        type: 'send_email',
+        data: {
+          recipient: match[1]?.trim(),
+          subject: match[2]?.trim() || '',
+        }
+      };
+    }
+  }
+  
+  // Task patterns: "צור משימה [תיאור]" or "הוסף משימה [תיאור]"
+  const taskPatterns = [
+    /(?:צור|הוסף|תוסיף)\s+משימה\s*:?\s*(.+)/i,
+    /משימה\s+(?:חדשה|ל)\s*:?\s*(.+)/i,
+  ];
+  
+  for (const pattern of taskPatterns) {
+    const match = message.match(pattern);
+    if (match) {
+      return {
+        type: 'create_task',
+        data: {
+          title: match[1]?.trim(),
+        }
+      };
+    }
+  }
+  
+  // Meeting patterns: "קבע פגישה עם [לקוח] מחר/היום"
+  const meetingPatterns = [
+    /(?:קבע|תקבע|קבעי)\s+פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+(?:מחר|היום|ב|ל)(.*))?$/i,
+    /פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+(?:מחר|היום|ב|ל)(.*))?$/i,
+  ];
+  
+  for (const pattern of meetingPatterns) {
+    const match = message.match(pattern);
+    if (match) {
+      return {
+        type: 'schedule_meeting',
+        data: {
+          clientName: match[1]?.trim(),
+          when: match[2]?.trim() || 'מחר',
+        }
+      };
+    }
+  }
+  
+  return { type: 'none', data: {} };
+}
+
 // Extract client name from user message
 function extractClientNameFromMessage(message: string): string | null {
   // Patterns to extract client names
@@ -80,13 +148,14 @@ function extractClientNameFromMessage(message: string): string | null {
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+const SEND_EMAIL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-reminder-email`;
 
 export function useAIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: '👋 שלום! אני העוזר החכם של המערכת.\n\nאני יכול לעזור לך עם מידע על לקוחות, פרויקטים, משימות, פגישות והכנסות.\n\nשאל אותי משהו! 🚀',
+      content: '👋 שלום! אני העוזר החכם של המערכת.\n\n**מה אני יכול לעשות:**\n- 📊 מידע על לקוחות, פרויקטים, משימות, פגישות והכנסות\n- 📧 **שלח מייל ל[שם/כתובת]** - שליחת אימייל ללקוח\n- ✅ **צור משימה: [תיאור]** - יצירת משימה חדשה\n- 📅 **קבע פגישה עם [לקוח] מחר** - קביעת פגישה\n\nשאל אותי משהו! 🚀',
       timestamp: new Date(),
     },
   ]);
@@ -215,6 +284,193 @@ export function useAIChat() {
     }
   }, []);
 
+  // Handle smart actions (email, task, meeting)
+  const handleSmartAction = useCallback(async (action: SmartAction, assistantId: string): Promise<boolean> => {
+    if (action.type === 'none') return false;
+    
+    try {
+      switch (action.type) {
+        case 'send_email': {
+          const { recipient, subject } = action.data;
+          
+          // First, try to find client by name if not an email address
+          let email = recipient;
+          let clientName = recipient;
+          
+          if (!recipient.includes('@')) {
+            // Search for client
+            const { data: clients } = await supabase
+              .from('clients')
+              .select('id, name, email')
+              .ilike('name', `%${recipient}%`)
+              .limit(1);
+            
+            if (clients && clients.length > 0 && clients[0].email) {
+              email = clients[0].email;
+              clientName = clients[0].name;
+            } else {
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantId
+                    ? { ...m, content: `⚠️ לא מצאתי את הלקוח "${recipient}" או שאין לו כתובת מייל במערכת.\n\nאנא ציין כתובת מייל מלאה או בדוק את שם הלקוח.`, isStreaming: false }
+                    : m
+                )
+              );
+              return true;
+            }
+          }
+          
+          // Send email
+          const response = await fetch(SEND_EMAIL_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              to: email,
+              title: subject || 'הודעה ממערכת CRM',
+              message: subject || 'שלום, זוהי הודעה אוטומטית ממערכת ה-CRM.',
+              userName: clientName,
+            }),
+          });
+          
+          if (response.ok) {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `✅ **המייל נשלח בהצלחה!**\n\n📧 **נמען:** ${clientName} (${email})\n📝 **נושא:** ${subject || 'הודעה ממערכת CRM'}\n\nהמייל נשלח לכתובת הלקוח.`, isStreaming: false }
+                  : m
+              )
+            );
+          } else {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `❌ שגיאה בשליחת המייל. נסה שוב מאוחר יותר.`, isStreaming: false }
+                  : m
+              )
+            );
+          }
+          return true;
+        }
+        
+        case 'create_task': {
+          const { title } = action.data;
+          
+          const { data, error } = await supabase
+            .from('tasks')
+            .insert({
+              title: title,
+              status: 'pending',
+              priority: 'medium',
+              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Week from now
+            })
+            .select()
+            .single();
+          
+          if (data && !error) {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `✅ **משימה נוצרה בהצלחה!**\n\n📋 **כותרת:** ${title}\n📅 **תאריך יעד:** שבוע מהיום\n⚡ **עדיפות:** בינונית\n\nתוכל לצפות במשימה בדף המשימות.`, isStreaming: false }
+                  : m
+              )
+            );
+          } else {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `❌ שגיאה ביצירת המשימה: ${error?.message || 'שגיאה לא ידועה'}`, isStreaming: false }
+                  : m
+              )
+            );
+          }
+          return true;
+        }
+        
+        case 'schedule_meeting': {
+          const { clientName, when } = action.data;
+          
+          // Find client
+          const { data: clients } = await supabase
+            .from('clients')
+            .select('id, name')
+            .ilike('name', `%${clientName}%`)
+            .limit(1);
+          
+          if (!clients || clients.length === 0) {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `⚠️ לא מצאתי את הלקוח "${clientName}" במערכת.\n\nאנא בדוק את שם הלקוח ונסה שוב.`, isStreaming: false }
+                  : m
+              )
+            );
+            return true;
+          }
+          
+          // Calculate meeting time
+          let startTime = new Date();
+          if (when.includes('מחר')) {
+            startTime.setDate(startTime.getDate() + 1);
+          }
+          startTime.setHours(10, 0, 0, 0); // Default to 10:00
+          
+          const endTime = new Date(startTime);
+          endTime.setHours(endTime.getHours() + 1);
+          
+          const { data, error } = await supabase
+            .from('meetings')
+            .insert({
+              title: `פגישה עם ${clients[0].name}`,
+              client_id: clients[0].id,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              status: 'scheduled',
+            })
+            .select()
+            .single();
+          
+          if (data && !error) {
+            const dateStr = startTime.toLocaleDateString('he-IL', { 
+              weekday: 'long', 
+              day: 'numeric', 
+              month: 'long' 
+            });
+            const timeStr = startTime.toLocaleTimeString('he-IL', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+            
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `✅ **פגישה נקבעה בהצלחה!**\n\n👤 **לקוח:** ${clients[0].name}\n📅 **תאריך:** ${dateStr}\n🕐 **שעה:** ${timeStr}\n⏱️ **משך:** שעה\n\nהפגישה נוספה ליומן.`, isStreaming: false }
+                  : m
+              )
+            );
+          } else {
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: `❌ שגיאה בקביעת הפגישה: ${error?.message || 'שגיאה לא ידועה'}`, isStreaming: false }
+                  : m
+              )
+            );
+          }
+          return true;
+        }
+        
+        default:
+          return false;
+      }
+    } catch (err) {
+      console.error('Smart action error:', err);
+      return false;
+    }
+  }, []);
+
   // Send message with streaming
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return;
@@ -246,6 +502,18 @@ export function useAIChat() {
     ]);
 
     try {
+      // Detect smart actions first
+      const smartAction = detectSmartAction(content.trim());
+      
+      // Handle smart action if detected
+      if (smartAction.type !== 'none') {
+        const handled = await handleSmartAction(smartAction, assistantId);
+        if (handled) {
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       // Fetch context with user message for smart search
       const context = await fetchContext(content.trim());
 
@@ -348,7 +616,7 @@ export function useAIChat() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [messages, isLoading, fetchContext]);
+  }, [messages, isLoading, fetchContext, handleSmartAction]);
 
   // Stop streaming
   const stopStreaming = useCallback(() => {

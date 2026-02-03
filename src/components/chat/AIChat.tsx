@@ -37,6 +37,9 @@ const SUGGESTED_QUERIES = [
   { text: 'סיכום הכנסות החודש', icon: '💰' },
   { text: 'כמה שעות עבדתי היום?', icon: '⏱️' },
   { text: 'תן לי סיכום כללי', icon: '📊' },
+  { text: 'שלח מייל ללקוח', icon: '📧' },
+  { text: 'צור משימה חדשה', icon: '✅' },
+  { text: 'קבע פגישה מחר', icon: '🗓️' },
 ];
 
 export function AIChat() {
@@ -321,11 +324,13 @@ export function AIChat() {
             </div>
             <div className="space-y-1">
               <p className="font-semibold text-sm">💡 טיפים לשימוש</p>
-              <ul className="text-xs text-muted-foreground space-y-0.5">
+              <ul className="text-xs text-muted-foreground space-y-0.5 text-right">
                 <li>• שאל על לקוחות, פרויקטים, משימות, פגישות והכנסות</li>
-                <li>• השתמש בעברית טבעית - ה-AI מבין עברית מלאה</li>
+                <li>• "שלח מייל ל[שם לקוח]" - שליחת מייל מהירה</li>
+                <li>• "צור משימה: [תיאור]" - יצירת משימה חדשה</li>
+                <li>• "קבע פגישה עם [לקוח] מחר" - קביעת פגישה</li>
                 <li>• 🎤 לחץ על המיקרופון כדי להקליט פקודה קולית</li>
-                <li>• חיפוש לקוח חכם - גם אם השם הפוך (יוסי אשכנזי = אשכנזי יוסי)</li>
+                <li>• חיפוש לקוח חכם - גם אם השם הפוך</li>
               </ul>
             </div>
           </div>
@@ -345,6 +350,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         'flex gap-3 animate-in slide-in-from-bottom-2 duration-300',
         isUser ? 'flex-row-reverse' : 'flex-row'
       )}
+      dir="rtl"
     >
       {/* Avatar */}
       <div className="flex-shrink-0 mt-1">
@@ -372,9 +378,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         )}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+          <p className="whitespace-pre-wrap break-words text-sm text-right">{message.content}</p>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-right" dir="rtl">
             <ReactMarkdown
               components={{
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
