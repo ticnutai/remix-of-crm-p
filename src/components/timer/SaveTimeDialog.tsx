@@ -1,6 +1,8 @@
 /**
  * SaveTimeDialog - דיאלוג שמירת זמן חדש ונקי
  * עם כל הפונקציות עובדות: בחירה, הוספה, עריכה, מחיקה
+ * 
+ * ✅ שודרג לסנכרון ענן - הכותרות וההערות נשמרות ב-Supabase!
  */
 import React, { useState, useEffect } from 'react';
 import { 
@@ -22,16 +24,25 @@ import {
   Trash2, 
   FileText,
   Clock,
-  ListPlus
+  ListPlus,
+  Cloud,
+  CloudOff
 } from 'lucide-react';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
-// Storage keys
+// Storage keys (for fallback only)
 const QUICK_TITLES_KEY = 'timer-quick-titles';
 const QUICK_NOTES_KEY = 'timer-quick-notes';
 
 // Defaults
 const DEFAULT_TITLES = ['תכנון', 'עיצוב', 'פגישה', 'בדיקות', 'תיעוד', 'פיתוח', 'תיאום', 'שיחה'];
 const DEFAULT_NOTES = ['לחשבונית', 'המשך מחר', 'דחוף', 'ממתין לאישור', 'הושלם', 'בבדיקה'];
+
+// Cloud settings interface
+interface QuickOptionsSettings {
+  titles: string[];
+  notes: string[];
+}
 
 interface SaveTimeDialogProps {
   open: boolean;
@@ -46,24 +57,58 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   
-  // Quick options
-  const [quickTitles, setQuickTitles] = useState<string[]>(() => {
+  // ========== CLOUD SYNC ==========
+  // Get initial values from localStorage as fallback
+  const getInitialTitles = (): string[] => {
     try {
       const saved = localStorage.getItem(QUICK_TITLES_KEY);
       return saved ? JSON.parse(saved) : DEFAULT_TITLES;
     } catch {
       return DEFAULT_TITLES;
     }
-  });
+  };
   
-  const [quickNotes, setQuickNotes] = useState<string[]>(() => {
+  const getInitialNotes = (): string[] => {
     try {
       const saved = localStorage.getItem(QUICK_NOTES_KEY);
       return saved ? JSON.parse(saved) : DEFAULT_NOTES;
     } catch {
       return DEFAULT_NOTES;
     }
+  };
+
+  // Cloud settings hook - syncs to Supabase!
+  const { 
+    value: cloudSettings, 
+    setValue: setCloudSettings, 
+    isLoading: cloudLoading,
+    isSaving: cloudSaving 
+  } = useUserSettings<QuickOptionsSettings>({
+    key: 'timer_quick_options',
+    defaultValue: {
+      titles: getInitialTitles(),
+      notes: getInitialNotes()
+    }
   });
+
+  // Use cloud values with local fallback
+  const quickTitles = cloudSettings.titles;
+  const quickNotes = cloudSettings.notes;
+  
+  // Update functions that sync to cloud
+  const setQuickTitles = (updater: string[] | ((prev: string[]) => string[])) => {
+    const newTitles = typeof updater === 'function' ? updater(quickTitles) : updater;
+    setCloudSettings(prev => ({ ...prev, titles: newTitles }));
+    // Also save to localStorage as backup
+    localStorage.setItem(QUICK_TITLES_KEY, JSON.stringify(newTitles));
+  };
+  
+  const setQuickNotes = (updater: string[] | ((prev: string[]) => string[])) => {
+    const newNotes = typeof updater === 'function' ? updater(quickNotes) : updater;
+    setCloudSettings(prev => ({ ...prev, notes: newNotes }));
+    // Also save to localStorage as backup
+    localStorage.setItem(QUICK_NOTES_KEY, JSON.stringify(newNotes));
+  };
   
   // Edit mode
   const [editingTitle, setEditingTitle] = useState<{ index: number; value: string } | null>(null);
@@ -76,15 +121,6 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
   const [showBulkNotes, setShowBulkNotes] = useState(false);
   const [bulkTitlesInput, setBulkTitlesInput] = useState('');
   const [bulkNotesInput, setBulkNotesInput] = useState('');
-
-  // Save to localStorage
-  useEffect(() => {
-    localStorage.setItem(QUICK_TITLES_KEY, JSON.stringify(quickTitles));
-  }, [quickTitles]);
-  
-  useEffect(() => {
-    localStorage.setItem(QUICK_NOTES_KEY, JSON.stringify(quickNotes));
-  }, [quickNotes]);
 
   // Format time display
   const formatTime = (ms: number) => {
@@ -212,9 +248,35 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-amber-400 flex items-center gap-2 text-lg">
-            <Save className="h-5 w-5" />
-            שמירת רישום זמן
+          <DialogTitle className="text-amber-400 flex items-center justify-between text-lg">
+            <div className="flex items-center gap-2">
+              <Save className="h-5 w-5" />
+              שמירת רישום זמן
+            </div>
+            {/* Cloud Status Indicator */}
+            {cloudLoading ? (
+               <Cloud className="h-4 w-4 animate-pulse text-white/50" />
+            ) : cloudSaving ? (
+               <Cloud className="h-4 w-4 animate-bounce text-amber-500" />
+            ) : (
+               <Cloud className="h-4 w-4 text-green-500/50" />
+            )}me="h-5 w-5" />
+              שמירת רישום זמן
+            </div>
+            {/* Cloud Status Indicator */}
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded text-[10px] font-normal text-white/50">
+              {cloudSaving ? (
+                <>
+                  <Cloud className="h-3 w-3 animate-pulse text-amber-400" />
+                  <span>שומר בענן...</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="h-3 w-3 text-white/40" />
+                  <span>מסונכרן</span>
+                </>
+              )}
+            </div>
           </DialogTitle>
         </DialogHeader>
         
