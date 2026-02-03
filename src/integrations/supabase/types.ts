@@ -812,35 +812,53 @@ export type Database = {
       }
       client_stage_tasks: {
         Row: {
+          background_color: string | null
           client_id: string
           completed: boolean
           completed_at: string | null
           created_at: string
           id: string
+          is_bold: boolean | null
           sort_order: number
           stage_id: string
+          started_at: string | null
+          target_working_days: number | null
+          text_color: string | null
+          timer_display_style: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          background_color?: string | null
           client_id: string
           completed?: boolean
           completed_at?: string | null
           created_at?: string
           id?: string
+          is_bold?: boolean | null
           sort_order?: number
           stage_id: string
+          started_at?: string | null
+          target_working_days?: number | null
+          text_color?: string | null
+          timer_display_style?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          background_color?: string | null
           client_id?: string
           completed?: boolean
           completed_at?: string | null
           created_at?: string
           id?: string
+          is_bold?: boolean | null
           sort_order?: number
           stage_id?: string
+          started_at?: string | null
+          target_working_days?: number | null
+          text_color?: string | null
+          timer_display_style?: number | null
           title?: string
           updated_at?: string
         }
@@ -866,6 +884,9 @@ export type Database = {
           stage_icon: string | null
           stage_id: string
           stage_name: string
+          started_at: string | null
+          target_working_days: number | null
+          timer_display_style: number | null
           updated_at: string
         }
         Insert: {
@@ -879,6 +900,9 @@ export type Database = {
           stage_icon?: string | null
           stage_id: string
           stage_name: string
+          started_at?: string | null
+          target_working_days?: number | null
+          timer_display_style?: number | null
           updated_at?: string
         }
         Update: {
@@ -892,6 +916,9 @@ export type Database = {
           stage_icon?: string | null
           stage_id?: string
           stage_name?: string
+          started_at?: string | null
+          target_working_days?: number | null
+          timer_display_style?: number | null
           updated_at?: string
         }
         Relationships: [

@@ -205,7 +205,6 @@ export function StageTaskActionsPopup({
       location: meetingForm.location || '',
       client_id: clientId,
       project_id: null,
-      attendees: [],
     });
 
     setMeetingForm({

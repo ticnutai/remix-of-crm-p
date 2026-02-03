@@ -24,6 +24,8 @@ export interface Task {
   updated_at: string;
   client?: { name: string } | null;
   project?: { name: string } | null;
+  assignee?: { full_name: string } | null;
+  creator?: { full_name: string } | null;
 }
 
 export interface TaskInsert {
