@@ -13,11 +13,13 @@ import { useDataTableSync, SyncedProject, SyncedClient } from '@/hooks/useDataTa
 import { useEmployeesSync, SyncedEmployee } from '@/hooks/useEmployeesSync';
 import { useCustomTables, useCustomTableData, CustomTable, CustomTableData, TableColumn } from '@/hooks/useCustomTables';
 import { useTableCustomColumns, useCustomData } from '@/hooks/useTableCustomColumns';
+import { useClientClassification, ClientFilter } from '@/hooks/useClientClassification';
 import { CreateTableDialog } from '@/components/custom-tables/CreateTableDialog';
 import { CustomTableTab } from '@/components/custom-tables/CustomTableTab';
 import { ManageTablesDialog } from '@/components/custom-tables/ManageTablesDialog';
 import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
 import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
+import { ClientFilterPanel } from '@/components/clients/ClientFilterPanel';
 import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -279,6 +281,22 @@ export default function DataTablePro() {
     addClient: addDbClient,
     deleteClient: deleteDbClient,
   } = useDataTableSync();
+  
+  // Client classification hook for smart filtering
+  const {
+    consultants,
+    clientConsultants,
+    loading: classificationLoading,
+    fetchClientConsultants,
+    assignConsultant,
+    removeConsultant,
+    getClientsByConsultant,
+    filterClients,
+  } = useClientClassification();
+  
+  // Client filter state
+  const [clientFilter, setClientFilter] = useState<ClientFilter>({});
+  const [filteredClients, setFilteredClients] = useState<SyncedClient[] | null>(null);
   
   // Employees sync hook
   const {
@@ -2339,37 +2357,38 @@ export default function DataTablePro() {
           {/* Clients Tab */}
           <TabsContent value="clients" className="mt-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-secondary" />
-                    טבלת לקוחות
-                    <Badge variant="outline" className="text-xs gap-1 mr-2">
-                      <Database className="h-3 w-3" />
-                      מחובר למסד נתונים
-                    </Badge>
-                    {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                  </CardTitle>
-                  <CardDescription>
-                    {dbClients.length} לקוחות | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Refresh button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => refreshData()}
-                    disabled={dbLoading}
-                    title="רענן נתונים"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${dbLoading ? 'animate-spin' : ''}`} />
-                  </Button>
+              <CardHeader className="flex flex-col gap-4">
+                <div className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-secondary" />
+                      טבלת לקוחות
+                      <Badge variant="outline" className="text-xs gap-1 mr-2">
+                        <Database className="h-3 w-3" />
+                        מחובר למסד נתונים
+                      </Badge>
+                      {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    </CardTitle>
+                    <CardDescription>
+                      {filteredClients ? filteredClients.length : dbClients.length} לקוחות | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Refresh button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refreshData()}
+                      disabled={dbLoading}
+                      title="רענן נתונים"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${dbLoading ? 'animate-spin' : ''}`} />
+                    </Button>
                   
-                  {/* Import buttons */}
-                  <div className="flex items-center gap-1 border-l pl-2">
-                    <input
-                      ref={clientFileInputRef}
+                    {/* Import buttons */}
+                    <div className="flex items-center gap-1 border-l pl-2">
+                      <input
+                        ref={clientFileInputRef}
                       type="file"
                       accept=".csv,.xlsx,.xls"
                       onChange={handleClientImportFile}
@@ -2555,6 +2574,30 @@ export default function DataTablePro() {
                       </SheetFooter>
                     </SheetContent>
                   </Sheet>
+                  </div>
+                </div>
+                
+                {/* Client Filter Panel */}
+                <div className="border-t pt-4">
+                  <ClientFilterPanel
+                    consultants={consultants}
+                    activeFilters={clientFilter}
+                    onFilterChange={async (filter) => {
+                      setClientFilter(filter);
+                      if (Object.keys(filter).some(k => filter[k as keyof ClientFilter])) {
+                        const filtered = await filterClients(filter);
+                        setFilteredClients(filtered as SyncedClient[]);
+                      } else {
+                        setFilteredClients(null);
+                      }
+                    }}
+                    onClear={() => {
+                      setClientFilter({});
+                      setFilteredClients(null);
+                    }}
+                    totalClients={dbClients.length}
+                    filteredCount={filteredClients?.length ?? dbClients.length}
+                  />
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -2567,7 +2610,7 @@ export default function DataTablePro() {
                 ) : (
                   <UniversalDataTable
                     tableName="clients"
-                    data={localClients}
+                    data={filteredClients ?? localClients}
                     setData={setLocalClients}
                     columns={clientColumns}
                     variant="gold"
