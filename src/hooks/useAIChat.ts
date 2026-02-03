@@ -23,6 +23,60 @@ interface CRMContext {
   hoursToday: number;
   recentClients?: string;
   upcomingMeetings?: string;
+  clientSearch?: string;
+  searchedClients?: ClientSearchResult[];
+}
+
+interface ClientSearchResult {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+}
+
+// Smart name matching - handles reversed names
+function normalizeNameForSearch(name: string): string[] {
+  // Remove extra spaces and normalize
+  const clean = name.trim().toLowerCase().replace(/\s+/g, ' ');
+  const parts = clean.split(' ');
+  
+  // Return original and reversed versions
+  const variations: string[] = [clean];
+  
+  if (parts.length >= 2) {
+    // Add reversed version: "יוסי אשכנזי" => "אשכנזי יוסי"
+    variations.push(parts.reverse().join(' '));
+    
+    // Add individual parts for partial matching
+    parts.forEach(part => {
+      if (part.length >= 2) variations.push(part);
+    });
+  }
+  
+  return [...new Set(variations)];
+}
+
+// Extract client name from user message
+function extractClientNameFromMessage(message: string): string | null {
+  // Patterns to extract client names
+  const patterns = [
+    /פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+ב|\s+מחר|\s+היום|$)/i,
+    /לקבוע\s+(?:פגישה\s+)?(?:עם|ל)\s+(.+?)(?:\s+ב|\s+מחר|\s+היום|$)/i,
+    /(?:מצא|חפש|מידע על|פרטים של|פרטי)\s+(?:לקוח\s+)?(.+?)(?:\s+בבקשה|$)/i,
+    /(?:התקשר|שלח מייל|שלח הודעה)\s+(?:ל|אל)\s+(.+?)(?:\s+בבקשה|$)/i,
+    /(?:מי זה|מה עם|סטטוס של)\s+(.+?)(?:\?|$)/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      // Clean up the extracted name
+      return match[1].trim().replace(/[?,!.]+$/, '');
+    }
+  }
+  
+  return null;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
@@ -41,7 +95,7 @@ export function useAIChat() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch CRM context for the AI
-  const fetchContext = useCallback(async (): Promise<CRMContext> => {
+  const fetchContext = useCallback(async (userMessage?: string): Promise<CRMContext> => {
     try {
       const today = new Date();
       const startOfToday = new Date(today.setHours(0, 0, 0, 0)).toISOString();
@@ -91,6 +145,50 @@ export function useAIChat() {
         .map(c => c.name)
         .join(', ');
 
+      // Smart client search if user message contains a name
+      let clientSearch: string | undefined;
+      let searchedClients: ClientSearchResult[] = [];
+      
+      if (userMessage) {
+        const extractedName = extractClientNameFromMessage(userMessage);
+        if (extractedName) {
+          clientSearch = extractedName;
+          const nameVariations = normalizeNameForSearch(extractedName);
+          
+          // Search for clients with any of the name variations
+          const { data: clients } = await supabase
+            .from('clients')
+            .select('id, name, email, phone, company');
+          
+          if (clients) {
+            // Score each client based on name match
+            const scoredClients = clients.map(client => {
+              const clientNameLower = client.name.toLowerCase();
+              let score = 0;
+              
+              for (const variation of nameVariations) {
+                if (clientNameLower === variation) {
+                  score = 100; // Exact match
+                  break;
+                } else if (clientNameLower.includes(variation)) {
+                  score = Math.max(score, 80); // Contains variation
+                } else if (variation.split(' ').some(part => 
+                  part.length >= 2 && clientNameLower.includes(part)
+                )) {
+                  score = Math.max(score, 60); // Partial match
+                }
+              }
+              
+              return { ...client, score };
+            }).filter(c => c.score > 0)
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 5);
+            
+            searchedClients = scoredClients.map(({ score, ...client }) => client);
+          }
+        }
+      }
+
       return {
         clientsCount: clientsRes.count || 0,
         projectsCount: projectsRes.count || 0,
@@ -100,6 +198,8 @@ export function useAIChat() {
         monthlyRevenue,
         hoursToday,
         recentClients,
+        clientSearch,
+        searchedClients,
       };
     } catch (err) {
       console.error('Error fetching context:', err);
@@ -146,8 +246,8 @@ export function useAIChat() {
     ]);
 
     try {
-      // Fetch context
-      const context = await fetchContext();
+      // Fetch context with user message for smart search
+      const context = await fetchContext(content.trim());
 
       // Prepare messages for API (excluding streaming flags)
       const apiMessages = [...messages, userMessage].map(m => ({

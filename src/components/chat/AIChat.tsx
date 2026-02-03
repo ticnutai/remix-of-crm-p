@@ -1,15 +1,16 @@
 /**
  * AI Chat Component - צ'אט AI חכם עם Lovable AI
- * Streaming responses + Hebrew support
+ * Streaming responses + Hebrew support + Voice input
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAIChat, ChatMessage } from '@/hooks/useAIChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ReactMarkdown from 'react-markdown';
 import {
   Bot,
@@ -23,8 +24,11 @@ import {
   Trash2,
   StopCircle,
   AlertCircle,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const SUGGESTED_QUERIES = [
   { text: 'כמה לקוחות יש במערכת?', icon: '👥' },
@@ -40,6 +44,79 @@ export function AIChat() {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  // Voice recognition state
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Check for speech recognition support
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setIsVoiceSupported(true);
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'he-IL'; // Hebrew
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join('');
+        
+        setInput(transcript);
+        
+        // If final result, auto-submit
+        if (event.results[0].isFinal) {
+          setIsListening(false);
+        }
+      };
+      
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          toast({
+            title: '🎤 הרשאת מיקרופון נדרשת',
+            description: 'אנא אשר גישה למיקרופון בדפדפן',
+            variant: 'destructive',
+          });
+        }
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognitionRef.current = recognition;
+    }
+    
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, [toast]);
+
+  // Toggle voice recognition
+  const toggleVoiceRecognition = useCallback(() => {
+    if (!recognitionRef.current) return;
+    
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput(''); // Clear input before starting
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast({
+        title: '🎤 מקליט...',
+        description: 'דבר עכשיו, אני מקשיב',
+      });
+    }
+  }, [isListening, toast]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -186,11 +263,38 @@ export function AIChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="שאל משהו... (לדוגמה: 'כמה לקוחות יש?')"
-                disabled={isLoading}
-                className="flex-1"
+                placeholder={isListening ? '🎤 מקשיב...' : "שאל משהו... (לדוגמה: 'כמה לקוחות יש?')"}
+                disabled={isLoading || isListening}
+                className={cn("flex-1", isListening && "border-red-500 animate-pulse")}
                 autoComplete="off"
               />
+              
+              {/* Voice button */}
+              {isVoiceSupported && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={toggleVoiceRecognition}
+                        disabled={isLoading}
+                        size="icon"
+                        variant={isListening ? 'destructive' : 'outline'}
+                        className={cn("shrink-0", isListening && "animate-pulse")}
+                      >
+                        {isListening ? (
+                          <MicOff className="h-4 w-4" />
+                        ) : (
+                          <Mic className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isListening ? 'הפסק הקלטה' : 'הקלט פקודה קולית'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              
               <Button
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
@@ -220,7 +324,8 @@ export function AIChat() {
               <ul className="text-xs text-muted-foreground space-y-0.5">
                 <li>• שאל על לקוחות, פרויקטים, משימות, פגישות והכנסות</li>
                 <li>• השתמש בעברית טבעית - ה-AI מבין עברית מלאה</li>
-                <li>• התשובות מבוססות על נתונים אמיתיים מהמערכת</li>
+                <li>• 🎤 לחץ על המיקרופון כדי להקליט פקודה קולית</li>
+                <li>• חיפוש לקוח חכם - גם אם השם הפוך (יוסי אשכנזי = אשכנזי יוסי)</li>
               </ul>
             </div>
           </div>
