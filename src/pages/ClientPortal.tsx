@@ -6,9 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderKanban, MessageSquare, FileText, Bell, LogOut } from 'lucide-react';
+import { Loader2, FolderKanban, MessageSquare, FileText, Bell, LogOut, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
+import PortalNavigation from '@/components/client-portal/PortalNavigation';
 
 interface Project {
   id: string;
@@ -282,7 +283,7 @@ export default function ClientPortal() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-20">
           <Button className="h-auto py-4 flex-row-reverse" onClick={() => navigate('/client-portal/messages')}>
             שלח הודעה
             <MessageSquare className="h-5 w-5 mr-2" />
@@ -297,6 +298,9 @@ export default function ClientPortal() {
           </Button>
         </div>
       </main>
+
+      {/* Bottom Navigation */}
+      <PortalNavigation unreadMessages={unreadMessages} />
     </div>
   );
 }

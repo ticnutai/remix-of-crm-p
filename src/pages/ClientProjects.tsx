@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, ArrowRight, Calendar, DollarSign, Clock } from 'lucide-react';
+import { Loader2, ArrowRight, Calendar, DollarSign, Clock, CheckCircle2, Circle, AlertCircle, PlayCircle } from 'lucide-react';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { he } from 'date-fns/locale';
+import PortalNavigation from '@/components/client-portal/PortalNavigation';
 
 interface Project {
   id: string;
@@ -143,23 +144,20 @@ export default function ClientProjects() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background">
+    <div dir="rtl" className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
-        <div className="container flex h-16 items-center gap-4 px-4 flex-row-reverse justify-end">
-          <h1 className="text-xl font-semibold text-right">הפרויקטים שלי</h1>
-          <Button variant="ghost" size="icon" onClick={() => navigate('/client-portal')}>
-            <ArrowRight className="h-5 w-5" />
-          </Button>
+        <div className="container flex h-14 items-center px-4">
+          <h1 className="text-lg font-semibold text-right flex-1">התיקים שלי</h1>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container px-4 py-6 space-y-6">
+      <main className="container px-4 py-4 space-y-4">
         {projects.length === 0 ? (
           <Card>
             <CardContent className="py-12">
-              <p className="text-center text-muted-foreground">אין פרויקטים להצגה</p>
+              <p className="text-center text-muted-foreground">אין תיקים להצגה</p>
             </CardContent>
           </Card>
         ) : (
@@ -168,81 +166,147 @@ export default function ClientProjects() {
               const progress = getProjectProgress(project);
               const isExpanded = selectedProject === project.id;
               const projectUpdates = updates[project.id] || [];
+              
+              // Define project stages based on status
+              const stages = [
+                { id: 'intake', label: 'קבלת תיק', completed: true },
+                { id: 'planning', label: 'תכנון', completed: ['planning', 'active', 'on_hold', 'completed'].includes(project.status) },
+                { id: 'active', label: 'בטיפול', completed: ['active', 'on_hold', 'completed'].includes(project.status) },
+                { id: 'review', label: 'בדיקה', completed: project.status === 'completed' },
+                { id: 'completed', label: 'הושלם', completed: project.status === 'completed' },
+              ];
+              
+              const currentStageIndex = stages.findIndex(s => !s.completed);
+              const activeStage = currentStageIndex > 0 ? stages[currentStageIndex - 1] : stages[0];
 
               return (
                 <Card key={project.id} className="overflow-hidden">
                   <CardHeader 
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="cursor-pointer hover:bg-muted/50 transition-colors pb-3"
                     onClick={() => setSelectedProject(isExpanded ? null : project.id)}
                   >
                     <div className="flex items-start justify-between gap-4 flex-row-reverse">
-                      <div className="space-y-1 text-right">
-                        <CardTitle className="text-lg">{project.name}</CardTitle>
+                      <div className="space-y-1 text-right flex-1">
+                        <CardTitle className="text-base">{project.name}</CardTitle>
                         {project.description && (
-                          <CardDescription className="line-clamp-2">
+                          <CardDescription className="line-clamp-1 text-sm">
                             {project.description}
                           </CardDescription>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 flex-row-reverse">
+                      <div className="flex items-center gap-2 shrink-0">
                         {getStatusBadge(project.status || 'planning')}
-                        {getPriorityBadge(project.priority || 'medium')}
                       </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    {/* Project Details */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      {project.start_date && (
-                        <div className="flex items-center gap-2 flex-row-reverse text-right">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>התחלה: {format(new Date(project.start_date), 'dd/MM/yyyy', { locale: he })}</span>
-                        </div>
-                      )}
-                      {project.end_date && (
-                        <div className="flex items-center gap-2 flex-row-reverse text-right">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>סיום: {format(new Date(project.end_date), 'dd/MM/yyyy', { locale: he })}</span>
-                        </div>
-                      )}
-                      {project.budget && (
-                        <div className="flex items-center gap-2 flex-row-reverse text-right">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span>תקציב: ₪{project.budget.toLocaleString()}</span>
-                        </div>
-                      )}
+                  <CardContent className="space-y-4 pt-0">
+                    {/* Progress Steps - Always visible */}
+                    <div className="px-2">
+                      <div className="flex items-center justify-between relative">
+                        {/* Progress Line */}
+                        <div className="absolute top-3 right-3 left-3 h-0.5 bg-muted z-0" />
+                        <div 
+                          className="absolute top-3 right-3 h-0.5 bg-primary z-0 transition-all duration-500"
+                          style={{ 
+                            width: `${Math.max(0, (stages.filter(s => s.completed).length - 1) / (stages.length - 1) * 100)}%`
+                          }}
+                        />
+                        
+                        {/* Steps */}
+                        {stages.map((stage, index) => {
+                          const isActive = !stage.completed && (index === 0 || stages[index - 1].completed);
+                          return (
+                            <div key={stage.id} className="relative z-10 flex flex-col items-center">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                                stage.completed 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : isActive
+                                    ? 'bg-primary/20 border-2 border-primary text-primary'
+                                    : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {stage.completed ? (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                ) : isActive ? (
+                                  <PlayCircle className="h-4 w-4" />
+                                ) : (
+                                  <Circle className="h-3 w-3" />
+                                )}
+                              </div>
+                              <span className={`text-[10px] mt-1 text-center whitespace-nowrap ${
+                                stage.completed || isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+                              }`}>
+                                {stage.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    {progress !== null && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm flex-row-reverse">
-                          <span className="text-muted-foreground">התקדמות זמן</span>
-                          <span>{progress}%</span>
-                        </div>
-                        <Progress value={progress} className="h-2" />
-                      </div>
-                    )}
-
-                    {/* Updates Section */}
-                    {isExpanded && projectUpdates.length > 0 && (
-                      <div className="pt-4 border-t space-y-3">
-                        <h4 className="font-medium text-sm text-right">עדכונים אחרונים</h4>
-                        {projectUpdates.slice(0, 5).map(update => (
-                          <div key={update.id} className="p-3 rounded-lg bg-muted/50 text-right">
-                            <div className="flex items-center justify-between mb-1 flex-row-reverse">
-                              <p className="font-medium text-sm">{update.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(update.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
-                              </p>
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <>
+                        {/* Project Details */}
+                        <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
+                          {project.start_date && (
+                            <div className="flex items-center gap-2 flex-row-reverse text-right">
+                              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-xs">התחלה: {format(new Date(project.start_date), 'dd/MM/yy', { locale: he })}</span>
                             </div>
-                            {update.content && (
-                              <p className="text-sm text-muted-foreground">{update.content}</p>
-                            )}
+                          )}
+                          {project.end_date && (
+                            <div className="flex items-center gap-2 flex-row-reverse text-right">
+                              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className={`text-xs ${isPast(new Date(project.end_date)) && project.status !== 'completed' ? 'text-destructive' : ''}`}>
+                                סיום: {format(new Date(project.end_date), 'dd/MM/yy', { locale: he })}
+                              </span>
+                            </div>
+                          )}
+                          {project.budget && (
+                            <div className="flex items-center gap-2 flex-row-reverse text-right col-span-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-xs">תקציב: ₪{project.budget.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Time Progress Bar */}
+                        {progress !== null && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-xs flex-row-reverse">
+                              <span className="text-muted-foreground">התקדמות זמן</span>
+                              <span className={progress > 100 ? 'text-destructive font-medium' : ''}>{Math.min(progress, 100)}%</span>
+                            </div>
+                            <Progress value={Math.min(progress, 100)} className="h-1.5" />
                           </div>
-                        ))}
-                      </div>
+                        )}
+
+                        {/* Updates Section */}
+                        {projectUpdates.length > 0 && (
+                          <div className="pt-3 border-t space-y-2">
+                            <h4 className="font-medium text-sm text-right flex items-center gap-2 flex-row-reverse">
+                              <AlertCircle className="h-4 w-4 text-primary" />
+                              עדכונים אחרונים
+                            </h4>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {projectUpdates.slice(0, 5).map(update => (
+                                <div key={update.id} className="p-2 rounded-lg bg-muted/50 text-right">
+                                  <div className="flex items-center justify-between mb-0.5 flex-row-reverse">
+                                    <p className="font-medium text-xs">{update.title}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {format(new Date(update.created_at), 'dd/MM HH:mm', { locale: he })}
+                                    </p>
+                                  </div>
+                                  {update.content && (
+                                    <p className="text-xs text-muted-foreground line-clamp-2">{update.content}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -251,6 +315,9 @@ export default function ClientProjects() {
           </div>
         )}
       </main>
+
+      {/* Bottom Navigation */}
+      <PortalNavigation />
     </div>
   );
 }

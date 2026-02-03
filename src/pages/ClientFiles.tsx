@@ -6,10 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, ArrowRight, Upload, FileText, Download, Trash2, File, FileImage, FileVideo, FileAudio } from 'lucide-react';
+import { Loader2, ArrowRight, Upload, FileText, Download, Trash2, File, FileImage, FileVideo, FileAudio, Image, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import PortalNavigation from '@/components/client-portal/PortalNavigation';
 
 interface ClientFile {
   id: string;
@@ -154,24 +155,21 @@ export default function ClientFiles() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background">
+    <div dir="rtl" className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
-        <div className="container flex h-16 items-center gap-4 px-4 flex-row-reverse justify-end">
-          <h1 className="text-xl font-semibold text-right">קבצים</h1>
-          <Button variant="ghost" size="icon" onClick={() => navigate('/client-portal')}>
-            <ArrowRight className="h-5 w-5" />
-          </Button>
+        <div className="container flex h-14 items-center px-4">
+          <h1 className="text-lg font-semibold text-right flex-1">קבצים ותמונות</h1>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container px-4 py-6 space-y-6">
+      <main className="container px-4 py-4 space-y-4">
         {/* Upload Section */}
         <Card>
-          <CardHeader className="text-right">
-            <CardTitle>העלאת קובץ</CardTitle>
-            <CardDescription>שתף קבצים עם הצוות (עד 10MB)</CardDescription>
+          <CardHeader className="text-right pb-2">
+            <CardTitle className="text-base">העלאת קבצים</CardTitle>
+            <CardDescription className="text-xs">שתף קבצים ותמונות עם הצוות (עד 10MB)</CardDescription>
           </CardHeader>
           <CardContent>
             <input
@@ -179,76 +177,116 @@ export default function ClientFiles() {
               ref={fileInputRef}
               onChange={handleFileUpload}
               className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
             />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full flex-row-reverse"
-            >
-              {uploading ? (
-                <>
-                  מעלה...
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                </>
-              ) : (
-                <>
-                  בחר קובץ להעלאה
-                  <Upload className="h-4 w-4 mr-2" />
-                </>
-              )}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                variant="outline"
+                className="flex-row-reverse"
+              >
+                {uploading ? (
+                  <>
+                    מעלה...
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  </>
+                ) : (
+                  <>
+                    קובץ
+                    <Upload className="h-4 w-4 mr-2" />
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.capture = 'environment';
+                  input.onchange = (e) => handleFileUpload(e as unknown as React.ChangeEvent<HTMLInputElement>);
+                  input.click();
+                }}
+                disabled={uploading}
+                className="flex-row-reverse"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                צלם תמונה
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* Files List */}
         <Card>
-          <CardHeader className="text-right">
-            <CardTitle>הקבצים שלי</CardTitle>
-            <CardDescription>קבצים שהועלו ({files.length})</CardDescription>
+          <CardHeader className="text-right pb-2">
+            <CardTitle className="text-base">הקבצים שלי ({files.length})</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {files.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 אין קבצים להצגה
               </p>
             ) : (
-              <div className="space-y-3">
-                {files.map(file => (
-                  <div
-                    key={file.id}
-                    className="flex items-center justify-between p-3 rounded-lg border flex-row-reverse"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0 flex-row-reverse">
-                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        {getFileIcon(file.file_type)}
+              <div className="divide-y">
+                {files.map(file => {
+                  const isImage = file.file_type?.startsWith('image/');
+                  return (
+                    <div
+                      key={file.id}
+                      className="flex items-center gap-3 p-3 flex-row-reverse hover:bg-muted/50 transition-colors"
+                    >
+                      {/* Thumbnail or Icon */}
+                      <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                        {isImage ? (
+                          <img 
+                            src={file.file_url} 
+                            alt={file.file_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          getFileIcon(file.file_type)
+                        )}
                       </div>
-                      <div className="min-w-0 text-right">
-                        <p className="font-medium truncate">{file.file_name}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground flex-row-reverse">
+                      
+                      {/* File Info */}
+                      <div className="flex-1 min-w-0 text-right">
+                        <p className="font-medium text-sm truncate">{file.file_name}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground flex-row-reverse flex-wrap">
                           <span>{formatFileSize(file.file_size)}</span>
                           <span>•</span>
-                          <span>{format(new Date(file.created_at), 'dd/MM/yyyy', { locale: he })}</span>
-                          <span>•</span>
-                          <span>{file.uploader_type === 'client' ? 'הועלה על ידך' : 'הועלה ע"י הצוות'}</span>
+                          <span>{format(new Date(file.created_at), 'dd/MM/yy', { locale: he })}</span>
+                          {file.uploader_type !== 'client' && (
+                            <>
+                              <span>•</span>
+                              <span className="text-primary">מהצוות</span>
+                            </>
+                          )}
                         </div>
                       </div>
+                      
+                      {/* Download Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        asChild
+                      >
+                        <a href={file.file_url} target="_blank" rel="noopener noreferrer" download>
+                          <Download className="h-4 w-4" />
+                        </a>
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      asChild
-                    >
-                      <a href={file.file_url} target="_blank" rel="noopener noreferrer" download>
-                        <Download className="h-4 w-4" />
-                      </a>
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
       </main>
+
+      {/* Bottom Navigation */}
+      <PortalNavigation />
     </div>
   );
 }
