@@ -782,6 +782,7 @@ export function ClientStagesBoard({
     addStage,
     updateStage,
     deleteStage,
+    bulkDeleteStages,
     reorderTasks,
     reorderStages,
     copyStageData,
@@ -815,6 +816,7 @@ export function ClientStagesBoard({
   const [newStageIcon, setNewStageIcon] = useState('Phone');
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
   const [expandedViewMode, setExpandedViewMode] = useState<'cards' | 'table'>('cards');
   const [manageStagesDialog, setManageStagesDialog] = useState(false);
   const [editingStage, setEditingStage] = useState<{
@@ -946,6 +948,32 @@ export function ClientStagesBoard({
   const handleDeleteStage = async (stageId: string) => {
     if (confirm('האם אתה בטוח שברצונך למחוק שלב זה וכל המשימות שבו?')) {
       await deleteStage(stageId);
+    }
+  };
+
+  // Stage selection handlers
+  const toggleStageSelection = (stageId: string) => {
+    setSelectedStages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stageId)) {
+        newSet.delete(stageId);
+      } else {
+        newSet.add(stageId);
+      }
+      return newSet;
+    });
+  };
+  const selectAllStages = () => {
+    setSelectedStages(new Set(sortedStages.map(s => s.stage_id)));
+  };
+  const clearStageSelection = () => {
+    setSelectedStages(new Set());
+  };
+  const handleBulkDeleteStages = async () => {
+    if (selectedStages.size === 0) return;
+    if (confirm(`האם אתה בטוח שברצונך למחוק ${selectedStages.size} שלבים וכל המשימות שבהם?`)) {
+      await bulkDeleteStages(Array.from(selectedStages));
+      clearStageSelection();
     }
   };
 
@@ -1127,6 +1155,36 @@ export function ClientStagesBoard({
         </Button>
       </div>
 
+      {/* Multi-select Stage Actions */}
+      {sortedStages.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap p-2 bg-muted/30 rounded-lg">
+          <Checkbox
+            checked={selectedStages.size === sortedStages.length && sortedStages.length > 0}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                selectAllStages();
+              } else {
+                clearStageSelection();
+              }
+            }}
+          />
+          <span className="text-sm text-muted-foreground">בחר הכל</span>
+          
+          {selectedStages.size > 0 && (
+            <>
+              <Badge variant="secondary">{selectedStages.size} שלבים נבחרו</Badge>
+              <Button size="sm" variant="destructive" onClick={handleBulkDeleteStages} className="gap-1">
+                <Trash2 className="h-4 w-4" />
+                מחק נבחרים
+              </Button>
+              <Button size="sm" variant="outline" onClick={clearStageSelection}>
+                בטל בחירה
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Stages Grid - RTL direction */}
       <div className={cn("grid gap-4", showAllStages ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-1 max-w-md mr-0 ml-auto")} dir="rtl">
         {(showAllStages ? sortedStages : sortedStages.filter(s => s.stage_id === 'contact')).map((stage, index) => {
@@ -1142,12 +1200,23 @@ export function ClientStagesBoard({
         const isActiveStage = index === activeStageIndex;
         const isFutureStage = activeStageIndex !== -1 && index > activeStageIndex;
         return <Card key={stage.id} className={cn("flex flex-col h-full transition-all duration-300 border-2 border-amber-400/60",
+        // Selected stage highlight
+        selectedStages.has(stage.stage_id) && "ring-2 ring-primary ring-offset-2",
         // Completed stage: white background with thick gold border
         isStageCompleted && "bg-white dark:bg-gray-900 border-[3px] border-amber-500 shadow-md shadow-amber-500/20",
         // Active stage: gold gradient (current behavior for first stage)
         isActiveStage && !isStageCompleted && "border-yellow-500 shadow-lg shadow-yellow-500/10",
         // Future stages: thin gold border
         isFutureStage && "border-amber-400/60")} onMouseEnter={() => setHoveredStage(stage.stage_id)} onMouseLeave={() => setHoveredStage(null)}>
+              {/* Selection Checkbox */}
+              <div className="absolute top-2 left-2 z-20">
+                <Checkbox
+                  checked={selectedStages.has(stage.stage_id)}
+                  onCheckedChange={() => toggleStageSelection(stage.stage_id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white/80 border-2"
+                />
+              </div>
               {/* Header - Clickable to expand */}
               <div className={cn("p-4 rounded-t-lg relative cursor-pointer transition-all hover:opacity-90",
           // Completed stage: white/light gradient with gold accent

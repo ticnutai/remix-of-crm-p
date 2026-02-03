@@ -738,6 +738,43 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Bulk delete stages
+  const bulkDeleteStages = async (stageIds: string[]) => {
+    try {
+      // First delete all tasks in these stages
+      for (const stageId of stageIds) {
+        await supabase
+          .from('client_stage_tasks')
+          .delete()
+          .eq('stage_id', stageId)
+          .eq('client_id', clientId);
+      }
+
+      // Then delete the stages
+      for (const stageId of stageIds) {
+        await supabase
+          .from('client_stages')
+          .delete()
+          .eq('stage_id', stageId)
+          .eq('client_id', clientId);
+      }
+
+      setStages(prev => prev.filter(s => !stageIds.includes(s.stage_id)));
+      setTasks(prev => prev.filter(t => !stageIds.includes(t.stage_id)));
+      toast({
+        title: 'הצלחה',
+        description: `${stageIds.length} שלבים נמחקו בהצלחה`,
+      });
+    } catch (error: unknown) {
+      console.error('Error bulk deleting stages:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן למחוק שלבים',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Reorder tasks within a stage
   const reorderTasks = async (stageId: string, taskIds: string[]) => {
     try {
@@ -1059,6 +1096,7 @@ export function useClientStages(clientId: string) {
     addStage,
     updateStage,
     deleteStage,
+    bulkDeleteStages,
     reorderTasks,
     reorderStages,
     copyStageData,
