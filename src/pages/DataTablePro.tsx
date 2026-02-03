@@ -93,6 +93,14 @@ import {
   Heart,
   Pencil,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -713,6 +721,46 @@ export default function DataTablePro() {
   
   // Custom data hook for updating custom columns data
   const { updateCustomData: updateClientCustomData } = useCustomData('clients', localClients, setLocalClients);
+  
+  // Client column headers state (editable)
+  const [clientColumnHeaders, setClientColumnHeaders] = useState<Record<string, string>>({
+    name: 'שם לקוח',
+    company: 'חברה',
+    email: 'אימייל',
+    phone: 'טלפון',
+    status: 'סטטוס',
+    address: 'כתובת',
+    notes: 'הערות',
+    created_at: 'תאריך הוספה',
+    actions: 'פעולות',
+  });
+  
+  // Client hidden columns state
+  const [hiddenClientColumns, setHiddenClientColumns] = useState<Set<string>>(new Set());
+  
+  // Handle client column header change
+  const handleClientHeaderChange = useCallback((columnId: string, newHeader: string) => {
+    setClientColumnHeaders(prev => ({ ...prev, [columnId]: newHeader }));
+    toast({ title: 'כותרת עודכנה', description: `הכותרת שונתה ל-"${newHeader}"` });
+  }, [toast]);
+  
+  // Handle client column hide/show
+  const handleHideClientColumn = useCallback((columnId: string) => {
+    setHiddenClientColumns(prev => {
+      const newSet = new Set(prev);
+      newSet.add(columnId);
+      return newSet;
+    });
+    toast({ title: 'עמודה הוסתרה', description: 'ניתן להחזיר אותה מהגדרות העמודות' });
+  }, [toast]);
+  
+  const handleShowClientColumn = useCallback((columnId: string) => {
+    setHiddenClientColumns(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(columnId);
+      return newSet;
+    });
+  }, []);
   
   // Client cell formatting state
   const [clientCellFormatting, setClientCellFormatting] = useState<{
@@ -1497,16 +1545,31 @@ export default function DataTablePro() {
 
   // Client columns with editable fields + dynamic columns
   const clientColumns: ColumnDef<SyncedClient>[] = useMemo(() => {
+    // Helper function to create header with context menu
+    const createClientHeader = (columnId: string, defaultLabel: string) => (
+      <div className="flex items-center gap-1.5">
+        <span>{clientColumnHeaders[columnId] || defaultLabel}</span>
+        <ColumnOptionsMenu
+          columnName={clientColumnHeaders[columnId] || defaultLabel}
+          columnId={columnId}
+          onDelete={() => handleHideClientColumn(columnId)}
+          onRename={(id, newName) => handleClientHeaderChange(id, newName)}
+        />
+      </div>
+    );
+
     const baseColumns: ColumnDef<SyncedClient>[] = [
       {
         id: 'name',
-        header: 'שם לקוח',
+        header: createClientHeader('name', 'שם לקוח'),
         accessorKey: 'name',
         sortable: true,
         filterable: true,
         sticky: 'right',
         width: 200,
         editable: false, // Navigation column - not editable directly, edit via pencil button
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('name', val),
         cell: (value, row) => (
           <div className="flex items-center gap-2 group">
             <Link 
@@ -1532,44 +1595,52 @@ export default function DataTablePro() {
       },
       {
         id: 'company',
-        header: 'חברה',
+        header: createClientHeader('company', 'חברה'),
         accessorKey: 'company',
         sortable: true,
         filterable: true,
         editable: true,
         editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('company', val),
       },
       {
         id: 'email',
-        header: 'אימייל',
+        header: createClientHeader('email', 'אימייל'),
         accessorKey: 'email',
         sortable: true,
         filterable: true,
         editable: true,
         editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('email', val),
         cell: (value) => value ? (
           <span dir="ltr" className="text-primary">{value}</span>
         ) : null,
       },
       {
         id: 'phone',
-        header: 'טלפון',
+        header: createClientHeader('phone', 'טלפון'),
         accessorKey: 'phone',
         sortable: true,
         filterable: true,
         editable: true,
         editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('phone', val),
         cell: (value) => value ? (
           <span dir="ltr">{value}</span>
         ) : null,
       },
       {
         id: 'status',
-        header: 'סטטוס',
+        header: createClientHeader('status', 'סטטוס'),
         accessorKey: 'status',
         sortable: true,
         filterable: true,
         groupable: true,
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('status', val),
         cell: (value) => {
           const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
             active: { label: 'פעיל', color: '#16a34a', bgColor: '#dcfce7' },
@@ -1596,37 +1667,45 @@ export default function DataTablePro() {
       },
       {
         id: 'address',
-        header: 'כתובת',
+        header: createClientHeader('address', 'כתובת'),
         accessorKey: 'address',
         sortable: true,
         filterable: true,
         editable: true,
         editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('address', val),
         cell: (value) => value || null,
       },
       {
         id: 'notes',
-        header: 'הערות',
+        header: createClientHeader('notes', 'הערות'),
         accessorKey: 'notes',
         sortable: false,
         editable: true,
         editType: 'text',
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('notes', val),
         cell: (value) => value ? (
           <span className="max-w-[200px] truncate block" title={value}>{value}</span>
         ) : null,
       },
       {
         id: 'created_at',
-        header: 'תאריך הוספה',
+        header: createClientHeader('created_at', 'תאריך הוספה'),
         accessorKey: 'created_at',
         sortable: true,
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('created_at', val),
         cell: (value) => format(new Date(value), 'dd/MM/yyyy', { locale: he }),
       },
       {
         id: 'actions',
-        header: 'פעולות',
+        header: createClientHeader('actions', 'פעולות'),
         accessorKey: 'id',
         width: 100,
+        headerEditable: true,
+        onHeaderChange: (val) => handleClientHeaderChange('actions', val),
         cell: (value, row) => (
           <Button
             variant="ghost"
@@ -1643,6 +1722,9 @@ export default function DataTablePro() {
         ),
       },
     ];
+
+    // Filter out hidden columns
+    const visibleBaseColumns = baseColumns.filter(col => !hiddenClientColumns.has(col.id));
 
     // Add dynamic columns from DB (clientCustomColumns)
     const dynamicCols: ColumnDef<SyncedClient>[] = clientCustomColumns.map(col => {
@@ -1731,8 +1813,8 @@ export default function DataTablePro() {
       };
     });
 
-    return [...baseColumns, ...dynamicCols];
-  }, [navigate, clientCustomColumns, handleDeleteClientColumn]);
+    return [...visibleBaseColumns, ...dynamicCols];
+  }, [navigate, clientCustomColumns, handleDeleteClientColumn, clientColumnHeaders, hiddenClientColumns, handleClientHeaderChange, handleHideClientColumn]);
 
   // Employee columns with editable fields + dynamic columns from DB
   const employeeColumnsWithDynamic: ColumnDef<SyncedEmployee>[] = useMemo(() => {
@@ -2356,6 +2438,43 @@ export default function DataTablePro() {
                     <Columns className="h-4 w-4 ml-2 text-[#D4AF37]" />
                     <span className="text-[#1e3a8a] font-medium">הוסף עמודה</span>
                   </Button>
+                  
+                  {/* Restore Hidden Columns Button */}
+                  {hiddenClientColumns.size > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="border-orange-400 bg-white hover:bg-orange-50 transition-all shadow-sm"
+                        >
+                          <Eye className="h-4 w-4 ml-2 text-orange-500" />
+                          <span className="text-orange-700 font-medium">עמודות מוסתרות ({hiddenClientColumns.size})</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" dir="rtl">
+                        <DropdownMenuLabel>שחזר עמודות מוסתרות</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {Array.from(hiddenClientColumns).map((columnId) => (
+                          <DropdownMenuItem
+                            key={columnId}
+                            onClick={() => handleShowClientColumn(columnId)}
+                          >
+                            <Eye className="h-4 w-4 ml-2" />
+                            {clientColumnHeaders[columnId] || columnId}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setHiddenClientColumns(new Set())}
+                          className="text-blue-600"
+                        >
+                          <RefreshCw className="h-4 w-4 ml-2" />
+                          הצג את כל העמודות
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                   
                   <AddColumnDialog
                     open={isAddClientColumnDialogOpen}
