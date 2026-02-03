@@ -30,6 +30,7 @@ import {
   ClientDeadlinesTab,
   ClientFoldersManager,
 } from '@/components/client-tabs';
+import { ClientEmailsTab } from '@/components/clients/ClientEmailsTab';
 import {
   ArrowRight,
   Building,
@@ -596,6 +597,13 @@ export default function ClientProfile() {
               הודעות ({messages.length})
             </TabsTrigger>
             <TabsTrigger 
+              value="emails" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
+            >
+              <Mail className="h-4 w-4" />
+              מיילים
+            </TabsTrigger>
+            <TabsTrigger 
               value="invoices" 
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
@@ -1095,6 +1103,15 @@ export default function ClientProfile() {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Client Emails Tab */}
+          <TabsContent value="emails" dir="rtl">
+            <ClientEmailsTab 
+              clientId={clientId!}
+              clientName={client?.name || 'לקוח'}
+              clientEmail={client?.email || undefined}
+            />
           </TabsContent>
 
           {/* Reminders Tab */}

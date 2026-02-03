@@ -33,6 +33,9 @@ export { EmailThreadChat } from './EmailThreadChat';
 // Export ClientEmailsDialog
 export { ClientEmailsDialog } from './ClientEmailsDialog';
 
+// Export EmailFoldersPanel
+export { EmailFoldersPanel, QuickClassifyButton } from './EmailFoldersPanel';
+
 // Export Date Navigation components
 export { 
   EmailDateNavigator, 

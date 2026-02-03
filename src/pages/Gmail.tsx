@@ -90,8 +90,11 @@ import {
   FloatingDateIndicator,
   LoadMoreTrigger,
   DateSeparator,
-  useScrollDateTracker
+  useScrollDateTracker,
+  EmailFoldersPanel,
+  QuickClassifyButton,
 } from '@/components/gmail';
+import { useEmailFolders } from '@/hooks/useEmailFolders';
 
 // Client interface for auto-tagging
 interface Client {
@@ -147,10 +150,15 @@ export default function Gmail() {
   const { createTask: createTaskOriginal } = useTasks();
   const { createMeeting: createMeetingOriginal } = useMeetings();
   const emailMetadata = useEmailMetadata();
+  const emailFolders = useEmailFolders();
   const { archiveEmail, deleteEmail, toggleStar, markAsRead } = useEmailActions();
   const [hasLoaded, setHasLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<GmailMessage | null>(null);
+  
+  // Folder state
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showFoldersPanel, setShowFoldersPanel] = useState(true);
   
   // Date navigation state
   const [selectedDateFilter, setSelectedDateFilter] = useState<Date | null>(null);
@@ -874,6 +882,17 @@ export default function Gmail() {
                     </div>
                   </>
                 )}
+                
+                {/* Email Folders Panel */}
+                <Separator className="my-4" />
+                <EmailFoldersPanel
+                  selectedFolderId={selectedFolderId}
+                  onSelectFolder={setSelectedFolderId}
+                  currentEmail={selectedEmail}
+                  onAddEmailToFolder={(email, folderId) => {
+                    console.log('Added email to folder:', email.id, folderId);
+                  }}
+                />
                 </CardContent>
               </ScrollArea>
             </Card>
