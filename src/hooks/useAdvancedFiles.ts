@@ -701,6 +701,82 @@ class AdvancedFileManager {
   private async incrementViewCount(fileId: string): Promise<void> {
     await (supabase as any).rpc('increment_view_count', { p_file_id: fileId });
   }
+
+  /**
+   * עדכון תגיות לקובץ
+   */
+  async updateFileTags(fileId: string, tags: string[]): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('file_metadata')
+      .update({ tags })
+      .eq('id', fileId);
+    
+    if (error) throw error;
+  }
+
+  /**
+   * שכפול קובץ
+   */
+  async duplicateFile(fileId: string): Promise<FileMetadata | null> {
+    // קבלת הקובץ המקורי
+    const { data: originalFile, error: fetchError } = await (supabase as any)
+      .from('file_metadata')
+      .select('*')
+      .eq('id', fileId)
+      .single();
+    
+    if (fetchError || !originalFile) {
+      console.error('Error fetching original file:', fetchError);
+      return null;
+    }
+
+    // הורדת הקובץ המקורי
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from(this.bucket)
+      .download(originalFile.path);
+
+    if (downloadError || !fileData) {
+      console.error('Error downloading file:', downloadError);
+      return null;
+    }
+
+    // יצירת שם ונתיב חדשים
+    const timestamp = Date.now();
+    const nameParts = originalFile.name.split('.');
+    const extension = nameParts.pop();
+    const nameWithoutExt = nameParts.join('.');
+    const newName = `${nameWithoutExt} (עותק).${extension}`;
+    const newPath = originalFile.folder_id 
+      ? `${originalFile.folder_id}/${nameWithoutExt}-copy-${timestamp}.${extension}`
+      : `${nameWithoutExt}-copy-${timestamp}.${extension}`;
+
+    // העלאת הקובץ החדש
+    const { error: uploadError } = await supabase.storage
+      .from(this.bucket)
+      .upload(newPath, fileData);
+
+    if (uploadError) {
+      console.error('Error uploading copy:', uploadError);
+      return null;
+    }
+
+    // יצירת metadata חדש
+    const newMetadata: FileMetadata = {
+      ...this.mapFileFromDb(originalFile),
+      id: crypto.randomUUID(),
+      name: newName,
+      path: newPath,
+      uploadedAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      downloadCount: 0,
+      viewCount: 0,
+      version: 1,
+      versions: [],
+    };
+
+    await this.saveMetadata(newMetadata);
+    return newMetadata;
+  }
   
   private mapFileFromDb(row: any): FileMetadata {
     return {
@@ -871,5 +947,27 @@ export function useAdvancedFiles() {
     toggleStar: advancedFileManager.toggleStar.bind(advancedFileManager),
     addTag: advancedFileManager.addTag.bind(advancedFileManager),
     search: advancedFileManager.search.bind(advancedFileManager),
+    updateFileTags: advancedFileManager.updateFileTags.bind(advancedFileManager),
+    duplicateFile: async (fileId: string) => {
+      try {
+        const newFile = await advancedFileManager.duplicateFile(fileId);
+        if (newFile) {
+          setFiles(prev => [newFile, ...prev]);
+          toast({
+            title: 'הצלחה',
+            description: 'הקובץ שוכפל בהצלחה',
+          });
+        }
+        return newFile;
+      } catch (error) {
+        console.error('Error duplicating file:', error);
+        toast({
+          title: 'שגיאה',
+          description: 'שכפול הקובץ נכשל',
+          variant: 'destructive',
+        });
+        return null;
+      }
+    },
   };
 }

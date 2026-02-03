@@ -1,6 +1,7 @@
 /**
  * Files Page - מערכת ניהול קבצים מאוחדת
  * משלב Google Drive + אחסון מקומי + תכונות מתקדמות
+ * כולל: תגיות, העתק/הדבק, גרירה ושחרור, תצוגה מקדימה
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -69,6 +70,13 @@ import {
   Database,
   Eye,
   BarChart3,
+  Tag,
+  Tags,
+  Clipboard,
+  ClipboardCopy,
+  ClipboardPaste,
+  Plus,
+  X,
 } from 'lucide-react';
 import { useGoogleDrive, DriveFile, DriveFolder } from '@/hooks/useGoogleDrive';
 import { useGoogleServices } from '@/hooks/useGoogleServices';
@@ -221,6 +229,19 @@ export default function Files() {
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [sharingFile, setSharingFile] = useState<FileMetadata | null>(null);
 
+  // Tags management state
+  const [showTagsDialog, setShowTagsDialog] = useState(false);
+  const [editingFileForTags, setEditingFileForTags] = useState<FileMetadata | null>(null);
+  const [newTagInput, setNewTagInput] = useState('');
+  const [selectedFileTags, setSelectedFileTags] = useState<string[]>([]);
+
+  // Copy/Paste state for files
+  const [copiedFile, setCopiedFile] = useState<FileMetadata | DriveFile | null>(null);
+  const [copiedFileType, setCopiedFileType] = useState<'local' | 'drive' | null>(null);
+
+  // Popular tags for quick selection
+  const popularTags = ['חשוב', 'דחוף', 'חוזה', 'הצעת מחיר', 'חשבונית', 'דוח', 'לקוח', 'פרויקט', 'תמונה', 'מסמך'];
+
   // Load starred files from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('starred_files');
@@ -341,6 +362,71 @@ export default function Files() {
       toast({ title: 'תיקייה נוצרה', description: `התיקייה "${newFolderName}" נוצרה בהצלחה` });
     }
   };
+
+  // Tags management functions
+  const openTagsDialog = (file: FileMetadata) => {
+    setEditingFileForTags(file);
+    setSelectedFileTags([...file.tags]);
+    setNewTagInput('');
+    setShowTagsDialog(true);
+  };
+
+  const addTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !selectedFileTags.includes(trimmedTag)) {
+      setSelectedFileTags([...selectedFileTags, trimmedTag]);
+    }
+    setNewTagInput('');
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setSelectedFileTags(selectedFileTags.filter(t => t !== tagToRemove));
+  };
+
+  const saveTags = async () => {
+    if (editingFileForTags) {
+      await advancedFiles.updateFileTags(editingFileForTags.id, selectedFileTags);
+      setShowTagsDialog(false);
+      setEditingFileForTags(null);
+      toast({ title: 'תגיות עודכנו', description: 'התגיות נשמרו בהצלחה' });
+    }
+  };
+
+  // Copy/Paste functionality
+  const handleCopyFile = (file: FileMetadata | DriveFile, type: 'local' | 'drive') => {
+    setCopiedFile(file);
+    setCopiedFileType(type);
+    toast({ title: 'הקובץ הועתק', description: `"${file.name}" מוכן להדבקה`, duration: 2000 });
+  };
+
+  const handlePasteFile = async () => {
+    if (!copiedFile || !copiedFileType) return;
+    
+    if (copiedFileType === 'local' && 'path' in copiedFile) {
+      // Duplicate local file
+      await advancedFiles.duplicateFile(copiedFile.id);
+      toast({ title: 'קובץ הודבק', description: `עותק של "${copiedFile.name}" נוצר` });
+    } else if (copiedFileType === 'drive') {
+      // Copy link to clipboard
+      const driveFile = copiedFile as DriveFile;
+      await navigator.clipboard.writeText(driveFile.webViewLink);
+      toast({ title: 'קישור הועתק', description: 'קישור לקובץ הועתק ללוח' });
+    }
+  };
+
+  // Keyboard shortcuts for copy/paste
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+V or Cmd+V to paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedFile) {
+        e.preventDefault();
+        handlePasteFile();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [copiedFile, copiedFileType]);
 
   // File upload handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -923,7 +1009,7 @@ export default function Files() {
                                         <MoreVertical className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="rtl">
+                                    <DropdownMenuContent align="start" dir="rtl">
                                       <DropdownMenuItem onClick={() => window.open(file.webViewLink, '_blank')}>
                                         <Eye className="h-4 w-4 ml-2" />פתח
                                       </DropdownMenuItem>
@@ -932,6 +1018,9 @@ export default function Files() {
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => copyShareLink(file)}>
                                         <Copy className="h-4 w-4 ml-2" />העתק קישור
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleCopyFile(file, 'drive')}>
+                                        <ClipboardCopy className="h-4 w-4 ml-2" />העתק קובץ
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => { setLinkingFile(file); setShowLinkDialog(true); }}>
@@ -964,6 +1053,12 @@ export default function Files() {
                       <CardDescription>קבצים מאוחסנים בשרת עם תכונות מתקדמות</CardDescription>
                     </div>
                     <div className="flex gap-2">
+                      {copiedFile && copiedFileType === 'local' && (
+                        <Button variant="outline" onClick={handlePasteFile}>
+                          <ClipboardPaste className="h-4 w-4 ml-2" />
+                          הדבק
+                        </Button>
+                      )}
                       <Button variant="outline" onClick={() => advancedFiles.createFolder(prompt('שם התיקייה:') || '')}>
                         <FolderPlus className="h-4 w-4 ml-2" />
                         תיקייה חדשה
@@ -1097,7 +1192,7 @@ export default function Files() {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent align="end" dir="rtl">
                                   <DropdownMenuItem onClick={() => { setSelectedLocalFile(file); setShowFilePreview(true); }}>
                                     <Eye className="h-4 w-4 ml-2" />תצוגה מקדימה
                                   </DropdownMenuItem>
@@ -1106,6 +1201,16 @@ export default function Files() {
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setSharingFile(file); setShowShareDialog(true); }}>
                                     <Share2 className="h-4 w-4 ml-2" />שיתוף
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => openTagsDialog(file)}>
+                                    <Tags className="h-4 w-4 ml-2" />ניהול תגיות
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCopyFile(file, 'local')}>
+                                    <ClipboardCopy className="h-4 w-4 ml-2" />העתקה
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => advancedFiles.duplicateFile(file.id)}>
+                                    <Copy className="h-4 w-4 ml-2" />שכפול
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 
@@ -1376,6 +1481,116 @@ export default function Files() {
               return link || '';
             }}
           />
+        )}
+
+        {/* Tags Management Dialog */}
+        <Dialog open={showTagsDialog} onOpenChange={setShowTagsDialog}>
+          <DialogContent dir="rtl" className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Tags className="h-5 w-5" />
+                ניהול תגיות
+              </DialogTitle>
+              <DialogDescription>
+                {editingFileForTags?.name && `הוסף או הסר תגיות מהקובץ "${editingFileForTags.name}"`}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              {/* Current Tags */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">תגיות נוכחיות</label>
+                <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border rounded-lg bg-muted/30">
+                  {selectedFileTags.length === 0 ? (
+                    <span className="text-sm text-muted-foreground">אין תגיות</span>
+                  ) : (
+                    selectedFileTags.map((tag) => (
+                      <Badge 
+                        key={tag} 
+                        variant="secondary" 
+                        className="flex items-center gap-1 cursor-pointer hover:bg-destructive/20"
+                        onClick={() => removeTag(tag)}
+                      >
+                        {tag}
+                        <X className="h-3 w-3" />
+                      </Badge>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Add New Tag */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">הוסף תגית חדשה</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="שם התגית..."
+                    value={newTagInput}
+                    onChange={(e) => setNewTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTagInput.trim()) {
+                        e.preventDefault();
+                        addTag(newTagInput);
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => addTag(newTagInput)}
+                    disabled={!newTagInput.trim()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Popular Tags */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">תגיות פופולריות</label>
+                <div className="flex flex-wrap gap-2">
+                  {popularTags.filter(t => !selectedFileTags.includes(t)).map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-primary/10"
+                      onClick={() => addTag(tag)}
+                    >
+                      <Plus className="h-3 w-3 ml-1" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTagsDialog(false)}>
+                ביטול
+              </Button>
+              <Button onClick={saveTags}>
+                <Tag className="h-4 w-4 ml-2" />
+                שמור תגיות
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Copy/Paste Status Indicator */}
+        {copiedFile && (
+          <div className="fixed bottom-4 left-4 z-50 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-left">
+            <ClipboardCopy className="h-4 w-4" />
+            <span className="text-sm">"{copiedFile.name}" מוכן להדבקה (Ctrl+V)</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-primary-foreground hover:text-primary-foreground/80"
+              onClick={() => { setCopiedFile(null); setCopiedFileType(null); }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         )}
       </div>
     </AppLayout>
