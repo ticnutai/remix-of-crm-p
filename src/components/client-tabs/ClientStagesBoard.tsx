@@ -14,6 +14,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Phone, FolderOpen, Send, MapPin, Plus, Hash, Loader2, Bell, Edit, Trash2, ListPlus, X, Maximize2, CheckCircle2, GripVertical, LayoutList, Table2, Settings2, ChevronUp, ChevronDown, Save, Copy, Layers, BookTemplate, Eye, Clipboard, ClipboardPaste, Palette, Type, Bold, Timer, Play, Square, CalendarIcon } from 'lucide-react';
+import { TaskTitleWithConsultants } from '@/components/consultants/TaskTitleWithConsultants';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { DayCounterCell } from '@/components/tables/DayCounterCell';
@@ -255,7 +256,7 @@ function SortableTaskItem({
           <p className={cn("text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200", task.completed && "line-through text-emerald-600 dark:text-emerald-400", task.is_bold && "font-bold")} style={{
             color: task.text_color || undefined
           }}>
-            {task.title}
+            <TaskTitleWithConsultants taskId={task.id} title={task.title} />
           </p>
           {/* Day Counter - if timer is active - click to change style */}
           {Boolean(task.started_at && task.target_working_days) && <div className="flex items-center gap-1 mt-1">
@@ -510,7 +511,7 @@ function SortableExpandedTaskItem({
 
       <div className="flex-1 min-w-0">
         <p className={cn("text-base text-right text-[#1a2c5f] dark:text-slate-200 font-medium", task.completed && "line-through text-emerald-600 dark:text-emerald-400")}>
-          {task.title}
+          <TaskTitleWithConsultants taskId={task.id} title={task.title} />
         </p>
       </div>
 
@@ -1624,7 +1625,7 @@ export function ClientStagesBoard({
                                 </td>
                                 <td className="p-3">
                                   <p className={cn("text-[#1a2c5f] dark:text-slate-200 font-medium", task.completed && "line-through text-emerald-600 dark:text-emerald-400")}>
-                                    {task.title}
+                                    <TaskTitleWithConsultants taskId={task.id} title={task.title} />
                                   </p>
                                 </td>
                                 <td className="p-3 text-muted-foreground text-sm">

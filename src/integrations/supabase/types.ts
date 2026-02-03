@@ -513,6 +513,54 @@ export type Database = {
           },
         ]
       }
+      consultants: {
+        Row: {
+          id: string
+          name: string
+          profession: string
+          license_number: string | null
+          id_number: string | null
+          phone: string | null
+          email: string | null
+          company: string | null
+          specialty: string | null
+          notes: string | null
+          user_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          profession?: string
+          license_number?: string | null
+          id_number?: string | null
+          phone?: string | null
+          email?: string | null
+          company?: string | null
+          specialty?: string | null
+          notes?: string | null
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          profession?: string
+          license_number?: string | null
+          id_number?: string | null
+          phone?: string | null
+          email?: string | null
+          company?: string | null
+          specialty?: string | null
+          notes?: string | null
+          user_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_custom_tabs: {
         Row: {
           allow_files: boolean | null
@@ -4680,6 +4728,44 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_consultants: {
+        Row: {
+          id: string
+          task_id: string
+          consultant_id: string
+          keyword: string
+          keyword_context: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          task_id: string
+          consultant_id: string
+          keyword: string
+          keyword_context?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          task_id?: string
+          consultant_id?: string
+          keyword?: string
+          keyword_context?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_consultants_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
             referencedColumns: ["id"]
           },
         ]
