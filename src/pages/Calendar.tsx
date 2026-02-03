@@ -126,6 +126,7 @@ const Calendar = () => {
     connect: connectGoogle,
     disconnect: disconnectGoogle,
     syncMeetingsToGoogle,
+    importFromGoogle,
     fetchEvents: fetchGoogleEvents,
   } = useGoogleCalendar();
   
@@ -172,6 +173,8 @@ const Calendar = () => {
   
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // Shared data for forms
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
@@ -262,6 +265,44 @@ const Calendar = () => {
       fetchData();
     }
   }, [user, fetchData]);
+
+  // Auto sync with Google Calendar when page loads and user is connected
+  useEffect(() => {
+    const performAutoSync = async () => {
+      if (!user || !isGoogleConnected || hasAutoSynced || isSyncing || googleLoading) {
+        return;
+      }
+
+      setIsSyncing(true);
+      setHasAutoSynced(true);
+      
+      try {
+        console.log('[Calendar] Starting auto sync with Google Calendar...');
+        const start = startOfMonth(currentMonth);
+        const end = endOfMonth(currentMonth);
+        
+        // Import events from Google Calendar to local DB
+        const result = await importFromGoogle(start, end, supabase, user.id);
+        console.log('[Calendar] Auto sync complete:', result);
+        
+        // Refresh data to show imported meetings
+        if (result.imported > 0) {
+          await fetchData();
+        }
+      } catch (error) {
+        console.error('[Calendar] Auto sync error:', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
+    performAutoSync();
+  }, [user, isGoogleConnected, hasAutoSynced, isSyncing, googleLoading, currentMonth, importFromGoogle, fetchData]);
+
+  // Reset auto sync flag when month changes to sync new month
+  useEffect(() => {
+    setHasAutoSynced(false);
+  }, [currentMonth]);
 
   const getEntriesForDate = (date: Date) => {
     return timeEntries.filter((entry) => isSameDay(parseISO(entry.start_time), date));
@@ -432,6 +473,56 @@ const Calendar = () => {
     await syncMeetingsToGoogle(monthMeetings);
   };
 
+  // Two-way sync - import from Google and export to Google
+  const handleTwoWaySync = async () => {
+    if (!isGoogleConnected || !user) {
+      await connectGoogle();
+      return;
+    }
+
+    setIsSyncing(true);
+    
+    try {
+      const start = startOfMonth(currentMonth);
+      const end = endOfMonth(currentMonth);
+      
+      // First, import from Google
+      toast({
+        title: 'מסנכרן עם Google Calendar...',
+        description: 'מייבא פגישות מ-Google',
+      });
+      
+      const importResult = await importFromGoogle(start, end, supabase, user.id);
+      
+      // Refresh data
+      await fetchData();
+      
+      // Then export local meetings to Google
+      const monthMeetings = meetings.filter(m => {
+        const meetingDate = parseISO(m.start_time);
+        return isSameMonth(meetingDate, currentMonth);
+      });
+      
+      if (monthMeetings.length > 0) {
+        await syncMeetingsToGoogle(monthMeetings);
+      }
+      
+      toast({
+        title: 'סנכרון הושלם',
+        description: `יובאו: ${importResult.imported}, עודכנו: ${importResult.updated}`,
+      });
+    } catch (error) {
+      console.error('[Calendar] Two-way sync error:', error);
+      toast({
+        title: 'שגיאה בסנכרון',
+        description: 'לא ניתן לסנכרן עם Google Calendar',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleNavigate = (direction: 'prev' | 'next') => {
     if (viewType === 'week') {
       setCurrentMonth(direction === 'prev' ? subWeeks(currentMonth, 1) : addWeeks(currentMonth, 1));
@@ -488,12 +579,16 @@ const Calendar = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSyncToGoogle}
-              disabled={googleLoading}
+              onClick={handleTwoWaySync}
+              disabled={googleLoading || isSyncing}
               className="gap-2"
             >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline">סנכרן</span>
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">{isSyncing ? 'מסנכרן...' : 'סנכרן דו-צדדי'}</span>
             </Button>
           )}
           

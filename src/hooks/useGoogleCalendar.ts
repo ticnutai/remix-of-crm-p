@@ -667,6 +667,146 @@ export function useGoogleCalendar() {
     return syncedCount;
   }, [isConnected, createEvent]);
 
+  // Import events from Google Calendar to local database (Two-way sync)
+  const importFromGoogle = useCallback(async (
+    timeMin: Date,
+    timeMax: Date,
+    supabaseClient: any,
+    userId: string
+  ): Promise<{ imported: number; updated: number; skipped: number }> => {
+    if (!isConnected) {
+      log('Not connected to Google Calendar, cannot import');
+      return { imported: 0, updated: 0, skipped: 0 };
+    }
+
+    const result = { imported: 0, updated: 0, skipped: 0 };
+    
+    try {
+      setIsLoading(true);
+      log('Fetching events from Google Calendar for import...');
+      log('Time range:', timeMin.toISOString(), 'to', timeMax.toISOString());
+      
+      const googleEvents = await fetchEvents(timeMin, timeMax);
+      log('Fetched events from Google:', googleEvents.length);
+      
+      if (googleEvents.length === 0) {
+        log('No events to import');
+        return result;
+      }
+
+      // Get existing meetings in this time range
+      const { data: existingMeetings, error: fetchError } = await supabaseClient
+        .from('meetings')
+        .select('id, title, start_time, end_time, google_event_id')
+        .eq('created_by', userId)
+        .gte('start_time', timeMin.toISOString())
+        .lte('start_time', timeMax.toISOString());
+
+      if (fetchError) {
+        logError('Error fetching existing meetings:', fetchError);
+        throw fetchError;
+      }
+
+      log('Existing meetings in range:', existingMeetings?.length || 0);
+
+      // Create a map of Google event IDs to existing meetings
+      const googleIdToMeeting = new Map<string, any>();
+      const titleDateToMeeting = new Map<string, any>();
+      
+      (existingMeetings || []).forEach(m => {
+        if (m.google_event_id) {
+          googleIdToMeeting.set(m.google_event_id, m);
+        }
+        // Also map by title+start_time for fuzzy matching
+        const key = `${m.title?.toLowerCase()}_${new Date(m.start_time).toISOString().slice(0, 16)}`;
+        titleDateToMeeting.set(key, m);
+      });
+
+      // Process each Google event
+      for (const event of googleEvents) {
+        if (!event.start?.dateTime || !event.end?.dateTime) {
+          log('Skipping all-day event:', event.summary);
+          result.skipped++;
+          continue;
+        }
+
+        const eventTitle = event.summary || 'פגישה ללא כותרת';
+        const startTime = event.start.dateTime;
+        const endTime = event.end.dateTime;
+        const googleEventId = event.id;
+
+        // Check if already exists by Google ID
+        if (googleEventId && googleIdToMeeting.has(googleEventId)) {
+          log('Event already imported (by ID):', eventTitle);
+          result.skipped++;
+          continue;
+        }
+
+        // Check if similar meeting exists (by title and time)
+        const fuzzyKey = `${eventTitle.toLowerCase()}_${new Date(startTime).toISOString().slice(0, 16)}`;
+        const existingByFuzzy = titleDateToMeeting.get(fuzzyKey);
+        
+        if (existingByFuzzy) {
+          log('Event already exists (by title/time), updating google_event_id:', eventTitle);
+          // Update existing meeting with google_event_id
+          if (googleEventId && !existingByFuzzy.google_event_id) {
+            await supabaseClient
+              .from('meetings')
+              .update({ google_event_id: googleEventId })
+              .eq('id', existingByFuzzy.id);
+            result.updated++;
+          } else {
+            result.skipped++;
+          }
+          continue;
+        }
+
+        // Create new meeting
+        log('Importing new event:', eventTitle);
+        const { error: insertError } = await supabaseClient
+          .from('meetings')
+          .insert({
+            title: eventTitle,
+            description: event.description || null,
+            start_time: startTime,
+            end_time: endTime,
+            location: event.location || null,
+            status: 'scheduled',
+            created_by: userId,
+            google_event_id: googleEventId,
+          });
+
+        if (insertError) {
+          logError('Error inserting meeting:', insertError);
+          result.skipped++;
+        } else {
+          result.imported++;
+        }
+      }
+
+      log('Import complete:', result);
+      
+      if (result.imported > 0) {
+        toast({
+          title: 'יבוא מ-Google Calendar',
+          description: `${result.imported} פגישות חדשות יובאו`,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      logError('Error importing from Google:', error);
+      toast({
+        title: 'שגיאה ביבוא',
+        description: 'לא ניתן לייבא פגישות מ-Google Calendar',
+        variant: 'destructive',
+      });
+      return result;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isConnected, fetchEvents]);
+
   // Save config
   const saveConfig = useCallback((newConfig: GoogleCalendarConfig) => {
     setConfig(newConfig);
@@ -693,6 +833,7 @@ export function useGoogleCalendar() {
     updateEvent,
     deleteEvent,
     syncMeetingsToGoogle,
+    importFromGoogle,
     saveConfig,
     initializeGoogleApi,
   };
