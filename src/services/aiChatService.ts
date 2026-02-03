@@ -159,18 +159,21 @@ class AIChatService {
       return { type: 'client-stats', params: {} };
     }
 
-    // חיפוש לקוח ספציפי - רק אם יש שם או ביטוי חיפוש ברור
+    // חיפוש לקוח ספציפי - משופר לזהות גם שמות ישירים
     if (
       (query.includes('לקוח') && (query.includes('מצא') || query.includes('חפש') || query.includes('בשם'))) ||
       (query.includes('לקוח') && !query.includes('כמה') && !query.includes('סה"כ') && !query.includes('רשימ'))
     ) {
-      // בדוק שיש משהו לחפש אחריו
-      const searchTerm = query.replace(/לקוח|מצא|חפש|בשם|את|ה|של/g, '').trim();
-      if (searchTerm.length > 2) {
+      return { type: 'client-search', params: { query } };
+    }
+
+    // ניסיון לזהות שם לקוח ישירות - אם מוזכר שם שקיים במערכת
+    const possibleName = this.extractClientName(query);
+    if (possibleName && possibleName.length >= 2) {
+      const matchedClient = this.findClientByName(possibleName);
+      if (matchedClient) {
         return { type: 'client-search', params: { query } };
       }
-      // אם אין מה לחפש, תן סטטיסטיקות
-      return { type: 'client-stats', params: {} };
     }
 
     // חיפוש פרויקט - גם כאן, סטטיסטיקות לפני חיפוש
@@ -230,33 +233,211 @@ class AIChatService {
   }
 
   /**
-   * חיפוש לקוחות
+   * נרמול טקסט לחיפוש - מסיר תווים מיוחדים ומאחד רווחים
+   */
+  private normalizeText(text: string): string {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .replace(/['"״׳`]/g, '') // הסרת גרשיים
+      .replace(/[-_\.]/g, ' ') // המרת מקפים לרווחים
+      .replace(/\s+/g, ' ')    // איחוד רווחים
+      .trim();
+  }
+
+  /**
+   * חילוץ שם לקוח משאלה - משופר
+   */
+  private extractClientName(query: string): string {
+    const normalizedQuery = this.normalizeText(query);
+    
+    // הסרת מילות מפתח בעברית
+    const keywords = [
+      'מצא', 'חפש', 'תמצא', 'תחפש', 'לי',
+      'את', 'ה', 'של', 'על', 'אצל', 'עבור',
+      'לקוח', 'לקוחה', 'לקוחות',
+      'מה', 'מי', 'איפה', 'איך', 'למה',
+      'נתונים', 'פרטים', 'מידע', 'פרויקטים', 'פרוייקטים',
+      'שעות', 'זמן', 'עבודה', 'משימות', 'חשבוניות'
+    ];
+    
+    let result = normalizedQuery;
+    keywords.forEach(word => {
+      result = result.replace(new RegExp(`\\b${word}\\b`, 'gi'), ' ');
+    });
+    
+    return result.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * חיפוש לקוח לפי שם - מחזיר את הלקוח הראשון שמתאים
+   */
+  private findClientByName(searchTerm: string): any | null {
+    if (!searchTerm || searchTerm.length < 2) return null;
+    
+    const normalizedSearch = this.normalizeText(searchTerm);
+    const searchWords = normalizedSearch.split(' ').filter(w => w.length > 1);
+    
+    for (const client of (this.context.clients || [])) {
+      const normalizedName = this.normalizeText(client.name || '');
+      const nameWords = normalizedName.split(' ').filter(w => w.length > 1);
+      
+      // התאמה מלאה
+      if (normalizedName === normalizedSearch) return client;
+      if (normalizedName.includes(normalizedSearch)) return client;
+      if (normalizedSearch.includes(normalizedName) && normalizedName.length > 3) return client;
+      
+      // חיפוש מילים (שם הפוך)
+      if (searchWords.length > 0 && nameWords.length > 0) {
+        const matchingWords = searchWords.filter(sw => 
+          nameWords.some(nw => nw.includes(sw) || sw.includes(nw))
+        );
+        
+        // אם לפחות חצי מהמילים מתאימות
+        if (matchingWords.length >= Math.ceil(searchWords.length / 2)) {
+          return client;
+        }
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * חיפוש Fuzzy - בודק דמיון בין מחרוזות
+   */
+  private fuzzyMatch(str1: string, str2: string): number {
+    const s1 = this.normalizeText(str1);
+    const s2 = this.normalizeText(str2);
+    
+    if (s1 === s2) return 1;
+    if (!s1 || !s2) return 0;
+    
+    // בדיקת הכלה
+    if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+    
+    // בדיקת מילים - שם הפוך (יוסי כהן / כהן יוסי)
+    const words1 = s1.split(' ').filter(w => w.length > 1);
+    const words2 = s2.split(' ').filter(w => w.length > 1);
+    
+    // כמה מילים משותפות
+    const matchingWords = words1.filter(w1 => 
+      words2.some(w2 => w1.includes(w2) || w2.includes(w1))
+    );
+    
+    if (matchingWords.length > 0) {
+      return matchingWords.length / Math.max(words1.length, words2.length);
+    }
+    
+    // Levenshtein distance פשוט
+    const len1 = s1.length;
+    const len2 = s2.length;
+    const maxLen = Math.max(len1, len2);
+    
+    if (maxLen === 0) return 1;
+    
+    // חישוב מרחק עריכה מקורב
+    let distance = 0;
+    const minLen = Math.min(len1, len2);
+    for (let i = 0; i < minLen; i++) {
+      if (s1[i] !== s2[i]) distance++;
+    }
+    distance += Math.abs(len1 - len2);
+    
+    return 1 - (distance / maxLen);
+  }
+
+  /**
+   * חיפוש לקוחות - משופר עם זיהוי חכם
    */
   private async searchClients(params: any): Promise<string> {
     const { query } = params;
-    const searchTerm = query.replace(/לקוח|מצא|חפש|בשם/g, '').trim();
+    const searchTerm = this.extractClientName(query);
 
-    if (!searchTerm) {
+    if (!searchTerm || searchTerm.length < 2) {
       return `יש ${this.context.clients?.length || 0} לקוחות במערכת. מה תרצה לדעת עליהם?`;
     }
 
-    const found = this.context.clients?.filter(c =>
-      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+    const normalizedSearch = this.normalizeText(searchTerm);
+    const searchWords = normalizedSearch.split(' ').filter(w => w.length > 1);
+
+    // חיפוש עם דירוג
+    const scoredClients = (this.context.clients || []).map(client => {
+      const normalizedName = this.normalizeText(client.name || '');
+      const normalizedCompany = this.normalizeText(client.company || '');
+      const normalizedEmail = this.normalizeText(client.email || '');
+      
+      let score = 0;
+      
+      // התאמה מלאה - הכי גבוה
+      if (normalizedName === normalizedSearch) score = 100;
+      else if (normalizedName.includes(normalizedSearch)) score = 90;
+      else if (normalizedSearch.includes(normalizedName)) score = 85;
+      
+      // חיפוש בשם החברה
+      if (normalizedCompany === normalizedSearch) score = Math.max(score, 95);
+      else if (normalizedCompany.includes(normalizedSearch)) score = Math.max(score, 80);
+      
+      // חיפוש באימייל
+      if (normalizedEmail.includes(normalizedSearch)) score = Math.max(score, 75);
+      
+      // חיפוש מילים בודדות (שם הפוך)
+      if (score < 70 && searchWords.length > 0) {
+        const nameWords = normalizedName.split(' ').filter(w => w.length > 1);
+        let wordMatches = 0;
+        
+        searchWords.forEach(searchWord => {
+          if (nameWords.some(nameWord => 
+            nameWord.includes(searchWord) || searchWord.includes(nameWord) ||
+            this.fuzzyMatch(nameWord, searchWord) > 0.7
+          )) {
+            wordMatches++;
+          }
+        });
+        
+        if (wordMatches > 0) {
+          const wordScore = (wordMatches / searchWords.length) * 70;
+          score = Math.max(score, wordScore);
+        }
+      }
+      
+      // Fuzzy match כפתרון אחרון
+      if (score < 50) {
+        const fuzzyScore = this.fuzzyMatch(normalizedName, normalizedSearch) * 60;
+        score = Math.max(score, fuzzyScore);
+      }
+      
+      return { client, score };
+    }).filter(item => item.score >= 40) // סף מינימלי
+      .sort((a, b) => b.score - a.score);
+
+    const found = scoredClients.map(s => s.client);
 
     if (found.length === 0) {
-      return `לא מצאתי לקוח עם השם "${searchTerm}" 😕`;
+      // נסיון אחרון - חיפוש חלקי
+      const partialFound = (this.context.clients || []).filter(c => {
+        const name = this.normalizeText(c.name || '');
+        return searchWords.some(word => name.includes(word));
+      });
+      
+      if (partialFound.length > 0) {
+        const list = partialFound.slice(0, 5).map(c => `• ${c.name} (${c.company || 'ללא חברה'})`).join('\n');
+        return `לא מצאתי התאמה מדויקת ל"${searchTerm}", אבל אולי התכוונת ל:\n\n${list}`;
+      }
+      
+      return `לא מצאתי לקוח עם השם "${searchTerm}" 😕\n\nיש ${this.context.clients?.length || 0} לקוחות במערכת.`;
     }
 
     if (found.length === 1) {
       const client = found[0];
-      return `מצאתי! 🎯\n\n**${client.name}**\n- חברה: ${client.company || 'לא צוין'}\n- אימייל: ${client.email || 'לא צוין'}\n- טלפון: ${client.phone || 'לא צוין'}\n- סטטוס: ${client.status || 'לא צוין'}\n- נוצר: ${new Date(client.created_at).toLocaleDateString('he-IL')}`;
+      const projects = this.context.projects?.filter(p => p.client_id === client.id) || [];
+      const tasks = this.context.tasks?.filter(t => t.client_id === client.id) || [];
+      
+      return `מצאתי! 🎯\n\n**${client.name}**\n- חברה: ${client.company || 'לא צוין'}\n- אימייל: ${client.email || 'לא צוין'}\n- טלפון: ${client.phone || 'לא צוין'}\n- סטטוס: ${client.status || 'לא צוין'}\n- פרויקטים: ${projects.length}\n- משימות: ${tasks.length}\n- נוצר: ${new Date(client.created_at).toLocaleDateString('he-IL')}`;
     }
 
     const list = found.slice(0, 5).map(c => `• ${c.name} (${c.company || 'ללא חברה'})`).join('\n');
-    return `מצאתי ${found.length} לקוחות:\n\n${list}${found.length > 5 ? '\n\n...ועוד ' + (found.length - 5) : ''}`;
+    return `מצאתי ${found.length} לקוחות תואמים:\n\n${list}${found.length > 5 ? '\n\n...ועוד ' + (found.length - 5) : ''}`;
   }
 
   /**
