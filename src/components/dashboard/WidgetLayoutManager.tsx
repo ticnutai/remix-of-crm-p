@@ -100,6 +100,8 @@ export const GAP_LABELS: Record<GridGap, string> = {
 interface WidgetLayoutContextType {
   layouts: WidgetLayout[];
   gridGap: GridGap;
+  gapX: number;
+  gapY: number;
   isLoading: boolean;
   isSaving: boolean;
   equalizeHeights: boolean;
@@ -117,6 +119,8 @@ interface WidgetLayoutContextType {
   moveWidget: (id: WidgetId, direction: 'up' | 'down') => void;
   autoArrangeWidgets: () => void;
   setGridGap: (gap: GridGap) => void;
+  setGapX: (gap: number) => void;
+  setGapY: (gap: number) => void;
   balanceRow: (widgetId: WidgetId) => void;
   setEqualizeHeights: (enabled: boolean) => void;
   setAutoExpand: (enabled: boolean) => void;
@@ -175,6 +179,25 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       return saved || 'navy-gold';
     } catch (e) {
       return 'navy-gold';
+    }
+  });
+
+  // Custom gap values (in pixels)
+  const [gapX, setGapXState] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('widget-gap-x');
+      return saved ? parseInt(saved, 10) : 16;
+    } catch (e) {
+      return 16;
+    }
+  });
+
+  const [gapY, setGapYState] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('widget-gap-y');
+      return saved ? parseInt(saved, 10) : 16;
+    } catch (e) {
+      return 16;
     }
   });
 
@@ -291,6 +314,8 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       equalizeHeights: overrideSettings?.equalizeHeights ?? equalizeHeights,
       autoExpand: overrideSettings?.autoExpand ?? autoExpand,
       dashboardTheme: overrideSettings?.dashboardTheme ?? dashboardTheme,
+      gapX: (overrideSettings as any)?.gapX ?? gapX,
+      gapY: (overrideSettings as any)?.gapY ?? gapY,
     };
 
     // Debounce cloud save
@@ -392,6 +417,20 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: theme }));
     // Trigger cloud save with the new theme value
     saveToCloud(layouts, { dashboardTheme: theme });
+  }, [layouts, saveToCloud]);
+
+  // Set horizontal gap
+  const setGapX = useCallback((gap: number) => {
+    setGapXState(gap);
+    localStorage.setItem('widget-gap-x', String(gap));
+    saveToCloud(layouts, { gapX: gap } as any);
+  }, [layouts, saveToCloud]);
+
+  // Set vertical gap
+  const setGapY = useCallback((gap: number) => {
+    setGapYState(gap);
+    localStorage.setItem('widget-gap-y', String(gap));
+    saveToCloud(layouts, { gapY: gap } as any);
   }, [layouts, saveToCloud]);
 
   // Get single layout
@@ -641,6 +680,8 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
     <WidgetLayoutContext.Provider value={{
       layouts,
       gridGap,
+      gapX,
+      gapY,
       isLoading,
       isSaving,
       equalizeHeights,
@@ -658,6 +699,8 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       moveWidget,
       autoArrangeWidgets,
       setGridGap,
+      setGapX,
+      setGapY,
       balanceRow,
       setEqualizeHeights,
       setAutoExpand,

@@ -333,7 +333,7 @@ interface WidgetGridProps {
 
 export function WidgetGrid({ children, className }: WidgetGridProps) {
   const { currentTheme } = useDashboardTheme();
-  const { gridGap, equalizeHeights, autoExpand, layouts } = useWidgetLayout();
+  const { gridGap, gapX, gapY, equalizeHeights, autoExpand, layouts } = useWidgetLayout();
   const isDarkTheme = currentTheme === 'navy-gold' || currentTheme === 'modern-dark';
   const editMode = useWidgetEditMode();
 
@@ -408,13 +408,15 @@ export function WidgetGrid({ children, className }: WidgetGridProps) {
       <div 
         className={cn(
           "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
-          GAP_CLASSES[gridGap],
           "[grid-auto-flow:dense]",
           // Equal heights for all widgets using align-items stretch
           equalizeHeights && "items-stretch [&>*]:h-full"
         )}
         dir="rtl"
         style={{
+          // Use custom gap values (in pixels)
+          columnGap: `${gapX}px`,
+          rowGap: `${gapY}px`,
           // Use a minimum row height when equalizing
           gridAutoRows: equalizeHeights ? 'minmax(280px, auto)' : 'auto',
         }}

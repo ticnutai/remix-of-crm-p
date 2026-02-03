@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -42,6 +43,8 @@ import {
   Grid3X3,
   ArrowUpDown,
   Cloud,
+  MoveHorizontal,
+  MoveVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDashboardTheme, dashboardThemes, DashboardTheme } from './DashboardThemeProvider';
@@ -109,6 +112,10 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     autoArrangeWidgets,
     gridGap,
     setGridGap,
+    gapX,
+    gapY,
+    setGapX,
+    setGapY,
     equalizeHeights,
     setEqualizeHeights,
     autoExpand,
@@ -225,35 +232,89 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                     <Grid3X3 className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">מרווח בין ווידג'טים</h3>
-                    <p className="text-sm text-muted-foreground">בחר את הריווח המועדף בין הרכיבים</p>
+                    <h3 className="font-semibold text-lg">מרווחים בין ווידג'טים</h3>
+                    <p className="text-sm text-muted-foreground">התאם את הריווחים בין הרכיבים</p>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4">
-                  {GAP_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => setGridGap(option.value)}
-                      className={cn(
-                        "relative p-5 rounded-2xl border-2 text-center transition-all duration-200",
-                        "hover:border-primary/50 hover:shadow-md",
-                        gridGap === option.value 
-                          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10" 
-                          : "border-border bg-card"
-                      )}
-                    >
-                      <div className="text-xl font-bold mb-1">{option.label}</div>
-                      <div className="text-sm text-muted-foreground">{option.size}</div>
-                      {gridGap === option.value && (
-                        <div className="absolute top-3 left-3">
-                          <div className="p-1 rounded-full bg-primary">
-                            <Check className="h-3 w-3 text-primary-foreground" />
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                <div className="space-y-6">
+                  {/* Horizontal Gap Slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MoveHorizontal className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">מרווח אופקי</Label>
+                      </div>
+                      <Badge variant="secondary" className="min-w-[60px] justify-center">
+                        {gapX}px
+                      </Badge>
+                    </div>
+                    <Slider
+                      value={[gapX]}
+                      onValueChange={(value) => setGapX(value[0])}
+                      min={0}
+                      max={48}
+                      step={4}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>צפוף</span>
+                      <span>רווח</span>
+                    </div>
+                  </div>
+
+                  {/* Vertical Gap Slider */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MoveVertical className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-sm font-medium">מרווח אנכי</Label>
+                      </div>
+                      <Badge variant="secondary" className="min-w-[60px] justify-center">
+                        {gapY}px
+                      </Badge>
+                    </div>
+                    <Slider
+                      value={[gapY]}
+                      onValueChange={(value) => setGapY(value[0])}
+                      min={0}
+                      max={48}
+                      step={4}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>צפוף</span>
+                      <span>רווח</span>
+                    </div>
+                  </div>
+
+                  {/* Preset Buttons */}
+                  <div className="pt-2">
+                    <p className="text-xs text-muted-foreground mb-3">הגדרות מוכנות:</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {GAP_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            const gapValue = option.value === 'tight' ? 8 : option.value === 'normal' ? 16 : 24;
+                            setGapX(gapValue);
+                            setGapY(gapValue);
+                            setGridGap(option.value);
+                          }}
+                          className={cn(
+                            "relative p-3 rounded-xl border text-center transition-all duration-200",
+                            "hover:border-primary/50 hover:shadow-sm",
+                            gridGap === option.value 
+                              ? "border-primary bg-primary/5" 
+                              : "border-border bg-card"
+                          )}
+                        >
+                          <div className="text-sm font-medium">{option.label}</div>
+                          <div className="text-xs text-muted-foreground">{option.size}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </section>
 

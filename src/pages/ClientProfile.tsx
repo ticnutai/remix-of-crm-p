@@ -28,6 +28,7 @@ import {
   ClientStagesBoard,
   ClientTimeLogsTab,
   ClientDeadlinesTab,
+  ClientFoldersManager,
 } from '@/components/client-tabs';
 import {
   ArrowRight,
@@ -68,6 +69,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Timer,
+  Folder,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -1569,7 +1571,7 @@ export default function ClientProfile() {
 
 // Client Stages Section with View Toggle
 function ClientStagesSection({ clientId }: { clientId: string }) {
-  const [viewMode, setViewMode] = React.useState<'list' | 'board' | 'table'>('board');
+  const [viewMode, setViewMode] = React.useState<'list' | 'board' | 'table' | 'folders'>('board');
 
   // Dynamically import ClientStagesTable
   const ClientStagesTable = React.lazy(() => 
@@ -1608,6 +1610,15 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
             <Table className="h-4 w-4 ml-1" />
             טבלה
           </Button>
+          <Button
+            size="sm"
+            variant={viewMode === 'folders' ? 'default' : 'ghost'}
+            className="h-7 px-3"
+            onClick={() => setViewMode('folders')}
+          >
+            <Folder className="h-4 w-4 ml-1" />
+            תיקיות
+          </Button>
         </div>
       </div>
 
@@ -1617,6 +1628,8 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
         <React.Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
           <ClientStagesTable clientId={clientId} />
         </React.Suspense>
+      ) : viewMode === 'folders' ? (
+        <ClientFoldersManager clientId={clientId} />
       ) : (
         <ClientStagesTracker 
           clientId={clientId}
