@@ -511,3 +511,6 @@ export function useInvalidateDashboard() {
     queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEYS.all });
   };
 }
+
+// Alias for cleaner imports - this IS the main useDashboardData hook now
+export { useDashboardData as useDashboardDataMain };

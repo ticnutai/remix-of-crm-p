@@ -351,4 +351,7 @@ export function useTodayTasks() {
   });
 }
 
+// Alias for cleaner imports - this IS the main useTasks hook now
+export const useTasks = useTasksOptimized;
+
 export default useTasksOptimized;

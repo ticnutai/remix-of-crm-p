@@ -1,5 +1,5 @@
 // Elegant Clients Gallery - tenarch CRM Pro
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { Input } from '@/components/ui/input';
@@ -94,7 +94,6 @@ export default function Clients() {
   } = useGoogleSheets();
   
   const [clients, setClients] = useState<Client[]>([]);
-  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showViewOptions, setShowViewOptions] = useState(false);
@@ -199,10 +198,6 @@ export default function Clients() {
     fetchCategoriesAndTags();
   }, []);
 
-  useEffect(() => {
-    applyFilters();
-  }, [searchQuery, clients, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
-  
   // Reset displayed count when filters change
   useEffect(() => {
     setDisplayedCount(PAGE_SIZE);
@@ -352,7 +347,8 @@ export default function Clients() {
     };
   }, [keyboardSearch, filteredClients]);
 
-  const applyFilters = () => {
+  // Memoized filtered clients for performance - replaces applyFilters + useEffect pattern
+  const filteredClients = useMemo(() => {
     let result = [...clients];
 
     // Search filter
@@ -444,8 +440,8 @@ export default function Clients() {
       }
     });
 
-    setFilteredClients(result);
-  };
+    return result;
+  }, [clients, searchQuery, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
 
   const fetchFilterData = async () => {
     try {

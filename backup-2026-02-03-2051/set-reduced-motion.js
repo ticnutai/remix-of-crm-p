@@ -1,0 +1,1 @@
+﻿localStorage.setItem('ncrm-reduced-motion', 'true');

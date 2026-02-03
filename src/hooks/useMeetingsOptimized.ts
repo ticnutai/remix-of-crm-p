@@ -360,4 +360,7 @@ export function useWeekMeetings() {
   });
 }
 
+// Alias for cleaner imports - this IS the main useMeetings hook now
+export const useMeetings = useMeetingsOptimized;
+
 export default useMeetingsOptimized;

@@ -171,8 +171,8 @@ const InvoiceStatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// Stats Card Component
-const StatsCard = ({ 
+// Stats Card Component - Memoized for performance
+const StatsCard = React.memo(({ 
   title, 
   value, 
   subtitle, 
@@ -209,7 +209,7 @@ const StatsCard = ({
       </div>
     </CardContent>
   </Card>
-);
+));
 
 const COLORS = ['hsl(142, 76%, 36%)', 'hsl(217, 91%, 60%)', 'hsl(45, 93%, 47%)', 'hsl(0, 84%, 60%)', 'hsl(280, 100%, 70%)'];
 
@@ -533,28 +533,32 @@ export default function Finance() {
     }
   };
 
-  // Calculate stats - filtered by year if selected
-  const getFilteredPaidInvoices = () => {
+  // Calculate stats - filtered by year if selected (memoized for performance)
+  const filteredPaidInvoices = useMemo(() => {
     let filtered = invoices.filter(i => i.status === 'paid');
     if (yearFilter !== 'all') {
       filtered = filtered.filter(i => new Date(i.issue_date).getFullYear().toString() === yearFilter);
     }
     return filtered;
-  };
+  }, [invoices, yearFilter]);
 
-  const filteredPaidInvoices = getFilteredPaidInvoices();
-
-  const stats = {
-    totalRevenue: filteredPaidInvoices.reduce((sum, i) => sum + Number(i.amount), 0),
-    pendingPayments: invoices.filter(i => i.status === 'sent').reduce((sum, i) => sum + Number(i.amount), 0),
-    overdueAmount: invoices.filter(i => i.status === 'overdue').reduce((sum, i) => sum + Number(i.amount), 0),
-    thisMonthRevenue: invoices
-      .filter(i => i.status === 'paid' && i.paid_date && new Date(i.paid_date) >= startOfMonth(new Date()))
-      .reduce((sum, i) => sum + Number(i.amount), 0),
-    invoiceCount: invoices.length,
-    paidCount: filteredPaidInvoices.length,
-    overdueCount: invoices.filter(i => i.status === 'overdue').length,
-  };
+  const stats = useMemo(() => {
+    const sentInvoices = invoices.filter(i => i.status === 'sent');
+    const overdueInvoices = invoices.filter(i => i.status === 'overdue');
+    const currentMonthStart = startOfMonth(new Date());
+    
+    return {
+      totalRevenue: filteredPaidInvoices.reduce((sum, i) => sum + Number(i.amount), 0),
+      pendingPayments: sentInvoices.reduce((sum, i) => sum + Number(i.amount), 0),
+      overdueAmount: overdueInvoices.reduce((sum, i) => sum + Number(i.amount), 0),
+      thisMonthRevenue: invoices
+        .filter(i => i.status === 'paid' && i.paid_date && new Date(i.paid_date) >= currentMonthStart)
+        .reduce((sum, i) => sum + Number(i.amount), 0),
+      invoiceCount: invoices.length,
+      paidCount: filteredPaidInvoices.length,
+      overdueCount: overdueInvoices.length,
+    };
+  }, [invoices, filteredPaidInvoices]);
 
   // Calculate expense stats for selected year filter
   const expenseStats = calculateAnnualExpenses(
@@ -584,8 +588,8 @@ export default function Finance() {
     });
   }, [expenses]);
 
-  // Monthly revenue chart data
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+  // Monthly revenue chart data (memoized)
+  const monthlyData = useMemo(() => Array.from({ length: 6 }, (_, i) => {
     const date = subMonths(new Date(), 5 - i);
     const monthStart = startOfMonth(date);
     const monthEnd = endOfMonth(date);
@@ -602,24 +606,27 @@ export default function Finance() {
       month: format(date, 'MMM', { locale: he }),
       revenue,
     };
-  });
+  }), [invoices]);
 
-  // Status distribution for pie chart
-  const statusDistribution = [
+  // Status distribution for pie chart (memoized)
+  const statusDistribution = useMemo(() => [
     { name: 'שולם', value: invoices.filter(i => i.status === 'paid').length, color: COLORS[0] },
     { name: 'נשלח', value: invoices.filter(i => i.status === 'sent').length, color: COLORS[1] },
     { name: 'באיחור', value: invoices.filter(i => i.status === 'overdue').length, color: COLORS[3] },
     { name: 'טיוטה', value: invoices.filter(i => i.status === 'draft').length, color: COLORS[4] },
-  ].filter(s => s.value > 0);
+  ].filter(s => s.value > 0), [invoices]);
 
-  // Get unique years from invoices
-  const years = [...new Set(invoices.map(i => new Date(i.issue_date).getFullYear()))].sort((a, b) => b - a);
+  // Get unique years from invoices (memoized)
+  const years = useMemo(() => 
+    [...new Set(invoices.map(i => new Date(i.issue_date).getFullYear()))].sort((a, b) => b - a),
+    [invoices]
+  );
   
   // Get unique clients from invoices
   const invoiceClients = [...new Set(invoices.map(i => i.client_id))];
 
-  // Advanced filtering
-  const getFilteredInvoices = () => {
+  // Memoized filtered invoices for performance
+  const filteredInvoices = useMemo(() => {
     let filtered = [...invoices];
     
     // Status filter
@@ -651,17 +658,13 @@ export default function Finance() {
     }
     
     return filtered;
-  };
+  }, [invoices, filter, dateFromFilter, dateToFilter, yearFilter, monthFilter, clientFilter]);
 
-  const filteredInvoices = getFilteredInvoices();
-
-  // Analytics calculations - based on filtered invoices for year/client/date filters
-  const analyticsInvoices = filteredInvoices;
-  
-  const analytics = {
+  // Analytics calculations - memoized for performance
+  const analytics = useMemo(() => ({
     // Monthly breakdown - shows data for current filter
     monthlyBreakdown: Array.from({ length: 12 }, (_, i) => {
-      const monthInvoices = analyticsInvoices.filter(inv => {
+      const monthInvoices = filteredInvoices.filter(inv => {
         const date = new Date(inv.issue_date);
         return date.getMonth() === i;
       });
@@ -676,7 +679,7 @@ export default function Finance() {
     
     // Client breakdown - based on filtered invoices
     clientBreakdown: clients.map(client => {
-      const clientInvoices = analyticsInvoices.filter(i => i.client_id === client.id);
+      const clientInvoices = filteredInvoices.filter(i => i.client_id === client.id);
       return {
         name: client.name,
         id: client.id,
@@ -699,7 +702,7 @@ export default function Finance() {
     
     // Strongest months (top 3) - based on filtered invoices
     strongestMonths: Array.from({ length: 12 }, (_, i) => {
-      const monthInvoices = analyticsInvoices.filter(inv => new Date(inv.issue_date).getMonth() === i);
+      const monthInvoices = filteredInvoices.filter(inv => new Date(inv.issue_date).getMonth() === i);
       return {
         month: format(new Date(2024, i, 1), 'MMMM', { locale: he }),
         monthNum: i + 1,
@@ -709,11 +712,11 @@ export default function Finance() {
     
     // Summary for filtered data
     filteredSummary: {
-      totalAmount: analyticsInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0),
-      paidAmount: analyticsInvoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + Number(inv.amount), 0),
-      count: analyticsInvoices.length,
+      totalAmount: filteredInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0),
+      paidAmount: filteredInvoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + Number(inv.amount), 0),
+      count: filteredInvoices.length,
     },
-  };
+  }), [filteredInvoices, clients, years, invoices]);
 
   // Create invoice
   const handleCreateInvoice = async () => {
