@@ -13,6 +13,7 @@ interface Profile {
   position?: string;
   hourly_rate?: number;
   is_active?: boolean;
+  role?: 'admin' | 'manager' | 'employee' | 'client';
 }
 
 type AppRole = 'admin' | 'manager' | 'employee' | 'client';

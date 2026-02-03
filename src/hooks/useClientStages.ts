@@ -349,7 +349,7 @@ export function useClientStages(clientId: string) {
     try {
       const { error } = await supabase
         .from('client_stage_tasks')
-        .update(style)
+        .update(style as any)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -381,7 +381,7 @@ export function useClientStages(clientId: string) {
         .update({
           started_at: now,
           target_working_days: targetDays,
-        })
+        } as any)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -419,7 +419,7 @@ export function useClientStages(clientId: string) {
         .update({
           started_at: null,
           target_working_days: null,
-        })
+        } as any)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -456,7 +456,7 @@ export function useClientStages(clientId: string) {
         .from('client_stage_tasks')
         .update({
           target_working_days: targetDays,
-        })
+        } as any)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -490,7 +490,7 @@ export function useClientStages(clientId: string) {
     try {
       const { error } = await supabase
         .from('client_stage_tasks')
-        .update({ timer_display_style: newStyle })
+        .update({ timer_display_style: newStyle } as any)
         .eq('id', taskId);
 
       if (error) throw error;
@@ -517,7 +517,7 @@ export function useClientStages(clientId: string) {
         .update({
           started_at: now,
           target_working_days: targetDays,
-        })
+        } as any)
         .eq('stage_id', stageId)
         .eq('client_id', clientId);
 
@@ -556,7 +556,7 @@ export function useClientStages(clientId: string) {
         .update({
           started_at: null,
           target_working_days: null,
-        })
+        } as any)
         .eq('stage_id', stageId)
         .eq('client_id', clientId);
 
@@ -596,7 +596,7 @@ export function useClientStages(clientId: string) {
     try {
       const { error } = await supabase
         .from('client_stages')
-        .update({ timer_display_style: newStyle })
+        .update({ timer_display_style: newStyle } as any)
         .eq('stage_id', stageId)
         .eq('client_id', clientId);
 

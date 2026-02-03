@@ -1,15 +1,16 @@
 /**
- * AI Chat Component - צ'אט AI חכם V2
- * מערכת משופרת עם הבנת עברית מתקדמת והצעות חכמות
+ * AI Chat Component - צ'אט AI חכם עם Lovable AI
+ * Streaming responses + Hebrew support
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { aiChatService, ChatMessage } from '@/services/aiChatServiceV2';
+import { useAIChat, ChatMessage } from '@/hooks/useAIChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import ReactMarkdown from 'react-markdown';
 import {
   Bot,
   Send,
@@ -19,120 +20,43 @@ import {
   TrendingUp,
   Zap,
   Lightbulb,
+  Trash2,
+  StopCircle,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SUGGESTED_QUERIES = [
-  'כמה לקוחות יש במערכת?',
-  'כמה שעות עבדתי היום?',
-  'מה ההכנסות החודש?',
-  'יש משימות באיחור?',
-  'פגישות השבוע?',
-  'סיכום יומי',
+  { text: 'כמה לקוחות יש במערכת?', icon: '👥' },
+  { text: 'מה המשימות באיחור?', icon: '⚠️' },
+  { text: 'פגישות להיום', icon: '📅' },
+  { text: 'סיכום הכנסות החודש', icon: '💰' },
+  { text: 'כמה שעות עבדתי היום?', icon: '⏱️' },
+  { text: 'תן לי סיכום כללי', icon: '📊' },
 ];
 
 export function AIChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: '👋 שלום! אני הצ\'אט החכם של המערכת.\n\nאני מבין עברית ומחובר לכל הנתונים!\n\nנסה לשאול אותי על לקוחות, פרויקטים, משימות, זמנים ועוד...',
-      timestamp: new Date(),
-      suggestions: ['כמה לקוחות יש?', 'משימות באיחור', 'סיכום יומי'],
-    },
-  ]);
+  const { messages, isLoading, error, sendMessage, stopStreaming, clearChat } = useAIChat();
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [lastSuggestions, setLastSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    // אתחול ה-AI בטעינת הקומפוננטה
-    aiChatService.initialize().then(() => {
-      setIsInitialized(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    // גלילה אוטומטית למטה
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
     }
   }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    const message = input;
     setInput('');
-    setIsLoading(true);
-    setLastSuggestions([]);
-
-    try {
-      const response = await aiChatService.processQuery(input);
-      setMessages(prev => [...prev, response]);
-      // שמירת ההצעות מהתשובה
-      if (response.suggestions && response.suggestions.length > 0) {
-        setLastSuggestions(response.suggestions);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: 'מצטער, קרתה שגיאה. נסה שוב 😕',
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSuggestedQuery = (query: string) => {
-    setInput(query);
-    // שליחה אוטומטית של ההצעה
-    setTimeout(() => {
-      const fakeEvent = { key: 'Enter', shiftKey: false } as React.KeyboardEvent;
-      handleKeyPress(fakeEvent);
-    }, 100);
-  };
-
-  const handleSuggestionClick = async (query: string) => {
-    setInput(query);
-    setLastSuggestions([]);
-    // שליחה אוטומטית
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: query,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
-    try {
-      const response = await aiChatService.processQuery(query);
-      setMessages(prev => [...prev, response]);
-      if (response.suggestions && response.suggestions.length > 0) {
-        setLastSuggestions(response.suggestions);
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-    } finally {
-      setIsLoading(false);
-      setInput('');
-    }
+    await sendMessage(message);
+    inputRef.current?.focus();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -142,16 +66,21 @@ export function AIChat() {
     }
   };
 
+  const handleSuggestionClick = async (query: string) => {
+    setInput('');
+    await sendMessage(query);
+  };
+
   return (
     <div className="space-y-4" dir="rtl">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Bot className="h-8 w-8 text-primary" />
-            {isInitialized && (
-              <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full animate-pulse" />
-            )}
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+              <Bot className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div className="absolute -top-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-background animate-pulse" />
           </div>
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -159,21 +88,40 @@ export function AIChat() {
               <Sparkles className="h-5 w-5 text-yellow-500" />
             </h2>
             <p className="text-sm text-muted-foreground">
-              {isInitialized ? 'מחובר לכל הנתונים במערכת' : 'טוען נתונים...'}
+              מופעל על ידי Lovable AI • עברית מלאה
             </p>
           </div>
         </div>
 
-        <Badge variant="secondary" className="gap-1">
-          <Zap className="h-3 w-3" />
-          מהיר ומדויק
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearChat}
+            className="gap-1"
+          >
+            <Trash2 className="h-4 w-4" />
+            נקה צ'אט
+          </Button>
+          <Badge variant="secondary" className="gap-1">
+            <Zap className="h-3 w-3" />
+            מהיר
+          </Badge>
+        </div>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
       {/* Chat Card */}
-      <Card className="shadow-lg">
-        <CardHeader className="border-b bg-muted/30">
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <Card className="shadow-lg border-2">
+        <CardHeader className="border-b bg-muted/30 py-3">
+          <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
             שיחה
           </CardTitle>
@@ -181,115 +129,49 @@ export function AIChat() {
 
         <CardContent className="p-0">
           {/* Messages */}
-          <ScrollArea ref={scrollRef} className="h-[500px] p-4">
-            <div className="space-y-4">
+          <ScrollArea ref={scrollRef} className="h-[450px]">
+            <div className="p-4 space-y-4">
               {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    'flex gap-3 animate-in slide-in-from-bottom-2',
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  )}
-                >
-                  {message.role === 'user' && (
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-5 w-5" />
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    className={cn(
-                      'rounded-lg px-4 py-3 max-w-[80%]',
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    )}
-                  >
-                    <div className="whitespace-pre-wrap break-words">
-                      {message.content}
-                    </div>
-                    <div
-                      className={cn(
-                        'text-xs mt-2 opacity-70',
-                        message.role === 'user' ? 'text-left' : 'text-right'
-                      )}
-                    >
-                      {message.timestamp.toLocaleTimeString('he-IL', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-
-                  {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-primary" />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <MessageBubble key={message.id} message={message} />
               ))}
 
-              {isLoading && (
-                <div className="flex gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                    </div>
-                  </div>
-                  <div className="bg-muted rounded-lg px-4 py-3">
-                    <div className="flex gap-1">
-                      <div className="h-2 w-2 bg-primary/50 rounded-full animate-bounce" />
-                      <div className="h-2 w-2 bg-primary/50 rounded-full animate-bounce delay-100" />
-                      <div className="h-2 w-2 bg-primary/50 rounded-full animate-bounce delay-200" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic Suggestions from last response */}
-              {!isLoading && lastSuggestions.length > 0 && (
-                <div className="flex gap-3 animate-in fade-in-50">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                      <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {lastSuggestions.map((suggestion, i) => (
-                      <Button
-                        key={i}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="text-xs bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                      >
-                        {suggestion}
-                      </Button>
-                    ))}
-                  </div>
+              {/* Loading indicator */}
+              {isLoading && messages[messages.length - 1]?.role === 'assistant' && 
+               messages[messages.length - 1]?.isStreaming && (
+                <div className="flex justify-start">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={stopStreaming}
+                    className="text-muted-foreground gap-1"
+                  >
+                    <StopCircle className="h-4 w-4" />
+                    עצור
+                  </Button>
                 </div>
               )}
             </div>
           </ScrollArea>
 
-          {/* Initial Suggested Queries */}
-          {messages.length <= 2 && lastSuggestions.length === 0 && (
+          {/* Suggested Queries - Show only at start */}
+          {messages.length <= 2 && (
             <div className="border-t p-4 bg-muted/20">
-              <p className="text-xs text-muted-foreground mb-2">🚀 שאלות מוצעות:</p>
+              <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+                <Lightbulb className="h-3 w-3" />
+                שאלות מוצעות:
+              </p>
               <div className="flex flex-wrap gap-2">
                 {SUGGESTED_QUERIES.map((query, i) => (
                   <Button
                     key={i}
                     variant="outline"
                     size="sm"
-                    onClick={() => handleSuggestionClick(query)}
-                    className="text-xs"
+                    onClick={() => handleSuggestionClick(query.text)}
+                    disabled={isLoading}
+                    className="text-xs gap-1.5 hover:bg-primary/10 hover:border-primary/50 transition-colors"
                   >
-                    {query}
+                    <span>{query.icon}</span>
+                    {query.text}
                   </Button>
                 ))}
               </div>
@@ -297,20 +179,23 @@ export function AIChat() {
           )}
 
           {/* Input */}
-          <div className="border-t p-4">
+          <div className="border-t p-4 bg-background">
             <div className="flex gap-2">
               <Input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="שאל משהו... (לדוגמה: 'כמה לקוחות יש?')"
-                disabled={isLoading || !isInitialized}
+                disabled={isLoading}
                 className="flex-1"
+                autoComplete="off"
               />
               <Button
                 onClick={handleSend}
-                disabled={!input.trim() || isLoading || !isInitialized}
+                disabled={!input.trim() || isLoading}
                 size="icon"
+                className="shrink-0"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -319,31 +204,111 @@ export function AIChat() {
                 )}
               </Button>
             </div>
-
-            {!isInitialized && (
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                טוען נתונים מהמערכת...
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Info Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+      <Card className="bg-gradient-to-l from-primary/5 to-background border-primary/20">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
             <div className="space-y-1">
-              <p className="font-semibold text-sm">💡 טיפ:</p>
-              <p className="text-xs text-muted-foreground">
-                הצ'אט מחובר לכל הנתונים במערכת ויכול לשלוף מידע מהר!
-                נסה לשאול על לקוחות, פרויקטים, זמנים, הכנסות, משימות ועוד.
-              </p>
+              <p className="font-semibold text-sm">💡 טיפים לשימוש</p>
+              <ul className="text-xs text-muted-foreground space-y-0.5">
+                <li>• שאל על לקוחות, פרויקטים, משימות, פגישות והכנסות</li>
+                <li>• השתמש בעברית טבעית - ה-AI מבין עברית מלאה</li>
+                <li>• התשובות מבוססות על נתונים אמיתיים מהמערכת</li>
+              </ul>
             </div>
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Message Bubble Component
+function MessageBubble({ message }: { message: ChatMessage }) {
+  const isUser = message.role === 'user';
+  
+  return (
+    <div
+      className={cn(
+        'flex gap-3 animate-in slide-in-from-bottom-2 duration-300',
+        isUser ? 'flex-row-reverse' : 'flex-row'
+      )}
+    >
+      {/* Avatar */}
+      <div className="flex-shrink-0 mt-1">
+        <div
+          className={cn(
+            'h-8 w-8 rounded-full flex items-center justify-center',
+            isUser ? 'bg-primary' : 'bg-gradient-to-br from-primary/20 to-primary/5'
+          )}
+        >
+          {isUser ? (
+            <User className="h-4 w-4 text-primary-foreground" />
+          ) : (
+            <Bot className="h-4 w-4 text-primary" />
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div
+        className={cn(
+          'rounded-2xl px-4 py-3 max-w-[85%] shadow-sm',
+          isUser
+            ? 'bg-primary text-primary-foreground rounded-tr-sm'
+            : 'bg-muted rounded-tl-sm'
+        )}
+      >
+        {isUser ? (
+          <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="mb-2 list-disc list-inside">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-2 list-decimal list-inside">{children}</ol>,
+                li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                code: ({ children }) => (
+                  <code className="bg-background/50 px-1 py-0.5 rounded text-xs">{children}</code>
+                ),
+              }}
+            >
+              {message.content || (message.isStreaming ? '...' : '')}
+            </ReactMarkdown>
+          </div>
+        )}
+        
+        {/* Timestamp */}
+        <div
+          className={cn(
+            'text-[10px] mt-2 opacity-60',
+            isUser ? 'text-left' : 'text-right'
+          )}
+        >
+          {message.timestamp.toLocaleTimeString('he-IL', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </div>
+        
+        {/* Streaming indicator */}
+        {message.isStreaming && (
+          <div className="flex items-center gap-1 mt-1">
+            <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce" />
+            <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.1s]" />
+            <div className="h-1.5 w-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
