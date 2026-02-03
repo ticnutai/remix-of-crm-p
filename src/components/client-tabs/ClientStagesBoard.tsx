@@ -1200,7 +1200,7 @@ export function ClientStagesBoard({
         const isStageCompleted = stageCompletionInfo[stage.stage_id]?.isCompleted || false;
         const isActiveStage = index === activeStageIndex;
         const isFutureStage = activeStageIndex !== -1 && index > activeStageIndex;
-        return <Card key={stage.id} className={cn("flex flex-col h-full transition-all duration-300 border-2 border-amber-400/60",
+        return <Card key={stage.id} className={cn("relative flex flex-col h-full transition-all duration-300 border-2 border-amber-400/60",
         // Selected stage highlight
         selectedStages.has(stage.stage_id) && "ring-2 ring-primary ring-offset-2",
         // Completed stage: white background with thick gold border
@@ -1209,13 +1209,13 @@ export function ClientStagesBoard({
         isActiveStage && !isStageCompleted && "border-yellow-500 shadow-lg shadow-yellow-500/10",
         // Future stages: thin gold border
         isFutureStage && "border-amber-400/60")} onMouseEnter={() => setHoveredStage(stage.stage_id)} onMouseLeave={() => setHoveredStage(null)}>
-              {/* Selection Checkbox */}
-              <div className="absolute top-2 left-2 z-20">
+              {/* Selection Checkbox - Top Right, above completed indicator */}
+              <div className="absolute top-2 right-10 z-30">
                 <Checkbox
                   checked={selectedStages.has(stage.stage_id)}
                   onCheckedChange={() => toggleStageSelection(stage.stage_id)}
                   onClick={(e) => e.stopPropagation()}
-                  className="bg-white/80 border-2"
+                  className="bg-white border-2 border-gray-400 h-5 w-5 shadow-sm hover:border-blue-500 cursor-pointer"
                 />
               </div>
               {/* Header - Clickable to expand */}
