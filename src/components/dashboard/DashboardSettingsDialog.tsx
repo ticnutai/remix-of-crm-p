@@ -214,8 +214,9 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
           </div>
 
           {/* ======== LAYOUT TAB ======== */}
-          <TabsContent value="layout" className="px-8 py-6">
-            <div className="grid gap-8">
+          <TabsContent value="layout" className="px-8 py-6" dir="rtl">
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="grid gap-8">
               
               {/* Grid Gap Section */}
               <section>
@@ -341,11 +342,12 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                 </div>
               </section>
             </div>
+            </ScrollArea>
           </TabsContent>
 
           {/* ======== WIDGETS TAB ======== */}
-          <TabsContent value="widgets" className="px-8 py-6">
-            <ScrollArea className="h-[420px] pr-4">
+          <TabsContent value="widgets" className="px-8 py-6" dir="rtl">
+            <ScrollArea className="h-[500px] pr-4">
               <div className="space-y-8">
                 {(Object.keys(widgetsByCategory) as WidgetCategory[]).map((category) => {
                   const categoryWidgets = widgetsByCategory[category];
@@ -355,7 +357,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   return (
                     <section key={category}>
                       {/* Category Header */}
-                      <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-3 mb-4" dir="rtl">
                         <div className="p-2 rounded-lg bg-primary/10 text-primary">
                           {icon}
                         </div>
@@ -462,8 +464,8 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
           </TabsContent>
 
           {/* ======== THEMES TAB ======== */}
-          <TabsContent value="themes" className="px-8 py-6">
-            <ScrollArea className="h-[420px] pr-4">
+          <TabsContent value="themes" className="px-8 py-6" dir="rtl">
+            <ScrollArea className="h-[500px] pr-4">
               {/* Current Theme Card */}
               <Card className="mb-8 border-2 border-primary/50 bg-gradient-to-l from-primary/5 to-background">
                 <CardHeader>
