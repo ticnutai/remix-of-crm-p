@@ -194,12 +194,14 @@ export function SaveAllStagesDialog({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
+  const [includeTaskContent, setIncludeTaskContent] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setName('');
       setDescription('');
+      setIncludeTaskContent(false);
       // Select all by default
       setSelectedStages(new Set(stages.map(s => s.stage_id)));
     }
@@ -221,7 +223,7 @@ export function SaveAllStagesDialog({
     const stagesToSave = stages.filter(s => selectedStages.has(s.stage_id));
     
     setSaving(true);
-    const result = await saveMultiStageTemplate(stagesToSave, name, description || undefined);
+    const result = await saveMultiStageTemplate(stagesToSave, name, description || undefined, includeTaskContent);
     setSaving(false);
 
     if (result) {
@@ -233,6 +235,11 @@ export function SaveAllStagesDialog({
   const totalTasks = stages
     .filter(s => selectedStages.has(s.stage_id))
     .reduce((sum, s) => sum + (s.tasks?.length || 0), 0);
+
+  // Count completed tasks for preview
+  const completedTasks = stages
+    .filter(s => selectedStages.has(s.stage_id))
+    .reduce((sum, s) => sum + (s.tasks?.filter((t: any) => t.completed)?.length || 0), 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,6 +276,26 @@ export function SaveAllStagesDialog({
               placeholder="תיאור קצר של התבנית..."
               rows={2}
             />
+          </div>
+
+          {/* Include task content checkbox */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border">
+            <Checkbox 
+              id="include-task-content"
+              checked={includeTaskContent}
+              onCheckedChange={(checked) => setIncludeTaskContent(checked === true)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="include-task-content" className="font-medium cursor-pointer">
+                שמור כולל המילוי
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                ישמור את סטטוס השלמת המשימות, צבעים ועיצוב
+                {completedTasks > 0 && (
+                  <span className="text-primary"> ({completedTasks} משימות מושלמות)</span>
+                )}
+              </p>
+            </div>
           </div>
 
           <Separator />
@@ -310,9 +337,12 @@ export function SaveAllStagesDialog({
           </div>
 
           {/* Summary */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <Badge variant="secondary">{selectedStages.size} שלבים</Badge>
             <Badge variant="secondary">{totalTasks} משימות</Badge>
+            {includeTaskContent && (
+              <Badge variant="default" className="bg-primary">כולל מילוי</Badge>
+            )}
           </div>
         </div>
 
@@ -322,7 +352,7 @@ export function SaveAllStagesDialog({
           </Button>
           <Button onClick={handleSave} disabled={saving || !name.trim() || selectedStages.size === 0}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            שמור תבנית
+            {includeTaskContent ? 'שמור תבנית עם מילוי' : 'שמור תבנית'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -465,7 +495,7 @@ export function ApplyTemplateDialog({
                             ) : (
                               <div className="font-medium truncate">{template.name}</div>
                             )}
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                               {template.is_multi_stage ? (
                                 <>
                                   <Badge variant="outline" className="text-[10px]">
@@ -475,6 +505,9 @@ export function ApplyTemplateDialog({
                                 </>
                               ) : (
                                 <span>{totalTasks} משימות</span>
+                              )}
+                              {template.includes_task_content && (
+                                <Badge variant="default" className="text-[10px] bg-primary">כולל מילוי</Badge>
                               )}
                             </div>
                           </div>
@@ -582,6 +615,7 @@ export function ApplyTemplateDialog({
                           >
                             {applying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                             החל תבנית ({template.stages?.length || 0} שלבים, {totalTasks} משימות)
+                            {template.includes_task_content && ' - כולל מילוי'}
                           </Button>
                         </div>
                       )}

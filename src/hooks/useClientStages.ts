@@ -86,15 +86,8 @@ export function useClientStages(clientId: string) {
   const [tasks, setTasks] = useState<ClientStageTask[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Default stages configuration
-  const DEFAULT_STAGES = [
-    { stage_id: 'contact', stage_name: 'התקשרות לקוח', stage_icon: 'Phone', sort_order: 0 },
-    { stage_id: 'info', stage_name: 'תיק מידע', stage_icon: 'FolderOpen', sort_order: 1 },
-    { stage_id: 'submission', stage_name: 'הגשה', stage_icon: 'Send', sort_order: 2 },
-    { stage_id: 'control', stage_name: 'בקרה מרחבית', stage_icon: 'MapPin', sort_order: 3 },
-  ];
-
-  // Initialize stages if they don't exist
+  // No default stages - user will add them manually or from templates
+  // Initialize stages - just fetch existing, don't create defaults
   const initializeStages = async () => {
     try {
       const { data: existingStages, error: fetchError } = await supabase
@@ -105,27 +98,10 @@ export function useClientStages(clientId: string) {
 
       if (fetchError) throw fetchError;
 
-      // If no stages exist, create default ones
-      if (!existingStages || existingStages.length === 0) {
-        const stagesToInsert = DEFAULT_STAGES.map(stage => ({
-          client_id: clientId,
-          ...stage,
-        }));
-
-        const { data: newStages, error: insertError } = await supabase
-          .from('client_stages')
-          .insert(stagesToInsert)
-          .select();
-
-        if (insertError) throw insertError;
-        return newStages || [];
-      }
-
-      // Note: We no longer auto-restore deleted default stages
-      // Users can now delete any stage including defaults
-      return existingStages;
+      // Return existing stages (could be empty - that's ok now)
+      return existingStages || [];
     } catch (error: unknown) {
-      console.error('Error initializing stages:', error);
+      console.error('Error loading stages:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן לטעון את שלבי הלקוח',
@@ -1075,6 +1051,258 @@ export function useClientStages(clientId: string) {
     return stagesWithTasks.filter(s => s.folder_id === folderId);
   };
 
+  // ============================================
+  // TEMPLATE FUNCTIONS
+  // ============================================
+
+  // Save current stages and tasks as a template
+  const saveAsTemplate = async (
+    templateName: string, 
+    includeTaskContent: boolean = false,
+    description?: string
+  ) => {
+    try {
+      // Create the template
+      const { data: template, error: templateError } = await supabase
+        .from('stage_templates')
+        .insert({
+          name: templateName,
+          description: description || null,
+        })
+        .select()
+        .single();
+
+      if (templateError) throw templateError;
+
+      // Add stages to template
+      const stagesToInsert = stages.map((stage, index) => ({
+        template_id: template.id,
+        stage_name: stage.stage_name,
+        stage_icon: stage.stage_icon,
+        sort_order: index,
+        // Include timer settings if they exist
+        target_working_days: stage.target_working_days || null,
+      }));
+
+      const { data: templateStages, error: stagesError } = await supabase
+        .from('stage_template_stages')
+        .insert(stagesToInsert)
+        .select();
+
+      if (stagesError) throw stagesError;
+
+      // Create mapping of old stage_id to new template_stage.id
+      const stageIdMap = new Map<string, string>();
+      stages.forEach((stage, index) => {
+        if (templateStages && templateStages[index]) {
+          stageIdMap.set(stage.stage_id, templateStages[index].id);
+        }
+      });
+
+      // Add tasks to template
+      const tasksToInsert: any[] = [];
+      for (const stage of stagesWithTasks) {
+        const templateStageId = stageIdMap.get(stage.stage_id);
+        if (!templateStageId || !stage.tasks) continue;
+
+        for (const task of stage.tasks) {
+          tasksToInsert.push({
+            template_stage_id: templateStageId,
+            title: task.title,
+            sort_order: task.sort_order,
+            // Include full content if requested
+            ...(includeTaskContent && {
+              background_color: task.background_color || null,
+              text_color: task.text_color || null,
+              is_bold: task.is_bold || false,
+              target_working_days: task.target_working_days || null,
+              // Store completed state and date in metadata
+              metadata: {
+                completed: task.completed,
+                completed_at: task.completed_at,
+                started_at: task.started_at,
+              }
+            }),
+          });
+        }
+      }
+
+      if (tasksToInsert.length > 0) {
+        const { error: tasksError } = await supabase
+          .from('stage_template_tasks')
+          .insert(tasksToInsert);
+
+        if (tasksError) throw tasksError;
+      }
+
+      toast({
+        title: 'הצלחה',
+        description: `התבנית "${templateName}" נשמרה בהצלחה עם ${stages.length} שלבים ו-${tasksToInsert.length} משימות`,
+      });
+
+      return template;
+    } catch (error: unknown) {
+      console.error('Error saving template:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לשמור תבנית',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
+  // Load saved templates list
+  const loadTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stage_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: unknown) {
+      console.error('Error loading templates:', error);
+      return [];
+    }
+  };
+
+  // Apply a template to this client (adds stages and tasks)
+  const applyTemplate = async (templateId: string, includeContent: boolean = false) => {
+    try {
+      // Get template stages
+      const { data: templateStages, error: stagesError } = await supabase
+        .from('stage_template_stages')
+        .select('*')
+        .eq('template_id', templateId)
+        .order('sort_order');
+
+      if (stagesError) throw stagesError;
+      if (!templateStages || templateStages.length === 0) {
+        toast({
+          title: 'התבנית ריקה',
+          description: 'לא נמצאו שלבים בתבנית זו',
+          variant: 'destructive',
+        });
+        return false;
+      }
+
+      // Get current max sort order
+      const currentMaxOrder = stages.reduce((max, s) => Math.max(max, s.sort_order), -1);
+
+      // Create stages for this client
+      const stagesToInsert = templateStages.map((ts, index) => ({
+        client_id: clientId,
+        stage_id: `template_${templateId}_${ts.id}_${Date.now()}`,
+        stage_name: ts.stage_name,
+        stage_icon: ts.stage_icon,
+        sort_order: currentMaxOrder + 1 + index,
+        target_working_days: ts.target_working_days || null,
+      }));
+
+      const { data: newStages, error: insertStagesError } = await supabase
+        .from('client_stages')
+        .insert(stagesToInsert)
+        .select();
+
+      if (insertStagesError) throw insertStagesError;
+
+      // Create mapping of template_stage.id to new client stage_id
+      const stageIdMap = new Map<string, string>();
+      templateStages.forEach((ts, index) => {
+        if (newStages && newStages[index]) {
+          stageIdMap.set(ts.id, newStages[index].stage_id);
+        }
+      });
+
+      // Get template tasks
+      const templateStageIds = templateStages.map(ts => ts.id);
+      const { data: templateTasks, error: tasksError } = await supabase
+        .from('stage_template_tasks')
+        .select('*')
+        .in('template_stage_id', templateStageIds)
+        .order('sort_order');
+
+      if (tasksError) throw tasksError;
+
+      // Create tasks for this client
+      if (templateTasks && templateTasks.length > 0) {
+        const tasksToInsert = templateTasks.map(tt => {
+          const clientStageId = stageIdMap.get(tt.template_stage_id);
+          const metadata = (tt as any).metadata || {};
+          
+          return {
+            client_id: clientId,
+            stage_id: clientStageId,
+            title: tt.title,
+            sort_order: tt.sort_order,
+            completed: includeContent && metadata.completed ? true : false,
+            completed_at: includeContent && metadata.completed_at ? metadata.completed_at : null,
+            // Include styling if present and includeContent is true
+            ...(includeContent && {
+              background_color: tt.background_color || null,
+              text_color: tt.text_color || null,
+              is_bold: tt.is_bold || false,
+              target_working_days: tt.target_working_days || null,
+              started_at: metadata.started_at || null,
+            }),
+          };
+        });
+
+        const { error: insertTasksError } = await supabase
+          .from('client_stage_tasks')
+          .insert(tasksToInsert);
+
+        if (insertTasksError) throw insertTasksError;
+      }
+
+      // Reload data
+      await loadData();
+
+      toast({
+        title: 'הצלחה',
+        description: `התבנית הוחלה בהצלחה - ${templateStages.length} שלבים ו-${templateTasks?.length || 0} משימות`,
+      });
+
+      return true;
+    } catch (error: unknown) {
+      console.error('Error applying template:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להחיל תבנית',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  // Delete a template
+  const deleteTemplate = async (templateId: string) => {
+    try {
+      const { error } = await supabase
+        .from('stage_templates')
+        .delete()
+        .eq('id', templateId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'הצלחה',
+        description: 'התבנית נמחקה בהצלחה',
+      });
+      return true;
+    } catch (error: unknown) {
+      console.error('Error deleting template:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן למחוק תבנית',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     stages: stagesWithTasks,
     loading,
@@ -1103,6 +1331,11 @@ export function useClientStages(clientId: string) {
     pasteStageData,
     assignStageToFolder,
     getStagesByFolder,
+    // Template functions
+    saveAsTemplate,
+    loadTemplates,
+    applyTemplate,
+    deleteTemplate,
     refresh: loadData,
   };
 }

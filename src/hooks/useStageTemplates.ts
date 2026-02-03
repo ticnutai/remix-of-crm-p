@@ -14,6 +14,14 @@ export interface TemplateTask {
   template_stage_id: string | null;
   title: string;
   sort_order: number;
+  // Content fields (saved when includeTaskContent is true)
+  completed?: boolean;
+  completed_at?: string | null;
+  background_color?: string | null;
+  text_color?: string | null;
+  is_bold?: boolean;
+  target_working_days?: number | null;
+  started_at?: string | null;
 }
 
 export interface TemplateStage {
@@ -32,6 +40,7 @@ export interface StageTemplate {
   icon: string;
   color: string;
   is_multi_stage: boolean;
+  includes_task_content: boolean; // Whether template has saved task content
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -191,10 +200,12 @@ export function useStageTemplates() {
   }, [user, toast, loadTemplates]);
 
   // Save multiple stages as a multi-stage template
+  // includeTaskContent: if true, saves task completion status, colors, styling etc.
   const saveMultiStageTemplate = useCallback(async (
     stages: ClientStage[],
     templateName: string,
-    description?: string
+    description?: string,
+    includeTaskContent: boolean = false
   ) => {
     if (!user) return null;
 
@@ -208,6 +219,7 @@ export function useStageTemplates() {
           icon: 'Layers',
           is_multi_stage: true,
           created_by: user.id,
+          includes_task_content: includeTaskContent,
         })
         .select()
         .single();
@@ -231,12 +243,30 @@ export function useStageTemplates() {
 
         // Create tasks for this stage
         if (stage.tasks && stage.tasks.length > 0) {
-          const templateTasks = stage.tasks.map((task, index) => ({
-            template_id: template.id,
-            template_stage_id: templateStage.id,
-            title: task.title,
-            sort_order: task.sort_order ?? index,
-          }));
+          const templateTasks = stage.tasks.map((task: any, index) => {
+            const baseTask = {
+              template_id: template.id,
+              template_stage_id: templateStage.id,
+              title: task.title,
+              sort_order: task.sort_order ?? index,
+            };
+
+            // If including task content, add completion status and styling
+            if (includeTaskContent) {
+              return {
+                ...baseTask,
+                completed: task.completed || false,
+                completed_at: task.completed_at || null,
+                background_color: task.background_color || null,
+                text_color: task.text_color || null,
+                is_bold: task.is_bold || false,
+                target_working_days: task.target_working_days || null,
+                started_at: task.started_at || null,
+              };
+            }
+
+            return baseTask;
+          });
 
           const { error: tasksError } = await db
             .from('stage_template_tasks')
@@ -247,9 +277,10 @@ export function useStageTemplates() {
       }
 
       const totalTasks = stages.reduce((sum, s) => sum + (s.tasks?.length || 0), 0);
+      const contentNote = includeTaskContent ? ' (כולל מילוי)' : '';
       toast({
         title: 'התבנית נשמרה בהצלחה',
-        description: `"${templateName}" עם ${stages.length} שלבים ו-${totalTasks} משימות`,
+        description: `"${templateName}" עם ${stages.length} שלבים ו-${totalTasks} משימות${contentNote}`,
       });
 
       await loadTemplates();
@@ -265,6 +296,7 @@ export function useStageTemplates() {
   }, [user, toast, loadTemplates]);
 
   // Apply template to a client - creates stages and tasks
+  // If template includes_task_content, the task completion status and styling will be preserved
   const applyTemplate = useCallback(async (
     templateId: string,
     clientId: string,
@@ -275,6 +307,7 @@ export function useStageTemplates() {
       if (!template) throw new Error('Template not found');
 
       const createdStages: string[] = [];
+      const includesContent = template.includes_task_content;
 
       if (template.stages && template.stages.length > 0) {
         for (const templateStage of template.stages) {
@@ -296,13 +329,31 @@ export function useStageTemplates() {
 
           // Create tasks for this stage
           if (templateStage.tasks && templateStage.tasks.length > 0) {
-            const tasks = templateStage.tasks.map(task => ({
-              client_id: clientId,
-              stage_id: stageId,
-              title: task.title,
-              sort_order: task.sort_order,
-              completed: false,
-            }));
+            const tasks = templateStage.tasks.map(task => {
+              const baseTask: any = {
+                client_id: clientId,
+                stage_id: stageId,
+                title: task.title,
+                sort_order: task.sort_order,
+                completed: false,
+              };
+
+              // If template includes content, apply saved task state
+              if (includesContent) {
+                return {
+                  ...baseTask,
+                  completed: task.completed || false,
+                  completed_at: task.completed_at || null,
+                  background_color: task.background_color || null,
+                  text_color: task.text_color || null,
+                  is_bold: task.is_bold || false,
+                  target_working_days: task.target_working_days || null,
+                  started_at: task.started_at || null,
+                };
+              }
+
+              return baseTask;
+            });
 
             const { error: tasksError } = await supabase
               .from('client_stage_tasks')
@@ -313,9 +364,10 @@ export function useStageTemplates() {
         }
       }
 
+      const contentNote = includesContent ? ' (כולל מילוי)' : '';
       toast({
         title: 'התבנית הוחלה בהצלחה',
-        description: `נוספו ${createdStages.length} שלבים`,
+        description: `נוספו ${createdStages.length} שלבים${contentNote}`,
       });
 
       return createdStages;
