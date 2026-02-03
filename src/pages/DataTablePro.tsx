@@ -52,7 +52,6 @@ import {
 } from '@/components/ui/select';
 import {
   Table,
-  Layers,
   Settings,
   Save,
   Trash2,

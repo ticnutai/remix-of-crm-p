@@ -192,6 +192,103 @@ export default function Clients() {
   const [duplicateClient, setDuplicateClient] = useState<Client | null>(null);
   const [pendingClientData, setPendingClientData] = useState<any>(null);
 
+  // Memoized filtered clients for performance - replaces applyFilters + useEffect pattern
+  // MUST be defined before useEffects that use it
+  const filteredClients = useMemo(() => {
+    let result = [...clients];
+
+    // Search filter
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (client) =>
+          client.name.toLowerCase().includes(query) ||
+          client.email?.toLowerCase().includes(query) ||
+          client.phone?.toLowerCase().includes(query) ||
+          client.company?.toLowerCase().includes(query)
+      );
+    }
+
+    // Stage filter
+    if (filters.stages.length > 0) {
+      const clientIdsWithSelectedStages = new Set(
+        clientStages
+          .filter(cs => filters.stages.includes(cs.stage_id))
+          .map(cs => cs.client_id)
+      );
+      result = result.filter(client => clientIdsWithSelectedStages.has(client.id));
+    }
+
+    // Date filter
+    if (filters.dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      result = result.filter(client => {
+        const createdAt = new Date(client.created_at);
+        switch (filters.dateFilter) {
+          case 'today':
+            return createdAt >= today;
+          case 'week':
+            return createdAt >= weekAgo;
+          case 'month':
+            return createdAt >= monthAgo;
+          case 'older':
+            return createdAt < monthAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Has reminders filter
+    if (filters.hasReminders === true) {
+      result = result.filter(client => clientsWithReminders.has(client.id));
+    }
+
+    // Has tasks filter
+    if (filters.hasTasks === true) {
+      result = result.filter(client => clientsWithTasks.has(client.id));
+    }
+
+    // Has meetings filter
+    if (filters.hasMeetings === true) {
+      result = result.filter(client => clientsWithMeetings.has(client.id));
+    }
+
+    // Category filter
+    if (filters.categories.length > 0) {
+      result = result.filter(client => client.category_id && filters.categories.includes(client.category_id));
+    }
+
+    // Tags filter
+    if (filters.tags.length > 0) {
+      result = result.filter(client => 
+        client.tags && client.tags.some(tag => filters.tags.includes(tag))
+      );
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name, 'he');
+        case 'name_desc':
+          return b.name.localeCompare(a.name, 'he');
+        case 'date_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [clients, searchQuery, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
+
   useEffect(() => {
     fetchClients();
     fetchFilterData();
@@ -347,102 +444,6 @@ export default function Clients() {
     };
   }, [keyboardSearch, filteredClients]);
 
-  // Memoized filtered clients for performance - replaces applyFilters + useEffect pattern
-  const filteredClients = useMemo(() => {
-    let result = [...clients];
-
-    // Search filter
-    if (searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (client) =>
-          client.name.toLowerCase().includes(query) ||
-          client.email?.toLowerCase().includes(query) ||
-          client.phone?.toLowerCase().includes(query) ||
-          client.company?.toLowerCase().includes(query)
-      );
-    }
-
-    // Stage filter
-    if (filters.stages.length > 0) {
-      const clientIdsWithSelectedStages = new Set(
-        clientStages
-          .filter(cs => filters.stages.includes(cs.stage_id))
-          .map(cs => cs.client_id)
-      );
-      result = result.filter(client => clientIdsWithSelectedStages.has(client.id));
-    }
-
-    // Date filter
-    if (filters.dateFilter !== 'all') {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      result = result.filter(client => {
-        const createdAt = new Date(client.created_at);
-        switch (filters.dateFilter) {
-          case 'today':
-            return createdAt >= today;
-          case 'week':
-            return createdAt >= weekAgo;
-          case 'month':
-            return createdAt >= monthAgo;
-          case 'older':
-            return createdAt < monthAgo;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Has reminders filter
-    if (filters.hasReminders === true) {
-      result = result.filter(client => clientsWithReminders.has(client.id));
-    }
-
-    // Has tasks filter
-    if (filters.hasTasks === true) {
-      result = result.filter(client => clientsWithTasks.has(client.id));
-    }
-
-    // Has meetings filter
-    if (filters.hasMeetings === true) {
-      result = result.filter(client => clientsWithMeetings.has(client.id));
-    }
-
-    // Category filter
-    if (filters.categories.length > 0) {
-      result = result.filter(client => client.category_id && filters.categories.includes(client.category_id));
-    }
-
-    // Tags filter
-    if (filters.tags.length > 0) {
-      result = result.filter(client => 
-        client.tags && client.tags.some(tag => filters.tags.includes(tag))
-      );
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (filters.sortBy) {
-        case 'name_asc':
-          return a.name.localeCompare(b.name, 'he');
-        case 'name_desc':
-          return b.name.localeCompare(a.name, 'he');
-        case 'date_desc':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case 'date_asc':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  }, [clients, searchQuery, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
-
   const fetchFilterData = async () => {
     try {
       // Fetch client stages
@@ -528,7 +529,7 @@ export default function Clients() {
 
       console.log('✅ [Clients Page] Clients loaded successfully:', data?.length || 0, 'Total count:', count);
       setClients((data || []) as Client[]);
-      setFilteredClients((data || []) as Client[]);
+      // filteredClients is now computed automatically via useMemo
     } catch (error) {
       console.error('❌ [Clients Page] Error fetching clients:', error);
       toast({

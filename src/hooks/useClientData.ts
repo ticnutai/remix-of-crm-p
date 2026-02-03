@@ -299,12 +299,12 @@ export function useClientData(clientId: string | undefined) {
   const fetchTasks = useCallback(async () => {
     if (!clientId) return;
     
+    // Note: assigned_to doesn't have a foreign key to profiles, so we fetch separately
     const { data, error } = await supabase
       .from('tasks')
       .select(`
         *,
-        projects:project_id(name),
-        profiles:assigned_to(full_name)
+        projects:project_id(name)
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false });
@@ -317,7 +317,6 @@ export function useClientData(clientId: string | undefined) {
     setTasks((data || []).map(task => ({
       ...task,
       project_name: (task.projects as any)?.name,
-      assigned_to_name: (task.profiles as any)?.full_name,
     })));
   }, [clientId]);
 

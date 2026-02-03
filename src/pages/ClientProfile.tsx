@@ -398,7 +398,7 @@ export default function ClientProfile() {
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <AlertCircle className="h-12 w-12 text-muted-foreground" />
           <p className="text-muted-foreground">לקוח לא נמצא</p>
-          <Button onClick={() => navigate('/?tab=clients')}>
+          <Button onClick={() => navigate('/clients')}>
             <ArrowRight className="h-4 w-4 ml-2" />
             חזרה ללקוחות
           </Button>
@@ -415,7 +415,7 @@ export default function ClientProfile() {
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
-              onClick={() => navigate('/?tab=clients')}
+              onClick={() => navigate('/clients')}
               className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
             >
               <ArrowRight className="h-4 w-4 ml-2" />

@@ -1209,7 +1209,8 @@ export function ClientStagesBoard({
         isActiveStage && !isStageCompleted && "border-yellow-500 shadow-lg shadow-yellow-500/10",
         // Future stages: thin gold border
         isFutureStage && "border-amber-400/60")} onMouseEnter={() => setHoveredStage(stage.stage_id)} onMouseLeave={() => setHoveredStage(null)}>
-              {/* Selection Checkbox - Top Right, above completed indicator */}
+              {/* Selection Checkbox - Top Right, visible on hover or when selected */}
+              {(isHovered || selectedStages.has(stage.stage_id)) && (
               <div className="absolute top-2 right-10 z-30">
                 <Checkbox
                   checked={selectedStages.has(stage.stage_id)}
@@ -1218,6 +1219,7 @@ export function ClientStagesBoard({
                   className="bg-white border-2 border-gray-400 h-5 w-5 shadow-sm hover:border-blue-500 cursor-pointer"
                 />
               </div>
+              )}
               {/* Header - Clickable to expand */}
               <div className={cn("p-4 rounded-t-lg relative cursor-pointer transition-all hover:opacity-90",
           // Completed stage: white/light gradient with gold accent
