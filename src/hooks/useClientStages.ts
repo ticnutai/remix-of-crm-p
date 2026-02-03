@@ -36,6 +36,8 @@ export interface ClientStage {
   started_at?: string | null;
   target_working_days?: number | null;
   timer_display_style?: number;
+  // Folder assignment
+  folder_id?: string | null;
 }
 
 // Helper function to remove duplicate tasks (same stage_id + title)
@@ -993,6 +995,49 @@ export function useClientStages(clientId: string) {
     tasks: tasks.filter(t => t.stage_id === stage.stage_id),
   }));
 
+  // Assign stage to a folder (or remove from folder by passing null)
+  const assignStageToFolder = async (stageId: string, folderId: string | null) => {
+    try {
+      const stage = stages.find(s => s.stage_id === stageId);
+      if (!stage) {
+        console.error('Stage not found:', stageId);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('client_stages')
+        .update({ folder_id: folderId } as any)
+        .eq('id', stage.id);
+
+      if (error) throw error;
+
+      setStages(prev =>
+        prev.map(s =>
+          s.stage_id === stageId
+            ? { ...s, folder_id: folderId }
+            : s
+        )
+      );
+      
+      toast({
+        title: 'הצלחה',
+        description: folderId ? 'השלב סווג לתיקייה' : 'השלב הוסר מהתיקייה',
+      });
+    } catch (error: unknown) {
+      console.error('Error assigning stage to folder:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לסווג שלב לתיקייה',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Get stages filtered by folder
+  const getStagesByFolder = (folderId: string | null) => {
+    return stagesWithTasks.filter(s => s.folder_id === folderId);
+  };
+
   return {
     stages: stagesWithTasks,
     loading,
@@ -1018,6 +1063,8 @@ export function useClientStages(clientId: string) {
     reorderStages,
     copyStageData,
     pasteStageData,
+    assignStageToFolder,
+    getStagesByFolder,
     refresh: loadData,
   };
 }

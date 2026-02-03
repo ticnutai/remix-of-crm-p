@@ -64,12 +64,17 @@ import {
   MapPin,
   Building,
   Settings2,
+  Layers,
+  ExternalLink,
+  Link,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientFolders, ClientFolder, ClientFolderStage, ClientFolderTask } from '@/hooks/useClientFolders';
+import { useClientStages, ClientStage } from '@/hooks/useClientStages';
 
 interface ClientFoldersManagerProps {
   clientId: string;
+  onOpenFolderStages?: (folderId: string, folderName: string) => void;
 }
 
 // Icon mapping
@@ -422,7 +427,7 @@ function StageCard({
 }
 
 // Main Component
-export function ClientFoldersManager({ clientId }: ClientFoldersManagerProps) {
+export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFoldersManagerProps) {
   const {
     folders,
     stages,
@@ -445,6 +450,13 @@ export function ClientFoldersManager({ clientId }: ClientFoldersManagerProps) {
     reorderTasks,
   } = useClientFolders(clientId);
 
+  // Get main stages (for assigning to folders)
+  const {
+    stages: mainStages,
+    assignStageToFolder,
+    getStagesByFolder,
+  } = useClientStages(clientId);
+
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderIcon, setNewFolderIcon] = useState('Folder');
@@ -455,6 +467,27 @@ export function ClientFoldersManager({ clientId }: ClientFoldersManagerProps) {
   const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
   const [duplicateDialog, setDuplicateDialog] = useState<{ id: string; name: string } | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
+  
+  // Dialog for assigning main stages to folder
+  const [isAssignStagesOpen, setIsAssignStagesOpen] = useState(false);
+  const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
+
+  // Get stages already assigned to this folder
+  const assignedStages = mainStages.filter(s => s.folder_id === activeFolderId);
+  // Get stages not assigned to any folder (available for assignment)
+  const availableStages = mainStages.filter(s => !s.folder_id);
+
+  const handleAssignStages = async () => {
+    for (const stageId of selectedStageIds) {
+      await assignStageToFolder(stageId, activeFolderId);
+    }
+    setSelectedStageIds(new Set());
+    setIsAssignStagesOpen(false);
+  };
+
+  const handleRemoveStageFromFolder = async (stageId: string) => {
+    await assignStageToFolder(stageId, null);
+  };
 
   const handleAddFolder = async () => {
     if (newFolderName.trim()) {
@@ -580,12 +613,66 @@ export function ClientFoldersManager({ clientId }: ClientFoldersManagerProps) {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{activeFolder.folder_name}</h3>
               <Badge variant="secondary">{stages.length} שלבים</Badge>
+              {assignedStages.length > 0 && (
+                <Badge variant="outline" className="gap-1">
+                  <Layers className="h-3 w-3" />
+                  {assignedStages.length} שלבים מקושרים
+                </Badge>
+              )}
             </div>
-            <Button size="sm" onClick={() => setIsAddStageOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              הוסף שלב
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Open Stages in Board Button */}
+              {onOpenFolderStages && assignedStages.length > 0 && (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => onOpenFolderStages(activeFolder.id, activeFolder.folder_name)} 
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  פתח בלוח שלבים
+                </Button>
+              )}
+              {/* Assign Stages Button */}
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setIsAssignStagesOpen(true)} 
+                className="gap-2"
+              >
+                <Link className="h-4 w-4" />
+                קשר שלבים
+              </Button>
+              <Button size="sm" onClick={() => setIsAddStageOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                הוסף שלב
+              </Button>
+            </div>
           </div>
+
+          {/* Linked Main Stages Section */}
+          {assignedStages.length > 0 && (
+            <div className="border rounded-lg p-3 bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Layers className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">שלבים מקושרים מהלוח הראשי</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {assignedStages.map((stage) => (
+                  <Badge 
+                    key={stage.id} 
+                    variant="secondary"
+                    className="gap-1 cursor-pointer hover:bg-destructive/20"
+                    onClick={() => handleRemoveStageFromFolder(stage.stage_id)}
+                    title="לחץ להסרה מהתיקייה"
+                  >
+                    {stage.stage_name}
+                    <X className="h-3 w-3" />
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stages */}
           <ScrollArea className="h-[500px]">
@@ -801,6 +888,89 @@ export function ClientFoldersManager({ clientId }: ClientFoldersManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign Stages Dialog */}
+      <Dialog open={isAssignStagesOpen} onOpenChange={setIsAssignStagesOpen}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader className="text-right">
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              קשר שלבים לתיקייה
+            </DialogTitle>
+            <DialogDescription>
+              בחר שלבים מהלוח הראשי לקישור לתיקייה "{activeFolder?.folder_name}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {availableStages.length > 0 ? (
+              <ScrollArea className="h-[300px] border rounded-lg p-2">
+                <div className="space-y-2">
+                  {availableStages.map((stage) => (
+                    <div 
+                      key={stage.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+                        selectedStageIds.has(stage.stage_id)
+                          ? "bg-primary/10 border-primary"
+                          : "hover:bg-muted"
+                      )}
+                      onClick={() => {
+                        const newSet = new Set(selectedStageIds);
+                        if (newSet.has(stage.stage_id)) {
+                          newSet.delete(stage.stage_id);
+                        } else {
+                          newSet.add(stage.stage_id);
+                        }
+                        setSelectedStageIds(newSet);
+                      }}
+                    >
+                      <Checkbox 
+                        checked={selectedStageIds.has(stage.stage_id)}
+                        className="pointer-events-none"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium">{stage.stage_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {stage.tasks?.length || 0} משימות
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Layers className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>כל השלבים כבר מקושרים לתיקיות</p>
+              </div>
+            )}
+
+            {selectedStageIds.size > 0 && (
+              <div className="text-sm text-muted-foreground">
+                נבחרו {selectedStageIds.size} שלבים
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button variant="outline" onClick={() => {
+              setIsAssignStagesOpen(false);
+              setSelectedStageIds(new Set());
+            }}>
+              ביטול
+            </Button>
+            <Button 
+              onClick={handleAssignStages} 
+              disabled={selectedStageIds.size === 0}
+              className="gap-2"
+            >
+              <Link className="h-4 w-4" />
+              קשר {selectedStageIds.size > 0 ? `(${selectedStageIds.size})` : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

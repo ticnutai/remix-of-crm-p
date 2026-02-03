@@ -1572,16 +1572,41 @@ export default function ClientProfile() {
 // Client Stages Section with View Toggle
 function ClientStagesSection({ clientId }: { clientId: string }) {
   const [viewMode, setViewMode] = React.useState<'list' | 'board' | 'table' | 'folders'>('board');
+  const [folderFilter, setFolderFilter] = React.useState<{ folderId: string; folderName: string } | null>(null);
 
   // Dynamically import ClientStagesTable
   const ClientStagesTable = React.lazy(() => 
     import('@/components/client-tabs/ClientStagesTable').then(m => ({ default: m.ClientStagesTable }))
   );
 
+  // Handler for opening folder stages in board view
+  const handleOpenFolderStages = (folderId: string, folderName: string) => {
+    setFolderFilter({ folderId, folderName });
+    setViewMode('board');
+  };
+
+  // Clear folder filter
+  const clearFolderFilter = () => {
+    setFolderFilter(null);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
+          {folderFilter && (
+            <Badge 
+              variant="secondary" 
+              className="gap-1 cursor-pointer hover:bg-destructive/20"
+              onClick={clearFolderFilter}
+            >
+              <FolderOpen className="h-3 w-3" />
+              {folderFilter.folderName}
+              <span className="text-xs">✕</span>
+            </Badge>
+          )}
+        </div>
         <div className="flex gap-1 border rounded-lg p-1">
           <Button
             size="sm"
@@ -1623,13 +1648,20 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
       </div>
 
       {viewMode === 'board' ? (
-        <ClientStagesBoard clientId={clientId} />
+        <ClientStagesBoard 
+          clientId={clientId} 
+          filterByFolderId={folderFilter?.folderId}
+          filterByFolderName={folderFilter?.folderName}
+        />
       ) : viewMode === 'table' ? (
         <React.Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
           <ClientStagesTable clientId={clientId} />
         </React.Suspense>
       ) : viewMode === 'folders' ? (
-        <ClientFoldersManager clientId={clientId} />
+        <ClientFoldersManager 
+          clientId={clientId} 
+          onOpenFolderStages={handleOpenFolderStages}
+        />
       ) : (
         <ClientStagesTracker 
           clientId={clientId}

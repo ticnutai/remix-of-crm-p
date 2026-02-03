@@ -25,6 +25,8 @@ import { StageTimerDisplay, TaskTimerBadge } from './StageTimerDisplay';
 import { SaveAsTemplateDialog, SaveAllStagesDialog, ApplyTemplateDialog, CopyStagesDialog } from './StageTemplateDialogs';
 interface ClientStagesBoardProps {
   clientId: string;
+  filterByFolderId?: string | null;
+  filterByFolderName?: string;
 }
 
 // Icon mapping
@@ -756,10 +758,12 @@ function SortableStageItem({
     </div>;
 }
 export function ClientStagesBoard({
-  clientId
+  clientId,
+  filterByFolderId,
+  filterByFolderName
 }: ClientStagesBoardProps) {
   const {
-    stages,
+    stages: allStages,
     loading,
     addTask,
     addBulkTasks,
@@ -784,6 +788,12 @@ export function ClientStagesBoard({
     pasteStageData,
     refresh
   } = useClientStages(clientId);
+  
+  // Filter stages by folder if filter is provided
+  const stages = filterByFolderId !== undefined
+    ? allStages.filter(s => s.folder_id === filterByFolderId)
+    : allStages;
+    
   const [addingTask, setAddingTask] = useState<{
     stageId: string;
     title: string;
@@ -1060,6 +1070,15 @@ export function ClientStagesBoard({
       </div>;
   }
   return <div className="space-y-4">
+      {/* Folder Filter Indicator */}
+      {filterByFolderName && (
+        <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
+          <FolderOpen className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">מציג שלבים מתיקייה: {filterByFolderName}</span>
+          <Badge variant="secondary">{stages.length} שלבים</Badge>
+        </div>
+      )}
+      
       {/* Stage Management Buttons */}
       <div className="flex justify-start gap-2 flex-wrap">
         <Button variant="outline" onClick={() => setAddStageDialog(true)} className="gap-2">
