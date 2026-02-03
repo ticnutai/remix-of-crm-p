@@ -32,6 +32,10 @@ import {
   Bell,
   Plus,
   Save,
+  X,
+  BellRing,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { useClientDeadlines, DeadlineTemplate } from '@/hooks/useClientDeadlines';
 import { calculateDeadlineDate, formatRemainingDays } from '@/hooks/useIsraeliWorkdays';
@@ -63,6 +67,24 @@ const DEFAULT_REMINDER_OPTIONS = [
   { days: 1, label: 'יום לפני' },
 ];
 
+// Calculate reminder date helper
+const calculateReminderDate = (startDate: Date, deadlineDays: number, daysBefore: number): Date | null => {
+  const daysUntilReminder = deadlineDays - daysBefore;
+  if (daysUntilReminder <= 0) return null;
+
+  const reminderDate = new Date(startDate);
+  let workdaysAdded = 0;
+  while (workdaysAdded < daysUntilReminder) {
+    reminderDate.setDate(reminderDate.getDate() + 1);
+    const day = reminderDate.getDay();
+    if (day !== 5 && day !== 6) { // Not Friday or Saturday
+      workdaysAdded++;
+    }
+  }
+  reminderDate.setHours(9, 0, 0, 0);
+  return reminderDate;
+};
+
 export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineDialogProps) {
   const { templates, createDeadline, createTemplate } = useClientDeadlines(clientId);
   
@@ -76,6 +98,7 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [deadlineDays, setDeadlineDays] = useState(30);
   const [reminderDays, setReminderDays] = useState<number[]>([10, 5, 3, 1]);
+  const [customReminderDay, setCustomReminderDay] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
 
@@ -118,6 +141,29 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
         ? prev.filter(d => d !== days)
         : [...prev, days].sort((a, b) => b - a)
     );
+  };
+
+  const addCustomReminder = () => {
+    const days = parseInt(customReminderDay);
+    if (days > 0 && days < deadlineDays && !reminderDays.includes(days)) {
+      setReminderDays(prev => [...prev, days].sort((a, b) => b - a));
+      setCustomReminderDay('');
+    }
+  };
+
+  const removeReminder = (days: number) => {
+    setReminderDays(prev => prev.filter(d => d !== days));
+  };
+
+  // Get reminder dates preview
+  const getReminderPreview = () => {
+    const start = new Date(startDate);
+    return reminderDays
+      .map(days => {
+        const date = calculateReminderDate(start, deadlineDays, days);
+        return date ? { days, date, isValid: date > new Date() } : null;
+      })
+      .filter(Boolean) as { days: number; date: Date; isValid: boolean }[];
   };
 
   const handleSubmit = async () => {
@@ -327,19 +373,23 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
                 </div>
 
                 {/* Reminder Days */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <Bell className="h-4 w-4" />
-                    תזכורות
+                    התראות לפני סיום המניין
                   </Label>
+                  
+                  {/* Quick select buttons */}
                   <div className="flex flex-wrap gap-2">
                     {DEFAULT_REMINDER_OPTIONS.map(opt => (
                       <button
                         key={opt.days}
                         type="button"
                         onClick={() => toggleReminder(opt.days)}
+                        disabled={opt.days >= deadlineDays}
                         className={cn(
                           "px-3 py-1.5 rounded-full text-xs font-medium transition-all border",
+                          opt.days >= deadlineDays && "opacity-50 cursor-not-allowed",
                           reminderDays.includes(opt.days)
                             ? "bg-[#d4a843] text-white border-[#d4a843]"
                             : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-[#d4a843]"
@@ -349,6 +399,84 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
                       </button>
                     ))}
                   </div>
+
+                  {/* Custom reminder input */}
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                    <span className="text-sm text-muted-foreground">הוסף התראה מותאמת:</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={deadlineDays - 1}
+                      value={customReminderDay}
+                      onChange={(e) => setCustomReminderDay(e.target.value)}
+                      placeholder="ימים לפני"
+                      className="w-24 h-8 text-center"
+                    />
+                    <span className="text-sm text-muted-foreground">ימים לפני</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addCustomReminder}
+                      disabled={!customReminderDay || parseInt(customReminderDay) <= 0 || parseInt(customReminderDay) >= deadlineDays}
+                      className="h-8"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      הוסף
+                    </Button>
+                  </div>
+
+                  {/* Selected reminders preview */}
+                  {reminderDays.length > 0 && (
+                    <div className="space-y-2 p-3 rounded-lg border border-[#d4a843]/30 bg-amber-50/50 dark:bg-amber-950/20">
+                      <div className="flex items-center gap-2 text-sm font-medium text-[#d4a843]">
+                        <BellRing className="h-4 w-4" />
+                        {reminderDays.length} התראות מתוכננות:
+                      </div>
+                      <div className="space-y-1.5 mr-2">
+                        {getReminderPreview().map(({ days, date, isValid }) => (
+                          <div 
+                            key={days}
+                            className={cn(
+                              "flex items-center justify-between text-sm py-1 px-2 rounded",
+                              isValid ? "bg-white dark:bg-gray-800" : "bg-red-50 dark:bg-red-950/30"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isValid ? (
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                              ) : (
+                                <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                              )}
+                              <span className={cn(!isValid && "text-red-500")}>
+                                {days} ימים לפני - {format(date, 'dd/MM/yyyy', { locale: he })}
+                              </span>
+                              {!isValid && (
+                                <span className="text-xs text-red-500">(עבר)</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeReminder(days)}
+                              className="p-1 hover:bg-red-100 rounded transition-colors"
+                            >
+                              <X className="h-3 w-3 text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        💡 ההתראות יופיעו במערכת ההתראות המרכזית ובהודעות דפדפן
+                      </p>
+                    </div>
+                  )}
+
+                  {reminderDays.length === 0 && (
+                    <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 text-sm text-orange-700 dark:text-orange-300">
+                      <AlertTriangle className="h-4 w-4 inline ml-2" />
+                      לא נבחרו התראות - לא תקבל תזכורות לפני סיום המניין
+                    </div>
+                  )}
                 </div>
 
                 {/* Notes */}
