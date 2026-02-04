@@ -160,7 +160,7 @@ export const HeaderContextMenu = forwardRef<HTMLDivElement, HeaderContextMenuPro
         <ContextMenuTrigger asChild>
           <div ref={ref}>{children}</div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-56" dir="rtl">
+        <ContextMenuContent className="w-56">
           {/* עריכת שם */}
           {onRename && (
             <ContextMenuItem onClick={() => setRenameDialogOpen(true)}>

@@ -842,7 +842,6 @@ export default function Clients() {
       if (error) throw error;
       
       setClients(prev => prev.filter(c => !selectedClients.has(c.id)));
-      setFilteredClients(prev => prev.filter(c => !selectedClients.has(c.id)));
       setSelectedClients(new Set());
       setSelectionMode(false);
       
@@ -865,7 +864,6 @@ export default function Clients() {
       if (error) throw error;
       
       setClients(prev => prev.filter(c => c.id !== clientId));
-      setFilteredClients(prev => prev.filter(c => c.id !== clientId));
       toast({ title: 'הלקוח נמחק בהצלחה' });
     } catch (error) {
       console.error('Error deleting client:', error);
