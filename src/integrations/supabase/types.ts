@@ -463,6 +463,63 @@ export type Database = {
         }
         Relationships: []
       }
+      client_consultants: {
+        Row: {
+          client_id: string
+          consultant_id: string
+          created_at: string | null
+          end_date: string | null
+          id: string
+          notes: string | null
+          role: string | null
+          start_date: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          client_id: string
+          consultant_id: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          role?: string | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          consultant_id?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          notes?: string | null
+          role?: string | null
+          start_date?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_consultants_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_consultants_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_contacts: {
         Row: {
           client_id: string | null
@@ -512,54 +569,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      consultants: {
-        Row: {
-          id: string
-          name: string
-          profession: string
-          license_number: string | null
-          id_number: string | null
-          phone: string | null
-          email: string | null
-          company: string | null
-          specialty: string | null
-          notes: string | null
-          user_id: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          profession?: string
-          license_number?: string | null
-          id_number?: string | null
-          phone?: string | null
-          email?: string | null
-          company?: string | null
-          specialty?: string | null
-          notes?: string | null
-          user_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          profession?: string
-          license_number?: string | null
-          id_number?: string | null
-          phone?: string | null
-          email?: string | null
-          company?: string | null
-          specialty?: string | null
-          notes?: string | null
-          user_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       client_custom_tabs: {
         Row: {
@@ -757,6 +766,150 @@ export type Database = {
           },
         ]
       }
+      client_folder_stages: {
+        Row: {
+          created_at: string | null
+          folder_id: string
+          id: string
+          sort_order: number | null
+          stage_icon: string | null
+          stage_name: string
+          started_at: string | null
+          target_working_days: number | null
+          timer_display_style: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          folder_id: string
+          id?: string
+          sort_order?: number | null
+          stage_icon?: string | null
+          stage_name: string
+          started_at?: string | null
+          target_working_days?: number | null
+          timer_display_style?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          folder_id?: string
+          id?: string
+          sort_order?: number | null
+          stage_icon?: string | null
+          stage_name?: string
+          started_at?: string | null
+          target_working_days?: number | null
+          timer_display_style?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_folder_stages_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "client_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_folder_tasks: {
+        Row: {
+          background_color: string | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          is_bold: boolean | null
+          sort_order: number | null
+          stage_id: string
+          started_at: string | null
+          target_working_days: number | null
+          text_color: string | null
+          timer_display_style: number | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          background_color?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_bold?: boolean | null
+          sort_order?: number | null
+          stage_id: string
+          started_at?: string | null
+          target_working_days?: number | null
+          text_color?: string | null
+          timer_display_style?: number | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          background_color?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_bold?: boolean | null
+          sort_order?: number | null
+          stage_id?: string
+          started_at?: string | null
+          target_working_days?: number | null
+          text_color?: string | null
+          timer_display_style?: number | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_folder_tasks_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "client_folder_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_folders: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          folder_icon: string | null
+          folder_name: string
+          id: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          folder_icon?: string | null
+          folder_name: string
+          id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          folder_icon?: string | null
+          folder_name?: string
+          id?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           client_id: string
@@ -926,6 +1079,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           data_type_id: string | null
+          folder_id: string | null
           id: string
           is_completed: boolean | null
           sort_order: number
@@ -942,6 +1096,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           data_type_id?: string | null
+          folder_id?: string | null
           id?: string
           is_completed?: boolean | null
           sort_order?: number
@@ -958,6 +1113,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           data_type_id?: string | null
+          folder_id?: string | null
           id?: string
           is_completed?: boolean | null
           sort_order?: number
@@ -982,6 +1138,13 @@ export type Database = {
             columns: ["data_type_id"]
             isOneToOne: false
             referencedRelation: "data_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_stages_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "client_folders"
             referencedColumns: ["id"]
           },
         ]
@@ -1167,6 +1330,7 @@ export type Database = {
           address: string | null
           budget_range: string | null
           category_id: string | null
+          classification: string | null
           company: string | null
           created_at: string
           created_by: string | null
@@ -1177,6 +1341,7 @@ export type Database = {
           helka: string | null
           id: string
           id_number: string | null
+          industry: string | null
           is_sample: boolean | null
           linkedin: string | null
           migrash: string | null
@@ -1202,6 +1367,7 @@ export type Database = {
           address?: string | null
           budget_range?: string | null
           category_id?: string | null
+          classification?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -1212,6 +1378,7 @@ export type Database = {
           helka?: string | null
           id?: string
           id_number?: string | null
+          industry?: string | null
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
@@ -1237,6 +1404,7 @@ export type Database = {
           address?: string | null
           budget_range?: string | null
           category_id?: string | null
+          classification?: string | null
           company?: string | null
           created_at?: string
           created_by?: string | null
@@ -1247,6 +1415,7 @@ export type Database = {
           helka?: string | null
           id?: string
           id_number?: string | null
+          industry?: string | null
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
@@ -1277,6 +1446,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      consultants: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          id_number: string | null
+          license_number: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          profession: string
+          specialty: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          id_number?: string | null
+          license_number?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          profession?: string
+          specialty?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          id_number?: string | null
+          license_number?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          profession?: string
+          specialty?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       contract_amendments: {
         Row: {
@@ -1951,6 +2168,63 @@ export type Database = {
         }
         Relationships: []
       }
+      email_auto_rules: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          folder_id: string
+          id: string
+          is_active: boolean | null
+          name: string
+          priority: number | null
+          rule_type: string
+          rule_value: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          folder_id: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          priority?: number | null
+          rule_type: string
+          rule_value: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          folder_id?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          priority?: number | null
+          rule_type?: string
+          rule_value?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_auto_rules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_auto_rules_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "email_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaign_recipients: {
         Row: {
           campaign_id: string | null
@@ -2095,6 +2369,126 @@ export type Database = {
             columns: ["email_log_id"]
             isOneToOne: false
             referencedRelation: "email_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_folder_items: {
+        Row: {
+          added_at: string | null
+          client_id: string | null
+          email_date: string | null
+          email_from: string | null
+          email_id: string
+          email_snippet: string | null
+          email_subject: string | null
+          folder_id: string
+          id: string
+          is_important: boolean | null
+          is_starred: boolean | null
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          client_id?: string | null
+          email_date?: string | null
+          email_from?: string | null
+          email_id: string
+          email_snippet?: string | null
+          email_subject?: string | null
+          folder_id: string
+          id?: string
+          is_important?: boolean | null
+          is_starred?: boolean | null
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          client_id?: string | null
+          email_date?: string | null
+          email_from?: string | null
+          email_id?: string
+          email_snippet?: string | null
+          email_subject?: string | null
+          folder_id?: string
+          id?: string
+          is_important?: boolean | null
+          is_starred?: boolean | null
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_folder_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_folder_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "email_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_folders: {
+        Row: {
+          client_id: string | null
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          parent_folder_id: string | null
+          sort_order: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          parent_folder_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          parent_folder_id?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_folders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "email_folders"
             referencedColumns: ["id"]
           },
         ]
@@ -3538,6 +3932,7 @@ export type Database = {
           created_by: string
           description: string | null
           end_time: string
+          google_event_id: string | null
           id: string
           location: string | null
           meeting_type: string | null
@@ -3555,6 +3950,7 @@ export type Database = {
           created_by: string
           description?: string | null
           end_time: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           meeting_type?: string | null
@@ -3572,6 +3968,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           end_time?: string
+          google_event_id?: string | null
           id?: string
           location?: string | null
           meeting_type?: string | null
@@ -4666,6 +5063,44 @@ export type Database = {
           },
         ]
       }
+      task_consultants: {
+        Row: {
+          consultant_id: string
+          created_at: string | null
+          id: string
+          keyword: string
+          keyword_context: string | null
+          notes: string | null
+          task_id: string
+        }
+        Insert: {
+          consultant_id: string
+          created_at?: string | null
+          id?: string
+          keyword: string
+          keyword_context?: string | null
+          notes?: string | null
+          task_id: string
+        }
+        Update: {
+          consultant_id?: string
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          keyword_context?: string | null
+          notes?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_consultants_consultant_id_fkey"
+            columns: ["consultant_id"]
+            isOneToOne: false
+            referencedRelation: "consultants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -4728,44 +5163,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_consultants: {
-        Row: {
-          id: string
-          task_id: string
-          consultant_id: string
-          keyword: string
-          keyword_context: string | null
-          notes: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          task_id: string
-          consultant_id: string
-          keyword: string
-          keyword_context?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          task_id?: string
-          consultant_id?: string
-          keyword?: string
-          keyword_context?: string | null
-          notes?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_consultants_consultant_id_fkey"
-            columns: ["consultant_id"]
-            isOneToOne: false
-            referencedRelation: "consultants"
             referencedColumns: ["id"]
           },
         ]
@@ -5367,6 +5764,16 @@ export type Database = {
       generate_contract_number: { Args: never; Returns: string }
       get_client_id: { Args: { _user_id: string }; Returns: string }
       get_contract_summary: { Args: { p_contract_id: string }; Returns: Json }
+      get_email_folder_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          email_count: number
+          folder_id: string
+          folder_name: string
+          starred_count: number
+          unread_count: number
+        }[]
+      }
       get_file_statistics: { Args: { p_user_id?: string }; Returns: Json }
       get_migration_history: {
         Args: never

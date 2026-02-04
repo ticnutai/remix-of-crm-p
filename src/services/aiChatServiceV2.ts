@@ -214,15 +214,15 @@ class AIChatServiceV2 {
 
           // === משימות ===
           case 'task-count':
-        case 'task-stats':
-          response = this.getTaskStats();
-          suggestions = ['משימות באיחור', 'משימות להיום'];
-          break;
-        case 'task-overdue':
-          response = this.getOverdueTasks();
-          suggestions = ['כל המשימות', 'משימות לשבוע'];
-          break;
-        case 'task-today':
+          case 'task-stats':
+            response = this.getTaskStats();
+            suggestions = ['משימות באיחור', 'משימות להיום'];
+            break;
+          case 'task-overdue':
+            response = this.getOverdueTasks();
+            suggestions = ['כל המשימות', 'משימות לשבוע'];
+            break;
+          case 'task-today':
           response = this.getTodayTasks();
           break;
         case 'task-list':
@@ -339,9 +339,10 @@ class AIChatServiceV2 {
           this.conversationHistory.push(actionMessage);
           return actionMessage;
 
-        default:
-          response = this.handleUnknown(query);
-          suggestions = ['עזרה', 'סיכום', 'כמה לקוחות יש?'];
+          default:
+            response = this.handleUnknown(query);
+            suggestions = ['עזרה', 'סיכום', 'כמה לקוחות יש?'];
+        }
       }
     } catch (error) {
       console.error('Error processing query:', error);

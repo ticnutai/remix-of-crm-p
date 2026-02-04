@@ -1605,23 +1605,10 @@ export default function DataTablePro() {
 
   // Client columns with editable fields + dynamic columns
   const clientColumns: ColumnDef<SyncedClient>[] = useMemo(() => {
-    // Helper function to create header with context menu
-    const createClientHeader = (columnId: string, defaultLabel: string) => (
-      <div className="flex items-center gap-1.5">
-        <span>{clientColumnHeaders[columnId] || defaultLabel}</span>
-        <ColumnOptionsMenu
-          columnName={clientColumnHeaders[columnId] || defaultLabel}
-          columnId={columnId}
-          onDelete={() => handleHideClientColumn(columnId)}
-          onRename={(id, newName) => handleClientHeaderChange(id, newName)}
-        />
-      </div>
-    );
-
     const baseColumns: ColumnDef<SyncedClient>[] = [
       {
         id: 'name',
-        header: createClientHeader('name', 'שם לקוח'),
+        header: clientColumnHeaders['name'] || 'שם לקוח',
         accessorKey: 'name',
         sortable: true,
         filterable: true,
@@ -1630,6 +1617,7 @@ export default function DataTablePro() {
         editable: false, // Navigation column - not editable directly, edit via pencil button
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange('name', val),
+        deletable: false, // Name column cannot be deleted
         cell: (value, row) => (
           <div className="flex items-center gap-2 group">
             <Link 
@@ -1655,7 +1643,7 @@ export default function DataTablePro() {
       },
       {
         id: 'company',
-        header: createClientHeader('company', 'חברה'),
+        header: clientColumnHeaders['company'] || 'חברה',
         accessorKey: 'company',
         sortable: true,
         filterable: true,
@@ -1666,7 +1654,7 @@ export default function DataTablePro() {
       },
       {
         id: 'email',
-        header: createClientHeader('email', 'אימייל'),
+        header: clientColumnHeaders['email'] || 'אימייל',
         accessorKey: 'email',
         sortable: true,
         filterable: true,
@@ -1680,7 +1668,7 @@ export default function DataTablePro() {
       },
       {
         id: 'phone',
-        header: createClientHeader('phone', 'טלפון'),
+        header: clientColumnHeaders['phone'] || 'טלפון',
         accessorKey: 'phone',
         sortable: true,
         filterable: true,
@@ -1694,7 +1682,7 @@ export default function DataTablePro() {
       },
       {
         id: 'status',
-        header: createClientHeader('status', 'סטטוס'),
+        header: clientColumnHeaders['status'] || 'סטטוס',
         accessorKey: 'status',
         sortable: true,
         filterable: true,
@@ -1728,7 +1716,7 @@ export default function DataTablePro() {
       // Current Stage column - shows client's current progress stage
       {
         id: 'current_stage',
-        header: createClientHeader('current_stage', 'שלב נוכחי'),
+        header: clientColumnHeaders['current_stage'] || 'שלב נוכחי',
         accessorKey: 'id', // We use id to lookup in clientStagesMap
         sortable: true,
         filterable: true,
@@ -1777,20 +1765,10 @@ export default function DataTablePro() {
           value: s.stage_name,
           label: s.stage_name,
         })),
-        // Custom sort function - sort by stage name
-        sortFn: (a, b) => {
-          const stageA = getClientStageInfo(a.id)?.current_stage_name || '';
-          const stageB = getClientStageInfo(b.id)?.current_stage_name || '';
-          return stageA.localeCompare(stageB, 'he');
-        },
-        // Custom filter value getter
-        filterValue: (row) => getClientStageInfo(row.id)?.current_stage_name || '',
-        // Custom group value getter
-        groupValue: (row) => getClientStageInfo(row.id)?.current_stage_name || 'ללא שלבים',
       },
       {
         id: 'address',
-        header: createClientHeader('address', 'כתובת'),
+        header: clientColumnHeaders['address'] || 'כתובת',
         accessorKey: 'address',
         sortable: true,
         filterable: true,
@@ -1802,7 +1780,7 @@ export default function DataTablePro() {
       },
       {
         id: 'notes',
-        header: createClientHeader('notes', 'הערות'),
+        header: clientColumnHeaders['notes'] || 'הערות',
         accessorKey: 'notes',
         sortable: false,
         editable: true,
@@ -1815,7 +1793,7 @@ export default function DataTablePro() {
       },
       {
         id: 'created_at',
-        header: createClientHeader('created_at', 'תאריך הוספה'),
+        header: clientColumnHeaders['created_at'] || 'תאריך הוספה',
         accessorKey: 'created_at',
         sortable: true,
         headerEditable: true,
@@ -1824,11 +1802,12 @@ export default function DataTablePro() {
       },
       {
         id: 'actions',
-        header: createClientHeader('actions', 'פעולות'),
+        header: clientColumnHeaders['actions'] || 'פעולות',
         accessorKey: 'id',
         width: 100,
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange('actions', val),
+        deletable: false, // Actions column cannot be deleted
         cell: (value, row) => (
           <Button
             variant="ghost"
@@ -2555,7 +2534,7 @@ export default function DataTablePro() {
                             קבע שלב ({selectedClients.length})
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" dir="rtl" className="max-h-[300px] overflow-y-auto">
+                        <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
                           <DropdownMenuLabel>בחר שלב עבור {selectedClients.length} לקוחות</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           {availableStages.length > 0 ? (
@@ -2613,7 +2592,7 @@ export default function DataTablePro() {
                           <span className="text-orange-700 font-medium">עמודות מוסתרות ({hiddenClientColumns.size})</span>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" dir="rtl">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuLabel>שחזר עמודות מוסתרות</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {Array.from(hiddenClientColumns).map((columnId) => (

@@ -1009,7 +1009,7 @@ export default function Files() {
                                         <MoreVertical className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" dir="rtl">
+                                    <DropdownMenuContent align="start">
                                       <DropdownMenuItem onClick={() => window.open(file.webViewLink, '_blank')}>
                                         <Eye className="h-4 w-4 ml-2" />פתח
                                       </DropdownMenuItem>
@@ -1192,7 +1192,7 @@ export default function Files() {
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" dir="rtl">
+                                <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => { setSelectedLocalFile(file); setShowFilePreview(true); }}>
                                     <Eye className="h-4 w-4 ml-2" />תצוגה מקדימה
                                   </DropdownMenuItem>
