@@ -84,6 +84,13 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
     onRenameColumn,
     onDeleteColumn,
     onDeleteColumns,
+    onHideColumn,
+    onFreezeColumn,
+    onMoveColumnLeft,
+    onMoveColumnRight,
+    // Header styling
+    headerStyles,
+    onHeaderStyleChange,
     // Quick add
     onQuickAddRows,
     onQuickAddColumns,
@@ -438,6 +445,15 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
             data={state.data}
             // Frozen columns
             frozenColumns={frozenColumns}
+            // Header context menu props
+            headerStyles={headerStyles}
+            onHeaderStyleChange={onHeaderStyleChange}
+            onHeaderRename={onRenameColumn}
+            onColumnDelete={onDeleteColumn}
+            onColumnHide={onHideColumn}
+            onColumnFreeze={onFreezeColumn}
+            onColumnMoveLeft={onMoveColumnLeft}
+            onColumnMoveRight={onMoveColumnRight}
           />
 
           <tbody 

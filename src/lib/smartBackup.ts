@@ -14,15 +14,24 @@ export const BACKUP_TABLES = {
   CRITICAL: [
     'clients',              // לקוחות - הליבה של המערכת
     'profiles',            // פרופילי משתמשים
+    'employees',           // עובדים
     'client_custom_tabs',  // טאבים מותאמים אישית
     'client_tab_columns',  // עמודות מותאמות
+    'client_tab_data',     // נתוני טאבים
+    'client_tab_files',    // קבצי טאבים
     'custom_tables',       // טבלאות מותאמות
     'custom_table_data',   // נתוני טבלאות מותאמות
-    'settings',            // הגדרות מערכת
+    'custom_table_permissions', // הרשאות טבלאות מותאמות
+    'table_custom_columns', // עמודות מותאמות בטבלאות
+    'settings',            // הגדרות מערכת (אם קיים)
+    'app_settings',        // הגדרות אפליקציה
+    'user_settings',       // הגדרות משתמש
     'client_categories',   // קטגוריות לקוחות
     'client_sources',      // מקורות לקוחות
     'client_stages',       // שלבים של לקוחות
     'client_stage_tasks',  // משימות בשלבים
+    'client_deadlines',    // דדליינים של לקוחות
+    'deadline_templates',  // תבניות דדליינים
     'stage_templates',     // תבניות שלבים
     'stage_template_stages', // שלבים בתבניות
     'stage_template_tasks',  // משימות בתבניות שלבים
@@ -35,50 +44,87 @@ export const BACKUP_TABLES = {
     'projects',           // פרויקטים
     'project_updates',    // עדכוני פרויקטים
     'tasks',              // משימות
+    'task_consultants',   // יועצים למשימות
     'meetings',           // פגישות
     'quotes',             // הצעות מחיר
     'quote_items',        // פריטי הצעות מחיר
     'quote_templates',    // תבניות הצעות מחיר
+    'quote_payments',     // תשלומי הצעות מחיר
     'contracts',          // חוזים
     'contract_templates', // תבניות חוזים
     'contract_documents', // מסמכי חוזים
     'contract_amendments',// תיקוני חוזים
     'invoices',           // חשבוניות
+    'invoice_payments',   // תשלומי חשבוניות
     'payments',           // תשלומים
     'payment_schedules',  // לוחות תשלום
+    'expenses',           // הוצאות
+    'budgets',            // תקציבים
+    'bank_transactions',  // תנועות בנק
+    'bank_categories',    // קטגוריות בנק
+    'financial_alerts',   // התראות פיננסיות
+    'consultants',        // יועצים
+    'weekly_goals',       // יעדים שבועיים
   ],
   
   // 🟡 נוח לגבות - תוכן נוסף
   USEFUL: [
     'client_contacts',     // אנשי קשר
-    'client_files',        // קבצים
+    'client_files',        // קבצים של לקוחות
     'client_messages',     // הודעות
-    'client_notes',        // הערות
-    'client_history',      // היסטוריה
     'client_portal_tokens',// טוקנים לפורטל לקוח
+    'files',              // קבצים
+    'file_folders',       // תיקיות
+    'file_categories',    // קטגוריות קבצים
+    'file_metadata',      // מטאדטה של קבצים
+    'file_versions',      // גרסאות קבצים
+    'file_shares',        // שיתופי קבצים
+    'file_public_links',  // קישורים ציבוריים
     'documents',           // מסמכים
     'reminders',           // תזכורות
     'notifications',       // התראות
     'calendar_events',     // אירועי יומן
     'call_logs',          // לוגי שיחות
     'whatsapp_log',       // לוגי וואטסאפ
+    'whatsapp_messages',  // הודעות וואטסאפ
     'signatures',         // חתימות
     'workflows',          // תהליכי עבודה
     'workflow_logs',      // לוגי תהליכים
     'custom_reports',     // דוחות מותאמים
+    'custom_spreadsheets', // גיליונות מותאמים
     'user_preferences',   // העדפות משתמש
+    // Google integrations
+    'google_accounts',    // חשבונות גוגל
+    'google_calendar_accounts', // חשבונות יומן גוגל
+    'google_calendar_settings', // הגדרות יומן גוגל
+    'google_calendar_synced_events', // אירועים מסונכרנים
+    'google_contacts_sync', // סנכרון אנשי קשר
+    'google_drive_files', // קבצי גוגל דרייב
+    // Email system
+    'email_templates',    // תבניות מייל
+    'email_signatures',   // חתימות מייל
+    'email_campaigns',    // קמפיינים
+    'email_campaign_recipients', // נמענים בקמפיינים
+    'email_messages',     // הודעות מייל
+    'email_metadata',     // מטאדטה של מיילים
+    'email_logs',         // לוגים של מיילים
+    'email_clicks',       // קליקים על מיילים
+    'email_unsubscribes', // הסרות רישום
   ],
   
-  // 🟢 אופציונלי - אפשר בלי
+  // 🟢 אופציונלי - אפשר בלי (לוגים גדולים)
   OPTIONAL: [
     'audit_log',          // לוג ביקורת (גדול!)
+    'activity_log',       // לוג פעילות
     'activity_logs',      // לוגי פעילות
-    'analytics_events',   // אירועי analytics
-    'search_history',     // היסטוריית חיפושים
-    'user_sessions',      // סשנים
     'migration_logs',     // לוגי מיגרציות
-    'roles',              // תפקידים (אם לא משתנה הרבה)
-    'permissions',        // הרשאות (אם לא משתנה הרבה)
+    'roles',              // תפקידים
+    'user_roles',         // תפקידי משתמשים
+    'permissions',        // הרשאות
+    'backups',            // גיבויים ישנים (מטאדטה)
+    'email_queue',        // תור מיילים
+    'email_rate_limits',  // מגבלות שליחה
+    'email_rate_limit_config', // הגדרות מגבלות
   ],
 };
 
@@ -464,42 +510,133 @@ export class SmartBackupSystem {
 }
 
 // ============================================
-// גיבוי אוטומטי מתוזמן
+// גיבוי אוטומטי מתוזמן - ענן + מחשב
 // ============================================
 
-export class AutoBackupScheduler {
-  private config: {
-    enabled: boolean;
-    frequency: 'daily' | 'weekly' | 'monthly';
-    time: string; // HH:MM
-    strategy: BackupStrategy;
-    maxBackups: number;
-  };
+export interface AutoBackupConfig {
+  enabled: boolean;
+  frequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
+  time: string; // HH:MM
+  strategy: BackupStrategy;
+  maxBackups: number;
+  // יעדי גיבוי
+  saveToCloud: boolean;
+  saveToLocal: boolean;
+  autoDownload: boolean;
+  // התראות
+  notifyOnSuccess: boolean;
+  notifyOnError: boolean;
+}
 
-  constructor(config: AutoBackupScheduler['config']) {
+export class AutoBackupScheduler {
+  private config: AutoBackupConfig;
+  private intervalId: ReturnType<typeof setInterval> | null = null;
+  private static instance: AutoBackupScheduler | null = null;
+
+  constructor(config: AutoBackupConfig) {
     this.config = config;
+  }
+
+  /**
+   * Singleton - מוודא שיש רק instance אחד
+   */
+  static getInstance(config?: AutoBackupConfig): AutoBackupScheduler {
+    if (!AutoBackupScheduler.instance && config) {
+      AutoBackupScheduler.instance = new AutoBackupScheduler(config);
+    }
+    return AutoBackupScheduler.instance!;
+  }
+
+  /**
+   * עדכון הגדרות
+   */
+  updateConfig(config: Partial<AutoBackupConfig>) {
+    this.config = { ...this.config, ...config };
+    // שמירת ההגדרות ל-localStorage
+    localStorage.setItem('auto-backup-config', JSON.stringify(this.config));
+  }
+
+  /**
+   * טעינת הגדרות מ-localStorage
+   */
+  static loadConfig(): AutoBackupConfig {
+    const stored = localStorage.getItem('auto-backup-config');
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // ברירת מחדל - full לכיסוי מלא של כל הנתונים
+    return {
+      enabled: false,
+      frequency: 'daily',
+      time: '02:00',
+      strategy: 'full',  // מגבה הכל חוץ מלוגים
+      maxBackups: 7,
+      saveToCloud: true,
+      saveToLocal: true,
+      autoDownload: false,
+      notifyOnSuccess: true,
+      notifyOnError: true,
+    };
   }
 
   /**
    * התחלת גיבוי אוטומטי
    */
   start() {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled) {
+      console.log('⏸️ גיבוי אוטומטי כבוי');
+      return;
+    }
+
+    // עצירת interval קודם אם קיים
+    this.stop();
 
     const checkInterval = 60000; // כל דקה
-    setInterval(() => {
+    this.intervalId = setInterval(() => {
       this.checkAndBackup();
     }, checkInterval);
+
+    console.log('🔄 גיבוי אוטומטי הופעל');
+    
+    // בדיקה מיידית
+    this.checkAndBackup();
+  }
+
+  /**
+   * עצירת גיבוי אוטומטי
+   */
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+      console.log('⏹️ גיבוי אוטומטי נעצר');
+    }
   }
 
   private async checkAndBackup() {
     const now = new Date();
     const lastBackup = this.getLastBackupTime();
 
+    // בדיקה אם הגיע הזמן לגבות
     if (this.shouldBackup(now, lastBackup)) {
-      console.log('🔄 מתחיל גיבוי אוטומטי...');
-      await this.performAutoBackup();
+      // בדיקה אם זה הזמן הנכון ביום
+      if (this.isCorrectTime(now)) {
+        console.log('🔄 מתחיל גיבוי אוטומטי...');
+        await this.performAutoBackup();
+      }
     }
+  }
+
+  private isCorrectTime(now: Date): boolean {
+    const [hours, minutes] = this.config.time.split(':').map(Number);
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // אם תדירות שעתית - תמיד true
+    if (this.config.frequency === 'hourly') return true;
+    
+    // בדיקה אם אנחנו בטווח של 5 דקות מהזמן המתוכנן
+    return currentHour === hours && Math.abs(currentMinute - minutes) <= 5;
   }
 
   private shouldBackup(now: Date, lastBackup: Date | null): boolean {
@@ -508,6 +645,8 @@ export class AutoBackupScheduler {
     const diffHours = (now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60);
 
     switch (this.config.frequency) {
+      case 'hourly':
+        return diffHours >= 1;
       case 'daily':
         return diffHours >= 24;
       case 'weekly':
@@ -520,6 +659,8 @@ export class AutoBackupScheduler {
   }
 
   private async performAutoBackup() {
+    const startTime = Date.now();
+    
     try {
       const strategy = BACKUP_STRATEGIES[this.config.strategy];
       const backupSystem = new SmartBackupSystem({
@@ -527,21 +668,197 @@ export class AutoBackupScheduler {
         ...strategy,
       });
 
-      const backup = await backupSystem.createSmartBackup(
-        `auto-backup-${new Date().toISOString()}`
-      );
-
-      // שמירה ל-localStorage
-      this.saveBackup(backup);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupName = `auto-backup-${timestamp}`;
       
-      // ניקוי גיבויים ישנים
-      this.cleanOldBackups();
+      const backup = await backupSystem.createSmartBackup(backupName);
 
+      const results = {
+        cloud: false,
+        local: false,
+        download: false,
+      };
+
+      // 1. שמירה לענן (Supabase Storage)
+      if (this.config.saveToCloud) {
+        try {
+          results.cloud = await this.saveToCloud(backup, backupName);
+        } catch (e) {
+          console.error('❌ שגיאה בשמירה לענן:', e);
+        }
+      }
+
+      // 2. שמירה ל-localStorage (מקומי)
+      if (this.config.saveToLocal) {
+        try {
+          this.saveToLocal(backup);
+          results.local = true;
+        } catch (e) {
+          console.error('❌ שגיאה בשמירה מקומית:', e);
+        }
+      }
+
+      // 3. הורדה אוטומטית לקובץ
+      if (this.config.autoDownload) {
+        try {
+          this.downloadBackup(backup, backupName);
+          results.download = true;
+        } catch (e) {
+          console.error('❌ שגיאה בהורדה:', e);
+        }
+      }
+
+      // ניקוי גיבויים ישנים
+      await this.cleanOldBackups();
+
+      // עדכון זמן גיבוי אחרון
       this.setLastBackupTime(new Date());
       
-      console.log('✅ גיבוי אוטומטי הושלם בהצלחה');
+      // שמירת היסטוריית גיבויים
+      this.saveBackupHistory({
+        name: backupName,
+        timestamp: new Date().toISOString(),
+        results,
+        duration: Date.now() - startTime,
+        tablesCount: backup.metadata.tablesCount,
+        recordsCount: backup.metadata.totalRecords,
+        size: JSON.stringify(backup).length,
+      });
+      
+      console.log('✅ גיבוי אוטומטי הושלם:', results);
+
+      // התראה על הצלחה
+      if (this.config.notifyOnSuccess) {
+        this.showNotification('success', 'גיבוי אוטומטי הושלם בהצלחה');
+      }
+
+      return results;
     } catch (error) {
       console.error('❌ שגיאה בגיבוי אוטומטי:', error);
+      
+      // התראה על שגיאה
+      if (this.config.notifyOnError) {
+        this.showNotification('error', 'שגיאה בגיבוי אוטומטי');
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * שמירה ל-Supabase Storage
+   */
+  private async saveToCloud(backup: any, backupName: string): Promise<boolean> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('משתמש לא מחובר');
+
+    const json = JSON.stringify(backup);
+    const blob = new Blob([json], { type: 'application/json' });
+    const file = new File([blob], `${backupName}.json`, { type: 'application/json' });
+
+    const filePath = `backups/${user.id}/${backupName}.json`;
+
+    const { error } = await supabase.storage
+      .from('client-files')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    console.log('☁️ נשמר לענן:', filePath);
+    return true;
+  }
+
+  /**
+   * שמירה ל-localStorage
+   */
+  private saveToLocal(backup: any) {
+    const key = 'auto-backups';
+    const stored = localStorage.getItem(key);
+    const backups = stored ? JSON.parse(stored) : [];
+    
+    // שמירת גרסה מצומצמת ל-localStorage (בגלל מגבלת גודל)
+    const compactBackup = {
+      metadata: backup.metadata,
+      timestamp: new Date().toISOString(),
+      // שומר רק את ה-IDs במקום כל הנתונים
+      summary: Object.entries(backup.data).reduce((acc, [table, records]) => {
+        acc[table] = { count: (records as any[]).length };
+        return acc;
+      }, {} as Record<string, { count: number }>),
+    };
+    
+    backups.push(compactBackup);
+    
+    // שמירה עם מגבלת גודל
+    try {
+      localStorage.setItem(key, JSON.stringify(backups));
+      console.log('💾 נשמר מקומית');
+    } catch (e) {
+      // אם נגמר המקום, מנקה ישנים ומנסה שוב
+      const cleaned = backups.slice(-5);
+      localStorage.setItem(key, JSON.stringify(cleaned));
+    }
+  }
+
+  /**
+   * הורדה לקובץ
+   */
+  private downloadBackup(backup: any, backupName: string) {
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${backupName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    console.log('📥 הורד לקובץ:', `${backupName}.json`);
+  }
+
+  /**
+   * ניקוי גיבויים ישנים
+   */
+  private async cleanOldBackups() {
+    // ניקוי localStorage
+    const key = 'auto-backups';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      const backups = JSON.parse(stored);
+      if (backups.length > this.config.maxBackups) {
+        const cleaned = backups.slice(-this.config.maxBackups);
+        localStorage.setItem(key, JSON.stringify(cleaned));
+      }
+    }
+
+    // ניקוי ענן
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: files } = await supabase.storage
+        .from('client-files')
+        .list(`backups/${user.id}`, {
+          sortBy: { column: 'created_at', order: 'asc' }
+        });
+
+      if (files && files.length > this.config.maxBackups) {
+        const toDelete = files.slice(0, files.length - this.config.maxBackups);
+        for (const file of toDelete) {
+          await supabase.storage
+            .from('client-files')
+            .remove([`backups/${user.id}/${file.name}`]);
+        }
+        console.log(`🗑️ נמחקו ${toDelete.length} גיבויים ישנים מהענן`);
+      }
+    } catch (e) {
+      console.error('שגיאה בניקוי גיבויים מהענן:', e);
     }
   }
 
@@ -554,24 +871,112 @@ export class AutoBackupScheduler {
     localStorage.setItem('last-auto-backup', date.toISOString());
   }
 
-  private saveBackup(backup: any) {
-    const key = 'auto-backups';
+  private saveBackupHistory(entry: any) {
+    const key = 'backup-history';
     const stored = localStorage.getItem(key);
-    const backups = stored ? JSON.parse(stored) : [];
-    backups.push(backup);
-    localStorage.setItem(key, JSON.stringify(backups));
+    const history = stored ? JSON.parse(stored) : [];
+    history.push(entry);
+    // שמור רק 50 אחרונים
+    const trimmed = history.slice(-50);
+    localStorage.setItem(key, JSON.stringify(trimmed));
   }
 
-  private cleanOldBackups() {
-    const key = 'auto-backups';
-    const stored = localStorage.getItem(key);
-    if (!stored) return;
+  /**
+   * קבלת היסטוריית גיבויים
+   */
+  getBackupHistory(): any[] {
+    const stored = localStorage.getItem('backup-history');
+    return stored ? JSON.parse(stored) : [];
+  }
 
-    const backups = JSON.parse(stored);
-    if (backups.length > this.config.maxBackups) {
-      const cleaned = backups.slice(-this.config.maxBackups);
-      localStorage.setItem(key, JSON.stringify(cleaned));
+  /**
+   * קבלת גיבויים מהענן
+   */
+  async getCloudBackups(): Promise<any[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: files } = await supabase.storage
+      .from('client-files')
+      .list(`backups/${user.id}`, {
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+    return files || [];
+  }
+
+  /**
+   * שחזור מגיבוי ענן
+   */
+  async restoreFromCloud(fileName: string): Promise<any> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('משתמש לא מחובר');
+
+    const { data, error } = await supabase.storage
+      .from('client-files')
+      .download(`backups/${user.id}/${fileName}`);
+
+    if (error) throw error;
+
+    const text = await data.text();
+    return JSON.parse(text);
+  }
+
+  /**
+   * הפעלת גיבוי ידני מיידי
+   */
+  async triggerManualBackup(): Promise<any> {
+    console.log('🔄 מתחיל גיבוי ידני...');
+    return await this.performAutoBackup();
+  }
+
+  private showNotification(type: 'success' | 'error', message: string) {
+    // שימוש ב-toast אם זמין
+    if (typeof window !== 'undefined' && (window as any).toast) {
+      if (type === 'success') {
+        (window as any).toast.success(message);
+      } else {
+        (window as any).toast.error(message);
+      }
     }
+  }
+
+  /**
+   * קבלת סטטוס הגיבוי
+   */
+  getStatus(): {
+    enabled: boolean;
+    lastBackup: Date | null;
+    nextBackup: Date | null;
+    config: AutoBackupConfig;
+  } {
+    const lastBackup = this.getLastBackupTime();
+    let nextBackup: Date | null = null;
+
+    if (lastBackup && this.config.enabled) {
+      nextBackup = new Date(lastBackup);
+      switch (this.config.frequency) {
+        case 'hourly':
+          nextBackup.setHours(nextBackup.getHours() + 1);
+          break;
+        case 'daily':
+          nextBackup.setDate(nextBackup.getDate() + 1);
+          break;
+        case 'weekly':
+          nextBackup.setDate(nextBackup.getDate() + 7);
+          break;
+        case 'monthly':
+          nextBackup.setMonth(nextBackup.getMonth() + 1);
+          break;
+      }
+    }
+
+    return {
+      enabled: this.config.enabled,
+      lastBackup,
+      nextBackup,
+      config: this.config,
+    };
   }
 }
 

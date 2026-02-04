@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
 import { ClientQuickClassify } from '@/components/clients/ClientQuickClassify';
 import { ClientsByStageView } from '@/components/clients/ClientsByStageView';
+import { ClientsStatisticsView } from '@/components/clients/ClientsStatisticsView';
 import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
 import { CategoryTagsManager } from '@/components/clients/CategoryTagsManager';
 import { isValidPhoneForDisplay } from '@/lib/phone-utils';
@@ -54,6 +55,7 @@ import {
   Sparkles,
   Clock,
   Layers,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -110,6 +112,7 @@ export default function Clients() {
   const [viewMode, setViewModeLocal] = useState<'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury'>('grid');
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesView] = useState(false);
+  const [showStatisticsView, setShowStatisticsView] = useState(false);
   
   // Sync with cloud settings when loaded
   useEffect(() => {
@@ -1771,7 +1774,10 @@ export default function Clients() {
 
               {/* Stages View Toggle Button */}
               <button
-                onClick={() => setShowStagesView(!showStagesView)}
+                onClick={() => {
+                  setShowStagesView(!showStagesView);
+                  if (!showStagesView) setShowStatisticsView(false);
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1803,6 +1809,45 @@ export default function Clients() {
               >
                 <Layers style={{ width: '16px', height: '16px' }} />
                 לפי שלבים
+              </button>
+
+              {/* Statistics View Button */}
+              <button
+                onClick={() => {
+                  setShowStatisticsView(!showStatisticsView);
+                  if (!showStatisticsView) setShowStagesView(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  backgroundColor: showStatisticsView ? '#d4a843' : '#ffffff',
+                  border: '2px solid #d4a843',
+                  borderRadius: '8px',
+                  color: showStatisticsView ? '#1e293b' : '#d4a843',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(212, 168, 67, 0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!showStatisticsView) {
+                    e.currentTarget.style.backgroundColor = '#d4a843';
+                    e.currentTarget.style.color = '#1e293b';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!showStatisticsView) {
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.color = '#d4a843';
+                  }
+                }}
+                title="סטטיסטיקות לקוחות"
+              >
+                <BarChart3 style={{ width: '16px', height: '16px' }} />
+                סטטיסטיקות
               </button>
               
               {/* Features Help Button - Gold */}
@@ -2174,8 +2219,15 @@ export default function Clients() {
           allTags={allTags}
         />
 
-        {/* Stages View - When Enabled */}
-        {showStagesView ? (
+        {/* Statistics View - When Enabled */}
+        {showStatisticsView ? (
+          <div className="flex-1 border rounded-lg bg-card overflow-hidden">
+            <ClientsStatisticsView
+              clients={clients}
+              onClose={() => setShowStatisticsView(false)}
+            />
+          </div>
+        ) : showStagesView ? (
           <ClientsByStageView className="flex-1" />
         ) : (
           <>

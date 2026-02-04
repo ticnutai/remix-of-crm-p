@@ -84,10 +84,14 @@ export interface CloudBackup {
 
 export interface CloudBackupSettings {
   autoBackup: boolean;
-  backupFrequency: 'daily' | 'weekly' | 'monthly';
+  backupFrequency: 'hourly' | 'daily' | 'weekly' | 'monthly';
   backupTime: string;
   retentionDays: number;
+  maxBackups: number;
   selectedTables: string[];
+  saveToCloud: boolean;
+  saveToLocal: boolean;
+  autoDownload: boolean;
 }
 
 // Restore Types

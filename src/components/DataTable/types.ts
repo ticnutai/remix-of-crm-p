@@ -10,6 +10,16 @@ export interface SelectOption {
   icon?: string;
 }
 
+// Header styling
+export interface HeaderStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  backgroundColor?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
 export interface ColumnDef<T = any> {
   id: string;
   header: string | React.ReactNode;
@@ -20,6 +30,8 @@ export interface ColumnDef<T = any> {
   filterable?: boolean;
   resizable?: boolean;
   hidden?: boolean;
+  hideable?: boolean; // Can this column be hidden via context menu?
+  deletable?: boolean; // Can this column be deleted via context menu?
   width?: number;
   minWidth?: number;
   maxWidth?: number;
@@ -171,6 +183,13 @@ export interface DataTableProps<T = any> {
   onRenameColumn?: (columnId: string, newName: string) => void;
   onDeleteColumn?: (columnId: string) => void;
   onDeleteColumns?: (columnIds: string[]) => void;
+  onHideColumn?: (columnId: string) => void;
+  onFreezeColumn?: (columnId: string) => void;
+  onMoveColumnLeft?: (columnId: string) => void;
+  onMoveColumnRight?: (columnId: string) => void;
+  // Header styling
+  headerStyles?: Record<string, HeaderStyle>;
+  onHeaderStyleChange?: (columnId: string, style: HeaderStyle) => void;
   // Quick add callbacks - these open dialogs, not handle data directly
   onQuickAddRows?: () => void;
   onQuickAddColumns?: () => void;

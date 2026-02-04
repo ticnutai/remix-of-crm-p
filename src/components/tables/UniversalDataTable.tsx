@@ -120,12 +120,20 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
     notes: Record<string, any>;
     reminders: Record<string, any[]>;
   }>({ styles: {}, notes: {}, reminders: {} });
+  
+  // Header styling state (for right-click context menu on headers)
+  const [headerStyles, setHeaderStyles] = useState<Record<string, any>>({});
 
   const handleCellStyleChange = useCallback((cellId: string, style: any) => {
     setCellFormatting(prev => ({
       ...prev,
       styles: { ...prev.styles, [cellId]: style }
     }));
+  }, []);
+
+  // Header style change handler
+  const handleHeaderStyleChange = useCallback((columnId: string, style: any) => {
+    setHeaderStyles(prev => ({ ...prev, [columnId]: style }));
   }, []);
 
   const handleCellNoteChange = useCallback((cellId: string, note: any) => {
@@ -552,6 +560,9 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         onCellReminderAdd={handleCellReminderAdd}
         onCellReminderUpdate={handleCellReminderUpdate}
         onCellReminderDelete={handleCellReminderDelete}
+        // Header styling props (enables right-click context menu on headers)
+        headerStyles={headerStyles}
+        onHeaderStyleChange={handleHeaderStyleChange}
         // Column management props
         onAddColumn={canAddColumns ? () => setIsAddColumnOpen(true) : undefined}
         onDeleteColumn={canDeleteColumns ? (columnId: string) => {

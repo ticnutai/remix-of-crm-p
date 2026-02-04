@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useAutoBackup } from '@/hooks/useAutoBackup';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ import {
   Settings2,
   Download,
   MoreVertical,
+  Play,
+  HardDrive,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -64,6 +67,7 @@ const TABLE_NAMES = [
 export function CloudTab({ onRestore }: CloudTabProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { status: autoBackupStatus, updateConfig, triggerBackup, isReady } = useAutoBackup();
   
   // State
   const [cloudBackups, setCloudBackups] = useState<CloudBackup[]>([]);
@@ -71,6 +75,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isTriggeringBackup, setIsTriggeringBackup] = useState(false);
   
   // Settings state
   const [settings, setSettings] = useState<CloudBackupSettings>({
@@ -78,9 +83,29 @@ export function CloudTab({ onRestore }: CloudTabProps) {
     backupFrequency: 'daily',
     backupTime: '02:00',
     retentionDays: 30,
+    maxBackups: 10,
     selectedTables: TABLE_NAMES,
+    saveToCloud: true,
+    saveToLocal: true,
+    autoDownload: false,
   });
   const [showSettings, setShowSettings] = useState(false);
+
+  // Load settings from autoBackupStatus
+  useEffect(() => {
+    if (autoBackupStatus?.config) {
+      setSettings(prev => ({
+        ...prev,
+        autoBackup: autoBackupStatus.config.enabled,
+        backupFrequency: autoBackupStatus.config.frequency,
+        backupTime: autoBackupStatus.config.time,
+        maxBackups: autoBackupStatus.config.maxBackups,
+        saveToCloud: autoBackupStatus.config.saveToCloud,
+        saveToLocal: autoBackupStatus.config.saveToLocal,
+        autoDownload: autoBackupStatus.config.autoDownload,
+      }));
+    }
+  }, [autoBackupStatus?.config]);
   
   // Load cloud backups
   const fetchCloudBackups = async () => {
@@ -333,7 +358,14 @@ export function CloudTab({ onRestore }: CloudTabProps) {
       {showSettings && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">הגדרות גיבוי אוטומטי</CardTitle>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span>הגדרות גיבוי אוטומטי</span>
+              {autoBackupStatus?.lastBackup && (
+                <Badge variant="outline" className="text-xs font-normal">
+                  גיבוי אחרון: {formatDate(autoBackupStatus.lastBackup.toISOString())}
+                </Badge>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
@@ -345,27 +377,69 @@ export function CloudTab({ onRestore }: CloudTabProps) {
               </div>
               <Switch
                 checked={settings.autoBackup}
-                onCheckedChange={(checked) => 
-                  setSettings(prev => ({ ...prev, autoBackup: checked }))
-                }
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({ ...prev, autoBackup: checked }));
+                  updateConfig({ enabled: checked });
+                  toast({
+                    title: checked ? 'גיבוי אוטומטי הופעל' : 'גיבוי אוטומטי כבוי',
+                    description: checked 
+                      ? `יגבה כל ${settings.backupFrequency === 'hourly' ? 'שעה' : settings.backupFrequency === 'daily' ? 'יום' : settings.backupFrequency === 'weekly' ? 'שבוע' : 'חודש'}`
+                      : 'הגיבוי האוטומטי הושבת',
+                  });
+                }}
               />
             </div>
             
             {settings.autoBackup && (
               <>
+                {/* כפתור גיבוי ידני */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={async () => {
+                    setIsTriggeringBackup(true);
+                    try {
+                      await triggerBackup();
+                      toast({
+                        title: 'גיבוי הושלם! ✅',
+                        description: 'הגיבוי נשמר בהצלחה לפי ההגדרות',
+                      });
+                      fetchCloudBackups();
+                    } catch (error: any) {
+                      toast({
+                        title: 'שגיאה בגיבוי',
+                        description: error.message,
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setIsTriggeringBackup(false);
+                    }
+                  }}
+                  disabled={isTriggeringBackup}
+                >
+                  {isTriggeringBackup ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                  הפעל גיבוי עכשיו
+                </Button>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>תדירות</Label>
                     <Select 
                       value={settings.backupFrequency}
-                      onValueChange={(v: any) => 
-                        setSettings(prev => ({ ...prev, backupFrequency: v }))
-                      }
+                      onValueChange={(v: any) => {
+                        setSettings(prev => ({ ...prev, backupFrequency: v }));
+                        updateConfig({ frequency: v });
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="hourly">שעתי</SelectItem>
                         <SelectItem value="daily">יומי</SelectItem>
                         <SelectItem value="weekly">שבועי</SelectItem>
                         <SelectItem value="monthly">חודשי</SelectItem>
@@ -377,23 +451,82 @@ export function CloudTab({ onRestore }: CloudTabProps) {
                     <Input
                       type="time"
                       value={settings.backupTime}
-                      onChange={(e) => 
-                        setSettings(prev => ({ ...prev, backupTime: e.target.value }))
-                      }
+                      onChange={(e) => {
+                        setSettings(prev => ({ ...prev, backupTime: e.target.value }));
+                        updateConfig({ time: e.target.value });
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* יעדי גיבוי */}
+                <div className="space-y-3 pt-2 border-t">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <HardDrive className="w-4 h-4" />
+                    יעדי גיבוי
+                  </Label>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">שמירה לענן ☁️</Label>
+                      <p className="text-xs text-muted-foreground">
+                        גיבוי ל-Supabase Storage
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.saveToCloud ?? true}
+                      onCheckedChange={(checked) => {
+                        setSettings(prev => ({ ...prev, saveToCloud: checked }));
+                        updateConfig({ saveToCloud: checked });
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">שמירה מקומית 💾</Label>
+                      <p className="text-xs text-muted-foreground">
+                        גיבוי ל-localStorage בדפדפן
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.saveToLocal ?? true}
+                      onCheckedChange={(checked) => {
+                        setSettings(prev => ({ ...prev, saveToLocal: checked }));
+                        updateConfig({ saveToLocal: checked });
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">הורדה אוטומטית 📥</Label>
+                      <p className="text-xs text-muted-foreground">
+                        הורדת קובץ JSON למחשב בכל גיבוי
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.autoDownload ?? false}
+                      onCheckedChange={(checked) => {
+                        setSettings(prev => ({ ...prev, autoDownload: checked }));
+                        updateConfig({ autoDownload: checked });
+                      }}
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>שמירת גיבויים (ימים)</Label>
+                  <Label>מספר גיבויים לשמור</Label>
                   <Input
                     type="number"
-                    min={7}
-                    max={365}
-                    value={settings.retentionDays}
-                    onChange={(e) => 
-                      setSettings(prev => ({ ...prev, retentionDays: parseInt(e.target.value) || 30 }))
-                    }
+                    min={3}
+                    max={30}
+                    value={settings.maxBackups}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 7;
+                      setSettings(prev => ({ ...prev, maxBackups: val }));
+                      updateConfig({ maxBackups: val });
+                    }}
                   />
                 </div>
               </>

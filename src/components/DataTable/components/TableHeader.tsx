@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ColumnFilter } from './ColumnFilter';
 import { EditableHeader } from './EditableHeader';
+import { HeaderContextMenu, HeaderStyle } from './HeaderContextMenu';
 
 interface TableHeaderProps<T> {
   columns: ColumnDef<T>[];
@@ -25,6 +26,15 @@ interface TableHeaderProps<T> {
   data?: T[];
   // Frozen columns
   frozenColumns?: number;
+  // Header context menu props
+  headerStyles?: Record<string, HeaderStyle>;
+  onHeaderStyleChange?: (columnId: string, style: HeaderStyle) => void;
+  onHeaderRename?: (columnId: string, newName: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onColumnHide?: (columnId: string) => void;
+  onColumnFreeze?: (columnId: string) => void;
+  onColumnMoveLeft?: (columnId: string) => void;
+  onColumnMoveRight?: (columnId: string) => void;
 }
 
 export function TableHeader<T>({
@@ -44,6 +54,14 @@ export function TableHeader<T>({
   onFilterChange,
   data = [],
   frozenColumns = 0,
+  headerStyles = {},
+  onHeaderStyleChange,
+  onHeaderRename,
+  onColumnDelete,
+  onColumnHide,
+  onColumnFreeze,
+  onColumnMoveLeft,
+  onColumnMoveRight,
 }: TableHeaderProps<T>) {
   const getSortIcon = (columnId: string) => {
     const sort = sorts.find(s => s.columnId === columnId);
@@ -120,7 +138,11 @@ export function TableHeader<T>({
           // Calculate right position for stacked frozen columns (RTL)
           const frozenColumnPosition = isFrozenColumn ? columnIndex * (width || 150) : undefined;
 
-          return (
+          // Get header style for this column
+          const headerStyle = headerStyles[column.id] || {};
+          const headerText = typeof column.header === 'string' ? column.header : column.id;
+
+          const headerContent = (
             <th
               key={column.id}
               className={cn(
@@ -133,7 +155,11 @@ export function TableHeader<T>({
                 // Sticky frozen columns for RTL
                 isFrozenColumn && 'sticky z-20 bg-table-header',
                 // Add shadow only to the last frozen column
-                isFrozenColumn && columnIndex === frozenColumns - 1 && 'shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+                isFrozenColumn && columnIndex === frozenColumns - 1 && 'shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]',
+                // Apply header style alignment
+                headerStyle.align === 'center' && 'text-center',
+                headerStyle.align === 'left' && 'text-left',
+                headerStyle.align === 'right' && 'text-right',
               )}
               style={{
                 width: width ? `${width}px` : 'auto',
@@ -141,6 +167,11 @@ export function TableHeader<T>({
                 maxWidth: width ? `${width}px` : undefined,
                 // Add right position for frozen columns in RTL
                 ...(isFrozenColumn ? { right: frozenColumnPosition } : {}),
+                // Apply header styles
+                ...(headerStyle.backgroundColor && headerStyle.backgroundColor !== 'transparent' 
+                  ? { backgroundColor: headerStyle.backgroundColor } 
+                  : {}),
+                ...(headerStyle.color ? { color: headerStyle.color } : {}),
               }}
               onClick={(e) => {
                 if (column.sortable !== false) {
@@ -186,7 +217,15 @@ export function TableHeader<T>({
                       editable={column.headerEditable}
                     />
                   ) : (
-                    <span>{column.header}</span>
+                    <span
+                      className={cn(
+                        headerStyle.bold && 'font-bold',
+                        headerStyle.italic && 'italic',
+                        headerStyle.underline && 'underline',
+                      )}
+                    >
+                      {column.header}
+                    </span>
                   )}
                   {column.subHeader && (
                     <span className="text-xs font-normal opacity-70">{column.subHeader}</span>
@@ -209,6 +248,33 @@ export function TableHeader<T>({
               )}
             </th>
           );
+
+          // Wrap with context menu if handlers are provided
+          if (onHeaderStyleChange || onHeaderRename || onColumnDelete || onColumnHide) {
+            return (
+              <HeaderContextMenu
+                key={column.id}
+                columnId={column.id}
+                columnHeader={headerText}
+                headerStyle={headerStyle}
+                onStyleChange={onHeaderStyleChange}
+                onRename={onHeaderRename || (column.headerEditable ? (id, name) => column.onHeaderChange?.(name) : undefined)}
+                onDelete={onColumnDelete}
+                onHide={onColumnHide}
+                onFreeze={onColumnFreeze}
+                onMoveLeft={onColumnMoveLeft}
+                onMoveRight={onColumnMoveRight}
+                onSortAsc={column.sortable !== false ? () => onSort(accessorKey, false) : undefined}
+                onSortDesc={column.sortable !== false ? () => onSort(accessorKey, false) : undefined}
+                canDelete={column.deletable !== false}
+                canHide={column.hideable !== false}
+              >
+                {headerContent}
+              </HeaderContextMenu>
+            );
+          }
+
+          return headerContent;
         })}
 
         {expandable && (

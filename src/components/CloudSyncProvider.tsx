@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useCloudPreferences } from '@/hooks/useCloudPreferences';
 import { useAuth } from '@/hooks/useAuth';
+import { AutoBackupScheduler } from '@/lib/smartBackup';
 
 // Keys that trigger auto-save when changed
 const WATCH_KEYS = [
@@ -70,6 +71,35 @@ export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
   const { saveToCloud, loadFromCloud } = useCloudPreferences();
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
   const hasLoadedFromCloud = useRef(false);
+  const backupSchedulerRef = useRef<AutoBackupScheduler | null>(null);
+
+  // Initialize auto backup scheduler
+  useEffect(() => {
+    if (!user?.id) {
+      // Stop scheduler on logout
+      if (backupSchedulerRef.current) {
+        backupSchedulerRef.current.stop();
+        backupSchedulerRef.current = null;
+      }
+      return;
+    }
+
+    // Load config and start scheduler
+    const config = AutoBackupScheduler.loadConfig();
+    const scheduler = AutoBackupScheduler.getInstance(config);
+    backupSchedulerRef.current = scheduler;
+
+    if (config.enabled) {
+      scheduler.start();
+      console.log('🔄 גיבוי אוטומטי הופעל');
+    }
+
+    return () => {
+      if (backupSchedulerRef.current) {
+        backupSchedulerRef.current.stop();
+      }
+    };
+  }, [user?.id]);
 
   // Load from cloud on login
   useEffect(() => {
