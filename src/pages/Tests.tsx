@@ -48,7 +48,6 @@ import {
   checkResponsive,
 } from '@/lib/testHelpers';
 import { HealthCheck } from '@/components/HealthCheck';
-import { E2ETests } from '@/components/E2ETests';
 import { BackupTests } from '@/components/BackupTests';
 import { SecurityTests } from '@/components/SecurityTests';
 import { QuickTestRunner } from '@/components/QuickTestRunner';
@@ -1878,10 +1877,6 @@ ${warningLogs.length > 0 ? '\n⚠️ אזהרות:\n' + warningLogs.slice(0, 5).
             <Activity className="h-4 w-4" />
             בריאות המערכת
           </TabsTrigger>
-          <TabsTrigger value="e2e" className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4" />
-            בדיקות E2E
-          </TabsTrigger>
           <TabsTrigger value="backup" className="flex items-center gap-2">
             <HardDrive className="h-4 w-4" />
             גיבוי ושחזור
@@ -1902,10 +1897,6 @@ ${warningLogs.length > 0 ? '\n⚠️ אזהרות:\n' + warningLogs.slice(0, 5).
 
         <TabsContent value="health">
           <HealthCheck />
-        </TabsContent>
-
-        <TabsContent value="e2e">
-          <E2ETests />
         </TabsContent>
 
         <TabsContent value="backup">
