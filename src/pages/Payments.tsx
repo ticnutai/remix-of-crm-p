@@ -27,7 +27,7 @@ import {
   RefreshCcw,
   Search,
   TrendingUp,
-  Users,
+  Users as UsersIcon,
   Wallet,
 } from 'lucide-react';
 import { useAllClientsPayments, ClientDebt, PaymentAlert } from '@/hooks/useClientPayments';
@@ -284,7 +284,7 @@ export default function Payments() {
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <Users className="h-8 w-8 opacity-70" />
+                <UsersIcon className="h-8 w-8 opacity-70" />
                 <div className="text-left">
                   <p className="text-xs opacity-80">לקוחות עם חוב</p>
                   <p className="text-xl font-bold">{totals.clientsWithDebt}</p>

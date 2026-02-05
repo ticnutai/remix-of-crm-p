@@ -46,6 +46,7 @@ const mainNavItems = [
   { title: 'תזכורות', url: '/reminders', icon: Bell },
   { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
   { title: 'כספים', url: '/finance', icon: Wallet },
+  { title: 'תשלומים', url: '/payments', icon: Wallet },
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
