@@ -15,8 +15,9 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import {
   X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Edit, Plus, Trash2,
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
-  User, MapPin, Search, Check, Send, File,
+  User, MapPin, Search, Check, Send, File, Eye, Columns, Menu,
 } from 'lucide-react';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteTemplate, TemplateStage, TemplateStageItem } from './types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -445,7 +446,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" hideClose dir="rtl" className="flex flex-col gap-0 overflow-hidden border-0 p-0" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', maxWidth: 'none', zIndex: 300 }}>
+      <SheetContent side="right" hideClose dir="rtl" className="flex flex-col gap-0 overflow-hidden border-0 p-0" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', maxWidth: 'none', zIndex: 45 }}>
         {/* Client Selector Dialog */}
         <ClientSelector clients={extendedClients} selectedClient={projectDetails.clientId} onSelect={handleClientSelect} open={showClientSelector} onOpenChange={setShowClientSelector} />
         
@@ -480,6 +481,8 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
               <TabsTrigger value="design" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Palette className="h-4 w-4 ml-2" />עיצוב</TabsTrigger>
               <TabsTrigger value="text-boxes" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Type className="h-4 w-4 ml-2" />תיבות טקסט</TabsTrigger>
               <TabsTrigger value="settings" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Settings className="h-4 w-4 ml-2" />הגדרות</TabsTrigger>
+              <TabsTrigger value="preview" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700"><Eye className="h-4 w-4 ml-2" />תצוגה מקדימה</TabsTrigger>
+              <TabsTrigger value="split" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700"><Columns className="h-4 w-4 ml-2" />עריכה + תצוגה</TabsTrigger>
             </TabsList>
           </div>
 
@@ -626,6 +629,113 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                 <div className="flex justify-center"><Button variant="outline" className="text-gray-500"><RotateCcw className="h-4 w-4 ml-2" />איפוס להגדרות ברירת מחדל</Button></div>
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Preview Tab - Full Preview */}
+          <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
+            <div className="h-full bg-gray-100 p-4">
+              <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
+                <iframe
+                  srcDoc={generateHtmlContent()}
+                  title="תצוגה מקדימה"
+                  className="w-full h-full border-0"
+                  style={{ minHeight: '100%' }}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Split View Tab - Editor + Live Preview */}
+          <TabsContent value="split" className="flex-1 m-0 overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Editor Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <ScrollArea className="h-full bg-gray-50">
+                  <div className="p-6 space-y-6">
+                    {/* Quick Project Details */}
+                    <div className="bg-white rounded-xl border p-4 shadow-sm">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4 text-[#B8860B]" />פרטי פרויקט מהירים</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input value={projectDetails.clientName} onChange={(e) => setProjectDetails({ ...projectDetails, clientName: e.target.value })} placeholder="שם הלקוח" dir="rtl" />
+                        <Input value={projectDetails.address} onChange={(e) => setProjectDetails({ ...projectDetails, address: e.target.value })} placeholder="כתובת" dir="rtl" />
+                        <Input value={projectDetails.gush} onChange={(e) => setProjectDetails({ ...projectDetails, gush: e.target.value })} placeholder="גוש" dir="rtl" />
+                        <Input value={projectDetails.helka} onChange={(e) => setProjectDetails({ ...projectDetails, helka: e.target.value })} placeholder="חלקה" dir="rtl" />
+                      </div>
+                    </div>
+                    
+                    {/* Stages Quick Edit */}
+                    <div className="bg-white rounded-xl border p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-[#B8860B]" />שלבי העבודה</h3>
+                        <Button variant="outline" size="sm" onClick={addStage}><Plus className="h-3 w-3 ml-1" />הוסף</Button>
+                      </div>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {editedTemplate.stages.map((stage, index) => (
+                          <div key={stage.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                            <span className="text-lg">{stage.icon || '📋'}</span>
+                            <Input 
+                              value={stage.name} 
+                              onChange={(e) => updateStage(stage.id, { ...stage, name: e.target.value })} 
+                              className="flex-1 h-8 text-sm"
+                              dir="rtl"
+                            />
+                            <Badge variant="outline" className="text-xs">{stage.items.length}</Badge>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => deleteStage(stage.id)}><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Payments Quick Edit */}
+                    <div className="bg-white rounded-xl border p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />תשלומים</h3>
+                        <Badge variant={totalPaymentPercentage === 100 ? 'default' : 'destructive'} className={totalPaymentPercentage === 100 ? 'bg-green-500 text-xs' : 'text-xs'}>{totalPaymentPercentage}%</Badge>
+                      </div>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {paymentSteps.map((step) => (
+                          <div key={step.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                            <Input value={step.name} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, name: e.target.value } : s))} className="flex-1 h-8 text-sm" dir="rtl" />
+                            <div className="flex items-center gap-1">
+                              <Input type="number" value={step.percentage} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, percentage: parseInt(e.target.value) || 0 } : s))} className="w-14 h-8 text-sm text-center" />
+                              <span className="text-xs text-gray-500">%</span>
+                            </div>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => setPaymentSteps(paymentSteps.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3" /></Button>
+                          </div>
+                        ))}
+                      </div>
+                      <Button variant="ghost" size="sm" className="w-full mt-2 text-[#B8860B]" onClick={addPaymentStep}><Plus className="h-3 w-3 ml-1" />הוסף שלב תשלום</Button>
+                    </div>
+
+                    {/* Price Edit */}
+                    <div className="bg-white rounded-xl border p-4 shadow-sm">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />מחיר</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#B8860B]">₪</span>
+                        <Input type="number" value={editedTemplate.base_price || 35000} onChange={(e) => setEditedTemplate({ ...editedTemplate, base_price: parseInt(e.target.value) || 0 })} className="text-xl font-bold text-[#B8860B]" />
+                        <span className="text-gray-500 text-sm">+ מע"מ</span>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle />
+              
+              {/* Preview Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full bg-gray-100 p-4">
+                  <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
+                    <iframe
+                      srcDoc={generateHtmlContent()}
+                      title="תצוגה מקדימה חיה"
+                      className="w-full h-full border-0"
+                      style={{ minHeight: '100%' }}
+                    />
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </TabsContent>
         </Tabs>
 

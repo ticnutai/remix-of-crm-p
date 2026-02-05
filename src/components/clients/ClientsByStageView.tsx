@@ -9,8 +9,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { useClientsByStage, type ClientInStage, type StageGroup } from '@/hooks/useClientsByStage';
 import { useClientsByConsultant, type ConsultantGroup, type ConsultantClient } from '@/hooks/useClientsByConsultant';
+import { useClients } from '@/hooks/useClients';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import {
   Users,
   ChevronDown,
@@ -32,6 +38,8 @@ import {
   User,
   UserCircle,
   Briefcase,
+  Plus,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -218,6 +226,7 @@ function StageCard({
   isExpanded,
   onToggle,
   onOpenClient,
+  onAddClients,
 }: {
   group: StageGroup;
   expandedClients: Set<string>;
@@ -225,6 +234,7 @@ function StageCard({
   isExpanded: boolean;
   onToggle: () => void;
   onOpenClient: (clientId: string) => void;
+  onAddClients: (stageName: string) => void;
 }) {
   return (
     <Card className="overflow-hidden" dir="rtl">
@@ -247,6 +257,25 @@ function StageCard({
                 >
                   {group.clients.length}
                 </Badge>
+                {/* Add Clients Button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover:bg-[#d4a843]/20 hover:text-[#d4a843]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddClients(group.stage_name);
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>הוסף לקוחות לשלב</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -445,14 +474,23 @@ function ConsultantCard({
 
 export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { stageGroups, allStageNames, loading, refresh } = useClientsByStage();
   const { consultantGroups, loading: consultantsLoading, refresh: refreshConsultants } = useClientsByConsultant();
+  const { clients: allClients } = useClients();
   
   // State
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(allStageNames));
   const [expandedConsultants, setExpandedConsultants] = useState<Set<string>>(new Set());
+  
+  // Bulk add clients dialog state
+  const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
+  const [targetStageName, setTargetStageName] = useState<string>('');
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+  const [clientSearch, setClientSearch] = useState('');
+  const [isAddingClients, setIsAddingClients] = useState(false);
   
   // Update expanded groups when stage names load
   React.useEffect(() => {
@@ -536,6 +574,102 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   const openClient = (clientId: string) => navigate(`/clients/${clientId}`);
+
+  // Open bulk add dialog
+  const openBulkAddDialog = (stageName: string) => {
+    setTargetStageName(stageName);
+    setSelectedClientIds(new Set());
+    setClientSearch('');
+    setBulkAddDialogOpen(true);
+  };
+
+  // Toggle client selection
+  const toggleClientSelection = (clientId: string) => {
+    setSelectedClientIds(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
+
+  // Get clients already in the target stage
+  const clientsInTargetStage = useMemo(() => {
+    const group = stageGroups.find(g => g.stage_name === targetStageName);
+    return new Set(group?.clients.map(c => c.id) || []);
+  }, [stageGroups, targetStageName]);
+
+  // Filtered clients for the dialog
+  const filteredClientsForDialog = useMemo(() => {
+    return allClients.filter(client => {
+      // Filter by search
+      if (clientSearch) {
+        const search = clientSearch.toLowerCase();
+        const matchesName = client.name?.toLowerCase().includes(search);
+        const matchesEmail = client.email?.toLowerCase().includes(search);
+        const matchesPhone = client.phone?.includes(search);
+        if (!matchesName && !matchesEmail && !matchesPhone) return false;
+      }
+      return true;
+    });
+  }, [allClients, clientSearch]);
+
+  // Add selected clients to stage
+  const handleAddClientsToStage = async () => {
+    if (selectedClientIds.size === 0) return;
+    
+    setIsAddingClients(true);
+    try {
+      const clientsToAdd = Array.from(selectedClientIds).filter(
+        id => !clientsInTargetStage.has(id)
+      );
+      
+      if (clientsToAdd.length === 0) {
+        toast({
+          title: 'כל הלקוחות כבר בשלב',
+          description: 'הלקוחות שבחרת כבר נמצאים בשלב זה',
+        });
+        return;
+      }
+
+      // Add each client to the stage
+      for (const clientId of clientsToAdd) {
+        const newStageId = `stage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const { error } = await supabase.from('client_stages').insert({
+          client_id: clientId,
+          stage_id: newStageId,
+          stage_name: targetStageName,
+          stage_icon: 'FolderOpen',
+          sort_order: 0,
+        });
+        
+        if (error) {
+          console.error('Error adding client to stage:', error);
+          throw error;
+        }
+      }
+      
+      toast({
+        title: 'לקוחות נוספו בהצלחה',
+        description: `${clientsToAdd.length} לקוחות נוספו לשלב "${targetStageName}"`,
+      });
+      
+      setBulkAddDialogOpen(false);
+      refresh();
+    } catch (error) {
+      console.error('Error adding clients to stage:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להוסיף לקוחות לשלב',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingClients(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -703,6 +837,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                   isExpanded={expandedGroups.has(group.stage_name)}
                   onToggle={() => toggleGroup(group.stage_name)}
                   onOpenClient={openClient}
+                  onAddClients={openBulkAddDialog}
                 />
               ))
             ) : (
@@ -717,6 +852,115 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
           )}
         </div>
       </ScrollArea>
+
+      {/* Bulk Add Clients Dialog */}
+      <Dialog open={bulkAddDialogOpen} onOpenChange={setBulkAddDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-[#d4a843]" />
+              הוסף לקוחות לשלב: <span className="text-[#d4a843]">{targetStageName}</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="חפש לקוחות..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              className="pr-10"
+              dir="rtl"
+            />
+          </div>
+          
+          {/* Selected count */}
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {filteredClientsForDialog.length} לקוחות
+            </span>
+            <Badge variant="secondary">
+              {selectedClientIds.size} נבחרו
+            </Badge>
+          </div>
+          
+          {/* Clients list */}
+          <ScrollArea className="h-[400px] border rounded-lg">
+            <div className="divide-y">
+              {filteredClientsForDialog.map(client => {
+                const isInStage = clientsInTargetStage.has(client.id);
+                const isSelected = selectedClientIds.has(client.id);
+                
+                return (
+                  <div
+                    key={client.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer",
+                      isInStage && "bg-green-50 dark:bg-green-950/20",
+                      isSelected && !isInStage && "bg-[#d4a843]/10"
+                    )}
+                    onClick={() => !isInStage && toggleClientSelection(client.id)}
+                  >
+                    <Checkbox
+                      checked={isSelected || isInStage}
+                      disabled={isInStage}
+                      onCheckedChange={() => !isInStage && toggleClientSelection(client.id)}
+                    />
+                    
+                    {/* Avatar */}
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-medium text-white">
+                        {client.name?.charAt(0) || '?'}
+                      </span>
+                    </div>
+                    
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{client.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {client.email || client.phone || 'ללא פרטים'}
+                      </div>
+                    </div>
+                    
+                    {/* Status */}
+                    {isInStage && (
+                      <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+                        כבר בשלב
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {filteredClientsForDialog.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>לא נמצאו לקוחות</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setBulkAddDialogOpen(false)}>
+              ביטול
+            </Button>
+            <Button
+              onClick={handleAddClientsToStage}
+              disabled={selectedClientIds.size === 0 || isAddingClients}
+              className="bg-[#d4a843] hover:bg-[#b8860b] text-white"
+            >
+              {isAddingClients ? (
+                <RefreshCw className="h-4 w-4 animate-spin ml-2" />
+              ) : (
+                <Plus className="h-4 w-4 ml-2" />
+              )}
+              הוסף {selectedClientIds.size > 0 ? `${selectedClientIds.size} לקוחות` : 'לקוחות'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
