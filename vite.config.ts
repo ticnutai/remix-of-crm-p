@@ -368,6 +368,36 @@ export default defineConfig(({ mode }) => {
                 return 'vendor-hoist';
               }
               
+              // React Markdown and its dependencies (unified/remark ecosystem)
+              if (id.includes('react-markdown') || id.includes('remark') || id.includes('unified') || id.includes('micromark') || id.includes('mdast') || id.includes('hast') || id.includes('vfile') || id.includes('unist')) {
+                return 'vendor-markdown';
+              }
+              
+              // Table core dependencies
+              if (id.includes('@tanstack/table-core')) {
+                return 'vendor-table';
+              }
+              
+              // Input masking
+              if (id.includes('input-otp') || id.includes('input-mask')) {
+                return 'vendor-input-mask';
+              }
+              
+              // Color picker
+              if (id.includes('react-colorful') || id.includes('react-color')) {
+                return 'vendor-color-picker';
+              }
+              
+              // Copy to clipboard
+              if (id.includes('copy-to-clipboard') || id.includes('clipboard')) {
+                return 'vendor-clipboard';
+              }
+              
+              // Use-sync libraries
+              if (id.includes('use-sync-external-store') || id.includes('use-callback-ref')) {
+                return 'vendor-react-utils';
+              }
+              
               // Everything else from node_modules
               return 'vendor-misc';
             }

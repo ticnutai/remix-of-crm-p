@@ -144,7 +144,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     );
 
     // THEN check for existing session (only once)
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('[Auth] Session check timed out, setting isLoading to false');
+      setIsLoading(false);
+      initialLoadDone = true;
+    }, 10000); // 10 second timeout
+    
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      clearTimeout(timeoutId);
+      
       if (error) {
         console.error('[Auth] Error getting session:', error);
         // If we have a refresh token error, clear storage
@@ -153,18 +162,33 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
           localStorage.removeItem('supabase.auth.token');
           supabase.auth.signOut({ scope: 'local' });
         }
+        setIsLoading(false);
+        initialLoadDone = true;
+        return;
       }
       
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Fetch all user data in parallel
+        // Fetch all user data in parallel with timeout
+        const fetchTimeoutId = setTimeout(() => {
+          console.warn('[Auth] Profile/roles fetch timed out');
+          setIsLoading(false);
+          initialLoadDone = true;
+        }, 8000);
+        
         Promise.all([
           fetchProfile(session.user.id),
           fetchRoles(session.user.id),
           fetchClientId(session.user.id),
         ]).then(() => {
+          clearTimeout(fetchTimeoutId);
+          setIsLoading(false);
+          initialLoadDone = true;
+        }).catch((err) => {
+          console.error('[Auth] Error fetching user data:', err);
+          clearTimeout(fetchTimeoutId);
           setIsLoading(false);
           initialLoadDone = true;
         });

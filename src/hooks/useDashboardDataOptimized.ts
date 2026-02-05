@@ -8,7 +8,7 @@
  * 4. Optimistic UI - הצגת נתונים מהקאש מיד
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -94,19 +94,33 @@ export const DASHBOARD_QUERY_KEYS = {
   charts: () => [...DASHBOARD_QUERY_KEYS.all, 'charts'] as const,
 };
 
+// Helper: Promise with timeout
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${name} timeout after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+};
+
 // Fetchers - פונקציות קטנות לכל קריאת API
 const fetchClients = async () => {
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, name, status, created_at');
+  const { data, error } = await withTimeout(
+    supabase.from('clients').select('id, name, status, created_at'),
+    10000,
+    'fetchClients'
+  );
   if (error) throw error;
   return data || [];
 };
 
 const fetchProjects = async () => {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('id, name, status, created_at, budget');
+  const { data, error } = await withTimeout(
+    supabase.from('projects').select('id, name, status, created_at, budget'),
+    10000,
+    'fetchProjects'
+  );
   if (error) throw error;
   return data || [];
 };
@@ -114,38 +128,52 @@ const fetchProjects = async () => {
 const fetchTimeEntries = async () => {
   // רק 3 חודשים אחרונים - לא צריך יותר
   const threeMonthsAgo = subMonths(new Date(), 3);
-  const { data, error } = await supabase
-    .from('time_entries')
-    .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
-    .gte('start_time', threeMonthsAgo.toISOString());
+  const { data, error } = await withTimeout(
+    supabase
+      .from('time_entries')
+      .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
+      .gte('start_time', threeMonthsAgo.toISOString()),
+    10000,
+    'fetchTimeEntries'
+  );
   if (error) throw error;
   return data || [];
 };
 
 const fetchProfiles = async () => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name');
+  const { data, error } = await withTimeout(
+    supabase.from('profiles').select('id, full_name'),
+    10000,
+    'fetchProfiles'
+  );
   if (error) throw error;
   return data || [];
 };
 
 const fetchInvoices = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('id, amount, paid_amount, status, issue_date, created_at')
-    .gte('created_at', sixMonthsAgo.toISOString());
+  const { data, error } = await withTimeout(
+    supabase
+      .from('invoices')
+      .select('id, amount, paid_amount, status, issue_date, created_at')
+      .gte('created_at', sixMonthsAgo.toISOString()),
+    10000,
+    'fetchInvoices'
+  );
   if (error) throw error;
   return data || [];
 };
 
 const fetchQuotes = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
-  const { data, error } = await supabase
-    .from('quotes')
-    .select('id, total_amount, paid_amount, status, issue_date, created_at')
-    .gte('created_at', sixMonthsAgo.toISOString());
+  const { data, error } = await withTimeout(
+    supabase
+      .from('quotes')
+      .select('id, total_amount, paid_amount, status, issue_date, created_at')
+      .gte('created_at', sixMonthsAgo.toISOString()),
+    10000,
+    'fetchQuotes'
+  );
   if (error) throw error;
   return data || [];
 };
@@ -172,6 +200,8 @@ export function useDashboardStats() {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const projectsQuery = useQuery({
@@ -180,6 +210,8 @@ export function useDashboardStats() {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const timeEntriesQuery = useQuery({
@@ -188,6 +220,8 @@ export function useDashboardStats() {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const invoicesQuery = useQuery({
@@ -196,6 +230,8 @@ export function useDashboardStats() {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const quotesQuery = useQuery({
@@ -204,6 +240,8 @@ export function useDashboardStats() {
     staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
     enabled: !!user,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   // חישוב הסטטיסטיקות
@@ -490,10 +528,23 @@ export function useDashboardCharts() {
 export function useDashboardData() {
   const { stats, isLoading: statsLoading, isFetching } = useDashboardStats();
   const { revenueData, projectsStatusData, hoursByEmployee, hoursByProject, isLoading: chartsLoading } = useDashboardCharts();
+  
+  // Force display after 8 seconds even if still loading
+  const [forceLoaded, setForceLoaded] = useState(false);
+  
+  useEffect(() => {
+    if (statsLoading || chartsLoading) {
+      const timer = setTimeout(() => {
+        console.log('[Dashboard] Force loading complete after 8 seconds');
+        setForceLoaded(true);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [statsLoading, chartsLoading]);
 
   return {
-    isLoading: statsLoading,
-    isChartsLoading: chartsLoading,
+    isLoading: forceLoaded ? false : statsLoading,
+    isChartsLoading: forceLoaded ? false : chartsLoading,
     isFetching,
     stats,
     revenueData,

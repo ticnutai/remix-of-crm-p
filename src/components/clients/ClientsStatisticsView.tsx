@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { format, addDays, addHours } from 'date-fns';
 import { he } from 'date-fns/locale';
+import { useClientStagesTable, type ClientStageInfo } from '@/hooks/useClientStagesTable';
 
 interface Client {
   id: string;
@@ -66,13 +67,6 @@ interface Client {
   created_at: string;
   category_id: string | null;
   tags: string[] | null;
-}
-
-interface Stage {
-  id: string;
-  name: string;
-  color: string;
-  order_index: number;
 }
 
 interface Consultant {
@@ -104,9 +98,10 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   
+  // Use the hook to get current stage info for all clients
+  const { clientStages: clientStageInfoMap, allStages, loading: stagesLoading } = useClientStagesTable();
+  
   // Data states
-  const [stages, setStages] = useState<Stage[]>([]);
-  const [clientStages, setClientStages] = useState<{ client_id: string; stage_id: string }[]>([]);
   const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [clientConsultants, setClientConsultants] = useState<{ client_id: string; consultant_id: string }[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -125,19 +120,6 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Load stages
-        const { data: stagesData } = await supabase
-          .from('stages')
-          .select('*')
-          .order('order_index');
-        if (stagesData) setStages(stagesData);
-
-        // Load client-stage relationships
-        const { data: clientStagesData } = await supabase
-          .from('client_stages')
-          .select('client_id, stage_id');
-        if (clientStagesData) setClientStages(clientStagesData);
-
         // Load consultants
         const { data: consultantsData } = await supabase
           .from('consultants')
@@ -186,23 +168,24 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
     return Array.from(tagsSet).sort();
   }, [clients]);
 
-  // Statistics calculations
+  // Statistics calculations - using current stage (yellow) from the hook
   const statistics = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // By stage
+    // By current stage (the yellow one - the active stage)
     const byStage: Record<string, Client[]> = {};
     const noStage: Client[] = [];
     
     clients.forEach(client => {
-      const clientStageRelation = clientStages.find(cs => cs.client_id === client.id);
-      if (clientStageRelation) {
-        const stageId = clientStageRelation.stage_id;
-        if (!byStage[stageId]) byStage[stageId] = [];
-        byStage[stageId].push(client);
+      const clientStageInfo = clientStageInfoMap.get(client.id);
+      if (clientStageInfo && clientStageInfo.current_stage_name) {
+        // Group by stage name (the current/active stage)
+        const stageName = clientStageInfo.current_stage_name;
+        if (!byStage[stageName]) byStage[stageName] = [];
+        byStage[stageName].push(client);
       } else {
         noStage.push(client);
       }
@@ -281,7 +264,7 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
       byStatus,
       byTime,
     };
-  }, [clients, clientStages, clientConsultants]);
+  }, [clients, clientStageInfoMap, clientConsultants]);
 
   // Filter clients based on current selection
   const displayedClients = useMemo(() => {
@@ -429,30 +412,35 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
   const renderSidebarItems = () => {
     switch (activeTab) {
       case 'stages':
+        // Get unique stage names from the statistics
+        const stageNames = Object.keys(statistics.byStage).sort();
         return (
           <>
-            {stages.map(stage => (
-              <button
-                key={stage.id}
-                onClick={() => setSelectedItem(stage.id)}
-                className={cn(
-                  'w-full flex items-center justify-between p-3 rounded-lg transition-all',
-                  'hover:bg-primary/10 text-right',
-                  selectedItem === stage.id && 'bg-primary/20 border-r-4 border-primary'
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  <span className="font-medium">{stage.name}</span>
-                </span>
-                <Badge variant="secondary" className="font-bold">
-                  {statistics.byStage[stage.id]?.length || 0}
-                </Badge>
-              </button>
-            ))}
+            {stageNames.map(stageName => {
+              // Try to get icon from allStages
+              const stageOption = allStages.find(s => s.stage_name === stageName);
+              return (
+                <button
+                  key={stageName}
+                  onClick={() => setSelectedItem(stageName)}
+                  className={cn(
+                    'w-full flex items-center justify-between p-3 rounded-lg transition-all',
+                    'hover:bg-primary/10 text-right',
+                    selectedItem === stageName && 'bg-primary/20 border-r-4 border-primary'
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <div 
+                      className="w-3 h-3 rounded-full bg-yellow-400" 
+                    />
+                    <span className="font-medium">{stageName}</span>
+                  </span>
+                  <Badge variant="secondary" className="font-bold">
+                    {statistics.byStage[stageName]?.length || 0}
+                  </Badge>
+                </button>
+              );
+            })}
             <Separator className="my-2" />
             <button
               onClick={() => setSelectedItem('none')}
@@ -879,7 +867,7 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
     </div>
   );
 
-  if (isLoading) {
+  if (isLoading || stagesLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -22,6 +22,7 @@ import {
   AlertCircle,
   PenTool,
   Download,
+  Sparkles,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,10 @@ import { QuotePaymentDialog } from '@/components/quotes/QuotePaymentDialog';
 import { ContractForm } from '@/components/contracts/ContractForm';
 import { ContractDetails } from '@/components/contracts/ContractDetails';
 import { ContractTemplatesManager } from '@/components/contracts/ContractTemplatesManager';
+import { TemplateGallery } from '@/components/contracts/TemplateGallery';
+import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
 import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
+import { NewAdvancedEditor } from '@/components/contracts/AdvancedContractEditor/NewAdvancedEditor';
 import { cn } from '@/lib/utils';
 import { ClipboardList, Settings2 } from 'lucide-react';
 import { exportQuoteToPDF } from '@/lib/pdf-export';
@@ -138,6 +142,11 @@ export default function Quotes() {
   const [convertToContractQuote, setConvertToContractQuote] = useState<Quote | null>(null);
   const [terminatingContractId, setTerminatingContractId] = useState<string | null>(null);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
+  const [advancedEditorQuote, setAdvancedEditorQuote] = useState<Quote | null>(null);
+  const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
+  const [isNewAdvancedEditorOpen, setIsNewAdvancedEditorOpen] = useState(false);
+  const [newEditorContractDocument, setNewEditorContractDocument] = useState<any>(null);
   
   // Signature state
   const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
@@ -590,6 +599,33 @@ export default function Quotes() {
                 <PenTool className="h-4 w-4 ml-2" />
                 עורך מתקדם
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setNewEditorContractDocument({
+                    id: undefined,
+                    title: 'חוזה חדש',
+                    blocks: [],
+                    colorScheme: 'blue',
+                    designTemplate: 'modern',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  });
+                  setIsNewAdvancedEditorOpen(true);
+                }}
+                className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border-blue-500/30 font-semibold"
+              >
+                <Sparkles className="h-4 w-4 ml-2 text-blue-600" />
+                עורך חוזים חדש ומשופר
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsTemplateGalleryOpen(true)} 
+                className="bg-gradient-to-r from-yellow-400/10 to-yellow-600/10 hover:from-yellow-400/20 hover:to-yellow-600/20 border-yellow-500/30 font-semibold"
+              >
+                <Sparkles className="h-4 w-4 ml-2 text-yellow-600" />
+                גלריית תבניות מתקדמות
+              </Button>
               <Button variant="outline" onClick={() => setIsTemplateManagerOpen(true)}>
                 <FileText className="h-4 w-4 ml-2" />
                 ניהול תבניות
@@ -973,6 +1009,22 @@ export default function Quotes() {
       <ContractTemplatesManager
         open={isTemplateManagerOpen}
         onOpenChange={setIsTemplateManagerOpen}
+      />
+
+      {/* Template Gallery */}
+      <TemplateGallery
+        open={isTemplateGalleryOpen}
+        onOpenChange={setIsTemplateGalleryOpen}
+      />
+
+      {/* Advanced Quote Editor Sheet */}
+      <QuoteEditorSheet
+        open={isAdvancedEditorOpen}
+        onOpenChange={setIsAdvancedEditorOpen}
+        quote={advancedEditorQuote}
+        onSaved={() => {
+          setAdvancedEditorQuote(null);
+        }}
       />
       
       {/* Digital Signature Dialog */}

@@ -257,7 +257,11 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                       ? "font-medium shadow-lg"
                       : "text-gray-300 hover:bg-blue-800 hover:text-white"
                   )}
-                  style={isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}}
+                  style={{
+                    ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
+                    flexDirection: 'row-reverse',
+                    justifyContent: 'flex-end',
+                  }}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
                   <span>{item.title}</span>
@@ -296,7 +300,11 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                             ? "font-medium shadow-lg"
                             : "hover:text-white"
                         )}
-                        style={location.pathname === `/custom-table/${table.id}` ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : { color: '#ffd700' }}
+                        style={{
+                          ...(location.pathname === `/custom-table/${table.id}` ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : { color: '#ffd700' }),
+                          flexDirection: 'row-reverse',
+                          justifyContent: 'flex-end',
+                        }}
                         onMouseEnter={(e) => {
                           if (location.pathname !== `/custom-table/${table.id}`) {
                             e.currentTarget.style.backgroundColor = 'rgba(255, 215, 0, 0.2)';
@@ -333,7 +341,11 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                       ? "font-medium shadow-lg"
                       : "text-gray-300 hover:bg-blue-800 hover:text-white"
                   )}
-                  style={isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}}
+                  style={{
+                    ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
+                    flexDirection: 'row-reverse',
+                    justifyContent: 'flex-end',
+                  }}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
                   <span>{item.title}</span>

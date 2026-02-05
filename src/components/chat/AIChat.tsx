@@ -3,7 +3,7 @@
  * Streaming responses + Hebrew support + Voice input
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useAIChat, ChatMessage } from '@/hooks/useAIChat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,10 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import ReactMarkdown from 'react-markdown';
+
+// Lazy load ReactMarkdown - it's a heavy dependency (50-80KB + ecosystem)
+const ReactMarkdown = lazy(() => import('react-markdown'));
+
 import {
   Bot,
   Send,
@@ -381,20 +384,22 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <p className="whitespace-pre-wrap break-words text-sm text-right">{message.content}</p>
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none text-right" dir="rtl">
-            <ReactMarkdown
-              components={{
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                ul: ({ children }) => <ul className="mb-2 list-disc list-inside">{children}</ul>,
-                ol: ({ children }) => <ol className="mb-2 list-decimal list-inside">{children}</ol>,
-                li: ({ children }) => <li className="mb-0.5">{children}</li>,
-                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                code: ({ children }) => (
-                  <code className="bg-background/50 px-1 py-0.5 rounded text-xs">{children}</code>
-                ),
-              }}
-            >
-              {message.content || (message.isStreaming ? '...' : '')}
-            </ReactMarkdown>
+            <Suspense fallback={<p className="text-sm">{message.content || '...'}</p>}>
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-2 list-disc list-inside">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-2 list-decimal list-inside">{children}</ol>,
+                  li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                  code: ({ children }) => (
+                    <code className="bg-background/50 px-1 py-0.5 rounded text-xs">{children}</code>
+                  ),
+                }}
+              >
+                {message.content || (message.isStreaming ? '...' : '')}
+              </ReactMarkdown>
+            </Suspense>
           </div>
         )}
         
