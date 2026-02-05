@@ -38,6 +38,7 @@ const Reminders = lazy(() => import("./pages/Reminders"));
 const CustomTableView = lazy(() => import("./pages/CustomTableView"));
 const ClientProfile = lazy(() => import("./pages/ClientProfile"));
 const Finance = lazy(() => import("./pages/Finance"));
+const Payments = lazy(() => import("./pages/Payments"));
 const History = lazy(() => import("./pages/History"));
 const MyDay = lazy(() => import("./pages/MyDay"));
 const TimeAnalytics = lazy(() => import("./pages/TimeAnalytics"));
@@ -125,6 +126,7 @@ const App = () => {
                           <Route path="/custom-table/:tableId" element={<CustomTableView />} />
                           <Route path="/client-profile/:clientId" element={<ClientProfile />} />
                           <Route path="/finance" element={<Finance />} />
+                          <Route path="/payments" element={<Payments />} />
                           <Route path="/history" element={<History />} />
                           <Route path="/my-day" element={<MyDay />} />
                           <Route path="/time-analytics" element={<TimeAnalytics />} />
