@@ -446,7 +446,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" hideClose dir="rtl" className="flex flex-col gap-0 overflow-hidden border-0 p-0" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', maxWidth: 'none', zIndex: 45 }}>
+      <SheetContent side="right" hideClose dir="rtl" className="flex flex-col gap-0 overflow-hidden border-0 p-0" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', maxWidth: 'none', zIndex: 300 }}>
         {/* Client Selector Dialog */}
         <ClientSelector clients={extendedClients} selectedClient={projectDetails.clientId} onSelect={handleClientSelect} open={showClientSelector} onOpenChange={setShowClientSelector} />
         
