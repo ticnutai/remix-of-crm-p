@@ -22,7 +22,6 @@ import { ManageTablesDialog } from '@/components/custom-tables/ManageTablesDialo
 import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
 import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
 import { ClientFilterPanel } from '@/components/clients/ClientFilterPanel';
-import { Users } from 'lucide-react';
 import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen, Layers } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
