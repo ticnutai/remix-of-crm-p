@@ -10,6 +10,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TimerProvider } from "@/hooks/useTimer";
 import { ThemeProvider } from "@/hooks/useTheme";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
+import { DataSyncInitializer } from "@/components/DataSyncInitializer";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
 import { PWAInstallBanner, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
@@ -88,6 +89,7 @@ const App = () => {
         <ThemeProvider>
           <TooltipProvider>
             <AuthProvider>
+              <DataSyncInitializer />
               <CloudSyncProvider>
                 <TimerProvider>
                   <UndoRedoProvider>
