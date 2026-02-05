@@ -252,19 +252,17 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                   key={item.url}
                   to={item.url}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                     isActive(item.url)
                       ? "font-medium shadow-lg"
                       : "text-gray-300 hover:bg-blue-800 hover:text-white"
                   )}
                   style={{
                     ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
-                    flexDirection: 'row-reverse',
-                    justifyContent: 'flex-end',
                   }}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  <span>{item.title}</span>
+                  <span className="flex-1 text-right">{item.title}</span>
                 </Link>
               ))}
             </div>
@@ -295,15 +293,13 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                         key={table.id}
                         to={`/custom-table/${table.id}`}
                         className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm",
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                           location.pathname === `/custom-table/${table.id}`
                             ? "font-medium shadow-lg"
                             : "hover:text-white"
                         )}
                         style={{
                           ...(location.pathname === `/custom-table/${table.id}` ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : { color: '#ffd700' }),
-                          flexDirection: 'row-reverse',
-                          justifyContent: 'flex-end',
                         }}
                         onMouseEnter={(e) => {
                           if (location.pathname !== `/custom-table/${table.id}`) {
@@ -317,7 +313,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                         }}
                       >
                         <Table className="h-5 w-5 shrink-0" style={{ color: location.pathname === `/custom-table/${table.id}` ? '#1e3a8a' : '#ffd700' }} />
-                        <span>{table.display_name}</span>
+                        <span className="flex-1 text-right">{table.display_name}</span>
                       </Link>
                     ))}
                   </div>
@@ -336,19 +332,17 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                   key={item.url}
                   to={item.url}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                     isActive(item.url)
                       ? "font-medium shadow-lg"
                       : "text-gray-300 hover:bg-blue-800 hover:text-white"
                   )}
                   style={{
                     ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
-                    flexDirection: 'row-reverse',
-                    justifyContent: 'flex-end',
                   }}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  <span>{item.title}</span>
+                  <span className="flex-1 text-right">{item.title}</span>
                 </Link>
               ))}
             </div>
