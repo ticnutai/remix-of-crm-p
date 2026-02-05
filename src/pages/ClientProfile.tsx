@@ -31,6 +31,7 @@ import {
   ClientFoldersManager,
 } from '@/components/client-tabs';
 import { ClientEmailsTab } from '@/components/clients/ClientEmailsTab';
+import { ClientPaymentsTab } from '@/components/clients/ClientPaymentsTab';
 import {
   ArrowRight,
   Building,
@@ -609,6 +610,13 @@ export default function ClientProfile() {
             >
               <Receipt className="h-4 w-4" />
               חשבוניות ({invoices.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="payments" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(142,76%,36%)] data-[state=active]:to-[hsl(142,76%,46%)] data-[state=active]:text-white data-[state=active]:border-[hsl(142,76%,55%)] border border-[hsl(142,76%,45%)]/50 hover:border-[hsl(142,76%,45%)] transition-all bg-[hsl(142,76%,45%)]/5"
+            >
+              <DollarSign className="h-4 w-4" />
+              תשלומים
             </TabsTrigger>
             <TabsTrigger 
               value="custom" 
@@ -1317,6 +1325,11 @@ export default function ClientProfile() {
                 </ScrollArea>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Payments Tab */}
+          <TabsContent value="payments" dir="rtl">
+            <ClientPaymentsTab clientId={client.id} clientName={client.name} />
           </TabsContent>
 
           {/* All Tables Tab */}
