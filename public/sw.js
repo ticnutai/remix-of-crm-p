@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'archflow-cache-v3';
-const STATIC_CACHE_NAME = 'archflow-static-v1';
+const CACHE_NAME = 'archflow-cache-v4';
+const STATIC_CACHE_NAME = 'archflow-static-v2';
+const DATA_CACHE_NAME = 'archflow-data-v1';
 const OFFLINE_URL = '/offline.html';
 
 // Resources to pre-cache
@@ -208,9 +209,52 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOfflineData() {
-  // Get pending offline data from IndexedDB and sync to server
-  // This is a placeholder - implement based on your needs
-  console.log('Background sync: syncing offline data');
+  // Open IndexedDB to get pending sync items
+  try {
+    const db = await openDB('ncrm-offline-db', 1);
+    if (!db) {
+      console.log('Background sync: IndexedDB not available');
+      return;
+    }
+
+    const tx = db.transaction('sync_queue', 'readonly');
+    const store = tx.objectStore('sync_queue');
+    const pendingItems = await getAllFromStore(store);
+    
+    if (pendingItems.length === 0) {
+      console.log('Background sync: No pending items');
+      return;
+    }
+
+    console.log(`Background sync: syncing ${pendingItems.length} offline changes`);
+    
+    // Notify the app to handle the actual sync
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const client of clients) {
+      client.postMessage({
+        type: 'BACKGROUND_SYNC_TRIGGER',
+        pendingCount: pendingItems.length
+      });
+    }
+  } catch (error) {
+    console.error('Background sync error:', error);
+  }
+}
+
+function openDB(name, version) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function getAllFromStore(store) {
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 // Message handler

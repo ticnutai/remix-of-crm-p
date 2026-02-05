@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { TextCustomizerButton } from '@/components/shared/TextCustomizerButton';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { SyncStatusIndicator } from '@/components/pwa/SyncStatusIndicator';
 import { GlobalSearch, SearchButton } from '@/components/search/GlobalSearch';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -286,6 +287,9 @@ export function AppHeader({ title = 'tenarch CRM Pro', onMobileMenuToggle, isMob
 
           {/* Global Search Button */}
           <SearchButton onClick={() => setSearchOpen(true)} />
+          
+          {/* Sync Status Indicator */}
+          <SyncStatusIndicator />
           
           {/* Notification Center */}
           <NotificationCenter />
