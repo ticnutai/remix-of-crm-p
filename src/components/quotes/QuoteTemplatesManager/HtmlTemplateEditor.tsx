@@ -38,20 +38,41 @@ interface TextBox { id: string; title: string; content: string; position: 'befor
 interface ProjectDetails { clientId: string; clientName: string; gush: string; helka: string; migrash: string; taba: string; address: string; projectType: string; }
 
 // Client selector component with search
-function ClientSelector({ clients, selectedClient, onSelect, open, onOpenChange }: { clients: Array<{ id: string; name: string; email?: string | null; gush?: string | null; helka?: string | null; migrash?: string | null; taba?: string | null; address?: string | null }>; selectedClient: string; onSelect: (client: any) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
+function ClientSelector({ clients, selectedClient, onSelect, open, onOpenChange }: { clients: Array<{ id: string; name: string; email?: string | null; phone?: string | null; gush?: string | null; helka?: string | null; migrash?: string | null; taba?: string | null; address?: string | null }>; selectedClient: string; onSelect: (client: any) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
   const [search, setSearch] = useState('');
-  const filtered = useMemo(() => clients.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.email?.toLowerCase().includes(search.toLowerCase())), [clients, search]);
+  const filtered = useMemo(() => clients.filter(c => 
+    c.name?.toLowerCase().includes(search.toLowerCase()) || 
+    c.email?.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone?.includes(search) ||
+    c.gush?.includes(search) ||
+    c.address?.toLowerCase().includes(search.toLowerCase())
+  ), [clients, search]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" dir="rtl">
-        <DialogHeader><DialogTitle>בחר לקוח</DialogTitle></DialogHeader>
-        <div className="relative mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="חפש לקוח..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" dir="rtl" /></div>
-        <ScrollArea className="h-[300px]">
-          <div className="space-y-1">{filtered.length === 0 ? (<div className="text-center py-8 text-gray-400">לא נמצאו לקוחות</div>) : (filtered.map((client) => (
-            <div key={client.id} className={`p-3 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${selectedClient === client.id ? 'bg-[#DAA520]/10 border border-[#DAA520]' : 'border border-transparent'}`} onClick={() => { onSelect(client); onOpenChange(false); }}>
-              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><User className="h-4 w-4 text-gray-400" /><span className="font-medium">{client.name}</span></div>{selectedClient === client.id && <Check className="h-4 w-4 text-[#B8860B]" />}</div>
-              {client.email && <div className="text-xs text-gray-500 mt-1 mr-6">{client.email}</div>}
-              {(client.gush || client.helka || client.address) && (<div className="text-xs text-gray-400 mt-1 mr-6 flex gap-2">{client.gush && <span>גוש: {client.gush}</span>}{client.helka && <span>חלקה: {client.helka}</span>}</div>)}
+      <DialogContent className="max-w-2xl" dir="rtl">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><User className="h-5 w-5 text-[#B8860B]" />בחר לקוח</DialogTitle></DialogHeader>
+        <div className="relative mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="חפש לפי שם, טלפון, גוש או כתובת..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" dir="rtl" /></div>
+        <ScrollArea className="h-[400px]">
+          <div className="space-y-2">{filtered.length === 0 ? (<div className="text-center py-8 text-gray-400">לא נמצאו לקוחות</div>) : (filtered.map((client) => (
+            <div key={client.id} className={`p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${selectedClient === client.id ? 'bg-[#DAA520]/10 border-2 border-[#DAA520]' : 'border border-gray-200'}`} onClick={() => { onSelect(client); onOpenChange(false); }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center">
+                    <span className="text-xs font-medium text-white">{client.name?.charAt(0) || '?'}</span>
+                  </div>
+                  <span className="font-semibold text-lg">{client.name}</span>
+                </div>
+                {selectedClient === client.id && <Check className="h-5 w-5 text-[#B8860B]" />}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mr-10">
+                {client.email && <div className="flex items-center gap-1"><Mail className="h-3 w-3" />{client.email}</div>}
+                {client.phone && <div className="flex items-center gap-1"><span className="text-xs">📞</span>{client.phone}</div>}
+                {client.address && <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{client.address}</div>}
+                {client.gush && <div><span className="text-gray-400">גוש:</span> {client.gush}</div>}
+                {client.helka && <div><span className="text-gray-400">חלקה:</span> {client.helka}</div>}
+                {client.migrash && <div><span className="text-gray-400">מגרש:</span> {client.migrash}</div>}
+                {client.taba && <div><span className="text-gray-400">תב"ע:</span> {client.taba}</div>}
+              </div>
             </div>
           )))}</div>
         </ScrollArea>
@@ -267,7 +288,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [extendedClients, setExtendedClients] = useState<any[]>([]);
   useEffect(() => {
     const fetchClients = async () => {
-      const { data } = await supabase.from('clients').select('id, name, email, gush, helka, migrash, taba, address').order('name');
+      const { data } = await supabase.from('clients').select('id, name, email, phone, gush, helka, migrash, taba, address').order('name');
       if (data) setExtendedClients(data);
     };
     fetchClients();
