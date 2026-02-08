@@ -57,6 +57,8 @@ import {
   CheckCircle2,
   XCircle,
   Sparkles,
+  Pencil,
+  Plus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -702,7 +704,7 @@ interface ChangeHistoryProps {
 
 const ACTION_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   create: { label: 'נוצרה', icon: <Plus className="h-3 w-3" />, color: 'text-green-600' },
-  edit: { label: 'נערכה', icon: <Edit className="h-3 w-3" />, color: 'text-blue-600' },
+  edit: { label: 'נערכה', icon: <Pencil className="h-3 w-3" />, color: 'text-blue-600' },
   send: { label: 'נשלחה', icon: <Send className="h-3 w-3" />, color: 'text-purple-600' },
   view: { label: 'נצפתה', icon: <Eye className="h-3 w-3" />, color: 'text-yellow-600' },
   approve: { label: 'אושרה', icon: <Check className="h-3 w-3" />, color: 'text-green-600' },
@@ -1113,7 +1115,7 @@ export function AlternativePricing({ options, onOptionsChange }: AlternativePric
                   className="flex-1"
                   onClick={() => setEditingOption(option)}
                 >
-                  <Edit className="h-3 w-3 ml-1" />
+                  <Pencil className="h-3 w-3 ml-1" />
                   ערוך
                 </Button>
                 <Button

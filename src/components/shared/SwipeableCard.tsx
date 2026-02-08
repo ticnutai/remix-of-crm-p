@@ -1,7 +1,7 @@
 // Swipeable Card - For mobile interactions like delete/archive
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Trash2, Archive, Edit, Check, X } from 'lucide-react';
+import { Trash2, Archive, Pencil, Check, X } from 'lucide-react';
 
 interface SwipeAction {
   icon: React.ComponentType<{ className?: string }>;

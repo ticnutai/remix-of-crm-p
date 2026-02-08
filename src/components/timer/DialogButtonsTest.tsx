@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Check, Edit, Trash2 } from 'lucide-react';
+import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
 
 export function DialogButtonsTest() {
   const [titles, setTitles] = useState<string[]>(['תכנון', 'עיצוב', 'פגישה']);

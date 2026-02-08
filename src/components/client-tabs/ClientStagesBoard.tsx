@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Phone, FolderOpen, Send, MapPin, Plus, Hash, Loader2, Bell, Edit, Trash2, ListPlus, X, Maximize2, CheckCircle2, GripVertical, LayoutList, Table2, Settings2, ChevronUp, ChevronDown, Save, Copy, Layers, BookTemplate, Eye, Clipboard, ClipboardPaste, Palette, Type, Bold, Timer, Play, Square, CalendarIcon } from 'lucide-react';
+import { Phone, FolderOpen, Send, MapPin, Plus, Hash, Loader2, Bell, Pencil, Trash2, ListPlus, X, Maximize2, CheckCircle2, GripVertical, LayoutList, Table2, Settings2, ChevronUp, ChevronDown, Save, Copy, Layers, BookTemplate, Eye, Clipboard, ClipboardPaste, Palette, Type, Bold, Timer, Play, Square, CalendarIcon } from 'lucide-react';
 import { TaskTitleWithConsultants } from '@/components/consultants/TaskTitleWithConsultants';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';

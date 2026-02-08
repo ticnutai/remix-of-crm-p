@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import {
   Plus,
-  Edit,
+  Pencil,
   Trash2,
   Copy,
   FileText,

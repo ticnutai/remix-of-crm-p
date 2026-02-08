@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Check, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check, Star } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Signature {

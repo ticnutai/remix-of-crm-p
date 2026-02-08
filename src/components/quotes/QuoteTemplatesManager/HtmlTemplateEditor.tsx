@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import {
-  X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Edit, Plus, Trash2,
+  X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Pencil, Plus, Trash2,
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
   User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
   QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench,
