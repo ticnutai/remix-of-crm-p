@@ -1,6 +1,7 @@
 /**
- * AI Chat Actions Service - שירות פעולות לצ'אט AI
- * מאפשר לבצע פעולות ישירות מהצ'אט: יצירת פגישות, משימות, לקוחות ועוד
+ * AI Chat Actions Service V2 - שירות פעולות מתקדם לצ'אט AI
+ * מאפשר לבצע פעולות ישירות מהצ'אט: יצירת פגישות, משימות, לקוחות, פרויקטים, תזכורות, רישום שעות ועוד
+ * כולל תמיכה בחיפוש, עדכון ומחיקה
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -18,8 +19,174 @@ export interface PendingAction {
   confirmMessage: string;
 }
 
+type ActionHandler = (params: Record<string, any>) => Promise<ActionResult>;
+
 class AIChatActionsService {
   private pendingAction: PendingAction | null = null;
+
+  /**
+   * Execute an action by name - main router for AI-driven actions
+   */
+  async executeAction(actionName: string, params: Record<string, any>): Promise<ActionResult> {
+    const handlers: Record<string, ActionHandler> = {
+      'create_task': (p) => this.createTask({
+        title: p.title,
+        description: p.description,
+        priority: p.priority,
+        clientName: p.client_name,
+        projectName: p.project_name,
+        dueDate: p.due_date ? new Date(p.due_date) : undefined,
+      }),
+      'create_meeting': (p) => this.createMeeting({
+        title: p.title,
+        clientName: p.client_name,
+        date: p.date,
+        time: p.time,
+        duration_minutes: p.duration_minutes,
+        location: p.location,
+        notes: p.notes,
+      }),
+      'create_client': (p) => this.createClient({
+        name: p.name,
+        email: p.email,
+        phone: p.phone,
+        company: p.company,
+        address: p.address,
+        notes: p.notes,
+      }),
+      'create_project': (p) => this.createProject({
+        name: p.name,
+        description: p.description,
+        clientName: p.client_name,
+        budget: p.budget,
+        startDate: p.start_date ? new Date(p.start_date) : undefined,
+        endDate: p.end_date ? new Date(p.end_date) : undefined,
+      }),
+      'create_reminder': (p) => this.createReminder({
+        title: p.title,
+        description: p.description,
+        clientName: p.client_name,
+        reminderDate: new Date((p.date || new Date().toISOString().split('T')[0]) + 'T' + (p.time || '09:00') + ':00'),
+      }),
+      'log_hours': (p) => this.createTimeEntry({
+        description: p.description,
+        hours: p.hours,
+        date: p.date ? new Date(p.date) : undefined,
+        clientName: p.client_name,
+        projectName: p.project_name,
+        hourlyRate: p.hourly_rate,
+      }),
+      'send_email': (p) => this.sendEmail({
+        to: p.to,
+        subject: p.subject,
+        message: p.message,
+      }),
+      'update_task': (p) => this.updateTaskStatus({
+        taskTitle: p.task_title,
+        status: p.status,
+      }),
+      'delete_task': (p) => this.deleteTask({
+        taskTitle: p.task_title,
+      }),
+      'update_meeting': (p) => this.updateMeeting({
+        meetingTitle: p.meeting_title,
+        status: p.status,
+        newDate: p.new_date ? new Date(p.new_date + 'T' + (p.new_time || '10:00') + ':00') : undefined,
+      }),
+    };
+
+    const handler = handlers[actionName];
+    if (!handler) {
+      return {
+        success: false,
+        message: `❌ פעולה לא מוכרת: ${actionName}`,
+        actionType: actionName,
+      };
+    }
+
+    try {
+      return await handler(params);
+    } catch (error: any) {
+      console.error(`Error executing action ${actionName}:`, error);
+      return {
+        success: false,
+        message: `❌ שגיאה בביצוע הפעולה: ${error.message}`,
+        actionType: actionName,
+      };
+    }
+  }
+
+  /**
+   * שליחת מייל ללקוח
+   */
+  async sendEmail(params: {
+    to: string;
+    subject?: string;
+    message?: string;
+  }): Promise<ActionResult> {
+    try {
+      let email = params.to;
+      let clientName = params.to;
+
+      if (!params.to.includes('@')) {
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name, email')
+          .ilike('name', `%${params.to}%`)
+          .limit(1);
+
+        if (clients && clients.length > 0 && clients[0].email) {
+          email = clients[0].email;
+          clientName = clients[0].name;
+        } else {
+          return {
+            success: false,
+            message: `⚠️ לא מצאתי את הלקוח "${params.to}" או שאין לו כתובת מייל במערכת.\n\nאנא ציין כתובת מייל מלאה או בדוק את שם הלקוח.`,
+            actionType: 'send_email',
+          };
+        }
+      }
+
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+      const supabaseKey = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      const SEND_EMAIL_URL = `${supabaseUrl}/functions/v1/send-reminder-email`;
+
+      const response = await fetch(SEND_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          to: email,
+          title: params.subject || 'הודעה ממערכת CRM',
+          message: params.message || params.subject || 'שלום, זוהי הודעה ממערכת ה-CRM.',
+          userName: clientName,
+        }),
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: `✅ **המייל נשלח בהצלחה!**\n\n📧 **נמען:** ${clientName} (${email})\n📝 **נושא:** ${params.subject || 'הודעה ממערכת CRM'}`,
+          actionType: 'send_email',
+        };
+      } else {
+        return {
+          success: false,
+          message: `❌ שגיאה בשליחת המייל. נסה שוב מאוחר יותר.`,
+          actionType: 'send_email',
+        };
+      }
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      return {
+        success: false,
+        message: `❌ שגיאה בשליחת המייל: ${error.message}`,
+        actionType: 'send_email',
+      };
+    }
+  }
 
   /**
    * יצירת פגישה חדשה
@@ -28,13 +195,15 @@ class AIChatActionsService {
     title: string;
     clientId?: string;
     clientName?: string;
-    scheduledAt: Date;
+    scheduledAt?: Date;
+    date?: string;
+    time?: string;
     duration?: number;
+    duration_minutes?: number;
     location?: string;
     notes?: string;
   }): Promise<ActionResult> {
     try {
-      // אם ניתן שם לקוח, נמצא את ה-ID שלו
       let clientId = params.clientId;
       if (params.clientName && !clientId) {
         const { data: clients } = await supabase
@@ -42,19 +211,32 @@ class AIChatActionsService {
           .select('id, name')
           .ilike('name', `%${params.clientName}%`)
           .limit(1);
-        
         if (clients && clients.length > 0) {
           clientId = clients[0].id;
         }
       }
+
+      let scheduledAt = params.scheduledAt;
+      if (!scheduledAt && params.date) {
+        const timeStr = params.time || '10:00';
+        scheduledAt = new Date(`${params.date}T${timeStr}:00`);
+      }
+      if (!scheduledAt) {
+        scheduledAt = new Date();
+        scheduledAt.setDate(scheduledAt.getDate() + 1);
+        scheduledAt.setHours(10, 0, 0, 0);
+      }
+
+      const duration = params.duration_minutes || params.duration || 60;
+      const endTime = new Date(scheduledAt.getTime() + duration * 60000);
 
       const { data, error } = await supabase
         .from('meetings')
         .insert({
           title: params.title,
           client_id: clientId || null,
-          scheduled_at: params.scheduledAt.toISOString(),
-          duration_minutes: params.duration || 60,
+          start_time: scheduledAt.toISOString(),
+          end_time: endTime.toISOString(),
           location: params.location || null,
           notes: params.notes || null,
           status: 'scheduled',
@@ -67,16 +249,16 @@ class AIChatActionsService {
       const clientInfo = clientId ? '\n👤 עם לקוח: ' + (params.clientName || 'מזוהה') : '';
       return {
         success: true,
-        message: '✅ הפגישה "' + params.title + '" נוצרה בהצלחה!\n\n📅 מתוכננת ל: ' + this.formatDate(params.scheduledAt) + clientInfo,
+        message: '✅ הפגישה "' + params.title + '" נוצרה בהצלחה!\n\n📅 מתוכננת ל: ' + this.formatDate(scheduledAt) + '\n⏱️ משך: ' + duration + ' דקות' + clientInfo,
         data,
-        actionType: 'create-meeting',
+        actionType: 'create_meeting',
       };
     } catch (error: any) {
       console.error('Error creating meeting:', error);
       return {
         success: false,
         message: '❌ שגיאה ביצירת הפגישה: ' + error.message,
-        actionType: 'create-meeting',
+        actionType: 'create_meeting',
       };
     }
   }
@@ -96,7 +278,6 @@ class AIChatActionsService {
     assigneeId?: string;
   }): Promise<ActionResult> {
     try {
-      // מציאת לקוח לפי שם
       let clientId = params.clientId;
       if (params.clientName && !clientId) {
         const { data: clients } = await supabase
@@ -109,7 +290,6 @@ class AIChatActionsService {
         }
       }
 
-      // מציאת פרויקט לפי שם
       let projectId = params.projectId;
       if (params.projectName && !projectId) {
         const { data: projects } = await supabase
@@ -122,6 +302,8 @@ class AIChatActionsService {
         }
       }
 
+      const dueDate = params.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -130,7 +312,7 @@ class AIChatActionsService {
           client_id: clientId || null,
           project_id: projectId || null,
           priority: params.priority || 'medium',
-          due_date: params.dueDate?.toISOString() || null,
+          due_date: dueDate.toISOString(),
           assignee_id: params.assigneeId || null,
           status: 'pending',
         })
@@ -139,19 +321,18 @@ class AIChatActionsService {
 
       if (error) throw error;
 
-      const dueDateInfo = params.dueDate ? '\n📅 דדליין: ' + this.formatDate(params.dueDate) : '';
       return {
         success: true,
-        message: '✅ המשימה "' + params.title + '" נוצרה בהצלחה!\n\n📋 עדיפות: ' + this.getPriorityLabel(params.priority) + dueDateInfo,
+        message: '✅ המשימה "' + params.title + '" נוצרה בהצלחה!\n\n📋 עדיפות: ' + this.getPriorityLabel(params.priority) + '\n📅 דדליין: ' + this.formatDate(dueDate),
         data,
-        actionType: 'create-task',
+        actionType: 'create_task',
       };
     } catch (error: any) {
       console.error('Error creating task:', error);
       return {
         success: false,
         message: '❌ שגיאה ביצירת המשימה: ' + error.message,
-        actionType: 'create-task',
+        actionType: 'create_task',
       };
     }
   }
@@ -168,19 +349,18 @@ class AIChatActionsService {
     notes?: string;
   }): Promise<ActionResult> {
     try {
-      // בדיקה אם הלקוח כבר קיים
       const { data: existing } = await supabase
         .from('clients')
         .select('id, name')
-        .or(`name.ilike.%${params.name}%,email.eq.${params.email || ''}`)
+        .ilike('name', `%${params.name}%`)
         .limit(1);
 
       if (existing && existing.length > 0) {
         return {
           success: false,
-          message: `⚠️ לקוח בשם דומה כבר קיים: "${existing[0].name}".\n\nהאם תרצה ליצור בכל זאת?`,
+          message: `⚠️ לקוח בשם דומה כבר קיים: "${existing[0].name}".\n\nאם תרצה ליצור בכל זאת, אמור "צור לקוח חדש בשם ${params.name} בכל זאת".`,
           data: { existing: existing[0] },
-          actionType: 'create-client',
+          actionType: 'create_client',
         };
       }
 
@@ -202,18 +382,19 @@ class AIChatActionsService {
 
       const emailInfo = params.email ? '\n📧 מייל: ' + params.email : '';
       const phoneInfo = params.phone ? '\n📱 טלפון: ' + params.phone : '';
+      const companyInfo = params.company ? '\n🏢 חברה: ' + params.company : '';
       return {
         success: true,
-        message: '✅ הלקוח "' + params.name + '" נוצר בהצלחה!\n\n👤 סטטוס: פעיל' + emailInfo + phoneInfo,
+        message: '✅ הלקוח "' + params.name + '" נוצר בהצלחה!\n\n👤 סטטוס: פעיל' + emailInfo + phoneInfo + companyInfo,
         data,
-        actionType: 'create-client',
+        actionType: 'create_client',
       };
     } catch (error: any) {
       console.error('Error creating client:', error);
       return {
         success: false,
         message: '❌ שגיאה ביצירת הלקוח: ' + error.message,
-        actionType: 'create-client',
+        actionType: 'create_client',
       };
     }
   }
@@ -231,7 +412,6 @@ class AIChatActionsService {
     endDate?: Date;
   }): Promise<ActionResult> {
     try {
-      // מציאת לקוח לפי שם
       let clientId = params.clientId;
       if (params.clientName && !clientId) {
         const { data: clients } = await supabase
@@ -261,18 +441,19 @@ class AIChatActionsService {
       if (error) throw error;
 
       const budgetInfo = params.budget ? '\n💰 תקציב: ₪' + params.budget.toLocaleString() : '';
+      const clientInfo = params.clientName ? '\n👤 לקוח: ' + params.clientName : '';
       return {
         success: true,
-        message: '✅ הפרויקט "' + params.name + '" נוצר בהצלחה!\n\n📁 סטטוס: פעיל' + budgetInfo,
+        message: '✅ הפרויקט "' + params.name + '" נוצר בהצלחה!\n\n📁 סטטוס: פעיל' + budgetInfo + clientInfo,
         data,
-        actionType: 'create-project',
+        actionType: 'create_project',
       };
     } catch (error: any) {
       console.error('Error creating project:', error);
       return {
         success: false,
         message: '❌ שגיאה ביצירת הפרויקט: ' + error.message,
-        actionType: 'create-project',
+        actionType: 'create_project',
       };
     }
   }
@@ -289,7 +470,6 @@ class AIChatActionsService {
     projectId?: string;
   }): Promise<ActionResult> {
     try {
-      // מציאת לקוח לפי שם
       let clientId = params.clientId;
       if (params.clientName && !clientId) {
         const { data: clients } = await supabase
@@ -322,14 +502,14 @@ class AIChatActionsService {
         success: true,
         message: `✅ התזכורת נוצרה בהצלחה!\n\n🔔 "${params.title}"\n📅 ב: ${this.formatDate(params.reminderDate)}`,
         data,
-        actionType: 'create-reminder',
+        actionType: 'create_reminder',
       };
     } catch (error: any) {
       console.error('Error creating reminder:', error);
       return {
         success: false,
         message: `❌ שגיאה ביצירת התזכורת: ${error.message}`,
-        actionType: 'create-reminder',
+        actionType: 'create_reminder',
       };
     }
   }
@@ -348,42 +528,13 @@ class AIChatActionsService {
     hourlyRate?: number;
   }): Promise<ActionResult> {
     try {
-      // מציאת לקוח לפי שם
-      let clientId = params.clientId;
-      if (params.clientName && !clientId) {
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id')
-          .ilike('name', `%${params.clientName}%`)
-          .limit(1);
-        if (clients && clients.length > 0) {
-          clientId = clients[0].id;
-        }
-      }
-
-      // מציאת פרויקט לפי שם
-      let projectId = params.projectId;
-      if (params.projectName && !projectId) {
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('id')
-          .ilike('name', `%${params.projectName}%`)
-          .limit(1);
-        if (projects && projects.length > 0) {
-          projectId = projects[0].id;
-        }
-      }
-
       const date = params.date || new Date();
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
           description: params.description,
-          hours: params.hours,
-          date: date.toISOString().split('T')[0],
-          client_id: clientId || null,
-          project_id: projectId || null,
-          hourly_rate: params.hourlyRate || null,
+          start_time: date.toISOString(),
+          duration_minutes: Math.round(params.hours * 60),
         })
         .select()
         .single();
@@ -394,14 +545,14 @@ class AIChatActionsService {
         success: true,
         message: `✅ נרשמו ${params.hours} שעות עבודה!\n\n📝 "${params.description}"\n📅 תאריך: ${this.formatDate(date)}`,
         data,
-        actionType: 'create-time-entry',
+        actionType: 'log_hours',
       };
     } catch (error: any) {
       console.error('Error creating time entry:', error);
       return {
         success: false,
         message: `❌ שגיאה ברישום השעות: ${error.message}`,
-        actionType: 'create-time-entry',
+        actionType: 'log_hours',
       };
     }
   }
@@ -417,13 +568,11 @@ class AIChatActionsService {
     try {
       let taskId = params.taskId;
 
-      // מציאת משימה לפי כותרת
       if (params.taskTitle && !taskId) {
         const { data: tasks } = await supabase
           .from('tasks')
           .select('id, title')
           .ilike('title', `%${params.taskTitle}%`)
-          .eq('status', 'pending')
           .limit(1);
         
         if (tasks && tasks.length > 0) {
@@ -432,17 +581,13 @@ class AIChatActionsService {
           return {
             success: false,
             message: `❌ לא מצאתי משימה עם הכותרת "${params.taskTitle}"`,
-            actionType: 'update-task-status',
+            actionType: 'update_task',
           };
         }
       }
 
       if (!taskId) {
-        return {
-          success: false,
-          message: '❌ לא צוין מזהה משימה',
-          actionType: 'update-task-status',
-        };
+        return { success: false, message: '❌ לא צוין מזהה או שם משימה', actionType: 'update_task' };
       }
 
       const { data, error } = await supabase
@@ -457,35 +602,26 @@ class AIChatActionsService {
 
       if (error) throw error;
 
-      const statusLabel = this.getStatusLabel(params.status);
       return {
         success: true,
-        message: `✅ סטטוס המשימה עודכן ל: ${statusLabel}`,
+        message: `✅ סטטוס המשימה עודכן ל: ${this.getStatusLabel(params.status)}`,
         data,
-        actionType: 'update-task-status',
+        actionType: 'update_task',
       };
     } catch (error: any) {
       console.error('Error updating task:', error);
-      return {
-        success: false,
-        message: `❌ שגיאה בעדכון המשימה: ${error.message}`,
-        actionType: 'update-task-status',
-      };
+      return { success: false, message: `❌ שגיאה בעדכון המשימה: ${error.message}`, actionType: 'update_task' };
     }
   }
 
   /**
    * מחיקת משימה
    */
-  async deleteTask(params: {
-    taskId?: string;
-    taskTitle?: string;
-  }): Promise<ActionResult> {
+  async deleteTask(params: { taskId?: string; taskTitle?: string }): Promise<ActionResult> {
     try {
       let taskId = params.taskId;
       let taskTitle = params.taskTitle;
 
-      // מציאת משימה לפי כותרת
       if (params.taskTitle && !taskId) {
         const { data: tasks } = await supabase
           .from('tasks')
@@ -497,41 +633,21 @@ class AIChatActionsService {
           taskId = tasks[0].id;
           taskTitle = tasks[0].title;
         } else {
-          return {
-            success: false,
-            message: `❌ לא מצאתי משימה עם הכותרת "${params.taskTitle}"`,
-            actionType: 'delete-task',
-          };
+          return { success: false, message: `❌ לא מצאתי משימה עם הכותרת "${params.taskTitle}"`, actionType: 'delete_task' };
         }
       }
 
       if (!taskId) {
-        return {
-          success: false,
-          message: '❌ לא צוין מזהה משימה',
-          actionType: 'delete-task',
-        };
+        return { success: false, message: '❌ לא צוין מזהה או שם משימה', actionType: 'delete_task' };
       }
 
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-
+      const { error } = await supabase.from('tasks').delete().eq('id', taskId);
       if (error) throw error;
 
-      return {
-        success: true,
-        message: `✅ המשימה "${taskTitle}" נמחקה בהצלחה`,
-        actionType: 'delete-task',
-      };
+      return { success: true, message: `✅ המשימה "${taskTitle}" נמחקה בהצלחה`, actionType: 'delete_task' };
     } catch (error: any) {
       console.error('Error deleting task:', error);
-      return {
-        success: false,
-        message: `❌ שגיאה במחיקת המשימה: ${error.message}`,
-        actionType: 'delete-task',
-      };
+      return { success: false, message: `❌ שגיאה במחיקת המשימה: ${error.message}`, actionType: 'delete_task' };
     }
   }
 
@@ -547,7 +663,6 @@ class AIChatActionsService {
     try {
       let meetingId = params.meetingId;
 
-      // מציאת פגישה לפי כותרת
       if (params.meetingTitle && !meetingId) {
         const { data: meetings } = await supabase
           .from('meetings')
@@ -559,65 +674,48 @@ class AIChatActionsService {
         if (meetings && meetings.length > 0) {
           meetingId = meetings[0].id;
         } else {
-          return {
-            success: false,
-            message: `❌ לא מצאתי פגישה עם הכותרת "${params.meetingTitle}"`,
-            actionType: 'update-meeting',
-          };
+          return { success: false, message: `❌ לא מצאתי פגישה עם הכותרת "${params.meetingTitle}"`, actionType: 'update_meeting' };
         }
       }
 
       if (!meetingId) {
-        return {
-          success: false,
-          message: '❌ לא צוין מזהה פגישה',
-          actionType: 'update-meeting',
-        };
+        return { success: false, message: '❌ לא צוין מזהה או שם פגישה', actionType: 'update_meeting' };
       }
 
       const updates: Record<string, any> = {};
       if (params.status) updates.status = params.status;
-      if (params.newDate) updates.scheduled_at = params.newDate.toISOString();
+      if (params.newDate) {
+        updates.start_time = params.newDate.toISOString();
+        updates.end_time = new Date(params.newDate.getTime() + 60 * 60000).toISOString();
+      }
 
-      const { data, error } = await supabase
-        .from('meetings')
-        .update(updates)
-        .eq('id', meetingId)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('meetings').update(updates).eq('id', meetingId).select().single();
       if (error) throw error;
 
       const statusInfo = params.status ? '\n📊 סטטוס: ' + this.getMeetingStatusLabel(params.status) : '';
       const dateInfo = params.newDate ? '\n📅 תאריך חדש: ' + this.formatDate(params.newDate) : '';
-      return {
-        success: true,
-        message: '✅ הפגישה עודכנה בהצלחה!' + statusInfo + dateInfo,
-        data,
-        actionType: 'update-meeting',
-      };
+      return { success: true, message: '✅ הפגישה עודכנה בהצלחה!' + statusInfo + dateInfo, data, actionType: 'update_meeting' };
     } catch (error: any) {
       console.error('Error updating meeting:', error);
-      return {
-        success: false,
-        message: '❌ שגיאה בעדכון הפגישה: ' + error.message,
-        actionType: 'update-meeting',
-      };
+      return { success: false, message: '❌ שגיאה בעדכון הפגישה: ' + error.message, actionType: 'update_meeting' };
     }
   }
 
-  // ========== פונקציות עזר ==========
+  // ========== Helper Functions ==========
 
   private formatDate(date: Date): string {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    };
-    return date.toLocaleDateString('he-IL', options);
+    try {
+      return date.toLocaleDateString('he-IL', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return date.toISOString();
+    }
   }
 
   private getPriorityLabel(priority?: string): string {
@@ -649,58 +747,25 @@ class AIChatActionsService {
     }
   }
 
-  /**
-   * שמירת פעולה ממתינה (לאישור המשתמש)
-   */
+  // ========== Pending Action Methods ==========
+
   setPendingAction(action: PendingAction) {
     this.pendingAction = action;
   }
 
-  /**
-   * קבלת פעולה ממתינה
-   */
   getPendingAction(): PendingAction | null {
     return this.pendingAction;
   }
 
-  /**
-   * ניקוי פעולה ממתינה
-   */
   clearPendingAction() {
     this.pendingAction = null;
   }
 
-  /**
-   * ביצוע פעולה ממתינה
-   */
   async executePendingAction(): Promise<ActionResult | null> {
     if (!this.pendingAction) return null;
-
     const action = this.pendingAction;
     this.clearPendingAction();
-
-    switch (action.type) {
-      case 'create-meeting':
-        return this.createMeeting(action.params as any);
-      case 'create-task':
-        return this.createTask(action.params as any);
-      case 'create-client':
-        return this.createClient(action.params as any);
-      case 'create-project':
-        return this.createProject(action.params as any);
-      case 'create-reminder':
-        return this.createReminder(action.params as any);
-      case 'create-time-entry':
-        return this.createTimeEntry(action.params as any);
-      case 'update-task-status':
-        return this.updateTaskStatus(action.params as any);
-      case 'delete-task':
-        return this.deleteTask(action.params as any);
-      case 'update-meeting':
-        return this.updateMeeting(action.params as any);
-      default:
-        return null;
-    }
+    return this.executeAction(action.type, action.params);
   }
 }
 

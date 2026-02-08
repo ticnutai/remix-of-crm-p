@@ -1,9 +1,12 @@
 /**
- * AI Chat Hook - שימוש ב-Lovable AI Gateway עם Streaming
+ * AI Chat Hook V2 - Enhanced with ACTION parsing and full CRM capabilities
+ * Uses Lovable AI Gateway with streaming + aiChatActionsService for action execution
  */
 
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { aiChatActionsService } from '@/services/aiChatActionsService';
+import { toast } from 'sonner';
 
 export interface ChatMessage {
   id: string;
@@ -16,13 +19,19 @@ export interface ChatMessage {
 interface CRMContext {
   clientsCount: number;
   projectsCount: number;
+  activeProjectsCount?: number;
   tasksCount: number;
+  pendingTasksCount?: number;
   overdueTasks: number;
+  overdueTasksList?: string;
+  todaysTasks?: string;
   meetingsToday: number;
+  upcomingMeetings?: string;
   monthlyRevenue: number;
   hoursToday: number;
+  weeklyHours?: number;
   recentClients?: string;
-  upcomingMeetings?: string;
+  recentActivity?: string;
   clientSearch?: string;
   searchedClients?: ClientSearchResult[];
 }
@@ -35,127 +44,85 @@ interface ClientSearchResult {
   company?: string;
 }
 
+interface ParsedAction {
+  actionName: string;
+  params: Record<string, any>;
+  raw: string;
+}
+
+// Parse [ACTION:name:{...}] blocks from AI response
+function parseActionsFromResponse(text: string): { cleanText: string; actions: ParsedAction[] } {
+  const actionRegex = /\[ACTION:(\w+):(\{[^[\]]*?\})\]/g;
+  const actions: ParsedAction[] = [];
+  let match;
+
+  while ((match = actionRegex.exec(text)) !== null) {
+    try {
+      const params = JSON.parse(match[2]);
+      actions.push({
+        actionName: match[1],
+        params,
+        raw: match[0],
+      });
+    } catch (e) {
+      console.error('Failed to parse action params:', match[0], e);
+    }
+  }
+
+  // Strip action blocks from display text
+  const cleanText = text.replace(/\[ACTION:\w+:\{[^[\]]*?\}]\s*/g, '').trim();
+
+  return { cleanText, actions };
+}
+
 // Smart name matching - handles reversed names
 function normalizeNameForSearch(name: string): string[] {
-  // Remove extra spaces and normalize
   const clean = name.trim().toLowerCase().replace(/\s+/g, ' ');
   const parts = clean.split(' ');
-  
-  // Return original and reversed versions
   const variations: string[] = [clean];
-  
+
   if (parts.length >= 2) {
-    // Add reversed version: "יוסי אשכנזי" => "אשכנזי יוסי"
-    variations.push(parts.reverse().join(' '));
-    
-    // Add individual parts for partial matching
+    variations.push([...parts].reverse().join(' '));
     parts.forEach(part => {
       if (part.length >= 2) variations.push(part);
     });
   }
-  
+
   return [...new Set(variations)];
 }
 
-// Smart action detection
-interface SmartAction {
-  type: 'send_email' | 'create_task' | 'schedule_meeting' | 'search_client' | 'none';
-  data: Record<string, any>;
-}
-
-function detectSmartAction(message: string): SmartAction {
-  const lowerMessage = message.toLowerCase();
-  
-  // Email patterns: "שלח מייל ל[לקוח] על [נושא]" or "שלח אימייל ל[כתובת]"
-  const emailPatterns = [
-    /שלח\s+(?:מייל|אימייל|דואר)\s+(?:ל|אל)\s*([^\s,]+(?:@[^\s,]+)?)\s*(?:על|בנושא|עם הודעה)?\s*(.*)?/i,
-    /(?:מייל|אימייל)\s+(?:ל|אל)\s*([^\s,]+(?:@[^\s,]+)?)\s*(?:על|בנושא|עם הודעה)?\s*(.*)?/i,
-  ];
-  
-  for (const pattern of emailPatterns) {
-    const match = message.match(pattern);
-    if (match) {
-      return {
-        type: 'send_email',
-        data: {
-          recipient: match[1]?.trim(),
-          subject: match[2]?.trim() || '',
-        }
-      };
-    }
-  }
-  
-  // Task patterns: "צור משימה [תיאור]" or "הוסף משימה [תיאור]"
-  const taskPatterns = [
-    /(?:צור|הוסף|תוסיף)\s+משימה\s*:?\s*(.+)/i,
-    /משימה\s+(?:חדשה|ל)\s*:?\s*(.+)/i,
-  ];
-  
-  for (const pattern of taskPatterns) {
-    const match = message.match(pattern);
-    if (match) {
-      return {
-        type: 'create_task',
-        data: {
-          title: match[1]?.trim(),
-        }
-      };
-    }
-  }
-  
-  // Meeting patterns: "קבע פגישה עם [לקוח] מחר/היום"
-  const meetingPatterns = [
-    /(?:קבע|תקבע|קבעי)\s+פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+(?:מחר|היום|ב|ל)(.*))?$/i,
-    /פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+(?:מחר|היום|ב|ל)(.*))?$/i,
-  ];
-  
-  for (const pattern of meetingPatterns) {
-    const match = message.match(pattern);
-    if (match) {
-      return {
-        type: 'schedule_meeting',
-        data: {
-          clientName: match[1]?.trim(),
-          when: match[2]?.trim() || 'מחר',
-        }
-      };
-    }
-  }
-  
-  return { type: 'none', data: {} };
-}
-
-// Extract client name from user message
+// Extract client name from user message for context search
 function extractClientNameFromMessage(message: string): string | null {
-  // Patterns to extract client names
   const patterns = [
     /פגישה\s+(?:עם|ל)\s+(.+?)(?:\s+ב|\s+מחר|\s+היום|$)/i,
     /לקבוע\s+(?:פגישה\s+)?(?:עם|ל)\s+(.+?)(?:\s+ב|\s+מחר|\s+היום|$)/i,
     /(?:מצא|חפש|מידע על|פרטים של|פרטי)\s+(?:לקוח\s+)?(.+?)(?:\s+בבקשה|$)/i,
     /(?:התקשר|שלח מייל|שלח הודעה)\s+(?:ל|אל)\s+(.+?)(?:\s+בבקשה|$)/i,
     /(?:מי זה|מה עם|סטטוס של)\s+(.+?)(?:\?|$)/i,
+    /(?:משימה|פרויקט|שעות)\s+(?:ל|של|עבור)\s+(.+?)(?:\s|$)/i,
   ];
-  
+
   for (const pattern of patterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
-      // Clean up the extracted name
       return match[1].trim().replace(/[?,!.]+$/, '');
     }
   }
-  
+
   return null;
 }
 
+// Kept for reference but no longer used as fast-path
+// All actions now go through AI → ACTION parsing → aiChatActionsService
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
-const SEND_EMAIL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-reminder-email`;
 
 export function useAIChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: '👋 שלום! אני העוזר החכם של המערכת.\n\n**מה אני יכול לעשות:**\n- 📊 מידע על לקוחות, פרויקטים, משימות, פגישות והכנסות\n- 📧 **שלח מייל ל[שם/כתובת]** - שליחת אימייל ללקוח\n- ✅ **צור משימה: [תיאור]** - יצירת משימה חדשה\n- 📅 **קבע פגישה עם [לקוח] מחר** - קביעת פגישה\n\nשאל אותי משהו! 🚀',
+      content: '👋 שלום! אני העוזר החכם של המערכת.\n\n**מה אני יכול לעשות:**\n- 📊 מידע על לקוחות, פרויקטים, משימות ופגישות\n- ✅ ליצור, לעדכן ולמחוק משימות\n- 📅 לקבוע, לעדכן ולבטל פגישות\n- 👥 ליצור לקוחות חדשים ולחפש קיימים\n- 📁 ליצור פרויקטים\n- 📧 לשלוח מיילים ללקוחות\n- 🔔 ליצור תזכורות\n- ⏱️ לרשום שעות עבודה\n- 💰 דוחות הכנסות ותובנות עסקיות\n\n**דוגמאות:**\n"צור משימה להתקשר ללקוח עם עדיפות גבוהה"\n"קבע פגישה עם דוד כהן מחר ב-14:00"\n"שלח מייל לישראל ישראלי על עדכון הפרויקט"\n"כמה שעות עבדתי השבוע?"\n\nשאל אותי משהו! 🚀',
       timestamp: new Date(),
     },
   ]);
@@ -163,96 +130,145 @@ export function useAIChat() {
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Fetch CRM context for the AI
+  // Fetch comprehensive CRM context for the AI
   const fetchContext = useCallback(async (userMessage?: string): Promise<CRMContext> => {
     try {
-      const today = new Date();
+      const now = new Date();
+      const today = new Date(now);
       const startOfToday = new Date(today.setHours(0, 0, 0, 0)).toISOString();
       const endOfToday = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      
+      // Start of week (Sunday)
+      const dayOfWeek = now.getDay();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - dayOfWeek);
+      startOfWeek.setHours(0, 0, 0, 0);
 
       const [
         clientsRes,
         projectsRes,
+        activeProjectsRes,
         tasksRes,
+        pendingTasksRes,
         overdueTasksRes,
+        overdueTasksListRes,
+        todaysTasksRes,
         meetingsTodayRes,
+        upcomingMeetingsRes,
         invoicesRes,
         timeEntriesTodayRes,
+        weeklyTimeRes,
         recentClientsRes,
+        recentActivityRes,
       ] = await Promise.all([
         supabase.from('clients').select('id', { count: 'exact', head: true }),
         supabase.from('projects').select('id', { count: 'exact', head: true }),
+        supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('tasks').select('id', { count: 'exact', head: true }),
+        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('tasks').select('id', { count: 'exact', head: true })
           .lt('due_date', new Date().toISOString())
           .neq('status', 'completed'),
+        supabase.from('tasks').select('title, due_date, priority')
+          .lt('due_date', new Date().toISOString())
+          .neq('status', 'completed')
+          .order('due_date', { ascending: true })
+          .limit(5),
+        supabase.from('tasks').select('title, priority, status')
+          .gte('due_date', startOfToday)
+          .lte('due_date', endOfToday)
+          .neq('status', 'completed')
+          .limit(5),
         supabase.from('meetings').select('id', { count: 'exact', head: true })
           .gte('start_time', startOfToday)
           .lte('start_time', endOfToday),
+        supabase.from('meetings').select('title, start_time, client_id')
+          .gte('start_time', startOfToday)
+          .order('start_time', { ascending: true })
+          .limit(5),
         supabase.from('invoices').select('amount')
           .gte('created_at', startOfMonth)
           .eq('status', 'paid'),
         supabase.from('time_entries').select('duration_minutes')
           .gte('start_time', startOfToday),
+        supabase.from('time_entries').select('duration_minutes')
+          .gte('start_time', startOfWeek.toISOString()),
         supabase.from('clients').select('name')
           .order('created_at', { ascending: false })
+          .limit(3),
+        supabase.from('tasks').select('title, status, updated_at')
+          .order('updated_at', { ascending: false })
           .limit(3),
       ]);
 
       const monthlyRevenue = (invoicesRes.data || []).reduce(
-        (sum, inv) => sum + (inv.amount || 0),
-        0
+        (sum, inv) => sum + (inv.amount || 0), 0
       );
 
       const hoursToday = (timeEntriesTodayRes.data || []).reduce(
-        (sum, entry) => sum + ((entry as any).duration_minutes || 0) / 60,
-        0
+        (sum, entry) => sum + ((entry as any).duration_minutes || 0) / 60, 0
+      );
+
+      const weeklyHours = (weeklyTimeRes.data || []).reduce(
+        (sum, entry) => sum + ((entry as any).duration_minutes || 0) / 60, 0
       );
 
       const recentClients = (recentClientsRes.data || [])
-        .map(c => c.name)
-        .join(', ');
+        .map(c => c.name).join(', ');
 
-      // Smart client search if user message contains a name
+      // Format overdue tasks list
+      const overdueTasksList = (overdueTasksListRes.data || [])
+        .map(t => `- ${t.title} (עדיפות: ${t.priority || 'רגילה'}, יעד: ${t.due_date ? new Date(t.due_date).toLocaleDateString('he-IL') : 'לא נקבע'})`)
+        .join('\n');
+
+      // Format today's tasks
+      const todaysTasks = (todaysTasksRes.data || [])
+        .map(t => `- ${t.title} (${t.status === 'pending' ? 'ממתינה' : t.status === 'in_progress' ? 'בביצוע' : t.status})`)
+        .join('\n');
+
+      // Format upcoming meetings
+      const upcomingMeetings = (upcomingMeetingsRes.data || [])
+        .map(m => {
+          const time = new Date(m.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+          return `- ${m.title} ב-${time}`;
+        })
+        .join('\n');
+
+      // Format recent activity
+      const recentActivity = (recentActivityRes.data || [])
+        .map(t => `- ${t.title}: ${t.status === 'completed' ? 'הושלמה' : t.status}`)
+        .join('\n');
+
+      // Smart client search
       let clientSearch: string | undefined;
       let searchedClients: ClientSearchResult[] = [];
-      
+
       if (userMessage) {
         const extractedName = extractClientNameFromMessage(userMessage);
         if (extractedName) {
           clientSearch = extractedName;
           const nameVariations = normalizeNameForSearch(extractedName);
-          
-          // Search for clients with any of the name variations
           const { data: clients } = await supabase
             .from('clients')
             .select('id, name, email, phone, company');
-          
+
           if (clients) {
-            // Score each client based on name match
             const scoredClients = clients.map(client => {
               const clientNameLower = client.name.toLowerCase();
               let score = 0;
-              
               for (const variation of nameVariations) {
-                if (clientNameLower === variation) {
-                  score = 100; // Exact match
-                  break;
-                } else if (clientNameLower.includes(variation)) {
-                  score = Math.max(score, 80); // Contains variation
-                } else if (variation.split(' ').some(part => 
-                  part.length >= 2 && clientNameLower.includes(part)
-                )) {
-                  score = Math.max(score, 60); // Partial match
+                if (clientNameLower === variation) { score = 100; break; }
+                else if (clientNameLower.includes(variation)) { score = Math.max(score, 80); }
+                else if (variation.split(' ').some(part => part.length >= 2 && clientNameLower.includes(part))) {
+                  score = Math.max(score, 60);
                 }
               }
-              
               return { ...client, score };
             }).filter(c => c.score > 0)
               .sort((a, b) => b.score - a.score)
               .slice(0, 5);
-            
+
             searchedClients = scoredClients.map(({ score, ...client }) => client);
           }
         }
@@ -261,12 +277,19 @@ export function useAIChat() {
       return {
         clientsCount: clientsRes.count || 0,
         projectsCount: projectsRes.count || 0,
+        activeProjectsCount: activeProjectsRes.count || 0,
         tasksCount: tasksRes.count || 0,
+        pendingTasksCount: pendingTasksRes.count || 0,
         overdueTasks: overdueTasksRes.count || 0,
+        overdueTasksList: overdueTasksList || undefined,
+        todaysTasks: todaysTasks || undefined,
         meetingsToday: meetingsTodayRes.count || 0,
+        upcomingMeetings: upcomingMeetings || undefined,
         monthlyRevenue,
         hoursToday,
+        weeklyHours,
         recentClients,
+        recentActivity: recentActivity || undefined,
         clientSearch,
         searchedClients,
       };
@@ -284,191 +307,31 @@ export function useAIChat() {
     }
   }, []);
 
-  // Handle smart actions (email, task, meeting)
-  const handleSmartAction = useCallback(async (action: SmartAction, assistantId: string): Promise<boolean> => {
-    if (action.type === 'none') return false;
-    
-    try {
-      switch (action.type) {
-        case 'send_email': {
-          const { recipient, subject } = action.data;
-          
-          // First, try to find client by name if not an email address
-          let email = recipient;
-          let clientName = recipient;
-          
-          if (!recipient.includes('@')) {
-            // Search for client
-            const { data: clients } = await supabase
-              .from('clients')
-              .select('id, name, email')
-              .ilike('name', `%${recipient}%`)
-              .limit(1);
-            
-            if (clients && clients.length > 0 && clients[0].email) {
-              email = clients[0].email;
-              clientName = clients[0].name;
-            } else {
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === assistantId
-                    ? { ...m, content: `⚠️ לא מצאתי את הלקוח "${recipient}" או שאין לו כתובת מייל במערכת.\n\nאנא ציין כתובת מייל מלאה או בדוק את שם הלקוח.`, isStreaming: false }
-                    : m
-                )
-              );
-              return true;
-            }
-          }
-          
-          // Send email
-          const response = await fetch(SEND_EMAIL_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({
-              to: email,
-              title: subject || 'הודעה ממערכת CRM',
-              message: subject || 'שלום, זוהי הודעה אוטומטית ממערכת ה-CRM.',
-              userName: clientName,
-            }),
-          });
-          
-          if (response.ok) {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `✅ **המייל נשלח בהצלחה!**\n\n📧 **נמען:** ${clientName} (${email})\n📝 **נושא:** ${subject || 'הודעה ממערכת CRM'}\n\nהמייל נשלח לכתובת הלקוח.`, isStreaming: false }
-                  : m
-              )
-            );
-          } else {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `❌ שגיאה בשליחת המייל. נסה שוב מאוחר יותר.`, isStreaming: false }
-                  : m
-              )
-            );
-          }
-          return true;
+  // Execute parsed actions from AI response via aiChatActionsService
+  const executeActions = useCallback(async (actions: ParsedAction[]): Promise<string[]> => {
+    const results: string[] = [];
+
+    for (const action of actions) {
+      try {
+        console.log(`Executing AI action: ${action.actionName}`, action.params);
+        const result = await aiChatActionsService.executeAction(action.actionName, action.params);
+
+        if (result.success) {
+          toast.success(result.message);
+          results.push(`✅ ${result.message}`);
+        } else {
+          toast.error(result.message);
+          results.push(`❌ ${result.message}`);
         }
-        
-        case 'create_task': {
-          const { title } = action.data;
-          
-          const { data, error } = await supabase
-            .from('tasks')
-            .insert({
-              title: title,
-              status: 'pending',
-              priority: 'medium',
-              due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Week from now
-            })
-            .select()
-            .single();
-          
-          if (data && !error) {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `✅ **משימה נוצרה בהצלחה!**\n\n📋 **כותרת:** ${title}\n📅 **תאריך יעד:** שבוע מהיום\n⚡ **עדיפות:** בינונית\n\nתוכל לצפות במשימה בדף המשימות.`, isStreaming: false }
-                  : m
-              )
-            );
-          } else {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `❌ שגיאה ביצירת המשימה: ${error?.message || 'שגיאה לא ידועה'}`, isStreaming: false }
-                  : m
-              )
-            );
-          }
-          return true;
-        }
-        
-        case 'schedule_meeting': {
-          const { clientName, when } = action.data;
-          
-          // Find client
-          const { data: clients } = await supabase
-            .from('clients')
-            .select('id, name')
-            .ilike('name', `%${clientName}%`)
-            .limit(1);
-          
-          if (!clients || clients.length === 0) {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `⚠️ לא מצאתי את הלקוח "${clientName}" במערכת.\n\nאנא בדוק את שם הלקוח ונסה שוב.`, isStreaming: false }
-                  : m
-              )
-            );
-            return true;
-          }
-          
-          // Calculate meeting time
-          let startTime = new Date();
-          if (when.includes('מחר')) {
-            startTime.setDate(startTime.getDate() + 1);
-          }
-          startTime.setHours(10, 0, 0, 0); // Default to 10:00
-          
-          const endTime = new Date(startTime);
-          endTime.setHours(endTime.getHours() + 1);
-          
-          const { data, error } = await supabase
-            .from('meetings')
-            .insert({
-              title: `פגישה עם ${clients[0].name}`,
-              client_id: clients[0].id,
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
-              status: 'scheduled',
-            })
-            .select()
-            .single();
-          
-          if (data && !error) {
-            const dateStr = startTime.toLocaleDateString('he-IL', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long' 
-            });
-            const timeStr = startTime.toLocaleTimeString('he-IL', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            });
-            
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `✅ **פגישה נקבעה בהצלחה!**\n\n👤 **לקוח:** ${clients[0].name}\n📅 **תאריך:** ${dateStr}\n🕐 **שעה:** ${timeStr}\n⏱️ **משך:** שעה\n\nהפגישה נוספה ליומן.`, isStreaming: false }
-                  : m
-              )
-            );
-          } else {
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: `❌ שגיאה בקביעת הפגישה: ${error?.message || 'שגיאה לא ידועה'}`, isStreaming: false }
-                  : m
-              )
-            );
-          }
-          return true;
-        }
-        
-        default:
-          return false;
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'שגיאה לא ידועה';
+        console.error(`Action ${action.actionName} failed:`, err);
+        toast.error(`שגיאה בביצוע פעולה: ${errMsg}`);
+        results.push(`❌ שגיאה: ${errMsg}`);
       }
-    } catch (err) {
-      console.error('Smart action error:', err);
-      return false;
     }
+
+    return results;
   }, []);
 
   // Send message with streaming
@@ -476,7 +339,7 @@ export function useAIChat() {
     if (!content.trim() || isLoading) return;
 
     setError(null);
-    
+
     // Add user message
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
@@ -484,7 +347,7 @@ export function useAIChat() {
       content: content.trim(),
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
@@ -502,19 +365,7 @@ export function useAIChat() {
     ]);
 
     try {
-      // Detect smart actions first
-      const smartAction = detectSmartAction(content.trim());
-      
-      // Handle smart action if detected
-      if (smartAction.type !== 'none') {
-        const handled = await handleSmartAction(smartAction, assistantId);
-        if (handled) {
-          setIsLoading(false);
-          return;
-        }
-      }
-      
-      // Fetch context with user message for smart search
+      // Fetch rich context with user message for smart search
       const context = await fetchContext(content.trim());
 
       // Prepare messages for API (excluding streaming flags)
@@ -575,10 +426,12 @@ export function useAIChat() {
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
               assistantContent += delta;
+              // Display text while streaming - strip any partial ACTION blocks for cleaner display
+              const displayText = assistantContent.replace(/\[ACTION:\w+:\{[^[\]]*?\}]\s*/g, '').trim();
               setMessages(prev =>
                 prev.map(m =>
                   m.id === assistantId
-                    ? { ...m, content: assistantContent }
+                    ? { ...m, content: displayText || assistantContent }
                     : m
                 )
               );
@@ -591,11 +444,24 @@ export function useAIChat() {
         }
       }
 
-      // Final update - remove streaming flag
+      // After streaming is complete, parse actions from the full response
+      const { cleanText, actions } = parseActionsFromResponse(assistantContent);
+
+      // Execute any actions detected
+      let actionResultsText = '';
+      if (actions.length > 0) {
+        const results = await executeActions(actions);
+        if (results.length > 0) {
+          actionResultsText = '\n\n---\n' + results.join('\n');
+        }
+      }
+
+      // Final update - show clean text + action results
+      const finalContent = (cleanText || 'מצטער, לא הצלחתי לעבד את הבקשה.') + actionResultsText;
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: assistantContent || 'מצטער, לא הצלחתי לעבד את הבקשה.', isStreaming: false }
+            ? { ...m, content: finalContent, isStreaming: false }
             : m
         )
       );
@@ -603,7 +469,7 @@ export function useAIChat() {
       console.error('Chat error:', err);
       const errorMsg = err instanceof Error ? err.message : 'שגיאה לא ידועה';
       setError(errorMsg);
-      
+
       // Update assistant message with error
       setMessages(prev =>
         prev.map(m =>
@@ -616,7 +482,7 @@ export function useAIChat() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [messages, isLoading, fetchContext, handleSmartAction]);
+  }, [messages, isLoading, fetchContext, executeActions]);
 
   // Stop streaming
   const stopStreaming = useCallback(() => {
@@ -631,7 +497,7 @@ export function useAIChat() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: '👋 שלום! אני העוזר החכם של המערכת.\n\nאני יכול לעזור לך עם מידע על לקוחות, פרויקטים, משימות, פגישות והכנסות.\n\nשאל אותי משהו! 🚀',
+        content: '👋 שלום! אני העוזר החכם של המערכת.\n\nאני יכול לעזור לך עם מידע, לבצע פעולות ולנתח נתונים.\n\nשאל אותי משהו! 🚀',
         timestamp: new Date(),
       },
     ]);
