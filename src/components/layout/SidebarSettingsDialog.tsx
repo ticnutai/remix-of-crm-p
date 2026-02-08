@@ -75,14 +75,24 @@ const fontWeights = [
 ];
 
 const colorPresets = [
-  { name: 'Navy Gold', bg: 'hsl(220, 60%, 22%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(45, 80%, 45%)' },
-  { name: 'Dark Slate', bg: 'hsl(220, 20%, 15%)', text: 'hsl(0, 0%, 95%)', accent: 'hsl(200, 90%, 50%)' },
-  { name: 'Purple Night', bg: 'hsl(260, 40%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(280, 70%, 60%)' },
-  { name: 'Forest', bg: 'hsl(150, 30%, 18%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(140, 60%, 50%)' },
-  { name: 'Burgundy', bg: 'hsl(340, 35%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(340, 60%, 60%)' },
-  { name: 'Ocean', bg: 'hsl(200, 40%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(180, 70%, 50%)' },
-  { name: 'Charcoal', bg: 'hsl(0, 0%, 15%)', text: 'hsl(0, 0%, 95%)', accent: 'hsl(0, 0%, 70%)' },
-  { name: 'Sunset', bg: 'hsl(20, 50%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(30, 90%, 55%)' },
+  // Dark themes
+  { name: 'Navy Gold', bg: 'hsl(220, 60%, 22%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(45, 80%, 45%)', border: 'hsl(45, 80%, 45%)' },
+  { name: 'Dark Slate', bg: 'hsl(220, 20%, 15%)', text: 'hsl(0, 0%, 95%)', accent: 'hsl(200, 90%, 50%)', border: 'hsl(200, 90%, 40%)' },
+  { name: 'Purple Night', bg: 'hsl(260, 40%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(280, 70%, 60%)', border: 'hsl(280, 70%, 50%)' },
+  { name: 'Forest', bg: 'hsl(150, 30%, 18%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(140, 60%, 50%)', border: 'hsl(140, 60%, 40%)' },
+  { name: 'Burgundy', bg: 'hsl(340, 35%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(340, 60%, 60%)', border: 'hsl(340, 60%, 50%)' },
+  { name: 'Ocean', bg: 'hsl(200, 40%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(180, 70%, 50%)', border: 'hsl(180, 70%, 40%)' },
+  { name: 'Charcoal', bg: 'hsl(0, 0%, 15%)', text: 'hsl(0, 0%, 95%)', accent: 'hsl(0, 0%, 70%)', border: 'hsl(0, 0%, 50%)' },
+  { name: 'Sunset', bg: 'hsl(20, 50%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(30, 90%, 55%)', border: 'hsl(30, 90%, 45%)' },
+  // Light/Elegant themes
+  { name: 'לבן מפואר', bg: '#FFFFFF', text: '#1B365D', accent: '#D4A843', border: '#D4A84360' },
+  { name: 'שמנת זהב', bg: '#FFFEF7', text: '#2C1810', accent: '#C9A961', border: '#C9A96180' },
+  { name: 'מודרני בהיר', bg: '#F8FAFC', text: '#0F172A', accent: '#3B82F6', border: '#3B82F640' },
+  { name: 'רוז עדין', bg: '#FFF5F5', text: '#4A1D1D', accent: '#B76E79', border: '#B76E7960' },
+  { name: 'ירוק טבעי', bg: '#F5FDF5', text: '#1A3A1A', accent: '#4CAF50', border: '#4CAF5060' },
+  { name: 'סגול מלכותי', bg: '#FAF5FF', text: '#3B1F5C', accent: '#9333EA', border: '#9333EA50' },
+  { name: 'אפור אלגנטי', bg: '#F5F5F5', text: '#333333', accent: '#666666', border: '#CCCCCC' },
+  { name: 'תכלת ים', bg: '#F0F9FF', text: '#0C4A6E', accent: '#0EA5E9', border: '#0EA5E950' },
 ];
 
 interface SidebarSettingsDialogProps {
@@ -131,7 +141,7 @@ export function SidebarSettingsDialog({
       textColor: preset.text,
       activeItemColor: preset.accent,
       iconColor: preset.accent,
-      borderColor: preset.accent,
+      borderColor: preset.border || preset.accent,
     };
     setLocalTheme(newTheme);
     onThemeChange(newTheme);
@@ -406,29 +416,60 @@ export function SidebarSettingsDialog({
 
             {/* Presets Tab */}
             <TabsContent value="presets" className="mt-4 pb-4">
-              <div className="grid grid-cols-2 gap-3">
-                {colorPresets.map((preset) => (
-                  <button
-                    key={preset.name}
-                    onClick={() => applyPreset(preset)}
-                    className={cn(
-                      "p-4 rounded-lg border-2 transition-all hover:scale-105",
-                      "flex flex-col items-center gap-2"
-                    )}
-                    style={{
-                      backgroundColor: preset.bg,
-                      borderColor: preset.accent,
-                    }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-full"
-                      style={{ backgroundColor: preset.accent }}
-                    />
-                    <span style={{ color: preset.text }} className="text-sm font-medium">
-                      {preset.name}
-                    </span>
-                  </button>
-                ))}
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-2">ערכות נושא כהות</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {colorPresets.slice(0, 8).map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => applyPreset(preset)}
+                      className={cn(
+                        "p-3 rounded-lg transition-all hover:scale-105",
+                        "flex flex-col items-center gap-1.5"
+                      )}
+                      style={{
+                        backgroundColor: preset.bg,
+                        border: `2px solid ${preset.border || preset.accent}`,
+                      }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: preset.accent }}
+                      />
+                      <span style={{ color: preset.text }} className="text-xs font-medium">
+                        {preset.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">ערכות נושא בהירות</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {colorPresets.slice(8).map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => applyPreset(preset)}
+                      className={cn(
+                        "p-3 rounded-lg transition-all hover:scale-105",
+                        "flex flex-col items-center gap-1.5"
+                      )}
+                      style={{
+                        backgroundColor: preset.bg,
+                        border: `2px solid ${preset.border || preset.accent}`,
+                      }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full"
+                        style={{ backgroundColor: preset.accent }}
+                      />
+                      <span style={{ color: preset.text }} className="text-xs font-medium">
+                        {preset.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </TabsContent>
           </ScrollArea>

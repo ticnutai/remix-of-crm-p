@@ -120,13 +120,13 @@ const mainNavItems = [
   { title: 'דוחות מותאמים', url: '/custom-reports', icon: FileBarChart, color: iconColors.gold },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar, color: iconColors.gold },
   { title: 'Gmail', url: '/gmail', icon: Mail, color: iconColors.gold },
-  { title: 'קבצים', url: '/files', icon: HardDrive, color: iconColors.gold },
-  { title: 'מסמכים', url: '/documents', icon: Files, color: iconColors.navy },
+  { title: 'קבצים', url: '/files', icon: null, color: iconColors.gold },
+  { title: 'מסמכים', url: '/documents', icon: null, color: iconColors.navy },
   { title: 'שיחות', url: '/calls', icon: Phone, color: iconColors.gold },
 ];
 
 const systemNavItems = [
-  { title: 'אוטומציות', url: '/workflows', icon: Zap, color: iconColors.gold },
+  { title: 'אוטומציות', url: '/workflows', icon: null, color: iconColors.gold },
   { title: '🧪 בדיקות', url: '/tests', icon: TestTube, color: iconColors.gold },
   { title: 'אנליטיקס', url: '/analytics', icon: FileSpreadsheet, color: iconColors.gold },
   { title: 'לוג שינויים', url: '/audit-log', icon: History, color: iconColors.navy },
@@ -393,18 +393,20 @@ export function AppSidebar() {
         collapsible="icon"
         style={{ 
           '--sidebar-width': `${sidebarWidth}px`,
-          background: sidebarColors.navy,
-          color: '#FFFFFF',
+          background: sidebarTheme.backgroundColor || sidebarColors.navy,
+          color: sidebarTheme.textColor || '#FFFFFF',
           fontFamily: sidebarTheme.fontFamily || 'Heebo',
           fontSize: `${sidebarTheme.fontSize || 14}px`,
           fontWeight: sidebarTheme.fontWeight || '400',
           transitionDuration: `${gesturesConfig.animationSpeed}ms`,
           willChange: 'transform, opacity',
+          border: `${sidebarTheme.borderWidth || 2}px solid ${sidebarTheme.borderColor || '#D4A843'}`,
+          borderRadius: `${sidebarTheme.borderRadius || 16}px`,
         } as React.CSSProperties}
         className={cn(
           "z-[100]",
           "transition-all ease-out",
-          "border-2 border-[#D4A843] rounded-2xl m-2",
+          "m-2",
           // Use transform for GPU acceleration instead of opacity+pointer-events
           isPinned || isHovering || isTransitioning
             ? "translate-x-0 opacity-100 pointer-events-auto"
@@ -468,28 +470,51 @@ export function AppSidebar() {
             "flex items-center gap-3 transition-all duration-300",
             isCollapsed && "justify-center"
           )}>
-            {/* Pin button on the left */}
+            {/* Pin button and Theme button on the left - only visible on hover */}
             {!isCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={togglePin}
-                    className="flex items-center justify-center w-8 h-8 transition-all duration-200"
-                    style={{ 
-                      color: isPinned ? sidebarColors.gold : sidebarColors.goldLight,
-                    }}
-                  >
-                    {isPinned ? (
-                      <Pin className="h-4 w-4" />
-                    ) : (
-                      <PinOff className="h-4 w-4" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {isPinned ? 'בטל הצמדה' : 'הצמד סיידבר'}
-                </TooltipContent>
-              </Tooltip>
+              <div className={cn(
+                "flex items-center gap-1 transition-opacity duration-300",
+                isHovering || isPinned ? "opacity-100" : "opacity-0"
+              )}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={togglePin}
+                      className="flex items-center justify-center w-8 h-8 transition-all duration-200"
+                      style={{ 
+                        color: isPinned ? sidebarColors.gold : sidebarColors.goldLight,
+                      }}
+                    >
+                      {isPinned ? (
+                        <Pin className="h-4 w-4" />
+                      ) : (
+                        <PinOff className="h-4 w-4" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {isPinned ? 'בטל הצמדה' : 'הצמד סיידבר'}
+                  </TooltipContent>
+                </Tooltip>
+                
+                {/* Theme selector - only visible on hover */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsSidebarSettingsOpen(true)}
+                      className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 hover:bg-white/10"
+                      style={{ 
+                        color: sidebarColors.goldLight,
+                      }}
+                    >
+                      <Palette className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    ערכות נושא
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             )}
             
             {/* Title and subtitle in the middle */}
@@ -501,12 +526,12 @@ export function AppSidebar() {
                     fontSize: `${sidebarTheme.titleFontSize || 18}px`,
                   }}
                 >
-                  <span style={{ color: sidebarColors.gold }}>ten</span>
-                  <span style={{ color: '#FFFFFF' }}>arch</span>
+                  <span style={{ color: sidebarTheme.activeItemColor || sidebarColors.gold }}>ten</span>
+                  <span style={{ color: sidebarTheme.textColor || '#FFFFFF' }}>arch</span>
                 </span>
                 <span 
                   className="text-xs font-medium"
-                  style={{ color: sidebarColors.goldLight }}
+                  style={{ color: sidebarTheme.textColor ? `${sidebarTheme.textColor}99` : sidebarColors.goldLight }}
                 >
                   CRM Pro Max
                 </span>
@@ -517,10 +542,10 @@ export function AppSidebar() {
             <div 
               className="flex h-10 w-10 items-center justify-center rounded-lg"
               style={{ 
-                background: sidebarColors.gold,
+                background: sidebarTheme.activeItemColor || sidebarColors.gold,
               }}
             >
-              <Building2 className="h-5 w-5" style={{ color: sidebarColors.navy }} />
+              <Building2 className="h-5 w-5" style={{ color: sidebarTheme.backgroundColor || sidebarColors.navy }} />
             </div>
           </div>
         </SidebarHeader>
@@ -529,7 +554,7 @@ export function AppSidebar() {
           className="px-3 py-4 overflow-y-auto scrollbar-thin scrollbar-track-transparent" 
           style={{ 
             maxHeight: 'calc(100vh - 160px)',
-            scrollbarColor: `${sidebarColors.gold}40 transparent`,
+            scrollbarColor: `${sidebarTheme.activeItemColor || sidebarColors.gold}40 transparent`,
           }}
         >
           {/* Main Navigation */}
@@ -564,8 +589,12 @@ export function AppSidebar() {
                             className="flex items-center justify-end gap-3 rounded-lg transition-all duration-200"
                             style={{ 
                               padding: '10px 12px',
-                              color: active ? sidebarColors.gold : sidebarColors.goldLight,
-                              background: active ? `${sidebarColors.gold}20` : 'transparent',
+                              color: active 
+                                ? (sidebarTheme.activeItemColor || sidebarColors.gold) 
+                                : (sidebarTheme.textColor || sidebarColors.goldLight),
+                              background: active 
+                                ? `${sidebarTheme.activeItemColor || sidebarColors.gold}20` 
+                                : 'transparent',
                             }}
                           >
                             {!isCollapsed && (
@@ -573,14 +602,16 @@ export function AppSidebar() {
                                 {item.title}
                               </span>
                             )}
-                            <item.icon 
-                              style={{ 
-                                width: `${sidebarTheme.iconSize || 20}px`, 
-                                height: `${sidebarTheme.iconSize || 20}px`,
-                                color: sidebarColors.gold,
-                              }} 
-                              className="shrink-0" 
-                            />
+                            {item.icon && (
+                              <item.icon 
+                                style={{ 
+                                  width: `${sidebarTheme.iconSize || 20}px`, 
+                                  height: `${sidebarTheme.iconSize || 20}px`,
+                                  color: sidebarTheme.iconColor || sidebarColors.gold,
+                                }} 
+                                className="shrink-0" 
+                              />
+                            )}
                           </NavLink>
                         </SidebarMenuButton>
                         {/* Plus button for adding custom tables */}
@@ -633,7 +664,7 @@ export function AppSidebar() {
         <SidebarFooter 
           className="p-4"
           style={{ 
-            borderTop: `1px solid ${sidebarColors.gold}40`,
+            borderTop: `1px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}40`,
           }}
         >
           <div className="flex items-center justify-between gap-2">
@@ -644,9 +675,9 @@ export function AppSidebar() {
                   onClick={() => setIsQuickSettingsOpen(true)}
                   className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300"
                   style={{ 
-                    border: `2px solid ${sidebarColors.gold}`,
+                    border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
                     background: 'transparent',
-                    color: sidebarColors.gold,
+                    color: sidebarTheme.activeItemColor || sidebarColors.gold,
                   }}
                 >
                   <Settings className="h-5 w-5" />
@@ -663,7 +694,7 @@ export function AppSidebar() {
               isCollapsed && "sr-only"
             )} style={{ 
               fontSize: '11px',
-              color: sidebarColors.goldLight,
+              color: sidebarTheme.textColor ? `${sidebarTheme.textColor}99` : sidebarColors.goldLight,
             }}>
               <p className="font-medium">גרסה 1.0.0</p>
             </div>
@@ -968,7 +999,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                       isActive(item.url) && "bg-primary/10 font-medium border-r-2 border-primary"
                     )}
                   >
-                    <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 shrink-0", item.color)} />
+                    {item.icon && <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 shrink-0", item.color)} />}
                     <span className={cn(
                       "truncate flex-1",
                       isActive(item.url) && "text-primary"
@@ -1021,7 +1052,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                       isActive(item.url) && "bg-[hsl(45,80%,45%)]/10 font-medium border-r-2 border-[hsl(45,80%,45%)]"
                     )}
                   >
-                    <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 shrink-0", item.color)} />
+                    {item.icon && <item.icon className={cn("h-4 w-4 sm:h-5 sm:w-5 shrink-0", item.color)} />}
                     <span className={cn(
                       "truncate flex-1",
                       isActive(item.url) && "text-[hsl(45,80%,45%)]"
