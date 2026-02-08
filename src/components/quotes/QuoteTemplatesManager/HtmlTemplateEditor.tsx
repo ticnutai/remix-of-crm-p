@@ -16,6 +16,7 @@ import {
   X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Edit, Plus, Trash2,
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
   User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
+  QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench,
 } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +25,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useClients } from '@/hooks/useClients';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  DesignTemplatesSelector,
+  DigitalSignature,
+  QRCodeGenerator,
+  QuoteStatusTracker,
+  ChangeHistory,
+  SMSShareDialog,
+  CalendarSyncDialog,
+  AlternativePricing,
+  AutoCalculator,
+  PaymentLink,
+  DESIGN_TEMPLATES,
+  type QuoteStatus,
+  type ChangeRecord,
+  type PricingOption,
+  type CalculationResult,
+} from './AdvancedFeatures';
 
 interface HtmlTemplateEditorProps {
   open: boolean;
@@ -498,6 +516,53 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
   const [showAILogoDialog, setShowAILogoDialog] = useState(false);
   
+  // Advanced features state
+  const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>('draft');
+  const [changeHistory, setChangeHistory] = useState<ChangeRecord[]>([]);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
+    { id: 'basic', name: 'בסיסי', discount: 0, description: 'ללא הנחה' },
+  ]);
+  const [selectedPricingOption, setSelectedPricingOption] = useState('basic');
+  const [showSMSDialog, setShowSMSDialog] = useState(false);
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
+  
+  // Track changes
+  const addChangeRecord = (field: string, oldValue: string, newValue: string) => {
+    const record: ChangeRecord = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      field,
+      oldValue,
+      newValue,
+      user: 'משתמש נוכחי', // In real app, get from auth context
+    };
+    setChangeHistory(prev => [record, ...prev].slice(0, 50)); // Keep last 50 changes
+  };
+  
+  // Calculate quote total
+  useEffect(() => {
+    const subtotal = editedTemplate.stages.reduce((sum, stage) => 
+      sum + stage.items.reduce((itemSum, item) => itemSum + (parseFloat(item.price) || 0), 0), 0
+    );
+    const selectedOption = pricingOptions.find(o => o.id === selectedPricingOption);
+    const discount = selectedOption?.discount || 0;
+    const afterDiscount = subtotal * (1 - discount / 100);
+    const vatRate = editedTemplate.vat_rate || 17;
+    const vat = afterDiscount * (vatRate / 100);
+    const total = afterDiscount + vat;
+    
+    setCalculationResult({
+      subtotal,
+      discount,
+      afterDiscount,
+      vat,
+      vatRate,
+      total,
+    });
+  }, [editedTemplate.stages, selectedPricingOption, pricingOptions, editedTemplate.vat_rate]);
+  
   const applyColorTheme = (theme: typeof colorThemes[0]) => {
     setDesignSettings({
       ...designSettings,
@@ -568,6 +633,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
               <TabsTrigger value="payments" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><CreditCard className="h-4 w-4 ml-2" />תשלומים</TabsTrigger>
               <TabsTrigger value="design" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Palette className="h-4 w-4 ml-2" />עיצוב</TabsTrigger>
               <TabsTrigger value="text-boxes" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Type className="h-4 w-4 ml-2" />תיבות טקסט</TabsTrigger>
+              <TabsTrigger value="tools" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700"><Wrench className="h-4 w-4 ml-2" />כלים מתקדמים</TabsTrigger>
               <TabsTrigger value="settings" className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"><Settings className="h-4 w-4 ml-2" />הגדרות</TabsTrigger>
               <TabsTrigger value="preview" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700"><Eye className="h-4 w-4 ml-2" />תצוגה מקדימה</TabsTrigger>
               <TabsTrigger value="split" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700"><Columns className="h-4 w-4 ml-2" />עריכה + תצוגה</TabsTrigger>
@@ -778,6 +844,145 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
               </div>
             </ScrollArea>
           </TabsContent>
+
+          {/* Advanced Tools Tab */}
+          <TabsContent value="tools" className="flex-1 m-0 overflow-hidden">
+            <ScrollArea className="h-full bg-gradient-to-br from-purple-50 to-indigo-50">
+              <div className="p-6 space-y-6 max-w-6xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">כלים מתקדמים</h2>
+                  <p className="text-gray-500 mt-1">כלים חכמים לניהול הצעות המחיר שלך</p>
+                </div>
+                
+                {/* Status Tracker & Calculator Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <QuoteStatusTracker
+                    status={quoteStatus}
+                    onStatusChange={(newStatus) => {
+                      addChangeRecord('סטטוס', quoteStatus, newStatus);
+                      setQuoteStatus(newStatus);
+                    }}
+                    validityDays={editedTemplate.validity_days || 30}
+                    createdAt={new Date().toISOString()}
+                  />
+                  
+                  {calculationResult && (
+                    <AutoCalculator
+                      result={calculationResult}
+                      currency={editedTemplate.currency || '₪'}
+                    />
+                  )}
+                </div>
+                
+                {/* Alternative Pricing */}
+                <AlternativePricing
+                  options={pricingOptions}
+                  onOptionsChange={setPricingOptions}
+                  selectedOption={selectedPricingOption}
+                  onSelectOption={setSelectedPricingOption}
+                  baseTotal={calculationResult?.subtotal || 0}
+                />
+                
+                {/* Design Templates */}
+                <DesignTemplatesSelector
+                  onSelect={(template) => {
+                    addChangeRecord('תבנית עיצוב', 'קודם', template.name);
+                    setDesignSettings({
+                      ...designSettings,
+                      primaryColor: template.primaryColor,
+                      secondaryColor: template.secondaryColor,
+                      accentColor: template.accentColor,
+                      headerBackground: template.headerBg,
+                      font: template.font,
+                    });
+                    toast({ title: 'תבנית הוחלה', description: `נבחרה תבנית "${template.name}"` });
+                  }}
+                  currentColors={{
+                    primary: designSettings.primaryColor,
+                    secondary: designSettings.secondaryColor,
+                  }}
+                />
+                
+                {/* Signature & QR Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <DigitalSignature
+                    onSave={(data) => {
+                      setSignatureData(data);
+                      toast({ title: 'חתימה נשמרה', description: 'החתימה הדיגיטלית נשמרה בהצלחה' });
+                    }}
+                    existingSignature={signatureData}
+                  />
+                  
+                  <QRCodeGenerator
+                    quoteId={editedTemplate.id}
+                    quoteName={editedTemplate.name}
+                    baseUrl={window.location.origin}
+                  />
+                </div>
+                
+                {/* Payment Link */}
+                <PaymentLink
+                  amount={calculationResult?.total || 0}
+                  quoteName={editedTemplate.name}
+                  clientName={projectDetails.clientName}
+                />
+                
+                {/* Change History */}
+                <ChangeHistory
+                  changes={changeHistory}
+                  onRevert={(change) => {
+                    toast({ title: 'שחזור שינוי', description: `השינוי ב"${change.field}" שוחזר` });
+                  }}
+                />
+                
+                {/* SMS and Calendar Sharing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button
+                    variant="outline"
+                    className="h-16 border-purple-200 hover:bg-purple-50"
+                    onClick={() => setShowSMSDialog(true)}
+                  >
+                    <Smartphone className="h-6 w-6 ml-3 text-purple-600" />
+                    <div className="text-right">
+                      <div className="font-semibold">שליחה ב-SMS</div>
+                      <div className="text-xs text-gray-500">שלח קישור להצעה בהודעת טקסט</div>
+                    </div>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="h-16 border-indigo-200 hover:bg-indigo-50"
+                    onClick={() => setShowCalendarDialog(true)}
+                  >
+                    <Calendar className="h-6 w-6 ml-3 text-indigo-600" />
+                    <div className="text-right">
+                      <div className="font-semibold">הוסף ליומן</div>
+                      <div className="text-xs text-gray-500">צור תזכורת לתאריך התוקף</div>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          
+          {/* SMS Dialog */}
+          <SMSShareDialog
+            open={showSMSDialog}
+            onOpenChange={setShowSMSDialog}
+            quoteName={editedTemplate.name}
+            clientPhone={projectDetails.phone || ''}
+            quoteLink={`${window.location.origin}/quotes/${editedTemplate.id}`}
+          />
+          
+          {/* Calendar Dialog */}
+          <CalendarSyncDialog
+            open={showCalendarDialog}
+            onOpenChange={setShowCalendarDialog}
+            quoteName={editedTemplate.name}
+            clientName={projectDetails.clientName}
+            validUntil={new Date(Date.now() + (editedTemplate.validity_days || 30) * 24 * 60 * 60 * 1000).toISOString()}
+          />
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="flex-1 m-0 overflow-hidden">
