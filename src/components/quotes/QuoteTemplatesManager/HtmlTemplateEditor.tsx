@@ -18,6 +18,7 @@ import {
   User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
   QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench,
   Bold, Italic, Underline, AlignRight, AlignCenter, AlignLeft, BookTemplate, Minimize2, Maximize2,
+  Undo2, Redo2, Lock, Unlock, Share2, FileDown, GitBranch, ArrowLeftRight,
 } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -57,6 +58,8 @@ interface HtmlTemplateEditorProps {
 interface PaymentStep { id: string; name: string; percentage: number; description: string; }
 interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; }
 interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; customBg?: string; customBorder?: string; customTextColor?: string; fontSize?: number; isBold?: boolean; isItalic?: boolean; isUnderline?: boolean; textAlign?: 'right' | 'center' | 'left'; }
+interface QuoteVersion { id: string; timestamp: string; label: string; data: { stages: TemplateStage[]; paymentSteps: PaymentStep[]; textBoxes: TextBox[]; designSettings: DesignSettings; basePrice: number; }; }
+type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
 interface ProjectDetails { clientId: string; clientName: string; gush: string; helka: string; migrash: string; taba: string; address: string; projectType: string; }
 
 // Client selector component with search
@@ -577,6 +580,22 @@ function SortableTextBox({ textBox, onUpdate, onDelete, onDuplicate }: {
   );
 }
 
+// Sortable section block for the block editor
+function SortableSection({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : undefined };
+  const sectionLabels: Record<string, string> = { stages: '📋 שלבי עבודה', payments: '💳 תשלומים', textboxes: '📝 תיבות טקסט', upgrades: '⬆️ שידרוגים' };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} className="relative group">
+      <div {...listeners} className="absolute -right-1 top-2 cursor-grab active:cursor-grabbing p-1 rounded bg-white shadow-sm border opacity-0 group-hover:opacity-100 transition-opacity z-10 touch-none">
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
+      <Badge className="absolute -right-1 -top-2 text-xs bg-white border shadow-sm z-10 opacity-0 group-hover:opacity-100 transition-opacity">{sectionLabels[id] || id}</Badge>
+      {children}
+    </div>
+  );
+}
+
 function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
   const presetColors = ['#B8860B', '#DAA520', '#F4C430', '#FFD700', '#1e40af', '#3b82f6', '#06b6d4', '#14b8a6', '#16a34a', '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#ec4899', '#a855f7', '#6b7280', '#374151', '#1f2937', '#000000'];
   return (
@@ -887,6 +906,35 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [showSMSDialog, setShowSMSDialog] = useState(false);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
+
+  // Versioning system
+  const [quoteVersions, setQuoteVersions] = useState<QuoteVersion[]>([]);
+  const [showVersionDialog, setShowVersionDialog] = useState(false);
+  const [comparingVersion, setComparingVersion] = useState<QuoteVersion | null>(null);
+
+  // Preview device
+  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
+
+  // Draggable sections (block editor order)
+  const [sectionOrder, setSectionOrder] = useState<string[]>(['stages', 'payments', 'textboxes', 'upgrades']);
+  const sectionSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const handleSectionDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSectionOrder(prev => {
+        const oldIdx = prev.indexOf(String(active.id));
+        const newIdx = prev.indexOf(String(over.id));
+        return arrayMove(prev, oldIdx, newIdx);
+      });
+    }
+  }, []);
+
+  // Enhanced signature
+  const [clientSignatureData, setClientSignatureData] = useState<string | null>(null);
+  const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
   
   // Track changes
   const addChangeRecord = (field: string, oldValue: string, newValue: string) => {
@@ -932,6 +980,108 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
       headerBackground: theme.headerBg,
     });
     toast({ title: 'ערכת צבעים הוחלה', description: `נבחרה ערכת "${theme.name}"` });
+  };
+
+  // === Versioning ===
+  const saveVersion = (label?: string) => {
+    const version: QuoteVersion = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      label: label || `גרסה ${quoteVersions.length + 1}`,
+      data: {
+        stages: JSON.parse(JSON.stringify(editedTemplate.stages)),
+        paymentSteps: JSON.parse(JSON.stringify(paymentSteps)),
+        textBoxes: JSON.parse(JSON.stringify(textBoxes)),
+        designSettings: { ...designSettings },
+        basePrice: editedTemplate.base_price || 35000,
+      },
+    };
+    setQuoteVersions(prev => [version, ...prev].slice(0, 20));
+    toast({ title: 'גרסה נשמרה', description: version.label });
+  };
+
+  const restoreVersion = (version: QuoteVersion) => {
+    setEditedTemplate(prev => ({ ...prev, stages: version.data.stages, base_price: version.data.basePrice }));
+    setPaymentSteps(version.data.paymentSteps);
+    setTextBoxes(version.data.textBoxes);
+    setDesignSettings(version.data.designSettings);
+    toast({ title: 'גרסה שוחזרה', description: version.label });
+    setShowVersionDialog(false);
+  };
+
+  // === Enhanced Export: WhatsApp file ===
+  const handleShareWhatsAppFile = async () => {
+    try {
+      const html = generateHtmlContent();
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const file = new File([blob], `${editedTemplate.name || 'הצעת-מחיר'}.html`, { type: 'text/html' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: editedTemplate.name, text: `הצעת מחיר: ${editedTemplate.name}` });
+        toast({ title: 'נשלח', description: 'הקובץ שותף בהצלחה' });
+      } else {
+        // Fallback: download + open WhatsApp
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = file.name; a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'הקובץ הורד', description: 'שתף את הקובץ דרך וואטסאפ' });
+      }
+    } catch (err) {
+      toast({ title: 'שגיאה', description: 'לא ניתן לשתף', variant: 'destructive' });
+    }
+  };
+
+  // === Export Excel summary ===
+  const handleExportExcel = () => {
+    const rows = [
+      ['הצעת מחיר', editedTemplate.name],
+      ['לקוח', projectDetails.clientName],
+      ['תאריך', new Date().toLocaleDateString('he-IL')],
+      [''],
+      ['שלבי עבודה', 'פריטים'],
+      ...editedTemplate.stages.map(s => [s.name, s.items.map(i => i.text).join(', ')]),
+      [''],
+      ['סדר תשלומים', 'אחוז', 'סכום'],
+      ...paymentSteps.map(s => [s.name, `${s.percentage}%`, `₪${Math.round(basePrice * s.percentage / 100).toLocaleString()}`]),
+      [''],
+      ['סה"כ לפני מע"מ', '', `₪${basePrice.toLocaleString()}`],
+      ['מע"מ', `${editedTemplate.vat_rate || 17}%`, `₪${Math.round(basePrice * (editedTemplate.vat_rate || 17) / 100).toLocaleString()}`],
+      ['סה"כ כולל מע"מ', '', `₪${Math.round(basePrice * (1 + (editedTemplate.vat_rate || 17) / 100)).toLocaleString()}`],
+    ];
+    const csv = '\ufeff' + rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${editedTemplate.name || 'הצעת-מחיר'}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'יוצא Excel', description: 'קובץ CSV נוצר בהצלחה' });
+  };
+
+  // === Signed PDF export ===
+  const handleExportSignedPdf = () => {
+    const html = generateHtmlContent();
+    const signatureHtml = signatureData ? `
+      <div style="margin-top: 40px; padding: 20px; border-top: 2px solid #eee;">
+        <h3 style="color: ${designSettings.primaryColor};">חתימה דיגיטלית</h3>
+        <img src="${signatureData}" style="max-width: 300px; max-height: 100px;" />
+        <p style="color: #888; font-size: 12px;">חתום ביום ${new Date().toLocaleDateString('he-IL')} בשעה ${new Date().toLocaleTimeString('he-IL')}</p>
+      </div>
+    ` : '';
+    const clientSigHtml = clientSignatureData ? `
+      <div style="margin-top: 20px; padding: 20px; border-top: 1px solid #eee;">
+        <h3 style="color: ${designSettings.primaryColor};">חתימת לקוח</h3>
+        <img src="${clientSignatureData}" style="max-width: 300px; max-height: 100px;" />
+        <p style="color: #888; font-size: 12px;">חתם: ${projectDetails.clientName || 'לקוח'}</p>
+      </div>
+    ` : '';
+    const fullHtml = html.replace('</body>', `${signatureHtml}${clientSigHtml}</body>`);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(fullHtml);
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); }, 500);
+    }
+    toast({ title: 'PDF חתום', description: 'חלון הדפסה נפתח עם חתימות' });
   };
   
   const generateAILogo = async (companyName: string, style: string, color: string) => {
@@ -1403,6 +1553,33 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                     baseUrl={window.location.origin}
                   />
                 </div>
+
+                {/* Client Signature Section */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 p-6">
+                  <h3 className="text-lg font-bold flex items-center gap-2 mb-3"><PenTool className="h-5 w-5 text-green-600" />חתימת לקוח</h3>
+                  <p className="text-sm text-gray-500 mb-3">שלח את ההצעה ללקוח לחתימה דיגיטלית</p>
+                  <div className="flex gap-2 flex-wrap">
+                    <DigitalSignature
+                      onSave={(data) => {
+                        setClientSignatureData(data);
+                        toast({ title: 'חתימת לקוח נשמרה', description: 'חתימת הלקוח נשמרה בהצלחה' });
+                      }}
+                      onClear={() => setClientSignatureData(null)}
+                      existingSignature={clientSignatureData}
+                    />
+                  </div>
+                  {(signatureData || clientSignatureData) && (
+                    <div className="mt-3 pt-3 border-t border-green-200 flex items-center justify-between">
+                      <div className="flex gap-3 text-xs">
+                        {signatureData && <Badge className="bg-green-100 text-green-700 border-green-300"><Check className="h-3 w-3 ml-1" />חתימת משרד</Badge>}
+                        {clientSignatureData && <Badge className="bg-blue-100 text-blue-700 border-blue-300"><Check className="h-3 w-3 ml-1" />חתימת לקוח</Badge>}
+                      </div>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportSignedPdf}>
+                        <Lock className="h-3 w-3 ml-1" />ייצא PDF חתום
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 
                 {/* Payment Link */}
                 <PaymentLink
@@ -1491,30 +1668,98 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
             </ScrollArea>
           </TabsContent>
 
-          {/* Preview Tab - Full Preview */}
+          {/* Preview Tab - Full Preview with Device Switcher */}
           <TabsContent value="preview" className="flex-1 m-0 overflow-hidden">
-            <div className="h-full bg-gray-100 p-4">
-              <div className="h-full bg-white rounded-lg shadow-lg overflow-hidden">
-                <iframe
-                  srcDoc={generateHtmlContent()}
-                  title="תצוגה מקדימה"
-                  className="w-full h-full border-0"
-                  style={{ minHeight: '100%' }}
-                />
+            <div className="h-full bg-gray-100 p-4 flex flex-col">
+              {/* Device switcher toolbar */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={previewDevice === 'desktop' ? 'default' : 'ghost'}
+                    className={`h-8 text-xs ${previewDevice === 'desktop' ? 'bg-[#DAA520] hover:bg-[#B8860B]' : ''}`}
+                    onClick={() => setPreviewDevice('desktop')}
+                  >
+                    <Columns className="h-3.5 w-3.5 ml-1" />מחשב
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewDevice === 'tablet' ? 'default' : 'ghost'}
+                    className={`h-8 text-xs ${previewDevice === 'tablet' ? 'bg-[#DAA520] hover:bg-[#B8860B]' : ''}`}
+                    onClick={() => setPreviewDevice('tablet')}
+                  >
+                    <FileText className="h-3.5 w-3.5 ml-1" />טאבלט
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={previewDevice === 'mobile' ? 'default' : 'ghost'}
+                    className={`h-8 text-xs ${previewDevice === 'mobile' ? 'bg-[#DAA520] hover:bg-[#B8860B]' : ''}`}
+                    onClick={() => setPreviewDevice('mobile')}
+                  >
+                    <Smartphone className="h-3.5 w-3.5 ml-1" />נייד
+                  </Button>
+                </div>
+                {/* Version save button */}
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveVersion()}>
+                  <GitBranch className="h-3.5 w-3.5 ml-1" />שמור גרסה
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowVersionDialog(true)} disabled={quoteVersions.length === 0}>
+                  <History className="h-3.5 w-3.5 ml-1" />גרסאות ({quoteVersions.length})
+                </Button>
+              </div>
+
+              {/* Device frame */}
+              <div className="flex-1 flex items-start justify-center overflow-auto">
+                <div
+                  className={`bg-white rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+                    previewDevice === 'mobile'
+                      ? 'w-[375px] border-[8px] border-gray-800 rounded-[2rem]'
+                      : previewDevice === 'tablet'
+                      ? 'w-[768px] border-[6px] border-gray-700 rounded-[1.5rem]'
+                      : 'w-full h-full'
+                  }`}
+                  style={previewDevice !== 'desktop' ? { height: previewDevice === 'mobile' ? '667px' : '1024px' } : { height: '100%' }}
+                >
+                  {/* Phone notch */}
+                  {previewDevice === 'mobile' && (
+                    <div className="bg-gray-800 flex justify-center py-1">
+                      <div className="w-20 h-4 bg-gray-900 rounded-full" />
+                    </div>
+                  )}
+                  <iframe
+                    srcDoc={generateHtmlContent()}
+                    title="תצוגה מקדימה"
+                    className="w-full border-0"
+                    style={{ height: previewDevice === 'mobile' ? '630px' : previewDevice === 'tablet' ? '1000px' : '100%' }}
+                  />
+                  {/* Phone bottom bar */}
+                  {previewDevice === 'mobile' && (
+                    <div className="bg-gray-800 flex justify-center py-1">
+                      <div className="w-28 h-1 bg-gray-600 rounded-full" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </TabsContent>
 
-          {/* Split View Tab - Editor + Live Preview */}
+          {/* Split View Tab - Block Editor + Live Preview */}
           <TabsContent value="split" className="flex-1 m-0 overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full">
-              {/* Editor Panel */}
+              {/* Editor Panel - Draggable blocks */}
               <ResizablePanel defaultSize={50} minSize={30}>
                 <ScrollArea className="h-full bg-gray-50">
-                  <div className="p-6 space-y-6">
-                    {/* Quick Project Details */}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-400 flex items-center gap-1"><GripVertical className="h-3 w-3" />גרור סקשנים לשינוי סדר</span>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => saveVersion()}>
+                        <GitBranch className="h-3 w-3 ml-1" />שמור גרסה
+                      </Button>
+                    </div>
+
+                    {/* Quick Project Details - always first */}
                     <div className="bg-white rounded-xl border p-4 shadow-sm">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4 text-[#B8860B]" />פרטי פרויקט מהירים</h3>
+                      <h3 className="font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4 text-[#B8860B]" />פרטי פרויקט</h3>
                       <div className="grid grid-cols-2 gap-3">
                         <Input value={projectDetails.clientName} onChange={(e) => setProjectDetails({ ...projectDetails, clientName: e.target.value })} placeholder="שם הלקוח" dir="rtl" />
                         <Input value={projectDetails.address} onChange={(e) => setProjectDetails({ ...projectDetails, address: e.target.value })} placeholder="כתובת" dir="rtl" />
@@ -1522,60 +1767,102 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                         <Input value={projectDetails.helka} onChange={(e) => setProjectDetails({ ...projectDetails, helka: e.target.value })} placeholder="חלקה" dir="rtl" />
                       </div>
                     </div>
-                    
-                    {/* Stages Quick Edit */}
-                    <div className="bg-white rounded-xl border p-4 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-[#B8860B]" />שלבי העבודה</h3>
-                        <Button variant="outline" size="sm" onClick={addStage}><Plus className="h-3 w-3 ml-1" />הוסף</Button>
-                      </div>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {editedTemplate.stages.map((stage, index) => (
-                          <div key={stage.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <span className="text-lg">{stage.icon || '📋'}</span>
-                            <Input 
-                              value={stage.name} 
-                              onChange={(e) => updateStage(stage.id, { ...stage, name: e.target.value })} 
-                              className="flex-1 h-8 text-sm"
-                              dir="rtl"
-                            />
-                            <Badge variant="outline" className="text-xs">{stage.items.length}</Badge>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => deleteStage(stage.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
 
-                    {/* Payments Quick Edit */}
-                    <div className="bg-white rounded-xl border p-4 shadow-sm">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />תשלומים</h3>
-                        <Badge variant={totalPaymentPercentage === 100 ? 'default' : 'destructive'} className={totalPaymentPercentage === 100 ? 'bg-green-500 text-xs' : 'text-xs'}>{totalPaymentPercentage}%</Badge>
-                      </div>
-                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                        {paymentSteps.map((step) => (
-                          <div key={step.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <Input value={step.name} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, name: e.target.value } : s))} className="flex-1 h-8 text-sm" dir="rtl" />
-                            <div className="flex items-center gap-1">
-                              <Input type="number" value={step.percentage} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, percentage: parseInt(e.target.value) || 0 } : s))} className="w-14 h-8 text-sm text-center" />
-                              <span className="text-xs text-gray-500">%</span>
-                            </div>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => setPaymentSteps(paymentSteps.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        ))}
-                      </div>
-                      <Button variant="ghost" size="sm" className="w-full mt-2 text-[#B8860B]" onClick={addPaymentStep}><Plus className="h-3 w-3 ml-1" />הוסף שלב תשלום</Button>
-                    </div>
-
-                    {/* Price Edit */}
-                    <div className="bg-white rounded-xl border p-4 shadow-sm">
-                      <h3 className="font-semibold mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />מחיר</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[#B8860B]">₪</span>
-                        <Input type="number" value={editedTemplate.base_price || 35000} onChange={(e) => setEditedTemplate({ ...editedTemplate, base_price: parseInt(e.target.value) || 0 })} className="text-xl font-bold text-[#B8860B]" />
-                        <span className="text-gray-500 text-sm">+ מע"מ</span>
-                      </div>
-                    </div>
+                    {/* Draggable Sections */}
+                    <DndContext sensors={sectionSensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                      <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+                        {sectionOrder.map((sectionId) => {
+                          if (sectionId === 'stages') return (
+                            <SortableSection key="stages" id="stages">
+                              <div className="bg-white rounded-xl border p-4 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="font-semibold flex items-center gap-2"><FileText className="h-4 w-4 text-[#B8860B]" />שלבי העבודה</h3>
+                                  <Button variant="outline" size="sm" onClick={addStage}><Plus className="h-3 w-3 ml-1" />הוסף</Button>
+                                </div>
+                                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                  {editedTemplate.stages.map((stage) => (
+                                    <div key={stage.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                      <span className="text-lg">{stage.icon || '📋'}</span>
+                                      <Input value={stage.name} onChange={(e) => updateStage(stage.id, { ...stage, name: e.target.value })} className="flex-1 h-8 text-sm" dir="rtl" />
+                                      <Badge variant="outline" className="text-xs">{stage.items.length}</Badge>
+                                      <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => deleteStage(stage.id)}><Trash2 className="h-3 w-3" /></Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </SortableSection>
+                          );
+                          if (sectionId === 'payments') return (
+                            <SortableSection key="payments" id="payments">
+                              <div className="bg-white rounded-xl border p-4 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />תשלומים</h3>
+                                  <Badge variant={totalPaymentPercentage === 100 ? 'default' : 'destructive'} className={totalPaymentPercentage === 100 ? 'bg-green-500 text-xs' : 'text-xs'}>{totalPaymentPercentage}%</Badge>
+                                </div>
+                                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                  {paymentSteps.map((step) => (
+                                    <div key={step.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                      <Input value={step.name} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, name: e.target.value } : s))} className="flex-1 h-8 text-sm" dir="rtl" />
+                                      <div className="flex items-center gap-1">
+                                        <Input type="number" value={step.percentage} onChange={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, percentage: parseInt(e.target.value) || 0 } : s))} className="w-14 h-8 text-sm text-center" />
+                                        <span className="text-xs text-gray-500">%</span>
+                                      </div>
+                                      <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => setPaymentSteps(paymentSteps.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3" /></Button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <Button variant="ghost" size="sm" className="w-full mt-2 text-[#B8860B]" onClick={addPaymentStep}><Plus className="h-3 w-3 ml-1" />הוסף שלב תשלום</Button>
+                              </div>
+                            </SortableSection>
+                          );
+                          if (sectionId === 'textboxes') return (
+                            <SortableSection key="textboxes" id="textboxes">
+                              <div className="bg-white rounded-xl border p-4 shadow-sm">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h3 className="font-semibold flex items-center gap-2"><Type className="h-4 w-4 text-[#B8860B]" />תיבות טקסט</h3>
+                                  <Badge variant="outline" className="text-xs">{textBoxes.length}</Badge>
+                                </div>
+                                {textBoxes.length > 0 ? (
+                                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                                    {textBoxes.map(tb => (
+                                      <div key={tb.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                                        <span className="text-xs text-gray-400">{tb.position}</span>
+                                        <span className="flex-1 text-sm truncate">{tb.title || 'ללא כותרת'}</span>
+                                        <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => setTextBoxes(prev => prev.filter(t => t.id !== tb.id))}><Trash2 className="h-3 w-3" /></Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-400 text-center py-2">אין תיבות טקסט - הוסף בלשונית "תיבות טקסט"</p>
+                                )}
+                              </div>
+                            </SortableSection>
+                          );
+                          if (sectionId === 'upgrades') return (
+                            <SortableSection key="upgrades" id="upgrades">
+                              <div className="bg-white rounded-xl border p-4 shadow-sm">
+                                <h3 className="font-semibold mb-3 flex items-center gap-2"><CreditCard className="h-4 w-4 text-[#B8860B]" />מחיר ושדרוגים</h3>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className="text-[#B8860B]">₪</span>
+                                  <Input type="number" value={editedTemplate.base_price || 35000} onChange={(e) => setEditedTemplate({ ...editedTemplate, base_price: parseInt(e.target.value) || 0 })} className="text-xl font-bold text-[#B8860B]" />
+                                  <span className="text-gray-500 text-sm">+ מע"מ</span>
+                                </div>
+                                <div className="space-y-1">
+                                  {upgrades.map(u => (
+                                    <div key={u.id} className="flex items-center gap-2 text-xs">
+                                      <Switch checked={u.enabled} onCheckedChange={(checked) => setUpgrades(upgrades.map(up => up.id === u.id ? { ...up, enabled: checked } : up))} />
+                                      <span className="flex-1">{u.name}</span>
+                                      <span className="text-gray-500">₪{u.price.toLocaleString()}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </SortableSection>
+                          );
+                          return null;
+                        })}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 </ScrollArea>
               </ResizablePanel>
@@ -1600,20 +1887,110 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         </Tabs>
 
         {/* Footer */}
-        <div className="shrink-0 border-t bg-white p-4">
+        <div className="shrink-0 border-t bg-white p-3">
           <div className="flex items-center justify-between max-w-6xl mx-auto">
-            <div className="text-sm text-gray-500">תוקף הצעת המחיר: {editedTemplate.validity_days || 30} יום</div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>סגור</Button>
-              <Button variant="outline" onClick={handleExportHtml}><FileCode className="h-4 w-4 ml-2" />הורד HTML</Button>
-              <Button variant="outline" onClick={handleExportPdf}><Download className="h-4 w-4 ml-2" />הורד PDF</Button>
-              <Button variant="outline" onClick={handleExportWord}><File className="h-4 w-4 ml-2" />הורד Word</Button>
-              <Button className="bg-[#DAA520] hover:bg-[#B8860B] text-white" onClick={handleSave} disabled={isSaving}>{isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-2" />}שמור</Button>
-              <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowEmailDialog(true)}><Mail className="h-4 w-4 ml-2" />שלח במייל</Button>
-              <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={() => setShowWhatsAppDialog(true)}><MessageCircle className="h-4 w-4 ml-2" />שלח בוואטסאפ</Button>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-500">תוקף: {editedTemplate.validity_days || 30} יום</div>
+              {quoteVersions.length > 0 && <Badge variant="outline" className="text-xs"><GitBranch className="h-3 w-3 ml-1" />{quoteVersions.length} גרסאות</Badge>}
+            </div>
+            <div className="flex gap-1.5 flex-wrap justify-end">
+              <Button variant="outline" size="sm" onClick={onClose}>סגור</Button>
+              
+              {/* Export dropdown */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm"><FileDown className="h-4 w-4 ml-1" />ייצוא<ChevronDown className="h-3 w-3 mr-1" /></Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-52 p-1" align="end">
+                  <div className="space-y-0.5">
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleExportHtml}><FileCode className="h-3.5 w-3.5 ml-2" />הורד HTML</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleExportPdf}><Download className="h-3.5 w-3.5 ml-2" />הורד PDF</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleExportSignedPdf}><Lock className="h-3.5 w-3.5 ml-2" />PDF חתום</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleExportWord}><File className="h-3.5 w-3.5 ml-2" />הורד Word</Button>
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleExportExcel}><FileText className="h-3.5 w-3.5 ml-2" />סיכום Excel</Button>
+                    <div className="h-px bg-gray-200 my-1" />
+                    <Button variant="ghost" size="sm" className="w-full justify-start h-8 text-xs" onClick={handleShareWhatsAppFile}><Share2 className="h-3.5 w-3.5 ml-2" />שתף קובץ בוואטסאפ</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button className="bg-[#DAA520] hover:bg-[#B8860B] text-white" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-1" />}שמור</Button>
+              <Button className="bg-green-600 hover:bg-green-700 text-white" size="sm" onClick={() => setShowEmailDialog(true)}><Mail className="h-4 w-4 ml-1" />מייל</Button>
+              <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" size="sm" onClick={() => setShowWhatsAppDialog(true)}><MessageCircle className="h-4 w-4 ml-1" />וואטסאפ</Button>
             </div>
           </div>
         </div>
+
+        {/* Version History Dialog */}
+        <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+          <DialogContent className="max-w-lg" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-[#B8860B]" />היסטוריית גרסאות</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px]">
+              {quoteVersions.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <History className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p>אין גרסאות שמורות</p>
+                  <p className="text-xs mt-1">לחץ "שמור גרסה" בתצוגה מקדימה</p>
+                </div>
+              ) : (
+                <div className="space-y-2 p-1">
+                  {quoteVersions.map((version) => (
+                    <div key={version.id} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{version.label}</p>
+                          <p className="text-xs text-gray-400">{new Date(version.timestamp).toLocaleString('he-IL')}</p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">{version.data.stages.length} שלבים</Badge>
+                            <Badge variant="outline" className="text-xs">{version.data.textBoxes.length} תיבות</Badge>
+                            <Badge variant="outline" className="text-xs">₪{version.data.basePrice.toLocaleString()}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setComparingVersion(comparingVersion?.id === version.id ? null : version)}>
+                            <ArrowLeftRight className="h-3 w-3 ml-1" />{comparingVersion?.id === version.id ? 'בטל' : 'השוואה'}
+                          </Button>
+                          <Button size="sm" variant="default" className="h-7 text-xs bg-[#DAA520] hover:bg-[#B8860B]" onClick={() => restoreVersion(version)}>
+                            <Undo2 className="h-3 w-3 ml-1" />שחזר
+                          </Button>
+                        </div>
+                      </div>
+                      {comparingVersion?.id === version.id && (
+                        <div className="mt-3 pt-3 border-t text-xs space-y-1">
+                          <p className="font-medium text-gray-600">השוואה מול מצב נוכחי:</p>
+                          {version.data.stages.length !== editedTemplate.stages.length && (
+                            <p>• שלבי עבודה: {version.data.stages.length} ← {editedTemplate.stages.length}</p>
+                          )}
+                          {version.data.paymentSteps.length !== paymentSteps.length && (
+                            <p>• שלבי תשלום: {version.data.paymentSteps.length} ← {paymentSteps.length}</p>
+                          )}
+                          {version.data.textBoxes.length !== textBoxes.length && (
+                            <p>• תיבות טקסט: {version.data.textBoxes.length} ← {textBoxes.length}</p>
+                          )}
+                          {version.data.basePrice !== (editedTemplate.base_price || 35000) && (
+                            <p>• מחיר: ₪{version.data.basePrice.toLocaleString()} ← ₪{(editedTemplate.base_price || 35000).toLocaleString()}</p>
+                          )}
+                          {version.data.designSettings.primaryColor !== designSettings.primaryColor && (
+                            <p>• צבע ראשי: <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: version.data.designSettings.primaryColor }} /> ← <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: designSettings.primaryColor }} /></p>
+                          )}
+                          {version.data.stages.length === editedTemplate.stages.length &&
+                           version.data.paymentSteps.length === paymentSteps.length &&
+                           version.data.textBoxes.length === textBoxes.length &&
+                           version.data.basePrice === (editedTemplate.base_price || 35000) &&
+                           version.data.designSettings.primaryColor === designSettings.primaryColor && (
+                            <p className="text-green-600">✓ זהה למצב הנוכחי</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
         {/* WhatsApp Dialog */}
         <WhatsAppDialog
