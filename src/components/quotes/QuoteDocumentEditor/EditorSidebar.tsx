@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   Building2,
   User,
@@ -31,10 +32,16 @@ import {
   Type,
   ChevronRight,
   ChevronLeft,
+  Sparkles,
+  FormInput,
+  Image,
 } from 'lucide-react';
 import { QuoteDocumentData } from './types';
 import { ClientCombobox } from './ClientCombobox';
 import { Client } from '@/hooks/useClients';
+import { LogoUploadSection } from './LogoUploadSection';
+import { AdvancedDesignSettings } from './AdvancedDesignSettings';
+import { CustomFieldsEditor } from './CustomFieldsEditor';
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
@@ -126,6 +133,16 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-3">
+              {/* Logo Upload Section */}
+              <TooltipProvider>
+                <LogoUploadSection
+                  logo={document.companyLogo}
+                  onLogoChange={(logo) => onUpdate({ companyLogo: logo })}
+                />
+              </TooltipProvider>
+              
+              <Separator />
+              
               <div>
                 <Label className="text-xs">שם החברה</Label>
                 <Input
@@ -283,67 +300,37 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
             </AccordionContent>
           </AccordionItem>
 
-          {/* Styling */}
+          {/* Advanced Styling */}
           <AccordionItem value="styling">
             <AccordionTrigger className="text-sm">
               <div className="flex items-center gap-2">
                 <Palette className="h-4 w-4" />
-                עיצוב
+                עיצוב מתקדם
               </div>
             </AccordionTrigger>
-            <AccordionContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">צבע ראשי</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="color"
-                      value={document.primaryColor}
-                      onChange={(e) => onUpdate({ primaryColor: e.target.value })}
-                      className="w-10 h-8 p-0 border-0"
-                    />
-                    <Input
-                      value={document.primaryColor}
-                      onChange={(e) => onUpdate({ primaryColor: e.target.value })}
-                      className="flex-1 text-xs"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs">צבע משני</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="color"
-                      value={document.secondaryColor}
-                      onChange={(e) => onUpdate({ secondaryColor: e.target.value })}
-                      className="w-10 h-8 p-0 border-0"
-                    />
-                    <Input
-                      value={document.secondaryColor}
-                      onChange={(e) => onUpdate({ secondaryColor: e.target.value })}
-                      className="flex-1 text-xs"
-                    />
-                  </div>
-                </div>
+            <AccordionContent>
+              <TooltipProvider>
+                <AdvancedDesignSettings
+                  document={document}
+                  onUpdate={onUpdate}
+                />
+              </TooltipProvider>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Custom Fields */}
+          <AccordionItem value="customFields">
+            <AccordionTrigger className="text-sm">
+              <div className="flex items-center gap-2">
+                <FormInput className="h-4 w-4" />
+                שדות מותאמים
               </div>
-              <div>
-                <Label className="text-xs">גופן</Label>
-                <Select
-                  value={document.fontFamily}
-                  onValueChange={(v) => onUpdate({ fontFamily: v })}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FONT_OPTIONS.map(font => (
-                      <SelectItem key={font.value} value={font.value}>
-                        {font.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <CustomFieldsEditor
+                document={document}
+                onUpdate={onUpdate}
+              />
             </AccordionContent>
           </AccordionItem>
 

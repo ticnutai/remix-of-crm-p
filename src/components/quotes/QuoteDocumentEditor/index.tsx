@@ -149,6 +149,7 @@ export function QuoteDocumentEditor() {
           onLoadTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
           onSaveAsTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
           isSaving={isSaving}
+          document={document}
         />
 
         {/* Main content with resizable panels */}

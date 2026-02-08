@@ -1,5 +1,33 @@
 // Quote Document Editor Types
 
+export interface DesignSettings3D {
+  enabled: boolean;
+  shadowDepth: number;
+  shadowColor: string;
+  borderRadius: number;
+  gradient: boolean;
+  gradientDirection: 'to-right' | 'to-left' | 'to-bottom' | 'to-top' | 'diagonal';
+  elevation: 'none' | 'low' | 'medium' | 'high';
+}
+
+export interface AdvancedFontSettings {
+  titleSize: number;
+  bodySize: number;
+  headerSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+  fontWeight: 'normal' | 'medium' | 'semibold' | 'bold';
+}
+
+export interface CustomField {
+  id: string;
+  label: string;
+  value: string;
+  type: 'text' | 'number' | 'date' | 'textarea';
+  position: 'header' | 'client' | 'footer' | 'items';
+  visible: boolean;
+}
+
 export interface QuoteDocumentData {
   id?: string;
   title: string;
@@ -41,7 +69,20 @@ export interface QuoteDocumentData {
   // Styling
   primaryColor: string;
   secondaryColor: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
   fontFamily: string;
+  
+  // Advanced Design
+  design3D?: DesignSettings3D;
+  fontSettings?: AdvancedFontSettings;
+  
+  // Custom Fields
+  customFields?: CustomField[];
+  
+  // Hidden Elements
+  hiddenElements?: string[];
   
   // Sections visibility
   showLogo: boolean;

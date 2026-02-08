@@ -15,7 +15,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import {
   X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Edit, Plus, Trash2,
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
-  User, MapPin, Search, Check, Send, File, Eye, Columns, Menu,
+  User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
 } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { useToast } from '@/hooks/use-toast';
@@ -282,6 +282,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>({ clientId: '', clientName: '', gush: '', helka: '', migrash: '', taba: '', address: '', projectType: '' });
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Extended clients data
@@ -463,7 +464,73 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 
   const totalPaymentPercentage = paymentSteps.reduce((sum, s) => sum + s.percentage, 0);
   const basePrice = editedTemplate.base_price || 35000;
-  const fontOptions = [{ value: 'Heebo', label: 'Heebo' }, { value: 'Assistant', label: 'Assistant' }, { value: 'Rubik', label: 'Rubik' }, { value: 'Varela Round', label: 'Varela Round' }];
+  
+  // Extended font options with more Hebrew fonts
+  const fontOptions = [
+    { value: 'Heebo', label: 'Heebo - מודרני' },
+    { value: 'Assistant', label: 'Assistant - נקי' },
+    { value: 'Rubik', label: 'Rubik - עגול' },
+    { value: 'Varela Round', label: 'Varela Round - מעוגל' },
+    { value: 'Open Sans Hebrew', label: 'Open Sans - קלאסי' },
+    { value: 'Alef', label: 'Alef - מסורתי' },
+    { value: 'Frank Ruhl Libre', label: 'Frank Ruhl - עיתונאי' },
+    { value: 'David Libre', label: 'David - רשמי' },
+    { value: 'Secular One', label: 'Secular One - בולט' },
+    { value: 'Suez One', label: 'Suez One - יוקרתי' },
+  ];
+  
+  // Preset color themes
+  const colorThemes = [
+    { name: 'כחול מקצועי', primary: '#1e40af', secondary: '#3b82f6', accent: '#60a5fa', headerBg: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' },
+    { name: 'זהב אלגנטי', primary: '#B8860B', secondary: '#DAA520', accent: '#F4C430', headerBg: 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)' },
+    { name: 'ירוק טבע', primary: '#059669', secondary: '#10b981', accent: '#34d399', headerBg: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' },
+    { name: 'חום אדמה', primary: '#92400e', secondary: '#b45309', accent: '#d97706', headerBg: 'linear-gradient(135deg, #92400e 0%, #b45309 100%)' },
+    { name: 'סגול מלכותי', primary: '#7c3aed', secondary: '#8b5cf6', accent: '#a78bfa', headerBg: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)' },
+    { name: 'אדום נועז', primary: '#dc2626', secondary: '#ef4444', accent: '#f87171', headerBg: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)' },
+    { name: 'אפור מינימלי', primary: '#374151', secondary: '#4b5563', accent: '#6b7280', headerBg: 'linear-gradient(135deg, #374151 0%, #4b5563 100%)' },
+    { name: 'טורקיז רענן', primary: '#0891b2', secondary: '#06b6d4', accent: '#22d3ee', headerBg: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' },
+  ];
+  
+  // 3D effects state
+  const [effects3D, setEffects3D] = useState({ elevation: 2, shadowIntensity: 30, useGradient: true, gradientAngle: 135 });
+  
+  // AI Logo generation state
+  const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
+  const [showAILogoDialog, setShowAILogoDialog] = useState(false);
+  
+  const applyColorTheme = (theme: typeof colorThemes[0]) => {
+    setDesignSettings({
+      ...designSettings,
+      primaryColor: theme.primary,
+      secondaryColor: theme.secondary,
+      accentColor: theme.accent,
+      headerBackground: theme.headerBg,
+    });
+    toast({ title: 'ערכת צבעים הוחלה', description: `נבחרה ערכת "${theme.name}"` });
+  };
+  
+  const generateAILogo = async (companyName: string, style: string, color: string) => {
+    setIsGeneratingLogo(true);
+    try {
+      // Generate SVG-based logo as fallback
+      const firstLetter = companyName.charAt(0).toUpperCase();
+      const styles: Record<string, string> = {
+        'modern': `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${color}"/><stop offset="100%" style="stop-color:${color}88"/></linearGradient></defs><rect width="120" height="120" rx="24" fill="url(#grad)"/><text x="60" y="78" font-family="Heebo" font-size="60" font-weight="bold" fill="white" text-anchor="middle">${firstLetter}</text></svg>`,
+        'classic': `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><circle cx="60" cy="60" r="55" fill="${color}" stroke="${color}" stroke-width="3"/><circle cx="60" cy="60" r="45" fill="white"/><text x="60" y="78" font-family="David Libre" font-size="50" font-weight="bold" fill="${color}" text-anchor="middle">${firstLetter}</text></svg>`,
+        'creative': `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><polygon points="60,5 110,90 10,90" fill="${color}"/><text x="60" y="80" font-family="Rubik" font-size="40" font-weight="bold" fill="white" text-anchor="middle">${firstLetter}</text></svg>`,
+        'professional': `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect width="120" height="120" fill="${color}"/><rect x="10" y="10" width="100" height="100" fill="white"/><text x="60" y="78" font-family="Assistant" font-size="55" font-weight="bold" fill="${color}" text-anchor="middle">${firstLetter}</text></svg>`,
+      };
+      const svg = styles[style] || styles['modern'];
+      const dataUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+      setDesignSettings({ ...designSettings, logoUrl: dataUrl });
+      toast({ title: 'לוגו נוצר', description: 'הלוגו נוצר בהצלחה' });
+    } catch (error) {
+      toast({ title: 'שגיאה', description: 'לא ניתן ליצור לוגו', variant: 'destructive' });
+    } finally {
+      setIsGeneratingLogo(false);
+      setShowAILogoDialog(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -590,32 +657,117 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
           <TabsContent value="design" className="flex-1 m-0 overflow-hidden">
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
-                {/* Logo */}
+                {/* Logo with AI Generation */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Image className="h-6 w-6 text-[#B8860B]" />לוגו</h2>
                   <div className="flex items-start gap-6">
                     <div className="relative w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#DAA520] transition-colors" onClick={() => logoInputRef.current?.click()}>{designSettings.logoUrl ? <img src={designSettings.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" /> : <div className="text-center text-gray-400"><Upload className="h-8 w-8 mx-auto mb-2" /><span className="text-xs">העלה לוגו</span></div>}</div>
-                    <div className="flex-1 space-y-4"><div className="flex items-center gap-3"><Switch checked={designSettings.showLogo} onCheckedChange={(checked) => setDesignSettings({ ...designSettings, showLogo: checked })} /><Label>הצג לוגו בהצעה</Label></div>{designSettings.logoUrl && <Button variant="outline" size="sm" onClick={() => setDesignSettings({ ...designSettings, logoUrl: '' })}><Trash2 className="h-4 w-4 ml-1" />הסר לוגו</Button>}</div>
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center gap-3"><Switch checked={designSettings.showLogo} onCheckedChange={(checked) => setDesignSettings({ ...designSettings, showLogo: checked })} /><Label>הצג לוגו בהצעה</Label></div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setShowAILogoDialog(true)}><Sparkles className="h-4 w-4 ml-1" />צור לוגו עם AI</Button>
+                        {designSettings.logoUrl && <Button variant="outline" size="sm" onClick={() => setDesignSettings({ ...designSettings, logoUrl: '' })}><Trash2 className="h-4 w-4 ml-1" />הסר</Button>}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                {/* Colors */}
+                
+                {/* Color Themes */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Palette className="h-6 w-6 text-[#B8860B]" />צבעים</h2>
-                  <div className="grid grid-cols-2 gap-6"><ColorPicker label="צבע ראשי" value={designSettings.primaryColor} onChange={(color) => setDesignSettings({ ...designSettings, primaryColor: color })} /><ColorPicker label="צבע משני" value={designSettings.secondaryColor} onChange={(color) => setDesignSettings({ ...designSettings, secondaryColor: color })} /><ColorPicker label="צבע הדגשה" value={designSettings.accentColor} onChange={(color) => setDesignSettings({ ...designSettings, accentColor: color })} /></div>
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Sparkles className="h-6 w-6 text-[#B8860B]" />ערכות צבעים מוכנות</h2>
+                  <div className="grid grid-cols-4 gap-3">
+                    {colorThemes.map((theme) => (
+                      <button
+                        key={theme.name}
+                        className="p-3 rounded-lg border-2 hover:scale-105 transition-all text-center"
+                        style={{ borderColor: designSettings.primaryColor === theme.primary ? theme.primary : 'transparent', background: `linear-gradient(135deg, ${theme.primary}20, ${theme.secondary}20)` }}
+                        onClick={() => applyColorTheme(theme)}
+                      >
+                        <div className="flex justify-center gap-1 mb-2">
+                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.primary }} />
+                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.secondary }} />
+                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.accent }} />
+                        </div>
+                        <span className="text-xs font-medium">{theme.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Custom Colors */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Palette className="h-6 w-6 text-[#B8860B]" />צבעים מותאמים</h2>
+                  <div className="grid grid-cols-3 gap-6"><ColorPicker label="צבע ראשי" value={designSettings.primaryColor} onChange={(color) => setDesignSettings({ ...designSettings, primaryColor: color })} /><ColorPicker label="צבע משני" value={designSettings.secondaryColor} onChange={(color) => setDesignSettings({ ...designSettings, secondaryColor: color })} /><ColorPicker label="צבע הדגשה" value={designSettings.accentColor} onChange={(color) => setDesignSettings({ ...designSettings, accentColor: color })} /></div>
                   <div className="mt-6 pt-4 border-t"><Label className="mb-2 block">רקע הכותרת</Label><div className="grid grid-cols-4 gap-2">{['linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)', 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)', '#B8860B', '#1e40af', '#16a34a', '#374151'].map((bg, i) => (<button key={i} className={`h-12 rounded-lg border-2 transition-all ${designSettings.headerBackground === bg ? 'border-black scale-105' : 'border-transparent'}`} style={{ background: bg }} onClick={() => setDesignSettings({ ...designSettings, headerBackground: bg })} />))}</div></div>
                 </div>
+                
+                {/* 3D Effects */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Box className="h-6 w-6 text-[#B8860B]" />אפקטי תלת מימד</h2>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>הגבהה (Elevation): {effects3D.elevation}</Label>
+                      <Slider value={[effects3D.elevation]} onValueChange={([v]) => setEffects3D({ ...effects3D, elevation: v })} min={0} max={5} step={1} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>עוצמת צל: {effects3D.shadowIntensity}%</Label>
+                      <Slider value={[effects3D.shadowIntensity]} onValueChange={([v]) => setEffects3D({ ...effects3D, shadowIntensity: v })} min={0} max={100} step={5} />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch checked={effects3D.useGradient} onCheckedChange={(checked) => setEffects3D({ ...effects3D, useGradient: checked })} />
+                      <Label>השתמש בשיפוע (גרדיאנט)</Label>
+                    </div>
+                    {effects3D.useGradient && (
+                      <div className="space-y-2">
+                        <Label>זווית שיפוע: {effects3D.gradientAngle}°</Label>
+                        <Slider value={[effects3D.gradientAngle]} onValueChange={([v]) => setEffects3D({ ...effects3D, gradientAngle: v })} min={0} max={360} step={15} />
+                      </div>
+                    )}
+                    {/* Preview */}
+                    <div className="p-4 rounded-lg bg-gray-100">
+                      <Label className="mb-2 block text-sm">תצוגה מקדימה:</Label>
+                      <div 
+                        className="h-20 rounded-lg flex items-center justify-center text-white font-bold"
+                        style={{
+                          background: effects3D.useGradient 
+                            ? `linear-gradient(${effects3D.gradientAngle}deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`
+                            : designSettings.primaryColor,
+                          boxShadow: `0 ${effects3D.elevation * 4}px ${effects3D.elevation * 8}px rgba(0,0,0,${effects3D.shadowIntensity / 100 * 0.5})`,
+                        }}
+                      >
+                        דוגמה לאפקט 3D
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Typography */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Type className="h-6 w-6 text-[#B8860B]" />טיפוגרפיה</h2>
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2"><Label>גופן</Label><Select value={designSettings.fontFamily} onValueChange={(v) => setDesignSettings({ ...designSettings, fontFamily: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{fontOptions.map(font => (<SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</SelectItem>))}</SelectContent></Select></div>
-                    <div className="space-y-2"><Label>גודל גופן בסיסי: {designSettings.fontSize}px</Label><Slider value={[designSettings.fontSize]} onValueChange={([v]) => setDesignSettings({ ...designSettings, fontSize: v })} min={12} max={20} step={1} /></div>
+                    <div className="space-y-2"><Label>גופן (10 גופנים בעברית)</Label><Select value={designSettings.fontFamily} onValueChange={(v) => setDesignSettings({ ...designSettings, fontFamily: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{fontOptions.map(font => (<SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</SelectItem>))}</SelectContent></Select></div>
+                    <div className="space-y-2"><Label>גודל גופן בסיסי: {designSettings.fontSize}px</Label><Slider value={[designSettings.fontSize]} onValueChange={([v]) => setDesignSettings({ ...designSettings, fontSize: v })} min={12} max={24} step={1} /></div>
                   </div>
-                  <div className="mt-4 space-y-2"><Label>עיגול פינות: {designSettings.borderRadius}px</Label><Slider value={[designSettings.borderRadius]} onValueChange={([v]) => setDesignSettings({ ...designSettings, borderRadius: v })} min={0} max={24} step={2} /></div>
+                  <div className="mt-4 space-y-2"><Label>עיגול פינות: {designSettings.borderRadius}px</Label><Slider value={[designSettings.borderRadius]} onValueChange={([v]) => setDesignSettings({ ...designSettings, borderRadius: v })} min={0} max={32} step={2} /></div>
+                  {/* Font Preview */}
+                  <div className="mt-4 p-4 rounded-lg bg-gray-100">
+                    <p className="text-lg" style={{ fontFamily: designSettings.fontFamily }}>זוהי טקסט לדוגמה בגופן שנבחר</p>
+                    <p className="text-sm text-gray-500" style={{ fontFamily: designSettings.fontFamily }}>The quick brown fox jumps over the lazy dog</p>
+                  </div>
                 </div>
               </div>
             </ScrollArea>
           </TabsContent>
+          
+          {/* AI Logo Generation Dialog */}
+          <AILogoDialog 
+            open={showAILogoDialog} 
+            onOpenChange={setShowAILogoDialog}
+            companyName={designSettings.companyName}
+            primaryColor={designSettings.primaryColor}
+            onGenerate={generateAILogo}
+            isGenerating={isGeneratingLogo}
+          />
 
           {/* Text Boxes Tab */}
           <TabsContent value="text-boxes" className="flex-1 m-0 overflow-hidden">
@@ -771,11 +923,271 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
               <Button variant="outline" onClick={handleExportWord}><File className="h-4 w-4 ml-2" />הורד Word</Button>
               <Button className="bg-[#DAA520] hover:bg-[#B8860B] text-white" onClick={handleSave} disabled={isSaving}>{isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-2" />}שמור</Button>
               <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowEmailDialog(true)}><Mail className="h-4 w-4 ml-2" />שלח במייל</Button>
+              <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={() => setShowWhatsAppDialog(true)}><MessageCircle className="h-4 w-4 ml-2" />שלח בוואטסאפ</Button>
             </div>
           </div>
         </div>
+
+        {/* WhatsApp Dialog */}
+        <WhatsAppDialog
+          open={showWhatsAppDialog}
+          onOpenChange={setShowWhatsAppDialog}
+          templateName={editedTemplate.name}
+          clientName={projectDetails.clientName}
+          clientPhone={extendedClients.find(c => c.id === projectDetails.clientId)?.phone || ''}
+          totalPrice={editedTemplate.base_price || 35000}
+        />
       </SheetContent>
     </Sheet>
+  );
+}
+
+// WhatsApp Dialog Component
+function WhatsAppDialog({ open, onOpenChange, templateName, clientName, clientPhone, totalPrice }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  templateName: string;
+  clientName: string;
+  clientPhone: string;
+  totalPrice: number;
+}) {
+  const [phone, setPhone] = useState(clientPhone);
+  const [messageType, setMessageType] = useState<'formal' | 'friendly' | 'short' | 'custom'>('formal');
+  const [customMessage, setCustomMessage] = useState('');
+  const { toast } = useToast();
+
+  useEffect(() => {
+    setPhone(clientPhone);
+  }, [clientPhone]);
+
+  const messageTemplates = {
+    formal: `שלום ${clientName || '[שם הלקוח]'},
+
+בהמשך לשיחתנו, מצורפת הצעת מחיר עבור: ${templateName}
+
+סה"כ: ₪${totalPrice.toLocaleString()} + מע"מ
+
+נשמח לעמוד לרשותך לכל שאלה.
+
+בברכה`,
+    friendly: `היי ${clientName || '[שם הלקוח]'} 👋
+
+מצורפת הצעת המחיר שביקשת ל${templateName}.
+
+סכום: ₪${totalPrice.toLocaleString()} + מע"מ
+
+יש שאלות? אני כאן! 😊`,
+    short: `הצעת מחיר - ${templateName}\nסה"כ: ₪${totalPrice.toLocaleString()} + מע"מ`,
+    custom: customMessage
+  };
+
+  const formatPhoneForWhatsApp = (phoneNumber: string): string => {
+    let cleaned = phoneNumber.replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '972' + cleaned.substring(1);
+    } else if (!cleaned.startsWith('972')) {
+      cleaned = '972' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const handleSend = () => {
+    if (!phone) {
+      toast({ title: 'שגיאה', description: 'יש להזין מספר טלפון', variant: 'destructive' });
+      return;
+    }
+    const formattedPhone = formatPhoneForWhatsApp(phone);
+    const message = encodeURIComponent(messageTemplates[messageType]);
+    window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
+    onOpenChange(false);
+    toast({ title: 'וואטסאפ נפתח', description: 'ההודעה מוכנה לשליחה' });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5 text-[#25D366]" />
+            שליחה בוואטסאפ
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>מספר טלפון</Label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="050-1234567"
+              dir="ltr"
+              className="text-left"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>סגנון הודעה</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'formal', label: 'רשמית' },
+                { value: 'friendly', label: 'ידידותית' },
+                { value: 'short', label: 'קצרה' },
+                { value: 'custom', label: 'מותאמת' },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  variant={messageType === option.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setMessageType(option.value as any)}
+                  className={messageType === option.value ? 'bg-[#25D366] hover:bg-[#128C7E]' : ''}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {messageType === 'custom' ? (
+            <div className="space-y-2">
+              <Label>הודעה מותאמת</Label>
+              <Textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                placeholder="כתוב את ההודעה שלך..."
+                rows={5}
+                dir="rtl"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>תצוגה מקדימה</Label>
+              <div className="bg-gray-50 p-3 rounded-lg text-sm whitespace-pre-wrap border max-h-40 overflow-y-auto">
+                {messageTemplates[messageType]}
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
+          <Button
+            onClick={handleSend}
+            className="bg-[#25D366] hover:bg-[#128C7E] text-white"
+            disabled={!phone}
+          >
+            <MessageCircle className="h-4 w-4 ml-2" />
+            שלח בוואטסאפ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// AI Logo Generation Dialog
+function AILogoDialog({ open, onOpenChange, companyName, primaryColor, onGenerate, isGenerating }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyName: string;
+  primaryColor: string;
+  onGenerate: (name: string, style: string, color: string) => void;
+  isGenerating: boolean;
+}) {
+  const [name, setName] = useState(companyName);
+  const [style, setStyle] = useState('modern');
+  const [color, setColor] = useState(primaryColor);
+
+  useEffect(() => {
+    setName(companyName);
+    setColor(primaryColor);
+  }, [companyName, primaryColor]);
+
+  const styles = [
+    { value: 'modern', label: 'מודרני', description: 'עיצוב נקי ומינימליסטי' },
+    { value: 'classic', label: 'קלאסי', description: 'עיצוב מסורתי ואלגנטי' },
+    { value: 'creative', label: 'יצירתי', description: 'עיצוב ייחודי ובולט' },
+    { value: 'professional', label: 'מקצועי', description: 'עיצוב עסקי ורשמי' },
+  ];
+
+  const presetColors = ['#1e40af', '#B8860B', '#059669', '#7c3aed', '#dc2626', '#0891b2', '#374151', '#ec4899'];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#B8860B]" />
+            יצירת לוגו עם AI
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>שם החברה</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="הזן את שם החברה..."
+              dir="rtl"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>סגנון עיצוב</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {styles.map((s) => (
+                <button
+                  key={s.value}
+                  className={`p-3 rounded-lg border-2 text-right transition-all ${style === s.value ? 'border-[#B8860B] bg-[#B8860B]/10' : 'border-gray-200 hover:border-gray-300'}`}
+                  onClick={() => setStyle(s.value)}
+                >
+                  <div className="font-medium text-sm">{s.label}</div>
+                  <div className="text-xs text-gray-500">{s.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>צבע</Label>
+            <div className="flex flex-wrap gap-2">
+              {presetColors.map((c) => (
+                <button
+                  key={c}
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-black scale-110' : 'border-transparent hover:scale-105'}`}
+                  style={{ backgroundColor: c }}
+                  onClick={() => setColor(c)}
+                />
+              ))}
+              <Input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-8 h-8 p-0 cursor-pointer"
+              />
+            </div>
+          </div>
+          {/* Preview */}
+          <div className="p-4 rounded-lg bg-gray-100 text-center">
+            <div 
+              className="w-20 h-20 mx-auto rounded-2xl flex items-center justify-center text-white text-3xl font-bold"
+              style={{ backgroundColor: color }}
+            >
+              {name.charAt(0).toUpperCase() || '?'}
+            </div>
+            <p className="text-sm text-gray-500 mt-2">תצוגה מקדימה</p>
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
+          <Button
+            onClick={() => onGenerate(name, style, color)}
+            className="bg-[#B8860B] hover:bg-[#9A7209] text-white"
+            disabled={!name || isGenerating}
+          >
+            {isGenerating ? (
+              <span className="animate-spin mr-2">⏳</span>
+            ) : (
+              <Sparkles className="h-4 w-4 ml-2" />
+            )}
+            צור לוגו
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
