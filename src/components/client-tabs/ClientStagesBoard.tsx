@@ -275,7 +275,7 @@ function SortableTaskItem({
             taskId: task.id,
             title: task.title
           })} className="h-6 w-6 p-0">
-          <Edit className="h-3 w-3" />
+          <Pencil className="h-3 w-3" />
         </Button>
         <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-6 w-6 p-0 hover:text-destructive">
           <Trash2 className="h-3 w-3" />
@@ -409,7 +409,7 @@ function SortableTaskItem({
         taskId: task.id,
         title: task.title
       })} className="flex items-center gap-2">
-          <Edit className="h-4 w-4" />
+          <Pencil className="h-4 w-4" />
           <span>עריכת משימה</span>
         </ContextMenuItem>
         
@@ -526,7 +526,7 @@ function SortableExpandedTaskItem({
         taskId: task.id,
         title: task.title
       })} className="h-8 w-8 p-0">
-          <Edit className="h-4 w-4" />
+          <Pencil className="h-4 w-4" />
         </Button>
         <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-8 w-8 p-0 hover:text-destructive">
           <Trash2 className="h-4 w-4" />
@@ -670,7 +670,7 @@ function SortableStageItem({
           name: stage.stage_name,
           icon: stage.stage_icon || 'Phone'
         })} className="h-8 w-8 p-0" title="ערוך">
-            <Edit className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
           </Button>
 
           {/* Delete */}
@@ -1250,7 +1250,7 @@ export function ClientStagesBoard({
                 });
                 setManageStagesDialog(true);
               }} className={cn("h-7 w-7 p-0", isActiveStage && !isStageCompleted && "hover:bg-white/20")} title="ערוך שלב">
-                      <Edit className="h-3.5 w-3.5" />
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     {/* Delete Stage Button */}
                     <Button size="sm" variant="ghost" onClick={e => {
@@ -1641,7 +1641,7 @@ export function ClientStagesBoard({
                               taskId: task.id,
                               title: task.title
                             })} className="h-7 w-7 p-0">
-                                      <Edit className="h-3.5 w-3.5" />
+                                      <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                     <Button size="sm" variant="ghost" onClick={() => handleDeleteTask(task.id)} className="h-7 w-7 p-0 hover:text-destructive">
                                       <Trash2 className="h-3.5 w-3.5" />

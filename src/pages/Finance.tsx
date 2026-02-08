@@ -39,7 +39,7 @@ import {
   MinusCircle,
   Calculator,
   Trash2,
-  Edit,
+  Pencil,
   Eye,
   ExternalLink,
   BarChart3,
@@ -2898,7 +2898,7 @@ export default function Finance() {
                               className="text-primary hover:text-primary/80 hover:bg-primary/10"
                               onClick={() => openEditExpense(expense)}
                             >
-                              <Edit className="h-3 w-3 ml-1" />
+                              <Pencil className="h-3 w-3 ml-1" />
                               ערוך
                             </Button>
                             <Button
@@ -2926,7 +2926,7 @@ export default function Finance() {
           <DialogContent className="max-w-lg" dir="rtl">
             <DialogHeader className="text-right">
               <DialogTitle className="flex items-center gap-2">
-                <Edit className="h-5 w-5" />
+                <Pencil className="h-5 w-5" />
                 עריכת הוצאה
               </DialogTitle>
             </DialogHeader>

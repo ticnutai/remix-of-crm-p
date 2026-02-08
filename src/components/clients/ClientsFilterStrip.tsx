@@ -24,7 +24,7 @@ import {
   Handshake,
   ArrowUpDown,
   SortAsc,
-  Edit,
+  Pencil,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -385,7 +385,7 @@ export function ClientsFilterStrip({
                           }}
                           title="ערוך קטגוריה"
                         >
-                          <Edit className="h-3 w-3" />
+                          <Pencil className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"

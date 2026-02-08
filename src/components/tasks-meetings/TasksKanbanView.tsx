@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Edit, Trash2, Calendar, User, 
+  Pencil, Trash2, Calendar, User, 
   ArrowUp, ArrowRight, ArrowDown, Clock, CheckCircle2, Circle
 } from 'lucide-react';
 import { format, parseISO, isPast, isToday } from 'date-fns';
@@ -78,7 +78,7 @@ function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
-              <Edit className="h-3 w-3" />
+              <Pencil className="h-3 w-3" />
             </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}>
               <Trash2 className="h-3 w-3 text-destructive" />

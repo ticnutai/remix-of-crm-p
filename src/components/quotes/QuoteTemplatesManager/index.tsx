@@ -428,7 +428,7 @@ export function QuoteTemplatesManager() {
                         size="sm"
                         onClick={() => handleEdit(template)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"

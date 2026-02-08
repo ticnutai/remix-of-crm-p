@@ -40,7 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle2, 
   Circle, 
-  Edit, 
+  Pencil, 
   Trash2, 
   Bell,
   Filter,
@@ -462,7 +462,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                           onClick={() => setEditingTask({ taskId: task.id, title: task.title })}
                           className="h-7 w-7 p-0"
                         >
-                          <Edit className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
                           size="sm"

@@ -29,7 +29,7 @@ import {
   Grid3X3,
   LayoutGrid,
   List,
-  Edit,
+  Pencil,
   Trash2,
   Eye,
   Bell,
@@ -1096,7 +1096,7 @@ export default function Clients() {
           {showActions && (
             <div className="absolute bottom-2 left-2 flex gap-1">
               <button onClick={(e) => handleEditClient(e, client.id)} className="w-6 h-6 rounded-full bg-slate-800 border border-amber-500 flex items-center justify-center hover:bg-amber-500">
-                <Edit className="w-3 h-3 text-white" />
+                <Pencil className="w-3 h-3 text-white" />
               </button>
               <button onClick={(e) => handleDeleteClient(e, client.id)} className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700">
                 <Trash2 className="w-3 h-3 text-white" />
@@ -1195,7 +1195,7 @@ export default function Clients() {
           {showActions && (
             <div className="absolute bottom-3 left-3 flex gap-2">
               <button onClick={(e) => handleEditClient(e, client.id)} className="w-8 h-8 rounded-full bg-slate-800 border-2 border-amber-500 flex items-center justify-center hover:bg-amber-500">
-                <Edit className="w-4 h-4 text-white" />
+                <Pencil className="w-4 h-4 text-white" />
               </button>
               <button onClick={(e) => handleDeleteClient(e, client.id)} className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700">
                 <Trash2 className="w-4 h-4 text-white" />
@@ -1377,7 +1377,7 @@ export default function Clients() {
                 }}
                 className="hover:bg-amber-600"
               >
-                <Edit className="w-4 h-4 text-white" />
+                <Pencil className="w-4 h-4 text-white" />
               </button>
               <button 
                 onClick={(e) => handleDeleteClient(e, client.id)} 
@@ -1477,7 +1477,7 @@ export default function Clients() {
           {showActions && (
             <div className="flex gap-1">
               <button onClick={(e) => handleEditClient(e, client.id)} className="w-6 h-6 rounded bg-slate-200 flex items-center justify-center hover:bg-amber-500">
-                <Edit className="w-3 h-3 text-slate-700" />
+                <Pencil className="w-3 h-3 text-slate-700" />
               </button>
               <button onClick={(e) => handleDeleteClient(e, client.id)} className="w-6 h-6 rounded bg-red-100 flex items-center justify-center hover:bg-red-500">
                 <Trash2 className="w-3 h-3 text-red-600 hover:text-white" />
@@ -1604,7 +1604,7 @@ export default function Clients() {
               className="hover:bg-amber-500"
               title="עריכה"
             >
-              <Edit style={{ width: '14px', height: '14px', color: '#ffffff' }} />
+              <Pencil style={{ width: '14px', height: '14px', color: '#ffffff' }} />
             </button>
             <button
               onClick={(e) => handleDeleteClient(e, client.id)}

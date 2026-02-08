@@ -16,7 +16,7 @@ import {
   Play,
   Pause,
   Trash2,
-  Edit,
+  Pencil,
   Settings2,
   ArrowRight,
   CheckCircle,

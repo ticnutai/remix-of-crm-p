@@ -281,7 +281,7 @@ export function EmailSignatureManager() {
                         size="icon"
                         onClick={() => handleEdit(signature)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

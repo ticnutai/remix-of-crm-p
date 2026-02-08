@@ -24,7 +24,7 @@ import {
   Plus,
   Search,
   Eye,
-  Edit,
+  Pencil,
   Copy,
   Trash2,
   Download,
@@ -329,7 +329,7 @@ export default function QuoteTemplatesPage() {
                               תצוגה מקדימה
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
-                              <Edit className="h-4 w-4 ml-2" />
+                              <Pencil className="h-4 w-4 ml-2" />
                               עריכה
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleCreateFromTemplate(template)}>

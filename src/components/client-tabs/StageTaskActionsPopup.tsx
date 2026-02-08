@@ -21,7 +21,7 @@ import {
   Calendar,
   Plus,
   Trash2,
-  Edit,
+  Pencil,
   Clock,
   AlertCircle,
   CheckCircle2,

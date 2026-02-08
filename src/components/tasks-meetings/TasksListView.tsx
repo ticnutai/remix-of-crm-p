@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  Edit, Trash2, Calendar, User, Briefcase, 
+  Pencil, Trash2, Calendar, User, Briefcase, 
   ArrowUp, ArrowRight, ArrowDown, AlertCircle, GripVertical 
 } from 'lucide-react';
 import { format, parseISO, isPast, isToday } from 'date-fns';
@@ -102,7 +102,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
           {/* Actions */}
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon" onClick={() => onEdit(task)} className="h-8 w-8">
-              <Edit className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+              <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)} className="h-8 w-8">
               <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />

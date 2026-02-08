@@ -47,7 +47,7 @@ import {
   FolderPlus, 
   Plus,
   Loader2,
-  Edit,
+  Pencil,
   Trash2,
   Copy,
   GripVertical,
@@ -201,7 +201,7 @@ function SortableTask({
             className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
             onClick={() => setIsEditing(true)}
           >
-            <Edit className="h-3 w-3" />
+            <Pencil className="h-3 w-3" />
           </Button>
           <Button 
             size="sm" 
@@ -570,7 +570,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem onClick={() => setEditingFolder({ id: folder.id, name: folder.folder_name })}>
-                  <Edit className="h-4 w-4 ml-2" />
+                  <Pencil className="h-4 w-4 ml-2" />
                   שנה שם
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => {

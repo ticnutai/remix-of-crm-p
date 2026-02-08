@@ -1432,6 +1432,6 @@ export function PaymentLink({ quoteId, totalAmount, clientName, clientEmail }: P
 // ============================================
 
 export {
-  Edit,
+  Pencil,
   Plus,
 };

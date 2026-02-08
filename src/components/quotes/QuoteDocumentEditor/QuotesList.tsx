@@ -18,7 +18,7 @@ import {
   SortAsc,
   SortDesc,
   Eye,
-  Edit,
+  Pencil,
   Plus,
   FolderOpen,
   FileCheck

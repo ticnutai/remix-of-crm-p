@@ -50,7 +50,7 @@ import {
   KeyRound,
   Eye,
   EyeOff,
-  Edit,
+  Pencil,
   Calendar,
   Trash2,
   FileText,
@@ -791,7 +791,7 @@ export default function Employees() {
         { label: 'תעריף', value: employee.hourly_rate ? `₪${employee.hourly_rate}` : '-', icon: DollarSign },
       ]}
       actions={[
-        ...(isManager ? [{ label: 'ערוך', icon: Edit, onClick: () => handleEditClick(employee) }] : []),
+        ...(isManager ? [{ label: 'ערוך', icon: Pencil, onClick: () => handleEditClick(employee) }] : []),
         ...(isManager ? [{ label: 'סיסמה', icon: KeyRound, onClick: () => setResetPasswordDialog({ open: true, employee }) }] : []),
         ...(isManager ? [{ label: 'מחק', icon: Trash2, onClick: () => setDeleteDialog({ open: true, employee }), variant: 'destructive' as const }] : []),
       ]}

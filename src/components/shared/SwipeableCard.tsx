@@ -201,7 +201,7 @@ export function SwipeableDeleteCard({
 
   if (onEdit) {
     actions.push({
-      icon: Edit,
+      icon: Pencil,
       label: 'ערוך',
       onClick: onEdit,
       color: 'primary',

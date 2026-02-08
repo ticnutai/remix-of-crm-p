@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  CheckSquare, Calendar, Clock, User, Edit, Trash2,
+  CheckSquare, Calendar, Clock, User, Pencil, Trash2,
   ArrowUp, ArrowRight, ArrowDown
 } from 'lucide-react';
 import { format, parseISO, isPast, isToday, isTomorrow, isThisWeek, isThisMonth, startOfDay, differenceInDays } from 'date-fns';
@@ -166,7 +166,7 @@ export function TasksTimelineView({
                               className="h-7 w-7"
                               onClick={() => isTask ? onTaskEdit(task!) : onMeetingEdit(meeting!)}
                             >
-                              <Edit className="h-3.5 w-3.5" />
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button 
                               variant="ghost" 

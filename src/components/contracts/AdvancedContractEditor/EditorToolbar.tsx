@@ -17,7 +17,7 @@ import {
   Download,
   Printer,
   Eye,
-  Edit,
+  Pencil,
   SplitSquareVertical,
   Palette,
   Layout,
@@ -194,7 +194,7 @@ export function EditorToolbar({
               className="h-7 px-3 gap-2"
               onClick={() => onViewModeChange('edit')}
             >
-              <Edit className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5" />
               <span className="hidden md:inline text-xs">עריכה</span>
             </Button>
           </TooltipTrigger>

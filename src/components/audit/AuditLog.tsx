@@ -45,7 +45,7 @@ import {
   Search,
   Eye,
   Plus,
-  Edit,
+  Pencil,
   Trash2,
   RefreshCw,
 } from 'lucide-react';
@@ -98,7 +98,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
   create: <Plus className="h-3 w-3" />,
-  update: <Edit className="h-3 w-3" />,
+  update: <Pencil className="h-3 w-3" />,
   delete: <Trash2 className="h-3 w-3" />,
 };
 

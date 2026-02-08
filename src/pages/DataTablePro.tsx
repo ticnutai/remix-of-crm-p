@@ -71,7 +71,7 @@ import {
   AlertTriangle,
   Info,
   Plus,
-  Edit,
+  Pencil,
   Undo2,
   Redo2,
   GripVertical,

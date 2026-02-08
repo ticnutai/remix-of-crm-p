@@ -5,7 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  Edit, Trash2, Calendar, User, Briefcase, 
+  Pencil, Trash2, Calendar, User, Briefcase, 
   ArrowUp, ArrowRight, ArrowDown, AlertCircle, MoreVertical 
 } from 'lucide-react';
 import {
@@ -77,7 +77,7 @@ export function TasksGridView({ tasks, onEdit, onDelete, onToggleComplete }: Tas
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem onClick={() => onEdit(task)}>
-                      <Edit className="h-4 w-4 ml-2" />
+                      <Pencil className="h-4 w-4 ml-2" />
                       עריכה
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onDelete(task.id)} className="text-destructive">

@@ -27,7 +27,7 @@ import {
   Unlock,
   Eye,
   EyeOff,
-  Edit,
+  Pencil,
   Trash2,
   Plus,
   Download,
@@ -770,7 +770,7 @@ export function ApiKeysManager({ isUnlocked }: ApiKeysManagerProps) {
                       className="h-8 w-8"
                       onClick={() => handleEdit(service)}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     {(entry?.isConfigured || Object.keys(entry?.values || {}).length > 0) && !preconfigInfo?.configured && (
                       <Button 

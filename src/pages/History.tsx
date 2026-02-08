@@ -18,7 +18,7 @@ import {
   User,
   FileText,
   Trash2,
-  Edit,
+  Pencil,
   Eye,
   LogIn,
   LogOut,
@@ -72,7 +72,7 @@ interface ActivityLogEntry {
 // Icons and labels mappings
 const ACTION_ICONS: Record<string, React.ReactNode> = {
   create: <Plus className="h-4 w-4 text-green-500" />,
-  update: <Edit className="h-4 w-4 text-blue-500" />,
+  update: <Pencil className="h-4 w-4 text-blue-500" />,
   delete: <Trash2 className="h-4 w-4 text-red-500" />,
   view: <Eye className="h-4 w-4 text-muted-foreground" />,
   login: <LogIn className="h-4 w-4 text-primary" />,

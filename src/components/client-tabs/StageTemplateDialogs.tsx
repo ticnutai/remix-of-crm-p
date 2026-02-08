@@ -32,7 +32,7 @@ import {
   Search,
   Plus,
   Trash2,
-  Edit,
+  Pencil,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
@@ -531,7 +531,7 @@ export function ApplyTemplateDialog({
                                   className="h-7 w-7"
                                   onClick={(e) => handleStartEdit(template, e)}
                                 >
-                                  <Edit className="h-3.5 w-3.5" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   size="icon"

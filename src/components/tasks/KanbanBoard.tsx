@@ -22,7 +22,7 @@ import {
   Tag, 
   Clock,
   MoreVertical,
-  Edit,
+  Pencil,
   Trash2,
   CheckCircle2,
   Circle,
@@ -82,7 +82,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onStatusCha
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onEdit(task)}>
-                <Edit className="h-4 w-4 ml-2" />
+                <Pencil className="h-4 w-4 ml-2" />
                 עריכה
               </DropdownMenuItem>
               {task.status !== 'done' && (

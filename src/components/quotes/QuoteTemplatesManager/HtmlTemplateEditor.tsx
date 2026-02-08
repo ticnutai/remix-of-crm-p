@@ -195,7 +195,7 @@ function EditableItem({ item, onUpdate, onDelete }: { item: TemplateStageItem; o
       <span className="text-[#DAA520] text-lg">✓</span>
       <span className="flex-1 text-gray-700 cursor-pointer hover:text-[#B8860B]" onClick={() => setIsEditing(true)}>{item.text}</span>
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}><Edit className="h-3 w-3" /></Button>
+        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}><Pencil className="h-3 w-3" /></Button>
         <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
       </div>
     </div>

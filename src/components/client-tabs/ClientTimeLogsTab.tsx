@@ -63,7 +63,7 @@ import {
   Table as TableIcon,
   Filter,
   Plus,
-  Edit,
+  Pencil,
   Trash2,
   MoreVertical,
   DollarSign,
@@ -947,7 +947,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditDialog(entry)} className="gap-2">
-                                    <Edit className="h-4 w-4" />
+                                    <Pencil className="h-4 w-4" />
                                     עריכה
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
@@ -1054,7 +1054,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                               <DropdownMenuItem onClick={() => openEditDialog(entry)} className="gap-2">
-                                                <Edit className="h-4 w-4" />
+                                                <Pencil className="h-4 w-4" />
                                                 עריכה
                                               </DropdownMenuItem>
                                               <DropdownMenuItem

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  Edit, Trash2, Calendar, Clock, MapPin, User, Briefcase,
+  Pencil, Trash2, Calendar, Clock, MapPin, User, Briefcase,
   Video, Phone, Users
 } from 'lucide-react';
 import { format, parseISO, isPast, isToday, isTomorrow } from 'date-fns';
@@ -103,7 +103,7 @@ export function MeetingsListView({ meetings, onEdit, onDelete }: MeetingsListVie
                         {/* Actions */}
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" onClick={() => onEdit(meeting)} className="h-8 w-8">
-                            <Edit className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            <Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => onDelete(meeting.id)} className="h-8 w-8">
                             <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />

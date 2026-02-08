@@ -51,7 +51,7 @@ import {
   Loader2,
   RefreshCw,
   Plus,
-  Edit,
+  Pencil,
   ExternalLink,
   Table,
   MessageCircle,
@@ -440,7 +440,7 @@ export default function ClientProfile() {
                 onClick={handleEditClick}
                 className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] border border-[hsl(222,47%,35%)] text-white shadow-sm"
               >
-                <Edit className="h-4 w-4 ml-2" />
+                <Pencil className="h-4 w-4 ml-2" />
                 ערוך
               </Button>
             )}

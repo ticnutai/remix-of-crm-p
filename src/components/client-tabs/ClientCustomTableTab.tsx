@@ -28,7 +28,7 @@ import {
   Upload,
   Download,
   Trash2,
-  Edit,
+  Pencil,
   MoreVertical,
   BarChart3,
   FileSpreadsheet,
@@ -324,7 +324,7 @@ export function ClientCustomTableTab({ tab, clientId }: ClientCustomTableTabProp
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleEdit(rowData._row)}>
-              <Edit className="h-4 w-4 ml-2" />
+              <Pencil className="h-4 w-4 ml-2" />
               ערוך
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -609,7 +609,7 @@ export function ClientCustomTableTab({ tab, clientId }: ClientCustomTableTabProp
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleEdit(row)}>
-                    <Edit className="h-4 w-4 ml-2" />
+                    <Pencil className="h-4 w-4 ml-2" />
                     ערוך
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
