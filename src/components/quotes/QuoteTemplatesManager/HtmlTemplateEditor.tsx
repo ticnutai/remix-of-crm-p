@@ -148,6 +148,129 @@ function EmailDialog({ open, onOpenChange, clients, onSend, templateName }: { op
   );
 }
 
+// Field with quick-select options + manual text
+function FieldWithOptions({ fieldKey, label, icon: Icon, value, onChange, placeholder }: { fieldKey: string; label: string; icon: React.ElementType; value: string; onChange: (val: string) => void; placeholder: string }) {
+  const storageKey = `quote_field_options_${fieldKey}`;
+  const [options, setOptions] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  });
+  const [newOption, setNewOption] = useState('');
+  const [showOptions, setShowOptions] = useState(false);
+  const [showAddPopover, setShowAddPopover] = useState(false);
+  const newOptionRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(options)); }, [options, storageKey]);
+  useEffect(() => { if (showAddPopover && newOptionRef.current) newOptionRef.current.focus(); }, [showAddPopover]);
+
+  const addOption = () => {
+    const trimmed = newOption.trim();
+    if (trimmed && !options.includes(trimmed)) {
+      setOptions(prev => [...prev, trimmed]);
+      setNewOption('');
+    }
+  };
+
+  const removeOption = (opt: string) => setOptions(prev => prev.filter(o => o !== opt));
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-sm text-gray-600 flex items-center gap-1">
+        <Icon className="h-3 w-3" />{label}
+      </Label>
+      <div className="relative flex items-center gap-1">
+        <div className="relative flex-1">
+          <Input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            dir="rtl"
+            className="pr-3 pl-8"
+          />
+          {options.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowOptions(!showOptions)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#B8860B] transition-colors"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform ${showOptions ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </div>
+
+        {/* Add options popover */}
+        <Popover open={showAddPopover} onOpenChange={setShowAddPopover}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center justify-center w-8 h-8 rounded-lg border border-dashed border-gray-300 hover:border-[#B8860B] hover:bg-[#B8860B]/5 text-gray-400 hover:text-[#B8860B] transition-all"
+              title={`הוסף אפשרויות ל${label}`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-3" dir="rtl" align="start">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-[#B8860B]" />
+                <span className="text-sm font-semibold">אפשרויות ל{label}</span>
+              </div>
+
+              {/* Add new option */}
+              <div className="flex gap-1.5">
+                <Input
+                  ref={newOptionRef}
+                  value={newOption}
+                  onChange={(e) => setNewOption(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addOption()}
+                  placeholder="הוסף אפשרות חדשה..."
+                  className="flex-1 h-8 text-sm"
+                  dir="rtl"
+                />
+                <Button size="sm" className="h-8 px-2 bg-[#B8860B] hover:bg-[#DAA520]" onClick={addOption} disabled={!newOption.trim()}>
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+
+              {/* Options list */}
+              {options.length > 0 ? (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 group px-2 py-1.5 rounded-md hover:bg-gray-50">
+                      <span className="flex-1 text-sm truncate">{opt}</span>
+                      <button onClick={() => removeOption(opt)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 text-center py-2">אין אפשרויות עדיין. הוסף אפשרויות כדי לבחור מהר.</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Dropdown options list */}
+      {showOptions && options.length > 0 && (
+        <div className="border rounded-lg bg-white shadow-lg overflow-hidden animate-in slide-in-from-top-1 duration-200">
+          {options.map((opt, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => { onChange(opt); setShowOptions(false); }}
+              className={`w-full text-right px-3 py-2 text-sm hover:bg-[#B8860B]/10 transition-colors flex items-center justify-between ${value === opt ? 'bg-[#B8860B]/5 text-[#B8860B] font-medium' : 'text-gray-700'}`}
+            >
+              <span>{opt}</span>
+              {value === opt && <Check className="h-3.5 w-3.5 text-[#B8860B]" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Project Details Editor
 function ProjectDetailsEditor({ details, onUpdate, clients, onOpenClientSelector }: { details: ProjectDetails; onUpdate: (details: ProjectDetails) => void; clients: any[]; onOpenClientSelector: () => void }) {
   const fields = [
@@ -167,10 +290,15 @@ function ProjectDetailsEditor({ details, onUpdate, clients, onOpenClientSelector
       </div>
       <div className="grid grid-cols-2 gap-4">
         {fields.map((field) => (
-          <div key={field.key} className="space-y-1">
-            <Label className="text-sm text-gray-600 flex items-center gap-1"><field.icon className="h-3 w-3" />{field.label}</Label>
-            <Input value={(details as any)[field.key] || ''} onChange={(e) => onUpdate({ ...details, [field.key]: e.target.value })} placeholder={`הזן ${field.label}...`} dir="rtl" />
-          </div>
+          <FieldWithOptions
+            key={field.key}
+            fieldKey={field.key}
+            label={field.label}
+            icon={field.icon}
+            value={(details as any)[field.key] || ''}
+            onChange={(val) => onUpdate({ ...details, [field.key]: val })}
+            placeholder={`הזן ${field.label}...`}
+          />
         ))}
       </div>
     </div>
