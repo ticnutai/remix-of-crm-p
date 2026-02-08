@@ -84,6 +84,11 @@ export interface QuoteTemplate {
   updated_at: string;
   // HTML template content for visual editing
   html_content?: string;
+  // Cloud-saved fields
+  text_boxes?: any[];
+  upgrades?: any[];
+  project_details?: any;
+  pricing_tiers?: any[];
 }
 
 // קטגוריות

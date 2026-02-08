@@ -81,6 +81,11 @@ export function QuoteTemplatesManager() {
         show_vat: t.show_vat ?? true,
         vat_rate: t.vat_rate || 17,
         html_content: t.html_content || null,
+        text_boxes: t.text_boxes || [],
+        upgrades: t.upgrades || [],
+        project_details: t.project_details || {},
+        pricing_tiers: t.pricing_tiers || [],
+        base_price: t.base_price || 0,
       })) as QuoteTemplate[];
     },
   });
@@ -105,6 +110,11 @@ export function QuoteTemplatesManager() {
         vat_rate: template.vat_rate || 17,
         is_active: template.is_active ?? true,
         html_content: template.html_content || null,
+        text_boxes: template.text_boxes || [],
+        upgrades: template.upgrades || [],
+        project_details: template.project_details || {},
+        base_price: template.base_price || 0,
+        pricing_tiers: template.pricing_tiers || [],
         updated_at: new Date().toISOString(),
       };
 

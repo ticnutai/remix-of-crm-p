@@ -616,12 +616,38 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>('מתקדם');
   const [activeTab, setActiveTab] = useState('project');
-  const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>([{ id: '1', name: 'מקדמה בחתימה', percentage: 30, description: '' }, { id: '2', name: 'הגשה לרישוי', percentage: 25, description: '' }, { id: '3', name: 'אישור תב"ע', percentage: 25, description: '' }, { id: '4', name: 'היתר בנייה', percentage: 20, description: '' }]);
-  const [designSettings, setDesignSettings] = useState<DesignSettings>({ primaryColor: '#B8860B', secondaryColor: '#DAA520', accentColor: '#F4C430', fontFamily: 'Heebo', fontSize: 16, logoUrl: '', headerBackground: 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)', showLogo: true, borderRadius: 12, companyName: 'שם החברה', companyAddress: 'כתובת החברה', companyPhone: '050-0000000', companyEmail: 'email@company.com' });
-  const [textBoxes, setTextBoxes] = useState<TextBox[]>([]);
-  const [upgrades, setUpgrades] = useState([{ id: '1', name: 'יחידת דיור נוספת', price: 5000, enabled: true }, { id: '2', name: 'מרתף/חניה תת קרקעית', price: 6000, enabled: true }]);
-  const [pricingTiers, setPricingTiers] = useState([{ id: '1', name: 'בסיסי', price: 30000 }, { id: '2', name: 'מתקדם', price: 35000 }, { id: '3', name: 'פרימיום', price: 48000 }]);
-  const [projectDetails, setProjectDetails] = useState<ProjectDetails>({ clientId: '', clientName: '', gush: '', helka: '', migrash: '', taba: '', address: '', projectType: '' });
+  const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
+    const saved = template.payment_schedule;
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      return saved.map((s: any) => ({ id: s.id || Date.now().toString(), name: s.description || s.name || '', percentage: s.percentage || 0, description: s.description || '' }));
+    }
+    return [{ id: '1', name: 'מקדמה בחתימה', percentage: 30, description: '' }, { id: '2', name: 'הגשה לרישוי', percentage: 25, description: '' }, { id: '3', name: 'אישור תב"ע', percentage: 25, description: '' }, { id: '4', name: 'היתר בנייה', percentage: 20, description: '' }];
+  });
+  const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
+    const ds = template.design_settings as any;
+    if (ds && ds.primaryColor) return ds as DesignSettings;
+    return { primaryColor: '#B8860B', secondaryColor: '#DAA520', accentColor: '#F4C430', fontFamily: 'Heebo', fontSize: 16, logoUrl: '', headerBackground: 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)', showLogo: true, borderRadius: 12, companyName: 'שם החברה', companyAddress: 'כתובת החברה', companyPhone: '050-0000000', companyEmail: 'email@company.com' };
+  });
+  const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
+    const saved = (template as any).text_boxes;
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [];
+  });
+  const [upgrades, setUpgrades] = useState(() => {
+    const saved = (template as any).upgrades;
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [{ id: '1', name: 'יחידת דיור נוספת', price: 5000, enabled: true }, { id: '2', name: 'מרתף/חניה תת קרקעית', price: 6000, enabled: true }];
+  });
+  const [pricingTiers, setPricingTiers] = useState(() => {
+    const saved = (template as any).pricing_tiers;
+    if (saved && Array.isArray(saved) && saved.length > 0) return saved;
+    return [{ id: '1', name: 'בסיסי', price: 30000 }, { id: '2', name: 'מתקדם', price: 35000 }, { id: '3', name: 'פרימיום', price: 48000 }];
+  });
+  const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
+    const saved = (template as any).project_details;
+    if (saved && saved.clientId) return saved;
+    return { clientId: '', clientName: '', gush: '', helka: '', migrash: '', taba: '', address: '', projectType: '' };
+  });
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
@@ -653,7 +679,24 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
     fetchClients();
   }, []);
 
-  useEffect(() => { setEditedTemplate(template); }, [template]);
+  useEffect(() => {
+    setEditedTemplate(template);
+    // Sync dependent state from template
+    const saved = template.payment_schedule;
+    if (saved && Array.isArray(saved) && saved.length > 0) {
+      setPaymentSteps(saved.map((s: any) => ({ id: s.id || Date.now().toString(), name: s.description || s.name || '', percentage: s.percentage || 0, description: s.description || '' })));
+    }
+    const ds = template.design_settings as any;
+    if (ds && ds.primaryColor) setDesignSettings(ds as DesignSettings);
+    const tb = (template as any).text_boxes;
+    if (tb && Array.isArray(tb) && tb.length > 0) setTextBoxes(tb);
+    const ug = (template as any).upgrades;
+    if (ug && Array.isArray(ug) && ug.length > 0) setUpgrades(ug);
+    const pt = (template as any).pricing_tiers;
+    if (pt && Array.isArray(pt) && pt.length > 0) setPricingTiers(pt);
+    const pd = (template as any).project_details;
+    if (pd && pd.clientId) setProjectDetails(pd);
+  }, [template]);
 
   const handleClientSelect = (client: any) => {
     setProjectDetails({
@@ -671,11 +714,23 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      await onSave({ ...editedTemplate, payment_schedule: paymentSteps.map(s => ({ id: s.id, percentage: s.percentage, description: s.description || s.name })), design_settings: designSettings as any });
-      toast({ title: 'נשמר בהצלחה', description: 'התבנית עודכנה' });
-    } catch { toast({ title: 'שגיאה', description: 'לא ניתן לשמור', variant: 'destructive' }); }
+      await onSave({
+        ...editedTemplate,
+        payment_schedule: paymentSteps.map(s => ({ id: s.id, percentage: s.percentage, description: s.description || s.name })),
+        design_settings: designSettings as any,
+        text_boxes: textBoxes,
+        upgrades: upgrades,
+        project_details: projectDetails,
+        base_price: editedTemplate.base_price || 0,
+        pricing_tiers: pricingTiers,
+      } as any);
+      toast({ title: 'נשמר בהצלחה ☁️', description: 'כל הנתונים נשמרו בענן' });
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast({ title: 'שגיאה בשמירה', description: err?.message || 'לא ניתן לשמור', variant: 'destructive' });
+    }
     finally { setIsSaving(false); }
-  }, [editedTemplate, paymentSteps, designSettings, onSave, toast]);
+  }, [editedTemplate, paymentSteps, designSettings, textBoxes, upgrades, projectDetails, pricingTiers, onSave, toast]);
 
   const generateHtmlContent = useCallback(() => {
     const styleMap: Record<string, { bg: string; border: string; icon: string }> = {
@@ -907,10 +962,42 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [calculationResult, setCalculationResult] = useState<CalculationResult | null>(null);
 
-  // Versioning system
+  // Versioning system - cloud-based
   const [quoteVersions, setQuoteVersions] = useState<QuoteVersion[]>([]);
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [comparingVersion, setComparingVersion] = useState<QuoteVersion | null>(null);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [isSavingVersion, setIsSavingVersion] = useState(false);
+
+  // Load versions from cloud on open
+  useEffect(() => {
+    if (!open || !template.id) return;
+    const loadVersions = async () => {
+      setIsLoadingVersions(true);
+      try {
+        const { data, error } = await (supabase as any)
+          .from('quote_template_versions')
+          .select('*')
+          .eq('template_id', template.id)
+          .order('version_number', { ascending: false })
+          .limit(20);
+        if (error) {
+          console.error('Error loading versions:', error);
+          return;
+        }
+        if (data && data.length > 0) {
+          setQuoteVersions(data.map((v: any) => ({
+            id: v.id,
+            timestamp: v.created_at,
+            label: v.label || `גרסה ${v.version_number}`,
+            data: v.snapshot || {},
+          })));
+        }
+      } catch (e) { console.error('Failed to load versions:', e); }
+      finally { setIsLoadingVersions(false); }
+    };
+    loadVersions();
+  }, [open, template.id]);
 
   // Preview device
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('desktop');
@@ -982,31 +1069,90 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
     toast({ title: 'ערכת צבעים הוחלה', description: `נבחרה ערכת "${theme.name}"` });
   };
 
-  // === Versioning ===
-  const saveVersion = (label?: string) => {
-    const version: QuoteVersion = {
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      label: label || `גרסה ${quoteVersions.length + 1}`,
-      data: {
+  // === Versioning - Cloud Save ===
+  const saveVersion = async (label?: string) => {
+    if (!editedTemplate.id) {
+      toast({ title: 'שגיאה', description: 'יש לשמור את ההצעה קודם לפני שמירת גרסה', variant: 'destructive' });
+      return;
+    }
+    setIsSavingVersion(true);
+    try {
+      // First save the current state to cloud
+      await handleSave();
+
+      const snapshot = {
         stages: JSON.parse(JSON.stringify(editedTemplate.stages)),
         paymentSteps: JSON.parse(JSON.stringify(paymentSteps)),
         textBoxes: JSON.parse(JSON.stringify(textBoxes)),
         designSettings: { ...designSettings },
         basePrice: editedTemplate.base_price || 35000,
-      },
-    };
-    setQuoteVersions(prev => [version, ...prev].slice(0, 20));
-    toast({ title: 'גרסה נשמרה', description: version.label });
+        upgrades: JSON.parse(JSON.stringify(upgrades)),
+        pricingTiers: JSON.parse(JSON.stringify(pricingTiers)),
+        projectDetails: { ...projectDetails },
+      };
+
+      // Get the next version number
+      const { data: maxData } = await (supabase as any)
+        .from('quote_template_versions')
+        .select('version_number')
+        .eq('template_id', editedTemplate.id)
+        .order('version_number', { ascending: false })
+        .limit(1);
+      
+      const nextNum = (maxData && maxData.length > 0 ? maxData[0].version_number : 0) + 1;
+      const versionLabel = label || `גרסה ${nextNum}`;
+
+      const { data: inserted, error } = await (supabase as any)
+        .from('quote_template_versions')
+        .insert([{
+          template_id: editedTemplate.id,
+          version_number: nextNum,
+          label: versionLabel,
+          snapshot: snapshot,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to local state
+      const newVersion: QuoteVersion = {
+        id: inserted.id,
+        timestamp: inserted.created_at,
+        label: versionLabel,
+        data: snapshot,
+      };
+      setQuoteVersions(prev => [newVersion, ...prev].slice(0, 20));
+      toast({ title: 'גרסה נשמרה בענן ☁️', description: versionLabel });
+    } catch (err: any) {
+      console.error('Save version error:', err);
+      toast({ title: 'שגיאה בשמירת גרסה', description: err?.message || 'לא ניתן לשמור גרסה', variant: 'destructive' });
+    }
+    finally { setIsSavingVersion(false); }
   };
 
   const restoreVersion = (version: QuoteVersion) => {
-    setEditedTemplate(prev => ({ ...prev, stages: version.data.stages, base_price: version.data.basePrice }));
-    setPaymentSteps(version.data.paymentSteps);
-    setTextBoxes(version.data.textBoxes);
-    setDesignSettings(version.data.designSettings);
+    if (version.data.stages) setEditedTemplate(prev => ({ ...prev, stages: version.data.stages, base_price: version.data.basePrice || prev.base_price }));
+    if (version.data.paymentSteps) setPaymentSteps(version.data.paymentSteps);
+    if (version.data.textBoxes) setTextBoxes(version.data.textBoxes);
+    if (version.data.designSettings) setDesignSettings(version.data.designSettings);
+    if (version.data.upgrades) setUpgrades(version.data.upgrades);
+    if (version.data.pricingTiers) setPricingTiers(version.data.pricingTiers);
+    if (version.data.projectDetails) setProjectDetails(version.data.projectDetails);
     toast({ title: 'גרסה שוחזרה', description: version.label });
     setShowVersionDialog(false);
+  };
+
+  const deleteVersion = async (versionId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('quote_template_versions')
+        .delete()
+        .eq('id', versionId);
+      if (error) throw error;
+      setQuoteVersions(prev => prev.filter(v => v.id !== versionId));
+      toast({ title: 'גרסה נמחקה' });
+    } catch { toast({ title: 'שגיאה במחיקת גרסה', variant: 'destructive' }); }
   };
 
   // === Enhanced Export: WhatsApp file ===
@@ -1700,10 +1846,10 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                   </Button>
                 </div>
                 {/* Version save button */}
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveVersion()}>
-                  <GitBranch className="h-3.5 w-3.5 ml-1" />שמור גרסה
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveVersion()} disabled={isSavingVersion || !editedTemplate.id}>
+                  <GitBranch className="h-3.5 w-3.5 ml-1" />{isSavingVersion ? 'שומר...' : 'שמור גרסה ☁️'}
                 </Button>
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowVersionDialog(true)} disabled={quoteVersions.length === 0}>
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowVersionDialog(true)}>
                   <History className="h-3.5 w-3.5 ml-1" />גרסאות ({quoteVersions.length})
                 </Button>
               </div>
@@ -1914,7 +2060,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                 </PopoverContent>
               </Popover>
 
-              <Button className="bg-[#DAA520] hover:bg-[#B8860B] text-white" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-1" />}שמור</Button>
+              <Button className="bg-[#DAA520] hover:bg-[#B8860B] text-white" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <span className="animate-spin">⏳</span> : <Save className="h-4 w-4 ml-1" />}{isSaving ? 'שומר...' : 'שמור בענן ☁️'}</Button>
               <Button className="bg-green-600 hover:bg-green-700 text-white" size="sm" onClick={() => setShowEmailDialog(true)}><Mail className="h-4 w-4 ml-1" />מייל</Button>
               <Button className="bg-[#25D366] hover:bg-[#128C7E] text-white" size="sm" onClick={() => setShowWhatsAppDialog(true)}><MessageCircle className="h-4 w-4 ml-1" />וואטסאפ</Button>
             </div>
@@ -1925,14 +2071,14 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
           <DialogContent className="max-w-lg" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-[#B8860B]" />היסטוריית גרסאות</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><GitBranch className="h-5 w-5 text-[#B8860B]" />היסטוריית גרסאות {isLoadingVersions && <span className="text-xs text-gray-400 animate-pulse">טוען...</span>}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[400px]">
               {quoteVersions.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <History className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p>אין גרסאות שמורות</p>
-                  <p className="text-xs mt-1">לחץ "שמור גרסה" בתצוגה מקדימה</p>
+                  <p>אין גרסאות שמורות בענן</p>
+                  <p className="text-xs mt-1">לחץ "שמור גרסה" כדי לשמור את המצב הנוכחי</p>
                 </div>
               ) : (
                 <div className="space-y-2 p-1">
@@ -1943,9 +2089,9 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                           <p className="font-medium text-sm">{version.label}</p>
                           <p className="text-xs text-gray-400">{new Date(version.timestamp).toLocaleString('he-IL')}</p>
                           <div className="flex gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">{version.data.stages.length} שלבים</Badge>
-                            <Badge variant="outline" className="text-xs">{version.data.textBoxes.length} תיבות</Badge>
-                            <Badge variant="outline" className="text-xs">₪{version.data.basePrice.toLocaleString()}</Badge>
+                            <Badge variant="outline" className="text-xs">{version.data.stages?.length || 0} שלבים</Badge>
+                            <Badge variant="outline" className="text-xs">{version.data.textBoxes?.length || 0} תיבות</Badge>
+                            <Badge variant="outline" className="text-xs">₪{(version.data.basePrice || 0).toLocaleString()}</Badge>
                           </div>
                         </div>
                         <div className="flex gap-1">
@@ -1955,31 +2101,34 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                           <Button size="sm" variant="default" className="h-7 text-xs bg-[#DAA520] hover:bg-[#B8860B]" onClick={() => restoreVersion(version)}>
                             <Undo2 className="h-3 w-3 ml-1" />שחזר
                           </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-red-400 hover:text-red-600" onClick={() => deleteVersion(version.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                       {comparingVersion?.id === version.id && (
                         <div className="mt-3 pt-3 border-t text-xs space-y-1">
                           <p className="font-medium text-gray-600">השוואה מול מצב נוכחי:</p>
-                          {version.data.stages.length !== editedTemplate.stages.length && (
-                            <p>• שלבי עבודה: {version.data.stages.length} ← {editedTemplate.stages.length}</p>
+                          {(version.data.stages?.length || 0) !== editedTemplate.stages.length && (
+                            <p>• שלבי עבודה: {version.data.stages?.length || 0} ← {editedTemplate.stages.length}</p>
                           )}
-                          {version.data.paymentSteps.length !== paymentSteps.length && (
-                            <p>• שלבי תשלום: {version.data.paymentSteps.length} ← {paymentSteps.length}</p>
+                          {(version.data.paymentSteps?.length || 0) !== paymentSteps.length && (
+                            <p>• שלבי תשלום: {version.data.paymentSteps?.length || 0} ← {paymentSteps.length}</p>
                           )}
-                          {version.data.textBoxes.length !== textBoxes.length && (
-                            <p>• תיבות טקסט: {version.data.textBoxes.length} ← {textBoxes.length}</p>
+                          {(version.data.textBoxes?.length || 0) !== textBoxes.length && (
+                            <p>• תיבות טקסט: {version.data.textBoxes?.length || 0} ← {textBoxes.length}</p>
                           )}
-                          {version.data.basePrice !== (editedTemplate.base_price || 35000) && (
-                            <p>• מחיר: ₪{version.data.basePrice.toLocaleString()} ← ₪{(editedTemplate.base_price || 35000).toLocaleString()}</p>
+                          {(version.data.basePrice || 0) !== (editedTemplate.base_price || 35000) && (
+                            <p>• מחיר: ₪{(version.data.basePrice || 0).toLocaleString()} ← ₪{(editedTemplate.base_price || 35000).toLocaleString()}</p>
                           )}
-                          {version.data.designSettings.primaryColor !== designSettings.primaryColor && (
-                            <p>• צבע ראשי: <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: version.data.designSettings.primaryColor }} /> ← <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: designSettings.primaryColor }} /></p>
+                          {version.data.designSettings?.primaryColor !== designSettings.primaryColor && (
+                            <p>• צבע ראשי: <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: version.data.designSettings?.primaryColor }} /> ← <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: designSettings.primaryColor }} /></p>
                           )}
-                          {version.data.stages.length === editedTemplate.stages.length &&
-                           version.data.paymentSteps.length === paymentSteps.length &&
-                           version.data.textBoxes.length === textBoxes.length &&
-                           version.data.basePrice === (editedTemplate.base_price || 35000) &&
-                           version.data.designSettings.primaryColor === designSettings.primaryColor && (
+                          {(version.data.stages?.length || 0) === editedTemplate.stages.length &&
+                           (version.data.paymentSteps?.length || 0) === paymentSteps.length &&
+                           (version.data.textBoxes?.length || 0) === textBoxes.length &&
+                           (version.data.basePrice || 0) === (editedTemplate.base_price || 35000) &&
+                           version.data.designSettings?.primaryColor === designSettings.primaryColor && (
                             <p className="text-green-600">✓ זהה למצב הנוכחי</p>
                           )}
                         </div>
