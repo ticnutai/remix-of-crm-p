@@ -1,5 +1,5 @@
 // תכונות מתקדמות לעורך הצעות מחיר
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1104,7 +1104,7 @@ export function AlternativePricing({ options = [], onOptionsChange, selectedOpti
                 </div>
               </div>
               <ul className="space-y-2 mb-4">
-                {option.features.map((feature, i) => (
+                {(option.features || []).map((feature, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm">
                     <Check className="h-4 w-4 text-green-500" />
                     {feature}
@@ -1212,16 +1212,20 @@ interface CalculatorProps {
 
 export interface CalculationResult {
   subtotal: number;
-  discountAmount: number;
+  discountAmount?: number;
+  discount?: number;
   afterDiscount: number;
-  vatAmount: number;
+  vatAmount?: number;
+  vat?: number;
+  vatRate?: number;
   total: number;
 }
 
 export function AutoCalculator({ result: externalResult, currency = '₪', basePrice = 0, vatRate = 17, discount = 0, discountType = 'percent', onCalculate }: CalculatorProps) {
   const [customItems, setCustomItems] = useState<Array<{ name: string; price: number }>>([]);
 
-  const calculate = useCallback(() => {
+  const internalResult = useMemo(() => {
+    if (externalResult) return externalResult;
     const itemsTotal = customItems.reduce((sum, item) => sum + item.price, 0);
     const subtotal = basePrice + itemsTotal;
     const discountAmount = discountType === 'percent' 
@@ -1230,17 +1234,17 @@ export function AutoCalculator({ result: externalResult, currency = '₪', baseP
     const afterDiscount = subtotal - discountAmount;
     const vatAmount = afterDiscount * (vatRate / 100);
     const total = afterDiscount + vatAmount;
+    return { subtotal, discountAmount, afterDiscount, vatAmount, total };
+  }, [externalResult, basePrice, vatRate, discount, discountType, customItems]);
 
-    const calcResult = { subtotal, discountAmount, afterDiscount, vatAmount, total };
-    onCalculate?.(calcResult);
-    return calcResult;
-  }, [basePrice, vatRate, discount, discountType, customItems, onCalculate]);
-
+  // Only call onCalculate when internal values change and no external result
   useEffect(() => {
-    if (!externalResult) calculate();
-  }, [calculate, externalResult]);
+    if (!externalResult && onCalculate) {
+      onCalculate(internalResult);
+    }
+  }, [internalResult]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const result = externalResult || calculate();
+  const result = internalResult;
 
   return (
     <div className="space-y-4">
@@ -1297,23 +1301,13 @@ export function AutoCalculator({ result: externalResult, currency = '₪', baseP
       {/* Calculation Summary */}
       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span>מחיר בסיס:</span>
-          <span>{currency}{(basePrice || 0).toLocaleString()}</span>
-        </div>
-        {customItems.length > 0 && (
-          <div className="flex justify-between text-sm">
-            <span>פריטים נוספים:</span>
-            <span>{currency}{customItems.reduce((s, i) => s + i.price, 0).toLocaleString()}</span>
-          </div>
-        )}
-        <div className="flex justify-between text-sm border-t pt-2">
           <span>סה"כ לפני הנחה:</span>
           <span>{currency}{(result?.subtotal || 0).toLocaleString()}</span>
         </div>
-        {discount > 0 && (
+        {(result?.discountAmount || result?.discount || 0) > 0 && (
           <div className="flex justify-between text-sm text-red-600">
-            <span>הנחה ({discountType === 'percent' ? `${discount}%` : `${currency}${discount}`}):</span>
-            <span>-{currency}{(result?.discountAmount || 0).toLocaleString()}</span>
+            <span>הנחה:</span>
+            <span>-{currency}{(result?.discountAmount || result?.discount || 0).toLocaleString()}</span>
           </div>
         )}
         <div className="flex justify-between text-sm">
@@ -1321,8 +1315,8 @@ export function AutoCalculator({ result: externalResult, currency = '₪', baseP
           <span>{currency}{(result?.afterDiscount || 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>מע"מ ({vatRate}%):</span>
-          <span>{currency}{(result?.vatAmount || 0).toLocaleString()}</span>
+          <span>מע"מ ({result?.vatRate || vatRate}%):</span>
+          <span>{currency}{(result?.vatAmount || result?.vat || 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between font-bold text-lg border-t pt-2">
           <span>סה"כ לתשלום:</span>

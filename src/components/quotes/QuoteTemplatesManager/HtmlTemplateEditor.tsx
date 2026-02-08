@@ -52,7 +52,7 @@ interface HtmlTemplateEditorProps {
 
 interface PaymentStep { id: string; name: string; percentage: number; description: string; }
 interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; }
-interface TextBox { id: string; title: string; content: string; position: 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments'; style: 'default' | 'highlight' | 'warning' | 'info'; }
+interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; }
 interface ProjectDetails { clientId: string; clientName: string; gush: string; helka: string; migrash: string; taba: string; address: string; projectType: string; }
 
 // Client selector component with search
@@ -385,16 +385,22 @@ function PaymentStepEditor({ step, onUpdate, onDelete }: { step: PaymentStep; on
   );
 }
 
-function TextBoxEditor({ textBox, onUpdate, onDelete }: { textBox: TextBox; onUpdate: (textBox: TextBox) => void; onDelete: () => void }) {
+function TextBoxEditor({ textBox, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }: { textBox: TextBox; onUpdate: (textBox: TextBox) => void; onDelete: () => void; onMoveUp?: () => void; onMoveDown?: () => void; isFirst?: boolean; isLast?: boolean }) {
   const styleColors: Record<string, string> = { default: 'bg-white border-gray-200', highlight: 'bg-yellow-50 border-yellow-300', warning: 'bg-red-50 border-red-300', info: 'bg-blue-50 border-blue-300' };
+  const positionLabels: Record<string, string> = { 'before-stages': '📍 לפני שלבי העבודה', 'after-stages': '📍 אחרי שלבי העבודה', 'before-payments': '📍 לפני תשלומים', 'after-payments': '📍 אחרי תשלומים', 'header': '📍 בראש ההצעה', 'footer': '📍 בתחתית ההצעה' };
   return (
-    <div className={`rounded-lg border-2 p-4 ${styleColors[textBox.style]}`}>
+    <div className={`rounded-lg border-2 p-4 ${styleColors[textBox.style]} transition-all hover:shadow-md`}>
       <div className="flex items-center gap-2 mb-3">
-        <Input value={textBox.title} onChange={(e) => onUpdate({ ...textBox, title: e.target.value })} className="font-semibold border-0 p-0 h-auto focus-visible:ring-0 bg-transparent" placeholder="כותרת הקטע" dir="rtl" />
-        <Select value={textBox.style} onValueChange={(v) => onUpdate({ ...textBox, style: v as TextBox['style'] })}><SelectTrigger className="w-28 h-7"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">רגיל</SelectItem><SelectItem value="highlight">מודגש</SelectItem><SelectItem value="warning">אזהרה</SelectItem><SelectItem value="info">מידע</SelectItem></SelectContent></Select>
-        <Select value={textBox.position} onValueChange={(v) => onUpdate({ ...textBox, position: v as TextBox['position'] })}><SelectTrigger className="w-36 h-7"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="before-stages">לפני השלבים</SelectItem><SelectItem value="after-stages">אחרי השלבים</SelectItem><SelectItem value="before-payments">לפני תשלומים</SelectItem><SelectItem value="after-payments">אחרי תשלומים</SelectItem></SelectContent></Select>
+        <Input value={textBox.title} onChange={(e) => onUpdate({ ...textBox, title: e.target.value })} className="font-semibold border-0 p-0 h-auto focus-visible:ring-0 bg-transparent flex-1" placeholder="כותרת הקטע" dir="rtl" />
+        <Select value={textBox.style} onValueChange={(v) => onUpdate({ ...textBox, style: v as TextBox['style'] })}><SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">רגיל</SelectItem><SelectItem value="highlight">מודגש</SelectItem><SelectItem value="warning">אזהרה</SelectItem><SelectItem value="info">מידע</SelectItem></SelectContent></Select>
+        <Select value={textBox.position} onValueChange={(v) => onUpdate({ ...textBox, position: v as TextBox['position'] })}><SelectTrigger className="w-44 h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="header">בראש ההצעה</SelectItem><SelectItem value="before-stages">לפני שלבי העבודה</SelectItem><SelectItem value="after-stages">אחרי שלבי העבודה</SelectItem><SelectItem value="before-payments">לפני סדר תשלומים</SelectItem><SelectItem value="after-payments">אחרי סדר תשלומים</SelectItem><SelectItem value="footer">בתחתית ההצעה</SelectItem></SelectContent></Select>
+        <div className="flex gap-0.5">
+          {onMoveUp && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveUp} disabled={isFirst}><ChevronUp className="h-3 w-3" /></Button>}
+          {onMoveDown && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveDown} disabled={isLast}><ChevronDown className="h-3 w-3" /></Button>}
+        </div>
         <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
       </div>
+      <div className="text-xs text-gray-400 mb-2">{positionLabels[textBox.position] || textBox.position}</div>
       <Textarea value={textBox.content} onChange={(e) => onUpdate({ ...textBox, content: e.target.value })} placeholder="תוכן הקטע..." className="min-h-[80px] bg-transparent border-0 focus-visible:ring-0 p-0" dir="rtl" />
     </div>
   );
@@ -466,6 +472,25 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   }, [editedTemplate, paymentSteps, designSettings, onSave, toast]);
 
   const generateHtmlContent = useCallback(() => {
+    const styleMap: Record<string, { bg: string; border: string; icon: string }> = {
+      default: { bg: '#ffffff', border: '#e0e0e0', icon: '' },
+      highlight: { bg: '#fefce8', border: '#facc15', icon: '💡' },
+      warning: { bg: '#fef2f2', border: '#f87171', icon: '⚠️' },
+      info: { bg: '#eff6ff', border: '#60a5fa', icon: 'ℹ️' },
+    };
+
+    const renderTextBoxes = (position: string) => {
+      const boxes = textBoxes.filter(tb => tb.position === position);
+      if (boxes.length === 0) return '';
+      return boxes.map(tb => {
+        const s = styleMap[tb.style] || styleMap.default;
+        return `<div style="margin: 15px 0; padding: 15px; background: ${s.bg}; border: 2px solid ${s.border}; border-radius: ${designSettings.borderRadius}px;">
+          ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${s.icon} ${tb.title}</h4>` : ''}
+          <div style="color: #444; white-space: pre-wrap; font-size: 14px;">${tb.content}</div>
+        </div>`;
+      }).join('');
+    };
+
     const stages = editedTemplate.stages.map(stage => `
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: ${designSettings.borderRadius}px;">
         <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon || '📋'} ${stage.name}</h3>
@@ -509,6 +534,8 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
       <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ''}</p>
     </div>
     <div class="content">
+      ${renderTextBoxes('header')}
+      
       ${projectDetails.clientName ? `
       <div class="project-details">
         <h2>פרטי הפרויקט</h2>
@@ -523,8 +550,14 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         </table>
       </div>` : ''}
       
+      ${renderTextBoxes('before-stages')}
+      
       <h2 style="color: ${designSettings.primaryColor};">שלבי העבודה</h2>
       ${stages}
+      
+      ${renderTextBoxes('after-stages')}
+      
+      ${renderTextBoxes('before-payments')}
       
       <h2 style="color: ${designSettings.primaryColor}; margin-top: 40px;">סדר תשלומים</h2>
       <table class="payments">
@@ -533,7 +566,11 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         <tfoot><tr style="font-weight: bold; background: #f0f0f0;"><td style="padding: 12px;">סה"כ</td><td style="padding: 12px; text-align: center;">100%</td><td style="padding: 12px; text-align: left;">₪${(editedTemplate.base_price || 35000).toLocaleString()}</td></tr></tfoot>
       </table>
       
+      ${renderTextBoxes('after-payments')}
+      
       <p style="margin-top: 30px; color: #666; font-size: 14px;">* המחירים אינם כוללים מע"מ. תוקף ההצעה: ${editedTemplate.validity_days || 30} יום.</p>
+      
+      ${renderTextBoxes('footer')}
     </div>
     <div class="footer">
       <strong>${designSettings.companyName}</strong><br>
@@ -542,7 +579,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   </div>
 </body>
 </html>`;
-  }, [editedTemplate, designSettings, paymentSteps, projectDetails]);
+  }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
 
   const handleExportWord = () => {
     const html = generateHtmlContent();
@@ -649,7 +686,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [changeHistory, setChangeHistory] = useState<ChangeRecord[]>([]);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [pricingOptions, setPricingOptions] = useState<PricingOption[]>([
-    { id: 'basic', name: 'בסיסי', discount: 0, description: 'ללא הנחה' },
+    { id: 'basic', name: 'בסיסי', price: 0, description: 'ללא הנחה', features: [], isRecommended: false },
   ]);
   const [selectedPricingOption, setSelectedPricingOption] = useState('basic');
   const [showSMSDialog, setShowSMSDialog] = useState(false);
@@ -965,16 +1002,104 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 
           {/* Text Boxes Tab */}
           <TabsContent value="text-boxes" className="flex-1 m-0 overflow-hidden">
-            <ScrollArea className="h-full bg-gray-50">
-              <div className="p-6 space-y-6 max-w-4xl mx-auto">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-bold">תיבות טקסט מותאמות</h2><Button onClick={addTextBox} className="bg-[#DAA520] hover:bg-[#B8860B]"><Plus className="h-4 w-4 ml-2" />הוסף תיבת טקסט</Button></div>
-                {textBoxes.length === 0 ? (<div className="bg-white rounded-xl border-2 border-dashed p-12 text-center text-gray-400"><Type className="h-12 w-12 mx-auto mb-3 opacity-50" /><p>אין תיבות טקסט</p><p className="text-sm">הוסף תיבות טקסט כדי להוסיף תוכן מותאם להצעה</p></div>) : (<div className="space-y-4">{textBoxes.map(tb => (<TextBoxEditor key={tb.id} textBox={tb} onUpdate={(updated) => setTextBoxes(textBoxes.map(t => t.id === tb.id ? updated : t))} onDelete={() => setTextBoxes(textBoxes.filter(t => t.id !== tb.id))} />))}</div>)}
-              </div>
-            </ScrollArea>
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Editor Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <ScrollArea className="h-full bg-gray-50">
+                  <div className="p-6 space-y-4 max-w-2xl mx-auto">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-bold">תיבות טקסט מותאמות</h2>
+                      <Button onClick={addTextBox} className="bg-[#DAA520] hover:bg-[#B8860B]"><Plus className="h-4 w-4 ml-2" />הוסף תיבת טקסט</Button>
+                    </div>
+                    
+                    {/* Quick add buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: 'הערה בראש', position: 'header', style: 'info' },
+                        { label: 'לפני שלבים', position: 'before-stages', style: 'default' },
+                        { label: 'אחרי שלבים', position: 'after-stages', style: 'default' },
+                        { label: 'לפני תשלומים', position: 'before-payments', style: 'highlight' },
+                        { label: 'אחרי תשלומים', position: 'after-payments', style: 'default' },
+                        { label: 'תחתית ההצעה', position: 'footer', style: 'warning' },
+                      ].map(preset => (
+                        <Button
+                          key={preset.position}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => setTextBoxes([...textBoxes, {
+                            id: Date.now().toString(),
+                            title: '',
+                            content: '',
+                            position: preset.position as TextBox['position'],
+                            style: preset.style as TextBox['style'],
+                          }])}
+                        >
+                          <Plus className="h-3 w-3 ml-1" />
+                          {preset.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {textBoxes.length === 0 ? (
+                      <div className="bg-white rounded-xl border-2 border-dashed p-12 text-center text-gray-400">
+                        <Type className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>אין תיבות טקסט</p>
+                        <p className="text-sm">הוסף תיבות טקסט כדי להוסיף תוכן מותאם להצעה</p>
+                        <p className="text-xs mt-2">לחץ על כפתור מהירים למעלה או על "הוסף תיבת טקסט"</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {textBoxes.map((tb, idx) => (
+                          <TextBoxEditor
+                            key={tb.id}
+                            textBox={tb}
+                            onUpdate={(updated) => setTextBoxes(textBoxes.map(t => t.id === tb.id ? updated : t))}
+                            onDelete={() => setTextBoxes(textBoxes.filter(t => t.id !== tb.id))}
+                            onMoveUp={() => {
+                              if (idx === 0) return;
+                              const arr = [...textBoxes];
+                              [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+                              setTextBoxes(arr);
+                            }}
+                            onMoveDown={() => {
+                              if (idx === textBoxes.length - 1) return;
+                              const arr = [...textBoxes];
+                              [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                              setTextBoxes(arr);
+                            }}
+                            isFirst={idx === 0}
+                            isLast={idx === textBoxes.length - 1}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle />
+              
+              {/* Live Preview Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full bg-gray-100 p-4">
+                  <div className="text-center text-xs text-gray-500 mb-2 font-medium">תצוגה מקדימה - המיקום של תיבות הטקסט מסומן</div>
+                  <div className="h-[calc(100%-24px)] bg-white rounded-lg shadow-lg overflow-hidden">
+                    <iframe
+                      srcDoc={generateHtmlContent()}
+                      title="תצוגה מקדימה"
+                      className="w-full h-full border-0"
+                      style={{ minHeight: '100%' }}
+                    />
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </TabsContent>
 
-          {/* Advanced Tools Tab */}
-          <TabsContent value="tools" className="flex-1 m-0 overflow-hidden">
+          {/* Advanced Tools Tab - Only render content when active */}
+          <TabsContent value="tools" className="flex-1 m-0 overflow-hidden" forceMount={undefined}>
+            {activeTab === 'tools' && (
             <ScrollArea className="h-full bg-gradient-to-br from-purple-50 to-indigo-50">
               <div className="p-6 space-y-6 max-w-6xl mx-auto">
                 {/* Header */}
@@ -1092,9 +1217,8 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                 </div>
               </div>
             </ScrollArea>
+            )}
           </TabsContent>
-          
-          {/* SMS Dialog */}
           <SMSShareDialog
             open={showSMSDialog}
             onOpenChange={setShowSMSDialog}
