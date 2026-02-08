@@ -1024,9 +1024,12 @@ export interface PricingOption {
 interface AlternativePricingProps {
   options: PricingOption[];
   onOptionsChange: (options: PricingOption[]) => void;
+  selectedOption?: string | null;
+  onSelectOption?: (id: string) => void;
+  baseTotal?: number;
 }
 
-export function AlternativePricing({ options, onOptionsChange }: AlternativePricingProps) {
+export function AlternativePricing({ options = [], onOptionsChange, selectedOption, onSelectOption, baseTotal = 0 }: AlternativePricingProps) {
   const [editingOption, setEditingOption] = useState<PricingOption | null>(null);
   const { toast } = useToast();
 
@@ -1097,7 +1100,7 @@ export function AlternativePricing({ options, onOptionsChange }: AlternativePric
                 <h4 className="font-bold text-lg">{option.name}</h4>
                 <p className="text-sm text-gray-500">{option.description}</p>
                 <div className="text-2xl font-bold mt-2 text-primary">
-                  ₪{option.price.toLocaleString()}
+                  ₪{(option.price || 0).toLocaleString()}
                 </div>
               </div>
               <ul className="space-y-2 mb-4">
@@ -1198,11 +1201,13 @@ export function AlternativePricing({ options, onOptionsChange }: AlternativePric
 // ============================================
 
 interface CalculatorProps {
-  basePrice: number;
-  vatRate: number;
-  discount: number;
-  discountType: 'percent' | 'fixed';
-  onCalculate: (result: CalculationResult) => void;
+  result?: CalculationResult | null;
+  currency?: string;
+  basePrice?: number;
+  vatRate?: number;
+  discount?: number;
+  discountType?: 'percent' | 'fixed';
+  onCalculate?: (result: CalculationResult) => void;
 }
 
 export interface CalculationResult {
@@ -1213,7 +1218,7 @@ export interface CalculationResult {
   total: number;
 }
 
-export function AutoCalculator({ basePrice, vatRate, discount, discountType, onCalculate }: CalculatorProps) {
+export function AutoCalculator({ result: externalResult, currency = '₪', basePrice = 0, vatRate = 17, discount = 0, discountType = 'percent', onCalculate }: CalculatorProps) {
   const [customItems, setCustomItems] = useState<Array<{ name: string; price: number }>>([]);
 
   const calculate = useCallback(() => {
@@ -1226,16 +1231,16 @@ export function AutoCalculator({ basePrice, vatRate, discount, discountType, onC
     const vatAmount = afterDiscount * (vatRate / 100);
     const total = afterDiscount + vatAmount;
 
-    const result = { subtotal, discountAmount, afterDiscount, vatAmount, total };
-    onCalculate(result);
-    return result;
+    const calcResult = { subtotal, discountAmount, afterDiscount, vatAmount, total };
+    onCalculate?.(calcResult);
+    return calcResult;
   }, [basePrice, vatRate, discount, discountType, customItems, onCalculate]);
 
   useEffect(() => {
-    calculate();
-  }, [calculate]);
+    if (!externalResult) calculate();
+  }, [calculate, externalResult]);
 
-  const result = calculate();
+  const result = externalResult || calculate();
 
   return (
     <div className="space-y-4">
@@ -1293,35 +1298,35 @@ export function AutoCalculator({ basePrice, vatRate, discount, discountType, onC
       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
         <div className="flex justify-between text-sm">
           <span>מחיר בסיס:</span>
-          <span>₪{basePrice.toLocaleString()}</span>
+          <span>{currency}{(basePrice || 0).toLocaleString()}</span>
         </div>
         {customItems.length > 0 && (
           <div className="flex justify-between text-sm">
             <span>פריטים נוספים:</span>
-            <span>₪{customItems.reduce((s, i) => s + i.price, 0).toLocaleString()}</span>
+            <span>{currency}{customItems.reduce((s, i) => s + i.price, 0).toLocaleString()}</span>
           </div>
         )}
         <div className="flex justify-between text-sm border-t pt-2">
           <span>סה"כ לפני הנחה:</span>
-          <span>₪{result.subtotal.toLocaleString()}</span>
+          <span>{currency}{(result?.subtotal || 0).toLocaleString()}</span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm text-red-600">
-            <span>הנחה ({discountType === 'percent' ? `${discount}%` : `₪${discount}`}):</span>
-            <span>-₪{result.discountAmount.toLocaleString()}</span>
+            <span>הנחה ({discountType === 'percent' ? `${discount}%` : `${currency}${discount}`}):</span>
+            <span>-{currency}{(result?.discountAmount || 0).toLocaleString()}</span>
           </div>
         )}
         <div className="flex justify-between text-sm">
           <span>לפני מע"מ:</span>
-          <span>₪{result.afterDiscount.toLocaleString()}</span>
+          <span>{currency}{(result?.afterDiscount || 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span>מע"מ ({vatRate}%):</span>
-          <span>₪{result.vatAmount.toLocaleString()}</span>
+          <span>{currency}{(result?.vatAmount || 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between font-bold text-lg border-t pt-2">
           <span>סה"כ לתשלום:</span>
-          <span className="text-primary">₪{result.total.toLocaleString()}</span>
+          <span className="text-primary">{currency}{(result?.total || 0).toLocaleString()}</span>
         </div>
       </div>
     </div>
@@ -1333,13 +1338,16 @@ export function AutoCalculator({ basePrice, vatRate, discount, discountType, onC
 // ============================================
 
 interface PaymentLinkProps {
-  quoteId: string;
-  totalAmount: number;
-  clientName: string;
+  quoteId?: string;
+  amount?: number;
+  totalAmount?: number;
+  quoteName?: string;
+  clientName?: string;
   clientEmail?: string;
 }
 
-export function PaymentLink({ quoteId, totalAmount, clientName, clientEmail }: PaymentLinkProps) {
+export function PaymentLink({ quoteId = '', amount, totalAmount: totalAmountProp, quoteName = '', clientName = '', clientEmail }: PaymentLinkProps) {
+  const totalAmount = amount ?? totalAmountProp ?? 0;
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | 'bit' | 'custom'>('custom');
   const [customUrl, setCustomUrl] = useState('');
   const [copied, setCopied] = useState(false);
@@ -1409,7 +1417,7 @@ export function PaymentLink({ quoteId, totalAmount, clientName, clientEmail }: P
       <div className="bg-blue-50 p-4 rounded-lg">
         <p className="text-sm font-medium mb-2">סיכום תשלום:</p>
         <p className="text-sm">לקוח: {clientName}</p>
-        <p className="text-sm">סכום: ₪{totalAmount.toLocaleString()}</p>
+        <p className="text-sm">סכום: ₪{(totalAmount || 0).toLocaleString()}</p>
         {clientEmail && <p className="text-sm">אימייל: {clientEmail}</p>}
       </div>
 
