@@ -74,11 +74,11 @@ function ClientSelector({ clients, selectedClient, onSelect, open, onOpenChange 
   ), [clients, search]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" dir="rtl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><User className="h-5 w-5 text-[#B8860B]" />בחר לקוח</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-2xl z-[9999]" dir="rtl">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><User className="h-5 w-5 text-[#B8860B]" />בחר לקוח ({clients.length})</DialogTitle></DialogHeader>
         <div className="relative mb-3"><Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" /><Input placeholder="חפש לפי שם, טלפון, גוש או כתובת..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" dir="rtl" /></div>
         <ScrollArea className="h-[400px]">
-          <div className="space-y-2">{filtered.length === 0 ? (<div className="text-center py-8 text-gray-400">לא נמצאו לקוחות</div>) : (filtered.map((client) => (
+          <div className="space-y-2">{filtered.length === 0 ? (<div className="text-center py-8 text-gray-400">לא נמצאו לקוחות{clients.length === 0 && <p className="text-xs mt-2">טוען לקוחות...</p>}</div>) : (filtered.map((client) => (
             <div key={client.id} className={`p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${selectedClient === client.id ? 'bg-[#DAA520]/10 border-2 border-[#DAA520]' : 'border border-gray-200'}`} onClick={() => { onSelect(client); onOpenChange(false); }}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -672,12 +672,29 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   // Extended clients data
   const [extendedClients, setExtendedClients] = useState<any[]>([]);
   useEffect(() => {
+    if (!open) return;
     const fetchClients = async () => {
-      const { data } = await supabase.from('clients').select('id, name, email, phone, gush, helka, migrash, taba, address').order('name');
-      if (data) setExtendedClients(data);
+      try {
+        const { data, error } = await supabase.from('clients').select('id, name, email, phone, gush, helka, migrash, taba, address').order('name');
+        if (error) {
+          console.error('Error fetching clients:', error);
+          return;
+        }
+        console.log('Fetched clients:', data?.length || 0);
+        if (data) setExtendedClients(data);
+      } catch (e) {
+        console.error('Failed to fetch clients:', e);
+      }
     };
     fetchClients();
-  }, []);
+  }, [open]);
+
+  // Use extendedClients if available, fallback to useClients hook data
+  const allClients = useMemo(() => {
+    if (extendedClients.length > 0) return extendedClients;
+    if (clients && clients.length > 0) return clients.map((c: any) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone, gush: c.gush || null, helka: c.helka || null, migrash: c.migrash || null, taba: c.taba || null, address: c.address || null }));
+    return [];
+  }, [extendedClients, clients]);
 
   useEffect(() => {
     setEditedTemplate(template);
@@ -1257,10 +1274,10 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent side="right" hideClose dir="rtl" className="flex flex-col gap-0 overflow-hidden border-0 p-0" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', maxWidth: 'none', zIndex: 300 }}>
         {/* Client Selector Dialog */}
-        <ClientSelector clients={extendedClients} selectedClient={projectDetails.clientId} onSelect={handleClientSelect} open={showClientSelector} onOpenChange={setShowClientSelector} />
+        <ClientSelector clients={allClients} selectedClient={projectDetails.clientId} onSelect={handleClientSelect} open={showClientSelector} onOpenChange={setShowClientSelector} />
         
         {/* Email Dialog */}
-        <EmailDialog open={showEmailDialog} onOpenChange={setShowEmailDialog} clients={extendedClients} onSend={handleSendEmail} templateName={editedTemplate.name} />
+        <EmailDialog open={showEmailDialog} onOpenChange={setShowEmailDialog} clients={allClients} onSend={handleSendEmail} templateName={editedTemplate.name} />
 
         {/* Gold Header */}
         <div className="shrink-0 text-white p-6" style={{ background: designSettings.headerBackground }}>
@@ -1300,7 +1317,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
           <TabsContent value="project" className="flex-1 m-0 overflow-hidden">
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
-                <ProjectDetailsEditor details={projectDetails} onUpdate={setProjectDetails} clients={extendedClients} onOpenClientSelector={() => setShowClientSelector(true)} />
+                <ProjectDetailsEditor details={projectDetails} onUpdate={setProjectDetails} clients={allClients} onOpenClientSelector={() => setShowClientSelector(true)} />
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-800 mb-2">💡 טיפ</h3>
                   <p className="text-sm text-blue-700">לחץ על "בחר לקוח" כדי למלא את הפרטים אוטומטית מנתוני הלקוח במערכת. תוכל גם להזין את הפרטים ידנית.</p>
@@ -2147,7 +2164,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
           onOpenChange={setShowWhatsAppDialog}
           templateName={editedTemplate.name}
           clientName={projectDetails.clientName}
-          clientPhone={extendedClients.find(c => c.id === projectDetails.clientId)?.phone || ''}
+          clientPhone={allClients.find((c: any) => c.id === projectDetails.clientId)?.phone || ''}
           totalPrice={editedTemplate.base_price || 35000}
         />
       </SheetContent>
