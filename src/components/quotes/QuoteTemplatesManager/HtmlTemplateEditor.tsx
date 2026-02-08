@@ -17,8 +17,12 @@ import {
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
   User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
   QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench,
+  Bold, Italic, Underline, AlignRight, AlignCenter, AlignLeft, BookTemplate, Minimize2, Maximize2,
 } from 'lucide-react';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useToast } from '@/hooks/use-toast';
 import { QuoteTemplate, TemplateStage, TemplateStageItem } from './types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,7 +56,7 @@ interface HtmlTemplateEditorProps {
 
 interface PaymentStep { id: string; name: string; percentage: number; description: string; }
 interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; }
-interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; }
+interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; customBg?: string; customBorder?: string; customTextColor?: string; fontSize?: number; isBold?: boolean; isItalic?: boolean; isUnderline?: boolean; textAlign?: 'right' | 'center' | 'left'; }
 interface ProjectDetails { clientId: string; clientName: string; gush: string; helka: string; migrash: string; taba: string; address: string; projectType: string; }
 
 // Client selector component with search
@@ -385,23 +389,190 @@ function PaymentStepEditor({ step, onUpdate, onDelete }: { step: PaymentStep; on
   );
 }
 
-function TextBoxEditor({ textBox, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }: { textBox: TextBox; onUpdate: (textBox: TextBox) => void; onDelete: () => void; onMoveUp?: () => void; onMoveDown?: () => void; isFirst?: boolean; isLast?: boolean }) {
+const TEXT_BOX_TEMPLATES: { label: string; title: string; content: string; position: TextBox['position']; style: TextBox['style'] }[] = [
+  { label: '📋 תנאים כלליים', title: 'תנאים כלליים', content: '1. ההצעה בתוקף ל-30 יום מיום הגשתה\n2. המחירים כוללים מע״מ כחוק\n3. תנאי תשלום בהתאם לאמור בהצעה', position: 'footer', style: 'default' },
+  { label: '⚠️ הבהרות חשובות', title: 'הבהרות', content: 'העבודה אינה כוללת:\n- עבודות חשמל ואינסטלציה\n- אגרות והיטלים\n- ליווי ביצוע באתר', position: 'after-stages', style: 'warning' },
+  { label: '✅ מה כלול', title: 'כלול בהצעה', content: '• תכנון אדריכלי מלא\n• הגשה לרישוי\n• ליווי עד קבלת היתר\n• 3 סבבי תיקונים', position: 'before-stages', style: 'info' },
+  { label: '🏗️ לוחות זמנים', title: 'לוחות זמנים משוערים', content: '• תכנון ראשוני: 2-3 שבועות\n• הגשה לועדה: שבוע\n• טיפול בהערות: 1-2 שבועות\n• אישור סופי: בהתאם לועדה', position: 'after-stages', style: 'highlight' },
+  { label: '💼 אחריות', title: 'אחריות מקצועית', content: 'המשרד מבוטח בביטוח אחריות מקצועית. האחריות חלה על התכנון בלבד ולא על הביצוע.', position: 'footer', style: 'default' },
+  { label: '📞 יצירת קשר', title: 'פרטי התקשרות', content: 'לשאלות ובירורים ניתן לפנות:\nטלפון: \nאימייל: \nשעות פעילות: א-ה 9:00-18:00', position: 'footer', style: 'info' },
+];
+
+function TextBoxEditor({ textBox, onUpdate, onDelete, onDuplicate, dragHandleProps }: {
+  textBox: TextBox;
+  onUpdate: (textBox: TextBox) => void;
+  onDelete: () => void;
+  onDuplicate?: () => void;
+  dragHandleProps?: any;
+}) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const styleColors: Record<string, string> = { default: 'bg-white border-gray-200', highlight: 'bg-yellow-50 border-yellow-300', warning: 'bg-red-50 border-red-300', info: 'bg-blue-50 border-blue-300' };
   const positionLabels: Record<string, string> = { 'before-stages': '📍 לפני שלבי העבודה', 'after-stages': '📍 אחרי שלבי העבודה', 'before-payments': '📍 לפני תשלומים', 'after-payments': '📍 אחרי תשלומים', 'header': '📍 בראש ההצעה', 'footer': '📍 בתחתית ההצעה' };
+  const quickColors = ['#ffffff', '#fef3c7', '#fee2e2', '#dbeafe', '#dcfce7', '#f3e8ff', '#fce7f3', '#e0f2fe'];
+
   return (
-    <div className={`rounded-lg border-2 p-4 ${styleColors[textBox.style]} transition-all hover:shadow-md`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Input value={textBox.title} onChange={(e) => onUpdate({ ...textBox, title: e.target.value })} className="font-semibold border-0 p-0 h-auto focus-visible:ring-0 bg-transparent flex-1" placeholder="כותרת הקטע" dir="rtl" />
-        <Select value={textBox.style} onValueChange={(v) => onUpdate({ ...textBox, style: v as TextBox['style'] })}><SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">רגיל</SelectItem><SelectItem value="highlight">מודגש</SelectItem><SelectItem value="warning">אזהרה</SelectItem><SelectItem value="info">מידע</SelectItem></SelectContent></Select>
-        <Select value={textBox.position} onValueChange={(v) => onUpdate({ ...textBox, position: v as TextBox['position'] })}><SelectTrigger className="w-44 h-7 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="header">בראש ההצעה</SelectItem><SelectItem value="before-stages">לפני שלבי העבודה</SelectItem><SelectItem value="after-stages">אחרי שלבי העבודה</SelectItem><SelectItem value="before-payments">לפני סדר תשלומים</SelectItem><SelectItem value="after-payments">אחרי סדר תשלומים</SelectItem><SelectItem value="footer">בתחתית ההצעה</SelectItem></SelectContent></Select>
-        <div className="flex gap-0.5">
-          {onMoveUp && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveUp} disabled={isFirst}><ChevronUp className="h-3 w-3" /></Button>}
-          {onMoveDown && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveDown} disabled={isLast}><ChevronDown className="h-3 w-3" /></Button>}
+    <div
+      className={`rounded-lg border-2 p-3 ${styleColors[textBox.style]} transition-all hover:shadow-md`}
+      style={{
+        backgroundColor: textBox.customBg || undefined,
+        borderColor: textBox.customBorder || undefined,
+      }}
+    >
+      {/* Top bar: drag handle + title + controls */}
+      <div className="flex items-center gap-2">
+        {/* Drag Handle */}
+        <div {...(dragHandleProps || {})} className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-black/5 touch-none">
+          <GripVertical className="h-4 w-4 text-gray-400" />
         </div>
-        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
+
+        <Input
+          value={textBox.title}
+          onChange={(e) => onUpdate({ ...textBox, title: e.target.value })}
+          className="font-semibold border-0 p-0 h-auto focus-visible:ring-0 bg-transparent flex-1 text-sm"
+          placeholder="כותרת הקטע"
+          dir="rtl"
+        />
+
+        {/* Style selector */}
+        <Select value={textBox.style} onValueChange={(v) => onUpdate({ ...textBox, style: v as TextBox['style'] })}>
+          <SelectTrigger className="w-20 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">רגיל</SelectItem>
+            <SelectItem value="highlight">מודגש</SelectItem>
+            <SelectItem value="warning">אזהרה</SelectItem>
+            <SelectItem value="info">מידע</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Position selector */}
+        <Select value={textBox.position} onValueChange={(v) => onUpdate({ ...textBox, position: v as TextBox['position'] })}>
+          <SelectTrigger className="w-40 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="header">בראש ההצעה</SelectItem>
+            <SelectItem value="before-stages">לפני שלבי העבודה</SelectItem>
+            <SelectItem value="after-stages">אחרי שלבי העבודה</SelectItem>
+            <SelectItem value="before-payments">לפני סדר תשלומים</SelectItem>
+            <SelectItem value="after-payments">אחרי סדר תשלומים</SelectItem>
+            <SelectItem value="footer">בתחתית ההצעה</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Action buttons */}
+        <div className="flex gap-0.5">
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setShowColorPicker(!showColorPicker)} title="צבעים מותאמים">
+            <Palette className="h-3 w-3" />
+          </Button>
+          {onDuplicate && (
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onDuplicate} title="שכפל תיבה">
+              <Copy className="h-3 w-3" />
+            </Button>
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? 'הרחב' : 'כווץ'}>
+            {isCollapsed ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+          </Button>
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete} title="מחק"><Trash2 className="h-3 w-3" /></Button>
+        </div>
       </div>
-      <div className="text-xs text-gray-400 mb-2">{positionLabels[textBox.position] || textBox.position}</div>
-      <Textarea value={textBox.content} onChange={(e) => onUpdate({ ...textBox, content: e.target.value })} placeholder="תוכן הקטע..." className="min-h-[80px] bg-transparent border-0 focus-visible:ring-0 p-0" dir="rtl" />
+
+      {/* Position label */}
+      <div className="text-xs text-gray-400 mt-1 mr-7">{positionLabels[textBox.position] || textBox.position}</div>
+
+      {/* Collapsible content */}
+      {!isCollapsed && (
+        <div className="mt-2 space-y-2">
+          {/* Custom color picker */}
+          {showColorPicker && (
+            <div className="p-2 rounded-lg border bg-white/80 space-y-2">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-16">רקע:</Label>
+                <div className="flex gap-1">
+                  {quickColors.map(c => (
+                    <button key={c} className="w-5 h-5 rounded border hover:scale-110 transition-transform" style={{ backgroundColor: c, borderColor: textBox.customBg === c ? '#000' : '#ddd' }} onClick={() => onUpdate({ ...textBox, customBg: c === '#ffffff' ? undefined : c })} />
+                  ))}
+                  <Input type="color" value={textBox.customBg || '#ffffff'} onChange={(e) => onUpdate({ ...textBox, customBg: e.target.value })} className="w-6 h-5 p-0 border-0 cursor-pointer" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-16">מסגרת:</Label>
+                <div className="flex gap-1">
+                  {['#e5e7eb','#fde68a','#fca5a5','#93c5fd','#86efac','#c4b5fd','#f9a8d4','#7dd3fc'].map(c => (
+                    <button key={c} className="w-5 h-5 rounded border hover:scale-110 transition-transform" style={{ backgroundColor: c, borderColor: textBox.customBorder === c ? '#000' : '#ddd' }} onClick={() => onUpdate({ ...textBox, customBorder: c === '#e5e7eb' ? undefined : c })} />
+                  ))}
+                  <Input type="color" value={textBox.customBorder || '#e5e7eb'} onChange={(e) => onUpdate({ ...textBox, customBorder: e.target.value })} className="w-6 h-5 p-0 border-0 cursor-pointer" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs w-16">טקסט:</Label>
+                <div className="flex gap-1">
+                  {['#000000','#374151','#6b7280','#1e40af','#b91c1c','#15803d','#854d0e','#7e22ce'].map(c => (
+                    <button key={c} className="w-5 h-5 rounded border hover:scale-110 transition-transform" style={{ backgroundColor: c, borderColor: textBox.customTextColor === c ? '#fff' : '#ddd' }} onClick={() => onUpdate({ ...textBox, customTextColor: c === '#000000' ? undefined : c })} />
+                  ))}
+                  <Input type="color" value={textBox.customTextColor || '#000000'} onChange={(e) => onUpdate({ ...textBox, customTextColor: e.target.value })} className="w-6 h-5 p-0 border-0 cursor-pointer" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Formatting toolbar */}
+          <div className="flex items-center gap-1 mr-7">
+            <Button size="icon" variant={textBox.isBold ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isBold: !textBox.isBold })}><Bold className="h-3 w-3" /></Button>
+            <Button size="icon" variant={textBox.isItalic ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isItalic: !textBox.isItalic })}><Italic className="h-3 w-3" /></Button>
+            <Button size="icon" variant={textBox.isUnderline ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isUnderline: !textBox.isUnderline })}><Underline className="h-3 w-3" /></Button>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <Button size="icon" variant={textBox.textAlign === 'right' || !textBox.textAlign ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, textAlign: 'right' })}><AlignRight className="h-3 w-3" /></Button>
+            <Button size="icon" variant={textBox.textAlign === 'center' ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, textAlign: 'center' })}><AlignCenter className="h-3 w-3" /></Button>
+            <Button size="icon" variant={textBox.textAlign === 'left' ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, textAlign: 'left' })}><AlignLeft className="h-3 w-3" /></Button>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
+            <Label className="text-xs">גודל:</Label>
+            <Select value={String(textBox.fontSize || 14)} onValueChange={(v) => onUpdate({ ...textBox, fontSize: parseInt(v) })}>
+              <SelectTrigger className="w-16 h-6 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[10, 12, 14, 16, 18, 20, 24].map(s => <SelectItem key={s} value={String(s)}>{s}px</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Textarea with custom styles applied */}
+          <Textarea
+            value={textBox.content}
+            onChange={(e) => onUpdate({ ...textBox, content: e.target.value })}
+            placeholder="תוכן הקטע..."
+            className="min-h-[80px] bg-transparent border-0 focus-visible:ring-0 p-0 mr-7"
+            dir="rtl"
+            style={{
+              fontWeight: textBox.isBold ? 'bold' : 'normal',
+              fontStyle: textBox.isItalic ? 'italic' : 'normal',
+              textDecoration: textBox.isUnderline ? 'underline' : 'none',
+              textAlign: textBox.textAlign || 'right',
+              fontSize: textBox.fontSize ? `${textBox.fontSize}px` : undefined,
+              color: textBox.customTextColor || undefined,
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sortable wrapper for drag & drop
+function SortableTextBox({ textBox, onUpdate, onDelete, onDuplicate }: {
+  textBox: TextBox;
+  onUpdate: (textBox: TextBox) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: textBox.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 50 : undefined };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <TextBoxEditor
+        textBox={textBox}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        dragHandleProps={listeners}
+      />
     </div>
   );
 }
@@ -436,6 +607,22 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // DnD sensors for text boxes
+  const textBoxSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const handleTextBoxDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setTextBoxes((prev) => {
+        const oldIndex = prev.findIndex(t => t.id === active.id);
+        const newIndex = prev.findIndex(t => t.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+    }
+  }, []);
 
   // Extended clients data
   const [extendedClients, setExtendedClients] = useState<any[]>([]);
@@ -484,9 +671,17 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
       if (boxes.length === 0) return '';
       return boxes.map(tb => {
         const s = styleMap[tb.style] || styleMap.default;
-        return `<div style="margin: 15px 0; padding: 15px; background: ${s.bg}; border: 2px solid ${s.border}; border-radius: ${designSettings.borderRadius}px;">
+        const bgColor = tb.customBg || s.bg;
+        const borderColor = tb.customBorder || s.border;
+        const textColor = tb.customTextColor || '#444';
+        const fontSize = tb.fontSize || 14;
+        const fontWeight = tb.isBold ? 'font-weight: bold;' : '';
+        const fontStyle = tb.isItalic ? 'font-style: italic;' : '';
+        const textDecor = tb.isUnderline ? 'text-decoration: underline;' : '';
+        const textAlign = `text-align: ${tb.textAlign || 'right'};`;
+        return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
           ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${s.icon} ${tb.title}</h4>` : ''}
-          <div style="color: #444; white-space: pre-wrap; font-size: 14px;">${tb.content}</div>
+          <div style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
         </div>`;
       }).join('');
     };
@@ -1009,7 +1204,10 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                   <div className="p-6 space-y-4 max-w-2xl mx-auto">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold">תיבות טקסט מותאמות</h2>
-                      <Button onClick={addTextBox} className="bg-[#DAA520] hover:bg-[#B8860B]"><Plus className="h-4 w-4 ml-2" />הוסף תיבת טקסט</Button>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary" className="text-xs">{textBoxes.length} תיבות</Badge>
+                        <Button onClick={addTextBox} className="bg-[#DAA520] hover:bg-[#B8860B]"><Plus className="h-4 w-4 ml-2" />הוסף תיבת טקסט</Button>
+                      </div>
                     </div>
                     
                     {/* Quick add buttons */}
@@ -1041,37 +1239,69 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                       ))}
                     </div>
 
+                    {/* Templates section */}
+                    <div className="bg-white rounded-lg border p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BookTemplate className="h-4 w-4 text-[#B8860B]" />
+                        <span className="text-sm font-medium">תבניות מוכנות</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {TEXT_BOX_TEMPLATES.map((tmpl, i) => (
+                          <Button
+                            key={i}
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => setTextBoxes([...textBoxes, {
+                              id: Date.now().toString() + i,
+                              title: tmpl.title,
+                              content: tmpl.content,
+                              position: tmpl.position,
+                              style: tmpl.style,
+                            }])}
+                          >
+                            {tmpl.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
                     {textBoxes.length === 0 ? (
                       <div className="bg-white rounded-xl border-2 border-dashed p-12 text-center text-gray-400">
                         <Type className="h-12 w-12 mx-auto mb-3 opacity-50" />
                         <p>אין תיבות טקסט</p>
                         <p className="text-sm">הוסף תיבות טקסט כדי להוסיף תוכן מותאם להצעה</p>
-                        <p className="text-xs mt-2">לחץ על כפתור מהירים למעלה או על "הוסף תיבת טקסט"</p>
+                        <p className="text-xs mt-2">גרור כדי לסדר מחדש | לחץ על תבנית מוכנה או "הוסף תיבת טקסט"</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {textBoxes.map((tb, idx) => (
-                          <TextBoxEditor
-                            key={tb.id}
-                            textBox={tb}
-                            onUpdate={(updated) => setTextBoxes(textBoxes.map(t => t.id === tb.id ? updated : t))}
-                            onDelete={() => setTextBoxes(textBoxes.filter(t => t.id !== tb.id))}
-                            onMoveUp={() => {
-                              if (idx === 0) return;
-                              const arr = [...textBoxes];
-                              [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
-                              setTextBoxes(arr);
-                            }}
-                            onMoveDown={() => {
-                              if (idx === textBoxes.length - 1) return;
-                              const arr = [...textBoxes];
-                              [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
-                              setTextBoxes(arr);
-                            }}
-                            isFirst={idx === 0}
-                            isLast={idx === textBoxes.length - 1}
-                          />
-                        ))}
+                      <DndContext
+                        sensors={textBoxSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleTextBoxDragEnd}
+                      >
+                        <SortableContext items={textBoxes.map(tb => tb.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-3">
+                            {textBoxes.map((tb) => (
+                              <SortableTextBox
+                                key={tb.id}
+                                textBox={tb}
+                                onUpdate={(updated) => setTextBoxes(prev => prev.map(t => t.id === tb.id ? updated : t))}
+                                onDelete={() => setTextBoxes(prev => prev.filter(t => t.id !== tb.id))}
+                                onDuplicate={() => setTextBoxes(prev => [...prev, { ...tb, id: Date.now().toString(), title: tb.title + ' (עותק)' }])}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    )}
+
+                    {/* Bulk actions */}
+                    {textBoxes.length > 1 && (
+                      <div className="flex items-center justify-between pt-2 border-t">
+                        <span className="text-xs text-gray-400">גרור ⇕ כדי לשנות סדר</span>
+                        <Button variant="ghost" size="sm" className="text-xs text-red-500 h-7" onClick={() => { if (confirm('למחוק את כל תיבות הטקסט?')) setTextBoxes([]); }}>
+                          <Trash2 className="h-3 w-3 ml-1" />מחק הכל
+                        </Button>
                       </div>
                     )}
                   </div>
