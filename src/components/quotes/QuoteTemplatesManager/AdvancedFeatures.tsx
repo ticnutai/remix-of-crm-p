@@ -769,7 +769,7 @@ interface SMSShareDialogProps {
   totalPrice: number;
 }
 
-export function SMSShareDialog({ open, onOpenChange, quoteName, quoteId, clientPhone, totalPrice }: SMSShareDialogProps) {
+export function SMSShareDialog({ open, onOpenChange, quoteName, quoteId, clientPhone, totalPrice = 0 }: SMSShareDialogProps) {
   const [phone, setPhone] = useState(clientPhone || '');
   const [messageType, setMessageType] = useState<'link' | 'full'>('link');
   const { toast } = useToast();
