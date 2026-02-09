@@ -51,7 +51,11 @@ export interface HeaderContent {
   date?: string;
   logoUrl?: string;
   location?: string;
+  logo?: string; // Alternative logo field
 }
+
+// מידע צד (PartyInfo alias)
+export type PartyInfo = ContractParty;
 
 // צד להסכם
 export interface ContractParty {
@@ -80,11 +84,24 @@ export interface ContractItem {
   unit?: string;
   isOptional?: boolean;
   isUpgrade?: boolean;
+  text?: string;
+  included?: boolean;
 }
+
+// פריט בסעיף
+export interface SectionItem {
+  id: string;
+  text: string;
+  price?: number;
+  included?: boolean;
+}
+
+// LineItem alias
+export type LineItem = ContractItem;
 
 // סעיף
 export interface SectionContent {
-  items: ContractItem[];
+  items: (ContractItem | SectionItem)[];
   showPrices?: boolean;
   showCheckmarks?: boolean;
 }
@@ -115,6 +132,9 @@ export interface PaymentStep {
   description: string;
   dueDate?: string;
   daysOffset?: number;
+  title?: string;
+  amount?: number;
+  status?: 'pending' | 'paid' | 'overdue';
 }
 
 // תוכן תשלומים
@@ -131,6 +151,9 @@ export interface TimelineStep {
   title: string;
   description?: string;
   duration?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: 'pending' | 'in_progress' | 'completed';
 }
 
 // תוכן לוח זמנים
@@ -138,16 +161,24 @@ export interface TimelineContent {
   steps: TimelineStep[];
 }
 
-// תוכן תנאים
+// תוכן תנאים - מאפשר גם מחרוזות וגם אובייקטים
 export interface TermsContent {
-  terms: string[];
-  specialClauses?: string[];
+  terms: TermItem[];
+  specialClauses?: TermItem[];
+}
+
+// פריט תנאי
+export interface TermItem {
+  id: string;
+  title?: string;
+  text: string;
 }
 
 // חתימה
 export interface SignatureField {
   id: string;
   label: string;
+  title?: string;
   partyId?: string;
   signed?: boolean;
   signedAt?: string;

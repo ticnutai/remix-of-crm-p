@@ -4478,8 +4478,47 @@ export type Database = {
           },
         ]
       }
+      quote_template_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          label: string
+          snapshot: Json
+          template_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          label?: string
+          snapshot?: Json
+          template_id: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          label?: string
+          snapshot?: Json
+          template_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "quote_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_templates: {
         Row: {
+          base_price: number | null
           category: string | null
           created_at: string | null
           created_by: string | null
@@ -4487,6 +4526,7 @@ export type Database = {
           default_terms: string | null
           description: string | null
           design_settings: Json | null
+          html_content: string | null
           id: string
           important_notes: string[] | null
           is_active: boolean | null
@@ -4494,16 +4534,21 @@ export type Database = {
           name: string
           notes: string | null
           payment_schedule: Json | null
+          pricing_tiers: Json | null
+          project_details: Json | null
           show_vat: boolean | null
           stages: Json | null
           template_content: string | null
           terms: string | null
+          text_boxes: Json | null
           timeline: Json | null
           updated_at: string | null
+          upgrades: Json | null
           validity_days: number | null
           vat_rate: number | null
         }
         Insert: {
+          base_price?: number | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4511,6 +4556,7 @@ export type Database = {
           default_terms?: string | null
           description?: string | null
           design_settings?: Json | null
+          html_content?: string | null
           id?: string
           important_notes?: string[] | null
           is_active?: boolean | null
@@ -4518,16 +4564,21 @@ export type Database = {
           name: string
           notes?: string | null
           payment_schedule?: Json | null
+          pricing_tiers?: Json | null
+          project_details?: Json | null
           show_vat?: boolean | null
           stages?: Json | null
           template_content?: string | null
           terms?: string | null
+          text_boxes?: Json | null
           timeline?: Json | null
           updated_at?: string | null
+          upgrades?: Json | null
           validity_days?: number | null
           vat_rate?: number | null
         }
         Update: {
+          base_price?: number | null
           category?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -4535,6 +4586,7 @@ export type Database = {
           default_terms?: string | null
           description?: string | null
           design_settings?: Json | null
+          html_content?: string | null
           id?: string
           important_notes?: string[] | null
           is_active?: boolean | null
@@ -4542,12 +4594,16 @@ export type Database = {
           name?: string
           notes?: string | null
           payment_schedule?: Json | null
+          pricing_tiers?: Json | null
+          project_details?: Json | null
           show_vat?: boolean | null
           stages?: Json | null
           template_content?: string | null
           terms?: string | null
+          text_boxes?: Json | null
           timeline?: Json | null
           updated_at?: string | null
+          upgrades?: Json | null
           validity_days?: number | null
           vat_rate?: number | null
         }
@@ -5340,6 +5396,7 @@ export type Database = {
           quiet_hours_start: string | null
           reminder_frequency: string | null
           shadow_intensity: string | null
+          sidebar_collapsed: boolean | null
           sidebar_pinned: boolean | null
           sidebar_style: string | null
           sidebar_width: number | null
@@ -5351,6 +5408,7 @@ export type Database = {
           ui_preferences: Json | null
           updated_at: string | null
           user_id: string
+          view_preferences: Json | null
           virtual_scroll_threshold: number | null
           week_start: string | null
         }
@@ -5387,6 +5445,7 @@ export type Database = {
           quiet_hours_start?: string | null
           reminder_frequency?: string | null
           shadow_intensity?: string | null
+          sidebar_collapsed?: boolean | null
           sidebar_pinned?: boolean | null
           sidebar_style?: string | null
           sidebar_width?: number | null
@@ -5398,6 +5457,7 @@ export type Database = {
           ui_preferences?: Json | null
           updated_at?: string | null
           user_id: string
+          view_preferences?: Json | null
           virtual_scroll_threshold?: number | null
           week_start?: string | null
         }
@@ -5434,6 +5494,7 @@ export type Database = {
           quiet_hours_start?: string | null
           reminder_frequency?: string | null
           shadow_intensity?: string | null
+          sidebar_collapsed?: boolean | null
           sidebar_pinned?: boolean | null
           sidebar_style?: string | null
           sidebar_width?: number | null
@@ -5445,6 +5506,7 @@ export type Database = {
           ui_preferences?: Json | null
           updated_at?: string | null
           user_id?: string
+          view_preferences?: Json | null
           virtual_scroll_threshold?: number | null
           week_start?: string | null
         }
@@ -5786,6 +5848,10 @@ export type Database = {
           sql_content: string
           success: boolean
         }[]
+      }
+      get_next_version_number: {
+        Args: { p_template_id: string }
+        Returns: number
       }
       get_popular_tags: {
         Args: { p_limit?: number }

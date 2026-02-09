@@ -382,9 +382,10 @@ export function PaymentsBlockEditor({ content, onChange }: PaymentsBlockEditorPr
         {
           id: uuidv4(),
           title: '',
+          description: '',
           percentage: 0,
           dueDate: '',
-          status: 'pending',
+          status: 'pending' as const,
         },
       ],
     });
@@ -533,9 +534,10 @@ export function TimelineBlockEditor({ content, onChange }: TimelineBlockEditorPr
         ...content.steps,
         {
           id: uuidv4(),
+          number: content.steps.length + 1,
           title: '',
           duration: '',
-          status: 'pending',
+          status: 'pending' as const,
         },
       ],
     });
@@ -834,7 +836,7 @@ export function NotesBlockEditor({ content, onChange }: NotesBlockEditorProps) {
     });
   };
 
-  const updateNote = (id: string, updates: Partial<{ text: string; type: string }>) => {
+  const updateNote = (id: string, updates: Partial<{ text: string; type: 'info' | 'warning' | 'important' }>) => {
     onChange({
       ...content,
       notes: content.notes.map((n) => (n.id === id ? { ...n, ...updates } : n)),
