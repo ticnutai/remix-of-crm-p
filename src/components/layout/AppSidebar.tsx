@@ -153,7 +153,7 @@ export function AppSidebar() {
   // Save widget edit mode to localStorage and dispatch event
   useEffect(() => {
     localStorage.setItem('widget-edit-mode', String(widgetEditMode));
-    window.dispatchEvent(new CustomEvent('widgetEditModeChanged', { detail: { enabled: widgetEditMode } }));
+    globalThis.dispatchEvent(new CustomEvent('widgetEditModeChanged', { detail: { enabled: widgetEditMode } }));
   }, [widgetEditMode]);
   
   // Sidebar theme
@@ -171,7 +171,7 @@ export function AppSidebar() {
   // Sidebar resizing
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebar-width');
-    return saved ? parseInt(saved) : gesturesConfig.minWidth + (gesturesConfig.maxWidth - gesturesConfig.minWidth) / 2;
+    return saved ? Number.parseInt(saved) : gesturesConfig.minWidth + (gesturesConfig.maxWidth - gesturesConfig.minWidth) / 2;
   });
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);

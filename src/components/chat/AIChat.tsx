@@ -59,7 +59,7 @@ export function AIChat() {
 
   // Check for speech recognition support
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = globalThis.SpeechRecognition || (globalThis as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       setIsVoiceSupported(true);
       const recognition = new SpeechRecognition();
@@ -219,8 +219,8 @@ export function AIChat() {
               ))}
 
               {/* Loading indicator */}
-              {isLoading && messages[messages.length - 1]?.role === 'assistant' && 
-               messages[messages.length - 1]?.isStreaming && (
+              {isLoading && messages.at(-1)?.role === 'assistant' && 
+               messages.at(-1)?.isStreaming && (
                 <div className="flex justify-start">
                   <Button
                     variant="ghost"
@@ -268,7 +268,7 @@ export function AIChat() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 placeholder={isListening ? '🎤 מקשיב...' : "שאל משהו... (לדוגמה: 'כמה לקוחות יש?')"}
                 disabled={isLoading || isListening}
                 className={cn("flex-1", isListening && "border-red-500 animate-pulse")}

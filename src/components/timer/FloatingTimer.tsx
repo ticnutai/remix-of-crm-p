@@ -70,8 +70,8 @@ function FloatingTimerContent() {
       try {
         const parsed = JSON.parse(saved);
         // Ensure position is within screen bounds
-        const safeX = Math.min(Math.max(0, parsed.x), (typeof window !== 'undefined' ? window.innerWidth : 800) - 80);
-        const safeY = Math.min(Math.max(0, parsed.y), (typeof window !== 'undefined' ? window.innerHeight : 600) - 80);
+        const safeX = Math.min(Math.max(0,parsed.x), (typeof globalThis.window !== 'undefined' ? globalThis.window.innerWidth : 800) - 80);
+        const safeY = Math.min(Math.max(0, parsed.y), (typeof globalThis.window !== 'undefined' ? globalThis.window.innerHeight : 600) - 80);
         return {
           x: safeX,
           y: safeY
@@ -83,7 +83,7 @@ function FloatingTimerContent() {
     // Default position: bottom-left corner
     return {
       x: 32,
-      y: typeof window !== 'undefined' ? window.innerHeight - 100 : 600
+      y: typeof globalThis.window !== 'undefined' ? globalThis.window.innerHeight - 100 : 600
     };
   });
 
@@ -177,19 +177,19 @@ function FloatingTimerContent() {
     };
 
     // Add both mouse and touch listeners
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove, {
+    globalThis.addEventListener('mousemove', onMove);
+    globalThis.addEventListener('mouseup', onUp);
+    globalThis.addEventListener('touchmove', onMove, {
       passive: false
     });
-    window.addEventListener('touchend', onUp);
-    window.addEventListener('touchcancel', onUp);
+    globalThis.addEventListener('touchend', onUp);
+    globalThis.addEventListener('touchcancel', onUp);
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
-      window.removeEventListener('touchcancel', onUp);
+      globalThis.removeEventListener('mousemove', onMove);
+      globalThis.removeEventListener('mouseup', onUp);
+      globalThis.removeEventListener('touchmove', onMove);
+      globalThis.removeEventListener('touchend', onUp);
+      globalThis.removeEventListener('touchcancel', onUp);
     };
   }, [isResizing, resizeDir]);
 
@@ -285,15 +285,15 @@ function FloatingTimerContent() {
       setIsDragging(false);
       setIsLongPress(false);
     };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchmove', handleMove);
-    window.addEventListener('touchend', handleEnd);
+    globalThis.addEventListener('mousemove', handleMove);
+    globalThis.addEventListener('mouseup', handleEnd);
+    globalThis.addEventListener('touchmove', handleMove);
+    globalThis.addEventListener('touchend', handleEnd);
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleEnd);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleEnd);
+      globalThis.removeEventListener('mousemove', handleMove);
+      globalThis.removeEventListener('mouseup', handleEnd);
+      globalThis.removeEventListener('touchmove', handleMove);
+      globalThis.removeEventListener('touchend', handleEnd);
     };
   }, [isDragging]);
   const formatTime = (seconds: number) => {
