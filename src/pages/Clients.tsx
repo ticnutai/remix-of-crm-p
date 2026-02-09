@@ -605,75 +605,86 @@ export default function Clients() {
     setIsAddingClient(true);
     
     try {
-      // Ensure we have a valid session, try to refresh if lost
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        await supabase.auth.refreshSession();
-      }
-      
-      // Get current user for ownership fields
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || null;
-      
-      // Check for duplicates first
-      const duplicate = await checkForDuplicates(
-        newClientName.trim(),
-        newClientEmail.trim() || null,
-        newClientPhone.trim() || null,
-        newClientIdNumber.trim() || null
+      // Add timeout wrapper to prevent UI freeze
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('הבקשה ארכה יותר מדי זמן')), 15000)
       );
-      
-      if (duplicate) {
-        // Store pending data and show duplicate dialog
-        setPendingClientData({
-          name: newClientName.trim(),
-          email: newClientEmail.trim() || null,
-          phone: newClientPhone.trim() || null,
-          id_number: newClientIdNumber.trim() || null,
-          gush: newClientGush.trim() || null,
-          helka: newClientHelka.trim() || null,
-          migrash: newClientMigrash.trim() || null,
-          taba: newClientTaba.trim() || null,
-          street: newClientStreet.trim() || null,
-          moshav: newClientMoshav.trim() || null,
-          aguda_address: newClientAgudaAddress.trim() || null,
-          aguda_email: newClientAgudaEmail.trim() || null,
-          vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
-          vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
-          status: 'active',
-          user_id: userId,
-          created_by: userId,
-        });
-        setDuplicateClient(duplicate);
-        setDuplicateDialogOpen(true);
-        setIsAddingClient(false);
-        return;
-      }
-      
-      // No duplicate found, proceed with insert
-      await insertNewClient({
-        name: newClientName.trim(),
-        email: newClientEmail.trim() || null,
-        phone: newClientPhone.trim() || null,
-        id_number: newClientIdNumber.trim() || null,
-        gush: newClientGush.trim() || null,
-        helka: newClientHelka.trim() || null,
-        migrash: newClientMigrash.trim() || null,
-        taba: newClientTaba.trim() || null,
-        street: newClientStreet.trim() || null,
-        moshav: newClientMoshav.trim() || null,
-        aguda_address: newClientAgudaAddress.trim() || null,
-        aguda_email: newClientAgudaEmail.trim() || null,
-        vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
-        vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
-        status: 'active',
-        user_id: userId,
-        created_by: userId,
-      });
-    } catch (error) {
+
+      await Promise.race([
+        (async () => {
+          // Ensure we have a valid session, try to refresh if lost
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            await supabase.auth.refreshSession();
+          }
+          
+          // Get current user for ownership fields
+          const { data: { user } } = await supabase.auth.getUser();
+          const userId = user?.id || null;
+          
+          // Check for duplicates first
+          const duplicate = await checkForDuplicates(
+            newClientName.trim(),
+            newClientEmail.trim() || null,
+            newClientPhone.trim() || null,
+            newClientIdNumber.trim() || null
+          );
+          
+          if (duplicate) {
+            // Store pending data and show duplicate dialog
+            setPendingClientData({
+              name: newClientName.trim(),
+              email: newClientEmail.trim() || null,
+              phone: newClientPhone.trim() || null,
+              id_number: newClientIdNumber.trim() || null,
+              gush: newClientGush.trim() || null,
+              helka: newClientHelka.trim() || null,
+              migrash: newClientMigrash.trim() || null,
+              taba: newClientTaba.trim() || null,
+              street: newClientStreet.trim() || null,
+              moshav: newClientMoshav.trim() || null,
+              aguda_address: newClientAgudaAddress.trim() || null,
+              aguda_email: newClientAgudaEmail.trim() || null,
+              vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
+              vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
+              status: 'active',
+              user_id: userId,
+              created_by: userId,
+            });
+            setDuplicateClient(duplicate);
+            setDuplicateDialogOpen(true);
+            setIsAddingClient(false);
+            return;
+          }
+          
+          // No duplicate found, proceed with insert
+          await insertNewClient({
+            name: newClientName.trim(),
+            email: newClientEmail.trim() || null,
+            phone: newClientPhone.trim() || null,
+            id_number: newClientIdNumber.trim() || null,
+            gush: newClientGush.trim() || null,
+            helka: newClientHelka.trim() || null,
+            migrash: newClientMigrash.trim() || null,
+            taba: newClientTaba.trim() || null,
+            street: newClientStreet.trim() || null,
+            moshav: newClientMoshav.trim() || null,
+            aguda_address: newClientAgudaAddress.trim() || null,
+            aguda_email: newClientAgudaEmail.trim() || null,
+            vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
+            vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
+            status: 'active',
+            user_id: userId,
+            created_by: userId,
+          });
+        })(),
+        timeoutPromise
+      ]);
+    } catch (error: any) {
+      console.error('Error adding client:', error);
       toast({
         title: 'שגיאה',
-        description: 'לא ניתן להוסיף את הלקוח',
+        description: error?.message || 'לא ניתן להוסיף את הלקוח',
         variant: 'destructive',
       });
       setIsAddingClient(false);

@@ -39,17 +39,26 @@ const SmartComboField: React.FC<SmartComboFieldProps> = ({
 
   // Fetch distinct existing values for this column
   useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    
     const fetchValues = async () => {
       try {
+        // Add timeout to prevent hanging
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
         // Use raw query via RPC or just fetch all clients and extract unique values
         const { data, error } = await supabase
           .from('clients')
           .select(fieldColumn)
           .not(fieldColumn, 'is', null)
           .not(fieldColumn, 'eq', '')
-          .limit(500);
+          .limit(500)
+          .abortSignal(controller.signal);
 
-        if (!error && data) {
+        clearTimeout(timeoutId);
+
+        if (!error && data && isMounted) {
           const uniqueVals = [...new Set(
             data
               .map((row: any) => row[fieldColumn] as string)
@@ -57,12 +66,20 @@ const SmartComboField: React.FC<SmartComboFieldProps> = ({
           )].sort((a, b) => a.localeCompare(b));
           setExistingValues(uniqueVals);
         }
-      } catch (err) {
-        console.error(`Error fetching values for ${fieldColumn}:`, err);
+      } catch (err: any) {
+        // Silently fail - field will just work as regular input
+        if (err.name !== 'AbortError') {
+          console.error(`Error fetching values for ${fieldColumn}:`, err);
+        }
       }
     };
 
     fetchValues();
+    
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, [fieldColumn]);
 
   // Close dropdown when clicking outside
