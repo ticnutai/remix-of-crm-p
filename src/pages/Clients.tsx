@@ -1846,6 +1846,41 @@ export default function Clients() {
                 טבלה
               </button>
 
+              {/* Multi-Select Mode Toggle Button */}
+              <button
+                onClick={toggleSelectionMode}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  backgroundColor: selectionMode ? '#3b82f6' : 'transparent',
+                  border: '2px solid #3b82f6',
+                  borderRadius: '8px',
+                  color: selectionMode ? '#ffffff' : '#3b82f6',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                }}
+                onMouseEnter={(e) => {
+                  if (!selectionMode) {
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                    e.currentTarget.style.color = '#ffffff';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!selectionMode) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = '#3b82f6';
+                  }
+                }}
+                title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
+              >
+                <CheckSquare style={{ width: '18px', height: '18px' }} />
+                {selectionMode ? 'בטל בחירה' : 'בחירה מרובה'}
+              </button>
+
               {/* Stages View Toggle Button */}
               <button
                 onClick={() => {
