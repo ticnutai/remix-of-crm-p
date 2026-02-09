@@ -1,5 +1,5 @@
 // App Sidebar - TEN Arch CRM Pro with Auto-hide and Pin functionality
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -219,6 +219,16 @@ export function AppSidebar() {
   useEffect(() => {
     localStorage.setItem('sidebar-theme', JSON.stringify(sidebarTheme));
   }, [sidebarTheme]);
+
+  // Apply theme directly to inner [data-sidebar] element to override bg-sidebar CSS class
+  useEffect(() => {
+    const el = sidebarRef.current?.querySelector('[data-sidebar="sidebar"]') as HTMLElement | null;
+    if (el) {
+      el.style.background = sidebarTheme.backgroundColor || '';
+      el.style.color = sidebarTheme.textColor || '#FFFFFF';
+      el.style.borderColor = 'transparent';
+    }
+  }, [sidebarTheme.backgroundColor, sidebarTheme.textColor]);
   
   // Save sidebar width to localStorage and update CSS variable
   useEffect(() => {
@@ -705,42 +715,27 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
 
-              {/* Theme Palette Icon - always visible & prominent */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setIsSidebarSettingsOpen(true)}
-                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:scale-110"
-                    style={{ 
-                      border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
-                      background: `${sidebarTheme.activeItemColor || sidebarColors.gold}15`,
-                      color: sidebarTheme.activeItemColor || sidebarColors.gold,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}30`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}15`;
-                    }}
-                  >
-                    <Palette className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  ערכות נושא לסיידבר
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            
-            {/* Version on the right */}
-            <div className={cn(
-              "transition-all text-right",
-              isCollapsed && "sr-only"
-            )} style={{ 
-              fontSize: '11px',
-              color: sidebarTheme.textColor ? `${sidebarTheme.textColor}99` : sidebarColors.goldLight,
-            }}>
-              <p className="font-medium">גרסה 1.0.0</p>
+              {/* Theme Palette Icon - always visible & prominent with label */}
+              <button
+                onClick={() => setIsSidebarSettingsOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-300 hover:scale-105 cursor-pointer"
+                style={{ 
+                  border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
+                  background: `${sidebarTheme.activeItemColor || sidebarColors.gold}20`,
+                  color: sidebarTheme.activeItemColor || sidebarColors.gold,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}20`;
+                }}
+              >
+                <Palette className="h-5 w-5 shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-xs font-semibold whitespace-nowrap">ערכות נושא</span>
+                )}
+              </button>
             </div>
           </div>
         </SidebarFooter>
