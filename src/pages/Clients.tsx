@@ -2516,7 +2516,7 @@ export default function Clients() {
                       <ClientCard client={client} />
                     </div>
                   </ContextMenuTrigger>
-                  <ContextMenuContent className="w-56" dir="rtl">
+                  <ContextMenuContent className="w-56" style={{ direction: 'rtl' }}>
                     <ContextMenuItem
                       onClick={() => navigate(`/client-profile/${client.id}`)}
                       className="gap-2 cursor-pointer"

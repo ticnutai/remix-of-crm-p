@@ -941,20 +941,6 @@ export default function DataTablePro() {
     }
   }, [selectedClients, updateMultipleClientsStage, toast]);
 
-  // Handle bulk consultant assignment
-  const handleBulkConsultantAssign = useCallback(async (consultantIds: string[]) => {
-    if (selectedClients.length === 0) return;
-    
-    const clientIds = selectedClients.map(c => c.id);
-    // Note: You'll need to implement updateMultipleClientsConsultant in your hooks
-    // For now, we'll just show a toast
-    toast({
-      title: 'פונקציה בפיתוח',
-      description: `שיוך ${consultantIds.length} יועצים ל-${clientIds.length} לקוחות`,
-    });
-    setIsBulkConsultantOpen(false);
-  }, [selectedClients, toast]);
-
   // Client cell formatting handlers
   const handleClientCellStyleChange = useCallback((cellId: string, style: any) => {
     setClientCellFormatting(prev => ({
@@ -3227,7 +3213,7 @@ export default function DataTablePro() {
           isOpen={isBulkConsultantOpen}
           onClose={() => setIsBulkConsultantOpen(false)}
           selectedClientIds={selectedClients.map(c => c.id)}
-          onAssign={handleBulkConsultantAssign}
+          onUpdate={() => { setIsBulkConsultantOpen(false); setSelectedClients([]); }}
         />
       </div>
     </AppLayout>
