@@ -43,6 +43,7 @@ import { AdvancedTemplateDialog } from './AdvancedTemplateDialog';
 import { TemplatePreviewDialog } from './TemplatePreviewDialog';
 import { HtmlTemplateEditor } from './HtmlTemplateEditor';
 import { importHtmlFile } from './htmlTemplateParser';
+import { importDocumentToTemplate, getSupportedDocumentTypes } from './documentImporter';
 
 export function QuoteTemplatesManager() {
   const { toast } = useToast();
@@ -167,7 +168,7 @@ export function QuoteTemplatesManager() {
     },
   });
 
-  // ייבוא קובץ HTML
+  // ייבוא קובץ HTML, Word או PDF
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -181,13 +182,22 @@ export function QuoteTemplatesManager() {
     let failCount = 0;
 
     for (const file of Array.from(files)) {
-      if (!file.name.endsWith('.html') && !file.name.endsWith('.htm')) {
-        failCount++;
-        continue;
-      }
-
+      const fileName = file.name.toLowerCase();
+      
       try {
-        const template = await importHtmlFile(file);
+        let template: Partial<QuoteTemplate> | null = null;
+        
+        // בדיקת סוג הקובץ וייבוא בהתאם
+        if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+          template = await importHtmlFile(file);
+        } else if (fileName.endsWith('.docx') || fileName.endsWith('.doc') || fileName.endsWith('.pdf')) {
+          template = await importDocumentToTemplate(file);
+        } else {
+          console.warn('Unsupported file type:', fileName);
+          failCount++;
+          continue;
+        }
+        
         if (template) {
           await saveMutation.mutateAsync(template);
           successCount++;
@@ -215,7 +225,7 @@ export function QuoteTemplatesManager() {
     } else if (failCount > 0) {
       toast({
         title: 'שגיאה בייבוא',
-        description: 'לא ניתן היה לייבא את הקבצים',
+        description: 'לא ניתן היה לייבא את הקבצים. נא להעלות קבצי HTML, Word או PDF.',
         variant: 'destructive',
       });
     }
@@ -263,11 +273,11 @@ export function QuoteTemplatesManager() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Hidden file input */}
+      {/* Hidden file input - supports HTML, Word, and PDF */}
       <input
         ref={fileInputRef}
         type="file"
-        accept=".html,.htm"
+        accept=".html,.htm,.docx,.doc,.pdf"
         multiple
         onChange={handleFileImport}
         className="hidden"
@@ -290,13 +300,14 @@ export function QuoteTemplatesManager() {
             variant="outline"
             disabled={isImporting}
             className="border-[#d8ac27] text-[#d8ac27] hover:bg-[#d8ac27]/10"
+            title="יבוא קבצי HTML, Word או PDF"
           >
             {isImporting ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#d8ac27] border-t-transparent ml-2" />
             ) : (
               <Upload className="h-4 w-4 ml-2" />
             )}
-            יבוא HTML
+            יבוא קובץ
           </Button>
           <Button 
             onClick={handleNew}
