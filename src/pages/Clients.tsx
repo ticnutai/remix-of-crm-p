@@ -20,6 +20,8 @@ import SmartComboField from '@/components/clients/SmartComboField';
 import { ClientsByStageView } from '@/components/clients/ClientsByStageView';
 import { ClientsStatisticsView } from '@/components/clients/ClientsStatisticsView';
 import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
+import { BulkStageDialog } from '@/components/clients/BulkStageDialog';
+import { BulkConsultantDialog } from '@/components/clients/BulkConsultantDialog';
 import { CategoryTagsManager } from '@/components/clients/CategoryTagsManager';
 import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import { useInactiveClients } from '@/components/alerts';
@@ -196,6 +198,8 @@ export default function Clients() {
   
   // Quick Classification dialogs
   const [isBulkClassifyOpen, setIsBulkClassifyOpen] = useState(false);
+  const [isBulkStageOpen, setIsBulkStageOpen] = useState(false);
+  const [isBulkConsultantOpen, setIsBulkConsultantOpen] = useState(false);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   
   // Duplicate detection state
@@ -2041,6 +2045,56 @@ export default function Clients() {
                     </span>
                   </button>
                   
+                  {/* Bulk Stage Button */}
+                  <button
+                    onClick={() => setIsBulkStageOpen(true)}
+                    disabled={selectedClients.size === 0}
+                    style={{
+                      height: '40px',
+                      padding: '0 16px',
+                      borderRadius: '20px',
+                      backgroundColor: selectedClients.size > 0 ? '#8b5cf6' : 'transparent',
+                      border: '2px solid #8b5cf6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: selectedClients.size === 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                    }}
+                    title="הגדר שלב לנבחרים"
+                  >
+                    <Layers style={{ width: '18px', height: '18px', color: selectedClients.size > 0 ? '#ffffff' : '#8b5cf6' }} />
+                    <span style={{ color: selectedClients.size > 0 ? '#ffffff' : '#8b5cf6', fontSize: '14px', fontWeight: '500' }}>
+                      שלב ({selectedClients.size})
+                    </span>
+                  </button>
+                  
+                  {/* Bulk Consultant Button */}
+                  <button
+                    onClick={() => setIsBulkConsultantOpen(true)}
+                    disabled={selectedClients.size === 0}
+                    style={{
+                      height: '40px',
+                      padding: '0 16px',
+                      borderRadius: '20px',
+                      backgroundColor: selectedClients.size > 0 ? '#3b82f6' : 'transparent',
+                      border: '2px solid #3b82f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: selectedClients.size === 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                    }}
+                    title="הגדר יועץ לנבחרים"
+                  >
+                    <Users style={{ width: '18px', height: '18px', color: selectedClients.size > 0 ? '#ffffff' : '#3b82f6' }} />
+                    <span style={{ color: selectedClients.size > 0 ? '#ffffff' : '#3b82f6', fontSize: '14px', fontWeight: '500' }}>
+                      יועץ ({selectedClients.size})
+                    </span>
+                  </button>
+                  
                   {/* Cancel Selection Button */}
                   <button
                     onClick={toggleSelectionMode}
@@ -2739,6 +2793,30 @@ export default function Clients() {
         onUpdate={() => {
           fetchClients();
           fetchCategoriesAndTags();
+          setSelectedClients(new Set());
+          setSelectionMode(false);
+        }}
+      />
+
+      {/* Bulk Stage Dialog */}
+      <BulkStageDialog
+        isOpen={isBulkStageOpen}
+        onClose={() => setIsBulkStageOpen(false)}
+        selectedClientIds={Array.from(selectedClients)}
+        onUpdate={() => {
+          fetchClients();
+          setSelectedClients(new Set());
+          setSelectionMode(false);
+        }}
+      />
+
+      {/* Bulk Consultant Dialog */}
+      <BulkConsultantDialog
+        isOpen={isBulkConsultantOpen}
+        onClose={() => setIsBulkConsultantOpen(false)}
+        selectedClientIds={Array.from(selectedClients)}
+        onUpdate={() => {
+          fetchClients();
           setSelectedClients(new Set());
           setSelectionMode(false);
         }}
