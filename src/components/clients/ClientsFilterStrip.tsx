@@ -216,7 +216,7 @@ export function ClientsFilterStrip({
   return (
     <div 
       dir="rtl"
-      className="bg-muted/50 rounded-xl border border-border p-3 mb-4"
+      className="bg-white rounded-xl border-2 border-[#d4a843] p-3 mb-4"
     >
       <div className="flex flex-wrap gap-2 items-center">
         {/* Filter Icon */}
@@ -231,7 +231,7 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 h-9"
+              className="gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]"
             >
               <ArrowUpDown className="h-4 w-4" />
               {sortByLabels[filters.sortBy]}
@@ -287,8 +287,8 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9",
-                filters.categories.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                filters.categories.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
               )}
             >
               <FolderOpen className="h-4 w-4" />
@@ -416,8 +416,8 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9",
-                filters.tags.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                filters.tags.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
               )}
             >
               <Tag className="h-4 w-4" />
@@ -496,8 +496,8 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9",
-                filters.stages.length > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                filters.stages.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
               )}
             >
               <Layers className="h-4 w-4" />
@@ -577,8 +577,8 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9",
-                filters.dateFilter !== 'all' && "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
+                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                filters.dateFilter !== 'all' && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
               )}
             >
               <CalendarDays className="h-4 w-4" />
@@ -628,8 +628,8 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasReminders}
           className={cn(
-            "gap-2 h-9",
-            filters.hasReminders === true && "bg-orange-500 text-white border-orange-500 hover:bg-orange-600"
+            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            filters.hasReminders === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
           )}
         >
           <Bell className="h-4 w-4" />
@@ -645,8 +645,8 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasTasks}
           className={cn(
-            "gap-2 h-9",
-            filters.hasTasks === true && "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
+            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            filters.hasTasks === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
           )}
         >
           <CheckSquare className="h-4 w-4" />
@@ -662,8 +662,8 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasMeetings}
           className={cn(
-            "gap-2 h-9",
-            filters.hasMeetings === true && "bg-green-500 text-white border-green-500 hover:bg-green-600"
+            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            filters.hasMeetings === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
           )}
         >
           <Users className="h-4 w-4" />

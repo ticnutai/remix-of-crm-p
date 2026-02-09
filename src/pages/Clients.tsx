@@ -1822,15 +1822,15 @@ export default function Clients() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '6px 12px',
+                  padding: '8px 16px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #d4a843',
+                  border: '2px solid #d4a843',
                   borderRadius: '8px',
                   color: '#d4a843',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  fontSize: '13px',
-                  fontWeight: '500',
+                  fontSize: '14px',
+                  fontWeight: '600',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d4a843';
@@ -1854,10 +1854,10 @@ export default function Clients() {
                   alignItems: 'center',
                   gap: '6px',
                   padding: '8px 16px',
-                  backgroundColor: selectionMode ? '#3b82f6' : 'transparent',
-                  border: '2px solid #3b82f6',
+                  backgroundColor: selectionMode ? '#d4a843' : 'transparent',
+                  border: '2px solid #d4a843',
                   borderRadius: '8px',
-                  color: selectionMode ? '#ffffff' : '#3b82f6',
+                  color: selectionMode ? '#1e293b' : '#d4a843',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   fontSize: '14px',
@@ -1865,14 +1865,14 @@ export default function Clients() {
                 }}
                 onMouseEnter={(e) => {
                   if (!selectionMode) {
-                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                    e.currentTarget.style.color = '#ffffff';
+                    e.currentTarget.style.backgroundColor = '#d4a843';
+                    e.currentTarget.style.color = '#1e293b';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!selectionMode) {
                     e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = '#3b82f6';
+                    e.currentTarget.style.color = '#d4a843';
                   }
                 }}
                 title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
