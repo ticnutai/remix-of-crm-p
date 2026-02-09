@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -21,6 +21,7 @@ import {
   HardDrive,
   TestTube,
   Bot,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +31,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useCustomTables } from '@/hooks/useCustomTables';
 import { cn } from '@/lib/utils';
 import { SidebarTasksMeetings } from './sidebar-tasks';
+import { SidebarSettingsDialog, SidebarTheme, defaultSidebarTheme } from './SidebarSettingsDialog';
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
@@ -70,6 +72,43 @@ interface OverlaySidebarProps {
 export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, onVisibilityChange }: OverlaySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+
+  // Sidebar theme
+  const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(() => {
+    const saved = localStorage.getItem('sidebar-theme');
+    return saved ? JSON.parse(saved) : defaultSidebarTheme;
+  });
+
+  // Save theme to localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebar-theme', JSON.stringify(sidebarTheme));
+  }, [sidebarTheme]);
+
+  // Detect light theme for contrast adjustments
+  const isLightTheme = useMemo(() => {
+    const bg = sidebarTheme.backgroundColor || '';
+    const hex = bg.replace('#', '');
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+      const r = Number.parseInt(hex.substring(0, 2), 16);
+      const g = Number.parseInt(hex.substring(2, 4), 16);
+      const b = Number.parseInt(hex.substring(4, 6), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+    }
+    const hslMatch = /hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)/.exec(bg);
+    if (hslMatch) return Number.parseInt(hslMatch[3]) > 50;
+    return false;
+  }, [sidebarTheme.backgroundColor]);
+
+  // Dynamic colors from theme
+  const themeBg = sidebarTheme.backgroundColor || '#1e293b';
+  const themeText = sidebarTheme.textColor || '#FFFFFF';
+  const themeAccent = sidebarTheme.activeItemColor || '#ffd700';
+  const themeIcon = sidebarTheme.iconColor || '#ffd700';
+  const themeBorder = sidebarTheme.borderColor || '#ffd700';
+  const activeBgAlpha = isLightTheme ? '35' : '20';
+  const hoverBg = isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)';
+  const subtleTextColor = isLightTheme ? `${themeText}99` : `${themeText}BB`;
 
   // Notify parent about visibility changes
   useEffect(() => {
@@ -167,11 +206,14 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
           width: `${width}px`,
           transform: shouldShow ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 300ms ease-out',
-          zIndex: 50, // Lowered from 100 to be below Sheet (200)
-          backgroundColor: '#1e293b',
-          borderLeft: '3px solid #ffd700',
-          borderRadius: '12px 0 0 12px',
+          zIndex: 50,
+          backgroundColor: themeBg,
+          borderLeft: `3px solid ${themeBorder}`,
+          borderRadius: `${sidebarTheme.borderRadius || 12}px 0 0 ${sidebarTheme.borderRadius || 12}px`,
           overflow: 'hidden',
+          fontFamily: sidebarTheme.fontFamily || 'Heebo',
+          fontSize: `${sidebarTheme.fontSize || 14}px`,
+          color: themeText,
         }}
       >
         {/* Resize Handle */}
@@ -202,14 +244,14 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
         
         <div className="flex flex-col h-full" dir="rtl">
           {/* Header with Logo & Pin */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'rgba(255, 215, 0, 0.3)', backgroundColor: '#1e293b', borderRadius: '12px 0 0 0' }}>
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: `${themeBorder}40`, backgroundColor: themeBg, borderRadius: `${sidebarTheme.borderRadius || 12}px 0 0 0` }}>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg shadow-md" style={{ backgroundColor: '#ffd700', color: '#1e3a8a' }}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg shadow-md" style={{ backgroundColor: themeAccent, color: themeBg }}>
                 <Building2 className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-lg"><span style={{ color: '#ffd700' }}>ten</span><span className="text-white">arch</span></span>
-                <span className="text-xs" style={{ color: '#ffd700' }}>CRM Pro Max</span>
+                <span className="font-bold text-lg"><span style={{ color: themeAccent }}>ten</span><span style={{ color: themeText }}>arch</span></span>
+                <span className="text-xs" style={{ color: themeAccent }}>CRM Pro Max</span>
               </div>
             </div>
             <Tooltip>
@@ -222,7 +264,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                     "transition-colors",
                     isPinned ? "hover:bg-yellow-500/30" : "text-gray-400 hover:text-white hover:bg-blue-800"
                   )}
-                  style={isPinned ? { color: '#ffd700', backgroundColor: 'rgba(255, 215, 0, 0.2)' } : {}}
+                  style={isPinned ? { color: themeAccent, backgroundColor: `${themeAccent}33` } : { color: subtleTextColor }}
                 >
                   {isPinned ? <Pin className="h-5 w-5" /> : <PinOff className="h-5 w-5" />}
                 </Button>
@@ -245,7 +287,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
             `}</style>
             {/* Main Nav */}
             <div className="space-y-1 mb-4">
-              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: '#ffd700' }}>
+              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: themeAccent }}>
                 ניווט ראשי
               </p>
               {mainNavItems.map((item) => (
@@ -256,13 +298,24 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                     isActive(item.url)
                       ? "font-medium shadow-lg"
-                      : "text-gray-300 hover:bg-blue-800 hover:text-white"
+                      : "hover:text-current"
                   )}
                   style={{
-                    ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
+                    color: isActive(item.url) ? themeBg : themeText,
+                    backgroundColor: isActive(item.url) ? themeAccent : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive(item.url)) {
+                      e.currentTarget.style.backgroundColor = hoverBg;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive(item.url)) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
                   }}
                 >
-                  <item.icon className="h-5 w-5 shrink-0" />
+                  <item.icon className="h-5 w-5 shrink-0" style={{ color: isActive(item.url) ? themeBg : themeIcon }} />
                   <span className="flex-1 text-right">{item.title}</span>
                 </Link>
               ))}
@@ -280,15 +333,15 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
               <>
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center gap-2 px-3 py-2">
-                    <Table className="h-4 w-4" style={{ color: '#ffd700' }} />
-                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#ffd700' }}>
+                    <Table className="h-4 w-4" style={{ color: themeAccent }} />
+                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: themeAccent }}>
                       טבלאות מותאמות
                     </p>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 h-4 border-0" style={{ backgroundColor: 'rgba(255, 215, 0, 0.2)', color: '#ffd700' }}>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 h-4 border-0" style={{ backgroundColor: `${themeAccent}33`, color: themeAccent }}>
                       {tables.length}
                     </Badge>
                   </div>
-                  <div className="border rounded-lg p-1" style={{ borderColor: 'rgba(255, 215, 0, 0.3)', backgroundColor: 'rgba(255, 215, 0, 0.05)' }}>
+                  <div className="border rounded-lg p-1" style={{ borderColor: `${themeBorder}40`, backgroundColor: `${themeAccent}0D` }}>
                     {tables.map((table) => (
                       <Link
                         key={table.id}
@@ -297,14 +350,15 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                           "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                           location.pathname === `/custom-table/${table.id}`
                             ? "font-medium shadow-lg"
-                            : "hover:text-white"
+                            : "hover:text-current"
                         )}
                         style={{
-                          ...(location.pathname === `/custom-table/${table.id}` ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : { color: '#ffd700' }),
+                          color: location.pathname === `/custom-table/${table.id}` ? themeBg : themeAccent,
+                          backgroundColor: location.pathname === `/custom-table/${table.id}` ? themeAccent : 'transparent',
                         }}
                         onMouseEnter={(e) => {
                           if (location.pathname !== `/custom-table/${table.id}`) {
-                            e.currentTarget.style.backgroundColor = 'rgba(255, 215, 0, 0.2)';
+                            e.currentTarget.style.backgroundColor = `${themeAccent}33`;
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -313,7 +367,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                           }
                         }}
                       >
-                        <Table className="h-5 w-5 shrink-0" style={{ color: location.pathname === `/custom-table/${table.id}` ? '#1e3a8a' : '#ffd700' }} />
+                        <Table className="h-5 w-5 shrink-0" style={{ color: location.pathname === `/custom-table/${table.id}` ? themeBg : themeAccent }} />
                         <span className="flex-1 text-right">{table.display_name}</span>
                       </Link>
                     ))}
@@ -325,7 +379,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
             {/* System Nav */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: '#ffd700' }}>
+              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: themeAccent }}>
                 מערכת
               </p>
               {systemNavItems.map((item) => (
@@ -336,20 +390,63 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                     isActive(item.url)
                       ? "font-medium shadow-lg"
-                      : "text-gray-300 hover:bg-blue-800 hover:text-white"
+                      : "hover:text-current"
                   )}
                   style={{
-                    ...(isActive(item.url) ? { backgroundColor: '#ffd700', color: '#1e3a8a' } : {}),
+                    color: isActive(item.url) ? themeBg : themeText,
+                    backgroundColor: isActive(item.url) ? themeAccent : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive(item.url)) {
+                      e.currentTarget.style.backgroundColor = hoverBg;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive(item.url)) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
                   }}
                 >
-                  <item.icon className="h-5 w-5 shrink-0" />
+                  <item.icon className="h-5 w-5 shrink-0" style={{ color: isActive(item.url) ? themeBg : themeIcon }} />
                   <span className="flex-1 text-right">{item.title}</span>
                 </Link>
               ))}
             </div>
           </ScrollArea>
+
+          {/* Footer with Theme Button */}
+          <div className="p-3 border-t" style={{ borderColor: `${themeBorder}40` }}>
+            <button
+              onClick={() => setIsThemeDialogOpen(true)}
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+              style={{
+                border: `2px solid ${themeAccent}`,
+                background: `${themeAccent}20`,
+                color: themeAccent,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${themeAccent}40`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = `${themeAccent}20`;
+              }}
+            >
+              <Palette className="h-5 w-5 shrink-0" />
+              <span className="text-sm font-semibold">ערכות נושא</span>
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Theme Settings Dialog */}
+      <SidebarSettingsDialog
+        open={isThemeDialogOpen}
+        onOpenChange={setIsThemeDialogOpen}
+        theme={sidebarTheme}
+        onThemeChange={(newTheme) => {
+          setSidebarTheme(newTheme);
+        }}
+      />
     </>
   );
 }
