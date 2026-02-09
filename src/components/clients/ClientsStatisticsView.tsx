@@ -345,9 +345,10 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
       const { error } = await supabase.from('reminders').insert({
         client_id: selectedClientForReminder.id,
         title: reminderTitle,
-        description: reminderNotes || null,
-        due_date: reminderDateTime.toISOString(),
-        is_completed: false,
+        message: reminderNotes || null,
+        remind_at: reminderDateTime.toISOString(),
+        reminder_type: 'general',
+        user_id: (await supabase.auth.getUser()).data.user?.id || '',
       });
 
       if (error) throw error;
@@ -659,16 +660,16 @@ export function ClientsStatisticsView({ clients, onClose }: ClientsStatisticsVie
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            {stages.slice(0, 3).map(stage => (
-              <div key={stage.id} className="flex items-center justify-between text-sm">
+            {allStages.slice(0, 3).map(stage => (
+              <div key={stage.stage_id} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
-                  {stage.name}
+                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  {stage.stage_name}
                 </span>
-                <span className="font-medium">{statistics.byStage[stage.id]?.length || 0}</span>
+                <span className="font-medium">{statistics.byStage[stage.stage_id]?.length || 0}</span>
               </div>
             ))}
-            {stages.length > 3 && (
+            {allStages.length > 3 && (
               <Button 
                 variant="link" 
                 size="sm" 

@@ -1198,7 +1198,7 @@ export function useClientStages(clientId: string) {
         stage_name: ts.stage_name,
         stage_icon: ts.stage_icon,
         sort_order: currentMaxOrder + 1 + index,
-        target_working_days: ts.target_working_days || null,
+        target_working_days: (ts as any).target_working_days || null,
       }));
 
       const { data: newStages, error: insertStagesError } = await supabase
@@ -1241,10 +1241,10 @@ export function useClientStages(clientId: string) {
             completed_at: includeContent && metadata.completed_at ? metadata.completed_at : null,
             // Include styling if present and includeContent is true
             ...(includeContent && {
-              background_color: tt.background_color || null,
-              text_color: tt.text_color || null,
-              is_bold: tt.is_bold || false,
-              target_working_days: tt.target_working_days || null,
+              background_color: (tt as any).background_color || null,
+              text_color: (tt as any).text_color || null,
+              is_bold: (tt as any).is_bold || false,
+              target_working_days: (tt as any).target_working_days || null,
               started_at: metadata.started_at || null,
             }),
           };
