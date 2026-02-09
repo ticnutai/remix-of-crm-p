@@ -1,5 +1,5 @@
 // Hook for syncing DataTable with Supabase database
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -141,11 +141,6 @@ export function useDataTableSync() {
           .limit(5000), // Load all clients
       ]);
       
-      console.log('📊 [useDataTableSync] Loaded:', {
-        clients: clientsRes.data?.length || 0,
-        projects: projectsRes.data?.length || 0,
-      });
-
       if (clientsRes.data) {
         // Transform clients to ensure no null values for string fields
         const clientsList: SyncedClient[] = clientsRes.data.map((c: any) => ({
@@ -222,9 +217,18 @@ export function useDataTableSync() {
     if (user) fetchData();
   }, [user, fetchData]);
 
-  // Real-time subscription
+  // Real-time subscription with debounce to prevent excessive refetches
+  const realtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!user) return;
+
+    const debouncedFetch = () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      realtimeTimerRef.current = setTimeout(() => {
+        fetchData();
+      }, 1000); // Wait 1s after last change before refetching
+    };
 
     const projectsChannel = supabase
       .channel('projects-changes')
@@ -232,7 +236,7 @@ export function useDataTableSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'projects' },
         () => {
-          fetchData();
+          debouncedFetch();
         }
       )
       .subscribe();
@@ -243,12 +247,13 @@ export function useDataTableSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'clients' },
         () => {
-          fetchData();
+          debouncedFetch();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
       supabase.removeChannel(projectsChannel);
       supabase.removeChannel(clientsChannel);
     };

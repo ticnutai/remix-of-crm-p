@@ -242,6 +242,8 @@ export function useClientStagesTable() {
     };
   }, [fetchClientStages]);
 
+  const getClientStageInfo = useCallback((clientId: string) => clientStages.get(clientId) || null, [clientStages]);
+
   return {
     clientStages,
     allStages,
@@ -249,6 +251,6 @@ export function useClientStagesTable() {
     fetchClientStages,
     updateClientStage,
     updateMultipleClientsStage,
-    getClientStageInfo: (clientId: string) => clientStages.get(clientId) || null,
+    getClientStageInfo,
   };
 }

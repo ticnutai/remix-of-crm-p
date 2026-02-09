@@ -60,6 +60,7 @@ export interface UniversalDataTableProps<T extends { id: string; custom_data?: R
   loading?: boolean;
   onRowClick?: (row: T, index: number) => void;
   onCellEdit?: (row: T, columnId: string, value: any) => void;
+  onSelectionChange?: (selected: T[]) => void;
   
   // Permission control
   canAddColumns?: boolean;
@@ -96,6 +97,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
   loading = false,
   onRowClick,
   onCellEdit,
+  onSelectionChange,
   canAddColumns = true,
   canDeleteColumns = true,
   maxViewportHeightOffset,
@@ -346,13 +348,6 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
     // Ensure baseColumns is always an array
     const columns = baseColumns || [];
     
-    console.log('[UniversalDataTable] Computing allColumns:', {
-      baseColumnsCount: columns.length,
-      baseColumnIds: columns.map(c => c.id),
-      filteredDynamicColumnsCount: filteredDynamicColumns.length,
-      filteredDynamicColumnIds: filteredDynamicColumns.map(c => c.id),
-    });
-    
     // Find the actions column (usually last)
     const actionsColumnIndex = columns.findIndex(c => c.id === 'actions');
     
@@ -368,11 +363,6 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
       // No actions column, just append
       result = [...columns, ...filteredDynamicColumns];
     }
-    
-    console.log('[UniversalDataTable] allColumns result:', {
-      count: result.length,
-      ids: result.map(c => c.id),
-    });
     
     return result;
   }, [baseColumns, filteredDynamicColumns]);
@@ -583,6 +573,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         loading={loading || data !== deferredData || columnsLoading}
         onRowClick={onRowClick}
         onCellEdit={handleCellEdit}
+        onSelectionChange={onSelectionChange}
         virtualScrollThreshold={virtualScrollThreshold}
         // Cell formatting props (enables right-click context menu)
         cellFormatting={cellFormatting}

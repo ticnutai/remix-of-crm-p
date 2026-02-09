@@ -676,27 +676,20 @@ export default function DataTablePro() {
   
   // Keep localEmployees in sync with dbEmployees
   useEffect(() => {
-    console.log('🔄 Syncing localEmployees with dbEmployees:', dbEmployees?.length || 0);
     setLocalEmployees(dbEmployees);
   }, [dbEmployees]);
   
   // Custom data hook for updating custom columns data for employees
   const { updateCustomData: updateEmployeeCustomData } = useCustomData('profiles', localEmployees, setLocalEmployees);
-  console.log('🎯 updateEmployeeCustomData:', typeof updateEmployeeCustomData, updateEmployeeCustomData ? 'defined' : 'UNDEFINED');
 
   const handleEmployeeCellEdit = useCallback(async (row: SyncedEmployee, columnId: string, newValue: any) => {
-    console.log('🔧 handleEmployeeCellEdit called:', { rowId: row.id, columnId, newValue });
-    console.log('🔧 employeeCustomColumns:', employeeCustomColumns);
-    console.log('🔧 updateEmployeeCustomData:', typeof updateEmployeeCustomData);
     
     // Check if this is a custom column (stored in custom_data)
     const customColumn = employeeCustomColumns.find(col => col.column_key === columnId || `custom_data.${col.column_key}` === columnId);
-    console.log('🔧 customColumn found:', customColumn);
     
     if (customColumn) {
       // Update custom column data
       const actualColumnKey = columnId.startsWith('custom_data.') ? columnId.replace('custom_data.', '') : columnId;
-      console.log('🔧 Updating custom data with key:', actualColumnKey);
       const { error } = await updateEmployeeCustomData(row.id, actualColumnKey, newValue);
       
       if (error) {
@@ -707,11 +700,10 @@ export default function DataTablePro() {
           variant: 'destructive',
         });
       } else {
-        console.log('✅ Custom data updated successfully');
+        // success - no log needed
       }
     } else {
       // Update base column
-      console.log('🔧 Updating base column');
       await updateEmployee(row.id, columnId, newValue);
     }
   }, [updateEmployee, employeeCustomColumns, updateEmployeeCustomData, toast]);
@@ -919,6 +911,11 @@ export default function DataTablePro() {
     }
     setSelectedClients([]);
   }, [selectedClients, deleteDbClient]);
+
+  // Handle client selection change from table (stable callback)
+  const handleClientSelectionChange = useCallback((selected: any[]) => {
+    setSelectedClients(selected as SyncedClient[]);
+  }, []);
 
   // Set stage for multiple selected clients
   const handleBulkSetStage = useCallback(async (stageName: string) => {
@@ -1987,16 +1984,6 @@ export default function DataTablePro() {
 
     const result = [...visibleBaseColumns, ...dynamicCols];
     
-    // DEBUG: Log clientColumns
-    console.log('[DataTablePro] clientColumns computed:', {
-      visibleBaseColumnsCount: visibleBaseColumns.length,
-      visibleBaseColumnIds: visibleBaseColumns.map(c => c.id),
-      dynamicColsCount: dynamicCols.length,
-      dynamicColIds: dynamicCols.map(c => c.id),
-      totalCount: result.length,
-      totalIds: result.map(c => c.id),
-    });
-    
     return result;
   }, [navigate, clientCustomColumns, handleDeleteClientColumn, clientColumnHeaders, hiddenClientColumns, handleClientHeaderChange, handleHideClientColumn, getClientStageInfo, availableStages]);
 
@@ -2838,6 +2825,7 @@ export default function DataTablePro() {
                     columnToggle
                     showSummary
                     onCellEdit={handleClientCellEdit}
+                    onSelectionChange={handleClientSelectionChange}
                     loading={isSyncing}
                   />
                 )}

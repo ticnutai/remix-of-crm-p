@@ -258,6 +258,8 @@ export function useClientConsultantsTable() {
     };
   }, [fetchClientConsultants]);
 
+  const getClientConsultantsInfo = useCallback((clientId: string) => clientConsultants.get(clientId) || null, [clientConsultants]);
+
   return {
     clientConsultants,
     allConsultants,
@@ -268,6 +270,6 @@ export function useClientConsultantsTable() {
     updateClientConsultants,
     setClientConsultant,
     updateMultipleClientsConsultant,
-    getClientConsultantsInfo: (clientId: string) => clientConsultants.get(clientId) || null,
+    getClientConsultantsInfo,
   };
 }
