@@ -59,3 +59,6 @@ test.describe('🧪 QuickInputSection - debug clicks', () => {
     await expect(dialog.getByText('הוסף כותרת חדשה')).toBeVisible();
 
     // Add a new title
+    console.log('[test] Test completed successfully');
+  });
+});

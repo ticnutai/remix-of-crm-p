@@ -367,7 +367,7 @@ function SortableTaskItem({
                         <Input type="number" min="1" max="365" placeholder="ימים" className="h-7 text-xs text-center" onClick={e => e.stopPropagation()} onKeyDown={e => {
                     e.stopPropagation();
                     if (e.key === 'Enter') {
-                      const days = parseInt((e.target as HTMLInputElement).value);
+                      const days = Number.parseInt((e.target as HTMLInputElement).value);
                       if (days > 0 && days <= 365) {
                         startTaskTimer(task.id, days);
                       }
@@ -377,7 +377,7 @@ function SortableTaskItem({
                     e.stopPropagation();
                     const input = e.currentTarget.previousElementSibling as HTMLInputElement;
                     if (input?.value) {
-                      const days = parseInt(input.value);
+                      const days = Number.parseInt(input.value);
                       if (days > 0 && days <= 365) {
                         startTaskTimer(task.id, days);
                       }
@@ -1312,16 +1312,16 @@ export function ClientStagesBoard({
                           days: e.target.value
                         })} onKeyDown={e => {
                           if (e.key === 'Enter' && customTimerDays?.days) {
-                            const days = parseInt(customTimerDays.days);
+                            const days = Number.parseInt(customTimerDays.days);
                             if (days > 0 && days <= 365) {
                               startStageTimer(stage.stage_id, days);
                               setCustomTimerDays(null);
                             }
                           }
                         }} />
-                                <Button size="sm" className="h-7 px-2" disabled={!customTimerDays?.days || parseInt(customTimerDays.days) <= 0} onClick={() => {
+                                <Button size="sm" className="h-7 px-2" disabled={!customTimerDays?.days || Number.parseInt(customTimerDays.days) <= 0} onClick={() => {
                           if (customTimerDays?.days) {
-                            const days = parseInt(customTimerDays.days);
+                            const days = Number.parseInt(customTimerDays.days);
                             if (days > 0 && days <= 365) {
                               startStageTimer(stage.stage_id, days);
                               setCustomTimerDays(null);
@@ -1509,16 +1509,16 @@ export function ClientStagesBoard({
                             days: e.target.value
                           })} onKeyDown={e => {
                             if (e.key === 'Enter' && customTimerDays?.days) {
-                              const days = parseInt(customTimerDays.days);
+                              const days = Number.parseInt(customTimerDays.days);
                               if (days > 0 && days <= 365) {
                                 startStageTimer(expandedStageData.stage_id, days);
                                 setCustomTimerDays(null);
                               }
                             }
                           }} />
-                                <Button size="sm" className="h-7 px-2" disabled={!customTimerDays?.days || parseInt(customTimerDays.days) <= 0} onClick={() => {
+                                <Button size="sm" className="h-7 px-2" disabled={!customTimerDays?.days || Number.parseInt(customTimerDays.days) <= 0} onClick={() => {
                             if (customTimerDays?.days) {
-                              const days = parseInt(customTimerDays.days);
+                              const days = Number.parseInt(customTimerDays.days);
                               if (days > 0 && days <= 365) {
                                 startStageTimer(expandedStageData.stage_id, days);
                                 setCustomTimerDays(null);

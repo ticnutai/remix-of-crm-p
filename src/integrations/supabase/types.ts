@@ -1328,6 +1328,8 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          aguda_address: string | null
+          aguda_email: string | null
           budget_range: string | null
           category_id: string | null
           classification: string | null
@@ -1345,6 +1347,7 @@ export type Database = {
           is_sample: boolean | null
           linkedin: string | null
           migrash: string | null
+          moshav: string | null
           name: string
           name_clean: string | null
           notes: string | null
@@ -1356,15 +1359,20 @@ export type Database = {
           source: string | null
           stage: string | null
           status: string | null
+          street: string | null
           taba: string | null
           tags: string[] | null
           updated_at: string
           user_id: string | null
+          vaad_moshav_address: string | null
+          vaad_moshav_email: string | null
           website: string | null
           whatsapp: string | null
         }
         Insert: {
           address?: string | null
+          aguda_address?: string | null
+          aguda_email?: string | null
           budget_range?: string | null
           category_id?: string | null
           classification?: string | null
@@ -1382,6 +1390,7 @@ export type Database = {
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
+          moshav?: string | null
           name: string
           name_clean?: string | null
           notes?: string | null
@@ -1393,15 +1402,20 @@ export type Database = {
           source?: string | null
           stage?: string | null
           status?: string | null
+          street?: string | null
           taba?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string | null
+          vaad_moshav_address?: string | null
+          vaad_moshav_email?: string | null
           website?: string | null
           whatsapp?: string | null
         }
         Update: {
           address?: string | null
+          aguda_address?: string | null
+          aguda_email?: string | null
           budget_range?: string | null
           category_id?: string | null
           classification?: string | null
@@ -1419,6 +1433,7 @@ export type Database = {
           is_sample?: boolean | null
           linkedin?: string | null
           migrash?: string | null
+          moshav?: string | null
           name?: string
           name_clean?: string | null
           notes?: string | null
@@ -1430,10 +1445,13 @@ export type Database = {
           source?: string | null
           stage?: string | null
           status?: string | null
+          street?: string | null
           taba?: string | null
           tags?: string[] | null
           updated_at?: string
           user_id?: string | null
+          vaad_moshav_address?: string | null
+          vaad_moshav_email?: string | null
           website?: string | null
           whatsapp?: string | null
         }

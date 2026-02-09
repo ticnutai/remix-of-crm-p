@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import { useGoogleSheets } from '@/hooks/useGoogleSheets';
 import { toast } from '@/hooks/use-toast';
 import { ClientsFilterStrip, ClientFilterState } from '@/components/clients/ClientsFilterStrip';
 import { ClientQuickClassify } from '@/components/clients/ClientQuickClassify';
+import SmartComboField from '@/components/clients/SmartComboField';
 import { ClientsByStageView } from '@/components/clients/ClientsByStageView';
 import { ClientsStatisticsView } from '@/components/clients/ClientsStatisticsView';
 import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
@@ -164,6 +166,12 @@ export default function Clients() {
   const [newClientHelka, setNewClientHelka] = useState('');
   const [newClientMigrash, setNewClientMigrash] = useState('');
   const [newClientTaba, setNewClientTaba] = useState('');
+  const [newClientStreet, setNewClientStreet] = useState('');
+  const [newClientMoshav, setNewClientMoshav] = useState('');
+  const [newClientAgudaAddress, setNewClientAgudaAddress] = useState('');
+  const [newClientAgudaEmail, setNewClientAgudaEmail] = useState('');
+  const [newClientVaadMoshavAddress, setNewClientVaadMoshavAddress] = useState('');
+  const [newClientVaadMoshavEmail, setNewClientVaadMoshavEmail] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
   
   // Filter state
@@ -518,7 +526,6 @@ export default function Clients() {
   };
 
   const fetchClients = async () => {
-    console.log('🔄 [Clients Page] fetchClients started...');
     setIsLoading(true);
     try {
       // Fetch all clients without default limit (Supabase defaults to 1000)
@@ -530,11 +537,9 @@ export default function Clients() {
 
       if (error) throw error;
 
-      console.log('✅ [Clients Page] Clients loaded successfully:', data?.length || 0, 'Total count:', count);
       setClients((data || []) as Client[]);
       // filteredClients is now computed automatically via useMemo
     } catch (error) {
-      console.error('❌ [Clients Page] Error fetching clients:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן לטעון את רשימת הלקוחות',
@@ -600,6 +605,16 @@ export default function Clients() {
     setIsAddingClient(true);
     
     try {
+      // Ensure we have a valid session, try to refresh if lost
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        await supabase.auth.refreshSession();
+      }
+      
+      // Get current user for ownership fields
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+      
       // Check for duplicates first
       const duplicate = await checkForDuplicates(
         newClientName.trim(),
@@ -619,7 +634,15 @@ export default function Clients() {
           helka: newClientHelka.trim() || null,
           migrash: newClientMigrash.trim() || null,
           taba: newClientTaba.trim() || null,
+          street: newClientStreet.trim() || null,
+          moshav: newClientMoshav.trim() || null,
+          aguda_address: newClientAgudaAddress.trim() || null,
+          aguda_email: newClientAgudaEmail.trim() || null,
+          vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
+          vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
           status: 'active',
+          user_id: userId,
+          created_by: userId,
         });
         setDuplicateClient(duplicate);
         setDuplicateDialogOpen(true);
@@ -637,10 +660,17 @@ export default function Clients() {
         helka: newClientHelka.trim() || null,
         migrash: newClientMigrash.trim() || null,
         taba: newClientTaba.trim() || null,
+        street: newClientStreet.trim() || null,
+        moshav: newClientMoshav.trim() || null,
+        aguda_address: newClientAgudaAddress.trim() || null,
+        aguda_email: newClientAgudaEmail.trim() || null,
+        vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
+        vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
         status: 'active',
+        user_id: userId,
+        created_by: userId,
       });
     } catch (error) {
-      console.error('Error adding client:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן להוסיף את הלקוח',
@@ -677,14 +707,12 @@ export default function Clients() {
       if (data?.id) {
         navigate(`/clients/${data.id}`);
       }
-    } catch (error) {
-      console.error('Error inserting client:', error);
+    } catch (error: any) {
       toast({
         title: 'שגיאה',
-        description: 'לא ניתן להוסיף את הלקוח',
+        description: error?.message || 'לא ניתן להוסיף את הלקוח',
         variant: 'destructive',
       });
-    } finally {
       setIsAddingClient(false);
     }
   };
@@ -763,6 +791,12 @@ export default function Clients() {
     setNewClientHelka('');
     setNewClientMigrash('');
     setNewClientTaba('');
+    setNewClientStreet('');
+    setNewClientMoshav('');
+    setNewClientAgudaAddress('');
+    setNewClientAgudaEmail('');
+    setNewClientVaadMoshavAddress('');
+    setNewClientVaadMoshavEmail('');
   };
 
   const getStatusConfig = (status: string | null) => {
@@ -869,6 +903,33 @@ export default function Clients() {
       console.error('Error deleting client:', error);
       toast({ title: 'שגיאה במחיקת הלקוח', variant: 'destructive' });
     }
+  };
+
+  // Context menu delete (no event needed)
+  const handleContextDeleteClient = async (clientId: string) => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק לקוח זה?')) return;
+    try {
+      const { error } = await supabase.from('clients').delete().eq('id', clientId);
+      if (error) throw error;
+      setClients(prev => prev.filter(c => c.id !== clientId));
+      toast({ title: 'הלקוח נמחק בהצלחה' });
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({ title: 'שגיאה במחיקת הלקוח', variant: 'destructive' });
+    }
+  };
+
+  // Context menu: enter selection mode with this client pre-selected
+  const handleStartSelectionWithClient = (clientId: string) => {
+    setSelectionMode(true);
+    setSelectedClients(new Set([clientId]));
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: `${label} הועתק ללוח` });
+    });
   };
 
   // Edit client handler
@@ -2349,7 +2410,64 @@ export default function Clients() {
               }}
             >
               {filteredClients.slice(0, displayedCount).map((client) => (
-                <ClientCard key={client.id} client={client} />
+                <ContextMenu key={client.id}>
+                  <ContextMenuTrigger asChild>
+                    <div>
+                      <ClientCard client={client} />
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="w-56" dir="rtl">
+                    <ContextMenuItem
+                      onClick={() => navigate(`/client-profile/${client.id}`)}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Eye className="w-4 h-4" />
+                      צפה בפרופיל
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      onClick={() => navigate(`/client-profile/${client.id}?edit=true`)}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      ערוך לקוח
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    {client.phone && (
+                      <ContextMenuItem
+                        onClick={() => copyToClipboard(client.phone!, 'מספר טלפון')}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Copy className="w-4 h-4" />
+                        העתק טלפון
+                      </ContextMenuItem>
+                    )}
+                    {client.email && (
+                      <ContextMenuItem
+                        onClick={() => copyToClipboard(client.email!, 'כתובת מייל')}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Copy className="w-4 h-4" />
+                        העתק מייל
+                      </ContextMenuItem>
+                    )}
+                    {(client.phone || client.email) && <ContextMenuSeparator />}
+                    <ContextMenuItem
+                      onClick={() => handleStartSelectionWithClient(client.id)}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                      בחר למחיקה מרובה
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem
+                      onClick={() => handleContextDeleteClient(client.id)}
+                      className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      מחק לקוח
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
               {/* Infinite Scroll Trigger - inside scroll container */}
               {displayedCount < filteredClients.length && (
@@ -2401,15 +2519,16 @@ export default function Clients() {
       
       {/* Add Client Dialog */}
       <Dialog open={isAddClientDialogOpen} onOpenChange={setIsAddClientDialogOpen}>
-        <DialogContent className="max-w-md" dir="rtl">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-right">
               <UserPlus className="w-5 h-5 text-green-500" />
               הוספת לקוח חדש
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pl-2" style={{ maxHeight: 'calc(90vh - 160px)' }}>
+            {/* פרטים בסיסיים */}
             <div className="space-y-2">
               <Label htmlFor="client-name" className="text-right">שם לקוח *</Label>
               <Input
@@ -2452,12 +2571,33 @@ export default function Clients() {
                 dir="ltr"
               />
             </div>
+
+            {/* כתובת ומיקום */}
+            <div className="border-t pt-4 mt-2">
+              <Label className="text-sm font-medium text-muted-foreground mb-3 block">כתובת ומיקום</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <SmartComboField
+                  label="רחוב"
+                  value={newClientStreet}
+                  onChange={setNewClientStreet}
+                  placeholder="שם הרחוב"
+                  fieldColumn="street"
+                />
+                <SmartComboField
+                  label="מושב / ישוב"
+                  value={newClientMoshav}
+                  onChange={setNewClientMoshav}
+                  placeholder="שם המושב"
+                  fieldColumn="moshav"
+                />
+              </div>
+            </div>
             
             {/* שדות נדל"ן */}
             <div className="border-t pt-4 mt-2">
               <Label className="text-sm font-medium text-muted-foreground mb-3 block">פרטי נדל"ן (אופציונלי)</Label>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="client-id-number" className="text-right text-xs">ת.ז / ח.פ</Label>
                   <Input
                     id="client-id-number"
@@ -2467,65 +2607,92 @@ export default function Clients() {
                     className="text-right"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-taba" className="text-right text-xs">תב"ע</Label>
-                  <Input
-                    id="client-taba"
-                    value={newClientTaba}
-                    onChange={(e) => setNewClientTaba(e.target.value)}
-                    placeholder="תב''ע"
-                    className="text-right"
-                  />
-                </div>
+                <SmartComboField
+                  label='תב"ע'
+                  value={newClientTaba}
+                  onChange={setNewClientTaba}
+                  placeholder="תב''ע"
+                  fieldColumn="taba"
+                />
               </div>
               <div className="grid grid-cols-3 gap-3 mt-3">
-                <div className="space-y-2">
-                  <Label htmlFor="client-gush" className="text-right text-xs">גוש</Label>
-                  <Input
-                    id="client-gush"
-                    value={newClientGush}
-                    onChange={(e) => setNewClientGush(e.target.value)}
-                    placeholder="גוש"
-                    className="text-right"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-helka" className="text-right text-xs">חלקה</Label>
-                  <Input
-                    id="client-helka"
-                    value={newClientHelka}
-                    onChange={(e) => setNewClientHelka(e.target.value)}
-                    placeholder="חלקה"
-                    className="text-right"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client-migrash" className="text-right text-xs">מגרש</Label>
-                  <Input
-                    id="client-migrash"
-                    value={newClientMigrash}
-                    onChange={(e) => setNewClientMigrash(e.target.value)}
-                    placeholder="מגרש"
-                    className="text-right"
-                  />
-                </div>
+                <SmartComboField
+                  label="גוש"
+                  value={newClientGush}
+                  onChange={setNewClientGush}
+                  placeholder="גוש"
+                  fieldColumn="gush"
+                />
+                <SmartComboField
+                  label="חלקה"
+                  value={newClientHelka}
+                  onChange={setNewClientHelka}
+                  placeholder="חלקה"
+                  fieldColumn="helka"
+                />
+                <SmartComboField
+                  label="מגרש"
+                  value={newClientMigrash}
+                  onChange={setNewClientMigrash}
+                  placeholder="מגרש"
+                  fieldColumn="migrash"
+                />
+              </div>
+            </div>
+
+            {/* ועד האגודה */}
+            <div className="border-t pt-4 mt-2">
+              <Label className="text-sm font-medium text-muted-foreground mb-3 block">ועד האגודה</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <SmartComboField
+                  label="כתובת ועד האגודה"
+                  value={newClientAgudaAddress}
+                  onChange={setNewClientAgudaAddress}
+                  placeholder="כתובת"
+                  fieldColumn="aguda_address"
+                />
+                <SmartComboField
+                  label="מייל ועד האגודה"
+                  value={newClientAgudaEmail}
+                  onChange={setNewClientAgudaEmail}
+                  placeholder="email@example.com"
+                  fieldColumn="aguda_email"
+                  dir="ltr"
+                  type="email"
+                />
+              </div>
+            </div>
+
+            {/* ועד המושב */}
+            <div className="border-t pt-4 mt-2">
+              <Label className="text-sm font-medium text-muted-foreground mb-3 block">ועד המושב</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <SmartComboField
+                  label="כתובת ועד המושב"
+                  value={newClientVaadMoshavAddress}
+                  onChange={setNewClientVaadMoshavAddress}
+                  placeholder="כתובת"
+                  fieldColumn="vaad_moshav_address"
+                />
+                <SmartComboField
+                  label="מייל ועד המושב"
+                  value={newClientVaadMoshavEmail}
+                  onChange={setNewClientVaadMoshavEmail}
+                  placeholder="email@example.com"
+                  fieldColumn="vaad_moshav_email"
+                  dir="ltr"
+                  type="email"
+                />
               </div>
             </div>
           </div>
           
-          <DialogFooter className="flex-row-reverse gap-2">
+          <DialogFooter className="flex-row-reverse gap-2 shrink-0 border-t pt-4">
             <Button
               variant="outline"
               onClick={() => {
                 setIsAddClientDialogOpen(false);
-                setNewClientName('');
-                setNewClientEmail('');
-                setNewClientPhone('');
-                setNewClientIdNumber('');
-                setNewClientGush('');
-                setNewClientHelka('');
-                setNewClientMigrash('');
-                setNewClientTaba('');
+                resetAddClientForm();
               }}
             >
               ביטול

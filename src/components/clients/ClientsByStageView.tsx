@@ -535,7 +535,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     if (!saved && allStageNames.length > 0 && expandedGroups.size === 0) {
       setExpandedGroups(new Set(allStageNames));
     }
-  }, [allStageNames]);
+  }, [allStageNames, expandedGroups.size]);
 
   // Get recent clients (last 20 clients by created_at assumption)
   const recentClients = useMemo(() => {
@@ -556,6 +556,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
       return [{
         stage_name: 'לקוחות אחרונים',
         stage_icon: null,
+        sort_order: 0,
         clients: recentClients,
       }] as StageGroup[];
     }
@@ -571,7 +572,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const toggleClient = (clientId: string) => {
     setExpandedClients(prev => {
       const next = new Set(prev);
-      next.has(clientId) ? next.delete(clientId) : next.add(clientId);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
       return next;
     });
   };
@@ -579,7 +584,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const toggleGroup = (stageName: string) => {
     setExpandedGroups(prev => {
       const next = new Set(prev);
-      next.has(stageName) ? next.delete(stageName) : next.add(stageName);
+      if (next.has(stageName)) {
+        next.delete(stageName);
+      } else {
+        next.add(stageName);
+      }
       return next;
     });
   };
@@ -601,7 +610,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const toggleConsultant = (consultantId: string) => {
     setExpandedConsultants(prev => {
       const next = new Set(prev);
-      next.has(consultantId) ? next.delete(consultantId) : next.add(consultantId);
+      if (next.has(consultantId)) {
+        next.delete(consultantId);
+      } else {
+        next.add(consultantId);
+      }
       return next;
     });
   };

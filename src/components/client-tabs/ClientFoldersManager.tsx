@@ -63,14 +63,13 @@ import {
   Send,
   MapPin,
   Building,
-  Settings2,
   Layers,
   ExternalLink,
   Link,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useClientFolders, ClientFolder, ClientFolderStage, ClientFolderTask } from '@/hooks/useClientFolders';
-import { useClientStages, ClientStage } from '@/hooks/useClientStages';
+import { useClientFolders, ClientFolderStage, ClientFolderTask } from '@/hooks/useClientFolders';
+import { useClientStages } from '@/hooks/useClientStages';
 
 interface ClientFoldersManagerProps {
   clientId: string;

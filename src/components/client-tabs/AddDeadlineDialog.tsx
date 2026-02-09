@@ -38,9 +38,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useClientDeadlines, DeadlineTemplate } from '@/hooks/useClientDeadlines';
-import { calculateDeadlineDate, formatRemainingDays } from '@/hooks/useIsraeliWorkdays';
+import { calculateDeadlineDate } from '@/hooks/useIsraeliWorkdays';
 import { cn } from '@/lib/utils';
-import { format, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 
 interface AddDeadlineDialogProps {
@@ -85,7 +85,7 @@ const calculateReminderDate = (startDate: Date, deadlineDays: number, daysBefore
   return reminderDate;
 };
 
-export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineDialogProps) {
+export function AddDeadlineDialog({ open, onOpenChange, clientId }: Readonly<AddDeadlineDialogProps>) {
   const { templates, createDeadline, createTemplate } = useClientDeadlines(clientId);
   
   const [activeTab, setActiveTab] = useState<'template' | 'custom'>('template');
@@ -144,7 +144,7 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
   };
 
   const addCustomReminder = () => {
-    const days = parseInt(customReminderDay);
+    const days = Number.parseInt(customReminderDay);
     if (days > 0 && days < deadlineDays && !reminderDays.includes(days)) {
       setReminderDays(prev => [...prev, days].sort((a, b) => b - a));
       setCustomReminderDay('');
@@ -354,7 +354,7 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
                     type="number"
                     min={1}
                     value={deadlineDays}
-                    onChange={(e) => setDeadlineDays(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setDeadlineDays(Number.parseInt(e.target.value) || 0)}
                     className="text-right"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -418,7 +418,7 @@ export function AddDeadlineDialog({ open, onOpenChange, clientId }: AddDeadlineD
                       variant="outline"
                       size="sm"
                       onClick={addCustomReminder}
-                      disabled={!customReminderDay || parseInt(customReminderDay) <= 0 || parseInt(customReminderDay) >= deadlineDays}
+                      disabled={!customReminderDay || Number.parseInt(customReminderDay) <= 0 || Number.parseInt(customReminderDay) >= deadlineDays}
                       className="h-8"
                     >
                       <Plus className="h-3 w-3 mr-1" />

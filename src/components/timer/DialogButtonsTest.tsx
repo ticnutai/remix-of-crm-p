@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 export function DialogButtonsTest() {
   const [titles, setTitles] = useState<string[]>(['תכנון', 'עיצוב', 'פגישה']);
@@ -146,7 +146,7 @@ export function DialogButtonsTest() {
             ) : (
               <ul className="mt-1 space-y-0.5">
                 {clickLog.map((log, i) => (
-                  <li key={i} className="text-green-400">{log}</li>
+                  <li key={`log-${Date.now()}-${i}`} className="text-green-400">{log}</li>
                 ))}
               </ul>
             )}

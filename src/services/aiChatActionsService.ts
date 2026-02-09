@@ -230,6 +230,10 @@ class AIChatActionsService {
       const duration = params.duration_minutes || params.duration || 60;
       const endTime = new Date(scheduledAt.getTime() + duration * 60000);
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('meetings')
         .insert({
@@ -240,6 +244,7 @@ class AIChatActionsService {
           location: params.location || null,
           notes: params.notes || null,
           status: 'scheduled',
+          created_by: user.id,
         })
         .select()
         .single();
@@ -304,6 +309,10 @@ class AIChatActionsService {
 
       const dueDate = params.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -313,8 +322,9 @@ class AIChatActionsService {
           project_id: projectId || null,
           priority: params.priority || 'medium',
           due_date: dueDate.toISOString(),
-          assignee_id: params.assigneeId || null,
+          assigned_to: params.assigneeId || null,
           status: 'pending',
+          created_by: user.id,
         })
         .select()
         .single();
@@ -482,16 +492,21 @@ class AIChatActionsService {
         }
       }
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('reminders')
         .insert({
           title: params.title,
-          description: params.description || null,
-          reminder_date: params.reminderDate.toISOString(),
-          client_id: clientId || null,
-          project_id: params.projectId || null,
+          message: params.description || null,
+          remind_at: params.reminderDate.toISOString(),
+          entity_type: 'custom',
+          entity_id: clientId || null,
           is_sent: false,
           is_dismissed: false,
+          user_id: user.id,
         })
         .select()
         .single();
@@ -529,12 +544,18 @@ class AIChatActionsService {
   }): Promise<ActionResult> {
     try {
       const date = params.date || new Date();
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('time_entries')
         .insert({
           description: params.description,
           start_time: date.toISOString(),
           duration_minutes: Math.round(params.hours * 60),
+          user_id: user.id,
         })
         .select()
         .single();

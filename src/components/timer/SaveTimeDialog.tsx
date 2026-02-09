@@ -4,7 +4,7 @@
  * 
  * ✅ שודרג לסנכרון ענן - הכותרות וההערות נשמרות ב-Supabase!
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -18,15 +18,13 @@ import { cn } from '@/lib/utils';
 import { 
   Save, 
   Plus, 
-  X, 
   Check, 
   Edit2, 
   Trash2, 
   FileText,
   Clock,
   ListPlus,
-  Cloud,
-  CloudOff
+  Cloud
 } from 'lucide-react';
 import { useUserSettings } from '@/hooks/useUserSettings';
 
