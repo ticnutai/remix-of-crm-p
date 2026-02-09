@@ -48,6 +48,16 @@ const mapDbStatusToDemo = (status: string): SyncedProject['status'] => {
   return mapping[status] || 'active';
 };
 
+// Timeout wrapper utility to prevent operations from hanging indefinitely
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
 // Map demo status to DB status
 const mapDemoStatusToDb = (status: string): string => {
   const mapping: Record<string, string> = {
@@ -292,10 +302,14 @@ export function useDataTableSync() {
           return true;
       }
 
-      const { error } = await supabase
-        .from('projects')
-        .update(payload)
-        .eq('id', projectId);
+      const { error } = await withTimeout(
+        supabase
+          .from('projects')
+          .update(payload)
+          .eq('id', projectId),
+        10000,
+        'Update project'
+      );
 
       if (error) throw error;
 
@@ -308,7 +322,10 @@ export function useDataTableSync() {
       return true;
     } catch (error) {
       console.error('Error updating project:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן לעדכן את הפרויקט', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן לעדכן את הפרויקט';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return false;
     } finally {
       setIsSyncing(false);
@@ -331,30 +348,38 @@ export function useDataTableSync() {
         if (existingClient) {
           clientId = existingClient.id;
         } else {
-          // Create new client
-          const { data: newClient, error: clientError } = await supabase
-            .from('clients')
-            .insert({ name: clientName, status: 'active', created_by: user.id })
-            .select()
-            .single();
+          // Create new client with timeout
+          const { data: newClient, error: clientError } = await withTimeout(
+            supabase
+              .from('clients')
+              .insert({ name: clientName, status: 'active', created_by: user.id })
+              .select()
+              .single(),
+            10000,
+            'Create client for project'
+          );
 
           if (clientError) throw clientError;
           clientId = newClient.id;
         }
       }
 
-      // Create project
-      const { data: newProject, error } = await supabase
-        .from('projects')
-        .insert({
-          name,
-          client_id: clientId,
-          status: 'planning',
-          priority: 'medium',
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      // Create project with timeout
+      const { data: newProject, error } = await withTimeout(
+        supabase
+          .from('projects')
+          .insert({
+            name,
+            client_id: clientId,
+            status: 'planning',
+            priority: 'medium',
+            created_by: user.id,
+          })
+          .select()
+          .single(),
+        10000,
+        'Create project'
+      );
 
       if (error) throw error;
 
@@ -380,7 +405,10 @@ export function useDataTableSync() {
       return syncedProject;
     } catch (error) {
       console.error('Error adding project:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן להוסיף את הפרויקט', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן להוסיף את הפרויקט';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return null;
     } finally {
       setIsSyncing(false);
@@ -396,10 +424,14 @@ export function useDataTableSync() {
 
     setIsSyncing(true);
     try {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
+      const { error } = await withTimeout(
+        supabase
+          .from('projects')
+          .delete()
+          .eq('id', projectId),
+        10000,
+        'Delete project'
+      );
 
       if (error) throw error;
 
@@ -408,7 +440,10 @@ export function useDataTableSync() {
       return true;
     } catch (error) {
       console.error('Error deleting project:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן למחוק את הפרויקט', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן למחוק את הפרויקט';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return false;
     } finally {
       setIsSyncing(false);
@@ -426,10 +461,17 @@ export function useDataTableSync() {
     try {
       const payload: Record<string, any> = { [columnId]: newValue };
 
-      const { error } = await supabase
+      // Wrap the database operation with a timeout
+      const updateOperation = supabase
         .from('clients')
         .update(payload)
         .eq('id', clientId);
+
+      const { error } = await withTimeout(
+        updateOperation,
+        10000, // 10 second timeout
+        'Update client'
+      );
 
       if (error) throw error;
 
@@ -448,7 +490,10 @@ export function useDataTableSync() {
       return true;
     } catch (error) {
       console.error('Error updating client:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן לעדכן את הלקוח', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן לעדכן את הלקוח';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return false;
     } finally {
       setIsSyncing(false);
@@ -464,11 +509,18 @@ export function useDataTableSync() {
 
     setIsSyncing(true);
     try {
-      const { data: newClient, error } = await supabase
+      // Wrap the database operation with a timeout to prevent UI freeze
+      const insertOperation = supabase
         .from('clients')
         .insert({ name, status: 'active', created_by: user.id })
         .select()
         .single();
+
+      const { data: newClient, error } = await withTimeout(
+        insertOperation,
+        10000, // 10 second timeout
+        'Add client'
+      );
 
       if (error) throw error;
 
@@ -490,7 +542,10 @@ export function useDataTableSync() {
       return syncedClient;
     } catch (error) {
       console.error('Error adding client:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן להוסיף את הלקוח', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן להוסיף את הלקוח';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return null;
     } finally {
       setIsSyncing(false);
@@ -506,10 +561,17 @@ export function useDataTableSync() {
 
     setIsSyncing(true);
     try {
-      const { error } = await supabase
+      // Wrap the database operation with a timeout
+      const deleteOperation = supabase
         .from('clients')
         .delete()
         .eq('id', clientId);
+
+      const { error } = await withTimeout(
+        deleteOperation,
+        10000, // 10 second timeout
+        'Delete client'
+      );
 
       if (error) throw error;
 
@@ -524,7 +586,10 @@ export function useDataTableSync() {
       return true;
     } catch (error) {
       console.error('Error deleting client:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן למחוק את הלקוח', variant: 'destructive' });
+      const errorMessage = error instanceof Error && error.message.includes('timeout')
+        ? 'הפעולה ארכה יותר מדי - אנא נסה שוב'
+        : 'לא ניתן למחוק את הלקוח';
+      toast({ title: 'שגיאה', description: errorMessage, variant: 'destructive' });
       return false;
     } finally {
       setIsSyncing(false);
