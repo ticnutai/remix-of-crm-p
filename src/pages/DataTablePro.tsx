@@ -20,6 +20,7 @@ import { CreateTableDialog } from '@/components/custom-tables/CreateTableDialog'
 import { CustomTableTab } from '@/components/custom-tables/CustomTableTab';
 import { ManageTablesDialog } from '@/components/custom-tables/ManageTablesDialog';
 import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
+import { BulkConsultantDialog } from '@/components/clients/BulkConsultantDialog';
 import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
 import { ClientFilterPanel } from '@/components/clients/ClientFilterPanel';
 import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen, Layers } from 'lucide-react';
@@ -745,6 +746,9 @@ export default function DataTablePro() {
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientCompany, setNewClientCompany] = useState('');
   
+  // Bulk operations state
+  const [isBulkConsultantOpen, setIsBulkConsultantOpen] = useState(false);
+  
   // Client dynamic columns state - using persistent DB columns
   const [isAddClientColumnDialogOpen, setIsAddClientColumnDialogOpen] = useState(false);
   const clientFileInputRef = React.useRef<HTMLInputElement>(null);
@@ -936,6 +940,20 @@ export default function DataTablePro() {
       });
     }
   }, [selectedClients, updateMultipleClientsStage, toast]);
+
+  // Handle bulk consultant assignment
+  const handleBulkConsultantAssign = useCallback(async (consultantIds: string[]) => {
+    if (selectedClients.length === 0) return;
+    
+    const clientIds = selectedClients.map(c => c.id);
+    // Note: You'll need to implement updateMultipleClientsConsultant in your hooks
+    // For now, we'll just show a toast
+    toast({
+      title: 'פונקציה בפיתוח',
+      description: `שיוך ${consultantIds.length} יועצים ל-${clientIds.length} לקוחות`,
+    });
+    setIsBulkConsultantOpen(false);
+  }, [selectedClients, toast]);
 
   // Client cell formatting handlers
   const handleClientCellStyleChange = useCallback((cellId: string, style: any) => {
@@ -2634,6 +2652,17 @@ export default function DataTablePro() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       
+                      {/* Bulk Assign Consultant Button */}
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsBulkConsultantOpen(true)}
+                        className="border-primary bg-white hover:bg-primary/5"
+                      >
+                        <UserCog className="h-4 w-4 ml-2 text-primary" />
+                        שייך יועץ ({selectedClients.length})
+                      </Button>
+                      
                       {/* Delete Button */}
                       <Button 
                         variant="destructive" 
@@ -3192,6 +3221,14 @@ export default function DataTablePro() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Bulk Consultant Assignment Dialog */}
+        <BulkConsultantDialog
+          isOpen={isBulkConsultantOpen}
+          onClose={() => setIsBulkConsultantOpen(false)}
+          selectedClientIds={selectedClients.map(c => c.id)}
+          onAssign={handleBulkConsultantAssign}
+        />
       </div>
     </AppLayout>
   );
