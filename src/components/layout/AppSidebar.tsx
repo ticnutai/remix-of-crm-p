@@ -161,6 +161,27 @@ export function AppSidebar() {
     const saved = localStorage.getItem('sidebar-theme');
     return saved ? JSON.parse(saved) : defaultSidebarTheme;
   });
+
+  // Detect light theme for contrast adjustments
+  const isLightTheme = useMemo(() => {
+    const bg = sidebarTheme.backgroundColor || '';
+    // Check hex colors
+    const hex = bg.replace('#', '');
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+    }
+    // Check hsl colors
+    const hslMatch = bg.match(/hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)/);
+    if (hslMatch) return parseInt(hslMatch[3]) > 50;
+    return false;
+  }, [sidebarTheme.backgroundColor]);
+
+  // Dynamic hover/active opacity - stronger on light backgrounds for visibility
+  const hoverBg = isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)';
+  const activeBgAlpha = isLightTheme ? '35' : '20';
   
   // Gestures configuration
   const [gesturesConfig, setGesturesConfig] = useState<SidebarGesturesConfig>(() => loadGesturesConfig());
@@ -456,7 +477,7 @@ export function AppSidebar() {
         <SidebarHeader 
           className="p-4 relative"
           style={{ 
-            borderBottom: `1px solid ${sidebarColors.gold}40`,
+            borderBottom: `1px solid ${sidebarTheme.borderColor || sidebarColors.gold}40`,
           }}
         >
           <div className={cn(
@@ -475,7 +496,7 @@ export function AppSidebar() {
                       onClick={togglePin}
                       className="flex items-center justify-center w-8 h-8 transition-all duration-200"
                       style={{ 
-                        color: isPinned ? sidebarColors.gold : sidebarColors.goldLight,
+                        color: isPinned ? (sidebarTheme.activeItemColor || sidebarColors.gold) : (sidebarTheme.iconColor || sidebarColors.goldLight),
                       }}
                     >
                       {isPinned ? (
@@ -495,10 +516,12 @@ export function AppSidebar() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => setIsSidebarSettingsOpen(true)}
-                      className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 hover:bg-white/10"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200"
                       style={{ 
-                        color: sidebarColors.goldLight,
+                        color: sidebarTheme.iconColor || sidebarColors.goldLight,
                       }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = hoverBg; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <Palette className="h-4 w-4" />
                     </button>
@@ -559,7 +582,7 @@ export function AppSidebar() {
               )} 
               style={{ 
                 fontSize: `${sidebarTheme.labelFontSize || 11}px`,
-                color: sidebarColors.goldLight,
+                color: sidebarTheme.textColor ? `${sidebarTheme.textColor}99` : sidebarColors.goldLight,
               }}
             >
               ניווט ראשי
@@ -586,7 +609,7 @@ export function AppSidebar() {
                                 ? (sidebarTheme.activeItemColor || sidebarColors.gold) 
                                 : (sidebarTheme.textColor || sidebarColors.goldLight),
                               background: active 
-                                ? `${sidebarTheme.activeItemColor || sidebarColors.gold}20` 
+                                ? `${sidebarTheme.activeItemColor || sidebarColors.gold}${activeBgAlpha}` 
                                 : 'transparent',
                             }}
                           >
@@ -615,15 +638,15 @@ export function AppSidebar() {
                                 onClick={() => setIsCreateDialogOpen(true)}
                                 className="p-1.5 rounded-lg transition-all duration-200"
                                 style={{ 
-                                  color: sidebarColors.goldLight,
+                                  color: sidebarTheme.iconColor || sidebarColors.goldLight,
                                   background: 'transparent',
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = sidebarColors.gold;
-                                  e.currentTarget.style.background = `${sidebarColors.gold}20`;
+                                  e.currentTarget.style.color = sidebarTheme.activeItemColor || sidebarColors.gold;
+                                  e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}${activeBgAlpha}`;
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = sidebarColors.goldLight;
+                                  e.currentTarget.style.color = sidebarTheme.iconColor || sidebarColors.goldLight;
                                   e.currentTarget.style.background = 'transparent';
                                 }}
                               >
@@ -653,7 +676,7 @@ export function AppSidebar() {
           {/* System Navigation - Hidden for cleaner look like the image */}
         </SidebarContent>
 
-        {/* Footer with Settings Button - Clean Design */}
+        {/* Footer with Settings & Theme Buttons - Clean Design */}
         <SidebarFooter 
           className="p-4"
           style={{ 
@@ -661,25 +684,53 @@ export function AppSidebar() {
           }}
         >
           <div className="flex items-center justify-between gap-2">
-            {/* Settings Icon on the left */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setIsQuickSettingsOpen(true)}
-                  className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300"
-                  style={{ 
-                    border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
-                    background: 'transparent',
-                    color: sidebarTheme.activeItemColor || sidebarColors.gold,
-                  }}
-                >
-                  <Settings className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                הגדרות מהירות
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2">
+              {/* Settings Icon */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsQuickSettingsOpen(true)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300"
+                    style={{ 
+                      border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
+                      background: 'transparent',
+                      color: sidebarTheme.activeItemColor || sidebarColors.gold,
+                    }}
+                  >
+                    <Settings className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  הגדרות מהירות
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Theme Palette Icon - always visible & prominent */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsSidebarSettingsOpen(true)}
+                    className="flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:scale-110"
+                    style={{ 
+                      border: `2px solid ${sidebarTheme.activeItemColor || sidebarColors.gold}`,
+                      background: `${sidebarTheme.activeItemColor || sidebarColors.gold}15`,
+                      color: sidebarTheme.activeItemColor || sidebarColors.gold,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}30`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${sidebarTheme.activeItemColor || sidebarColors.gold}15`;
+                    }}
+                  >
+                    <Palette className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  ערכות נושא לסיידבר
+                </TooltipContent>
+              </Tooltip>
+            </div>
             
             {/* Version on the right */}
             <div className={cn(

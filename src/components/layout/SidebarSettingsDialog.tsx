@@ -84,8 +84,15 @@ const colorPresets = [
   { name: 'Ocean', bg: 'hsl(200, 40%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(180, 70%, 50%)', border: 'hsl(180, 70%, 40%)' },
   { name: 'Charcoal', bg: 'hsl(0, 0%, 15%)', text: 'hsl(0, 0%, 95%)', accent: 'hsl(0, 0%, 70%)', border: 'hsl(0, 0%, 50%)' },
   { name: 'Sunset', bg: 'hsl(20, 50%, 20%)', text: 'hsl(0, 0%, 100%)', accent: 'hsl(30, 90%, 55%)', border: 'hsl(30, 90%, 45%)' },
+  { name: 'Midnight Blue', bg: '#0D1B2A', text: '#E0E1DD', accent: '#778DA9', border: '#415A77' },
+  { name: 'Dark Emerald', bg: '#0A2E1C', text: '#E8F5E9', accent: '#66BB6A', border: '#388E3C' },
+  { name: 'Espresso', bg: '#2C1810', text: '#FFECD2', accent: '#D4A574', border: '#A67B5B' },
+  { name: 'Nordic', bg: '#1A1A2E', text: '#EAEAEA', accent: '#E94560', border: '#E94560' },
+  { name: '🌌 Galaxy', bg: '#0B0B1A', text: '#E8E0F0', accent: '#A855F7', border: '#7C3AED' },
+  { name: '🖤 Carbon', bg: '#000000', text: '#C0C0C0', accent: '#3B82F6', border: '#2563EB' },
+  { name: '🌙 Obsidian', bg: '#1C1917', text: '#FAFAF9', accent: '#EAB308', border: '#CA8A04' },
   // Light/Elegant themes
-  { name: 'לבן מפואר', bg: '#FFFFFF', text: '#1B365D', accent: '#D4A843', border: '#D4A84360' },
+  { name: 'לבן מפואר', bg: '#FFFFFF', text: '#1B365D', accent: '#D4A843', border: '#D4A843' },
   { name: 'שמנת זהב', bg: '#FFFEF7', text: '#2C1810', accent: '#C9A961', border: '#C9A96180' },
   { name: 'מודרני בהיר', bg: '#F8FAFC', text: '#0F172A', accent: '#3B82F6', border: '#3B82F640' },
   { name: 'רוז עדין', bg: '#FFF5F5', text: '#4A1D1D', accent: '#B76E79', border: '#B76E7960' },
@@ -93,6 +100,16 @@ const colorPresets = [
   { name: 'סגול מלכותי', bg: '#FAF5FF', text: '#3B1F5C', accent: '#9333EA', border: '#9333EA50' },
   { name: 'אפור אלגנטי', bg: '#F5F5F5', text: '#333333', accent: '#666666', border: '#CCCCCC' },
   { name: 'תכלת ים', bg: '#F0F9FF', text: '#0C4A6E', accent: '#0EA5E9', border: '#0EA5E950' },
+  { name: 'שקיעה חמה', bg: '#FFFBF0', text: '#78350F', accent: '#F59E0B', border: '#F59E0B60' },
+  { name: 'לבנדר', bg: '#F5F3FF', text: '#4C1D95', accent: '#8B5CF6', border: '#8B5CF660' },
+  { name: 'מנטה', bg: '#F0FDFA', text: '#134E4A', accent: '#14B8A6', border: '#14B8A660' },
+  { name: 'קורל', bg: '#FFF7F5', text: '#7C2D12', accent: '#F97316', border: '#F9731660' },
+  { name: '🍑 אפרסק', bg: '#FFF8F0', text: '#6B3410', accent: '#FB923C', border: '#F9731680' },
+  { name: '🌸 סאקורה', bg: '#FFF0F5', text: '#831843', accent: '#EC4899', border: '#DB277780' },
+  { name: '☀️ חול מדבר', bg: '#FDF6E3', text: '#5C3D1A', accent: '#D97706', border: '#B4590880' },
+  { name: '💎 יהלום', bg: '#FFFFFF', text: '#18181B', accent: '#71717A', border: '#A1A1AA' },
+  { name: '🌊 אקווה', bg: '#ECFEFF', text: '#164E63', accent: '#06B6D4', border: '#0891B260' },
+  { name: '🌿 זית מלכותי', bg: '#F7FEE7', text: '#365314', accent: '#84CC16', border: '#65A30D60' },
 ];
 
 interface SidebarSettingsDialogProps {
@@ -419,7 +436,7 @@ export function SidebarSettingsDialog({
               <div className="mb-4">
                 <p className="text-sm text-muted-foreground mb-2">ערכות נושא כהות</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {colorPresets.slice(0, 8).map((preset) => (
+                  {colorPresets.slice(0, 12).map((preset) => (
                     <button
                       key={preset.name}
                       onClick={() => applyPreset(preset)}
@@ -447,7 +464,7 @@ export function SidebarSettingsDialog({
               <div>
                 <p className="text-sm text-muted-foreground mb-2">ערכות נושא בהירות</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {colorPresets.slice(8).map((preset) => (
+                  {colorPresets.slice(12).map((preset) => (
                     <button
                       key={preset.name}
                       onClick={() => applyPreset(preset)}
