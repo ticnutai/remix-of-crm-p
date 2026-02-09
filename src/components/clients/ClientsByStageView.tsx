@@ -10,6 +10,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +29,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Users,
   ChevronDown,
-  ChevronRight,
   ChevronLeft,
   Minimize2,
   Maximize2,
@@ -42,6 +49,7 @@ import {
   Plus,
   Search,
   FolderPlus,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -62,11 +70,15 @@ function ClientRow({
   isExpanded, 
   onToggle,
   onOpenClient,
+  isSelected,
+  onSelect,
 }: { 
   client: ClientInStage; 
   isExpanded: boolean;
   onToggle: () => void;
   onOpenClient: () => void;
+  isSelected: boolean;
+  onSelect: (checked: boolean) => void;
 }) {
   const completedTasks = client.tasks.filter(t => t.is_completed).length;
   const totalTasks = client.tasks.length;
@@ -74,10 +86,29 @@ function ClientRow({
 
   return (
     <TooltipProvider>
-      <div className="border-b last:border-0 hover:bg-muted/30 transition-colors" dir="rtl">
+      <div className={cn(
+        "border-b last:border-0 hover:bg-muted/30 transition-colors",
+        isSelected && "bg-primary/5"
+      )} dir="rtl">
         <Collapsible open={isExpanded} onOpenChange={onToggle}>
           <CollapsibleTrigger asChild>
             <div className="flex items-center gap-2 py-2 px-3 cursor-pointer flex-row-reverse">
+              {/* Checkbox for selection */}
+              <div 
+                className="flex-shrink-0" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(checked) => {
+                    onSelect(checked as boolean);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              
               {/* Expand Icon - use ChevronLeft for RTL */}
               {isExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
@@ -234,6 +265,9 @@ function StageCard({
   onToggle,
   onOpenClient,
   onAddClients,
+  selectedClientIds,
+  onSelectClient,
+  onSelectAllInStage,
 }: {
   group: StageGroup;
   expandedClients: Set<string>;
@@ -242,7 +276,14 @@ function StageCard({
   onToggle: () => void;
   onOpenClient: (clientId: string) => void;
   onAddClients: (stageName: string) => void;
+  selectedClientIds: Set<string>;
+  onSelectClient: (clientId: string, checked: boolean) => void;
+  onSelectAllInStage: (stageName: string, checked: boolean) => void;
 }) {
+  const allClientIdsInStage = group.clients.map(c => c.id);
+  const allSelected = allClientIdsInStage.every(id => selectedClientIds.has(id));
+  const someSelected = allClientIdsInStage.some(id => selectedClientIds.has(id)) && !allSelected;
+  
   return (
     <Card className="overflow-hidden" dir="rtl">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -250,6 +291,25 @@ function StageCard({
           <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
+                {/* Select All Checkbox */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <Checkbox
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) {
+                        (el as any).indeterminate = someSelected;
+                      }
+                    }}
+                    onCheckedChange={(checked) => {
+                      onSelectAllInStage(group.stage_name, checked as boolean);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
                 {isExpanded ? (
                   <FolderOpen className="h-4 w-4 text-[#d4a843]" />
                 ) : (
@@ -303,6 +363,8 @@ function StageCard({
                     isExpanded={expandedClients.has(client.id)}
                     onToggle={() => onToggleClient(client.id)}
                     onOpenClient={() => onOpenClient(client.id)}
+                    isSelected={selectedClientIds.has(client.id)}
+                    onSelect={(checked) => onSelectClient(client.id, checked)}
                   />
                 ))}
               </div>
@@ -323,14 +385,36 @@ function StageCard({
 function ConsultantClientRow({ 
   client, 
   onOpenClient,
+  isSelected,
+  onSelect,
 }: { 
   client: ConsultantClient;
   onOpenClient: () => void;
+  isSelected: boolean;
+  onSelect: (checked: boolean) => void;
 }) {
   return (
     <TooltipProvider>
-      <div className="border-b last:border-0 hover:bg-muted/30 transition-colors py-2 px-3" dir="rtl">
+      <div className={cn(
+        "border-b last:border-0 hover:bg-muted/30 transition-colors py-2 px-3",
+        isSelected && "bg-primary/5"
+      )} dir="rtl">
         <div className="flex items-center gap-3">
+          {/* Checkbox for selection */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => {
+                onSelect(checked as boolean);
+              }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          
           {/* Avatar */}
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-white">
@@ -404,13 +488,22 @@ function ConsultantCard({
   isExpanded,
   onToggle,
   onOpenClient,
+  selectedClientIds,
+  onSelectClient,
+  onSelectAllInConsultant,
 }: {
   group: ConsultantGroup;
   isExpanded: boolean;
   onToggle: () => void;
   onOpenClient: (clientId: string) => void;
+  selectedClientIds: Set<string>;
+  onSelectClient: (clientId: string, checked: boolean) => void;
+  onSelectAllInConsultant: (consultantId: string, checked: boolean) => void;
 }) {
   const { consultant, clients } = group;
+  const allClientIds = clients.map(c => c.id);
+  const allSelected = allClientIds.every(id => selectedClientIds.has(id));
+  const someSelected = allClientIds.some(id => selectedClientIds.has(id)) && !allSelected;
   
   return (
     <Card className="overflow-hidden" dir="rtl">
@@ -419,6 +512,25 @@ function ConsultantCard({
           <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
+                {/* Select All Checkbox */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <Checkbox
+                    checked={allSelected}
+                    ref={(el) => {
+                      if (el) {
+                        (el as any).indeterminate = someSelected;
+                      }
+                    }}
+                    onCheckedChange={(checked) => {
+                      onSelectAllInConsultant(consultant.id, checked as boolean);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#d4a843] to-[#b8860b] flex items-center justify-center flex-shrink-0">
                   <UserCircle className="h-5 w-5 text-white" />
                 </div>
@@ -463,6 +575,8 @@ function ConsultantCard({
                     key={client.id}
                     client={client}
                     onOpenClient={() => onOpenClient(client.id)}
+                    isSelected={selectedClientIds.has(client.id)}
+                    onSelect={(checked) => onSelectClient(client.id, checked)}
                   />
                 ))}
               </div>
@@ -513,6 +627,9 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const [newStageName, setNewStageName] = useState('');
   const [isCreatingStage, setIsCreatingStage] = useState(false);
   const [isNewStageMode, setIsNewStageMode] = useState(false);
+  
+  // Bulk selection for delete/actions
+  const [selectedForBulkAction, setSelectedForBulkAction] = useState<Set<string>>(new Set());
   
   // Save view filter to localStorage
   useEffect(() => {
@@ -625,6 +742,132 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   const openClient = (clientId: string) => navigate(`/client-profile/${clientId}`);
+
+  // Bulk action handlers
+  const handleSelectClient = (clientId: string, checked: boolean) => {
+    setSelectedForBulkAction(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(clientId);
+      } else {
+        next.delete(clientId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllInStage = (stageName: string, checked: boolean) => {
+    const group = displayGroups.find(g => g.stage_name === stageName);
+    if (!group) return;
+
+    setSelectedForBulkAction(prev => {
+      const next = new Set(prev);
+      group.clients.forEach(client => {
+        if (checked) {
+          next.add(client.id);
+        } else {
+          next.delete(client.id);
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleSelectAllInConsultant = (consultantId: string, checked: boolean) => {
+    const group = consultantGroups.find(g => g.consultant.id === consultantId);
+    if (!group) return;
+
+    setSelectedForBulkAction(prev => {
+      const next = new Set(prev);
+      group.clients.forEach(client => {
+        if (checked) {
+          next.add(client.id);
+        } else {
+          next.delete(client.id);
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedForBulkAction.size === 0) return;
+
+    const confirmDelete = window.confirm(
+      `האם אתה בטוח שברצונך למחוק ${selectedForBulkAction.size} לקוחות? פעולה זו אינה הפיכה!`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const clientIds = Array.from(selectedForBulkAction);
+      
+      for (const clientId of clientIds) {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', clientId);
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: 'נמחק בהצלחה',
+        description: `${clientIds.length} לקוחות נמחקו`,
+      });
+
+      setSelectedForBulkAction(new Set());
+      refresh();
+      refreshConsultants();
+    } catch (error) {
+      console.error('Error deleting clients:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן למחוק את הלקוחות',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkSetStageForSelected = async (stageName: string) => {
+    if (selectedForBulkAction.size === 0) return;
+
+    try {
+      const clientIds = Array.from(selectedForBulkAction);
+      
+      for (const clientId of clientIds) {
+        // Update or insert stage
+        const { error } = await supabase
+          .from('client_stages')
+          .upsert({
+            client_id: clientId,
+            stage_id: `stage_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            stage_name: stageName,
+            stage_icon: 'FolderOpen',
+            sort_order: 0,
+          }, {
+            onConflict: 'client_id,stage_name'
+          });
+
+        if (error) throw error;
+      }
+
+      toast({
+        title: 'עודכן בהצלחה',
+        description: `${clientIds.length} לקוחות הועברו לשלב "${stageName}"`,
+      });
+
+      setSelectedForBulkAction(new Set());
+      refresh();
+    } catch (error) {
+      console.error('Error setting stage for clients:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לעדכן את השלבים',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Open bulk add dialog
   const openBulkAddDialog = (stageName: string) => {
@@ -945,6 +1188,65 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               </TooltipTrigger>
               <TooltipContent>סגור הכל</TooltipContent>
             </Tooltip>
+            
+            {/* Bulk action buttons - show when clients are selected */}
+            {selectedForBulkAction.size > 0 && (
+              <>
+                <div className="h-6 w-px bg-border mx-1" />
+                
+                {/* Set Stage Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="h-8 px-2.5 gap-1.5 border-primary bg-white hover:bg-primary/5"
+                    >
+                      <Layers className="h-4 w-4 text-primary" />
+                      <span className="hidden sm:inline">קבע שלב ({selectedForBulkAction.size})</span>
+                      <span className="sm:hidden">({selectedForBulkAction.size})</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
+                    <DropdownMenuLabel>בחר שלב עבור {selectedForBulkAction.size} לקוחות</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {allStageNames.length > 0 ? (
+                      allStageNames.map((stageName) => (
+                        <DropdownMenuItem
+                          key={stageName}
+                          onClick={() => handleBulkSetStageForSelected(stageName)}
+                          className="flex items-center gap-2"
+                        >
+                          <Layers className="h-4 w-4 text-primary" />
+                          {stageName}
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <DropdownMenuItem disabled>
+                        אין שלבים זמינים
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {/* Delete Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      className="h-8 px-2.5 gap-1.5"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="hidden sm:inline">מחק ({selectedForBulkAction.size})</span>
+                      <span className="sm:hidden">({selectedForBulkAction.size})</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>מחק לקוחות נבחרים</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </TooltipProvider>
         </div>
       </div>
@@ -962,6 +1264,9 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                   isExpanded={expandedConsultants.has(group.consultant.id)}
                   onToggle={() => toggleConsultant(group.consultant.id)}
                   onOpenClient={openClient}
+                  selectedClientIds={selectedForBulkAction}
+                  onSelectClient={handleSelectClient}
+                  onSelectAllInConsultant={handleSelectAllInConsultant}
                 />
               ))
             ) : (
@@ -986,6 +1291,9 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                   onToggle={() => toggleGroup(group.stage_name)}
                   onOpenClient={openClient}
                   onAddClients={openBulkAddDialog}
+                  selectedClientIds={selectedForBulkAction}
+                  onSelectClient={handleSelectClient}
+                  onSelectAllInStage={handleSelectAllInStage}
                 />
               ))
             ) : (
