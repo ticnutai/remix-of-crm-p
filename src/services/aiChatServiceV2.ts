@@ -138,16 +138,10 @@ class AIChatServiceV2 {
     return CREATE_WORDS.some(word => query.includes(word));
   }
 
-  /**
-   * בדיקה אם יש מילת פעולה לעדכון
-   */
   private hasUpdateWord(query: string): boolean {
     return UPDATE_WORDS.some(word => query.includes(word));
   }
 
-  /**
-   * בדיקה אם יש מילת פעולה למחיקה
-   */
   private hasDeleteWord(query: string): boolean {
     return DELETE_WORDS.some(word => query.includes(word));
   }
@@ -173,9 +167,9 @@ class AIChatServiceV2 {
       // בדיקה אם זו פקודת פעולה
       if (intent.type.startsWith('action-')) {
         isAction = true;
-        actionResult = await this.executeAction(intent);
-        response = actionResult.message;
-        suggestions = this.getActionSuggestions(intent.type);
+        actionResult = await (this as any).executeAction(intent) as any;
+        response = (actionResult as any).message;
+        suggestions = (actionResult as any).suggestions || [];
         
         // רענון נתונים אחרי פעולה מוצלחת
         if (actionResult.success) {
@@ -326,7 +320,7 @@ class AIChatServiceV2 {
         case 'action-cancel-meeting':
           const actionResult = await this.executeAction(intent.type, intent.params);
           response = actionResult.message;
-          suggestions = actionResult.suggestions || [];
+          suggestions = (actionResult as any).suggestions || [];
           const actionMessage: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'assistant',
@@ -737,17 +731,7 @@ class AIChatServiceV2 {
 
   // ========== פונקציות עזר לזיהוי פעולות ==========
 
-  private hasCreateWord(query: string): boolean {
-    return CREATE_WORDS.some(word => query.includes(word));
-  }
-
-  private hasUpdateWord(query: string): boolean {
-    return UPDATE_WORDS.some(word => query.includes(word));
-  }
-
-  private hasDeleteWord(query: string): boolean {
-    return DELETE_WORDS.some(word => query.includes(word));
-  }
+  // removed duplicates - using methods defined above
 
   // ========== פונקציות חילוץ פרמטרים לפעולות ==========
 

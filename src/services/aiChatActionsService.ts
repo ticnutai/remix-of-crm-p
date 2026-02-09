@@ -11,6 +11,7 @@ export interface ActionResult {
   message: string;
   data?: any;
   actionType: string;
+  suggestions?: string[];
 }
 
 export interface PendingAction {

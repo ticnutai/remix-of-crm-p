@@ -126,7 +126,7 @@ export function useEmailFolders() {
         client_name: r.clients?.name,
       }));
       
-      setAutoRules(processedRules);
+      setAutoRules(processedRules as any);
     } catch (error) {
       console.error('Error loading auto rules:', error);
     }

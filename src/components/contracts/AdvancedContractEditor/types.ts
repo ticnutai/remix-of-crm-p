@@ -51,7 +51,11 @@ export interface HeaderContent {
   date?: string;
   logoUrl?: string;
   location?: string;
+  logo?: string; // Alternative logo field
 }
+
+// מידע צד (PartyInfo alias)
+export type PartyInfo = ContractParty;
 
 // צד להסכם
 export interface ContractParty {
@@ -80,11 +84,24 @@ export interface ContractItem {
   unit?: string;
   isOptional?: boolean;
   isUpgrade?: boolean;
+  text?: string;
+  included?: boolean;
 }
+
+// פריט בסעיף
+export interface SectionItem {
+  id: string;
+  text: string;
+  price?: number;
+  included?: boolean;
+}
+
+// LineItem alias
+export type LineItem = ContractItem;
 
 // סעיף
 export interface SectionContent {
-  items: ContractItem[];
+  items: (ContractItem | SectionItem)[];
   showPrices?: boolean;
   showCheckmarks?: boolean;
 }
@@ -115,6 +132,9 @@ export interface PaymentStep {
   description: string;
   dueDate?: string;
   daysOffset?: number;
+  title?: string;
+  amount?: number;
+  status?: 'pending' | 'paid' | 'overdue';
 }
 
 // תוכן תשלומים
@@ -131,6 +151,9 @@ export interface TimelineStep {
   title: string;
   description?: string;
   duration?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: 'pending' | 'in_progress' | 'completed';
 }
 
 // תוכן לוח זמנים
@@ -138,16 +161,24 @@ export interface TimelineContent {
   steps: TimelineStep[];
 }
 
-// תוכן תנאים
+// תוכן תנאים - מאפשר גם מחרוזות וגם אובייקטים
 export interface TermsContent {
-  terms: string[];
-  specialClauses?: string[];
+  terms: TermItem[];
+  specialClauses?: TermItem[];
+}
+
+// פריט תנאי
+export interface TermItem {
+  id: string;
+  title?: string;
+  text: string;
 }
 
 // חתימה
 export interface SignatureField {
   id: string;
   label: string;
+  title?: string;
   partyId?: string;
   signed?: boolean;
   signedAt?: string;
@@ -204,6 +235,7 @@ export interface ContractDocument {
 // הגדרות צבעים
 export const COLOR_SCHEMES: Record<ColorScheme, {
   name: string;
+  label: string;
   primary: string;
   secondary: string;
   accent: string;
@@ -213,6 +245,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
 }> = {
   gold: {
     name: 'זהב',
+    label: 'זהב',
     primary: '#DAA520',
     secondary: '#B8860B',
     accent: '#FFD700',
@@ -222,6 +255,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   blue: {
     name: 'כחול',
+    label: 'כחול',
     primary: '#3B82F6',
     secondary: '#1D4ED8',
     accent: '#60A5FA',
@@ -231,6 +265,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   green: {
     name: 'ירוק',
+    label: 'ירוק',
     primary: '#10B981',
     secondary: '#059669',
     accent: '#34D399',
@@ -240,6 +275,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   purple: {
     name: 'סגול',
+    label: 'סגול',
     primary: '#8B5CF6',
     secondary: '#7C3AED',
     accent: '#A78BFA',
@@ -252,18 +288,22 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
 // תבניות עיצוב
 export const DESIGN_TEMPLATES: Record<DesignTemplate, {
   name: string;
+  label: string;
   description: string;
 }> = {
   classic: {
     name: 'קלאסי',
+    label: 'קלאסי',
     description: 'עיצוב מסורתי עם גבולות ברורים',
   },
   modern: {
     name: 'מודרני',
+    label: 'מודרני',
     description: 'עיצוב עכשווי עם צבעים נועזים',
   },
   minimal: {
     name: 'מינימליסטי',
+    label: 'מינימליסטי',
     description: 'עיצוב נקי ופשוט',
   },
 };

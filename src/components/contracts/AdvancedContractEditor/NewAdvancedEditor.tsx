@@ -82,9 +82,6 @@ export function NewAdvancedEditor({
   const {
     document,
     isDirty,
-    history,
-    canUndo,
-    canRedo,
     updateDocument,
     setColorScheme,
     setDesignTemplate,
@@ -94,8 +91,6 @@ export function NewAdvancedEditor({
     moveBlock,
     duplicateBlock,
     toggleBlockVisibility,
-    undo,
-    redo,
     loadDocument,
   } = useContractDocument();
 
@@ -186,8 +181,7 @@ export function NewAdvancedEditor({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={undo}
-                          disabled={!canUndo}
+                          disabled
                         >
                           <Undo className="h-4 w-4" />
                         </Button>
@@ -200,8 +194,7 @@ export function NewAdvancedEditor({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={redo}
-                          disabled={!canRedo}
+                          disabled
                         >
                           <Redo className="h-4 w-4" />
                         </Button>

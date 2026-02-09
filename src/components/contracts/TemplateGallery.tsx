@@ -165,12 +165,18 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
       id: template.id,
       title: template.name,
       blocks,
-      colorScheme: 'gold',
-      designTemplate: 'classic',
+      colorScheme: 'gold' as const,
+      designTemplate: 'classic' as const,
       metadata: {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        version: '1.0',
+        version: 1,
+      },
+      settings: {
+        showHeader: true,
+        showFooter: true,
+        showPageNumbers: true,
+        darkMode: false,
       },
     };
   };
@@ -193,7 +199,7 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
   };
 
   // שמירת עריכה
-  const handleSaveEdit = (document: ContractDocument) => {
+  const handleSaveEdit = async (document: ContractDocument) => {
     toast({
       title: 'נשמר בהצלחה',
       description: 'התבנית עודכנה',

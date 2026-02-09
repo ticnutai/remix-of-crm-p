@@ -103,9 +103,9 @@ export function useClientsByStage() {
       tasksData?.forEach(task => {
         const existing = tasksByStageId.get(task.stage_id) || [];
         existing.push({
-          task_id: task.task_id,
+          task_id: task.id,
           title: task.title,
-          is_completed: task.is_completed,
+          is_completed: task.completed,
           sort_order: task.sort_order,
         });
         tasksByStageId.set(task.stage_id, existing);

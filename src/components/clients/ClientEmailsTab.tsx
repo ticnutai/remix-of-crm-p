@@ -60,8 +60,10 @@ interface EmailFolderItem {
   email_snippet: string | null;
   client_id: string | null;
   notes: string | null;
-  is_starred: boolean;
-  classified_at: string;
+  is_starred: boolean | null;
+  is_important: boolean | null;
+  added_at: string | null;
+  user_id: string;
   folder?: {
     id: string;
     name: string;
@@ -608,7 +610,7 @@ function EmailItem({
 
           {/* Metadata */}
           <div className="text-xs text-muted-foreground">
-            סווג: {format(new Date(email.classified_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+            סווג: {email.added_at ? format(new Date(email.added_at), 'dd/MM/yyyy HH:mm', { locale: he }) : '-'}
           </div>
         </div>
       )}
