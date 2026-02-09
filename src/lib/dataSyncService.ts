@@ -195,7 +195,7 @@ class DataSyncService {
     const lastSync = syncMeta?.lastSyncedAt || 0;
 
     // Fetch data from Supabase (only updated since last sync)
-    let query = supabase.from(supabaseTable).select('*');
+    let query = (supabase as any).from(supabaseTable).select('*');
     
     if (lastSync > 0) {
       const lastSyncDate = new Date(lastSync).toISOString();
@@ -210,7 +210,7 @@ class DataSyncService {
 
     if (data && data.length > 0) {
       // Store in IndexedDB
-      await offlineStorage.setMany(localTable, data);
+      await offlineStorage.setMany(localTable, data as any);
       console.log(`📥 Synced ${data.length} items to ${localTable}`);
     }
 
@@ -252,14 +252,14 @@ class DataSyncService {
 
     switch (item.operation) {
       case 'insert':
-        const { error: insertError } = await supabase
+        const { error: insertError } = await (supabase as any)
           .from(supabaseTable)
           .insert(item.data);
         if (insertError) throw insertError;
         break;
 
       case 'update':
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
           .from(supabaseTable)
           .update(item.data)
           .eq('id', item.data.id);
@@ -267,7 +267,7 @@ class DataSyncService {
         break;
 
       case 'delete':
-        const { error: deleteError } = await supabase
+        const { error: deleteError } = await (supabase as any)
           .from(supabaseTable)
           .delete()
           .eq('id', item.data.id);

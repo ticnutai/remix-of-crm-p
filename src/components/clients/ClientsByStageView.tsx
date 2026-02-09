@@ -556,6 +556,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
       return [{
         stage_name: 'לקוחות אחרונים',
         stage_icon: null,
+        sort_order: 0,
         clients: recentClients,
       }] as StageGroup[];
     }

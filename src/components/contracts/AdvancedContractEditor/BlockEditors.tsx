@@ -858,7 +858,7 @@ export function NotesBlockEditor({ content, onChange }: NotesBlockEditorProps) {
           <div className="flex items-center gap-2">
             <Select
               value={note.type || 'info'}
-              onValueChange={(value) => updateNote(note.id, { type: value })}
+              onValueChange={(value: string) => updateNote(note.id, { type: value as 'important' | 'info' | 'warning' })}
             >
               <SelectTrigger className="w-32">
                 <SelectValue />

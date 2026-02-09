@@ -106,74 +106,49 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, name: string): P
 
 // Fetchers - פונקציות קטנות לכל קריאת API
 const fetchClients = async () => {
-  const { data, error } = await withTimeout(
-    supabase.from('clients').select('id, name, status, created_at'),
-    10000,
-    'fetchClients'
-  );
+  const { data, error } = await supabase.from('clients').select('id, name, status, created_at');
   if (error) throw error;
   return data || [];
 };
 
 const fetchProjects = async () => {
-  const { data, error } = await withTimeout(
-    supabase.from('projects').select('id, name, status, created_at, budget'),
-    10000,
-    'fetchProjects'
-  );
+  const { data, error } = await supabase.from('projects').select('id, name, status, created_at, budget');
   if (error) throw error;
   return data || [];
 };
 
 const fetchTimeEntries = async () => {
-  // רק 3 חודשים אחרונים - לא צריך יותר
   const threeMonthsAgo = subMonths(new Date(), 3);
-  const { data, error } = await withTimeout(
-    supabase
-      .from('time_entries')
-      .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
-      .gte('start_time', threeMonthsAgo.toISOString()),
-    10000,
-    'fetchTimeEntries'
-  );
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
+    .gte('start_time', threeMonthsAgo.toISOString());
   if (error) throw error;
   return data || [];
 };
 
 const fetchProfiles = async () => {
-  const { data, error } = await withTimeout(
-    supabase.from('profiles').select('id, full_name'),
-    10000,
-    'fetchProfiles'
-  );
+  const { data, error } = await supabase.from('profiles').select('id, full_name');
   if (error) throw error;
   return data || [];
 };
 
 const fetchInvoices = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
-  const { data, error } = await withTimeout(
-    supabase
-      .from('invoices')
-      .select('id, amount, paid_amount, status, issue_date, created_at')
-      .gte('created_at', sixMonthsAgo.toISOString()),
-    10000,
-    'fetchInvoices'
-  );
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('id, amount, paid_amount, status, issue_date, created_at')
+    .gte('created_at', sixMonthsAgo.toISOString());
   if (error) throw error;
   return data || [];
 };
 
 const fetchQuotes = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
-  const { data, error } = await withTimeout(
-    supabase
-      .from('quotes')
-      .select('id, total_amount, paid_amount, status, issue_date, created_at')
-      .gte('created_at', sixMonthsAgo.toISOString()),
-    10000,
-    'fetchQuotes'
-  );
+  const { data, error } = await supabase
+    .from('quotes')
+    .select('id, total_amount, paid_amount, status, issue_date, created_at')
+    .gte('created_at', sixMonthsAgo.toISOString());
   if (error) throw error;
   return data || [];
 };

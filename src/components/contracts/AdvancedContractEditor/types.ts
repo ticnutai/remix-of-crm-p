@@ -235,6 +235,7 @@ export interface ContractDocument {
 // הגדרות צבעים
 export const COLOR_SCHEMES: Record<ColorScheme, {
   name: string;
+  label: string;
   primary: string;
   secondary: string;
   accent: string;
@@ -244,6 +245,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
 }> = {
   gold: {
     name: 'זהב',
+    label: 'זהב',
     primary: '#DAA520',
     secondary: '#B8860B',
     accent: '#FFD700',
@@ -253,6 +255,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   blue: {
     name: 'כחול',
+    label: 'כחול',
     primary: '#3B82F6',
     secondary: '#1D4ED8',
     accent: '#60A5FA',
@@ -262,6 +265,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   green: {
     name: 'ירוק',
+    label: 'ירוק',
     primary: '#10B981',
     secondary: '#059669',
     accent: '#34D399',
@@ -271,6 +275,7 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
   },
   purple: {
     name: 'סגול',
+    label: 'סגול',
     primary: '#8B5CF6',
     secondary: '#7C3AED',
     accent: '#A78BFA',
@@ -283,18 +288,22 @@ export const COLOR_SCHEMES: Record<ColorScheme, {
 // תבניות עיצוב
 export const DESIGN_TEMPLATES: Record<DesignTemplate, {
   name: string;
+  label: string;
   description: string;
 }> = {
   classic: {
     name: 'קלאסי',
+    label: 'קלאסי',
     description: 'עיצוב מסורתי עם גבולות ברורים',
   },
   modern: {
     name: 'מודרני',
+    label: 'מודרני',
     description: 'עיצוב עכשווי עם צבעים נועזים',
   },
   minimal: {
     name: 'מינימליסטי',
+    label: 'מינימליסטי',
     description: 'עיצוב נקי ופשוט',
   },
 };

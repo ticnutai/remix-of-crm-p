@@ -11,6 +11,7 @@ export interface ActionResult {
   message: string;
   data?: any;
   actionType: string;
+  suggestions?: string[];
 }
 
 export interface PendingAction {
@@ -230,7 +231,7 @@ class AIChatActionsService {
       const duration = params.duration_minutes || params.duration || 60;
       const endTime = new Date(scheduledAt.getTime() + duration * 60000);
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('meetings')
         .insert({
           title: params.title,
@@ -304,7 +305,7 @@ class AIChatActionsService {
 
       const dueDate = params.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('tasks')
         .insert({
           title: params.title,
@@ -482,7 +483,7 @@ class AIChatActionsService {
         }
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('reminders')
         .insert({
           title: params.title,
@@ -529,7 +530,7 @@ class AIChatActionsService {
   }): Promise<ActionResult> {
     try {
       const date = params.date || new Date();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('time_entries')
         .insert({
           description: params.description,
