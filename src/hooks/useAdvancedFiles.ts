@@ -3,9 +3,8 @@
  * תכונות: Drag & Drop, Preview, Tags, Versions, Sharing, Statistics
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 export interface FileMetadata {

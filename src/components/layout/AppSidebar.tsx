@@ -24,7 +24,6 @@ import { Switch } from '@/components/ui/switch';
 import {
   LayoutDashboard,
   Users,
-  FolderKanban,
   FileSpreadsheet,
   Calendar,
   Settings,
@@ -37,22 +36,17 @@ import {
   Table,
   Pin,
   PinOff,
-  Upload,
   Bell,
   Plus,
   Wallet,
-  Link2,
   Palette,
   GripVertical,
   X,
   Hand,
   MousePointerClick,
   Mail,
-  HardDrive,
-  Zap,
   FileBarChart,
   Phone,
-  Files,
   LayoutGrid,
   Gauge,
   TestTube,
@@ -63,7 +57,6 @@ import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
