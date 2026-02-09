@@ -232,7 +232,7 @@ export function InactiveClientsAlert({
   const handleClientAction = (client: InactiveClient, action: string) => {
     switch (action) {
       case 'view':
-        navigate(`/clients/${client.id}`);
+        navigate(`/client-profile/${client.id}`);
         break;
       case 'call':
         if (client.phone) {

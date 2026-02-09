@@ -624,7 +624,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     refreshConsultants();
   };
 
-  const openClient = (clientId: string) => navigate(`/clients/${clientId}`);
+  const openClient = (clientId: string) => navigate(`/client-profile/${clientId}`);
 
   // Open bulk add dialog
   const openBulkAddDialog = (stageName: string) => {

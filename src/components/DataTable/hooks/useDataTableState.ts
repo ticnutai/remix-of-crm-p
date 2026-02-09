@@ -243,15 +243,6 @@ export function useDataTableState<T>(props: DataTableProps<T>) {
 
   // Visible columns
   const visibleColumns = useMemo(() => {
-    console.log('[useDataTableState] Computing visibleColumns:', {
-      columnOrderCount: state.columnOrder?.length,
-      columnOrder: state.columnOrder,
-      hiddenColumnsCount: state.hiddenColumns?.size,
-      hiddenColumns: Array.from(state.hiddenColumns || []),
-      inputColumnsCount: columns?.length,
-      inputColumnIds: columns?.map(c => c.id),
-    });
-    
     const result = state.columnOrder
       .filter(id => !state.hiddenColumns.has(id))
       .map(id => {
@@ -262,11 +253,6 @@ export function useDataTableState<T>(props: DataTableProps<T>) {
         return found!;
       })
       .filter(Boolean);
-    
-    console.log('[useDataTableState] visibleColumns result:', {
-      count: result.length,
-      ids: result.map(c => c.id),
-    });
     
     return result;
   }, [columns, state.columnOrder, state.hiddenColumns]);

@@ -204,14 +204,11 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   // Load from cloud on mount
   useEffect(() => {
     const loadFromCloud = async () => {
-      console.log('[WidgetLayout DEBUG] loadFromCloud called, user:', user?.id ? user.id.substring(0, 8) + '...' : 'NO USER');
       
       if (!user?.id) {
-        console.log('[WidgetLayout DEBUG] No user, trying localStorage fallback');
         // Try localStorage fallback if no user
         try {
           const saved = localStorage.getItem(STORAGE_KEY);
-          console.log('[WidgetLayout DEBUG] localStorage data:', saved ? 'FOUND' : 'NOT FOUND');
           if (saved) {
             const parsed = JSON.parse(saved);
             const merged = DEFAULT_LAYOUTS.map(def => {
@@ -227,7 +224,6 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      console.log('[WidgetLayout DEBUG] Fetching from cloud for user:', user.id.substring(0, 8) + '...');
       try {
         const { data, error } = await supabase
           .from('user_settings')
@@ -235,8 +231,6 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           .eq('user_id', user.id)
           .eq('setting_key', CLOUD_SETTING_KEY)
           .maybeSingle();
-
-        console.log('[WidgetLayout DEBUG] Cloud response:', { data: data ? 'FOUND' : 'NULL', error: error?.message || 'NO ERROR' });
 
         if (error) {
           console.error('[WidgetLayout] Error loading from cloud:', error);
@@ -247,7 +241,6 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           }
         } else if ((data?.setting_value as any)?.layouts) {
           const settingValue = data.setting_value as any;
-          console.log('[WidgetLayout DEBUG] Found', settingValue.layouts.length, 'layouts in cloud');
           // Merge with defaults to ensure all widgets exist
           const merged = DEFAULT_LAYOUTS.map(def => {
             const saved = settingValue.layouts.find((l: WidgetLayout) => l.id === def.id);
@@ -278,7 +271,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
             window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: settingValue.dashboardTheme }));
           }
         } else {
-          console.log('[WidgetLayout DEBUG] No data in cloud, using defaults');
+          // No data in cloud, using defaults
         }
       } catch (err) {
         console.error('[WidgetLayout] Failed to load:', err);
@@ -296,15 +289,10 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
     newLayouts: WidgetLayout[],
     overrideSettings?: { gridGap?: GridGap; equalizeHeights?: boolean; autoExpand?: boolean; dashboardTheme?: string }
   ) => {
-    console.log('[WidgetLayout DEBUG] saveToCloud called with', newLayouts.length, 'layouts');
-    console.log('[WidgetLayout DEBUG] User ID:', user?.id ? user.id.substring(0, 8) + '...' : 'NO USER');
-    
     // Always save to localStorage immediately
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newLayouts));
-    console.log('[WidgetLayout DEBUG] Saved to localStorage');
 
     if (!user?.id) {
-      console.log('[WidgetLayout DEBUG] No user, skipping cloud save');
       return;
     }
 
@@ -320,13 +308,10 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
 
     // Debounce cloud save
     if (saveTimeoutRef.current) {
-      console.log('[WidgetLayout DEBUG] Clearing previous timeout');
       clearTimeout(saveTimeoutRef.current);
     }
 
-    console.log('[WidgetLayout DEBUG] Setting timeout for cloud save (1 second)');
     saveTimeoutRef.current = setTimeout(async () => {
-      console.log('[WidgetLayout DEBUG] Timeout fired, starting cloud save...');
       setIsSaving(true);
       try {
         const payload = {
@@ -339,7 +324,6 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           },
           updated_at: new Date().toISOString(),
         };
-        console.log('[WidgetLayout DEBUG] Upsert payload:', { ...payload, user_id: payload.user_id.substring(0, 8) + '...' });
         
         const { error } = await (supabase as any)
           .from('user_settings')
@@ -349,12 +333,10 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           );
 
         if (error) {
-          console.error('[WidgetLayout DEBUG] Cloud save ERROR:', error.message, error.details, error.hint);
-        } else {
-          console.log('[WidgetLayout DEBUG] ✅ Saved to cloud successfully!');
+          console.error('[WidgetLayout] Cloud save error:', error.message);
         }
       } catch (err) {
-        console.error('[WidgetLayout DEBUG] Cloud save EXCEPTION:', err);
+        console.error('[WidgetLayout] Cloud save exception:', err);
       } finally {
         setIsSaving(false);
       }

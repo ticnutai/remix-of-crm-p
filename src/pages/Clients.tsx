@@ -705,7 +705,7 @@ export default function Clients() {
       
       // Navigate to new client
       if (data?.id) {
-        navigate(`/clients/${data.id}`);
+        navigate(`/client-profile/${data.id}`);
       }
     } catch (error: any) {
       toast({
@@ -746,7 +746,7 @@ export default function Clients() {
       fetchClients();
       
       // Navigate to updated client
-      navigate(`/clients/${duplicateClient.id}`);
+      navigate(`/client-profile/${duplicateClient.id}`);
     } catch (error) {
       console.error('Error updating client:', error);
       toast({

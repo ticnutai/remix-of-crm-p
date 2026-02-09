@@ -29,13 +29,6 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 export function DataTable<T extends Record<string, any>>(props: DataTableProps<T>) {
-  // DEBUG: Log incoming props
-  console.log('[DataTable] Props received:', {
-    columnsCount: props.columns?.length,
-    columnIds: props.columns?.map(c => c.id),
-    dataCount: props.data?.length,
-    variant: props.variant,
-  });
 
   const {
     columns,
@@ -115,14 +108,6 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
     totalRows,
     actions,
   } = useDataTableState(props);
-
-  // DEBUG: Log state after hook
-  console.log('[DataTable] After useDataTableState:', {
-    visibleColumnsCount: visibleColumns?.length,
-    visibleColumnIds: visibleColumns?.map(c => c.id),
-    displayDataCount: state.displayData?.length,
-    hiddenColumnsCount: state.hiddenColumns?.size,
-  });
 
   // Multi-cell selection hook
   const cellSelection = useCellSelection({

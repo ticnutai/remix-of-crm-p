@@ -63,12 +63,6 @@ export function TableHeader<T>({
   onColumnMoveLeft,
   onColumnMoveRight,
 }: TableHeaderProps<T>) {
-  // DEBUG: Log on render
-  console.log('[TableHeader] Rendering with:', {
-    columnsCount: columns?.length,
-    columnIds: columns?.map(c => c.id),
-    columnHeaders: columns?.map(c => typeof c.header === 'string' ? c.header : c.id),
-  });
 
   const getSortIcon = (columnId: string) => {
     const sort = sorts.find(s => s.columnId === columnId);
