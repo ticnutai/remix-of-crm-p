@@ -42,5 +42,5 @@ CREATE INDEX IF NOT EXISTS idx_time_logs_client_id ON time_logs(client_id);
 -- Success message
 DO $$ 
 BEGIN 
-  RAISE NOTICE '✅ RLS policies for time_logs table fixed successfully!';
+  RAISE NOTICE '[OK] RLS policies for time_logs table fixed successfully!';
 END $$;

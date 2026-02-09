@@ -23,7 +23,7 @@ BEGIN
             )
             SELECT 
                 NEW.user_id,
-                'מיילים מ-' || NEW.name,
+                'Emails from ' || NEW.name,
                 f.id,
                 'sender_email',
                 LOWER(TRIM(NEW.email)),

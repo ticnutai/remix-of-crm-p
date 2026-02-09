@@ -1,5 +1,5 @@
 -- Fix RLS policies based on actual table structure
--- תיקון מדיניות RLS על בסיס המבנה האמיתי של הטבלאות
+-- Fix RLS policies based on actual table structure
 
 -- 1. Tasks table - using user_id instead of created_by if needed
 DO $$ 
@@ -40,7 +40,7 @@ BEGIN
     FOR DELETE
     USING (auth.uid() = created_by);
     
-    RAISE NOTICE '✅ RLS on tasks using created_by column';
+    RAISE NOTICE '[OK] RLS on tasks using created_by column';
     
   ELSIF EXISTS (SELECT 1 FROM information_schema.columns 
                 WHERE table_name = 'tasks' AND column_name = 'user_id') THEN
@@ -68,7 +68,7 @@ BEGIN
     FOR DELETE
     USING (auth.uid() = user_id);
     
-    RAISE NOTICE '✅ RLS on tasks using user_id column';
+    RAISE NOTICE '[OK] RLS on tasks using user_id column';
     
   ELSE
     RAISE NOTICE '⚠️ tasks table does not have created_by or user_id column';
@@ -106,7 +106,7 @@ BEGIN
       FOR DELETE
       USING (client_id IN (SELECT id FROM clients WHERE created_by = auth.uid()));
       
-      RAISE NOTICE '✅ RLS on client_contacts using created_by';
+      RAISE NOTICE '[OK] RLS on client_contacts using created_by';
       
     ELSIF EXISTS (SELECT 1 FROM information_schema.columns 
                   WHERE table_name = 'clients' AND column_name = 'user_id') THEN
@@ -127,7 +127,7 @@ BEGIN
       FOR DELETE
       USING (client_id IN (SELECT id FROM clients WHERE user_id = auth.uid()));
       
-      RAISE NOTICE '✅ RLS on client_contacts using user_id';
+      RAISE NOTICE '[OK] RLS on client_contacts using user_id';
     END IF;
   ELSE
     RAISE NOTICE '⚠️ client_contacts table does not exist';
@@ -169,7 +169,7 @@ BEGIN
       FOR DELETE
       USING (auth.uid() = created_by)';
       
-      RAISE NOTICE '✅ RLS on invoices using created_by';
+      RAISE NOTICE '[OK] RLS on invoices using created_by';
     ELSIF EXISTS (SELECT 1 FROM information_schema.columns 
                   WHERE table_name = 'invoices' AND column_name = 'user_id') THEN
       
@@ -193,7 +193,7 @@ BEGIN
       FOR DELETE
       USING (auth.uid() = user_id)';
       
-      RAISE NOTICE '✅ RLS on invoices using user_id';
+      RAISE NOTICE '[OK] RLS on invoices using user_id';
     END IF;
   ELSE
     RAISE NOTICE '⚠️ invoices table does not exist';
@@ -227,6 +227,6 @@ END $$;
 -- Success message
 DO $$ 
 BEGIN 
-  RAISE NOTICE '✅ RLS policies fixed based on actual table structure!';
-  RAISE NOTICE '📊 Protected tables: tasks, client_contacts, invoices (if exist)';
+  RAISE NOTICE '[OK] RLS policies fixed based on actual table structure!';
+  RAISE NOTICE '[STATS] Protected tables: tasks, client_contacts, invoices (if exist)';
 END $$;

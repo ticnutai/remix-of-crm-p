@@ -1,16 +1,16 @@
 -- ============================================
--- מיגרציה: שמירת הצעות מחיר בענן + מערכת גרסאות
--- תאריך: 2026-02-08
+-- Migration: Quote Cloud Save and Versions System
+-- Date: 2026-02-08
 -- ============================================
 
--- 1. הוספת עמודות חסרות לטבלת quote_templates
+-- 1. Add missing columns to quote_templates table
 ALTER TABLE quote_templates ADD COLUMN IF NOT EXISTS text_boxes jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE quote_templates ADD COLUMN IF NOT EXISTS upgrades jsonb DEFAULT '[]'::jsonb;
 ALTER TABLE quote_templates ADD COLUMN IF NOT EXISTS project_details jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE quote_templates ADD COLUMN IF NOT EXISTS base_price numeric DEFAULT 0;
 ALTER TABLE quote_templates ADD COLUMN IF NOT EXISTS pricing_tiers jsonb DEFAULT '[]'::jsonb;
 
-COMMENT ON COLUMN quote_templates.text_boxes IS 'תיבות טקסט מותאמות עם עיצוב וסגנון';
+COMMENT ON COLUMN quote_templates.text_boxes IS 'Custom text boxes with styling';
 COMMENT ON COLUMN quote_templates.upgrades IS 'תוספות ושדרוגים אופציונליים';
 COMMENT ON COLUMN quote_templates.project_details IS 'פרטי פרויקט - גוש חלקה מגרש כתובת';
 COMMENT ON COLUMN quote_templates.base_price IS 'מחיר בסיס להצעה';

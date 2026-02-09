@@ -50,5 +50,5 @@ CREATE INDEX IF NOT EXISTS idx_quotes_client_id ON quotes(client_id);
 -- Success message
 DO $$ 
 BEGIN 
-  RAISE NOTICE '✅ RLS policies for quotes table fixed successfully!';
+  RAISE NOTICE '[OK] RLS policies for quotes table fixed successfully!';
 END $$;

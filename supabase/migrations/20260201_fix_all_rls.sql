@@ -1,5 +1,4 @@
 -- Fix all critical RLS policies
--- תיקון כל מדיניות RLS קריטיות
 
 -- 1. Tasks table
 DROP POLICY IF EXISTS "Users can view their own tasks" ON tasks;
@@ -86,7 +85,7 @@ BEGIN
     FOR DELETE
     USING (auth.uid() = created_by)';
     
-    RAISE NOTICE '✅ RLS policies for invoices table fixed!';
+    RAISE NOTICE '[OK] RLS policies for invoices table fixed!';
   END IF;
 END $$;
 
@@ -121,7 +120,7 @@ BEGIN
     FOR DELETE
     USING (auth.uid() = created_by)';
     
-    RAISE NOTICE '✅ RLS policies for payments table fixed!';
+    RAISE NOTICE '[OK] RLS policies for payments table fixed!';
   END IF;
 END $$;
 
@@ -134,6 +133,6 @@ CREATE INDEX IF NOT EXISTS idx_client_contacts_client_id ON client_contacts(clie
 -- Success message
 DO $$ 
 BEGIN 
-  RAISE NOTICE '✅ All critical RLS policies fixed successfully!';
-  RAISE NOTICE '📊 Tables protected: tasks, client_contacts, invoices, payments';
+  RAISE NOTICE '[OK] All critical RLS policies fixed successfully!';
+  RAISE NOTICE '[STATS] Tables protected: tasks, client_contacts, invoices, payments';
 END $$;
