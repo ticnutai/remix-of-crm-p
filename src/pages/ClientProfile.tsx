@@ -58,6 +58,7 @@ import {
 } from "@/components/client-tabs";
 import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
+import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import {
   ArrowRight,
   Building,
@@ -1968,7 +1969,10 @@ export default function ClientProfile() {
 
           {/* Payments Tab */}
           <TabsContent value="payments" dir="rtl">
-            <ClientPaymentsTab clientId={client.id} clientName={client.name} />
+            <div className="space-y-6">
+              <PaymentStagesManager clientId={client.id} clientName={client.name} />
+              <ClientPaymentsTab clientId={client.id} clientName={client.name} />
+            </div>
           </TabsContent>
 
           {/* All Tables Tab */}
