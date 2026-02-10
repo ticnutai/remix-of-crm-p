@@ -37,7 +37,7 @@ export interface ClientFilterState {
   hasMeetings: boolean | null;
   categories: string[];
   tags: string[];
-  sortBy: 'name_asc' | 'name_desc' | 'date_desc' | 'date_asc';
+  sortBy: 'name_asc' | 'name_desc' | 'date_desc' | 'date_asc' | 'classification_asc';
 }
 
 interface ClientStageDefinition {
@@ -207,6 +207,7 @@ export function ClientsFilterStrip({
     date_asc: 'ישנים ראשון',
     name_asc: 'שם א-ת',
     name_desc: 'שם ת-א',
+    classification_asc: 'סיווג א-ת',
   };
 
   const filteredTags = allTags.filter(tag => 

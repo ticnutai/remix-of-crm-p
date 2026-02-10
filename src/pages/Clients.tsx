@@ -73,6 +73,7 @@ interface Client {
   created_at: string;
   category_id: string | null;
   tags: string[] | null;
+  classification: string | null;
 }
 
 interface ClientCategory {
@@ -108,8 +109,10 @@ export default function Clients() {
   const { 
     viewMode: savedViewMode, 
     columns: savedColumns, 
+    sortBy: savedSortBy,
     setViewMode: saveViewMode, 
     setColumns: saveColumns,
+    setSortBy: saveSortBy,
     isLoading: settingsLoading 
   } = useViewSettings('clients');
   
@@ -126,7 +129,10 @@ export default function Clients() {
     if (!settingsLoading && savedColumns) {
       setMinimalColumnsLocal(savedColumns as 2 | 3);
     }
-  }, [settingsLoading, savedViewMode, savedColumns]);
+    if (!settingsLoading && savedSortBy) {
+      setFilters(prev => ({ ...prev, sortBy: savedSortBy as any }));
+    }
+  }, [settingsLoading, savedViewMode, savedColumns, savedSortBy]);
   
   // Wrapper functions to save to cloud (memoized)
   const setViewMode = useCallback((mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury') => {
@@ -298,6 +304,13 @@ export default function Clients() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         case 'date_asc':
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'classification_asc': {
+          const classA = (a.classification || 'תתת').localeCompare('', 'he') ? (a.classification || 'תתת') : 'תתת';
+          const classB = (b.classification || 'תתת').localeCompare('', 'he') ? (b.classification || 'תתת') : 'תתת';
+          const classCompare = classA.localeCompare(classB, 'he');
+          if (classCompare !== 0) return classCompare;
+          return a.name.localeCompare(b.name, 'he');
+        }
         default:
           return 0;
       }
@@ -2335,7 +2348,12 @@ export default function Clients() {
         {/* Filter Strip */}
         <ClientsFilterStrip
           filters={filters}
-          onFiltersChange={setFilters}
+          onFiltersChange={(newFilters) => {
+            setFilters(newFilters);
+            if (newFilters.sortBy !== filters.sortBy) {
+              saveSortBy(newFilters.sortBy);
+            }
+          }}
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}
