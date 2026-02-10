@@ -19,9 +19,32 @@ interface ExtractedItem {
 }
 
 /**
- * Parse a Word document (.docx) and extract text content
+ * Parse a Word document (.docx) and extract HTML content with embedded images
  */
-async function parseWordDocument(file: File): Promise<string> {
+async function parseWordDocumentToHtml(file: File): Promise<string> {
+  const mammoth = await import('mammoth');
+  const arrayBuffer = await file.arrayBuffer();
+  
+  const result = await mammoth.default.convertToHtml(
+    { arrayBuffer },
+    {
+      convertImage: mammoth.default.images.imgElement(function(image: any) {
+        return image.read("base64").then(function(imageBuffer: string) {
+          return {
+            src: "data:" + image.contentType + ";base64," + imageBuffer
+          };
+        });
+      }),
+    }
+  );
+  
+  return result.value;
+}
+
+/**
+ * Parse a Word document (.docx) and extract raw text
+ */
+async function parseWordDocumentToText(file: File): Promise<string> {
   const mammoth = await import('mammoth');
   const arrayBuffer = await file.arrayBuffer();
   const result = await mammoth.default.extractRawText({ arrayBuffer });
@@ -33,7 +56,6 @@ async function parseWordDocument(file: File): Promise<string> {
  */
 async function parsePdfDocument(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
-  // Set the worker source for PDF.js
   pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
   
   const arrayBuffer = await file.arrayBuffer();
@@ -59,19 +81,16 @@ async function parsePdfDocument(file: File): Promise<string> {
 function extractTitle(text: string, fileName: string): string {
   const lines = text.split('\n').filter(line => line.trim());
   
-  // Look for common title patterns
   for (const line of lines.slice(0, 15)) {
     const trimmed = line.trim();
     if (trimmed.includes('הצעת מחיר')) {
       return trimmed;
     }
-    // Look for short meaningful titles
     if (trimmed.length > 5 && trimmed.length < 80 && !trimmed.includes(':')) {
       return trimmed;
     }
   }
   
-  // Use file name as fallback
   const cleanName = fileName.replace(/\.(docx?|pdf)$/i, '').replace(/[_-]/g, ' ');
   return cleanName || 'תבנית מיובאת';
 }
@@ -83,14 +102,12 @@ function extractItemsFromText(text: string): ExtractedItem[] {
   const lines = text.split('\n').filter(line => line.trim());
   const items: ExtractedItem[] = [];
   
-  // Pattern for prices in shekels
   const pricePattern = /[\d,]+\.?\d*\s*₪?/g;
   
   for (const line of lines) {
     const trimmedLine = line.trim();
     if (trimmedLine.length < 5) continue;
     
-    // Skip header-like lines
     if (trimmedLine.includes('הצעת מחיר') || 
         trimmedLine.includes('לכבוד') ||
         trimmedLine.includes('תאריך') ||
@@ -103,16 +120,14 @@ function extractItemsFromText(text: string): ExtractedItem[] {
     const priceMatches = trimmedLine.match(pricePattern);
     
     if (priceMatches && priceMatches.length >= 1) {
-      // Extract the last number as price
       const priceStr = priceMatches[priceMatches.length - 1]
         .replace(/[₪,\s]/g, '');
       const price = parseFloat(priceStr);
       
       if (price > 0 && price < 10000000) {
-        // Extract description (everything before the numbers)
         const description = trimmedLine
           .replace(pricePattern, '')
-          .replace(/^\d+[\.\)]\s*/, '') // Remove leading numbers like "1." or "1)"
+          .replace(/^\d+[\.\)]\s*/, '')
           .trim();
         
         if (description.length > 2) {
@@ -136,7 +151,6 @@ function extractStages(text: string): TemplateStage[] {
   const lines = text.split('\n').filter(line => line.trim());
   const stages: TemplateStage[] = [];
   
-  // Common section headers in Hebrew
   const sectionPatterns = [
     /^שלב\s+\d+/,
     /^\d+\.\s*[א-ת]/,
@@ -153,12 +167,10 @@ function extractStages(text: string): TemplateStage[] {
     const trimmed = line.trim();
     if (trimmed.length < 3) continue;
     
-    // Check if this is a section header
     const isHeader = sectionPatterns.some(p => p.test(trimmed)) || 
                      (trimmed.length < 50 && trimmed.endsWith(':'));
     
     if (isHeader) {
-      // Save previous stage
       if (currentStage && currentStage.items.length > 0) {
         stages.push(currentStage);
       }
@@ -171,7 +183,6 @@ function extractStages(text: string): TemplateStage[] {
         isExpanded: true,
       };
     } else if (currentStage && trimmed.length > 5) {
-      // Add as item to current stage
       currentStage.items.push({
         id: generateId(),
         text: trimmed,
@@ -179,12 +190,10 @@ function extractStages(text: string): TemplateStage[] {
     }
   }
   
-  // Save last stage
   if (currentStage && currentStage.items.length > 0) {
     stages.push(currentStage);
   }
   
-  // If no stages found, create one default stage with content
   if (stages.length === 0) {
     const items: TemplateStageItem[] = lines
       .filter(l => l.trim().length > 10)
@@ -215,7 +224,6 @@ function extractPaymentSchedule(text: string): PaymentStep[] {
   const payments: PaymentStep[] = [];
   const lines = text.split('\n');
   
-  // Look for payment patterns
   const percentPattern = /(\d+)\s*%/g;
   
   for (const line of lines) {
@@ -235,7 +243,6 @@ function extractPaymentSchedule(text: string): PaymentStep[] {
     }
   }
   
-  // If no payments found, use default
   if (payments.length === 0) {
     return [
       { id: generateId(), percentage: 50, description: 'חתימת חוזה' },
@@ -252,24 +259,12 @@ function extractPaymentSchedule(text: string): PaymentStep[] {
 function detectCategory(text: string): string {
   const lowerText = text.toLowerCase();
   
-  if (lowerText.includes('היתר') || lowerText.includes('רישוי')) {
-    return 'היתר_בניה';
-  }
-  if (lowerText.includes('תוספת') || lowerText.includes('הרחבה') || lowerText.includes('בניה')) {
-    return 'construction';
-  }
-  if (lowerText.includes('שיפוץ')) {
-    return 'שיפוץ';
-  }
-  if (lowerText.includes('פנים') || lowerText.includes('עיצוב')) {
-    return 'תכנון_פנים';
-  }
-  if (lowerText.includes('פיקוח')) {
-    return 'פיקוח';
-  }
-  if (lowerText.includes('ייעוץ')) {
-    return 'ייעוץ';
-  }
+  if (lowerText.includes('היתר') || lowerText.includes('רישוי')) return 'היתר_בניה';
+  if (lowerText.includes('תוספת') || lowerText.includes('הרחבה') || lowerText.includes('בניה')) return 'construction';
+  if (lowerText.includes('שיפוץ')) return 'שיפוץ';
+  if (lowerText.includes('פנים') || lowerText.includes('עיצוב')) return 'תכנון_פנים';
+  if (lowerText.includes('פיקוח')) return 'פיקוח';
+  if (lowerText.includes('ייעוץ')) return 'ייעוץ';
   
   return 'אחר';
 }
@@ -282,22 +277,89 @@ function calculateBasePrice(items: ExtractedItem[]): number {
 }
 
 /**
+ * Wrap the mammoth HTML output with RTL styling for proper display
+ */
+function wrapHtmlWithStyling(html: string, title: string): string {
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body {
+      font-family: 'David', 'Arial', sans-serif;
+      direction: rtl;
+      text-align: right;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #1a1a1a;
+      margin-top: 1em;
+      margin-bottom: 0.5em;
+    }
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.4em; }
+    h3 { font-size: 1.2em; }
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1em 0;
+    }
+    td, th {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: right;
+    }
+    p { margin: 0.5em 0; }
+    ul, ol {
+      padding-right: 20px;
+      padding-left: 0;
+    }
+    @media print {
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+}
+
+/**
  * Import a Word or PDF file and convert to QuoteTemplate
+ * Now includes HTML conversion for Word files with embedded images
  */
 export async function importDocumentToTemplate(file: File): Promise<Partial<QuoteTemplate> | null> {
   try {
     const fileName = file.name.toLowerCase();
     let textContent = '';
+    let htmlContent: string | null = null;
     
     if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-      textContent = await parseWordDocument(file);
+      // Get both HTML (with images) and raw text
+      const [html, text] = await Promise.all([
+        parseWordDocumentToHtml(file),
+        parseWordDocumentToText(file),
+      ]);
+      textContent = text;
+      htmlContent = html;
     } else if (fileName.endsWith('.pdf')) {
       textContent = await parsePdfDocument(file);
     } else {
       throw new Error('סוג קובץ לא נתמך. נא להעלות קובץ Word או PDF.');
     }
     
-    if (!textContent.trim()) {
+    if (!textContent.trim() && !htmlContent?.trim()) {
       throw new Error('לא ניתן לחלץ תוכן מהקובץ');
     }
     
@@ -307,6 +369,9 @@ export async function importDocumentToTemplate(file: File): Promise<Partial<Quot
     const payments = extractPaymentSchedule(textContent);
     const category = detectCategory(textContent);
     const basePrice = calculateBasePrice(extractedItems);
+    
+    // Wrap the HTML with proper RTL styling
+    const styledHtml = htmlContent ? wrapHtmlWithStyling(htmlContent, title) : null;
     
     return {
       name: title,
@@ -329,6 +394,7 @@ export async function importDocumentToTemplate(file: File): Promise<Partial<Quot
       show_vat: true,
       vat_rate: 17,
       is_active: true,
+      html_content: styledHtml,
       design_settings: {
         ...DEFAULT_DESIGN_SETTINGS,
         primary_color: '#DAA520',
@@ -340,6 +406,30 @@ export async function importDocumentToTemplate(file: File): Promise<Partial<Quot
     console.error('Error importing document:', error);
     throw error;
   }
+}
+
+/**
+ * Convert a Word file directly to styled HTML string (for standalone HTML export)
+ */
+export async function convertWordToHtml(file: File): Promise<string> {
+  const mammoth = await import('mammoth');
+  const arrayBuffer = await file.arrayBuffer();
+  
+  const result = await mammoth.default.convertToHtml(
+    { arrayBuffer },
+    {
+      convertImage: mammoth.default.images.imgElement(function(image: any) {
+        return image.read("base64").then(function(imageBuffer: string) {
+          return {
+            src: "data:" + image.contentType + ";base64," + imageBuffer
+          };
+        });
+      }),
+    }
+  );
+  
+  const title = extractTitle(result.value.replace(/<[^>]*>/g, ''), file.name);
+  return wrapHtmlWithStyling(result.value, title);
 }
 
 /**

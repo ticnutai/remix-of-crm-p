@@ -306,11 +306,7 @@ export default function Clients() {
     return result;
   }, [clients, searchQuery, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
 
-  useEffect(() => {
-    fetchClients();
-    fetchFilterData();
-    fetchCategoriesAndTags();
-  }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
+  // Data fetching effect moved below function declarations
 
   // Reset displayed count when filters change
   useEffect(() => {
@@ -536,6 +532,13 @@ export default function Clients() {
       setIsLoading(false);
     }
   }, [toast]);
+
+  // Data fetching on mount
+  useEffect(() => {
+    fetchClients();
+    fetchFilterData();
+    fetchCategoriesAndTags();
+  }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
 
   // Check for duplicate clients
   const checkForDuplicates = async (name: string, email: string | null, phone: string | null, idNumber: string | null) => {

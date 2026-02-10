@@ -43,12 +43,13 @@ import { AdvancedTemplateDialog } from './AdvancedTemplateDialog';
 import { TemplatePreviewDialog } from './TemplatePreviewDialog';
 import { HtmlTemplateEditor } from './HtmlTemplateEditor';
 import { importHtmlFile } from './htmlTemplateParser';
-import { importDocumentToTemplate, getSupportedDocumentTypes } from './documentImporter';
+import { importDocumentToTemplate, convertWordToHtml, getSupportedDocumentTypes } from './documentImporter';
 
 export function QuoteTemplatesManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wordToHtmlInputRef = useRef<HTMLInputElement>(null);
   
   const [editingTemplate, setEditingTemplate] = useState<Partial<QuoteTemplate> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -56,6 +57,7 @@ export function QuoteTemplatesManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [previewTemplate, setPreviewTemplate] = useState<QuoteTemplate | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [htmlEditorTemplate, setHtmlEditorTemplate] = useState<QuoteTemplate | null>(null);
 
   // שליפת תבניות
@@ -231,6 +233,45 @@ export function QuoteTemplatesManager() {
     }
   };
 
+  // המרת קובץ Word ל-HTML עם תמונות
+  const handleWordToHtml = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsConverting(true);
+    try {
+      const html = await convertWordToHtml(file);
+      
+      // Download the HTML file
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name.replace(/\.(docx?|doc)$/i, '') + '.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: 'הומר בהצלחה',
+        description: `הקובץ הומר ל-HTML כולל תמונות והורד למחשבך`,
+      });
+    } catch (err) {
+      console.error('Error converting to HTML:', err);
+      toast({
+        title: 'שגיאה בהמרה',
+        description: 'לא ניתן להמיר את הקובץ. נא לנסות שוב.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsConverting(false);
+      if (wordToHtmlInputRef.current) {
+        wordToHtmlInputRef.current.value = '';
+      }
+    }
+  };
+
   // פונקציות פעולה
   const handleNew = () => {
     setEditingTemplate(createEmptyTemplate());
@@ -273,13 +314,20 @@ export function QuoteTemplatesManager() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Hidden file input - supports HTML, Word, and PDF */}
+      {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
         type="file"
         accept=".html,.htm,.docx,.doc,.pdf"
         multiple
         onChange={handleFileImport}
+        className="hidden"
+      />
+      <input
+        ref={wordToHtmlInputRef}
+        type="file"
+        accept=".docx,.doc"
+        onChange={handleWordToHtml}
         className="hidden"
       />
 
@@ -294,7 +342,21 @@ export function QuoteTemplatesManager() {
             נהל תבניות מוכנות עם שלבים, לוח תשלומים ועיצוב מותאם
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button 
+            onClick={() => wordToHtmlInputRef.current?.click()}
+            variant="outline"
+            disabled={isConverting}
+            className="border-primary text-primary hover:bg-primary/10"
+            title="המרת קובץ Word ל-HTML כולל תמונות"
+          >
+            {isConverting ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent ml-2" />
+            ) : (
+              <FileCode className="h-4 w-4 ml-2" />
+            )}
+            Word → HTML
+          </Button>
           <Button 
             onClick={handleImportClick}
             variant="outline"

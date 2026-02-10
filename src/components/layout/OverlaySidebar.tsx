@@ -91,12 +91,13 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
         if (!user) return;
         const { data } = await supabase
           .from('user_preferences')
-          .select('sidebar_theme')
+          .select('*')
           .eq('user_id', user.id)
           .single();
-        if (data?.sidebar_theme) {
-          setSidebarTheme(data.sidebar_theme as SidebarTheme);
-          localStorage.setItem('sidebar-theme', JSON.stringify(data.sidebar_theme));
+        const theme = (data as any)?.sidebar_theme;
+        if (theme) {
+          setSidebarTheme(theme as SidebarTheme);
+          localStorage.setItem('sidebar-theme', JSON.stringify(theme));
           themeLoadedFromCloud.current = true;
         }
       } catch {
@@ -114,7 +115,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        await supabase
+        await (supabase as any)
           .from('user_preferences')
           .upsert({
             user_id: user.id,

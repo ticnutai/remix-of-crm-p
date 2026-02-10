@@ -470,11 +470,7 @@ export default function Finance() {
   }, [expenses, yearFilter]);
 
   // Fetch data
-  useEffect(() => {
-    fetchData();
-    fetchVatRate();
-    fetchExpenses();
-  }, [fetchData, fetchVatRate, fetchExpenses]);
+  // Data fetching effect - moved below function declarations
 
   const fetchVatRate = useCallback(async () => {
     if (!user) return;
@@ -531,6 +527,13 @@ export default function Finance() {
       setIsLoading(false);
     }
   }, [user]);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+    fetchVatRate();
+    fetchExpenses();
+  }, [fetchData, fetchVatRate, fetchExpenses]);
 
   // Calculate stats - filtered by year if selected (memoized for performance)
   const filteredPaidInvoices = useMemo(() => {
