@@ -1,5 +1,5 @@
 // Calendar Page - tenarch CRM Pro
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -145,20 +145,15 @@ const Calendar = () => {
     return saved ? new Date(saved) : new Date();
   });
   
-  // Save calendar state to localStorage
+  // Save calendar state to localStorage (batched into single effect)
   useEffect(() => {
     localStorage.setItem('calendar-view-type', viewType);
-  }, [viewType]);
-  
-  useEffect(() => {
     localStorage.setItem('calendar-month', currentMonth.toISOString());
-  }, [currentMonth]);
-  
-  useEffect(() => {
     if (selectedDate) {
       localStorage.setItem('calendar-selected-date', selectedDate.toISOString());
     }
-  }, [selectedDate]);
+  }, [viewType, currentMonth, selectedDate]);
+  
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -173,7 +168,6 @@ const Calendar = () => {
   
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
-  const [hasAutoSynced, setHasAutoSynced] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
   // Shared data for forms
@@ -267,23 +261,25 @@ const Calendar = () => {
   }, [user, fetchData]);
 
   // Auto sync with Google Calendar when page loads and user is connected
+  const lastSyncedMonthRef = React.useRef<string>('');
   useEffect(() => {
+    const monthKey = currentMonth.toISOString().slice(0, 7);
+    const alreadySynced = lastSyncedMonthRef.current === monthKey;
+    
     const performAutoSync = async () => {
-      if (!user || !isGoogleConnected || hasAutoSynced || isSyncing || googleLoading) {
+      if (!user || !isGoogleConnected || alreadySynced || isSyncing || googleLoading) {
         return;
       }
 
+      lastSyncedMonthRef.current = monthKey;
       setIsSyncing(true);
-      setHasAutoSynced(true);
       
       try {
-        console.log('[Calendar] Starting auto sync with Google Calendar...');
         const start = startOfMonth(currentMonth);
         const end = endOfMonth(currentMonth);
         
         // Import events from Google Calendar to local DB
         const result = await importFromGoogle(start, end, supabase, user.id);
-        console.log('[Calendar] Auto sync complete:', result);
         
         // Refresh data to show imported meetings
         if (result.imported > 0) {
@@ -297,33 +293,61 @@ const Calendar = () => {
     };
 
     performAutoSync();
-  }, [user, isGoogleConnected, hasAutoSynced, isSyncing, googleLoading, currentMonth, importFromGoogle, fetchData]);
+  }, [user, isGoogleConnected, isSyncing, googleLoading, currentMonth, importFromGoogle, fetchData]);
 
-  // Reset auto sync flag when month changes to sync new month
-  useEffect(() => {
-    setHasAutoSynced(false);
-  }, [currentMonth]);
+  // Pre-grouped data by date string for O(1) lookups instead of filtering per cell
+  const groupedByDate = useMemo(() => {
+    const entries: Record<string, TimeEntry[]> = {};
+    const meetingsMap: Record<string, Meeting[]> = {};
+    const tasksMap: Record<string, Task[]> = {};
+    const remindersMap: Record<string, Reminder[]> = {};
+    
+    timeEntries.forEach(e => {
+      const key = format(parseISO(e.start_time), 'yyyy-MM-dd');
+      (entries[key] ||= []).push(e);
+    });
+    meetings.forEach(m => {
+      const key = format(parseISO(m.start_time), 'yyyy-MM-dd');
+      (meetingsMap[key] ||= []).push(m);
+    });
+    tasks.forEach(t => {
+      if (t.due_date) {
+        const key = format(parseISO(t.due_date), 'yyyy-MM-dd');
+        (tasksMap[key] ||= []).push(t);
+      }
+    });
+    reminders.forEach(r => {
+      const key = format(parseISO(r.remind_at), 'yyyy-MM-dd');
+      (remindersMap[key] ||= []).push(r);
+    });
+    
+    return { entries, meetings: meetingsMap, tasks: tasksMap, reminders: remindersMap };
+  }, [timeEntries, meetings, tasks, reminders]);
 
-  const getEntriesForDate = (date: Date) => {
-    return timeEntries.filter((entry) => isSameDay(parseISO(entry.start_time), date));
-  };
+  const getEntriesForDate = useCallback((date: Date) => {
+    const key = format(date, 'yyyy-MM-dd');
+    return groupedByDate.entries[key] || [];
+  }, [groupedByDate]);
 
-  const getMeetingsForDate = (date: Date) => {
-    return meetings.filter((m) => isSameDay(parseISO(m.start_time), date));
-  };
+  const getMeetingsForDate = useCallback((date: Date) => {
+    const key = format(date, 'yyyy-MM-dd');
+    return groupedByDate.meetings[key] || [];
+  }, [groupedByDate]);
 
-  const getTasksForDate = (date: Date) => {
-    return tasks.filter((t) => t.due_date && isSameDay(parseISO(t.due_date), date));
-  };
+  const getTasksForDate = useCallback((date: Date) => {
+    const key = format(date, 'yyyy-MM-dd');
+    return groupedByDate.tasks[key] || [];
+  }, [groupedByDate]);
 
-  const getRemindersForDate = (date: Date) => {
-    return reminders.filter((r) => isSameDay(parseISO(r.remind_at), date));
-  };
+  const getRemindersForDate = useCallback((date: Date) => {
+    const key = format(date, 'yyyy-MM-dd');
+    return groupedByDate.reminders[key] || [];
+  }, [groupedByDate]);
 
-  const getTotalMinutesForDate = (date: Date) => {
+  const getTotalMinutesForDate = useCallback((date: Date) => {
     const entries = getEntriesForDate(date);
     return entries.reduce((total, entry) => total + (entry.duration_minutes || 0), 0);
-  };
+  }, [getEntriesForDate]);
 
   const formatMinutes = (minutes: number) => {
     const hrs = Math.floor(minutes / 60);

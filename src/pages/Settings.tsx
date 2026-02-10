@@ -1,5 +1,5 @@
 // Settings Page - tenarch CRM Pro
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AppLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
@@ -271,13 +271,7 @@ export default function Settings() {
   }, [user]);
 
   // Fetch users for admin
-  useEffect(() => {
-    if (isAdmin) {
-      fetchUsers();
-    }
-  }, [isAdmin]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoadingUsers(true);
     try {
       const { data: profiles, error: profilesError } = await supabase
@@ -309,7 +303,13 @@ export default function Settings() {
     } finally {
       setIsLoadingUsers(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [isAdmin, fetchUsers]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);

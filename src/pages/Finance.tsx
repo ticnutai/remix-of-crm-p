@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -461,15 +461,13 @@ export default function Finance() {
     };
   };
 
-  // Get filtered expenses based on year filter
-  const getFilteredExpenses = () => {
+  // Get filtered expenses based on year filter (memoized)
+  const filteredExpensesForAnalytics = useMemo(() => {
     if (yearFilter !== 'all') {
       return expenses.filter(e => new Date(e.expense_date).getFullYear().toString() === yearFilter);
     }
     return expenses;
-  };
-
-  const filteredExpensesForAnalytics = getFilteredExpenses();
+  }, [expenses, yearFilter]);
 
   // Fetch data
   useEffect(() => {
@@ -478,7 +476,7 @@ export default function Finance() {
     fetchExpenses();
   }, [user]);
 
-  const fetchVatRate = async () => {
+  const fetchVatRate = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from('app_settings')
@@ -488,9 +486,9 @@ export default function Finance() {
     if (data?.vat_rate) {
       setVatRate(data.vat_rate);
     }
-  };
+  }, [user]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from('expenses')
@@ -499,7 +497,7 @@ export default function Finance() {
     if (data) {
       setExpenses(data);
     }
-  };
+  }, [user]);
 
   const fetchData = async () => {
     setIsLoading(true);

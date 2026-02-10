@@ -375,15 +375,6 @@ export default function DataTablePro() {
   const [isCreateTableDialogOpen, setIsCreateTableDialogOpen] = useState(false);
   const [isManageTablesDialogOpen, setIsManageTablesDialogOpen] = useState(false);
 
-  // Debug logging
-  console.log('🔵 DataTablePro rendered');
-  console.log('📊 dbClients:', dbClients?.length || 0);
-  console.log('📊 dbProjects:', dbProjects?.length || 0);
-  console.log('📊 dbEmployees:', dbEmployees?.length || 0);
-  console.log('🎨 clientCustomColumns:', clientCustomColumns?.length || 0);
-  console.log('🎨 projectCustomColumns:', projectCustomColumns?.length || 0);
-  console.log('🎨 employeeCustomColumns:', employeeCustomColumns?.length || 0);
-
   // Active custom table state
   const activeCustomTable = useMemo(() => {
     if (!activeTab.startsWith('custom_')) return null;

@@ -160,20 +160,22 @@ export default function Clients() {
   // Add client dialog state
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
   const [showFeaturesHelp, setShowFeaturesHelp] = useState(false);
-  const [newClientName, setNewClientName] = useState('');
-  const [newClientEmail, setNewClientEmail] = useState('');
-  const [newClientPhone, setNewClientPhone] = useState('');
-  const [newClientIdNumber, setNewClientIdNumber] = useState('');
-  const [newClientGush, setNewClientGush] = useState('');
-  const [newClientHelka, setNewClientHelka] = useState('');
-  const [newClientMigrash, setNewClientMigrash] = useState('');
-  const [newClientTaba, setNewClientTaba] = useState('');
-  const [newClientStreet, setNewClientStreet] = useState('');
-  const [newClientMoshav, setNewClientMoshav] = useState('');
-  const [newClientAgudaAddress, setNewClientAgudaAddress] = useState('');
-  const [newClientAgudaEmail, setNewClientAgudaEmail] = useState('');
-  const [newClientVaadMoshavAddress, setNewClientVaadMoshavAddress] = useState('');
-  const [newClientVaadMoshavEmail, setNewClientVaadMoshavEmail] = useState('');
+  const [newClientForm, setNewClientForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    idNumber: '',
+    gush: '',
+    helka: '',
+    migrash: '',
+    taba: '',
+    street: '',
+    moshav: '',
+    agudaAddress: '',
+    agudaEmail: '',
+    vaadMoshavAddress: '',
+    vaadMoshavEmail: '',
+  });
   const [isAddingClient, setIsAddingClient] = useState(false);
   
   // Filter state
@@ -461,40 +463,21 @@ export default function Clients() {
 
   const fetchFilterData = async () => {
     try {
-      // Fetch client stages
-      const { data: stagesData } = await supabase
-        .from('client_stages')
-        .select('client_id, stage_id');
-      
-      setClientStages(stagesData || []);
+      // Fetch all filter data in parallel
+      const [stagesRes, remindersRes, tasksRes, meetingsRes] = await Promise.all([
+        supabase.from('client_stages').select('client_id, stage_id'),
+        supabase.from('reminders').select('entity_id').eq('entity_type', 'client').eq('is_dismissed', false),
+        supabase.from('tasks').select('client_id').not('client_id', 'is', null).neq('status', 'done'),
+        supabase.from('meetings').select('client_id').not('client_id', 'is', null).gte('start_time', new Date().toISOString()),
+      ]);
 
-      // Fetch clients with reminders (entity_type = 'client')
-      const { data: remindersData } = await supabase
-        .from('reminders')
-        .select('entity_id')
-        .eq('entity_type', 'client')
-        .eq('is_dismissed', false);
-      
-      setClientsWithReminders(new Set(remindersData?.map(r => r.entity_id).filter(Boolean) || []));
-
-      // Fetch clients with tasks
-      const { data: tasksData } = await supabase
-        .from('tasks')
-        .select('client_id')
-        .not('client_id', 'is', null)
-        .neq('status', 'done');
-      
-      setClientsWithTasks(new Set(tasksData?.map(t => t.client_id).filter(Boolean) || []));
-
-      // Fetch clients with meetings
-      const { data: meetingsData } = await supabase
-        .from('meetings')
-        .select('client_id')
-        .not('client_id', 'is', null)
-        .gte('start_time', new Date().toISOString());
-      
-      setClientsWithMeetings(new Set(meetingsData?.map(m => m.client_id).filter(Boolean) || []));
-
+      // Batch all state updates
+      React.startTransition(() => {
+        setClientStages(stagesRes.data || []);
+        setClientsWithReminders(new Set(remindersRes.data?.map(r => r.entity_id).filter(Boolean) || []));
+        setClientsWithTasks(new Set(tasksRes.data?.map(t => t.client_id).filter(Boolean) || []));
+        setClientsWithMeetings(new Set(meetingsRes.data?.map(m => m.client_id).filter(Boolean) || []));
+      });
     } catch (error) {
       console.error('Error fetching filter data:', error);
     }
@@ -595,9 +578,30 @@ export default function Clients() {
     return data && data.length > 0 ? data[0] as Client : null;
   };
 
+  // Helper to build client data object from form
+  const buildClientData = (userId: string | null) => ({
+    name: newClientForm.name.trim(),
+    email: newClientForm.email.trim() || null,
+    phone: newClientForm.phone.trim() || null,
+    id_number: newClientForm.idNumber.trim() || null,
+    gush: newClientForm.gush.trim() || null,
+    helka: newClientForm.helka.trim() || null,
+    migrash: newClientForm.migrash.trim() || null,
+    taba: newClientForm.taba.trim() || null,
+    street: newClientForm.street.trim() || null,
+    moshav: newClientForm.moshav.trim() || null,
+    aguda_address: newClientForm.agudaAddress.trim() || null,
+    aguda_email: newClientForm.agudaEmail.trim() || null,
+    vaad_moshav_address: newClientForm.vaadMoshavAddress.trim() || null,
+    vaad_moshav_email: newClientForm.vaadMoshavEmail.trim() || null,
+    status: 'active' as const,
+    user_id: userId,
+    created_by: userId,
+  });
+
   // Add new client with duplicate check
   const handleAddClient = async () => {
-    if (!newClientName.trim()) {
+    if (!newClientForm.name.trim()) {
       toast({
         title: 'שגיאה',
         description: 'יש להזין שם לקוח',
@@ -626,35 +630,19 @@ export default function Clients() {
           const { data: { user } } = await supabase.auth.getUser();
           const userId = user?.id || null;
           
+          const clientData = buildClientData(userId);
+          
           // Check for duplicates first
           const duplicate = await checkForDuplicates(
-            newClientName.trim(),
-            newClientEmail.trim() || null,
-            newClientPhone.trim() || null,
-            newClientIdNumber.trim() || null
+            clientData.name,
+            clientData.email,
+            clientData.phone,
+            clientData.id_number
           );
           
           if (duplicate) {
             // Store pending data and show duplicate dialog
-            setPendingClientData({
-              name: newClientName.trim(),
-              email: newClientEmail.trim() || null,
-              phone: newClientPhone.trim() || null,
-              id_number: newClientIdNumber.trim() || null,
-              gush: newClientGush.trim() || null,
-              helka: newClientHelka.trim() || null,
-              migrash: newClientMigrash.trim() || null,
-              taba: newClientTaba.trim() || null,
-              street: newClientStreet.trim() || null,
-              moshav: newClientMoshav.trim() || null,
-              aguda_address: newClientAgudaAddress.trim() || null,
-              aguda_email: newClientAgudaEmail.trim() || null,
-              vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
-              vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
-              status: 'active',
-              user_id: userId,
-              created_by: userId,
-            });
+            setPendingClientData(clientData);
             setDuplicateClient(duplicate);
             setDuplicateDialogOpen(true);
             setIsAddingClient(false);
@@ -662,25 +650,7 @@ export default function Clients() {
           }
           
           // No duplicate found, proceed with insert
-          await insertNewClient({
-            name: newClientName.trim(),
-            email: newClientEmail.trim() || null,
-            phone: newClientPhone.trim() || null,
-            id_number: newClientIdNumber.trim() || null,
-            gush: newClientGush.trim() || null,
-            helka: newClientHelka.trim() || null,
-            migrash: newClientMigrash.trim() || null,
-            taba: newClientTaba.trim() || null,
-            street: newClientStreet.trim() || null,
-            moshav: newClientMoshav.trim() || null,
-            aguda_address: newClientAgudaAddress.trim() || null,
-            aguda_email: newClientAgudaEmail.trim() || null,
-            vaad_moshav_address: newClientVaadMoshavAddress.trim() || null,
-            vaad_moshav_email: newClientVaadMoshavEmail.trim() || null,
-            status: 'active',
-            user_id: userId,
-            created_by: userId,
-          });
+          await insertNewClient(clientData);
         })(),
         timeoutPromise
       ]);
@@ -798,20 +768,12 @@ export default function Clients() {
 
   // Reset add client form
   const resetAddClientForm = () => {
-    setNewClientName('');
-    setNewClientEmail('');
-    setNewClientPhone('');
-    setNewClientIdNumber('');
-    setNewClientGush('');
-    setNewClientHelka('');
-    setNewClientMigrash('');
-    setNewClientTaba('');
-    setNewClientStreet('');
-    setNewClientMoshav('');
-    setNewClientAgudaAddress('');
-    setNewClientAgudaEmail('');
-    setNewClientVaadMoshavAddress('');
-    setNewClientVaadMoshavEmail('');
+    setNewClientForm({
+      name: '', email: '', phone: '', idNumber: '',
+      gush: '', helka: '', migrash: '', taba: '',
+      street: '', moshav: '', agudaAddress: '', agudaEmail: '',
+      vaadMoshavAddress: '', vaadMoshavEmail: '',
+    });
   };
 
   const getStatusConfig = (status: string | null) => {
@@ -2633,13 +2595,13 @@ export default function Clients() {
               <Label htmlFor="client-name" className="text-right">שם לקוח *</Label>
               <Input
                 id="client-name"
-                value={newClientName}
-                onChange={(e) => setNewClientName(e.target.value)}
+                value={newClientForm.name}
+                onChange={(e) => setNewClientForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="הכנס שם לקוח..."
                 className="text-right"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newClientName.trim()) {
+                  if (e.key === 'Enter' && newClientForm.name.trim()) {
                     handleAddClient();
                   }
                 }}
@@ -2651,8 +2613,8 @@ export default function Clients() {
               <Input
                 id="client-email"
                 type="email"
-                value={newClientEmail}
-                onChange={(e) => setNewClientEmail(e.target.value)}
+                value={newClientForm.email}
+                onChange={(e) => setNewClientForm(prev => ({ ...prev, email: e.target.value }))}
                 placeholder="example@email.com"
                 className="text-left"
                 dir="ltr"
@@ -2664,8 +2626,8 @@ export default function Clients() {
               <Input
                 id="client-phone"
                 type="tel"
-                value={newClientPhone}
-                onChange={(e) => setNewClientPhone(e.target.value)}
+                value={newClientForm.phone}
+                onChange={(e) => setNewClientForm(prev => ({ ...prev, phone: e.target.value }))}
                 placeholder="050-000-0000"
                 className="text-left"
                 dir="ltr"
@@ -2678,15 +2640,15 @@ export default function Clients() {
               <div className="grid grid-cols-2 gap-3">
                 <SmartComboField
                   label="רחוב"
-                  value={newClientStreet}
-                  onChange={setNewClientStreet}
+                  value={newClientForm.street}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, street: v }))}
                   placeholder="שם הרחוב"
                   fieldColumn="street"
                 />
                 <SmartComboField
                   label="מושב / ישוב"
-                  value={newClientMoshav}
-                  onChange={setNewClientMoshav}
+                  value={newClientForm.moshav}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, moshav: v }))}
                   placeholder="שם המושב"
                   fieldColumn="moshav"
                 />
@@ -2701,16 +2663,16 @@ export default function Clients() {
                   <Label htmlFor="client-id-number" className="text-right text-xs">ת.ז / ח.פ</Label>
                   <Input
                     id="client-id-number"
-                    value={newClientIdNumber}
-                    onChange={(e) => setNewClientIdNumber(e.target.value)}
+                    value={newClientForm.idNumber}
+                    onChange={(e) => setNewClientForm(prev => ({ ...prev, idNumber: e.target.value }))}
                     placeholder="תעודת זהות"
                     className="text-right"
                   />
                 </div>
                 <SmartComboField
                   label='תב"ע'
-                  value={newClientTaba}
-                  onChange={setNewClientTaba}
+                  value={newClientForm.taba}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, taba: v }))}
                   placeholder="תב''ע"
                   fieldColumn="taba"
                 />
@@ -2718,22 +2680,22 @@ export default function Clients() {
               <div className="grid grid-cols-3 gap-3 mt-3">
                 <SmartComboField
                   label="גוש"
-                  value={newClientGush}
-                  onChange={setNewClientGush}
+                  value={newClientForm.gush}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, gush: v }))}
                   placeholder="גוש"
                   fieldColumn="gush"
                 />
                 <SmartComboField
                   label="חלקה"
-                  value={newClientHelka}
-                  onChange={setNewClientHelka}
+                  value={newClientForm.helka}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, helka: v }))}
                   placeholder="חלקה"
                   fieldColumn="helka"
                 />
                 <SmartComboField
                   label="מגרש"
-                  value={newClientMigrash}
-                  onChange={setNewClientMigrash}
+                  value={newClientForm.migrash}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, migrash: v }))}
                   placeholder="מגרש"
                   fieldColumn="migrash"
                 />
@@ -2746,15 +2708,15 @@ export default function Clients() {
               <div className="grid grid-cols-2 gap-3">
                 <SmartComboField
                   label="כתובת ועד האגודה"
-                  value={newClientAgudaAddress}
-                  onChange={setNewClientAgudaAddress}
+                  value={newClientForm.agudaAddress}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, agudaAddress: v }))}
                   placeholder="כתובת"
                   fieldColumn="aguda_address"
                 />
                 <SmartComboField
                   label="מייל ועד האגודה"
-                  value={newClientAgudaEmail}
-                  onChange={setNewClientAgudaEmail}
+                  value={newClientForm.agudaEmail}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, agudaEmail: v }))}
                   placeholder="email@example.com"
                   fieldColumn="aguda_email"
                   dir="ltr"
@@ -2769,15 +2731,15 @@ export default function Clients() {
               <div className="grid grid-cols-2 gap-3">
                 <SmartComboField
                   label="כתובת ועד המושב"
-                  value={newClientVaadMoshavAddress}
-                  onChange={setNewClientVaadMoshavAddress}
+                  value={newClientForm.vaadMoshavAddress}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, vaadMoshavAddress: v }))}
                   placeholder="כתובת"
                   fieldColumn="vaad_moshav_address"
                 />
                 <SmartComboField
                   label="מייל ועד המושב"
-                  value={newClientVaadMoshavEmail}
-                  onChange={setNewClientVaadMoshavEmail}
+                  value={newClientForm.vaadMoshavEmail}
+                  onChange={(v) => setNewClientForm(prev => ({ ...prev, vaadMoshavEmail: v }))}
                   placeholder="email@example.com"
                   fieldColumn="vaad_moshav_email"
                   dir="ltr"
@@ -2799,7 +2761,7 @@ export default function Clients() {
             </Button>
             <Button
               onClick={handleAddClient}
-              disabled={!newClientName.trim() || isAddingClient}
+              disabled={!newClientForm.name.trim() || isAddingClient}
               className="bg-green-600 hover:bg-green-700"
             >
               {isAddingClient ? (

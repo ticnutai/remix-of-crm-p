@@ -139,9 +139,6 @@ export default function TimeLogs() {
   const { user, isAdmin, isManager } = useAuth();
   const { toast } = useToast();
   
-  // Debug logging
-  console.log('[TimeLogs] Component mounted/rendered', { user: user?.email, isAdmin, isManager });
-  
   // Data state
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -225,36 +222,37 @@ export default function TimeLogs() {
   // ====================================================
   useEffect(() => {
     if (!settingsLoading && cloudSettings) {
-      console.log('[TimeLogs] Loading settings from cloud:', cloudSettings);
-      
-      if (cloudSettings.activeTab) {
-        setActiveTabLocal(cloudSettings.activeTab);
-        localStorage.setItem('timelogs-active-tab', cloudSettings.activeTab);
-      }
-      if (cloudSettings.viewMode) {
-        setViewModeLocal(cloudSettings.viewMode);
-        localStorage.setItem('timelogs-view-mode', cloudSettings.viewMode);
-      }
-      if (cloudSettings.selectedClient) {
-        setSelectedClientLocal(cloudSettings.selectedClient);
-        localStorage.setItem('timelogs-client', cloudSettings.selectedClient);
-      }
-      if (cloudSettings.selectedProject) {
-        setSelectedProjectLocal(cloudSettings.selectedProject);
-        localStorage.setItem('timelogs-project', cloudSettings.selectedProject);
-      }
-      if (cloudSettings.selectedUser) {
-        setSelectedUserLocal(cloudSettings.selectedUser);
-        localStorage.setItem('timelogs-user', cloudSettings.selectedUser);
-      }
-      if (cloudSettings.dateFilter) {
-        setDateFilterLocal(cloudSettings.dateFilter);
-        localStorage.setItem('timelogs-date-filter', cloudSettings.dateFilter);
-      }
-      if (typeof cloudSettings.showBillableOnly === 'boolean') {
-        setShowBillableOnly(cloudSettings.showBillableOnly);
-        localStorage.setItem('timelogs-billable', String(cloudSettings.showBillableOnly));
-      }
+      // Batch all state updates to avoid 7 separate re-renders
+      React.startTransition(() => {
+        if (cloudSettings.activeTab) {
+          setActiveTabLocal(cloudSettings.activeTab);
+          localStorage.setItem('timelogs-active-tab', cloudSettings.activeTab);
+        }
+        if (cloudSettings.viewMode) {
+          setViewModeLocal(cloudSettings.viewMode);
+          localStorage.setItem('timelogs-view-mode', cloudSettings.viewMode);
+        }
+        if (cloudSettings.selectedClient) {
+          setSelectedClientLocal(cloudSettings.selectedClient);
+          localStorage.setItem('timelogs-client', cloudSettings.selectedClient);
+        }
+        if (cloudSettings.selectedProject) {
+          setSelectedProjectLocal(cloudSettings.selectedProject);
+          localStorage.setItem('timelogs-project', cloudSettings.selectedProject);
+        }
+        if (cloudSettings.selectedUser) {
+          setSelectedUserLocal(cloudSettings.selectedUser);
+          localStorage.setItem('timelogs-user', cloudSettings.selectedUser);
+        }
+        if (cloudSettings.dateFilter) {
+          setDateFilterLocal(cloudSettings.dateFilter);
+          localStorage.setItem('timelogs-date-filter', cloudSettings.dateFilter);
+        }
+        if (typeof cloudSettings.showBillableOnly === 'boolean') {
+          setShowBillableOnly(cloudSettings.showBillableOnly);
+          localStorage.setItem('timelogs-billable', String(cloudSettings.showBillableOnly));
+        }
+      });
     }
   }, [settingsLoading, cloudSettings]);
 
@@ -434,24 +432,28 @@ export default function TimeLogs() {
     };
   }, [user]);
 
+  // Pre-built lookup Maps for O(1) access instead of .find() per render
+  const clientMap = useMemo(() => new Map(clients.map(c => [c.id, c.name])), [clients]);
+  const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p.name])), [projects]);
+  const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name || u.email])), [users]);
+
   // Get client name by ID
-  const getClientName = (clientId: string | null) => {
+  const getClientName = useCallback((clientId: string | null) => {
     if (!clientId) return 'לא משויך';
-    return clients.find(c => c.id === clientId)?.name || 'לא ידוע';
-  };
+    return clientMap.get(clientId) || 'לא ידוע';
+  }, [clientMap]);
 
   // Get project name by ID
-  const getProjectName = (projectId: string | null) => {
+  const getProjectName = useCallback((projectId: string | null) => {
     if (!projectId) return '-';
-    return projects.find(p => p.id === projectId)?.name || 'לא ידוע';
-  };
+    return projectMap.get(projectId) || 'לא ידוע';
+  }, [projectMap]);
 
   // Get user name by ID
-  const getUserName = (userId: string | null) => {
+  const getUserName = useCallback((userId: string | null) => {
     if (!userId) return 'לא ידוע';
-    const foundUser = users.find(u => u.id === userId);
-    return foundUser?.name || foundUser?.email || 'לא ידוע';
-  };
+    return userMap.get(userId) || 'לא ידוע';
+  }, [userMap]);
 
   // Calculate date range based on filter
   const getDateRange = () => {

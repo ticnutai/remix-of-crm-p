@@ -1,5 +1,5 @@
 // Gmail Page - Email management with Google Gmail integration
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -187,13 +187,13 @@ export default function Gmail() {
   const [meetingInitialData, setMeetingInitialData] = useState<any>(null);
   
   // Wrapper functions for QuickAddTask/QuickAddMeeting (they expect Promise<void>)
-  const handleCreateTask = async (task: Parameters<typeof createTaskOriginal>[0]): Promise<void> => {
+  const handleCreateTask = useCallback(async (task: Parameters<typeof createTaskOriginal>[0]): Promise<void> => {
     await createTaskOriginal(task);
-  };
+  }, [createTaskOriginal]);
   
-  const handleCreateMeeting = async (meeting: Parameters<typeof createMeetingOriginal>[0]): Promise<void> => {
+  const handleCreateMeeting = useCallback(async (meeting: Parameters<typeof createMeetingOriginal>[0]): Promise<void> => {
     await createMeetingOriginal(meeting);
-  };
+  }, [createMeetingOriginal]);
   
   // New Enhanced Features State
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
@@ -299,11 +299,11 @@ export default function Gmail() {
   }, [messages, clientEmailMap, autoTagEnabled]);
   
   // Get client info for a message (for display)
-  const getClientForMessage = (message: GmailMessage): Client | null => {
+  const getClientForMessage = useCallback((message: GmailMessage): Client | null => {
     const senderEmail = message.from?.toLowerCase().trim();
     if (!senderEmail) return null;
     return clientEmailMap.get(senderEmail) || null;
-  };
+  }, [clientEmailMap]);
 
   // Auto-load emails if already connected
   useEffect(() => {
@@ -312,21 +312,21 @@ export default function Gmail() {
     }
   }, [isConnected, hasLoaded, isLoading, fetchEmails]);
 
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     await fetchEmails(50);
     setHasLoaded(true);
-  };
+  }, [fetchEmails]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setSelectedDateFilter(null);
     await fetchEmails(50);
-  };
+  }, [fetchEmails]);
 
   // Handle date filter selection
-  const handleDateFilterSelect = async (date: Date) => {
+  const handleDateFilterSelect = useCallback(async (date: Date) => {
     setSelectedDateFilter(date);
     await searchByDateRange(date);
-  };
+  }, [searchByDateRange]);
 
   // Clear date filter
   const handleClearDateFilter = async () => {
