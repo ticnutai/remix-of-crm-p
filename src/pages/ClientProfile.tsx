@@ -1970,8 +1970,14 @@ export default function ClientProfile() {
           {/* Payments Tab */}
           <TabsContent value="payments" dir="rtl">
             <div className="space-y-6">
-              <PaymentStagesManager clientId={client.id} clientName={client.name} />
-              <ClientPaymentsTab clientId={client.id} clientName={client.name} />
+              <PaymentStagesManager
+                clientId={client.id}
+                clientName={client.name}
+              />
+              <ClientPaymentsTab
+                clientId={client.id}
+                clientName={client.name}
+              />
             </div>
           </TabsContent>
 

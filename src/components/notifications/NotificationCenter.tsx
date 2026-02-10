@@ -148,7 +148,11 @@ export function NotificationCenter() {
           message: r.message || "תזכורת",
           is_read: r.is_sent || false,
           created_at: r.remind_at,
-          metadata: { entity_type: "reminder", entity_id: r.id, source: "reminders" },
+          metadata: {
+            entity_type: "reminder",
+            entity_id: r.id,
+            source: "reminders",
+          },
           priority: "medium",
         } as Notification);
       });
@@ -172,7 +176,11 @@ export function NotificationCenter() {
           message: `פגישה ב-${format(new Date(m.start_time), "HH:mm", { locale: he })}`,
           is_read: false,
           created_at: m.start_time,
-          metadata: { entity_type: "meeting", entity_id: m.id, source: "meetings" },
+          metadata: {
+            entity_type: "meeting",
+            entity_id: m.id,
+            source: "meetings",
+          },
           priority: "medium",
         } as Notification);
       });
@@ -205,7 +213,10 @@ export function NotificationCenter() {
     }
 
     // מיון לפי תאריך (חדש ראשון)
-    all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    all.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
     return all;
   }, [dbNotifications, liveItems]);
 
@@ -237,18 +248,21 @@ export function NotificationCenter() {
   }, [queryClient]);
 
   // סימון כנקראה (handles both notifications and reminders)
-  const handleMarkRead = useCallback(async (notification: Notification) => {
-    const meta = notification.metadata as Record<string, any> | null;
-    if (meta?.source === "reminders") {
-      await supabase
-        .from("reminders")
-        .update({ is_sent: true })
-        .eq("id", notification.id);
-    } else if (meta?.source !== "meetings") {
-      await markAsRead(notification.id);
-    }
-    invalidateAll();
-  }, [invalidateAll]);
+  const handleMarkRead = useCallback(
+    async (notification: Notification) => {
+      const meta = notification.metadata as Record<string, any> | null;
+      if (meta?.source === "reminders") {
+        await supabase
+          .from("reminders")
+          .update({ is_sent: true })
+          .eq("id", notification.id);
+      } else if (meta?.source !== "meetings") {
+        await markAsRead(notification.id);
+      }
+      invalidateAll();
+    },
+    [invalidateAll],
+  );
 
   // סימון הכל כנקרא
   const markAllReadMutation = useMutation({
@@ -267,7 +281,15 @@ export function NotificationCenter() {
 
   // סנוז - handles both notifications table entries and live reminders
   const snoozeMutation = useMutation({
-    mutationFn: async ({ id, minutes, source }: { id: string; minutes: number; source?: string }) => {
+    mutationFn: async ({
+      id,
+      minutes,
+      source,
+    }: {
+      id: string;
+      minutes: number;
+      source?: string;
+    }) => {
       const snoozeUntil = new Date();
       snoozeUntil.setMinutes(snoozeUntil.getMinutes() + minutes);
 
@@ -651,7 +673,12 @@ export function NotificationCenter() {
                                           snoozeMutation.mutate({
                                             id: notification.id,
                                             minutes: option.minutes,
-                                            source: (notification.metadata as Record<string, any>)?.source,
+                                            source: (
+                                              notification.metadata as Record<
+                                                string,
+                                                any
+                                              >
+                                            )?.source,
                                           });
                                         }}
                                         className="cursor-pointer"

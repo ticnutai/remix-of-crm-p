@@ -2446,19 +2446,6 @@ export default function Clients() {
 
         {/* Clients Content Area - Scrollable */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: '16px', overflow: 'hidden' }}>
-          {/* Categories Sidebar */}
-          <CategoriesSidebar
-            categories={categories}
-            selectedCategories={filters.categories}
-            onToggleCategory={(categoryId) => {
-              const newCategories = filters.categories.includes(categoryId)
-                ? filters.categories.filter(c => c !== categoryId)
-                : [...filters.categories, categoryId];
-              setFilters({ ...filters, categories: newCategories });
-            }}
-            onClearCategories={() => setFilters({ ...filters, categories: [] })}
-            clientCounts={categoryCounts}
-          />
 
           {/* Main Content Area */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

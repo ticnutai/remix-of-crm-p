@@ -8,17 +8,22 @@ import { AutoBackupScheduler } from "@/lib/smartBackup";
 const WATCH_KEYS = [
   // Theme & UI
   "ten-arch-theme",
+  "theme",
+  "ten-arch-custom-themes",
   "animations-enabled",
   "timer-theme",
+  "ncrm-reduced-motion",
 
   // Sidebar & Navigation
   "sidebar-tasks-open",
   "sidebar-gestures-config",
   "button-gestures-config",
   "sidebar-pinned",
+  "sidebar-width",
+  "sidebar-theme",
 
   // Dashboard & Widgets
-  "widget-layouts-v2",
+  "widget-layouts-v3",
   "dashboard-widgets-config",
   "dashboard-dynamic-stats",
   "dashboard-theme",
@@ -26,13 +31,21 @@ const WATCH_KEYS = [
   "dashboard-selected-table",
   "widget-edit-mode",
   "work-hours-widget-colors",
+  "widget-grid-gap",
+  "widget-equalize-heights",
+  "widget-auto-expand",
+  "widget-gap-x",
+  "widget-gap-y",
 
   // Finance page
   "finance-page-sections",
   "finance-collapsed-sections",
+  "finance-tabs-layout",
+  "finance-widget-layout",
 
   // DataTable & Presets
   "datatable-pro-presets",
+  "customColumnTemplates",
 
   // Timelogs filters
   "timelogs-view-mode",
@@ -42,28 +55,64 @@ const WATCH_KEYS = [
   "timelogs-date-filter",
   "timelogs-custom-range",
   "timelogs-billable",
+  "timelogs-active-tab",
+  "timelogs-user",
 
-  // Quotes filters
+  // Quotes & Contracts filters
   "quotes-search",
   "quotes-status-filter",
+  "quotes-active-tab",
+  "contracts-search",
+  "contracts-status-filter",
 
   // Reports & MyDay
   "reports-date-range",
   "myday-meetings-view",
+  "myday-tasks-view",
+
+  // Calendar
+  "calendar-view-type",
 
   // Clients page
   "clients-mobile-view",
   "clients-view-mode",
+  "clientsByStage_viewFilter",
+  "clientsByStage_expandedGroups",
+  "clientsByStage_expandedConsultants",
+
+  // Employees
+  "employees-view-mode",
+
+  // Files
+  "starred_files",
+
+  // Notifications
+  "notification_sound_enabled",
+
+  // Timer
+  "timer-position",
+  "timer-size",
+  "timer-quick-titles",
+  "timer-quick-notes",
+  "timer-quick-options",
+  "custom-timer-themes",
+  "timer-widget-collapsed",
+  "timer-recent-clients",
 
   // Google integrations config
   "google-calendar-auto-sync-settings",
   "google_calendar_config",
   "google_sheets_config",
 
+  // Backup config
+  "auto-backup-config",
+
   // Developer tools
   "dev-tools-enabled",
   "dev-tools-config",
   "dev-buttons-config",
+  "dev-buttons-positions",
+  "dev-tools-minimized",
 ];
 
 export function CloudSyncProvider({ children }: { children: React.ReactNode }) {

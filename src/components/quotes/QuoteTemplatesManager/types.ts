@@ -41,19 +41,19 @@ export interface DesignSettings {
   company_subtitle: string;
   primary_color: string;
   secondary_color: string;
-  header_style: 'gradient' | 'solid' | 'minimal' | 'modern' | 'classic';
+  header_style: "gradient" | "solid" | "minimal" | "modern" | "classic";
   // New design options
-  font_family: 'default' | 'modern' | 'classic' | 'elegant';
-  font_size: 'small' | 'medium' | 'large';
-  border_style: 'none' | 'simple' | 'rounded' | 'shadow';
+  font_family: "default" | "modern" | "classic" | "elegant";
+  font_size: "small" | "medium" | "large";
+  border_style: "none" | "simple" | "rounded" | "shadow";
   accent_color: string;
-  background_pattern: 'none' | 'dots' | 'lines' | 'grid' | 'geometric';
+  background_pattern: "none" | "dots" | "lines" | "grid" | "geometric";
   show_watermark: boolean;
   watermark_text: string;
-  header_height: 'compact' | 'normal' | 'large';
-  table_style: 'simple' | 'striped' | 'bordered' | 'modern';
-  section_divider: 'none' | 'line' | 'dots' | 'gradient';
-  footer_style: 'minimal' | 'detailed' | 'branded';
+  header_height: "compact" | "normal" | "large";
+  table_style: "simple" | "striped" | "bordered" | "modern";
+  section_divider: "none" | "line" | "dots" | "gradient";
+  footer_style: "minimal" | "detailed" | "branded";
   contact_info: {
     phone: string;
     email: string;
@@ -93,101 +93,101 @@ export interface QuoteTemplate {
 
 // קטגוריות - values must match DB CHECK constraint on quote_templates.category
 export const CATEGORIES = [
-  { value: 'construction', label: 'בנייה' },
-  { value: 'development', label: 'היתר בניה' },
-  { value: 'design', label: 'תכנון פנים' },
-  { value: 'marketing', label: 'שיפוץ' },
-  { value: 'consulting', label: 'פיקוח / ייעוץ' },
-  { value: 'other', label: 'אחר' },
+  { value: "construction", label: "בנייה" },
+  { value: "development", label: "היתר בניה" },
+  { value: "design", label: "תכנון פנים" },
+  { value: "marketing", label: "שיפוץ" },
+  { value: "consulting", label: "פיקוח / ייעוץ" },
+  { value: "other", label: "אחר" },
 ];
 
 // יחידות מידה
 export const UNITS = [
-  { value: 'יח׳', label: 'יחידה' },
-  { value: 'מ״ר', label: 'מטר מרובע' },
-  { value: 'מ״א', label: 'מטר אורך' },
-  { value: 'שעה', label: 'שעה' },
-  { value: 'יום', label: 'יום' },
-  { value: 'קומפלט', label: 'קומפלט' },
-  { value: 'חודש', label: 'חודש' },
+  { value: "יח׳", label: "יחידה" },
+  { value: "מ״ר", label: "מטר מרובע" },
+  { value: "מ״א", label: "מטר אורך" },
+  { value: "שעה", label: "שעה" },
+  { value: "יום", label: "יום" },
+  { value: "קומפלט", label: "קומפלט" },
+  { value: "חודש", label: "חודש" },
 ];
 
 // הגדרות עיצוב ברירת מחדל
 export const DEFAULT_DESIGN_SETTINGS: DesignSettings = {
   logo_url: null,
-  company_name: '',
-  company_subtitle: '',
-  primary_color: '#d8ac27',
-  secondary_color: '#1a365d',
-  header_style: 'gradient',
-  font_family: 'default',
-  font_size: 'medium',
-  border_style: 'rounded',
-  accent_color: '#10b981',
-  background_pattern: 'none',
+  company_name: "",
+  company_subtitle: "",
+  primary_color: "#d8ac27",
+  secondary_color: "#1a365d",
+  header_style: "gradient",
+  font_family: "default",
+  font_size: "medium",
+  border_style: "rounded",
+  accent_color: "#10b981",
+  background_pattern: "none",
   show_watermark: false,
-  watermark_text: '',
-  header_height: 'normal',
-  table_style: 'modern',
-  section_divider: 'line',
-  footer_style: 'detailed',
+  watermark_text: "",
+  header_height: "normal",
+  table_style: "modern",
+  section_divider: "line",
+  footer_style: "detailed",
   contact_info: {
-    phone: '',
-    email: '',
-    address: '',
-    website: '',
+    phone: "",
+    email: "",
+    address: "",
+    website: "",
   },
 };
 
 // סגנונות כותרת
 export const HEADER_STYLES = [
-  { value: 'gradient', label: 'גרדיאנט', icon: '🎨' },
-  { value: 'solid', label: 'צבע אחיד', icon: '🟨' },
-  { value: 'minimal', label: 'מינימלי', icon: '⬜' },
-  { value: 'modern', label: 'מודרני', icon: '💎' },
-  { value: 'classic', label: 'קלאסי', icon: '📜' },
+  { value: "gradient", label: "גרדיאנט", icon: "🎨" },
+  { value: "solid", label: "צבע אחיד", icon: "🟨" },
+  { value: "minimal", label: "מינימלי", icon: "⬜" },
+  { value: "modern", label: "מודרני", icon: "💎" },
+  { value: "classic", label: "קלאסי", icon: "📜" },
 ];
 
 // גופנים
 export const FONT_FAMILIES = [
-  { value: 'default', label: 'ברירת מחדל', sample: 'אבגדה' },
-  { value: 'modern', label: 'מודרני', sample: 'אבגדה' },
-  { value: 'classic', label: 'קלאסי', sample: 'אבגדה' },
-  { value: 'elegant', label: 'אלגנטי', sample: 'אבגדה' },
+  { value: "default", label: "ברירת מחדל", sample: "אבגדה" },
+  { value: "modern", label: "מודרני", sample: "אבגדה" },
+  { value: "classic", label: "קלאסי", sample: "אבגדה" },
+  { value: "elegant", label: "אלגנטי", sample: "אבגדה" },
 ];
 
 // סגנונות טבלה
 export const TABLE_STYLES = [
-  { value: 'simple', label: 'פשוט' },
-  { value: 'striped', label: 'פסים' },
-  { value: 'bordered', label: 'עם מסגרת' },
-  { value: 'modern', label: 'מודרני' },
+  { value: "simple", label: "פשוט" },
+  { value: "striped", label: "פסים" },
+  { value: "bordered", label: "עם מסגרת" },
+  { value: "modern", label: "מודרני" },
 ];
 
 // תבניות רקע
 export const BACKGROUND_PATTERNS = [
-  { value: 'none', label: 'ללא' },
-  { value: 'dots', label: 'נקודות' },
-  { value: 'lines', label: 'קווים' },
-  { value: 'grid', label: 'רשת' },
-  { value: 'geometric', label: 'גיאומטרי' },
+  { value: "none", label: "ללא" },
+  { value: "dots", label: "נקודות" },
+  { value: "lines", label: "קווים" },
+  { value: "grid", label: "רשת" },
+  { value: "geometric", label: "גיאומטרי" },
 ];
 
 // תבנית ריקה
 export const createEmptyTemplate = (): Partial<QuoteTemplate> => ({
-  id: '',
-  name: '',
-  description: '',
-  category: 'construction',
+  id: "",
+  name: "",
+  description: "",
+  category: "construction",
   items: [],
   stages: [],
   payment_schedule: [
-    { id: crypto.randomUUID(), percentage: 50, description: 'חתימת חוזה' },
-    { id: crypto.randomUUID(), percentage: 50, description: 'סיום העבודה' },
+    { id: crypto.randomUUID(), percentage: 50, description: "חתימת חוזה" },
+    { id: crypto.randomUUID(), percentage: 50, description: "סיום העבודה" },
   ],
   timeline: [],
-  terms: 'ההצעה בתוקף ל-30 יום מיום הפקתה.',
-  notes: '',
+  terms: "ההצעה בתוקף ל-30 יום מיום הפקתה.",
+  notes: "",
   important_notes: [],
   validity_days: 30,
   design_settings: { ...DEFAULT_DESIGN_SETTINGS },
