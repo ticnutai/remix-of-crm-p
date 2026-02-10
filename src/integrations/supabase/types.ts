@@ -5417,6 +5417,7 @@ export type Database = {
           sidebar_collapsed: boolean | null
           sidebar_pinned: boolean | null
           sidebar_style: string | null
+          sidebar_theme: Json | null
           sidebar_width: number | null
           table_density: string | null
           table_style: string | null
@@ -5466,6 +5467,7 @@ export type Database = {
           sidebar_collapsed?: boolean | null
           sidebar_pinned?: boolean | null
           sidebar_style?: string | null
+          sidebar_theme?: Json | null
           sidebar_width?: number | null
           table_density?: string | null
           table_style?: string | null
@@ -5515,6 +5517,7 @@ export type Database = {
           sidebar_collapsed?: boolean | null
           sidebar_pinned?: boolean | null
           sidebar_style?: string | null
+          sidebar_theme?: Json | null
           sidebar_width?: number | null
           table_density?: string | null
           table_style?: string | null
@@ -5833,6 +5836,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      debug_query: { Args: { query_text: string }; Returns: Json }
       execute_safe_migration: {
         Args: { p_migration_name: string; p_migration_sql: string }
         Returns: Json
