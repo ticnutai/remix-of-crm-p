@@ -256,17 +256,17 @@ function extractPaymentSchedule(text: string): PaymentStep[] {
 /**
  * Detect category from content
  */
+// Category values must match DB CHECK constraint: construction, consulting, design, development, marketing, other
 function detectCategory(text: string): string {
   const lowerText = text.toLowerCase();
   
-  if (lowerText.includes('היתר') || lowerText.includes('רישוי')) return 'היתר_בניה';
-  if (lowerText.includes('תוספת') || lowerText.includes('הרחבה') || lowerText.includes('בניה')) return 'construction';
-  if (lowerText.includes('שיפוץ')) return 'שיפוץ';
-  if (lowerText.includes('פנים') || lowerText.includes('עיצוב')) return 'תכנון_פנים';
-  if (lowerText.includes('פיקוח')) return 'פיקוח';
-  if (lowerText.includes('ייעוץ')) return 'ייעוץ';
+  if (lowerText.includes('היתר') || lowerText.includes('רישוי')) return 'development';
+  if (lowerText.includes('תוספת') || lowerText.includes('הרחבה') || lowerText.includes('בניה') || lowerText.includes('בנייה')) return 'construction';
+  if (lowerText.includes('שיפוץ')) return 'marketing';
+  if (lowerText.includes('פנים') || lowerText.includes('עיצוב')) return 'design';
+  if (lowerText.includes('פיקוח') || lowerText.includes('ייעוץ')) return 'consulting';
   
-  return 'אחר';
+  return 'other';
 }
 
 /**

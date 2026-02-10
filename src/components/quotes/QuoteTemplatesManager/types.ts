@@ -91,15 +91,14 @@ export interface QuoteTemplate {
   pricing_tiers?: any[];
 }
 
-// קטגוריות
+// קטגוריות - values must match DB CHECK constraint on quote_templates.category
 export const CATEGORIES = [
   { value: 'construction', label: 'בנייה' },
-  { value: 'היתר_בניה', label: 'היתר בניה' },
-  { value: 'תכנון_פנים', label: 'תכנון פנים' },
-  { value: 'שיפוץ', label: 'שיפוץ' },
-  { value: 'פיקוח', label: 'פיקוח' },
-  { value: 'ייעוץ', label: 'ייעוץ' },
-  { value: 'אחר', label: 'אחר' },
+  { value: 'development', label: 'היתר בניה' },
+  { value: 'design', label: 'תכנון פנים' },
+  { value: 'marketing', label: 'שיפוץ' },
+  { value: 'consulting', label: 'פיקוח / ייעוץ' },
+  { value: 'other', label: 'אחר' },
 ];
 
 // יחידות מידה

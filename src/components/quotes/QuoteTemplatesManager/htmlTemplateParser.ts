@@ -240,16 +240,19 @@ export function parseHtmlTemplate(html: string): ParsedTemplate | null {
 // המרה לפורמט QuoteTemplate
 export function convertToQuoteTemplate(parsed: ParsedTemplate, originalHtml?: string): Partial<QuoteTemplate> {
   // קטגוריה לפי כותרת
-  let category = 'אחר';
+  // category values must match DB CHECK constraint: construction, consulting, design, development, marketing, other
+  let category = 'other';
   const titleLower = parsed.title.toLowerCase();
   if (titleLower.includes('היתר') || titleLower.includes('רישוי')) {
-    category = 'היתר_בניה';
-  } else if (titleLower.includes('תוספת') || titleLower.includes('הרחבה') || titleLower.includes('בניה')) {
+    category = 'development';
+  } else if (titleLower.includes('תוספת') || titleLower.includes('הרחבה') || titleLower.includes('בניה') || titleLower.includes('בנייה')) {
     category = 'construction';
   } else if (titleLower.includes('שיפוץ')) {
-    category = 'שיפוץ';
-  } else if (titleLower.includes('פנים')) {
-    category = 'תכנון_פנים';
+    category = 'marketing';
+  } else if (titleLower.includes('פנים') || titleLower.includes('עיצוב')) {
+    category = 'design';
+  } else if (titleLower.includes('פיקוח') || titleLower.includes('ייעוץ')) {
+    category = 'consulting';
   }
   
   return {
