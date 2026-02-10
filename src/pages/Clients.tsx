@@ -310,7 +310,7 @@ export default function Clients() {
     fetchClients();
     fetchFilterData();
     fetchCategoriesAndTags();
-  }, []);
+  }, [fetchClients, fetchFilterData, fetchCategoriesAndTags]);
 
   // Reset displayed count when filters change
   useEffect(() => {
@@ -461,7 +461,7 @@ export default function Clients() {
     };
   }, [keyboardSearch, filteredClients]);
 
-  const fetchFilterData = async () => {
+  const fetchFilterData = useCallback(async () => {
     try {
       // Fetch all filter data in parallel
       const [stagesRes, remindersRes, tasksRes, meetingsRes] = await Promise.all([
@@ -481,9 +481,9 @@ export default function Clients() {
     } catch (error) {
       console.error('Error fetching filter data:', error);
     }
-  };
+  }, []);
 
-  const fetchCategoriesAndTags = async () => {
+  const fetchCategoriesAndTags = useCallback(async () => {
     try {
       // Fetch categories
       const { data: categoriesData } = await supabase
@@ -510,9 +510,9 @@ export default function Clients() {
     } catch (error) {
       console.error('Error fetching categories and tags:', error);
     }
-  };
+  }, []);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
       // Fetch all clients without default limit (Supabase defaults to 1000)
@@ -535,7 +535,7 @@ export default function Clients() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   // Check for duplicate clients
   const checkForDuplicates = async (name: string, email: string | null, phone: string | null, idNumber: string | null) => {

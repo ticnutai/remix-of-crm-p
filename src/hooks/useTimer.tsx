@@ -173,8 +173,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log('🔔 [useTimer] Real-time update:', payload.eventType);
-          
           if (payload.eventType === 'DELETE') {
             const deletedEntry = payload.old as TimeEntry;
             // Remove from todayEntries if it's there
@@ -219,10 +217,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, [timerState.isRunning, timerState.startTime]);
 
   const startTimer = async (projectId?: string, clientId?: string, description?: string, tags?: string[]) => {
-    console.log('🔵 [useTimer] startTimer called', { projectId, clientId, description, tags });
-    
     if (!user) {
-      console.log('🔴 [useTimer] No user logged in');
       toast({
         title: 'שגיאה',
         description: 'יש להתחבר כדי להשתמש בטיימר',
@@ -232,8 +227,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
 
     const startTime = new Date();
-
-    console.log('🔵 [useTimer] Inserting new timer entry', { userId: user.id, startTime: startTime.toISOString() });
 
     const { data, error } = await supabase
       .from('time_entries')
@@ -261,8 +254,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log('✅ [useTimer] Timer started successfully', { entryId: data.id });
-
     setTimerState({
       isRunning: true,
       startTime,
@@ -275,31 +266,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       description: 'מעקב זמן התחיל',
     });
 
-    console.log('🔵 [useTimer] Refreshing entries after start...');
     await refreshEntries();
-    console.log('✅ [useTimer] Entries refreshed after start');
   };
 
   const stopTimer = async () => {
-    console.log('🔵 [useTimer] stopTimer called', { 
-      hasCurrentEntry: !!timerState.currentEntry, 
-      elapsed: timerState.elapsed,
-      entryId: timerState.currentEntry?.id 
-    });
-    
     if (!timerState.currentEntry) {
-      console.log('🔴 [useTimer] No current entry to stop');
       return;
     }
 
     const endTime = new Date();
     const durationMinutes = Math.floor(timerState.elapsed / 60);
-
-    console.log('🔵 [useTimer] Stopping timer', {
-      entryId: timerState.currentEntry.id,
-      durationMinutes,
-      endTime: endTime.toISOString(),
-    });
 
     // Note: duration_minutes is a generated column - only update end_time and is_running
     const { data, error } = await supabase
@@ -321,8 +297,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log('✅ [useTimer] Timer stopped successfully', { data });
-
     setTimerState({
       isRunning: false,
       startTime: null,
@@ -335,9 +309,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       description: `זמן שנרשם: ${formatDuration(durationMinutes)}`,
     });
 
-    console.log('🔵 [useTimer] Refreshing entries...');
     await refreshEntries();
-    console.log('✅ [useTimer] Entries refreshed after stop');
   };
 
   const pauseTimer = () => {
@@ -377,26 +349,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   };
 
   const saveEntry = async (notes?: string) => {
-    console.log('🔵 [useTimer] saveEntry called', { 
-      hasCurrentEntry: !!timerState.currentEntry, 
-      elapsed: timerState.elapsed,
-      notes,
-      entryId: timerState.currentEntry?.id 
-    });
-    
     if (!timerState.currentEntry) {
-      console.log('🔴 [useTimer] No current entry to save');
       return;
     }
 
     const endTime = new Date();
     const durationMinutes = Math.floor(timerState.elapsed / 60);
-
-    console.log('🔵 [useTimer] Preparing to save entry', {
-      entryId: timerState.currentEntry.id,
-      durationMinutes,
-      endTime: endTime.toISOString(),
-    });
 
     // Combine existing description with notes if provided
     const updatedDescription = notes 
@@ -424,8 +382,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    console.log('✅ [useTimer] Entry saved successfully', { data });
-
     setTimerState({
       isRunning: false,
       startTime: null,
@@ -438,9 +394,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       description: `זמן שנרשם: ${formatDuration(durationMinutes)}`,
     });
 
-    console.log('🔵 [useTimer] Refreshing entries...');
     await refreshEntries();
-    console.log('✅ [useTimer] Entries refreshed');
   };
 
   const updateDescription = async (description: string) => {

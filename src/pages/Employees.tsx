@@ -333,8 +333,7 @@ export default function Employees() {
     if (user) {
       fetchEmployees();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, authLoading]);
+  }, [user, authLoading, fetchEmployees]);
 
   const handleEditClick = (employee: Employee) => {
     setEditForm({

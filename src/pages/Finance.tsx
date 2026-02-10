@@ -474,7 +474,7 @@ export default function Finance() {
     fetchData();
     fetchVatRate();
     fetchExpenses();
-  }, [user]);
+  }, [fetchData, fetchVatRate, fetchExpenses]);
 
   const fetchVatRate = useCallback(async () => {
     if (!user) return;
@@ -499,7 +499,8 @@ export default function Finance() {
     }
   }, [user]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
       const [invoicesRes, clientsRes, projectsRes] = await Promise.all([
@@ -529,7 +530,7 @@ export default function Finance() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   // Calculate stats - filtered by year if selected (memoized for performance)
   const filteredPaidInvoices = useMemo(() => {

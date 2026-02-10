@@ -700,13 +700,9 @@ function MigrationManagement() {
         const data: PendingMigrationsFile = await response.json();
         const pending = data.migrations.filter(m => m.status === 'pending');
         setPendingMigrations(pending);
-        // Log quietly without toast
-        if (pending.length > 0) {
-          console.log(`🚀 ${pending.length} מיגרציות ממתינות מ-Copilot`);
-        }
       }
-    } catch (e) {
-      console.log('No pending migrations file found');
+    } catch {
+      // No pending migrations file - expected
     } finally {
       setLoadingPending(false);
     }
@@ -843,14 +839,10 @@ function MigrationManagement() {
         .limit(100);
       
       if (!directError && directData) {
-        console.log('📊 Migration data (direct query):', directData);
         setMigrationLogs(directData.map(item => ({
           ...item,
           result_message: null
         })) as MigrationLog[]);
-        if (directData.length > 0) {
-          console.log(`✅ נמצאו ${directData.length} מיגרציות`);
-        }
         setLoading(false);
         return;
       }
@@ -859,8 +851,6 @@ function MigrationManagement() {
       const { data, error: queryError } = await supabase
         .rpc('get_migration_history');
       
-      console.log('📊 Migration history data (RPC):', data);
-      
       if (queryError) {
         console.error('Migration history query error:', queryError);
         setError('לא נמצאו לוגים של מיגרציות עדיין');
@@ -868,7 +858,6 @@ function MigrationManagement() {
       } else {
         setMigrationLogs((data as MigrationLog[]) || []);
         if (data && data.length > 0) {
-          console.log(`✅ נמצאו ${data.length} מיגרציות`);
           toast.success(`נמצאו ${data.length} מיגרציות`);
         }
       }
@@ -1747,7 +1736,6 @@ function MigrationManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            console.log('👁️ Opening details for migration:', log);
                             setSelectedMigration(log);
                             setShowDetailDialog(true);
                           }}

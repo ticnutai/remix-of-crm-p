@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -63,7 +63,6 @@ function removeDuplicateTasks(tasks: ClientStageTask[]): ClientStageTask[] {
   
   // Delete duplicates from database in background
   if (duplicateIds.length > 0) {
-    console.log(`Found ${duplicateIds.length} duplicate tasks, removing...`);
     supabase
       .from('client_stage_tasks')
       .delete()
@@ -71,8 +70,6 @@ function removeDuplicateTasks(tasks: ClientStageTask[]): ClientStageTask[] {
       .then(({ error }) => {
         if (error) {
           console.error('Error removing duplicate tasks:', error);
-        } else {
-          console.log(`Removed ${duplicateIds.length} duplicate tasks`);
         }
       });
   }
@@ -88,7 +85,7 @@ export function useClientStages(clientId: string) {
 
   // No default stages - user will add them manually or from templates
   // Initialize stages - just fetch existing, don't create defaults
-  const initializeStages = async () => {
+  const initializeStages = useCallback(async () => {
     try {
       const { data: existingStages, error: fetchError } = await supabase
         .from('client_stages')
@@ -109,10 +106,10 @@ export function useClientStages(clientId: string) {
       });
       return [];
     }
-  };
+  }, [clientId]);
 
   // Load stages and tasks
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const loadedStages = await initializeStages();
@@ -135,7 +132,7 @@ export function useClientStages(clientId: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [initializeStages]);
 
   // Add a new task
   const addTask = async (stageId: string, title: string) => {
@@ -941,7 +938,6 @@ export function useClientStages(clientId: string) {
             filter: `client_id=eq.${clientId}`,
           },
           (payload) => {
-            console.log('Stage change received:', payload);
             if (payload.eventType === 'UPDATE') {
               const updated = payload.new as ClientStage;
               setStages(prev =>
@@ -973,7 +969,6 @@ export function useClientStages(clientId: string) {
             filter: `client_id=eq.${clientId}`,
           },
           (payload) => {
-            console.log('Task change received:', payload);
             if (payload.eventType === 'UPDATE') {
               const updated = payload.new as ClientStageTask;
               setTasks(prev =>
@@ -1002,11 +997,11 @@ export function useClientStages(clientId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
-  // Group tasks by stage
-  const stagesWithTasks = stages.map(stage => ({
+  // Group tasks by stage (memoized to prevent unnecessary re-computation)
+  const stagesWithTasks = useMemo(() => stages.map(stage => ({
     ...stage,
     tasks: tasks.filter(t => t.stage_id === stage.stage_id),
-  }));
+  })), [stages, tasks]);
 
   // Assign stage to a folder (or remove from folder by passing null)
   const assignStageToFolder = async (stageId: string, folderId: string | null) => {
