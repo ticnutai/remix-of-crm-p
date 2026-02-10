@@ -327,16 +327,13 @@ export default function TimeLogs() {
   // Fetch data
   useEffect(() => {
     async function fetchData() {
-      console.log('🟢 [TimeLogs] fetchData called', { user: user?.email });
       if (!user) {
-        console.log('🟡 [TimeLogs] No user, skipping fetch');
         return;
       }
       
       setIsLoading(true);
       
       try {
-        console.log('🟢 [TimeLogs] Fetching time entries and related data...');
         const [entriesRes, clientsRes, projectsRes, usersRes] = await Promise.all([
           supabase
             .from('time_entries')
@@ -346,13 +343,6 @@ export default function TimeLogs() {
           supabase.from('projects').select('id, name, client_id').order('name'),
           supabase.from('profiles').select('id, full_name, email, avatar_url'),
         ]);
-        
-        console.log('🟢 [TimeLogs] Query results:', {
-          entries: entriesRes.data?.length || 0,
-          entriesError: entriesRes.error,
-          entriesData: entriesRes.data?.slice(0, 3), // First 3 entries
-        });
-        
         if (entriesRes.data) setTimeEntries(entriesRes.data as TimeEntry[]);
         if (clientsRes.data) setClients(clientsRes.data);
         if (projectsRes.data) setProjects(projectsRes.data);
@@ -364,13 +354,6 @@ export default function TimeLogs() {
             avatar_url: u.avatar_url,
           })));
         }
-        
-        console.log('✅ [TimeLogs] Data fetched successfully', {
-          entries: entriesRes.data?.length || 0,
-          clients: clientsRes.data?.length || 0,
-          projects: projectsRes.data?.length || 0,
-          users: usersRes.data?.length || 0,
-        });
       } catch (error) {
         console.error('🔴 [TimeLogs] Error fetching data:', error);
         toast({
@@ -389,9 +372,6 @@ export default function TimeLogs() {
   // Real-time subscription for time entries
   useEffect(() => {
     if (!user) return;
-
-    console.log('🔔 [TimeLogs] Setting up real-time subscription');
-
     const channel = supabase
       .channel('time-entries-changes')
       .on(
@@ -402,20 +382,15 @@ export default function TimeLogs() {
           table: 'time_entries',
         },
         (payload) => {
-          console.log('🔔 [TimeLogs] Real-time update received:', payload);
-          
           if (payload.eventType === 'INSERT') {
-            console.log('➕ [TimeLogs] New entry inserted:', payload.new);
             setTimeEntries((prev) => [payload.new as TimeEntry, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
-            console.log('✏️ [TimeLogs] Entry updated:', payload.new);
             setTimeEntries((prev) =>
               prev.map((entry) =>
                 entry.id === (payload.new as TimeEntry).id ? (payload.new as TimeEntry) : entry
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            console.log('🗑️ [TimeLogs] Entry deleted:', payload.old);
             setTimeEntries((prev) =>
               prev.filter((entry) => entry.id !== (payload.old as TimeEntry).id)
             );
@@ -423,11 +398,9 @@ export default function TimeLogs() {
         }
       )
       .subscribe((status) => {
-        console.log('🔔 [TimeLogs] Subscription status:', status);
       });
 
     return () => {
-      console.log('🔕 [TimeLogs] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }, [user]);
@@ -775,7 +748,6 @@ export default function TimeLogs() {
                   <AlertDialogCancel>ביטול</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={() => {
-                      console.log('🗑️ [TimeLogs] Delete button clicked in AlertDialog', { rowId: row.id });
                       handleDeleteEntry(row.id);
                     }}
                     className="bg-destructive hover:bg-destructive/90"
@@ -942,11 +914,8 @@ export default function TimeLogs() {
 
   // Handle delete entry
   const handleDeleteEntry = async (id: string) => {
-    console.log('🗑️ [TimeLogs] handleDeleteEntry called', { id, isAdmin, isManager });
-    
     // Check permissions - only admins can delete
     if (!isAdmin && !isManager) {
-      console.log('🔴 [TimeLogs] User not authorized to delete');
       toast({
         title: 'אין הרשאה',
         description: 'רק מנהלים יכולים למחוק רישומי זמן',
@@ -954,8 +923,6 @@ export default function TimeLogs() {
       });
       return;
     }
-
-    console.log('🗑️ [TimeLogs] Attempting to delete entry...');
     const { error } = await supabase
       .from('time_entries')
       .delete()
@@ -970,8 +937,6 @@ export default function TimeLogs() {
       });
       return;
     }
-    
-    console.log('✅ [TimeLogs] Entry deleted successfully');
     toast({
       title: 'רישום נמחק',
       description: 'רישום הזמן נמחק בהצלחה',
@@ -1329,7 +1294,6 @@ export default function TimeLogs() {
               size="icon"
               className="h-7 w-7" 
               onClick={async () => {
-                console.log('🔄 [TimeLogs] Manual refresh triggered');
                 setIsLoading(true);
                 try {
                   const { data, error } = await supabase
@@ -1338,8 +1302,6 @@ export default function TimeLogs() {
                     .order('start_time', { ascending: false });
                   
                   if (error) throw error;
-                  
-                  console.log('✅ [TimeLogs] Manual refresh completed', { entries: data?.length });
                   setTimeEntries(data as TimeEntry[]);
                   toast({
                     title: 'רענון הושלם',

@@ -128,16 +128,16 @@ export default function Clients() {
     }
   }, [settingsLoading, savedViewMode, savedColumns]);
   
-  // Wrapper functions to save to cloud
-  const setViewMode = (mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury') => {
+  // Wrapper functions to save to cloud (memoized)
+  const setViewMode = useCallback((mode: 'grid' | 'list' | 'compact' | 'cards' | 'minimal' | 'portrait' | 'luxury') => {
     setViewModeLocal(mode);
     saveViewMode(mode);
-  };
+  }, [saveViewMode]);
   
-  const setMinimalColumns = (cols: 2 | 3) => {
+  const setMinimalColumns = useCallback((cols: 2 | 3) => {
     setMinimalColumnsLocal(cols);
     saveColumns(cols);
-  };
+  }, [saveColumns]);
   
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);

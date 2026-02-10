@@ -1143,20 +1143,6 @@ export default function Backups() {
       };
       
       // Log what we're importing
-      console.log('Importing data categories:', Object.keys(rawData));
-      console.log('Normalized data counts:', {
-        Client: dataToImport.Client?.length || 0,
-        Task: dataToImport.Task?.length || 0,
-        TimeLog: dataToImport.TimeLog?.length || 0,
-        Meeting: dataToImport.Meeting?.length || 0,
-        Project: dataToImport.Project?.length || 0,
-        ClientStage: dataToImport.ClientStage?.length || 0,
-        ClientStageTask: dataToImport.ClientStageTask?.length || 0,
-        StageTemplate: dataToImport.StageTemplate?.length || 0,
-        StageTemplateStage: dataToImport.StageTemplateStage?.length || 0,
-        StageTemplateTask: dataToImport.StageTemplateTask?.length || 0,
-      });
-      
       // Initialize stats
       const stats: ImportStats = {
         clients: { total: 0, imported: 0, skipped: 0 },
@@ -1178,7 +1164,6 @@ export default function Backups() {
       const BATCH_SIZE = 20;
       
       // Load ALL existing clients and projects upfront for efficient duplicate checking
-      console.log('Loading existing clients and projects...');
       const { data: existingClients } = await supabase
         .from('clients')
         .select('id, name, name_clean, email');
@@ -1201,9 +1186,6 @@ export default function Backups() {
       for (const project of existingProjects || []) {
         if (project.name) projectNameMap.set(project.name.toLowerCase().trim(), project.id);
       }
-      
-      console.log(`Found ${existingClients?.length || 0} existing clients, ${existingProjects?.length || 0} existing projects`);
-      
       // Map Hebrew status to valid English status
       const mapClientStatus = (status: string | undefined): string => {
         const statusMap: Record<string, string> = {
@@ -1360,9 +1342,6 @@ export default function Backups() {
             `${e.start_time?.substring(0, 10)}|${e.client_id || 'null'}|${e.description || ''}`
           )
         );
-        
-        console.log(`Using ${clientNameMap.size} clients from memory for time entry matching`);
-        
         const timeEntriesToInsert: Array<{
           user_id: string;
           client_id: string | null;
@@ -1389,7 +1368,6 @@ export default function Backups() {
             const normalizedClientName = timeLog.client_name.toLowerCase().trim();
             mappedClientId = clientNameMap.get(normalizedClientName) || null;
             if (!mappedClientId) {
-              console.log(`Could not find client for time entry: "${timeLog.client_name}"`);
             }
           }
           
@@ -2000,8 +1978,6 @@ export default function Backups() {
         const count = clientSummary.get(log.clientName) || 0;
         clientSummary.set(log.clientName, count + 1);
       });
-      console.log(`Found ${clientSummary.size} unique clients in CSV`);
-
       // Fetch all existing clients
       const { data: clients } = await supabase
         .from('clients')

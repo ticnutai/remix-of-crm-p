@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { useClientData } from '@/hooks/useClientData';
@@ -1696,7 +1696,6 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
         <ClientStagesTracker 
           clientId={clientId}
           onTaskComplete={(stageId, taskId) => {
-            console.log(`Task ${taskId} completed in stage ${stageId}`);
           }}
         />
       )}

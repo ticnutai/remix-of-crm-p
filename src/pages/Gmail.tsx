@@ -890,7 +890,6 @@ export default function Gmail() {
                   onSelectFolder={setSelectedFolderId}
                   currentEmail={selectedEmail}
                   onAddEmailToFolder={(email, folderId) => {
-                    console.log('Added email to folder:', email.id, folderId);
                   }}
                 />
                 </CardContent>

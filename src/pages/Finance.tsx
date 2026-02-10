@@ -883,9 +883,6 @@ export default function Finance() {
       });
 
       if (error) throw error;
-
-      console.log('Green Invoice response:', data);
-
       if (data?.success && data?.data?.items) {
         const greenInvoices = data.data.items;
         let importedCount = 0;
@@ -939,7 +936,6 @@ export default function Finance() {
                 .update(updateData)
                 .eq('id', existing.id);
               updatedCount++;
-              console.log(`Updated invoice ${gi.number}: ${JSON.stringify(updateData)}`);
             } else {
               skippedCount++;
             }
@@ -980,8 +976,6 @@ export default function Finance() {
           }
 
           if (clientId) {
-            console.log(`Invoice ${gi.number}: amountOpened=${amountOpened}, gi.status=${gi.status}, final status=${newStatus}`);
-
             const { error: insertError } = await supabase.from('invoices').insert({
               invoice_number: gi.number?.toString() || gi.id,
               client_id: clientId,

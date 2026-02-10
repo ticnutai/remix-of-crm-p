@@ -454,10 +454,8 @@ const Calendar = () => {
           user_id: user.id,
           reminder_type: 'browser',
         };
-        console.log('Creating reminder with data:', reminderData);
         
         const { data, error } = await supabase.from('reminders').insert(reminderData).select();
-        console.log('Reminder insert result:', { data, error });
         
         if (error) throw error;
         toast({ title: 'התזכורת נוצרה', description: reminderForm.title });
