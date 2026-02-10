@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.powershell",
+    "supabase.supabase-vscode",
+    "eamodio.gitlens",
+    "mhutchie.git-graph"
+  ]
+}
