@@ -1,19 +1,19 @@
 // Reports Page - tenarch CRM Pro
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { AppLayout } from "@/components/layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   BarChart,
   Bar,
@@ -28,7 +28,7 @@ import {
   LineChart,
   Line,
   Legend,
-} from 'recharts';
+} from "recharts";
 import {
   FileSpreadsheet,
   Clock,
@@ -38,9 +38,16 @@ import {
   Calendar,
   Download,
   Loader2,
-} from 'lucide-react';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
-import { he } from 'date-fns/locale';
+} from "lucide-react";
+import {
+  format,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from "date-fns";
+import { he } from "date-fns/locale";
 
 interface TimeEntry {
   id: string;
@@ -67,27 +74,27 @@ interface Profile {
 }
 
 const COLORS = [
-  'hsl(220, 60%, 25%)',
-  'hsl(45, 80%, 45%)',
-  'hsl(0, 0%, 50%)',
-  'hsl(220, 60%, 45%)',
-  'hsl(45, 80%, 65%)',
-  'hsl(180, 50%, 40%)',
+  "hsl(220, 60%, 25%)",
+  "hsl(45, 80%, 45%)",
+  "hsl(0, 0%, 50%)",
+  "hsl(220, 60%, 45%)",
+  "hsl(45, 80%, 65%)",
+  "hsl(180, 50%, 40%)",
 ];
 
-type DateRange = 'week' | 'month' | 'quarter' | 'year';
+type DateRange = "week" | "month" | "quarter" | "year";
 
 const Reports = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    return (localStorage.getItem('reports-date-range') as DateRange) || 'month';
+    return (localStorage.getItem("reports-date-range") as DateRange) || "month";
   });
   const [loading, setLoading] = useState(true);
-  
+
   // Save date range to localStorage
   useEffect(() => {
-    localStorage.setItem('reports-date-range', dateRange);
+    localStorage.setItem("reports-date-range", dateRange);
   }, [dateRange]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -96,26 +103,31 @@ const Reports = () => {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user, dateRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, dateRange]);
 
   const getDateRange = () => {
     const now = new Date();
     switch (dateRange) {
-      case 'week':
-        return { start: startOfWeek(now, { locale: he }), end: endOfWeek(now, { locale: he }) };
-      case 'month':
+      case "week":
+        return {
+          start: startOfWeek(now, { locale: he }),
+          end: endOfWeek(now, { locale: he }),
+        };
+      case "month":
         return { start: startOfMonth(now), end: endOfMonth(now) };
-      case 'quarter':
+      case "quarter":
         return { start: subDays(now, 90), end: now };
-      case 'year':
+      case "year":
         return { start: subDays(now, 365), end: now };
       default:
         return { start: startOfMonth(now), end: endOfMonth(now) };
@@ -126,16 +138,19 @@ const Reports = () => {
     setLoading(true);
     const { start, end } = getDateRange();
 
-    const [entriesRes, projectsRes, clientsRes, profilesRes] = await Promise.all([
-      supabase
-        .from('time_entries')
-        .select('id, start_time, duration_minutes, project_id, client_id, user_id')
-        .gte('start_time', start.toISOString())
-        .lte('start_time', end.toISOString()),
-      supabase.from('projects').select('id, name'),
-      supabase.from('clients').select('id, name'),
-      supabase.from('profiles').select('id, full_name'),
-    ]);
+    const [entriesRes, projectsRes, clientsRes, profilesRes] =
+      await Promise.all([
+        supabase
+          .from("time_entries")
+          .select(
+            "id, start_time, duration_minutes, project_id, client_id, user_id",
+          )
+          .gte("start_time", start.toISOString())
+          .lte("start_time", end.toISOString()),
+        supabase.from("projects").select("id, name"),
+        supabase.from("clients").select("id, name"),
+        supabase.from("profiles").select("id, full_name"),
+      ]);
 
     if (entriesRes.data) setTimeEntries(entriesRes.data);
     if (projectsRes.data) setProjects(projectsRes.data);
@@ -146,7 +161,7 @@ const Reports = () => {
   };
 
   const totalHours = Math.round(
-    timeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0) / 60
+    timeEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0) / 60,
   );
 
   const avgDailyHours = Math.round(totalHours / 30);
@@ -181,7 +196,11 @@ const Reports = () => {
       const minutes = timeEntries
         .filter((e) => e.user_id === profile.id)
         .reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-      return { name: profile.full_name, hours: Math.round(minutes / 60), minutes };
+      return {
+        name: profile.full_name,
+        hours: Math.round(minutes / 60),
+        minutes,
+      };
     })
     .filter((e) => e.minutes > 0)
     .sort((a, b) => b.minutes - a.minutes);
@@ -197,10 +216,13 @@ const Reports = () => {
         entryDate.getFullYear() === date.getFullYear()
       );
     });
-    const minutes = dayEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    const minutes = dayEntries.reduce(
+      (sum, e) => sum + (e.duration_minutes || 0),
+      0,
+    );
     return {
-      day: format(date, 'EEE', { locale: he }),
-      hours: Math.round(minutes / 60 * 10) / 10,
+      day: format(date, "EEE", { locale: he }),
+      hours: Math.round((minutes / 60) * 10) / 10,
     };
   });
 
@@ -222,14 +244,19 @@ const Reports = () => {
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="h-8 w-8 text-[hsl(45,80%,45%)]" />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">דוחות וסטטיסטיקות</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                דוחות וסטטיסטיקות
+              </h1>
               <p className="text-sm text-muted-foreground">
                 סקירה מקיפה של שעות העבודה והפרודוקטיביות
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
+            <Select
+              value={dateRange}
+              onValueChange={(v) => setDateRange(v as DateRange)}
+            >
               <SelectTrigger className="w-[160px]">
                 <Calendar className="h-4 w-4 ml-2" />
                 <SelectValue />
@@ -261,7 +288,9 @@ const Reports = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">סה"כ שעות</p>
-                      <p className="text-3xl font-bold text-[hsl(220,60%,25%)]">{totalHours}</p>
+                      <p className="text-3xl font-bold text-[hsl(220,60%,25%)]">
+                        {totalHours}
+                      </p>
                     </div>
                     <Clock className="h-8 w-8 text-[hsl(220,60%,25%)]" />
                   </div>
@@ -271,8 +300,12 @@ const Reports = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">ממוצע יומי</p>
-                      <p className="text-3xl font-bold text-[hsl(45,80%,45%)]">{avgDailyHours}h</p>
+                      <p className="text-sm text-muted-foreground">
+                        ממוצע יומי
+                      </p>
+                      <p className="text-3xl font-bold text-[hsl(45,80%,45%)]">
+                        {avgDailyHours}h
+                      </p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-[hsl(45,80%,45%)]" />
                   </div>
@@ -282,7 +315,9 @@ const Reports = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">פרויקטים פעילים</p>
+                      <p className="text-sm text-muted-foreground">
+                        פרויקטים פעילים
+                      </p>
                       <p className="text-3xl font-bold">{projectData.length}</p>
                     </div>
                     <Briefcase className="h-8 w-8 text-muted-foreground" />
@@ -293,7 +328,9 @@ const Reports = () => {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">לקוחות פעילים</p>
+                      <p className="text-sm text-muted-foreground">
+                        לקוחות פעילים
+                      </p>
                       <p className="text-3xl font-bold">{clientData.length}</p>
                     </div>
                     <Users className="h-8 w-8 text-muted-foreground" />
@@ -307,7 +344,9 @@ const Reports = () => {
               {/* Daily Trend */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">מגמה יומית (7 ימים אחרונים)</CardTitle>
+                  <CardTitle className="text-lg">
+                    מגמה יומית (7 ימים אחרונים)
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
@@ -317,7 +356,7 @@ const Reports = () => {
                         <XAxis dataKey="day" />
                         <YAxis />
                         <Tooltip
-                          formatter={(value) => [`${value} שעות`, 'שעות']}
+                          formatter={(value) => [`${value} שעות`, "שעות"]}
                           labelFormatter={(label) => `יום ${label}`}
                         />
                         <Line
@@ -325,7 +364,11 @@ const Reports = () => {
                           dataKey="hours"
                           stroke="hsl(220, 60%, 25%)"
                           strokeWidth={3}
-                          dot={{ fill: 'hsl(45, 80%, 45%)', strokeWidth: 2, r: 5 }}
+                          dot={{
+                            fill: "hsl(45, 80%, 45%)",
+                            strokeWidth: 2,
+                            r: 5,
+                          }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -346,8 +389,14 @@ const Reports = () => {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis type="number" />
                           <YAxis dataKey="name" type="category" width={100} />
-                          <Tooltip formatter={(value) => [`${value} שעות`, 'שעות']} />
-                          <Bar dataKey="hours" fill="hsl(220, 60%, 25%)" radius={[0, 4, 4, 0]} />
+                          <Tooltip
+                            formatter={(value) => [`${value} שעות`, "שעות"]}
+                          />
+                          <Bar
+                            dataKey="hours"
+                            fill="hsl(220, 60%, 25%)"
+                            radius={[0, 4, 4, 0]}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -391,7 +440,9 @@ const Reports = () => {
                               />
                             ))}
                           </Pie>
-                          <Tooltip formatter={(value) => [`${value} שעות`, 'שעות']} />
+                          <Tooltip
+                            formatter={(value) => [`${value} שעות`, "שעות"]}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -416,8 +467,14 @@ const Reports = () => {
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="name" />
                           <YAxis />
-                          <Tooltip formatter={(value) => [`${value} שעות`, 'שעות']} />
-                          <Bar dataKey="hours" fill="hsl(45, 80%, 45%)" radius={[4, 4, 0, 0]} />
+                          <Tooltip
+                            formatter={(value) => [`${value} שעות`, "שעות"]}
+                          />
+                          <Bar
+                            dataKey="hours"
+                            fill="hsl(45, 80%, 45%)"
+                            radius={[4, 4, 0, 0]}
+                          />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (

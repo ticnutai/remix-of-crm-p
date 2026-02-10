@@ -1,16 +1,16 @@
 // Client Filter Panel - Smart filtering by consultant, classification, industry, etc.
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -19,34 +19,34 @@ import {
   SheetTitle,
   SheetTrigger,
   SheetFooter,
-} from '@/components/ui/sheet';
+} from "@/components/ui/sheet";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Filter, 
-  X, 
-  User, 
-  Building, 
-  Tag, 
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Filter,
+  X,
+  User,
+  Building,
+  Tag,
   Crown,
   Briefcase,
   Search,
   RotateCcw,
   Check,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   ClientFilter,
   CLASSIFICATION_OPTIONS,
   INDUSTRY_OPTIONS,
   SOURCE_OPTIONS,
-} from '@/hooks/useClientClassification';
-import { Consultant } from '@/hooks/useConsultants';
+} from "@/hooks/useClientClassification";
+import { Consultant } from "@/hooks/useConsultants";
 
 interface ClientFilterPanelProps {
   consultants: Consultant[];
@@ -67,24 +67,30 @@ export function ClientFilterPanel({
 }: ClientFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [localFilters, setLocalFilters] = useState<ClientFilter>(activeFilters);
-  
+
   // Count active filters
-  const activeFilterCount = Object.values(activeFilters).filter(v => v !== undefined && v !== '').length;
-  
+  const activeFilterCount = Object.values(activeFilters).filter(
+    (v) => v !== undefined && v !== "",
+  ).length;
+
   useEffect(() => {
     setLocalFilters(activeFilters);
   }, [activeFilters]);
-  
-  const handleFilterChange = (key: keyof ClientFilter, value: string | undefined) => {
-    const newFilters = { ...localFilters, [key]: value || undefined };
+
+  const handleFilterChange = (
+    key: keyof ClientFilter,
+    value: string | undefined,
+  ) => {
+    const cleanValue = !value || value === "__all__" ? undefined : value;
+    const newFilters = { ...localFilters, [key]: cleanValue };
     setLocalFilters(newFilters);
   };
-  
+
   const applyFilters = () => {
     onFilterChange(localFilters);
     setIsOpen(false);
   };
-  
+
   const clearFilters = () => {
     setLocalFilters({});
     onClear();
@@ -95,12 +101,12 @@ export function ClientFilterPanel({
       {/* Quick Consultant Filter Dropdown */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button 
-            variant={activeFilters.consultantId ? "default" : "outline"} 
+          <Button
+            variant={activeFilters.consultantId ? "default" : "outline"}
             size="sm"
             className={cn(
               "gap-2",
-              activeFilters.consultantId && "bg-blue-600 hover:bg-blue-700"
+              activeFilters.consultantId && "bg-blue-600 hover:bg-blue-700",
             )}
           >
             <User className="h-4 w-4" />
@@ -115,7 +121,9 @@ export function ClientFilterPanel({
         <PopoverContent className="w-72 p-0" align="start" dir="rtl">
           <div className="p-3 border-b">
             <p className="font-medium text-sm">סנן לפי יועץ</p>
-            <p className="text-xs text-muted-foreground">בחר יועץ לראות את כל הלקוחות שלו</p>
+            <p className="text-xs text-muted-foreground">
+              בחר יועץ לראות את כל הלקוחות שלו
+            </p>
           </div>
           <ScrollArea className="h-64">
             <div className="p-2">
@@ -124,31 +132,41 @@ export function ClientFilterPanel({
                 size="sm"
                 className={cn(
                   "w-full justify-start text-right mb-1",
-                  !activeFilters.consultantId && "bg-muted"
+                  !activeFilters.consultantId && "bg-muted",
                 )}
-                onClick={() => onFilterChange({ ...activeFilters, consultantId: undefined })}
+                onClick={() =>
+                  onFilterChange({ ...activeFilters, consultantId: undefined })
+                }
               >
                 <RotateCcw className="h-4 w-4 ml-2" />
                 הצג הכל
               </Button>
               <Separator className="my-2" />
-              {consultants.map(consultant => (
+              {consultants.map((consultant) => (
                 <Button
                   key={consultant.id}
                   variant="ghost"
                   size="sm"
                   className={cn(
                     "w-full justify-start text-right mb-1",
-                    activeFilters.consultantId === consultant.id && "bg-blue-100 text-blue-700"
+                    activeFilters.consultantId === consultant.id &&
+                      "bg-blue-100 text-blue-700",
                   )}
-                  onClick={() => onFilterChange({ ...activeFilters, consultantId: consultant.id })}
+                  onClick={() =>
+                    onFilterChange({
+                      ...activeFilters,
+                      consultantId: consultant.id,
+                    })
+                  }
                 >
                   {activeFilters.consultantId === consultant.id && (
                     <Check className="h-4 w-4 ml-2 text-blue-600" />
                   )}
                   <div className="flex flex-col items-start">
                     <span>{consultant.name}</span>
-                    <span className="text-xs text-muted-foreground">{consultant.profession}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {consultant.profession}
+                    </span>
                   </div>
                 </Button>
               ))}
@@ -165,12 +183,13 @@ export function ClientFilterPanel({
       {/* Quick Classification Filter */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button 
-            variant={activeFilters.classification ? "default" : "outline"} 
+          <Button
+            variant={activeFilters.classification ? "default" : "outline"}
             size="sm"
             className={cn(
               "gap-2",
-              activeFilters.classification && "bg-yellow-600 hover:bg-yellow-700"
+              activeFilters.classification &&
+                "bg-yellow-600 hover:bg-yellow-700",
             )}
           >
             <Crown className="h-4 w-4" />
@@ -188,24 +207,32 @@ export function ClientFilterPanel({
             size="sm"
             className={cn(
               "w-full justify-start mb-1",
-              !activeFilters.classification && "bg-muted"
+              !activeFilters.classification && "bg-muted",
             )}
-            onClick={() => onFilterChange({ ...activeFilters, classification: undefined })}
+            onClick={() =>
+              onFilterChange({ ...activeFilters, classification: undefined })
+            }
           >
             <RotateCcw className="h-4 w-4 ml-2" />
             הצג הכל
           </Button>
           <Separator className="my-1" />
-          {CLASSIFICATION_OPTIONS.map(option => (
+          {CLASSIFICATION_OPTIONS.map((option) => (
             <Button
               key={option.value}
               variant="ghost"
               size="sm"
               className={cn(
                 "w-full justify-start mb-1",
-                activeFilters.classification === option.value && "bg-yellow-100 text-yellow-700"
+                activeFilters.classification === option.value &&
+                  "bg-yellow-100 text-yellow-700",
               )}
-              onClick={() => onFilterChange({ ...activeFilters, classification: option.value })}
+              onClick={() =>
+                onFilterChange({
+                  ...activeFilters,
+                  classification: option.value,
+                })
+              }
             >
               <div className={cn("w-3 h-3 rounded-full ml-2", option.color)} />
               {option.label}
@@ -224,7 +251,10 @@ export function ClientFilterPanel({
             <Filter className="h-4 w-4" />
             <span>סינון מתקדם</span>
             {activeFilterCount > 0 && (
-              <Badge variant="default" className="h-5 px-1.5 text-xs bg-primary">
+              <Badge
+                variant="default"
+                className="h-5 px-1.5 text-xs bg-primary"
+              >
                 {activeFilterCount}
               </Badge>
             )}
@@ -236,11 +266,9 @@ export function ClientFilterPanel({
               <Filter className="h-5 w-5" />
               סינון מתקדם
             </SheetTitle>
-            <SheetDescription>
-              סנן לקוחות לפי פרמטרים שונים
-            </SheetDescription>
+            <SheetDescription>סנן לקוחות לפי פרמטרים שונים</SheetDescription>
           </SheetHeader>
-          
+
           <div className="space-y-6 py-6">
             {/* Consultant Filter */}
             <div className="space-y-2">
@@ -249,15 +277,15 @@ export function ClientFilterPanel({
                 יועץ
               </Label>
               <Select
-                value={localFilters.consultantId || ''}
-                onValueChange={(v) => handleFilterChange('consultantId', v)}
+                value={localFilters.consultantId || "__all__"}
+                onValueChange={(v) => handleFilterChange("consultantId", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר יועץ..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">הכל</SelectItem>
-                  {consultants.map(c => (
+                  <SelectItem value="__all__">הכל</SelectItem>
+                  {consultants.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name} ({c.profession})
                     </SelectItem>
@@ -273,18 +301,20 @@ export function ClientFilterPanel({
                 סיווג לקוח
               </Label>
               <Select
-                value={localFilters.classification || ''}
-                onValueChange={(v) => handleFilterChange('classification', v)}
+                value={localFilters.classification || "__all__"}
+                onValueChange={(v) => handleFilterChange("classification", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר סיווג..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">הכל</SelectItem>
-                  {CLASSIFICATION_OPTIONS.map(opt => (
+                  <SelectItem value="__all__">הכל</SelectItem>
+                  {CLASSIFICATION_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       <div className="flex items-center gap-2">
-                        <div className={cn("w-3 h-3 rounded-full", opt.color)} />
+                        <div
+                          className={cn("w-3 h-3 rounded-full", opt.color)}
+                        />
                         {opt.label}
                       </div>
                     </SelectItem>
@@ -300,16 +330,18 @@ export function ClientFilterPanel({
                 ענף/תעשייה
               </Label>
               <Select
-                value={localFilters.industry || ''}
-                onValueChange={(v) => handleFilterChange('industry', v)}
+                value={localFilters.industry || "__all__"}
+                onValueChange={(v) => handleFilterChange("industry", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר ענף..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">הכל</SelectItem>
-                  {INDUSTRY_OPTIONS.map(ind => (
-                    <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                  <SelectItem value="__all__">הכל</SelectItem>
+                  {INDUSTRY_OPTIONS.map((ind) => (
+                    <SelectItem key={ind} value={ind}>
+                      {ind}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -322,16 +354,18 @@ export function ClientFilterPanel({
                 מקור הגעה
               </Label>
               <Select
-                value={localFilters.source || ''}
-                onValueChange={(v) => handleFilterChange('source', v)}
+                value={localFilters.source || "__all__"}
+                onValueChange={(v) => handleFilterChange("source", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר מקור..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">הכל</SelectItem>
-                  {SOURCE_OPTIONS.map(src => (
-                    <SelectItem key={src} value={src}>{src}</SelectItem>
+                  <SelectItem value="__all__">הכל</SelectItem>
+                  {SOURCE_OPTIONS.map((src) => (
+                    <SelectItem key={src} value={src}>
+                      {src}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -345,8 +379,8 @@ export function ClientFilterPanel({
               </Label>
               <Input
                 placeholder="הזן תגית לחיפוש..."
-                value={localFilters.tag || ''}
-                onChange={(e) => handleFilterChange('tag', e.target.value)}
+                value={localFilters.tag || ""}
+                onChange={(e) => handleFilterChange("tag", e.target.value)}
               />
             </div>
 
@@ -354,14 +388,14 @@ export function ClientFilterPanel({
             <div className="space-y-2">
               <Label>סטטוס</Label>
               <Select
-                value={localFilters.status || ''}
-                onValueChange={(v) => handleFilterChange('status', v)}
+                value={localFilters.status || "__all__"}
+                onValueChange={(v) => handleFilterChange("status", v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="בחר סטטוס..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">הכל</SelectItem>
+                  <SelectItem value="__all__">הכל</SelectItem>
                   <SelectItem value="active">פעיל</SelectItem>
                   <SelectItem value="inactive">לא פעיל</SelectItem>
                   <SelectItem value="lead">ליד</SelectItem>

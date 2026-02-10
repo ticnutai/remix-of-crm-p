@@ -178,7 +178,7 @@ export function CallHistory() {
                   <SelectValue placeholder="בחר לקוח (אופציונלי)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">ללא לקוח</SelectItem>
+                  <SelectItem value="__none__">ללא לקוח</SelectItem>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}

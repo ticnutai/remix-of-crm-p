@@ -46,7 +46,9 @@ const PaymentMethodBadge = ({ method }: { method: string }) => {
     cash: { label: 'מזומן', color: 'bg-green-500/20 text-green-600', icon: <Wallet className="h-3 w-3" /> },
     check: { label: 'צ\'ק', color: 'bg-blue-500/20 text-blue-600', icon: <FileText className="h-3 w-3" /> },
     transfer: { label: 'העברה', color: 'bg-purple-500/20 text-purple-600', icon: <ArrowUpRight className="h-3 w-3" /> },
+    bank_transfer: { label: 'העברה בנקאית', color: 'bg-purple-500/20 text-purple-600', icon: <ArrowUpRight className="h-3 w-3" /> },
     credit_card: { label: 'אשראי', color: 'bg-orange-500/20 text-orange-600', icon: <CreditCard className="h-3 w-3" /> },
+    paypal: { label: 'PayPal', color: 'bg-blue-500/20 text-blue-600', icon: <DollarSign className="h-3 w-3" /> },
     other: { label: 'אחר', color: 'bg-gray-500/20 text-gray-600', icon: <DollarSign className="h-3 w-3" /> },
   };
   
@@ -154,6 +156,9 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('transfer');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [payerName, setPayerName] = useState('');
+  const [vatRate, setVatRate] = useState('17');
+  const [includeVat, setIncludeVat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const alerts = useMemo(() => getAlerts(), [getAlerts]);
@@ -188,6 +193,9 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
     setPaymentAmount(invoice.remainingAmount.toString());
     setPaymentMethod('transfer');
     setPaymentNotes('');
+    setPayerName('');
+    setVatRate('17');
+    setIncludeVat(false);
     setIsPaymentDialogOpen(true);
   };
 
@@ -200,7 +208,9 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
         selectedInvoice.id,
         Number(paymentAmount),
         paymentMethod,
-        paymentNotes
+        paymentNotes,
+        payerName,
+        Number(vatRate)
       );
       setIsPaymentDialogOpen(false);
       setSelectedInvoice(null);
@@ -210,6 +220,33 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
       setIsSubmitting(false);
     }
   };
+
+  // Calculate VAT amounts
+  const calculateVatAmounts = (amount: number, vatRate: number, includeVat: boolean) => {
+    if (!includeVat) {
+      return {
+        netAmount: amount,
+        vatAmount: 0,
+        totalAmount: amount,
+      };
+    }
+    
+    const vatMultiplier = vatRate / 100;
+    const netAmount = amount / (1 + vatMultiplier);
+    const vatAmount = amount - netAmount;
+    
+    return {
+      netAmount: Math.round(netAmount * 100) / 100,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      totalAmount: amount,
+    };
+  };
+
+  const vatAmounts = calculateVatAmounts(
+    Number(paymentAmount) || 0,
+    Number(vatRate) || 0,
+    includeVat
+  );
 
   if (isLoading) {
     return (
@@ -495,6 +532,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
                               </div>
                               <p className="text-sm text-muted-foreground">
                                 {format(parseISO(payment.payment_date), 'dd/MM/yyyy', { locale: he })}
+                                {payment.payer_name && ` • ${payment.payer_name}`}
                                 {payment.notes && ` • ${payment.notes}`}
                               </p>
                             </div>
@@ -689,20 +727,75 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>אמצעי תשלום</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="transfer">העברה בנקאית</SelectItem>
-                    <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
-                    <SelectItem value="check">צ'ק</SelectItem>
-                    <SelectItem value="cash">מזומן</SelectItem>
-                    <SelectItem value="other">אחר</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2 py-2">
+                <input
+                  type="checkbox"
+                  id="includeVat"
+                  checked={includeVat}
+                  onChange={(e) => setIncludeVat(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="includeVat" className="cursor-pointer flex items-center gap-2">
+                  הסכום כולל מע"מ
+                  {includeVat && (
+                    <Input
+                      type="number"
+                      value={vatRate}
+                      onChange={(e) => setVatRate(e.target.value)}
+                      className="w-20 h-7 text-sm"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                    />
+                  )}
+                  {includeVat && <span className="text-sm text-muted-foreground">%</span>}
+                </Label>
+              </div>
+
+              {includeVat && Number(paymentAmount) > 0 && (
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">סכום לפני מע"מ:</span>
+                    <span className="font-medium">{formatCurrency(vatAmounts.netAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">מע"מ ({vatRate}%):</span>
+                    <span className="font-medium">{formatCurrency(vatAmounts.vatAmount)}</span>
+                  </div>
+                  <div className="flex justify-between pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                    <span className="font-medium">סה"כ כולל מע"מ:</span>
+                    <span className="font-bold">{formatCurrency(vatAmounts.totalAmount)}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>אמצעי תשלום</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bank_transfer">העברה בנקאית</SelectItem>
+                      <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
+                      <SelectItem value="check">צ'ק</SelectItem>
+                      <SelectItem value="cash">מזומן</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="payerName">מי שילם</Label>
+                  <Input
+                    id="payerName"
+                    value={payerName}
+                    onChange={(e) => setPayerName(e.target.value)}
+                    placeholder="שם המשלם"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

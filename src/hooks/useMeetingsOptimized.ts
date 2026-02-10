@@ -156,11 +156,12 @@ export function useMeetingsOptimized() {
 
       return { previousMeetings };
     },
-    onError: (_err, _newMeeting, context) => {
+    onError: (err, _newMeeting, context) => {
       if (context?.previousMeetings) {
         queryClient.setQueryData(MEETINGS_KEY, context.previousMeetings);
       }
-      toast.error('שגיאה ביצירת הפגישה');
+      console.error('❌ Meeting creation error:', err);
+      toast.error(`שגיאה ביצירת הפגישה: ${err instanceof Error ? err.message : 'שגיאה לא ידועה'}`);
     },
     onSuccess: (data) => {
       toast.success(`פגישה נוצרה: ${data.title}`);

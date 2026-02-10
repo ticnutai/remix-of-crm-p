@@ -177,7 +177,14 @@ export function useClientPayments(clientId?: string) {
   }, [fetchPayments, toast]);
 
   // Add invoice payment (partial payment)
-  const addInvoicePayment = useCallback(async (invoiceId: string, amount: number, paymentMethod: string, notes?: string) => {
+  const addInvoicePayment = useCallback(async (
+    invoiceId: string, 
+    amount: number, 
+    paymentMethod: string, 
+    notes?: string,
+    payerName?: string,
+    vatRate?: number
+  ) => {
     try {
       const { data, error } = await supabase
         .from('invoice_payments')
@@ -186,6 +193,8 @@ export function useClientPayments(clientId?: string) {
           amount,
           payment_method: paymentMethod,
           notes,
+          payer_name: payerName,
+          vat_rate: vatRate || 17,
           payment_date: new Date().toISOString().split('T')[0],
         }])
         .select()

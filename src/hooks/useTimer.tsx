@@ -1,8 +1,15 @@
 // Smart Timer System - tenarch CRM Pro
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import { toast } from '@/hooks/use-toast';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+  ReactNode,
+} from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
+import { toast } from "@/hooks/use-toast";
 
 interface TimeEntry {
   id: string;
@@ -28,7 +35,12 @@ interface TimerState {
 
 interface TimerContextType {
   timerState: TimerState;
-  startTimer: (projectId?: string, clientId?: string, description?: string, tags?: string[]) => Promise<void>;
+  startTimer: (
+    projectId?: string,
+    clientId?: string,
+    description?: string,
+    tags?: string[],
+  ) => Promise<void>;
   stopTimer: () => Promise<void>;
   pauseTimer: () => void;
   resumeTimer: () => void;
@@ -73,21 +85,21 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from('time_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_running', true)
+      .from("time_entries")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_running", true)
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching running entry:', error);
+      console.error("Error fetching running entry:", error);
       return;
     }
 
     if (data) {
       const startTime = new Date(data.start_time);
       const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
-      
+
       setTimerState({
         isRunning: true,
         startTime,
@@ -95,7 +107,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         currentEntry: data as TimeEntry,
       });
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Fetch today's entries
   const fetchTodayEntries = useCallback(async () => {
@@ -105,19 +118,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     today.setHours(0, 0, 0, 0);
 
     const { data, error } = await supabase
-      .from('time_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .gte('start_time', today.toISOString())
-      .order('start_time', { ascending: false });
+      .from("time_entries")
+      .select("*")
+      .eq("user_id", user.id)
+      .gte("start_time", today.toISOString())
+      .order("start_time", { ascending: false });
 
     if (error) {
-      console.error('Error fetching today entries:', error);
+      console.error("Error fetching today entries:", error);
       return;
     }
 
     setTodayEntries((data || []) as TimeEntry[]);
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Fetch week total
   const fetchWeekTotal = useCallback(async () => {
@@ -129,20 +143,24 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     startOfWeek.setHours(0, 0, 0, 0);
 
     const { data, error } = await supabase
-      .from('time_entries')
-      .select('duration_minutes')
-      .eq('user_id', user.id)
-      .gte('start_time', startOfWeek.toISOString())
-      .not('duration_minutes', 'is', null);
+      .from("time_entries")
+      .select("duration_minutes")
+      .eq("user_id", user.id)
+      .gte("start_time", startOfWeek.toISOString())
+      .not("duration_minutes", "is", null);
 
     if (error) {
-      console.error('Error fetching week total:', error);
+      console.error("Error fetching week total:", error);
       return;
     }
 
-    const total = (data || []).reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0);
+    const total = (data || []).reduce(
+      (sum, entry) => sum + (entry.duration_minutes || 0),
+      0,
+    );
     setWeekTotal(total);
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Refresh all entries
   const refreshEntries = useCallback(async () => {
@@ -153,60 +171,67 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       setIsLoading(true);
-      Promise.all([fetchRunningEntry(), fetchTodayEntries(), fetchWeekTotal()])
-        .finally(() => setIsLoading(false));
+      Promise.all([
+        fetchRunningEntry(),
+        fetchTodayEntries(),
+        fetchWeekTotal(),
+      ]).finally(() => setIsLoading(false));
     }
-  }, [user, fetchRunningEntry, fetchTodayEntries, fetchWeekTotal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Subscribe to real-time changes in time_entries
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('timer-time-entries-changes')
+      .channel("timer-time-entries-changes")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'time_entries',
+          event: "*",
+          schema: "public",
+          table: "time_entries",
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          if (payload.eventType === 'DELETE') {
+          if (payload.eventType === "DELETE") {
             const deletedEntry = payload.old as TimeEntry;
             // Remove from todayEntries if it's there
-            setTodayEntries(prev => prev.filter(e => e.id !== deletedEntry.id));
+            setTodayEntries((prev) =>
+              prev.filter((e) => e.id !== deletedEntry.id),
+            );
             // Refresh week total
             fetchWeekTotal();
-          } else if (payload.eventType === 'INSERT') {
+          } else if (payload.eventType === "INSERT") {
             // Refresh both
             fetchTodayEntries();
             fetchWeekTotal();
-          } else if (payload.eventType === 'UPDATE') {
+          } else if (payload.eventType === "UPDATE") {
             const updatedEntry = payload.new as TimeEntry;
             // Update in todayEntries if it exists there
-            setTodayEntries(prev => 
-              prev.map(e => e.id === updatedEntry.id ? updatedEntry : e)
+            setTodayEntries((prev) =>
+              prev.map((e) => (e.id === updatedEntry.id ? updatedEntry : e)),
             );
             fetchWeekTotal();
           }
-        }
+        },
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchTodayEntries, fetchWeekTotal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Timer tick
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (timerState.isRunning && timerState.startTime) {
       interval = setInterval(() => {
-        setTimerState(prev => ({
+        setTimerState((prev) => ({
           ...prev,
           elapsed: Math.floor((Date.now() - prev.startTime!.getTime()) / 1000),
         }));
@@ -216,12 +241,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [timerState.isRunning, timerState.startTime]);
 
-  const startTimer = async (projectId?: string, clientId?: string, description?: string, tags?: string[]) => {
+  const startTimer = async (
+    projectId?: string,
+    clientId?: string,
+    description?: string,
+    tags?: string[],
+  ) => {
     if (!user) {
       toast({
-        title: 'שגיאה',
-        description: 'יש להתחבר כדי להשתמש בטיימר',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "יש להתחבר כדי להשתמש בטיימר",
+        variant: "destructive",
       });
       return;
     }
@@ -229,7 +259,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     const startTime = new Date();
 
     const { data, error } = await supabase
-      .from('time_entries')
+      .from("time_entries")
       .insert({
         user_id: user.id,
         project_id: projectId || null,
@@ -245,11 +275,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (error) {
-      console.error('🔴 [useTimer] Error starting timer:', error);
+      console.error("🔴 [useTimer] Error starting timer:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן להפעיל את הטיימר',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן להפעיל את הטיימר",
+        variant: "destructive",
       });
       return;
     }
@@ -262,8 +292,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
 
     toast({
-      title: 'הטיימר הופעל',
-      description: 'מעקב זמן התחיל',
+      title: "הטיימר הופעל",
+      description: "מעקב זמן התחיל",
     });
 
     await refreshEntries();
@@ -279,20 +309,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     // Note: duration_minutes is a generated column - only update end_time and is_running
     const { data, error } = await supabase
-      .from('time_entries')
+      .from("time_entries")
       .update({
         end_time: endTime.toISOString(),
         is_running: false,
       })
-      .eq('id', timerState.currentEntry.id)
+      .eq("id", timerState.currentEntry.id)
       .select();
 
     if (error) {
-      console.error('🔴 [useTimer] Error stopping timer:', error);
+      console.error("🔴 [useTimer] Error stopping timer:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לעצור את הטיימר',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לעצור את הטיימר",
+        variant: "destructive",
       });
       return;
     }
@@ -305,7 +335,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
 
     toast({
-      title: 'הטיימר נעצר',
+      title: "הטיימר נעצר",
       description: `זמן שנרשם: ${formatDuration(durationMinutes)}`,
     });
 
@@ -314,12 +344,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   const pauseTimer = () => {
     // Local pause - doesn't update DB
-    setTimerState(prev => ({ ...prev, isRunning: false }));
+    setTimerState((prev) => ({ ...prev, isRunning: false }));
   };
 
   const resumeTimer = () => {
     if (timerState.currentEntry) {
-      setTimerState(prev => ({ ...prev, isRunning: true }));
+      setTimerState((prev) => ({ ...prev, isRunning: true }));
     }
   };
 
@@ -327,9 +357,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     // Reset without saving - delete the current entry if exists
     if (timerState.currentEntry) {
       supabase
-        .from('time_entries')
+        .from("time_entries")
         .delete()
-        .eq('id', timerState.currentEntry.id)
+        .eq("id", timerState.currentEntry.id)
         .then(() => {
           refreshEntries();
         });
@@ -343,8 +373,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
 
     toast({
-      title: 'הטיימר אופס',
-      description: 'הזמן לא נשמר',
+      title: "הטיימר אופס",
+      description: "הזמן לא נשמר",
     });
   };
 
@@ -357,27 +387,27 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     const durationMinutes = Math.floor(timerState.elapsed / 60);
 
     // Combine existing description with notes if provided
-    const updatedDescription = notes 
-      ? `${timerState.currentEntry.description || ''} | ${notes}`.trim()
+    const updatedDescription = notes
+      ? `${timerState.currentEntry.description || ""} | ${notes}`.trim()
       : timerState.currentEntry.description;
 
     // Note: duration_minutes is a generated column - only update end_time, is_running, and description
     const { data, error } = await supabase
-      .from('time_entries')
+      .from("time_entries")
       .update({
         end_time: endTime.toISOString(),
         is_running: false,
         description: updatedDescription,
       })
-      .eq('id', timerState.currentEntry.id)
+      .eq("id", timerState.currentEntry.id)
       .select();
 
     if (error) {
-      console.error('🔴 [useTimer] Error saving entry:', error);
+      console.error("🔴 [useTimer] Error saving entry:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשמור את הרישום',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לשמור את הרישום",
+        variant: "destructive",
       });
       return;
     }
@@ -390,7 +420,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
 
     toast({
-      title: 'נשמר בהצלחה',
+      title: "נשמר בהצלחה",
       description: `זמן שנרשם: ${formatDuration(durationMinutes)}`,
     });
 
@@ -401,18 +431,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (!timerState.currentEntry) return;
 
     const { error } = await supabase
-      .from('time_entries')
+      .from("time_entries")
       .update({ description })
-      .eq('id', timerState.currentEntry.id);
+      .eq("id", timerState.currentEntry.id);
 
     if (error) {
-      console.error('Error updating description:', error);
+      console.error("Error updating description:", error);
       return;
     }
 
-    setTimerState(prev => ({
+    setTimerState((prev) => ({
       ...prev,
-      currentEntry: prev.currentEntry ? { ...prev.currentEntry, description } : null,
+      currentEntry: prev.currentEntry
+        ? { ...prev.currentEntry, description }
+        : null,
     }));
   };
 
@@ -420,16 +452,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (!timerState.currentEntry) return;
 
     const { error } = await supabase
-      .from('time_entries')
+      .from("time_entries")
       .update({ tags })
-      .eq('id', timerState.currentEntry.id);
+      .eq("id", timerState.currentEntry.id);
 
     if (error) {
-      console.error('Error updating tags:', error);
+      console.error("Error updating tags:", error);
       return;
     }
 
-    setTimerState(prev => ({
+    setTimerState((prev) => ({
       ...prev,
       currentEntry: prev.currentEntry ? { ...prev.currentEntry, tags } : null,
     }));
@@ -462,7 +494,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 export function useTimer() {
   const context = useContext(TimerContext);
   if (!context) {
-    throw new Error('useTimer must be used within a TimerProvider');
+    throw new Error("useTimer must be used within a TimerProvider");
   }
   return context;
 }

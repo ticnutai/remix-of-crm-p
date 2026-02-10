@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite",
+    "login": "pwsh -ExecutionPolicy Bypass -File quick-login.ps1",
+    "test-system": "pwsh -ExecutionPolicy Bypass -File test-system.ps1",
+    "restart": "pwsh -ExecutionPolicy Bypass -File restart-all.ps1",
+    "help": "type START_HERE.md",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",

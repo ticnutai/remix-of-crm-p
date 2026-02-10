@@ -142,12 +142,13 @@ export function useTasksOptimized() {
 
       return { previousTasks };
     },
-    onError: (_err, _newTask, context) => {
+    onError: (err, _newTask, context) => {
       // Rollback on error
       if (context?.previousTasks) {
         queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
       }
-      toast.error('שגיאה ביצירת המשימה');
+      console.error('❌ Task creation error:', err);
+      toast.error(`שגיאה ביצירת המשימה: ${err instanceof Error ? err.message : 'שגיאה לא ידועה'}`);
     },
     onSuccess: (data) => {
       toast.success(`משימה נוצרה: ${data.title}`);

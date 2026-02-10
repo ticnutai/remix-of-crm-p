@@ -1,8 +1,8 @@
 // Auto-sync hook for background synchronization
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useEffect, useRef, useCallback, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export interface AutoSyncSettings {
   enabled: boolean;
@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS: AutoSyncSettings = {
   intervalMinutes: 15,
 };
 
-const STORAGE_KEY = 'google-calendar-auto-sync-settings';
+const STORAGE_KEY = "google-calendar-auto-sync-settings";
 
 export function useAutoSync(onSync: () => Promise<void>) {
   const { user } = useAuth();
@@ -39,10 +39,13 @@ export function useAutoSync(onSync: () => Promise<void>) {
   }, []);
 
   // Update settings
-  const updateSettings = useCallback((updates: Partial<AutoSyncSettings>) => {
-    const newSettings = { ...settings, ...updates };
-    saveSettings(newSettings);
-  }, [settings, saveSettings]);
+  const updateSettings = useCallback(
+    (updates: Partial<AutoSyncSettings>) => {
+      const newSettings = { ...settings, ...updates };
+      saveSettings(newSettings);
+    },
+    [settings, saveSettings],
+  );
 
   // Perform sync
   const performSync = useCallback(async () => {
@@ -52,7 +55,7 @@ export function useAutoSync(onSync: () => Promise<void>) {
     try {
       await onSync();
       setLastSyncTime(new Date());
-      
+
       // Calculate next sync time
       if (settings.enabled) {
         const next = new Date();
@@ -60,11 +63,12 @@ export function useAutoSync(onSync: () => Promise<void>) {
         setNextSyncTime(next);
       }
     } catch (error) {
-      console.error('Auto-sync error:', error);
+      console.error("Auto-sync error:", error);
     } finally {
       setIsSyncing(false);
     }
-  }, [user, isSyncing, onSync, settings.enabled, settings.intervalMinutes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isSyncing, onSync, settings.enabled, settings.intervalMinutes]);
 
   // Setup interval
   useEffect(() => {
@@ -97,14 +101,15 @@ export function useAutoSync(onSync: () => Promise<void>) {
         intervalRef.current = null;
       }
     };
-  }, [settings.enabled, settings.intervalMinutes, user, performSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.enabled, settings.intervalMinutes, user?.id, performSync]);
 
   // Manual sync trigger
   const syncNow = useCallback(async () => {
     await performSync();
     toast({
-      title: 'סנכרון בוצע',
-      description: 'כל החשבונות סונכרנו בהצלחה',
+      title: "סנכרון בוצע",
+      description: "כל החשבונות סונכרנו בהצלחה",
     });
   }, [performSync, toast]);
 

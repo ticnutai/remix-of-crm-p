@@ -1,13 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Mail, RefreshCw, TrendingUp } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, Mail, RefreshCw, TrendingUp } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface RateLimitInfo {
   allowed: boolean;
@@ -34,21 +40,25 @@ export function RateLimitMonitor() {
       const interval = setInterval(fetchRateLimits, 60000);
       return () => clearInterval(interval);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const fetchRateLimits = async () => {
     try {
-      const userRole = roles?.[0] || 'employee';
-      
-      const { data, error } = await supabase.rpc('check_email_rate_limit' as any, {
-        p_user_id: user?.id,
-        p_user_role: userRole,
-      });
+      const userRole = roles?.[0] || "employee";
+
+      const { data, error } = await supabase.rpc(
+        "check_email_rate_limit" as any,
+        {
+          p_user_id: user?.id,
+          p_user_role: userRole,
+        },
+      );
 
       if (error) throw error;
       setRateLimits(data as RateLimitInfo);
     } catch (error: any) {
-      console.error('Error fetching rate limits:', error);
+      console.error("Error fetching rate limits:", error);
     } finally {
       setLoading(false);
     }
@@ -60,9 +70,10 @@ export function RateLimitMonitor() {
 
   if (!rateLimits) return null;
 
-  const hourlyPercent = (rateLimits.hourly_used / rateLimits.hourly_limit) * 100;
+  const hourlyPercent =
+    (rateLimits.hourly_used / rateLimits.hourly_limit) * 100;
   const dailyPercent = (rateLimits.daily_used / rateLimits.daily_limit) * 100;
-  
+
   const isNearHourlyLimit = hourlyPercent >= 80;
   const isNearDailyLimit = dailyPercent >= 80;
 
@@ -88,17 +99,19 @@ export function RateLimitMonitor() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">מגבלה שעתית</span>
-              <Badge variant={isNearHourlyLimit ? 'destructive' : 'secondary'}>
+              <Badge variant={isNearHourlyLimit ? "destructive" : "secondary"}>
                 {rateLimits.hourly_used} / {rateLimits.hourly_limit}
               </Badge>
             </div>
-            <Progress 
-              value={hourlyPercent} 
-              className={isNearHourlyLimit ? '[&>div]:bg-destructive' : ''}
+            <Progress
+              value={hourlyPercent}
+              className={isNearHourlyLimit ? "[&>div]:bg-destructive" : ""}
             />
             <p className="text-xs text-muted-foreground">
-              נותרו {rateLimits.hourly_remaining} אימיילים • מתחדש בעוד{' '}
-              {new Date(rateLimits.reset_hourly).getMinutes() - new Date().getMinutes()} דקות
+              נותרו {rateLimits.hourly_remaining} אימיילים • מתחדש בעוד{" "}
+              {new Date(rateLimits.reset_hourly).getMinutes() -
+                new Date().getMinutes()}{" "}
+              דקות
             </p>
           </div>
 
@@ -106,13 +119,13 @@ export function RateLimitMonitor() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">מגבלה יומית</span>
-              <Badge variant={isNearDailyLimit ? 'destructive' : 'secondary'}>
+              <Badge variant={isNearDailyLimit ? "destructive" : "secondary"}>
                 {rateLimits.daily_used} / {rateLimits.daily_limit}
               </Badge>
             </div>
-            <Progress 
+            <Progress
               value={dailyPercent}
-              className={isNearDailyLimit ? '[&>div]:bg-destructive' : ''}
+              className={isNearDailyLimit ? "[&>div]:bg-destructive" : ""}
             />
             <p className="text-xs text-muted-foreground">
               נותרו {rateLimits.daily_remaining} אימיילים היום
@@ -125,15 +138,15 @@ export function RateLimitMonitor() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>התקרבת למגבלה!</AlertTitle>
               <AlertDescription>
-                {isNearHourlyLimit && 'השתמשת ביותר מ-80% מהמגבלה השעתית. '}
-                {isNearDailyLimit && 'השתמשת ביותר מ-80% מהמגבלה היומית. '}
+                {isNearHourlyLimit && "השתמשת ביותר מ-80% מהמגבלה השעתית. "}
+                {isNearDailyLimit && "השתמשת ביותר מ-80% מהמגבלה היומית. "}
                 אימיילים חדשים עלולים להיכשל.
               </AlertDescription>
             </Alert>
           )}
 
           {/* Upgrade hint for non-admins */}
-          {roles?.[0] !== 'admin' && dailyPercent > 50 && (
+          {roles?.[0] !== "admin" && dailyPercent > 50 && (
             <div className="p-4 border rounded-lg bg-muted/50">
               <div className="flex items-start gap-3">
                 <TrendingUp className="h-5 w-5 text-primary mt-0.5" />

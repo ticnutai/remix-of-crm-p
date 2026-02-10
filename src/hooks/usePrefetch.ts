@@ -1,23 +1,23 @@
 // Prefetch hook for better navigation performance
-import { useCallback, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 // Map of routes to their lazy-loaded components
 const routePreloaders: Record<string, () => Promise<any>> = {
-  '/': () => import('@/pages/Index'),
-  '/clients': () => import('@/pages/Clients'),
-  '/datatable-pro': () => import('@/pages/DataTablePro'),
-  '/finance': () => import('@/pages/Finance'),
-  '/quotes': () => import('@/pages/Quotes'),
-  '/settings': () => import('@/pages/Settings'),
-  '/calendar': () => import('@/pages/Calendar'),
-  '/time-logs': () => import('@/pages/TimeLogs'),
-  '/my-day': () => import('@/pages/MyDay'),
-  '/dashboard': () => import('@/pages/Dashboard'),
-  '/tasks-meetings': () => import('@/pages/TasksAndMeetings'),
-  '/reminders': () => import('@/pages/Reminders'),
+  "/": () => import("@/pages/Index"),
+  "/clients": () => import("@/pages/Clients"),
+  "/datatable-pro": () => import("@/pages/DataTablePro"),
+  "/finance": () => import("@/pages/Finance"),
+  "/quotes": () => import("@/pages/Quotes"),
+  "/settings": () => import("@/pages/Settings"),
+  "/calendar": () => import("@/pages/Calendar"),
+  "/time-logs": () => import("@/pages/TimeLogs"),
+  "/my-day": () => import("@/pages/MyDay"),
+  "/dashboard": () => import("@/pages/Dashboard"),
+  "/tasks-meetings": () => import("@/pages/TasksAndMeetings"),
+  "/reminders": () => import("@/pages/Reminders"),
 };
 
 // Cache to track what's already been prefetched
@@ -28,12 +28,12 @@ const prefetchedRoutes = new Set<string>();
  */
 export function prefetchRoute(route: string): void {
   if (prefetchedRoutes.has(route)) return;
-  
+
   const preloader = routePreloaders[route];
   if (preloader) {
     prefetchedRoutes.add(route);
     // Use requestIdleCallback for non-critical prefetch
-    if ('requestIdleCallback' in window) {
+    if ("requestIdleCallback" in window) {
       (window as any).requestIdleCallback(() => preloader());
     } else {
       setTimeout(() => preloader(), 100);
@@ -68,11 +68,11 @@ export function usePrefetchCommonRoutes() {
     const timeoutId = setTimeout(() => {
       // Prefetch most common routes
       prefetchRoutes([
-        '/clients',
-        '/datatable-pro', 
-        '/finance',
-        '/my-day',
-        '/tasks-meetings',
+        "/clients",
+        "/datatable-pro",
+        "/finance",
+        "/my-day",
+        "/tasks-meetings",
       ]);
     }, 2000); // Wait 2 seconds after mount
 
@@ -82,35 +82,35 @@ export function usePrefetchCommonRoutes() {
 
 // Query keys for data prefetching
 const QUERY_KEYS = {
-  clients: ['clients-list'],
-  tasks: ['tasks'],
-  meetings: ['meetings'],
-  reminders: ['reminders'],
+  clients: ["clients-list"],
+  tasks: ["tasks"],
+  meetings: ["meetings"],
+  reminders: ["reminders"],
 } as const;
 
 // Data fetch functions
 const fetchFunctions = {
   clients: async () => {
     const { data } = await supabase
-      .from('clients')
-      .select('id, name, email, phone, company, status')
-      .order('name')
+      .from("clients")
+      .select("id, name, email, phone, company, status")
+      .order("name")
       .limit(100);
     return data;
   },
   tasks: async () => {
     const { data } = await supabase
-      .from('tasks')
-      .select('*, client:clients(name)')
-      .order('created_at', { ascending: false })
+      .from("tasks")
+      .select("*, client:clients(name)")
+      .order("created_at", { ascending: false })
       .limit(50);
     return data;
   },
   meetings: async () => {
     const { data } = await supabase
-      .from('meetings')
-      .select('*, client:clients(name)')
-      .order('start_time')
+      .from("meetings")
+      .select("*, client:clients(name)")
+      .order("start_time")
       .limit(50);
     return data;
   },
@@ -171,7 +171,8 @@ export function useAutoPreloadData() {
       const timeout = setTimeout(prefetchAll, 1500);
       return () => clearTimeout(timeout);
     }
-  }, [user, prefetchAll]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 }
 
 export default usePrefetchOnHover;

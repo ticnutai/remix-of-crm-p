@@ -23,6 +23,8 @@ import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDial
 import { BulkConsultantDialog } from '@/components/clients/BulkConsultantDialog';
 import { ColumnOptionsMenu } from '@/components/DataTable/components/ColumnOptionsMenu';
 import { ClientFilterPanel } from '@/components/clients/ClientFilterPanel';
+import { CategoriesSidebar } from '@/components/clients/CategoriesSidebar';
+import { ClientNameWithCategory } from '@/components/clients/ClientNameWithCategory';
 import { Loader2, Database, RefreshCw, Crown, UserCog, User, FolderOpen, Layers } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -95,6 +97,8 @@ import {
   FileText,
   Eye,
   Heart,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -298,6 +302,30 @@ export default function DataTablePro() {
   // Client filter state
   const [clientFilter, setClientFilter] = useState<ClientFilter>({});
   const [filteredClients, setFilteredClients] = useState<SyncedClient[] | null>(null);
+  
+  // Client categories state
+  interface ClientCategory {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+  }
+  const [categories, setCategories] = useState<ClientCategory[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [showCategories, setShowCategories] = useState(false);
+  
+  // Load categories from Supabase
+  useEffect(() => {
+    const loadCategories = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('client_categories')
+        .select('*')
+        .order('name');
+      if (data) setCategories(data);
+    };
+    loadCategories();
+  }, []);
   
   // Client stages for table display
   const {
@@ -897,11 +925,25 @@ export default function DataTablePro() {
   const handleDeleteSelectedClients = useCallback(async () => {
     if (selectedClients.length === 0) return;
     
+    const count = selectedClients.length;
+    const confirmed = window.confirm(`האם למחוק ${count} לקוחות שנבחרו?`);
+    if (!confirmed) return;
+    
+    let successCount = 0;
     for (const client of selectedClients) {
-      await deleteDbClient(client.id);
+      try {
+        await deleteDbClient(client.id);
+        successCount++;
+      } catch (e) {
+        console.error('Failed to delete client:', client.id, e);
+      }
     }
     setSelectedClients([]);
-  }, [selectedClients, deleteDbClient]);
+    toast({
+      title: 'לקוחות נמחקו',
+      description: `${successCount} מתוך ${count} לקוחות נמחקו בהצלחה`,
+    });
+  }, [selectedClients, deleteDbClient, toast]);
 
   // Handle client selection change from table (stable callback)
   const handleClientSelectionChange = useCallback((selected: any[]) => {
@@ -1633,13 +1675,12 @@ export default function DataTablePro() {
         deletable: false, // Name column cannot be deleted
         cell: (value, row) => (
           <div className="flex items-center gap-2 group">
-            <Link 
-              to={`/client-profile/${row.id}`}
-              className="text-primary hover:underline font-medium"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {value}
-            </Link>
+            <ClientNameWithCategory
+              clientName={value}
+              clientId={row.id}
+              categoryId={row.category_id}
+              categories={categories}
+            />
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -1660,6 +1701,7 @@ export default function DataTablePro() {
         accessorKey: 'company',
         sortable: true,
         filterable: true,
+        width: 150,
         editable: true,
         editType: 'text',
         headerEditable: true,
@@ -1671,6 +1713,7 @@ export default function DataTablePro() {
         accessorKey: 'email',
         sortable: true,
         filterable: true,
+        width: 200,
         editable: true,
         editType: 'text',
         headerEditable: true,
@@ -1685,6 +1728,7 @@ export default function DataTablePro() {
         accessorKey: 'phone',
         sortable: true,
         filterable: true,
+        width: 140,
         editable: true,
         editType: 'text',
         headerEditable: true,
@@ -1699,6 +1743,7 @@ export default function DataTablePro() {
         accessorKey: 'status',
         sortable: true,
         filterable: true,
+        width: 100,
         groupable: true,
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange('status', val),
@@ -1830,6 +1875,7 @@ export default function DataTablePro() {
         accessorKey: 'address',
         sortable: true,
         filterable: true,
+        width: 160,
         editable: true,
         editType: 'text',
         headerEditable: true,
@@ -1841,6 +1887,7 @@ export default function DataTablePro() {
         header: clientColumnHeaders['notes'] || 'הערות',
         accessorKey: 'notes',
         sortable: false,
+        width: 180,
         editable: true,
         editType: 'text',
         headerEditable: true,
@@ -1854,6 +1901,7 @@ export default function DataTablePro() {
         header: clientColumnHeaders['created_at'] || 'תאריך הוספה',
         accessorKey: 'created_at',
         sortable: true,
+        width: 120,
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange('created_at', val),
         cell: (value) => format(new Date(value), 'dd/MM/yyyy', { locale: he }),
@@ -2286,6 +2334,32 @@ export default function DataTablePro() {
     </div>
   ), []);
 
+  // Combined client data filtering: filter panel + categories
+  const displayClients = useMemo(() => {
+    let clients = filteredClients ?? dbClients;
+    
+    // Apply category filter if any selected
+    if (selectedCategoryIds.length > 0) {
+      clients = clients.filter(client => 
+        client.category_id && selectedCategoryIds.includes(client.category_id)
+      );
+    }
+    
+    return clients;
+  }, [filteredClients, dbClients, selectedCategoryIds]);
+
+  // Calculate client count per category for sidebar
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const sourceClients = filteredClients || dbClients;
+    sourceClients.forEach(client => {
+      if (client.category_id) {
+        counts[client.category_id] = (counts[client.category_id] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [filteredClients, dbClients]);
+
   return (
     <AppLayout title="DataTable Pro">
       <div className="p-6 space-y-6 animate-fade-in w-full">
@@ -2514,7 +2588,14 @@ export default function DataTablePro() {
                       {isSyncing && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                     </CardTitle>
                     <CardDescription>
-                      {filteredClients ? filteredClients.length : dbClients.length} לקוחות | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית
+                      {displayClients.length} לקוחות
+                      {selectedClients.length > 0 && (
+                        <span className="text-primary font-semibold"> | {selectedClients.length} נבחרו</span>
+                      )}
+                      {' | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית'}
+                      {selectedClients.length === 0 && displayClients.length > 0 && (
+                        <span className="text-muted-foreground"> | ✓ סמן לקוחות בעמודת הבחירה</span>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2580,8 +2661,12 @@ export default function DataTablePro() {
                     </Button>
                   </div>
                   
-                  {selectedClients.length > 0 && (
-                    <>
+                  {/* Bulk Actions - Always visible section */}
+                  {selectedClients.length > 0 ? (
+                    <div className="flex items-center gap-2 border-r pr-2 bg-primary/5 rounded-lg px-3 py-1">
+                      <Badge variant="default" className="bg-primary text-white text-sm px-3 py-1">
+                        ✓ {selectedClients.length} נבחרו
+                      </Badge>
                       {/* Bulk Set Stage Dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -2636,7 +2721,13 @@ export default function DataTablePro() {
                         <Trash2 className="h-4 w-4 ml-2" />
                         מחק ({selectedClients.length})
                       </Button>
-                    </>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 border-r pr-2">
+                      <span className="text-xs text-muted-foreground">
+                        ← סמן לקוחות בצ'קבוקס לפעולות מרובות
+                      </span>
+                    </div>
                   )}
                   
                   {/* Add Client Column Button and Dialog */}
@@ -2770,7 +2861,27 @@ export default function DataTablePro() {
                 </div>
                 
                 {/* Client Filter Panel */}
-                <div className="border-t pt-4">
+                <div className="border-t pt-4 flex items-center gap-3 flex-wrap">
+                  {/* Categories Toggle Button */}
+                  {categories.length > 0 && (
+                    <Button
+                      variant={showCategories ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setShowCategories(!showCategories)}
+                      className={showCategories 
+                        ? 'bg-[#d4a843] hover:bg-[#c49a33] text-white border-[#d4a843]' 
+                        : 'border-[#d4a843]/50 hover:border-[#d4a843] hover:bg-[#fef9ee]'}
+                    >
+                      <FolderOpen className="h-4 w-4 ml-1.5" />
+                      קטגוריות
+                      {showCategories ? <ChevronDown className="h-3.5 w-3.5 mr-1" /> : <ChevronRight className="h-3.5 w-3.5 mr-1" />}
+                      {selectedCategoryIds.length > 0 && (
+                        <Badge variant="secondary" className="mr-1 text-xs px-1.5 py-0 h-5 bg-white/20 text-current">
+                          {selectedCategoryIds.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  )}
                   <ClientFilterPanel
                     consultants={consultants}
                     activeFilters={clientFilter}
@@ -2788,10 +2899,59 @@ export default function DataTablePro() {
                       setFilteredClients(null);
                     }}
                     totalClients={dbClients.length}
-                    filteredCount={filteredClients?.length ?? dbClients.length}
+                    filteredCount={displayClients.length}
                   />
                 </div>
               </CardHeader>
+              
+              {/* Collapsible Categories Panel - inside the card */}
+              {showCategories && categories.length > 0 && (
+                <div className="border-t border-b bg-muted/30 px-4 py-3" dir="rtl">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedCategoryIds.length > 0 && (
+                      <button
+                        onClick={() => setSelectedCategoryIds([])}
+                        className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1 rounded hover:bg-destructive/10 transition-colors"
+                      >
+                        ✕ נקה
+                      </button>
+                    )}
+                    {categories.map((category) => {
+                      const isSelected = selectedCategoryIds.includes(category.id);
+                      const count = categoryCounts[category.id] || 0;
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== category.id));
+                            } else {
+                              setSelectedCategoryIds([...selectedCategoryIds, category.id]);
+                            }
+                          }}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                            isSelected 
+                              ? 'bg-[#d4a843] text-white border-[#d4a843] shadow-sm' 
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-[#d4a843] hover:bg-[#fef9ee]'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: isSelected ? '#fff' : category.color, opacity: isSelected ? 0.9 : 1 }}
+                          />
+                          {category.name}
+                          {count > 0 && (
+                            <span className={`text-xs ${isSelected ? 'text-white/80' : 'text-muted-foreground'}`}>
+                              ({count})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <CardContent className="p-0">
                 {dbLoading && localClients.length === 0 ? (
                   <div className="p-8 space-y-4">
@@ -2802,18 +2962,13 @@ export default function DataTablePro() {
                 ) : (
                   <UniversalDataTable
                     tableName="clients"
-                    data={filteredClients ?? localClients}
-                    setData={setLocalClients}
+                    data={displayClients}
                     columns={clientColumns}
                     variant="gold"
                     selectable
                     filterable
                     globalSearch
-                    paginated
-                    pageSize={25}
-                    pageSizeOptions={[10, 25, 50, 100]}
                     exportable
-                    columnToggle
                     showSummary
                     onCellEdit={handleClientCellEdit}
                     onSelectionChange={handleClientSelectionChange}

@@ -23,6 +23,8 @@ import { BulkClassifyDialog } from '@/components/clients/BulkClassifyDialog';
 import { BulkStageDialog } from '@/components/clients/BulkStageDialog';
 import { BulkConsultantDialog } from '@/components/clients/BulkConsultantDialog';
 import { CategoryTagsManager } from '@/components/clients/CategoryTagsManager';
+import { CategoriesSidebar } from '@/components/clients/CategoriesSidebar';
+import { ClientNameWithCategory } from '@/components/clients/ClientNameWithCategory';
 import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import { useInactiveClients } from '@/components/alerts';
 import {
@@ -318,6 +320,17 @@ export default function Clients() {
 
     return result;
   }, [clients, searchQuery, filters, clientStages, clientsWithReminders, clientsWithTasks, clientsWithMeetings]);
+
+  // Calculate client count per category for sidebar
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    clients.forEach(client => {
+      if (client.category_id) {
+        counts[client.category_id] = (counts[client.category_id] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [clients]);
 
   // Data fetching effect moved below function declarations
 
@@ -1135,7 +1148,11 @@ export default function Clients() {
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
           }}>
-            {client.name}
+            <ClientNameWithCategory
+              clientName={client.name}
+              categoryId={client.category_id}
+              categories={categories}
+            />
           </h3>
           
           {/* Phone */}
@@ -1226,7 +1243,11 @@ export default function Clients() {
             )}
             
             <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e3a5f', marginBottom: '8px' }}>
-              {client.name}
+              <ClientNameWithCategory
+                clientName={client.name}
+                categoryId={client.category_id}
+                categories={categories}
+              />
             </h3>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', color: '#64748b' }}>
@@ -1378,7 +1399,11 @@ export default function Clients() {
             wordBreak: 'break-word',
             letterSpacing: '0.3px',
           }}>
-            {client.name}
+            <ClientNameWithCategory
+              clientName={client.name}
+              categoryId={client.category_id}
+              categories={categories}
+            />
           </h3>
           
           {/* Decorative line */}
@@ -1524,7 +1549,11 @@ export default function Clients() {
           
           {/* Name */}
           <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1e3a5f', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {client.name}
+            <ClientNameWithCategory
+              clientName={client.name}
+              categoryId={client.category_id}
+              categories={categories}
+            />
           </h3>
 
           {/* Hover Actions */}
@@ -1694,7 +1723,11 @@ export default function Clients() {
               textAlign: viewMode === 'list' ? 'right' : 'center',
               lineHeight: '1.3',
             }}>
-              {client.name}
+              <ClientNameWithCategory
+                clientName={client.name}
+                categoryId={client.category_id}
+                categories={categories}
+              />
             </h3>
           </div>
 
@@ -2412,7 +2445,23 @@ export default function Clients() {
         )}
 
         {/* Clients Content Area - Scrollable */}
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: '16px', overflow: 'hidden' }}>
+          {/* Categories Sidebar */}
+          <CategoriesSidebar
+            categories={categories}
+            selectedCategories={filters.categories}
+            onToggleCategory={(categoryId) => {
+              const newCategories = filters.categories.includes(categoryId)
+                ? filters.categories.filter(c => c !== categoryId)
+                : [...filters.categories, categoryId];
+              setFilters({ ...filters, categories: newCategories });
+            }}
+            onClearCategories={() => setFilters({ ...filters, categories: [] })}
+            clientCounts={categoryCounts}
+          />
+
+          {/* Main Content Area */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {filteredClients.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0' }}>
             <Users style={{ width: '64px', height: '64px', color: '#cbd5e1', margin: '0 auto 16px' }} />
@@ -2595,7 +2644,8 @@ export default function Clients() {
             </div>
           </>
         )}
-        </div>{/* End of Clients Content Area */}
+        </div>{/* End of Main Content Area */}
+        </div>{/* End of Clients Content Area with Sidebar */}
         </>
         )}
       </div>{/* End of Main Container */}

@@ -412,7 +412,7 @@ export function KanbanBoard() {
                     <SelectValue placeholder="לקוח" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">ללא לקוח</SelectItem>
+                    <SelectItem value="__none__">ללא לקוח</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}

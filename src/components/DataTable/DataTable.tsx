@@ -405,11 +405,8 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
         style={{
           scrollbarWidth: 'thin',
           WebkitOverflowScrolling: 'touch',
-          // גלילה אנכית - תמיד עם maxHeight
           maxHeight: `calc(100vh - ${maxViewportHeightOffset}px)`,
-          // CSS-based RTL scroll positioning - instant, no JavaScript delay
           overflowAnchor: 'none',
-          contain: 'layout style paint',
         }}
       >
         <table
@@ -479,8 +476,16 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                         "bg-muted sticky z-[5]"
                       )}
                       style={{ top: `${topOffset}px` }}
-                    >
-                      {visibleColumns.map((column, columnIndex) => {
+                    >                      {/* Checkbox FIRST in RTL = right side */}
+                      {selectable && (
+                        <td className={cn('w-12 text-center sticky right-0 z-[7] bg-muted', cellPadding[size])}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => actions.toggleRowSelection(rowIndex)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                      )}                      {visibleColumns.map((column, columnIndex) => {
                         const value = getNestedValue(row, column.accessorKey as string);
                         const cellId = `${rowIndex}-${column.id}`;
                         const isCellSelected = cellSelection.isCellSelected(rowIndex, column.id);
@@ -507,15 +512,6 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                         );
                       })}
                       {expandable && <td className={cn('w-10', cellPadding[size])} />}
-                      {selectable && (
-                        <td className={cn('w-12 text-center', cellPadding[size])}>
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => actions.toggleRowSelection(rowIndex)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </td>
-                      )}
                     </tr>
                   );
                 })}
@@ -538,6 +534,21 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                       onClick={() => onRowClick?.(row, rowIndex)}
                       onDoubleClick={() => onRowDoubleClick?.(row, rowIndex)}
                     >
+                      {/* Checkbox FIRST in RTL = right side */}
+                      {selectable && (
+                        <td className={cn(
+                          'w-12 text-center sticky right-0 z-[3]',
+                          cellPadding[size],
+                          isSelected ? 'bg-table-row-selected' : (striped && rowIndex % 2 === 1) ? 'bg-muted/30' : 'bg-white'
+                        )}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => actions.toggleRowSelection(rowIndex)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
+                      )}
                       {visibleColumns.map((column, columnIndex) => {
                         const value = getNestedValue(row, column.accessorKey as string);
                         const isEditing =
@@ -629,16 +640,6 @@ export function DataTable<T extends Record<string, any>>(props: DataTableProps<T
                               <ChevronDown className="h-4 w-4" />
                             )}
                           </button>
-                        </td>
-                      )}
-
-                      {selectable && (
-                        <td className={cn('w-12 text-center', cellPadding[size])}>
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => actions.toggleRowSelection(rowIndex)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
                         </td>
                       )}
                     </tr>

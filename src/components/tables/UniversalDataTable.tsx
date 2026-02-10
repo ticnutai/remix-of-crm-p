@@ -569,6 +569,7 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         striped={striped}
         showSummary={showSummary}
         selectable={selectable}
+        multiSelect={selectable}
         emptyMessage={emptyMessage}
         loading={loading || data !== deferredData || columnsLoading}
         onRowClick={onRowClick}

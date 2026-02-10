@@ -127,6 +127,30 @@ export function TableHeader<T>({
   return (
     <thead className={headerClasses}>
       <tr>
+        {/* Checkbox column - FIRST (right side in RTL) */}
+        {selectable && (
+          <th
+            className={cn(
+              'w-12 p-3 text-center sticky right-0 z-20',
+              {
+                'bg-table-header': variant === 'default' || variant === 'navy',
+                'bg-secondary/20': variant === 'gold',
+                'bg-muted': variant === 'minimal',
+              }
+            )}
+          >
+            <Checkbox
+              checked={allSelected}
+              ref={(ref) => {
+                if (ref) {
+                  (ref as any).indeterminate = someSelected && !allSelected;
+                }
+              }}
+              onCheckedChange={onSelectAll}
+              className="border-primary-foreground"
+            />
+          </th>
+        )}
         {columns.map((column, columnIndex) => {
           const width = columnWidths[column.id] || column.width;
           const sortIndex = getSortIndex(column.id);
@@ -289,30 +313,6 @@ export function TableHeader<T>({
               }
             )}
           />
-        )}
-
-        {selectable && (
-          <th
-            className={cn(
-              'w-12 p-3 text-center',
-              {
-                'bg-table-header': variant === 'default' || variant === 'navy',
-                'bg-secondary/20': variant === 'gold',
-                'bg-muted': variant === 'minimal',
-              }
-            )}
-          >
-            <Checkbox
-              checked={allSelected}
-              ref={(ref) => {
-                if (ref) {
-                  (ref as any).indeterminate = someSelected && !allSelected;
-                }
-              }}
-              onCheckedChange={onSelectAll}
-              className="border-primary-foreground"
-            />
-          </th>
         )}
       </tr>
     </thead>

@@ -3,25 +3,26 @@
  * Handles bidirectional synchronization with conflict resolution
  */
 
-import { supabase } from '@/integrations/supabase/client';
-import { offlineStorage, SyncQueueItem } from './offlineStorage';
+import { supabase } from "@/integrations/supabase/client";
+import { offlineStorage, SyncQueueItem } from "./offlineStorage";
 
 // Tables to sync with their Supabase table names
 const SYNC_TABLES = {
-  clients: 'clients',
-  projects: 'projects',
-  tasks: 'tasks',
-  meetings: 'meetings',
-  time_entries: 'time_entries',
-  documents: 'documents',
-  quotes: 'quotes',
-  contracts: 'contracts',
-  invoices: 'invoices',
-  reminders: 'reminders',
-  contacts: 'contacts',
-  calls: 'calls',
-  notes: 'notes',
+  clients: "clients",
+  projects: "projects",
+  tasks: "tasks",
+  meetings: "meetings",
+  time_entries: "time_entries",
+  documents: "documents",
+  quotes: "quotes",
+  contracts: "contracts",
+  invoices: "invoices",
+  reminders: "reminders",
+  // Note: contacts, calls, notes tables do not exist in Supabase
 } as const;
+
+// Tables that don't have an updated_at column (skip incremental sync filter)
+const TABLES_WITHOUT_UPDATED_AT = new Set(["reminders"]);
 
 type SyncTableName = keyof typeof SYNC_TABLES;
 
@@ -46,23 +47,29 @@ class DataSyncService {
   private listeners: Set<(status: SyncStatus) => void> = new Set();
   private lastSyncedAt: number | null = null;
   private syncError: string | null = null;
+  private initialized = false;
 
   /**
    * Initialize the sync service
    */
   async init(): Promise<void> {
+    if (this.initialized) {
+      return; // Already initialized — skip duplicate calls
+    }
+    this.initialized = true;
+
     await offlineStorage.init();
-    
+
     // Listen for online/offline events
-    window.addEventListener('online', () => this.onOnline());
-    window.addEventListener('offline', () => this.onOffline());
+    window.addEventListener("online", () => this.onOnline());
+    window.addEventListener("offline", () => this.onOffline());
 
     // Start periodic sync if online
     if (navigator.onLine) {
       this.startPeriodicSync();
     }
 
-    console.log('🔄 DataSyncService initialized');
+    console.log("🔄 DataSyncService initialized");
   }
 
   /**
@@ -93,14 +100,14 @@ class DataSyncService {
    */
   private notifyListeners(): void {
     const status = this.getStatus();
-    this.listeners.forEach(callback => callback(status));
+    this.listeners.forEach((callback) => callback(status));
   }
 
   /**
    * Handle coming online
    */
   private async onOnline(): Promise<void> {
-    console.log('🌐 Back online - starting sync');
+    console.log("🌐 Back online - starting sync");
     this.notifyListeners();
     await this.syncAll();
     this.startPeriodicSync();
@@ -110,7 +117,7 @@ class DataSyncService {
    * Handle going offline
    */
   private onOffline(): void {
-    console.log('📴 Gone offline - stopping periodic sync');
+    console.log("📴 Gone offline - stopping periodic sync");
     this.stopPeriodicSync();
     this.notifyListeners();
   }
@@ -120,12 +127,15 @@ class DataSyncService {
    */
   private startPeriodicSync(): void {
     if (this.syncInterval) return;
-    
-    this.syncInterval = window.setInterval(() => {
-      if (navigator.onLine && !this.isSyncing) {
-        this.syncAll();
-      }
-    }, 5 * 60 * 1000); // 5 minutes
+
+    this.syncInterval = window.setInterval(
+      () => {
+        if (navigator.onLine && !this.isSyncing) {
+          this.syncAll();
+        }
+      },
+      5 * 60 * 1000,
+    ); // 5 minutes
   }
 
   /**
@@ -143,18 +153,33 @@ class DataSyncService {
    */
   async syncAll(): Promise<SyncResult> {
     if (this.isSyncing) {
-      return { success: false, synced: 0, failed: 0, errors: ['Sync already in progress'] };
+      return {
+        success: false,
+        synced: 0,
+        failed: 0,
+        errors: ["Sync already in progress"],
+      };
     }
 
     if (!navigator.onLine) {
-      return { success: false, synced: 0, failed: 0, errors: ['No internet connection'] };
+      return {
+        success: false,
+        synced: 0,
+        failed: 0,
+        errors: ["No internet connection"],
+      };
     }
 
     this.isSyncing = true;
     this.syncError = null;
     this.notifyListeners();
 
-    const result: SyncResult = { success: true, synced: 0, failed: 0, errors: [] };
+    const result: SyncResult = {
+      success: true,
+      synced: 0,
+      failed: 0,
+      errors: [],
+    };
 
     try {
       // First, push local changes to cloud
@@ -182,24 +207,27 @@ class DataSyncService {
       this.notifyListeners();
     }
 
-    console.log('🔄 Sync completed:', result);
+    console.log("🔄 Sync completed:", result);
     return result;
   }
 
   /**
    * Sync a single table from Supabase to local storage
    */
-  private async syncTable(localTable: SyncTableName, supabaseTable: string): Promise<void> {
+  private async syncTable(
+    localTable: SyncTableName,
+    supabaseTable: string,
+  ): Promise<void> {
     // Get last sync time for this table
     const syncMeta = await offlineStorage.getSyncMeta(localTable);
     const lastSync = syncMeta?.lastSyncedAt || 0;
 
     // Fetch data from Supabase (only updated since last sync)
-    let query = (supabase as any).from(supabaseTable).select('*');
-    
-    if (lastSync > 0) {
+    let query = (supabase as any).from(supabaseTable).select("*");
+
+    if (lastSync > 0 && !TABLES_WITHOUT_UPDATED_AT.has(localTable)) {
       const lastSyncDate = new Date(lastSync).toISOString();
-      query = query.gte('updated_at', lastSyncDate);
+      query = query.gte("updated_at", lastSyncDate);
     }
 
     const { data, error } = await query;
@@ -223,7 +251,7 @@ class DataSyncService {
    */
   private async pushLocalChanges(): Promise<void> {
     const queue = await offlineStorage.getSyncQueue();
-    
+
     if (queue.length === 0) {
       return;
     }
@@ -251,26 +279,26 @@ class DataSyncService {
     }
 
     switch (item.operation) {
-      case 'insert':
+      case "insert":
         const { error: insertError } = await (supabase as any)
           .from(supabaseTable)
           .insert(item.data);
         if (insertError) throw insertError;
         break;
 
-      case 'update':
+      case "update":
         const { error: updateError } = await (supabase as any)
           .from(supabaseTable)
           .update(item.data)
-          .eq('id', item.data.id);
+          .eq("id", item.data.id);
         if (updateError) throw updateError;
         break;
 
-      case 'delete':
+      case "delete":
         const { error: deleteError } = await (supabase as any)
           .from(supabaseTable)
           .delete()
-          .eq('id', item.data.id);
+          .eq("id", item.data.id);
         if (deleteError) throw deleteError;
         break;
     }
@@ -279,9 +307,13 @@ class DataSyncService {
   /**
    * Queue a local change for sync
    */
-  async queueChange(table: string, operation: 'insert' | 'update' | 'delete', data: any): Promise<void> {
+  async queueChange(
+    table: string,
+    operation: "insert" | "update" | "delete",
+    data: any,
+  ): Promise<void> {
     // Save to local storage immediately
-    if (operation !== 'delete') {
+    if (operation !== "delete") {
       await offlineStorage.set(table as any, data);
     } else {
       await offlineStorage.delete(table as any, data.id);
@@ -328,7 +360,7 @@ class DataSyncService {
     }
 
     // Reset sync metadata
-    await offlineStorage.clear('sync_meta');
+    await offlineStorage.clear("sync_meta");
 
     // Do full sync
     return this.syncAll();

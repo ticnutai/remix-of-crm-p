@@ -1,31 +1,31 @@
 // Calendar Page - tenarch CRM Pro
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { AppLayout } from "@/components/layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useAuth } from '@/hooks/useAuth';
-import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
   ChevronRight,
@@ -44,8 +44,8 @@ import {
   RefreshCw,
   CloudOff,
   Cloud,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   format,
   startOfMonth,
@@ -63,8 +63,8 @@ import {
   parseISO,
   startOfDay,
   endOfDay,
-} from 'date-fns';
-import { he } from 'date-fns/locale';
+} from "date-fns";
+import { he } from "date-fns/locale";
 import {
   CalendarViewToggle,
   CalendarWeekView,
@@ -74,7 +74,7 @@ import {
   GoogleCalendarIndicator,
   GoogleCalendarSettingsDialog,
   type CalendarViewType,
-} from '@/components/calendar';
+} from "@/components/calendar";
 
 interface TimeEntry {
   id: string;
@@ -111,17 +111,17 @@ interface Reminder {
   is_dismissed: boolean;
 }
 
-const hebrewDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const hebrewDays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
-type AddType = 'meeting' | 'task' | 'reminder';
+type AddType = "meeting" | "task" | "reminder";
 
 const Calendar = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  
+
   // Google Calendar integration
-  const { 
-    isConnected: isGoogleConnected, 
+  const {
+    isConnected: isGoogleConnected,
     isLoading: googleLoading,
     connect: connectGoogle,
     disconnect: disconnectGoogle,
@@ -129,119 +129,132 @@ const Calendar = () => {
     importFromGoogle,
     fetchEvents: fetchGoogleEvents,
   } = useGoogleCalendar();
-  
+
   // View state
   const [viewType, setViewType] = useState<CalendarViewType>(() => {
-    const saved = localStorage.getItem('calendar-view-type');
-    return (saved as CalendarViewType) || 'month';
+    const saved = localStorage.getItem("calendar-view-type");
+    return (saved as CalendarViewType) || "month";
   });
-  
+
   const [currentMonth, setCurrentMonth] = useState(() => {
-    const saved = localStorage.getItem('calendar-month');
+    const saved = localStorage.getItem("calendar-month");
     return saved ? new Date(saved) : new Date();
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
-    const saved = localStorage.getItem('calendar-selected-date');
+    const saved = localStorage.getItem("calendar-selected-date");
     return saved ? new Date(saved) : new Date();
   });
-  
+
   // Save calendar state to localStorage (batched into single effect)
   useEffect(() => {
-    localStorage.setItem('calendar-view-type', viewType);
-    localStorage.setItem('calendar-month', currentMonth.toISOString());
+    localStorage.setItem("calendar-view-type", viewType);
+    localStorage.setItem("calendar-month", currentMonth.toISOString());
     if (selectedDate) {
-      localStorage.setItem('calendar-selected-date', selectedDate.toISOString());
+      localStorage.setItem(
+        "calendar-selected-date",
+        selectedDate.toISOString(),
+      );
     }
   }, [viewType, currentMonth, selectedDate]);
-  
+
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Add dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [addType, setAddType] = useState<AddType>('meeting');
+  const [addType, setAddType] = useState<AddType>("meeting");
   const [addDialogDate, setAddDialogDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
-  
+
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   // Shared data for forms
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-  
+
   // Form states
   const [meetingForm, setMeetingForm] = useState({
-    title: '',
-    description: '',
-    start_time: '09:00',
-    end_time: '10:00',
-    location: '',
-    meeting_type: 'in_person',
-    client_id: '',
-    project_id: '',
+    title: "",
+    description: "",
+    start_time: "09:00",
+    end_time: "10:00",
+    location: "",
+    meeting_type: "in_person",
+    client_id: "",
+    project_id: "",
   });
-  
+
   const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    client_id: '',
-    project_id: '',
+    title: "",
+    description: "",
+    priority: "medium",
+    client_id: "",
+    project_id: "",
   });
-  
+
   const [reminderForm, setReminderForm] = useState({
-    title: '',
-    message: '',
-    time: '09:00',
+    title: "",
+    message: "",
+    time: "09:00",
   });
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, navigate]);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
 
-    const [timeRes, meetingsRes, tasksRes, remindersRes, clientsRes, projectsRes] = await Promise.all([
+    const [
+      timeRes,
+      meetingsRes,
+      tasksRes,
+      remindersRes,
+      clientsRes,
+      projectsRes,
+    ] = await Promise.all([
       supabase
-        .from('time_entries')
-        .select('id, start_time, end_time, description, duration_minutes, project_id, client_id, project:projects(name), client:clients(name)')
-        .gte('start_time', start.toISOString())
-        .lte('start_time', end.toISOString())
-        .order('start_time', { ascending: true }),
+        .from("time_entries")
+        .select(
+          "id, start_time, end_time, description, duration_minutes, project_id, client_id, project:projects(name), client:clients(name)",
+        )
+        .gte("start_time", start.toISOString())
+        .lte("start_time", end.toISOString())
+        .order("start_time", { ascending: true }),
       supabase
-        .from('meetings')
-        .select('id, title, start_time, end_time, status')
-        .gte('start_time', start.toISOString())
-        .lte('start_time', end.toISOString())
-        .order('start_time', { ascending: true }),
+        .from("meetings")
+        .select("id, title, start_time, end_time, status")
+        .gte("start_time", start.toISOString())
+        .lte("start_time", end.toISOString())
+        .order("start_time", { ascending: true }),
       supabase
-        .from('tasks')
-        .select('id, title, due_date, status, priority')
-        .gte('due_date', start.toISOString())
-        .lte('due_date', end.toISOString())
-        .neq('status', 'completed')
-        .order('due_date', { ascending: true }),
+        .from("tasks")
+        .select("id, title, due_date, status, priority")
+        .gte("due_date", start.toISOString())
+        .lte("due_date", end.toISOString())
+        .neq("status", "completed")
+        .order("due_date", { ascending: true }),
       supabase
-        .from('reminders')
-        .select('id, title, remind_at, is_dismissed')
-        .gte('remind_at', start.toISOString())
-        .lte('remind_at', end.toISOString())
-        .eq('is_dismissed', false)
-        .order('remind_at', { ascending: true }),
-      supabase.from('clients').select('id, name').order('name'),
-      supabase.from('projects').select('id, name').order('name'),
+        .from("reminders")
+        .select("id, title, remind_at, is_dismissed")
+        .gte("remind_at", start.toISOString())
+        .lte("remind_at", end.toISOString())
+        .eq("is_dismissed", false)
+        .order("remind_at", { ascending: true }),
+      supabase.from("clients").select("id, name").order("name"),
+      supabase.from("projects").select("id, name").order("name"),
     ]);
 
     if (timeRes.data) setTimeEntries(timeRes.data as TimeEntry[]);
@@ -250,50 +263,59 @@ const Calendar = () => {
     if (remindersRes.data) setReminders(remindersRes.data as Reminder[]);
     if (clientsRes.data) setClients(clientsRes.data);
     if (projectsRes.data) setProjects(projectsRes.data);
-    
+
     setLoading(false);
-  }, [user, currentMonth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, currentMonth]);
 
   useEffect(() => {
     if (user) {
       fetchData();
     }
-  }, [user, fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, fetchData]);
 
   // Auto sync with Google Calendar when page loads and user is connected
-  const lastSyncedMonthRef = React.useRef<string>('');
+  const lastSyncedMonthRef = React.useRef<string>("");
   useEffect(() => {
     const monthKey = currentMonth.toISOString().slice(0, 7);
     const alreadySynced = lastSyncedMonthRef.current === monthKey;
-    
+
     const performAutoSync = async () => {
-      if (!user || !isGoogleConnected || alreadySynced || isSyncing || googleLoading) {
+      if (
+        !user ||
+        !isGoogleConnected ||
+        alreadySynced ||
+        isSyncing ||
+        googleLoading
+      ) {
         return;
       }
 
       lastSyncedMonthRef.current = monthKey;
       setIsSyncing(true);
-      
+
       try {
         const start = startOfMonth(currentMonth);
         const end = endOfMonth(currentMonth);
-        
+
         // Import events from Google Calendar to local DB
         const result = await importFromGoogle(start, end, supabase, user.id);
-        
+
         // Refresh data to show imported meetings
         if (result.imported > 0) {
           await fetchData();
         }
       } catch (error) {
-        console.error('[Calendar] Auto sync error:', error);
+        console.error("[Calendar] Auto sync error:", error);
       } finally {
         setIsSyncing(false);
       }
     };
 
     performAutoSync();
-  }, [user, isGoogleConnected, isSyncing, googleLoading, currentMonth, importFromGoogle, fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isGoogleConnected, isSyncing, googleLoading, currentMonth]);
 
   // Pre-grouped data by date string for O(1) lookups instead of filtering per cell
   const groupedByDate = useMemo(() => {
@@ -301,107 +323,134 @@ const Calendar = () => {
     const meetingsMap: Record<string, Meeting[]> = {};
     const tasksMap: Record<string, Task[]> = {};
     const remindersMap: Record<string, Reminder[]> = {};
-    
-    timeEntries.forEach(e => {
-      const key = format(parseISO(e.start_time), 'yyyy-MM-dd');
+
+    timeEntries.forEach((e) => {
+      const key = format(parseISO(e.start_time), "yyyy-MM-dd");
       (entries[key] ||= []).push(e);
     });
-    meetings.forEach(m => {
-      const key = format(parseISO(m.start_time), 'yyyy-MM-dd');
+    meetings.forEach((m) => {
+      const key = format(parseISO(m.start_time), "yyyy-MM-dd");
       (meetingsMap[key] ||= []).push(m);
     });
-    tasks.forEach(t => {
+    tasks.forEach((t) => {
       if (t.due_date) {
-        const key = format(parseISO(t.due_date), 'yyyy-MM-dd');
+        const key = format(parseISO(t.due_date), "yyyy-MM-dd");
         (tasksMap[key] ||= []).push(t);
       }
     });
-    reminders.forEach(r => {
-      const key = format(parseISO(r.remind_at), 'yyyy-MM-dd');
+    reminders.forEach((r) => {
+      const key = format(parseISO(r.remind_at), "yyyy-MM-dd");
       (remindersMap[key] ||= []).push(r);
     });
-    
-    return { entries, meetings: meetingsMap, tasks: tasksMap, reminders: remindersMap };
+
+    return {
+      entries,
+      meetings: meetingsMap,
+      tasks: tasksMap,
+      reminders: remindersMap,
+    };
   }, [timeEntries, meetings, tasks, reminders]);
 
-  const getEntriesForDate = useCallback((date: Date) => {
-    const key = format(date, 'yyyy-MM-dd');
-    return groupedByDate.entries[key] || [];
-  }, [groupedByDate]);
+  const getEntriesForDate = useCallback(
+    (date: Date) => {
+      const key = format(date, "yyyy-MM-dd");
+      return groupedByDate.entries[key] || [];
+    },
+    [groupedByDate],
+  );
 
-  const getMeetingsForDate = useCallback((date: Date) => {
-    const key = format(date, 'yyyy-MM-dd');
-    return groupedByDate.meetings[key] || [];
-  }, [groupedByDate]);
+  const getMeetingsForDate = useCallback(
+    (date: Date) => {
+      const key = format(date, "yyyy-MM-dd");
+      return groupedByDate.meetings[key] || [];
+    },
+    [groupedByDate],
+  );
 
-  const getTasksForDate = useCallback((date: Date) => {
-    const key = format(date, 'yyyy-MM-dd');
-    return groupedByDate.tasks[key] || [];
-  }, [groupedByDate]);
+  const getTasksForDate = useCallback(
+    (date: Date) => {
+      const key = format(date, "yyyy-MM-dd");
+      return groupedByDate.tasks[key] || [];
+    },
+    [groupedByDate],
+  );
 
-  const getRemindersForDate = useCallback((date: Date) => {
-    const key = format(date, 'yyyy-MM-dd');
-    return groupedByDate.reminders[key] || [];
-  }, [groupedByDate]);
+  const getRemindersForDate = useCallback(
+    (date: Date) => {
+      const key = format(date, "yyyy-MM-dd");
+      return groupedByDate.reminders[key] || [];
+    },
+    [groupedByDate],
+  );
 
-  const getTotalMinutesForDate = useCallback((date: Date) => {
-    const entries = getEntriesForDate(date);
-    return entries.reduce((total, entry) => total + (entry.duration_minutes || 0), 0);
-  }, [getEntriesForDate]);
+  const getTotalMinutesForDate = useCallback(
+    (date: Date) => {
+      const entries = getEntriesForDate(date);
+      return entries.reduce(
+        (total, entry) => total + (entry.duration_minutes || 0),
+        0,
+      );
+    },
+    [getEntriesForDate],
+  );
 
   const formatMinutes = (minutes: number) => {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}`;
   };
 
   const openAddDialog = (date: Date) => {
     setAddDialogDate(date);
-    setAddType('meeting');
+    setAddType("meeting");
     resetForms();
     setAddDialogOpen(true);
   };
 
   const resetForms = () => {
     setMeetingForm({
-      title: '',
-      description: '',
-      start_time: '09:00',
-      end_time: '10:00',
-      location: '',
-      meeting_type: 'in_person',
-      client_id: '',
-      project_id: '',
+      title: "",
+      description: "",
+      start_time: "09:00",
+      end_time: "10:00",
+      location: "",
+      meeting_type: "in_person",
+      client_id: "",
+      project_id: "",
     });
     setTaskForm({
-      title: '',
-      description: '',
-      priority: 'medium',
-      client_id: '',
-      project_id: '',
+      title: "",
+      description: "",
+      priority: "medium",
+      client_id: "",
+      project_id: "",
     });
     setReminderForm({
-      title: '',
-      message: '',
-      time: '09:00',
+      title: "",
+      message: "",
+      time: "09:00",
     });
   };
 
   const handleSave = async () => {
     if (!user) return;
-    
+
     setSaving(true);
-    const dateStr = format(addDialogDate, 'yyyy-MM-dd');
-    
+    const dateStr = format(addDialogDate, "yyyy-MM-dd");
+
     try {
-      if (addType === 'meeting') {
+      if (addType === "meeting") {
         if (!meetingForm.title.trim()) {
-          toast({ title: 'שגיאה', description: 'כותרת הפגישה חובה', variant: 'destructive' });
+          toast({
+            title: "שגיאה",
+            description: "כותרת הפגישה חובה",
+            variant: "destructive",
+          });
           setSaving(false);
           return;
         }
-        
-        const { error } = await supabase.from('meetings').insert({
+
+        const { error } = await supabase.from("meetings").insert({
           title: meetingForm.title,
           description: meetingForm.description || null,
           start_time: `${dateStr}T${meetingForm.start_time}:00`,
@@ -411,21 +460,25 @@ const Calendar = () => {
           client_id: meetingForm.client_id || null,
           project_id: meetingForm.project_id || null,
           created_by: user.id,
-          status: 'scheduled',
+          status: "scheduled",
         });
-        
+
         if (error) throw error;
-        toast({ title: 'הפגישה נוצרה', description: meetingForm.title });
+        toast({ title: "הפגישה נוצרה", description: meetingForm.title });
       }
-      
-      if (addType === 'task') {
+
+      if (addType === "task") {
         if (!taskForm.title.trim()) {
-          toast({ title: 'שגיאה', description: 'כותרת המשימה חובה', variant: 'destructive' });
+          toast({
+            title: "שגיאה",
+            description: "כותרת המשימה חובה",
+            variant: "destructive",
+          });
           setSaving(false);
           return;
         }
-        
-        const { error } = await supabase.from('tasks').insert({
+
+        const { error } = await supabase.from("tasks").insert({
           title: taskForm.title,
           description: taskForm.description || null,
           priority: taskForm.priority,
@@ -433,39 +486,52 @@ const Calendar = () => {
           client_id: taskForm.client_id || null,
           project_id: taskForm.project_id || null,
           created_by: user.id,
-          status: 'pending',
+          status: "pending",
         });
-        
+
         if (error) throw error;
-        toast({ title: 'המשימה נוצרה', description: taskForm.title });
+        toast({ title: "המשימה נוצרה", description: taskForm.title });
       }
-      
-      if (addType === 'reminder') {
+
+      if (addType === "reminder") {
         if (!reminderForm.title.trim()) {
-          toast({ title: 'שגיאה', description: 'כותרת התזכורת חובה', variant: 'destructive' });
+          toast({
+            title: "שגיאה",
+            description: "כותרת התזכורת חובה",
+            variant: "destructive",
+          });
           setSaving(false);
           return;
         }
-        
+
         const reminderData = {
           title: reminderForm.title,
           message: reminderForm.message || null,
-          remind_at: `${dateStr}T${reminderForm.time}:00`,
+          remind_at: new Date(
+            `${dateStr}T${reminderForm.time}:00`,
+          ).toISOString(),
           user_id: user.id,
-          reminder_type: 'browser',
+          reminder_type: "browser",
         };
-        
-        const { data, error } = await supabase.from('reminders').insert(reminderData).select();
-        
+
+        const { data, error } = await supabase
+          .from("reminders")
+          .insert(reminderData)
+          .select();
+
         if (error) throw error;
-        toast({ title: 'התזכורת נוצרה', description: reminderForm.title });
+        toast({ title: "התזכורת נוצרה", description: reminderForm.title });
       }
-      
+
       setAddDialogOpen(false);
       fetchData();
     } catch (error: any) {
-      console.error('Error saving:', error);
-      toast({ title: 'שגיאה', description: 'לא ניתן לשמור', variant: 'destructive' });
+      console.error("Error saving:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -477,21 +543,21 @@ const Calendar = () => {
       await connectGoogle();
       return;
     }
-    
+
     // Sync current month's meetings
-    const monthMeetings = meetings.filter(m => {
+    const monthMeetings = meetings.filter((m) => {
       const meetingDate = parseISO(m.start_time);
       return isSameMonth(meetingDate, currentMonth);
     });
-    
+
     if (monthMeetings.length === 0) {
       toast({
-        title: 'אין פגישות לסנכרון',
-        description: 'אין פגישות בחודש הנוכחי',
+        title: "אין פגישות לסנכרון",
+        description: "אין פגישות בחודש הנוכחי",
       });
       return;
     }
-    
+
     await syncMeetingsToGoogle(monthMeetings);
   };
 
@@ -503,53 +569,66 @@ const Calendar = () => {
     }
 
     setIsSyncing(true);
-    
+
     try {
       const start = startOfMonth(currentMonth);
       const end = endOfMonth(currentMonth);
-      
+
       // First, import from Google
       toast({
-        title: 'מסנכרן עם Google Calendar...',
-        description: 'מייבא פגישות מ-Google',
+        title: "מסנכרן עם Google Calendar...",
+        description: "מייבא פגישות מ-Google",
       });
-      
-      const importResult = await importFromGoogle(start, end, supabase, user.id);
-      
+
+      const importResult = await importFromGoogle(
+        start,
+        end,
+        supabase,
+        user.id,
+      );
+
       // Refresh data
       await fetchData();
-      
+
       // Then export local meetings to Google
-      const monthMeetings = meetings.filter(m => {
+      const monthMeetings = meetings.filter((m) => {
         const meetingDate = parseISO(m.start_time);
         return isSameMonth(meetingDate, currentMonth);
       });
-      
+
       if (monthMeetings.length > 0) {
         await syncMeetingsToGoogle(monthMeetings);
       }
-      
+
       toast({
-        title: 'סנכרון הושלם',
+        title: "סנכרון הושלם",
         description: `יובאו: ${importResult.imported}, עודכנו: ${importResult.updated}`,
       });
     } catch (error) {
-      console.error('[Calendar] Two-way sync error:', error);
+      console.error("[Calendar] Two-way sync error:", error);
       toast({
-        title: 'שגיאה בסנכרון',
-        description: 'לא ניתן לסנכרן עם Google Calendar',
-        variant: 'destructive',
+        title: "שגיאה בסנכרון",
+        description: "לא ניתן לסנכרן עם Google Calendar",
+        variant: "destructive",
       });
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const handleNavigate = (direction: 'prev' | 'next') => {
-    if (viewType === 'week') {
-      setCurrentMonth(direction === 'prev' ? subWeeks(currentMonth, 1) : addWeeks(currentMonth, 1));
+  const handleNavigate = (direction: "prev" | "next") => {
+    if (viewType === "week") {
+      setCurrentMonth(
+        direction === "prev"
+          ? subWeeks(currentMonth, 1)
+          : addWeeks(currentMonth, 1),
+      );
     } else {
-      setCurrentMonth(direction === 'prev' ? subMonths(currentMonth, 1) : addMonths(currentMonth, 1));
+      setCurrentMonth(
+        direction === "prev"
+          ? subMonths(currentMonth, 1)
+          : addMonths(currentMonth, 1),
+      );
     }
   };
 
@@ -562,29 +641,28 @@ const Calendar = () => {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handleNavigate('prev')}
+              onClick={() => handleNavigate("prev")}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handleNavigate('next')}
+              onClick={() => handleNavigate("next")}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <h2 className="text-xl md:text-2xl font-bold text-foreground mr-2">
-              {viewType === 'week' 
-                ? `שבוע ${format(currentMonth, 'w', { locale: he })} - ${format(currentMonth, 'MMMM yyyy', { locale: he })}`
-                : format(currentMonth, 'MMMM yyyy', { locale: he })
-              }
+              {viewType === "week"
+                ? `שבוע ${format(currentMonth, "w", { locale: he })} - ${format(currentMonth, "MMMM yyyy", { locale: he })}`
+                : format(currentMonth, "MMMM yyyy", { locale: he })}
             </h2>
           </div>
-          
+
           {/* View Toggle */}
           <CalendarViewToggle view={viewType} onViewChange={setViewType} />
         </div>
-        
+
         {/* Bottom row: Actions */}
         <div className="flex items-center justify-end gap-2">
           {/* Google Calendar Indicator */}
@@ -595,7 +673,7 @@ const Calendar = () => {
             onDisconnect={disconnectGoogle}
             onOpenSettings={() => setGoogleSettingsOpen(true)}
           />
-          
+
           {/* Sync button - only show when connected */}
           {isGoogleConnected && (
             <Button
@@ -610,10 +688,12 @@ const Calendar = () => {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              <span className="hidden sm:inline">{isSyncing ? 'מסנכרן...' : 'סנכרן דו-צדדי'}</span>
+              <span className="hidden sm:inline">
+                {isSyncing ? "מסנכרן..." : "סנכרן דו-צדדי"}
+              </span>
             </Button>
           )}
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -663,8 +743,9 @@ const Calendar = () => {
           const isCurrentMonth = isSameMonth(day, monthStart);
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           const dayIsToday = isToday(day);
-          
-          const totalEvents = dayMeetings.length + dayTasks.length + dayReminders.length;
+
+          const totalEvents =
+            dayMeetings.length + dayTasks.length + dayReminders.length;
 
           return (
             <div
@@ -675,54 +756,68 @@ const Calendar = () => {
                 "min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all group",
                 !isCurrentMonth && "bg-muted/30 text-muted-foreground",
                 isCurrentMonth && "bg-card hover:bg-accent/50",
-                isSelected && "ring-2 ring-[hsl(45,80%,45%)] bg-[hsl(45,80%,45%)]/10",
-                dayIsToday && "border-[hsl(220,60%,25%)] border-2"
+                isSelected &&
+                  "ring-2 ring-[hsl(45,80%,45%)] bg-[hsl(45,80%,45%)]/10",
+                dayIsToday && "border-[hsl(220,60%,25%)] border-2",
               )}
             >
               <div className="flex justify-between items-start mb-1">
                 <span
                   className={cn(
                     "text-sm font-medium",
-                    dayIsToday && "bg-[hsl(220,60%,25%)] text-white rounded-full w-6 h-6 flex items-center justify-center"
+                    dayIsToday &&
+                      "bg-[hsl(220,60%,25%)] text-white rounded-full w-6 h-6 flex items-center justify-center",
                   )}
                 >
-                  {format(day, 'd')}
+                  {format(day, "d")}
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => { e.stopPropagation(); openAddDialog(day); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAddDialog(day);
+                  }}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
-              
+
               <div className="space-y-0.5 text-[10px]">
                 {/* Meetings */}
                 {dayMeetings.slice(0, 1).map((m) => (
-                  <div key={m.id} className="bg-[hsl(220,60%,25%)]/80 text-white rounded px-1 py-0.5 truncate">
+                  <div
+                    key={m.id}
+                    className="bg-[hsl(220,60%,25%)]/80 text-white rounded px-1 py-0.5 truncate"
+                  >
                     <Users className="h-2 w-2 inline ml-0.5" />
                     {m.title}
                   </div>
                 ))}
-                
+
                 {/* Tasks */}
                 {dayTasks.slice(0, 1).map((t) => (
-                  <div key={t.id} className="bg-primary/20 text-primary rounded px-1 py-0.5 truncate">
+                  <div
+                    key={t.id}
+                    className="bg-primary/20 text-primary rounded px-1 py-0.5 truncate"
+                  >
                     <CheckSquare className="h-2 w-2 inline ml-0.5" />
                     {t.title}
                   </div>
                 ))}
-                
+
                 {/* Reminders */}
                 {dayReminders.slice(0, 1).map((r) => (
-                  <div key={r.id} className="bg-warning/20 text-warning rounded px-1 py-0.5 truncate">
+                  <div
+                    key={r.id}
+                    className="bg-warning/20 text-warning rounded px-1 py-0.5 truncate"
+                  >
                     <Bell className="h-2 w-2 inline ml-0.5" />
                     {r.title}
                   </div>
                 ))}
-                
+
                 {/* Time entries */}
                 {totalMinutes > 0 && (
                   <Badge variant="secondary" className="text-[9px] h-4 px-1">
@@ -730,7 +825,7 @@ const Calendar = () => {
                     {formatMinutes(totalMinutes)}
                   </Badge>
                 )}
-                
+
                 {totalEvents > 3 && (
                   <div className="text-[9px] text-muted-foreground">
                     +{totalEvents - 3} נוספים
@@ -753,7 +848,11 @@ const Calendar = () => {
     const dayReminders = getRemindersForDate(selectedDate);
     const totalMinutes = getTotalMinutesForDate(selectedDate);
 
-    const hasEvents = entries.length > 0 || dayMeetings.length > 0 || dayTasks.length > 0 || dayReminders.length > 0;
+    const hasEvents =
+      entries.length > 0 ||
+      dayMeetings.length > 0 ||
+      dayTasks.length > 0 ||
+      dayReminders.length > 0;
 
     return (
       <Card className="mt-6 border-2 border-[hsl(45,80%,45%)]">
@@ -761,9 +860,13 @@ const Calendar = () => {
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-[hsl(45,80%,45%)]" />
-              {format(selectedDate, 'EEEE, d בMMMM yyyy', { locale: he })}
+              {format(selectedDate, "EEEE, d בMMMM yyyy", { locale: he })}
             </span>
-            <Button size="sm" onClick={() => openAddDialog(selectedDate)} className="btn-gold">
+            <Button
+              size="sm"
+              onClick={() => openAddDialog(selectedDate)}
+              className="btn-gold"
+            >
               <Plus className="h-4 w-4 ml-1" />
               הוסף
             </Button>
@@ -774,7 +877,9 @@ const Calendar = () => {
             <div className="text-center text-muted-foreground py-8">
               <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>אין אירועים ליום זה</p>
-              <p className="text-sm mt-1">לחץ פעמיים על יום או לחץ על + להוספה</p>
+              <p className="text-sm mt-1">
+                לחץ פעמיים על יום או לחץ על + להוספה
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -787,17 +892,21 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {dayMeetings.map((m) => (
-                      <div key={m.id} className="p-3 bg-[hsl(220,60%,25%)]/10 rounded-lg">
+                      <div
+                        key={m.id}
+                        className="p-3 bg-[hsl(220,60%,25%)]/10 rounded-lg"
+                      >
                         <p className="font-medium">{m.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(parseISO(m.start_time), 'HH:mm')} - {format(parseISO(m.end_time), 'HH:mm')}
+                          {format(parseISO(m.start_time), "HH:mm")} -{" "}
+                          {format(parseISO(m.end_time), "HH:mm")}
                         </p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              
+
               {/* Tasks */}
               {dayTasks.length > 0 && (
                 <div>
@@ -810,14 +919,18 @@ const Calendar = () => {
                       <div key={t.id} className="p-3 bg-primary/10 rounded-lg">
                         <p className="font-medium">{t.title}</p>
                         <Badge variant="outline" className="text-xs mt-1">
-                          {t.priority === 'high' ? 'עדיפות גבוהה' : t.priority === 'low' ? 'עדיפות נמוכה' : 'עדיפות בינונית'}
+                          {t.priority === "high"
+                            ? "עדיפות גבוהה"
+                            : t.priority === "low"
+                              ? "עדיפות נמוכה"
+                              : "עדיפות בינונית"}
                         </Badge>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              
+
               {/* Reminders */}
               {dayReminders.length > 0 && (
                 <div>
@@ -830,14 +943,14 @@ const Calendar = () => {
                       <div key={r.id} className="p-3 bg-warning/10 rounded-lg">
                         <p className="font-medium">{r.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(parseISO(r.remind_at), 'HH:mm')}
+                          {format(parseISO(r.remind_at), "HH:mm")}
                         </p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              
+
               {/* Time Entries */}
               {entries.length > 0 && (
                 <div>
@@ -847,16 +960,26 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {entries.map((entry) => (
-                      <div key={entry.id} className="p-3 bg-muted/50 rounded-lg flex items-center justify-between">
+                      <div
+                        key={entry.id}
+                        className="p-3 bg-muted/50 rounded-lg flex items-center justify-between"
+                      >
                         <div>
-                          <p className="font-medium">{entry.description || entry.project?.name || 'עבודה'}</p>
+                          <p className="font-medium">
+                            {entry.description ||
+                              entry.project?.name ||
+                              "עבודה"}
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            {format(parseISO(entry.start_time), 'HH:mm')}
-                            {entry.end_time && ` - ${format(parseISO(entry.end_time), 'HH:mm')}`}
+                            {format(parseISO(entry.start_time), "HH:mm")}
+                            {entry.end_time &&
+                              ` - ${format(parseISO(entry.end_time), "HH:mm")}`}
                           </p>
                         </div>
                         {entry.duration_minutes && (
-                          <Badge variant="outline">{formatMinutes(entry.duration_minutes)}</Badge>
+                          <Badge variant="outline">
+                            {formatMinutes(entry.duration_minutes)}
+                          </Badge>
                         )}
                       </div>
                     ))}
@@ -894,9 +1017,9 @@ const Calendar = () => {
         ) : (
           <>
             {renderHeader()}
-            
+
             {/* Different views based on viewType */}
-            {viewType === 'month' && (
+            {viewType === "month" && (
               <Card className="border-2 border-border">
                 <CardContent className="p-6">
                   {renderDays()}
@@ -904,8 +1027,8 @@ const Calendar = () => {
                 </CardContent>
               </Card>
             )}
-            
-            {viewType === 'week' && (
+
+            {viewType === "week" && (
               <CalendarWeekView
                 currentDate={currentMonth}
                 timeEntries={timeEntries}
@@ -916,8 +1039,8 @@ const Calendar = () => {
                 onAddClick={openAddDialog}
               />
             )}
-            
-            {viewType === 'list' && (
+
+            {viewType === "list" && (
               <CalendarListView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
@@ -927,8 +1050,8 @@ const Calendar = () => {
                 onDayClick={setSelectedDate}
               />
             )}
-            
-            {viewType === 'agenda' && (
+
+            {viewType === "agenda" && (
               <CalendarAgendaView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
@@ -938,8 +1061,8 @@ const Calendar = () => {
                 onDayClick={setSelectedDate}
               />
             )}
-            
-            {viewType === 'schedule' && (
+
+            {viewType === "schedule" && (
               <CalendarScheduleView
                 currentMonth={currentMonth}
                 timeEntries={timeEntries}
@@ -949,8 +1072,8 @@ const Calendar = () => {
                 onDayClick={setSelectedDate}
               />
             )}
-            
-            {viewType === 'month' && renderSelectedDayDetails()}
+
+            {viewType === "month" && renderSelectedDayDetails()}
           </>
         )}
       </div>
@@ -961,49 +1084,55 @@ const Calendar = () => {
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center gap-2 justify-start">
               <Plus className="h-5 w-5" />
-              הוסף ל-{format(addDialogDate, 'd בMMMM', { locale: he })}
+              הוסף ל-{format(addDialogDate, "d בMMMM", { locale: he })}
             </DialogTitle>
           </DialogHeader>
-          
+
           {/* Type Selector */}
           <div className="flex gap-2 border-b pb-4 justify-start">
             <Button
-              variant={addType === 'meeting' ? 'default' : 'outline'}
+              variant={addType === "meeting" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAddType('meeting')}
-              className={addType === 'meeting' ? 'bg-[hsl(220,60%,25%)]' : ''}
+              onClick={() => setAddType("meeting")}
+              className={addType === "meeting" ? "bg-[hsl(220,60%,25%)]" : ""}
             >
               <Users className="h-4 w-4 ml-1" />
               פגישה
             </Button>
             <Button
-              variant={addType === 'task' ? 'default' : 'outline'}
+              variant={addType === "task" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAddType('task')}
+              onClick={() => setAddType("task")}
             >
               <CheckSquare className="h-4 w-4 ml-1" />
               משימה
             </Button>
             <Button
-              variant={addType === 'reminder' ? 'default' : 'outline'}
+              variant={addType === "reminder" ? "default" : "outline"}
               size="sm"
-              onClick={() => setAddType('reminder')}
-              className={addType === 'reminder' ? 'bg-warning text-warning-foreground' : ''}
+              onClick={() => setAddType("reminder")}
+              className={
+                addType === "reminder"
+                  ? "bg-warning text-warning-foreground"
+                  : ""
+              }
             >
               <Bell className="h-4 w-4 ml-1" />
               תזכורת
             </Button>
           </div>
-          
+
           <div className="space-y-4 py-4">
             {/* Meeting Form */}
-            {addType === 'meeting' && (
+            {addType === "meeting" && (
               <>
                 <div className="grid gap-2">
                   <Label className="text-right">כותרת *</Label>
                   <Input
                     value={meetingForm.title}
-                    onChange={(e) => setMeetingForm(f => ({ ...f, title: e.target.value }))}
+                    onChange={(e) =>
+                      setMeetingForm((f) => ({ ...f, title: e.target.value }))
+                    }
                     placeholder="שם הפגישה"
                     className="text-right"
                     dir="rtl"
@@ -1015,7 +1144,12 @@ const Calendar = () => {
                     <Input
                       type="time"
                       value={meetingForm.start_time}
-                      onChange={(e) => setMeetingForm(f => ({ ...f, start_time: e.target.value }))}
+                      onChange={(e) =>
+                        setMeetingForm((f) => ({
+                          ...f,
+                          start_time: e.target.value,
+                        }))
+                      }
                       dir="ltr"
                     />
                   </div>
@@ -1024,19 +1158,40 @@ const Calendar = () => {
                     <Input
                       type="time"
                       value={meetingForm.end_time}
-                      onChange={(e) => setMeetingForm(f => ({ ...f, end_time: e.target.value }))}
+                      onChange={(e) =>
+                        setMeetingForm((f) => ({
+                          ...f,
+                          end_time: e.target.value,
+                        }))
+                      }
                       dir="ltr"
                     />
                   </div>
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-right">סוג פגישה</Label>
-                  <Select value={meetingForm.meeting_type} onValueChange={(v) => setMeetingForm(f => ({ ...f, meeting_type: v }))}>
-                    <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={meetingForm.meeting_type}
+                    onValueChange={(v) =>
+                      setMeetingForm((f) => ({ ...f, meeting_type: v }))
+                    }
+                  >
+                    <SelectTrigger className="text-right">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent className="bg-popover" dir="rtl">
-                      <SelectItem value="in_person"><Users className="h-4 w-4 inline ml-1" />פגישה פיזית</SelectItem>
-                      <SelectItem value="video"><Video className="h-4 w-4 inline ml-1" />שיחת וידאו</SelectItem>
-                      <SelectItem value="phone"><Phone className="h-4 w-4 inline ml-1" />שיחת טלפון</SelectItem>
+                      <SelectItem value="in_person">
+                        <Users className="h-4 w-4 inline ml-1" />
+                        פגישה פיזית
+                      </SelectItem>
+                      <SelectItem value="video">
+                        <Video className="h-4 w-4 inline ml-1" />
+                        שיחת וידאו
+                      </SelectItem>
+                      <SelectItem value="phone">
+                        <Phone className="h-4 w-4 inline ml-1" />
+                        שיחת טלפון
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1044,7 +1199,12 @@ const Calendar = () => {
                   <Label className="text-right">מיקום</Label>
                   <Input
                     value={meetingForm.location}
-                    onChange={(e) => setMeetingForm(f => ({ ...f, location: e.target.value }))}
+                    onChange={(e) =>
+                      setMeetingForm((f) => ({
+                        ...f,
+                        location: e.target.value,
+                      }))
+                    }
                     placeholder="כתובת או קישור"
                     className="text-right"
                     dir="rtl"
@@ -1053,19 +1213,41 @@ const Calendar = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label className="text-right">לקוח</Label>
-                    <Select value={meetingForm.client_id} onValueChange={(v) => setMeetingForm(f => ({ ...f, client_id: v }))}>
-                      <SelectTrigger className="text-right"><SelectValue placeholder="בחר לקוח" /></SelectTrigger>
+                    <Select
+                      value={meetingForm.client_id}
+                      onValueChange={(v) =>
+                        setMeetingForm((f) => ({ ...f, client_id: v }))
+                      }
+                    >
+                      <SelectTrigger className="text-right">
+                        <SelectValue placeholder="בחר לקוח" />
+                      </SelectTrigger>
                       <SelectContent className="bg-popover" dir="rtl">
-                        {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-right">פרויקט</Label>
-                    <Select value={meetingForm.project_id} onValueChange={(v) => setMeetingForm(f => ({ ...f, project_id: v }))}>
-                      <SelectTrigger className="text-right"><SelectValue placeholder="בחר פרויקט" /></SelectTrigger>
+                    <Select
+                      value={meetingForm.project_id}
+                      onValueChange={(v) =>
+                        setMeetingForm((f) => ({ ...f, project_id: v }))
+                      }
+                    >
+                      <SelectTrigger className="text-right">
+                        <SelectValue placeholder="בחר פרויקט" />
+                      </SelectTrigger>
                       <SelectContent className="bg-popover" dir="rtl">
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1074,7 +1256,12 @@ const Calendar = () => {
                   <Label className="text-right">תיאור</Label>
                   <Textarea
                     value={meetingForm.description}
-                    onChange={(e) => setMeetingForm(f => ({ ...f, description: e.target.value }))}
+                    onChange={(e) =>
+                      setMeetingForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
+                    }
                     rows={2}
                     className="text-right"
                     dir="rtl"
@@ -1082,15 +1269,17 @@ const Calendar = () => {
                 </div>
               </>
             )}
-            
+
             {/* Task Form */}
-            {addType === 'task' && (
+            {addType === "task" && (
               <>
                 <div className="grid gap-2">
                   <Label className="text-right">כותרת *</Label>
                   <Input
                     value={taskForm.title}
-                    onChange={(e) => setTaskForm(f => ({ ...f, title: e.target.value }))}
+                    onChange={(e) =>
+                      setTaskForm((f) => ({ ...f, title: e.target.value }))
+                    }
                     placeholder="שם המשימה"
                     className="text-right"
                     dir="rtl"
@@ -1098,8 +1287,15 @@ const Calendar = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label className="text-right">עדיפות</Label>
-                  <Select value={taskForm.priority} onValueChange={(v) => setTaskForm(f => ({ ...f, priority: v }))}>
-                    <SelectTrigger className="text-right"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={taskForm.priority}
+                    onValueChange={(v) =>
+                      setTaskForm((f) => ({ ...f, priority: v }))
+                    }
+                  >
+                    <SelectTrigger className="text-right">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent className="bg-popover" dir="rtl">
                       <SelectItem value="low">נמוכה</SelectItem>
                       <SelectItem value="medium">בינונית</SelectItem>
@@ -1110,19 +1306,41 @@ const Calendar = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label className="text-right">לקוח</Label>
-                    <Select value={taskForm.client_id} onValueChange={(v) => setTaskForm(f => ({ ...f, client_id: v }))}>
-                      <SelectTrigger className="text-right"><SelectValue placeholder="בחר לקוח" /></SelectTrigger>
+                    <Select
+                      value={taskForm.client_id}
+                      onValueChange={(v) =>
+                        setTaskForm((f) => ({ ...f, client_id: v }))
+                      }
+                    >
+                      <SelectTrigger className="text-right">
+                        <SelectValue placeholder="בחר לקוח" />
+                      </SelectTrigger>
                       <SelectContent className="bg-popover" dir="rtl">
-                        {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label className="text-right">פרויקט</Label>
-                    <Select value={taskForm.project_id} onValueChange={(v) => setTaskForm(f => ({ ...f, project_id: v }))}>
-                      <SelectTrigger className="text-right"><SelectValue placeholder="בחר פרויקט" /></SelectTrigger>
+                    <Select
+                      value={taskForm.project_id}
+                      onValueChange={(v) =>
+                        setTaskForm((f) => ({ ...f, project_id: v }))
+                      }
+                    >
+                      <SelectTrigger className="text-right">
+                        <SelectValue placeholder="בחר פרויקט" />
+                      </SelectTrigger>
                       <SelectContent className="bg-popover" dir="rtl">
-                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1131,7 +1349,12 @@ const Calendar = () => {
                   <Label className="text-right">תיאור</Label>
                   <Textarea
                     value={taskForm.description}
-                    onChange={(e) => setTaskForm(f => ({ ...f, description: e.target.value }))}
+                    onChange={(e) =>
+                      setTaskForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
+                    }
                     rows={2}
                     className="text-right"
                     dir="rtl"
@@ -1139,15 +1362,17 @@ const Calendar = () => {
                 </div>
               </>
             )}
-            
+
             {/* Reminder Form */}
-            {addType === 'reminder' && (
+            {addType === "reminder" && (
               <>
                 <div className="grid gap-2">
                   <Label className="text-right">כותרת *</Label>
                   <Input
                     value={reminderForm.title}
-                    onChange={(e) => setReminderForm(f => ({ ...f, title: e.target.value }))}
+                    onChange={(e) =>
+                      setReminderForm((f) => ({ ...f, title: e.target.value }))
+                    }
                     placeholder="מה להזכיר?"
                     className="text-right"
                     dir="rtl"
@@ -1158,7 +1383,9 @@ const Calendar = () => {
                   <Input
                     type="time"
                     value={reminderForm.time}
-                    onChange={(e) => setReminderForm(f => ({ ...f, time: e.target.value }))}
+                    onChange={(e) =>
+                      setReminderForm((f) => ({ ...f, time: e.target.value }))
+                    }
                     dir="ltr"
                   />
                 </div>
@@ -1166,7 +1393,12 @@ const Calendar = () => {
                   <Label className="text-right">הודעה נוספת</Label>
                   <Textarea
                     value={reminderForm.message}
-                    onChange={(e) => setReminderForm(f => ({ ...f, message: e.target.value }))}
+                    onChange={(e) =>
+                      setReminderForm((f) => ({
+                        ...f,
+                        message: e.target.value,
+                      }))
+                    }
                     rows={2}
                     placeholder="פרטים נוספים..."
                     className="text-right"
@@ -1176,7 +1408,7 @@ const Calendar = () => {
               </>
             )}
           </div>
-          
+
           <DialogFooter className="flex-row-reverse gap-2 sm:justify-start">
             <Button onClick={handleSave} disabled={saving} className="btn-gold">
               {saving && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
@@ -1188,7 +1420,7 @@ const Calendar = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Google Calendar Settings Dialog */}
       <GoogleCalendarSettingsDialog
         open={googleSettingsOpen}

@@ -293,7 +293,7 @@ export function EmailFoldersPanel({
                       <SelectValue placeholder="בחר לקוח..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">ללא קישור</SelectItem>
+                      <SelectItem value="__none__">ללא קישור</SelectItem>
                       {clients.map(client => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name}
