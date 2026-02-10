@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -32,6 +32,7 @@ import { useCustomTables } from '@/hooks/useCustomTables';
 import { cn } from '@/lib/utils';
 import { SidebarTasksMeetings } from './sidebar-tasks';
 import { SidebarSettingsDialog, SidebarTheme, defaultSidebarTheme } from './SidebarSettingsDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
@@ -50,15 +51,15 @@ const mainNavItems = [
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: '📁 קבצים', url: '/files', icon: HardDrive },
-  { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
+  { title: 'קבצים', url: '/files', icon: HardDrive },
+  { title: 'כלים חכמים', url: '/smart-tools', icon: Bot },
 ];
 
 const systemNavItems = [
   { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
   { title: 'היסטוריה', url: '/history', icon: History },
   { title: 'הגדרות', url: '/settings', icon: Settings },
-  { title: '🧪 בדיקות', url: '/tests', icon: TestTube },
+  { title: 'בדיקות', url: '/tests', icon: TestTube },
 ];
 
 interface OverlaySidebarProps {
@@ -73,16 +74,63 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
   const [isOpen, setIsOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   // Sidebar theme
   const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(() => {
     const saved = localStorage.getItem('sidebar-theme');
     return saved ? JSON.parse(saved) : defaultSidebarTheme;
   });
+  const themeLoadedFromCloud = useRef(false);
 
-  // Save theme to localStorage
+  // Load theme from Supabase on mount (cloud persistence)
+  useEffect(() => {
+    const loadCloudTheme = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('user_preferences')
+          .select('sidebar_theme')
+          .eq('user_id', user.id)
+          .single();
+        if (data?.sidebar_theme) {
+          setSidebarTheme(data.sidebar_theme as SidebarTheme);
+          localStorage.setItem('sidebar-theme', JSON.stringify(data.sidebar_theme));
+          themeLoadedFromCloud.current = true;
+        }
+      } catch {
+        // Silently fall back to localStorage
+      }
+    };
+    loadCloudTheme();
+  }, []);
+
+  // Save theme to localStorage + Supabase
   useEffect(() => {
     localStorage.setItem('sidebar-theme', JSON.stringify(sidebarTheme));
+    // Save to cloud (debounced by nature of state changes)
+    const saveToCloud = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            sidebar_theme: sidebarTheme as unknown as Record<string, unknown>,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+      } catch {
+        // Silently fail - localStorage is the fallback
+      }
+    };
+    // Don't save on initial cloud load
+    if (themeLoadedFromCloud.current) {
+      themeLoadedFromCloud.current = false;
+      return;
+    }
+    saveToCloud();
   }, [sidebarTheme]);
 
   // Detect light theme for contrast adjustments
@@ -215,6 +263,8 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
           fontSize: `${sidebarTheme.fontSize || 14}px`,
           color: themeText,
         }}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
         {/* Resize Handle */}
         <Tooltip>
@@ -414,8 +464,17 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
             </div>
           </ScrollArea>
 
-          {/* Footer with Theme Button */}
-          <div className="p-3 border-t" style={{ borderColor: `${themeBorder}40` }}>
+          {/* Footer with Theme Button - visible on hover */}
+          <div
+            className="p-3 border-t transition-all duration-300"
+            style={{
+              borderColor: `${themeBorder}40`,
+              opacity: isHovering ? 1 : 0,
+              maxHeight: isHovering ? '80px' : '0px',
+              padding: isHovering ? '12px' : '0px 12px',
+              overflow: 'hidden',
+            }}
+          >
             <button
               onClick={() => setIsThemeDialogOpen(true)}
               className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
