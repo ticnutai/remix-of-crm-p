@@ -2982,6 +2982,33 @@ export function HtmlTemplateEditor({
           templateName={editedTemplate.name}
         />
 
+        {/* DEBUG: Current logo settings in regular preview */}
+        {console.log('[LOGO DEBUG - Regular Preview] Settings:', {
+          showLogo: designSettings.showLogo,
+          logoUrl: designSettings.logoUrl,
+          logoPosition: designSettings.logoPosition,
+        })}
+
+        {/* Full Width Logo - Spans entire page width */}
+        {designSettings.showLogo &&
+          designSettings.logoUrl &&
+          designSettings.logoPosition === "full-width" && (
+            <div
+              className="w-full relative group cursor-pointer bg-blue-500"
+              onClick={() => logoInputRef.current?.click()}
+            >
+              {console.log('[LOGO DEBUG - Regular Preview] Rendering FULL-WIDTH logo!')}
+              <img
+                src={designSettings.logoUrl}
+                alt="Logo"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+              <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
+              </div>
+            </div>
+          )}
+
         {/* Gold Header */}
         {/* Logo Above Header */}
         {designSettings.showLogo &&
@@ -3016,8 +3043,7 @@ export function HtmlTemplateEditor({
             <div className="flex items-center gap-4">
               {designSettings.showLogo &&
                 (!designSettings.logoPosition ||
-                  designSettings.logoPosition === "inside-header" ||
-                  designSettings.logoPosition === "full-width") && (
+                  designSettings.logoPosition === "inside-header") && (
                   <div
                     className="relative group cursor-pointer"
                     onClick={() => logoInputRef.current?.click()}
@@ -4572,7 +4598,10 @@ export function HtmlTemplateEditor({
                     />
                     <select
                       value={designSettings.logoPosition || 'inside-header'}
-                      onChange={(e) => setDesignSettings({ ...designSettings, logoPosition: e.target.value as any })}
+                      onChange={(e) => {
+                        console.log('[LOGO DEBUG] Changing logoPosition to:', e.target.value);
+                        setDesignSettings({ ...designSettings, logoPosition: e.target.value as any });
+                      }}
                       className="h-7 text-xs border rounded px-1"
                     >
                       <option value="inside-header">לוגו בסטריפ</option>
@@ -4643,12 +4672,21 @@ export function HtmlTemplateEditor({
                               : "100%",
                       }}
                     >
+                      {/* DEBUG: Log current logo settings */}
+                      {console.log('[LOGO DEBUG] Current settings:', {
+                        showLogo: designSettings.showLogo,
+                        logoUrl: designSettings.logoUrl,
+                        logoPosition: designSettings.logoPosition,
+                        logoSize: designSettings.logoSize,
+                        showHeaderStrip: designSettings.showHeaderStrip
+                      })}
                       {/* Full Width Logo - Spans entire width at top */}
                       {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
                         <div 
-                          className="cursor-pointer relative group w-full"
+                          className="cursor-pointer relative group w-full bg-red-500"
                           onClick={() => logoInputRef.current?.click()}
                         >
+                          {console.log('[LOGO DEBUG] Rendering FULL-WIDTH logo!')}
                           <img
                             src={designSettings.logoUrl}
                             alt="Logo"
