@@ -66,6 +66,7 @@ import {
   Layers,
   ExternalLink,
   Link,
+  Grid3x3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientFolders, ClientFolderStage, ClientFolderTask } from '@/hooks/useClientFolders';
@@ -470,6 +471,30 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
   // Dialog for assigning main stages to folder
   const [isAssignStagesOpen, setIsAssignStagesOpen] = useState(false);
   const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
+  
+  // Columns count for grid layout
+  const [columnsCount, setColumnsCount] = useState(() => {
+    const saved = localStorage.getItem('folder-stages-columns-count');
+    return saved ? parseInt(saved, 10) : 1; // Default 1 = list view
+  });
+
+  // Grid columns class helper
+  const getGridColumnsClass = () => {
+    if (columnsCount === 1) return 'flex flex-col space-y-3';
+    switch (columnsCount) {
+      case 2: return 'grid grid-cols-2 gap-3';
+      case 3: return 'grid grid-cols-3 gap-3';
+      case 4: return 'grid grid-cols-4 gap-3';
+      case 5: return 'grid grid-cols-5 gap-3';
+      case 6: return 'grid grid-cols-6 gap-3';
+      default: return 'flex flex-col space-y-3';
+    }
+  };
+
+  const handleColumnsChange = (count: number) => {
+    setColumnsCount(count);
+    localStorage.setItem('folder-stages-columns-count', count.toString());
+  };
 
   // Get stages already assigned to this folder
   const assignedStages = mainStages.filter(s => s.folder_id === activeFolderId);
@@ -620,6 +645,22 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               )}
             </div>
             <div className="flex items-center gap-2">
+              {/* Columns Count Selector */}
+              <div className="flex items-center gap-1 border rounded-lg px-2 py-1">
+                <Grid3x3 className="h-4 w-4 text-muted-foreground" />
+                {[1, 2, 3, 4, 5, 6].map((count) => (
+                  <Button
+                    key={count}
+                    variant={columnsCount === count ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-6 w-6 p-0 text-xs"
+                    onClick={() => handleColumnsChange(count)}
+                    title={count === 1 ? 'תצוגת רשימה' : `${count} עמודות`}
+                  >
+                    {count}
+                  </Button>
+                ))}
+              </div>
               {/* Open Stages in Board Button */}
               {onOpenFolderStages && assignedStages.length > 0 && (
                 <Button 
@@ -675,7 +716,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
 
           {/* Stages */}
           <ScrollArea className="h-[500px]">
-            <div className="space-y-3 pr-4">
+            <div className={cn(getGridColumnsClass(), 'pr-4')}>
               {stages.map((stage) => (
                 <StageCard
                   key={stage.id}
