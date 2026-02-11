@@ -182,6 +182,7 @@ interface DesignSettings {
     | "centered-above"
     | "full-width";
   showHeaderStrip?: boolean;
+  headerStripHeight?: number;
 }
 interface TextBox {
   id: string;
@@ -1910,6 +1911,7 @@ export function HtmlTemplateEditor({
       logoSize: 120,
       logoPosition: "inside-header",
       showHeaderStrip: true,
+      headerStripHeight: 200,
     };
   });
   const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
@@ -2185,8 +2187,8 @@ export function HtmlTemplateEditor({
     table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
-    .full-width-header { padding: 0 !important; }
-    .full-width-header img { width: 100%; height: auto; display: block; }
+    .full-width-header { padding: 0 !important; overflow: hidden; ${designSettings.headerStripHeight ? `height: ${designSettings.headerStripHeight}px;` : ''} }
+    .full-width-header img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; }
   </style>
 </head>
 <body>
@@ -2205,7 +2207,7 @@ export function HtmlTemplateEditor({
     ${
       designSettings.showHeaderStrip !== false
         ? `
-    <div class="header${designSettings.logoPosition === 'full-width' ? ' full-width-header' : ''}">
+    <div class="header${designSettings.logoPosition === 'full-width' ? ' full-width-header' : ''}"${designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? ` style="height: ${designSettings.headerStripHeight}px;"` : ''}>
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
       ${designSettings.logoPosition !== "full-width" ? `<h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
@@ -2417,12 +2419,40 @@ export function HtmlTemplateEditor({
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log('[LOGO UPLOAD] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
       const reader = new FileReader();
-      reader.onloadend = () =>
-        setDesignSettings({
-          ...designSettings,
-          logoUrl: reader.result as string,
-        });
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        console.log('[LOGO UPLOAD] Data URL created, length:', dataUrl.length);
+        
+        // Get image dimensions
+        const img = new window.Image();
+        img.onload = () => {
+          console.log('[LOGO UPLOAD] Image loaded - Width:', img.width, 'Height:', img.height);
+          console.log('[LOGO UPLOAD] Current logoPosition:', designSettings.logoPosition);
+          
+          // Auto-adjust header strip height for full-width mode
+          if (designSettings.logoPosition === 'full-width') {
+            // Calculate proportional height based on container width (~800px max)
+            const containerWidth = 800;
+            const aspectRatio = img.height / img.width;
+            const calculatedHeight = Math.round(containerWidth * aspectRatio);
+            console.log('[LOGO UPLOAD] Auto-calculated header height:', calculatedHeight);
+            
+            setDesignSettings(prev => ({
+              ...prev,
+              logoUrl: dataUrl,
+              headerStripHeight: Math.min(Math.max(calculatedHeight, 100), 500),
+            }));
+          } else {
+            setDesignSettings(prev => ({
+              ...prev,
+              logoUrl: dataUrl,
+            }));
+          }
+        };
+        img.src = dataUrl;
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -2994,13 +3024,14 @@ export function HtmlTemplateEditor({
           )}
 
         <div
-          className={`shrink-0 text-white ${designSettings.logoPosition === 'full-width' ? 'p-0' : 'p-6'} ${designSettings.showHeaderStrip === false ? "bg-white border-b-2" : ""}`}
+          className={`shrink-0 text-white ${designSettings.logoPosition === 'full-width' ? 'p-0 overflow-hidden' : 'p-6'} ${designSettings.showHeaderStrip === false ? "bg-white border-b-2" : ""}`}
           style={{
             background:
               designSettings.showHeaderStrip !== false
                 ? designSettings.headerBackground
                 : "white",
             borderColor: designSettings.primaryColor,
+            ...(designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? { height: designSettings.headerStripHeight } : {}),
           }}
         >
           {/* Full Width Logo - Inside header, spanning full width */}
@@ -3008,13 +3039,19 @@ export function HtmlTemplateEditor({
             designSettings.logoUrl &&
             designSettings.logoPosition === "full-width" && (
               <div
-                className="w-full relative group cursor-pointer"
+                className="w-full h-full relative group cursor-pointer"
                 onClick={() => logoInputRef.current?.click()}
               >
                 <img
                   src={designSettings.logoUrl}
                   alt="Logo"
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    display: 'block',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                  }}
                 />
                 <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
@@ -3658,6 +3695,55 @@ export function HtmlTemplateEditor({
                           <option value="full-width">רוחב מלא בסטריפ</option>
                         </select>
                       </div>
+
+                      {/* Header Strip Height - only for full-width mode */}
+                      {designSettings.logoPosition === 'full-width' && (
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <Label className="text-sm text-gray-600">
+                              גובה סטריפ: {designSettings.headerStripHeight || 200}px
+                            </Label>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                // Auto-fit based on logo
+                                if (designSettings.logoUrl) {
+                                  const img = new window.Image();
+                                  img.onload = () => {
+                                    const containerWidth = 800;
+                                    const aspectRatio = img.height / img.width;
+                                    const calculatedHeight = Math.round(containerWidth * aspectRatio);
+                                    console.log('[AUTO-FIT] Calculated height:', calculatedHeight);
+                                    setDesignSettings(prev => ({
+                                      ...prev,
+                                      headerStripHeight: Math.min(Math.max(calculatedHeight, 100), 500),
+                                    }));
+                                  };
+                                  img.src = designSettings.logoUrl;
+                                }
+                              }}
+                            >
+                              <Maximize2 className="h-3 w-3 ml-1" />
+                              התאם אוטומטית
+                            </Button>
+                          </div>
+                          <Slider
+                            value={[designSettings.headerStripHeight || 200]}
+                            onValueChange={([v]) =>
+                              setDesignSettings({
+                                ...designSettings,
+                                headerStripHeight: v,
+                              })
+                            }
+                            min={100}
+                            max={500}
+                            step={10}
+                            className="mt-2"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -4686,18 +4772,25 @@ export function HtmlTemplateEditor({
                                 designSettings.showHeaderStrip !== false
                                   ? designSettings.headerBackground
                                   : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
+                              ...(designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? { height: designSettings.headerStripHeight } : {}),
                             }}
                           >
                             {/* Full Width Logo - Inside header, spanning full width */}
                             {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
                               <div 
-                                className="cursor-pointer relative group w-full"
+                                className="cursor-pointer relative group w-full h-full"
                                 onClick={() => logoInputRef.current?.click()}
                               >
                                 <img
                                   src={designSettings.logoUrl}
                                   alt="Logo"
-                                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                                  style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    display: 'block',
+                                    objectFit: 'cover',
+                                    objectPosition: 'center',
+                                  }}
                                 />
                                 <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
