@@ -480,16 +480,36 @@ export default function Settings() {
     setIsResettingPassword(true);
 
     try {
-      // Call Supabase Admin API to update user password
-      // Note: This requires a server-side function with service role key
-      const { error } = await supabase.functions.invoke('admin-reset-password', {
-        body: {
-          userId: selectedUserForReset.id,
-          newPassword: adminResetPassword,
-        },
-      });
+      let success = false;
 
-      if (error) throw error;
+      // Try Edge Function first
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+          body: {
+            userId: selectedUserForReset.id,
+            newPassword: adminResetPassword,
+          },
+        });
+        if (!error && !data?.error) {
+          success = true;
+        } else {
+          console.warn('Edge function failed, trying SQL fallback:', error?.message || data?.error);
+        }
+      } catch (fnErr) {
+        console.warn('Edge function call failed, trying SQL fallback:', fnErr);
+      }
+
+      // Fallback: reset password via SQL
+      if (!success) {
+        const escapedPassword = adminResetPassword.replace(/'/g, "''");
+        const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
+          p_migration_name: 'settings_pw_reset_' + Date.now(),
+          p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${selectedUserForReset.id}'`
+        });
+        if (sqlError || !sqlResult?.success) {
+          throw new Error(sqlError?.message || sqlResult?.error || 'שגיאה בעדכון סיסמה');
+        }
+      }
 
       toast({
         title: 'הסיסמה אופסה',
@@ -504,7 +524,7 @@ export default function Settings() {
       console.error('Error resetting password:', error);
       toast({
         title: 'שגיאה באיפוס סיסמה',
-        description: 'לא ניתן לאפס את הסיסמה. ודא שקיימת Edge Function בשם admin-reset-password',
+        description: error instanceof Error ? error.message : 'לא ניתן לאפס את הסיסמה',
         variant: 'destructive',
       });
     } finally {

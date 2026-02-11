@@ -38,12 +38,15 @@ Deno.serve(async (req) => {
     const { data: roles, error: rolesError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', requestingUser.id)
-      .single();
+      .eq('user_id', requestingUser.id);
 
-    if (rolesError || !roles || (roles.role !== 'admin' && roles.role !== 'manager')) {
+    const userRoles = (roles || []).map(r => r.role);
+    const hasPermission = userRoles.includes('admin') || userRoles.includes('manager');
+
+    if (rolesError || !hasPermission) {
+      console.error('Role check failed:', { rolesError, userRoles, userId: requestingUser.id });
       return new Response(
-        JSON.stringify({ error: 'Forbidden: Admin or Manager role required' }),
+        JSON.stringify({ error: 'אין הרשאה. נדרש תפקיד מנהל או מנהל ראשי' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -53,14 +56,14 @@ Deno.serve(async (req) => {
 
     if (!userId || !newPassword) {
       return new Response(
-        JSON.stringify({ error: 'Missing userId or newPassword' }),
+        JSON.stringify({ error: 'חסר מזהה משתמש או סיסמה חדשה' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (newPassword.length < 6) {
       return new Response(
-        JSON.stringify({ error: 'Password must be at least 6 characters' }),
+        JSON.stringify({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -74,7 +77,7 @@ Deno.serve(async (req) => {
     if (updateError) {
       console.error('Password reset error:', updateError);
       return new Response(
-        JSON.stringify({ error: updateError.message }),
+        JSON.stringify({ error: 'שגיאה בעדכון הסיסמה: ' + updateError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

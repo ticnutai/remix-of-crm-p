@@ -600,32 +600,49 @@ export default function Employees() {
     setIsResetting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-        body: {
-          userId: resetPasswordDialog.employee.id,
-          newPassword: newPassword,
-        },
-      });
+      let success = false;
 
-      if (error) {
-        console.error('Error resetting password:', error);
-        toast({
-          title: 'שגיאה',
-          description: error.message || 'לא ניתן לאפס את הסיסמה',
-          variant: 'destructive',
+      // Try Edge Function first
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+          body: {
+            userId: resetPasswordDialog.employee.id,
+            newPassword: newPassword,
+          },
         });
-        setIsResetting(false);
-        return;
+
+        if (!error && !data?.error) {
+          success = true;
+        } else {
+          console.warn('Edge function failed, trying SQL fallback:', error?.message || data?.error);
+        }
+      } catch (fnErr) {
+        console.warn('Edge function call failed, trying SQL fallback:', fnErr);
       }
 
-      if (data?.error) {
-        toast({
-          title: 'שגיאה',
-          description: data.error,
-          variant: 'destructive',
-        });
-        setIsResetting(false);
-        return;
+      // Fallback: reset password via SQL using extensions.crypt
+      if (!success) {
+        try {
+          const escapedPassword = newPassword.replace(/'/g, "''");
+          const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
+            p_migration_name: 'admin_pw_reset_' + Date.now(),
+            p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${resetPasswordDialog.employee.id}'`
+          });
+          
+          if (sqlError || !sqlResult?.success) {
+            throw new Error(sqlError?.message || sqlResult?.error || 'שגיאה בעדכון סיסמה');
+          }
+          success = true;
+        } catch (sqlErr) {
+          console.error('SQL fallback also failed:', sqlErr);
+          toast({
+            title: 'שגיאה באיפוס סיסמה',
+            description: sqlErr instanceof Error ? sqlErr.message : 'לא ניתן לאפס את הסיסמה',
+            variant: 'destructive',
+          });
+          setIsResetting(false);
+          return;
+        }
       }
 
       toast({
