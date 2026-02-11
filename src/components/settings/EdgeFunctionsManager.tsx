@@ -35,6 +35,10 @@ import {
   Code2,
   Info,
   Activity,
+  Download,
+  Upload,
+  FolderUp,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -296,6 +300,8 @@ export function EdgeFunctionsManager() {
   const [testMethod, setTestMethod] = useState<'GET' | 'POST'>('POST');
   const [expandedCategory, setExpandedCategory] = useState<FunctionCategory | null>(null);
   const [testingAll, setTestingAll] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; content: string; size: number }[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Load functions list
   const loadFunctions = useCallback(async () => {
@@ -457,6 +463,112 @@ export function EdgeFunctionsManager() {
     }
   }, [selectedFunction, invokeBody, testMethod]);
 
+  // Handle file upload for deployment
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        setUploadedFiles(prev => {
+          const existing = prev.findIndex(f => f.name === file.name);
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = { name: file.name, content, size: file.size };
+            return updated;
+          }
+          return [...prev, { name: file.name, content, size: file.size }];
+        });
+      };
+      reader.readAsText(file);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  // Generate & download full test report
+  const downloadReport = useCallback(() => {
+    const now = new Date();
+    const successResults = testResults.filter(r => r.status > 0 && r.status < 500);
+    const failedResults = testResults.filter(r => r.status === 0 || r.status >= 500);
+
+    const report = {
+      title: 'Edge Functions Health Report — tenarch CRM Pro',
+      generatedAt: now.toISOString(),
+      generatedAtLocal: now.toLocaleString('he-IL'),
+      summary: {
+        totalFunctions: functions.length,
+        usedInApp: functions.filter(f => f.usedInApp).length,
+        tested: functions.filter(f => f.status !== 'unknown').length,
+        active: functions.filter(f => f.status === 'active').length,
+        errors: functions.filter(f => f.status === 'error').length,
+        notTested: functions.filter(f => f.status === 'unknown').length,
+      },
+      functionsByCategory: Object.fromEntries(
+        categories.map(cat => [
+          CATEGORY_META[cat].label,
+          functions.filter(f => f.category === cat).map(f => ({
+            name: f.name,
+            description: f.description,
+            status: f.status,
+            usedInApp: f.usedInApp,
+            notes: f.notes || null,
+            lastInvoked: f.lastInvoked || null,
+            lastResponseStatus: f.lastResponse?.status || null,
+            lastResponseBody: f.lastResponse?.body || null,
+          }))
+        ])
+      ),
+      successfulTests: successResults.map(r => ({
+        function: r.functionName,
+        httpStatus: r.status,
+        duration: `${r.duration}ms`,
+        timestamp: r.timestamp,
+        response: r.body,
+      })),
+      failedTests: failedResults.map(r => ({
+        function: r.functionName,
+        httpStatus: r.status || 'CONNECTION_ERROR',
+        duration: `${r.duration}ms`,
+        timestamp: r.timestamp,
+        errorBody: r.body,
+        possibleCauses: r.status === 0
+          ? ['הפונקציה לא נפרסה', 'שגיאת רשת / CORS', 'URL שגוי', 'הפונקציה לא קיימת ב-Supabase']
+          : r.status >= 500
+            ? ['שגיאה פנימית בפונקציה', 'חסרים משתני סביבה', 'באג בקוד הפונקציה', 'תלות חסרה (import)']
+            : r.status === 401 || r.status === 403
+              ? ['טוקן לא תקין', 'אין הרשאת גישה', 'סשן פג תוקף']
+              : r.status === 400
+                ? ['גוף הבקשה לא תקין', 'חסרים פרמטרים']
+                : ['שגיאה לא מזוהה'],
+      })),
+      allTestLogs: testResults.map(r => ({
+        function: r.functionName,
+        httpStatus: r.status,
+        duration: `${r.duration}ms`,
+        timestamp: r.timestamp,
+        response: r.body,
+        success: r.status > 0 && r.status < 500,
+      })),
+      debugInfo: {
+        supabaseUrl: (import.meta as any).env.VITE_SUPABASE_URL,
+        userAgent: navigator.userAgent,
+        timestamp: now.toISOString(),
+      },
+    };
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `edge-functions-report-${now.toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('📄 דוח בדיקות הורד בהצלחה');
+  }, [testResults, functions, categories]);
+
   // Status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -518,6 +630,17 @@ export function EdgeFunctionsManager() {
                 >
                   <Terminal className="h-4 w-4 ml-1" />
                   לוגים ({testResults.length})
+                </Button>
+              )}
+              {testResults.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadReport}
+                  className="border-green-500/50 hover:bg-green-500/10 text-green-600"
+                >
+                  <Download className="h-4 w-4 ml-1" />
+                  הורד דוח
                 </Button>
               )}
               <Button
@@ -733,6 +856,164 @@ export function EdgeFunctionsManager() {
                 בדיקת תקינות שולחת <code className="bg-yellow-500/20 px-1.5 py-0.5 rounded text-xs">health_check</code> לכל פונקציה.
                 חלק מהפונקציות עלולות להחזיר שגיאה אם הן מצפות לפרמטרים ספציפיים — זה תקין.
                 השתמש ב"הפעל ידנית" כדי לשלוח בקשה מותאמת אישית.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Deploy Section */}
+      <Card className={cn(goldBg, "border-2 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]")}>
+        <div className="bg-gradient-to-r from-indigo-400 via-indigo-500 to-purple-600 h-1.5" />
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2.5 rounded-xl",
+              goldBg,
+              "border-2 border-indigo-500/50",
+              "shadow-lg shadow-indigo-500/20"
+            )}>
+              <FolderUp className="h-6 w-6 text-indigo-500" />
+            </div>
+            <div>
+              <CardTitle className="text-xl flex items-center gap-2">
+                🚀 פריסת Edge Functions
+              </CardTitle>
+              <CardDescription className="mt-1">
+                העלה קבצי פונקציה חדשים ושלח ל-Lovable לפריסה
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* How to Deploy Guide */}
+          <div className={cn(
+            "p-4 rounded-xl space-y-3",
+            "bg-gradient-to-r from-indigo-500/10 to-purple-500/10",
+            "border border-indigo-500/30"
+          )}>
+            <div className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-indigo-500" />
+              <span className="font-semibold text-indigo-700 dark:text-indigo-300">איך לפרוס Edge Function חדשה?</span>
+            </div>
+            <div className="text-sm text-indigo-600/80 dark:text-indigo-400/80 space-y-2">
+              <div className="flex items-start gap-2">
+                <Badge className="bg-indigo-500/20 text-indigo-600 border-indigo-500/30 text-xs mt-0.5 shrink-0">1</Badge>
+                <span>צור תיקייה בשם הפונקציה תחת <code className="bg-indigo-500/20 px-1.5 py-0.5 rounded text-xs">supabase/functions/שם-הפונקציה/</code></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Badge className="bg-indigo-500/20 text-indigo-600 border-indigo-500/30 text-xs mt-0.5 shrink-0">2</Badge>
+                <span>צור קובץ <code className="bg-indigo-500/20 px-1.5 py-0.5 rounded text-xs">index.ts</code> בתוך התיקייה עם הקוד של הפונקציה</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Badge className="bg-indigo-500/20 text-indigo-600 border-indigo-500/30 text-xs mt-0.5 shrink-0">3</Badge>
+                <span>שמור דרך <strong>Lovable</strong> — הפריסה תקרה <strong>אוטומטית</strong></span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Badge className="bg-indigo-500/20 text-indigo-600 border-indigo-500/30 text-xs mt-0.5 shrink-0">4</Badge>
+                <span>לחלופין — העלה קובץ כאן למטה, והקוד ישמר בפרויקט</span>
+              </div>
+            </div>
+          </div>
+
+          {/* File Upload area */}
+          <div className="space-y-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".ts,.js"
+              multiple
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="border-indigo-500/50 hover:bg-indigo-500/10"
+              >
+                <Upload className="h-4 w-4 ml-2" />
+                העלה קבצי Edge Function (.ts / .js)
+              </Button>
+              {uploadedFiles.length > 0 && (
+                <Badge className="bg-indigo-500/20 text-indigo-600 border-indigo-500/30">
+                  {uploadedFiles.length} קבצים מוכנים
+                </Badge>
+              )}
+            </div>
+
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-2">
+                {uploadedFiles.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm bg-background rounded-lg p-3 border">
+                    <div className="flex items-center gap-2">
+                      <FileCode className="h-4 w-4 text-indigo-500" />
+                      <span className="font-mono font-medium">{f.name}</span>
+                      <Badge variant="outline" className="text-xs">{(f.size / 1024).toFixed(1)} KB</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(f.content);
+                          toast.success(`📋 תוכן ${f.name} הועתק`);
+                        }}
+                        className="h-7 px-2 text-xs"
+                      >
+                        <Copy className="h-3 w-3 ml-1" />
+                        העתק קוד
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                        onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Instructions after upload */}
+                <div className={cn(
+                  "p-3 rounded-lg",
+                  "bg-gradient-to-r from-green-500/10 to-emerald-500/10",
+                  "border border-green-500/30"
+                )}>
+                  <div className="text-sm space-y-2">
+                    <p className="font-medium text-green-700 dark:text-green-300 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      מה עכשיו?
+                    </p>
+                    <ol className="text-green-600/80 dark:text-green-400/80 space-y-1 mr-6 list-decimal">
+                      <li>לחץ "העתק קוד" על הקובץ שהעלית</li>
+                      <li>פתח את Lovable ונווט ל <code className="bg-green-500/20 px-1 py-0.5 rounded text-xs">supabase/functions/שם-הפונקציה/index.ts</code></li>
+                      <li>הדבק את הקוד ושמור — Lovable יפרוס אוטומטית!</li>
+                      <li>חזור לכאן ולחץ "בדוק הכל" לוודא שהפונקציה פעילה</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Direct Lovable Link */}
+          <div className={cn(
+            "flex items-start gap-3 p-4 rounded-xl",
+            "bg-gradient-to-r from-purple-500/10 to-pink-500/10",
+            "border border-purple-500/30"
+          )}>
+            <Rocket className="h-5 w-5 mt-0.5 text-purple-500 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-purple-700 dark:text-purple-300">
+                פריסה ישירה דרך Lovable
+              </p>
+              <p className="text-purple-600/80 dark:text-purple-400/80 mt-1">
+                הדרך הכי פשוטה: פתח את <strong>Lovable</strong>, ערוך או צור קובץ בתיקיית 
+                <code className="bg-purple-500/20 px-1.5 py-0.5 rounded text-xs mx-1">supabase/functions/</code>
+                ושמור. הפריסה אוטומטית ומיידית.
               </p>
             </div>
           </div>
