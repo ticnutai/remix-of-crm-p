@@ -1,20 +1,24 @@
 // Edge Functions Manager - ניהול פונקציות Edge
-import React, { useState, useCallback, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+// UI מסודר עם קטגוריות, בדיקות תקינות והפעלה ידנית
+import React, { useState, useCallback, useEffect } from "react";
 import {
-  Code2,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
   Play,
   RefreshCcw,
-  Eye,
   Loader2,
   CheckCircle2,
   XCircle,
   Clock,
   Zap,
-  ExternalLink,
   Rocket,
   FileCode,
   Terminal,
@@ -22,62 +26,249 @@ import {
   Copy,
   ChevronDown,
   ChevronUp,
-  Upload,
-  FolderUp,
-} from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+  Mail,
+  Shield,
+  Database,
+  Brain,
+  Bell,
+  Receipt,
+  Code2,
+  Info,
+  Activity,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const goldGradient = "bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600";
-const goldBorder = "border-2 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]";
+const goldGradient =
+  "bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600";
+const goldBorder =
+  "border-2 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]";
 const goldIcon = "text-yellow-500";
 const goldBg = "bg-white dark:bg-gray-900";
 
-// Known edge functions from the project
-const KNOWN_FUNCTIONS = [
-  { name: 'admin-reset-password', description: 'איפוס סיסמה למשתמש על ידי מנהל' },
-  { name: 'ai-chat', description: 'צ\'אט AI חכם' },
-  { name: 'auto-backup', description: 'גיבוי אוטומטי של המערכת' },
-  { name: 'check-reminders', description: 'בדיקת תזכורות פעילות' },
-  { name: 'create-admin-user', description: 'יצירת משתמש מנהל חדש' },
-  { name: 'create-employee', description: 'יצירת עובד חדש במערכת' },
-  { name: 'dev-scripts', description: 'סקריפטים לפיתוח ותחזוקה' },
-  { name: 'execute-sql', description: 'הרצת SQL ישירות על הדאטאבייס' },
-  { name: 'financial-alerts', description: 'התראות פיננסיות אוטומטיות' },
-  { name: 'google-refresh-token', description: 'רענון טוקן Google' },
-  { name: 'green-invoice', description: 'חשבוניות ירוקות - חשבונית ירוקה' },
-  { name: 'import-backup', description: 'ייבוא גיבוי למערכת' },
-  { name: 'invite-client', description: 'שליחת הזמנה ללקוח' },
-  { name: 'process-email-queue', description: 'עיבוד תור דואר אלקטרוני' },
-  { name: 'resend-webhook', description: 'Webhook עבור Resend' },
-  { name: 'send-reminder-email', description: 'שליחת מייל תזכורת' },
-  { name: 'send-task-notification', description: 'שליחת התראה על משימה' },
-  { name: 'track-email-click', description: 'מעקב לחיצות באימייל' },
-  { name: 'track-email-open', description: 'מעקב פתיחת אימייל' },
+// Categories for Edge Functions
+type FunctionCategory =
+  | "email"
+  | "auth"
+  | "backup"
+  | "finance"
+  | "tasks"
+  | "ai"
+  | "dev";
+
+interface KnownFunction {
+  name: string;
+  description: string;
+  category: FunctionCategory;
+  usedInApp: boolean;
+  notes?: string;
+}
+
+const CATEGORY_META: Record<
+  FunctionCategory,
+  {
+    label: string;
+    icon: typeof Mail;
+    color: string;
+    bgColor: string;
+    borderColor: string;
+  }
+> = {
+  email: {
+    label: "📧 דואר אלקטרוני",
+    icon: Mail,
+    color: "text-blue-600",
+    bgColor: "bg-blue-500/10",
+    borderColor: "border-blue-500/30",
+  },
+  auth: {
+    label: "🔐 הרשאות ומשתמשים",
+    icon: Shield,
+    color: "text-purple-600",
+    bgColor: "bg-purple-500/10",
+    borderColor: "border-purple-500/30",
+  },
+  backup: {
+    label: "💾 גיבוי ויבוא",
+    icon: Database,
+    color: "text-green-600",
+    bgColor: "bg-green-500/10",
+    borderColor: "border-green-500/30",
+  },
+  finance: {
+    label: "💰 פיננסי וחשבונות",
+    icon: Receipt,
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/30",
+  },
+  tasks: {
+    label: "🔔 משימות ותזכורות",
+    icon: Bell,
+    color: "text-orange-600",
+    bgColor: "bg-orange-500/10",
+    borderColor: "border-orange-500/30",
+  },
+  ai: {
+    label: "🤖 בינה מלאכותית",
+    icon: Brain,
+    color: "text-pink-600",
+    bgColor: "bg-pink-500/10",
+    borderColor: "border-pink-500/30",
+  },
+  dev: {
+    label: "🛠️ כלי פיתוח",
+    icon: Code2,
+    color: "text-gray-600",
+    bgColor: "bg-gray-500/10",
+    borderColor: "border-gray-500/30",
+  },
+};
+
+const KNOWN_FUNCTIONS: KnownFunction[] = [
+  // Email
+  {
+    name: "process-email-queue",
+    description: "עיבוד תור שליחת אימיילים",
+    category: "email",
+    usedInApp: true,
+  },
+  {
+    name: "send-reminder-email",
+    description: "שליחת אימייל תזכורת ללקוח או עובד",
+    category: "email",
+    usedInApp: true,
+  },
+  {
+    name: "resend-webhook",
+    description: "Webhook לקבלת עדכוני סטטוס מ-Resend",
+    category: "email",
+    usedInApp: true,
+  },
+  {
+    name: "track-email-click",
+    description: "מעקב אחר לחיצות על קישורים באימייל",
+    category: "email",
+    usedInApp: true,
+  },
+  {
+    name: "track-email-open",
+    description: "מעקב אחר פתיחת אימיילים",
+    category: "email",
+    usedInApp: true,
+  },
+  // Auth
+  {
+    name: "admin-reset-password",
+    description: 'איפוס סיסמה למשתמש ע"י מנהל',
+    category: "auth",
+    usedInApp: false,
+    notes: "מוחלף ב-SQL ישיר",
+  },
+  {
+    name: "create-admin-user",
+    description: "יצירת משתמש מנהל ראשי",
+    category: "auth",
+    usedInApp: true,
+  },
+  {
+    name: "create-employee",
+    description: "יצירת חשבון עובד חדש עם הרשאות",
+    category: "auth",
+    usedInApp: true,
+  },
+  {
+    name: "invite-client",
+    description: "שליחת הזמנת הרשמה ללקוח",
+    category: "auth",
+    usedInApp: true,
+  },
+  // Backup
+  {
+    name: "auto-backup",
+    description: "גיבוי אוטומטי של כל הנתונים",
+    category: "backup",
+    usedInApp: true,
+  },
+  {
+    name: "import-backup",
+    description: "שחזור נתונים מקובץ גיבוי",
+    category: "backup",
+    usedInApp: true,
+  },
+  // Finance
+  {
+    name: "financial-alerts",
+    description: "התראות על תשלומים, חובות ויתרות",
+    category: "finance",
+    usedInApp: true,
+  },
+  {
+    name: "green-invoice",
+    description: "הנפקת חשבוניות דרך חשבונית ירוקה",
+    category: "finance",
+    usedInApp: true,
+  },
+  {
+    name: "google-refresh-token",
+    description: "רענון אסימון Google לשירותים חיצוניים",
+    category: "finance",
+    usedInApp: true,
+  },
+  // Tasks
+  {
+    name: "check-reminders",
+    description: "בדיקת תזכורות שהגיע זמנן",
+    category: "tasks",
+    usedInApp: true,
+  },
+  {
+    name: "send-task-notification",
+    description: "שליחת התראה על משימה חדשה/עדכון",
+    category: "tasks",
+    usedInApp: true,
+  },
+  // AI
+  {
+    name: "ai-chat",
+    description: "צ׳אט AI חכם לניתוח נתונים ושאלות",
+    category: "ai",
+    usedInApp: true,
+  },
+  // Dev
+  {
+    name: "dev-scripts",
+    description: "סקריפטים לפיתוח, תחזוקה ודיבוג",
+    category: "dev",
+    usedInApp: false,
+    notes: "לפיתוח בלבד",
+  },
+  {
+    name: "execute-sql",
+    description: "הרצת שאילתות SQL ישירות (מסוכן!)",
+    category: "dev",
+    usedInApp: false,
+    notes: "שימוש זהיר בלבד",
+  },
 ];
 
 interface FunctionStatus {
   name: string;
   description: string;
+  category: FunctionCategory;
+  usedInApp: boolean;
+  notes?: string;
   status: 'active' | 'error' | 'unknown';
   lastInvoked?: string;
   lastResponse?: { status: number; body: string };
@@ -98,80 +289,13 @@ export function EdgeFunctionsManager() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [showTestDialog, setShowTestDialog] = useState(false);
   const [selectedFunction, setSelectedFunction] = useState<FunctionStatus | null>(null);
-  const [testBody, setTestBody] = useState('{}');
-  const [testMethod, setTestMethod] = useState<'GET' | 'POST'>('POST');
-  const [expandedFunction, setExpandedFunction] = useState<string | null>(null);
   const [showInvokeDialog, setShowInvokeDialog] = useState(false);
   const [invokeBody, setInvokeBody] = useState('{}');
   const [invokeResult, setInvokeResult] = useState<string | null>(null);
   const [invoking, setInvoking] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; content: string }[]>([]);
-  const [deploying, setDeploying] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Handle file upload for deployment
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const content = ev.target?.result as string;
-        // Extract function name from path or filename
-        const fnName = file.name.replace(/\.ts$/, '').replace(/^index$/, file.webkitRelativePath?.split('/')[1] || 'unnamed');
-        setUploadedFiles(prev => {
-          const existing = prev.findIndex(f => f.name === fnName);
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = { name: fnName, content };
-            return updated;
-          }
-          return [...prev, { name: fnName, content }];
-        });
-      };
-      reader.readAsText(file);
-    });
-    
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }, []);
-
-  const handleDeploy = useCallback(async () => {
-    if (uploadedFiles.length === 0) {
-      toast.error('נא להעלות קבצים לפני הפריסה');
-      return;
-    }
-    setDeploying(true);
-    try {
-      // Deploy each function by invoking it to verify it's reachable
-      for (const fn of uploadedFiles) {
-        const url = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/${fn.name}`;
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const token = session?.access_token;
-          await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token || (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-              'apikey': (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            },
-            body: JSON.stringify({ type: 'health_check' }),
-          });
-        } catch {
-          // Function may not exist yet
-        }
-      }
-      
-      toast.success(`✅ ${uploadedFiles.length} קבצים הועלו בהצלחה! הפונקציות יפרסו אוטומטית.`);
-      toast.info('💡 שים לב: כדי שהפונקציות יפרסו, יש למקם אותן בתיקיית supabase/functions/ בפרויקט.');
-      setUploadedFiles([]);
-    } catch (error: any) {
-      toast.error('שגיאה בפריסה: ' + error.message);
-    } finally {
-      setDeploying(false);
-    }
-  }, [uploadedFiles]);
+  const [testMethod, setTestMethod] = useState<'GET' | 'POST'>('POST');
+  const [expandedCategory, setExpandedCategory] = useState<FunctionCategory | null>(null);
+  const [testingAll, setTestingAll] = useState(false);
 
   // Load functions list
   const loadFunctions = useCallback(async () => {
@@ -191,7 +315,7 @@ export function EdgeFunctionsManager() {
     loadFunctions();
   }, [loadFunctions]);
 
-  // Test a function with health check
+  // Test a single function with health check
   const testFunction = useCallback(async (fn: FunctionStatus) => {
     setTesting(fn.name);
     const startTime = Date.now();
@@ -228,9 +352,8 @@ export function EdgeFunctionsManager() {
         timestamp: new Date().toISOString(),
       };
 
-      setTestResults(prev => [result, ...prev.slice(0, 19)]);
+      setTestResults(prev => [result, ...prev.slice(0, 29)]);
 
-      // Update function status
       setFunctions(prev => prev.map(f => 
         f.name === fn.name 
           ? { 
@@ -243,9 +366,9 @@ export function EdgeFunctionsManager() {
       ));
 
       if (response.status < 500) {
-        toast.success(`✅ ${fn.name} - פעיל (${duration}ms)`);
+        toast.success(`✅ ${fn.name} — פעיל (${duration}ms)`);
       } else {
-        toast.error(`❌ ${fn.name} - שגיאה (${response.status})`);
+        toast.error(`❌ ${fn.name} — שגיאה (${response.status})`);
       }
     } catch (error: any) {
       const duration = Date.now() - startTime;
@@ -255,13 +378,13 @@ export function EdgeFunctionsManager() {
         body: error.message,
         duration,
         timestamp: new Date().toISOString(),
-      }, ...prev.slice(0, 19)]);
+      }, ...prev.slice(0, 29)]);
 
       setFunctions(prev => prev.map(f => 
         f.name === fn.name ? { ...f, status: 'error' } : f
       ));
 
-      toast.error(`❌ ${fn.name} - לא ניתן להתחבר`);
+      toast.error(`❌ ${fn.name} — לא ניתן להתחבר`);
     } finally {
       setTesting(null);
     }
@@ -269,9 +392,12 @@ export function EdgeFunctionsManager() {
 
   // Test all functions
   const testAllFunctions = useCallback(async () => {
+    setTestingAll(true);
     for (const fn of functions) {
       await testFunction(fn);
     }
+    setTestingAll(false);
+    toast.success('✅ בדיקת כל הפונקציות הושלמה');
   }, [functions, testFunction]);
 
   // Invoke a function with custom body
@@ -331,65 +457,80 @@ export function EdgeFunctionsManager() {
     }
   }, [selectedFunction, invokeBody, testMethod]);
 
+  // Status badge
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500/20 text-green-600 border-green-500/30">✅ פעיל</Badge>;
+        return <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-xs">✅ פעיל</Badge>;
       case 'error':
-        return <Badge className="bg-red-500/20 text-red-600 border-red-500/30">❌ שגיאה</Badge>;
+        return <Badge className="bg-red-500/20 text-red-600 border-red-500/30 text-xs">❌ שגיאה</Badge>;
       default:
-        return <Badge variant="outline" className="text-muted-foreground">⏳ לא נבדק</Badge>;
+        return <Badge variant="outline" className="text-muted-foreground text-xs">⏳ לא נבדק</Badge>;
     }
   };
 
   const activeCount = functions.filter(f => f.status === 'active').length;
   const errorCount = functions.filter(f => f.status === 'error').length;
+  const usedCount = functions.filter(f => f.usedInApp).length;
+
+  // Group functions by category
+  const categories = Object.keys(CATEGORY_META) as FunctionCategory[];
+  const groupedFunctions = categories.map(cat => ({
+    category: cat,
+    meta: CATEGORY_META[cat],
+    functions: functions.filter(f => f.category === cat),
+  })).filter(g => g.functions.length > 0);
 
   return (
     <>
       <Card className={cn(goldBg, goldBorder)}>
-        <div className={cn(goldGradient, "h-1")} />
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Zap className={cn("h-5 w-5", goldIcon)} />
-              <CardTitle className="text-lg">⚡ ניהול Edge Functions</CardTitle>
-              <Badge variant="outline" className="border-yellow-500/50 text-yellow-600">
-                {functions.length} פונקציות
-              </Badge>
-              {activeCount > 0 && (
-                <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
-                  {activeCount} פעילות
-                </Badge>
-              )}
-              {errorCount > 0 && (
-                <Badge className="bg-red-500/20 text-red-600 border-red-500/30">
-                  {errorCount} שגיאות
-                </Badge>
-              )}
+        <div className={cn(goldGradient, "h-1.5")} />
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2.5 rounded-xl",
+                goldBg,
+                "border-2 border-yellow-500/50",
+                "shadow-lg shadow-yellow-500/20"
+              )}>
+                <Zap className={cn("h-6 w-6", goldIcon)} />
+              </div>
+              <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  ⚡ Edge Functions
+                  <Badge className={cn(goldGradient, "text-white border-0 text-xs")}>
+                    {functions.length} פונקציות
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  ניהול ובדיקת כל הפונקציות השרת-צדיות בפרויקט
+                </CardDescription>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTestDialog(true)}
-                disabled={testResults.length === 0}
-                className="border-yellow-500/50 hover:bg-yellow-500/10"
-              >
-                <Terminal className="h-4 w-4 ml-1" />
-                לוגים ({testResults.length})
-              </Button>
+            <div className="flex gap-2 flex-wrap">
+              {testResults.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTestDialog(true)}
+                  className="border-yellow-500/50 hover:bg-yellow-500/10"
+                >
+                  <Terminal className="h-4 w-4 ml-1" />
+                  לוגים ({testResults.length})
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={testAllFunctions}
-                disabled={loading || testing !== null}
+                disabled={loading || testingAll}
                 className="border-yellow-500/50 hover:bg-yellow-500/10"
               >
-                {testing ? (
+                {testingAll ? (
                   <Loader2 className="h-4 w-4 ml-1 animate-spin" />
                 ) : (
-                  <Play className="h-4 w-4 ml-1" />
+                  <Activity className="h-4 w-4 ml-1" />
                 )}
                 בדוק הכל
               </Button>
@@ -401,209 +542,197 @@ export function EdgeFunctionsManager() {
                 className="border-yellow-500/50 hover:bg-yellow-500/10"
               >
                 <RefreshCcw className={cn("h-4 w-4 ml-1", loading && "animate-spin")} />
-                רענן
               </Button>
             </div>
           </div>
-          <CardDescription>
-            רשימת כל ה-Edge Functions בפרויקט • בדיקת תקינות • הפעלה ידנית • צפייה בלוגים
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border border-yellow-500/20 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-yellow-500/5">
-                  <TableHead className="text-right w-[200px]">שם הפונקציה</TableHead>
-                  <TableHead className="text-right">תיאור</TableHead>
-                  <TableHead className="text-center w-[100px]">סטטוס</TableHead>
-                  <TableHead className="text-center w-[200px]">פעולות</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {functions.map((fn) => (
-                  <React.Fragment key={fn.name}>
-                    <TableRow 
-                      className="cursor-pointer hover:bg-yellow-500/5"
-                      onClick={() => setExpandedFunction(expandedFunction === fn.name ? null : fn.name)}
-                    >
-                      <TableCell className="font-mono text-sm font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileCode className="h-4 w-4 text-muted-foreground" />
-                          {fn.name}
-                          {expandedFunction === fn.name ? (
-                            <ChevronUp className="h-3 w-3 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{fn.description}</TableCell>
-                      <TableCell className="text-center">{getStatusBadge(fn.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              testFunction(fn);
-                            }}
-                            disabled={testing === fn.name}
-                            title="בדוק תקינות"
-                          >
-                            {testing === fn.name ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <Play className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedFunction(fn);
-                              setInvokeBody('{}');
-                              setInvokeResult(null);
-                              setShowInvokeDialog(true);
-                            }}
-                            title="הפעל ידנית"
-                          >
-                            <Rocket className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const url = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/${fn.name}`;
-                              navigator.clipboard.writeText(url);
-                              toast.success('URL הועתק');
-                            }}
-                            title="העתק URL"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {expandedFunction === fn.name && fn.lastResponse && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="bg-muted/30 p-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-4 text-sm">
-                              <span className="font-medium">סטטוס אחרון:</span>
-                              <Badge variant={fn.lastResponse.status < 400 ? "default" : "destructive"}>
-                                {fn.lastResponse.status}
-                              </Badge>
-                              {fn.lastInvoked && (
-                                <span className="text-muted-foreground flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(fn.lastInvoked).toLocaleString('he-IL')}
-                                </span>
+
+        <CardContent className="space-y-4">
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-xl p-3 bg-yellow-500/10 border border-yellow-500/20 text-center">
+              <div className="text-2xl font-bold text-yellow-600">{functions.length}</div>
+              <div className="text-xs text-muted-foreground">סה״כ פונקציות</div>
+            </div>
+            <div className="rounded-xl p-3 bg-blue-500/10 border border-blue-500/20 text-center">
+              <div className="text-2xl font-bold text-blue-600">{usedCount}</div>
+              <div className="text-xs text-muted-foreground">בשימוש פעיל</div>
+            </div>
+            <div className="rounded-xl p-3 bg-green-500/10 border border-green-500/20 text-center">
+              <div className="text-2xl font-bold text-green-600">{activeCount}</div>
+              <div className="text-xs text-muted-foreground">נבדקו תקין</div>
+            </div>
+            <div className="rounded-xl p-3 bg-red-500/10 border border-red-500/20 text-center">
+              <div className="text-2xl font-bold text-red-600">{errorCount}</div>
+              <div className="text-xs text-muted-foreground">שגיאות</div>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className={cn(
+            "flex items-start gap-3 p-4 rounded-xl",
+            "bg-gradient-to-r from-blue-500/10 to-indigo-500/10",
+            "border border-blue-500/30"
+          )}>
+            <Info className="h-5 w-5 mt-0.5 text-blue-500 shrink-0" />
+            <div className="text-sm space-y-1">
+              <p className="font-medium text-blue-700 dark:text-blue-300">
+                איך זה עובד?
+              </p>
+              <p className="text-blue-600/80 dark:text-blue-400/80">
+                Edge Functions נפרסות <strong>אוטומטית</strong> כשקוד נשמר דרך Lovable.
+                כל שינוי בתיקיית <code className="bg-blue-500/20 px-1.5 py-0.5 rounded text-xs">supabase/functions/</code> נפרס מיידית.
+                השתמש בכפתור "בדוק הכל" לוודא שהפונקציות פעילות.
+              </p>
+            </div>
+          </div>
+
+          <Separator className="bg-yellow-500/20" />
+
+          {/* Category Cards */}
+          <div className="space-y-3">
+            {groupedFunctions.map(({ category, meta, functions: catFns }) => {
+              const Icon = meta.icon;
+              const isExpanded = expandedCategory === category;
+              const catActive = catFns.filter(f => f.status === 'active').length;
+              const catError = catFns.filter(f => f.status === 'error').length;
+
+              return (
+                <div key={category} className={cn(
+                  "rounded-xl border overflow-hidden transition-all",
+                  meta.borderColor,
+                  isExpanded ? meta.bgColor : "hover:bg-muted/30"
+                )}>
+                  {/* Category Header */}
+                  <button
+                    className="w-full flex items-center justify-between p-4 text-right"
+                    onClick={() => setExpandedCategory(isExpanded ? null : category)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2 rounded-lg", meta.bgColor)}>
+                        <Icon className={cn("h-5 w-5", meta.color)} />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{meta.label}</div>
+                        <div className="text-xs text-muted-foreground">{catFns.length} פונקציות</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {catActive > 0 && (
+                        <Badge className="bg-green-500/20 text-green-600 border-green-500/30 text-xs">
+                          {catActive} פעילות
+                        </Badge>
+                      )}
+                      {catError > 0 && (
+                        <Badge className="bg-red-500/20 text-red-600 border-red-500/30 text-xs">
+                          {catError} שגיאות
+                        </Badge>
+                      )}
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Expanded Functions List */}
+                  {isExpanded && (
+                    <div className="border-t px-4 pb-4 space-y-2">
+                      {catFns.map(fn => (
+                        <div key={fn.name} className={cn(
+                          "flex items-center justify-between p-3 rounded-lg",
+                          "bg-background border transition-all hover:shadow-sm"
+                        )}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FileCode className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="font-mono text-sm font-medium">{fn.name}</span>
+                              {getStatusBadge(fn.status)}
+                              {!fn.usedInApp && (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">לא פעיל באפליקציה</Badge>
                               )}
                             </div>
-                            <pre className="text-xs bg-background p-3 rounded border overflow-auto max-h-40 direction-ltr text-left font-mono">
-                              {fn.lastResponse.body}
-                            </pre>
+                            <div className="text-xs text-muted-foreground mt-1 mr-6">
+                              {fn.description}
+                              {fn.notes && (
+                                <span className="text-yellow-600 mr-2">• {fn.notes}</span>
+                              )}
+                            </div>
+                            {fn.lastResponse && (
+                              <div className="text-xs text-muted-foreground mt-1 mr-6 flex items-center gap-2">
+                                <Clock className="h-3 w-3" />
+                                סטטוס {fn.lastResponse.status} • {fn.lastInvoked ? new Date(fn.lastInvoked).toLocaleTimeString('he-IL') : ''}
+                              </div>
+                            )}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <Separator className="my-4 bg-yellow-500/20" />
-
-          {/* Upload & Deploy Section */}
-          <div className={cn(
-            "p-4 rounded-xl space-y-3",
-            "bg-gradient-to-r from-blue-500/10 to-indigo-500/10",
-            "border-2 border-blue-500/30"
-          )}>
-            <div className="flex items-center gap-2">
-              <FolderUp className="h-5 w-5 text-blue-500" />
-              <span className="font-medium text-blue-700 dark:text-blue-300">העלאה ופריסה של Edge Function</span>
-            </div>
-            <p className="text-sm text-blue-600 dark:text-blue-400">
-              העלה קובץ <code className="bg-blue-500/20 px-1 rounded">index.ts</code> של פונקציה ולחץ Deploy לפריסה
-            </p>
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".ts,.js"
-              multiple
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="border-blue-500/50 hover:bg-blue-500/10"
-              >
-                <Upload className="h-4 w-4 ml-1" />
-                העלה קבצים
-              </Button>
-              
-              <Button
-                size="sm"
-                onClick={handleDeploy}
-                disabled={deploying || uploadedFiles.length === 0}
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:from-blue-600 hover:to-indigo-700"
-              >
-                {deploying ? (
-                  <Loader2 className="h-4 w-4 ml-1 animate-spin" />
-                ) : (
-                  <Rocket className="h-4 w-4 ml-1" />
-                )}
-                Deploy ({uploadedFiles.length})
-              </Button>
-            </div>
-
-            {uploadedFiles.length > 0 && (
-              <div className="space-y-1">
-                {uploadedFiles.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm bg-background rounded p-2 border">
-                    <div className="flex items-center gap-2">
-                      <FileCode className="h-4 w-4 text-blue-500" />
-                      <span className="font-mono">{f.name}</span>
-                      <Badge variant="outline" className="text-xs">{f.content.length} chars</Badge>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => testFunction(fn)}
+                              disabled={testing === fn.name}
+                              title="בדוק תקינות"
+                              className="h-8 w-8 p-0"
+                            >
+                              {testing === fn.name ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Play className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedFunction(fn);
+                                setInvokeBody('{}');
+                                setInvokeResult(null);
+                                setShowInvokeDialog(true);
+                              }}
+                              title="הפעל ידנית"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Rocket className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const url = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/${fn.name}`;
+                                navigator.clipboard.writeText(url);
+                                toast.success('URL הועתק');
+                              }}
+                              title="העתק URL"
+                              className="h-8 w-8 p-0"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-red-500"
-                      onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })}
           </div>
 
+          {/* Warning Note */}
           <div className={cn(
             "flex items-start gap-3 p-4 rounded-xl",
             "bg-gradient-to-r from-yellow-500/10 to-orange-500/10",
-            "border-2 border-yellow-500/30"
+            "border border-yellow-500/30"
           )}>
-            <AlertTriangle className={cn("h-5 w-5 mt-0.5", goldIcon)} />
+            <AlertTriangle className={cn("h-5 w-5 mt-0.5 shrink-0", goldIcon)} />
             <div className="text-sm">
               <p className="font-medium text-yellow-700 dark:text-yellow-300">
-                פריסה אוטומטית
+                💡 שים לב
               </p>
-              <p className="text-yellow-600 dark:text-yellow-400 mt-1">
-                Edge Functions נפרסות אוטומטית כשקוד נשמר דרך Lovable. 
-                אין צורך בפריסה ידנית - כל שינוי בתיקיית <code className="bg-yellow-500/20 px-1 rounded">supabase/functions/</code> נפרס מיידית.
+              <p className="text-yellow-600/80 dark:text-yellow-400/80 mt-1">
+                בדיקת תקינות שולחת <code className="bg-yellow-500/20 px-1.5 py-0.5 rounded text-xs">health_check</code> לכל פונקציה.
+                חלק מהפונקציות עלולות להחזיר שגיאה אם הן מצפות לפרמטרים ספציפיים — זה תקין.
+                השתמש ב"הפעל ידנית" כדי לשלוח בקשה מותאמת אישית.
               </p>
             </div>
           </div>
@@ -671,7 +800,7 @@ export function EdgeFunctionsManager() {
               הפעלת {selectedFunction?.name}
             </DialogTitle>
             <DialogDescription>
-              שלח בקשה ידנית לפונקציה וצפה בתוצאה
+              {selectedFunction?.description}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

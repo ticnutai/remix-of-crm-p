@@ -627,11 +627,8 @@ export function DeveloperSettings() {
       {/* System Health Check */}
       {devMode && <SystemHealthCheck />}
 
-      {/* Edge Functions Manager */}
-      {devMode && <EdgeFunctionsManager />}
-
-      {/* Migration Management */}
-      {devMode && <MigrationManagement />}
+      {/* Edge Functions Manager - Always visible, separate section */}
+      <EdgeFunctionsManager />
     </div>
   );
 }
