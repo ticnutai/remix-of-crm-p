@@ -836,6 +836,30 @@ export function ClientStagesBoard({
   // Show all stages by default
   const [showAllStages, setShowAllStages] = useState(true);
 
+  // Columns count for grid layout (persisted)
+  const COLUMNS_KEY = 'stages-columns-count';
+  const [columnsCount, setColumnsCount] = useState<number>(() => {
+    const saved = localStorage.getItem(COLUMNS_KEY);
+    return saved ? parseInt(saved, 10) : 4;
+  });
+
+  // Save columns preference
+  useEffect(() => {
+    localStorage.setItem(COLUMNS_KEY, String(columnsCount));
+  }, [columnsCount]);
+
+  // Get grid columns class based on count
+  const getGridColumnsClass = () => {
+    switch (columnsCount) {
+      case 2: return 'grid-cols-1 md:grid-cols-2';
+      case 3: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+      case 4: return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+      case 5: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
+      case 6: return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
+      default: return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+    }
+  };
+
   // Template dialogs state
   const [applyTemplateDialog, setApplyTemplateDialog] = useState(false);
   const [saveAllStagesDialog, setSaveAllStagesDialog] = useState(false);
@@ -1154,7 +1178,26 @@ export function ClientStagesBoard({
               הצג כל השלבים ({sortedStages.length})
             </>}
         </Button>
+        
+        {/* Columns count selector */}
+        {showAllStages && (
+          <div className="flex items-center gap-1 border rounded-md">
+            {[2, 3, 4, 5, 6].map((count) => (
+              <Button
+                key={count}
+                size="sm"
+                variant={columnsCount === count ? 'default' : 'ghost'}
+                className="h-8 w-8 p-0"
+                style={columnsCount === count ? { backgroundColor: '#d4a843', color: '#1e293b' } : {}}
+                onClick={() => setColumnsCount(count)}
+              >
+                {count}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
+
 
       {/* Multi-select Stage Actions */}
       {sortedStages.length > 0 && (
@@ -1187,7 +1230,7 @@ export function ClientStagesBoard({
       )}
 
       {/* Stages Grid - RTL direction */}
-      <div className={cn("grid gap-4", showAllStages ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-4" : "grid-cols-1 max-w-md mr-0 ml-auto")} dir="rtl">
+      <div className={cn("grid gap-4", showAllStages ? getGridColumnsClass() : "grid-cols-1 max-w-md mr-0 ml-auto")} dir="rtl">
         {(showAllStages ? sortedStages : sortedStages.filter(s => s.stage_id === 'contact')).map((stage, index) => {
         const Icon = getStageIcon(stage.stage_icon);
         const progress = calculateProgress(stage);
