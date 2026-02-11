@@ -56,7 +56,7 @@ interface HtmlTemplateEditorProps {
 }
 
 interface PaymentStep { id: string; name: string; percentage: number; description: string; }
-interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; }
+interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; logoSize?: number; logoPosition?: 'inside-header' | 'above-header' | 'centered-above' | 'full-width'; showHeaderStrip?: boolean; }
 interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; customBg?: string; customBorder?: string; customTextColor?: string; fontSize?: number; isBold?: boolean; isItalic?: boolean; isUnderline?: boolean; textAlign?: 'right' | 'center' | 'left'; fontFamily?: string; }
 
 // Hebrew fonts available in text boxes
@@ -727,7 +727,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
     const ds = template.design_settings as any;
     if (ds && ds.primaryColor) return ds as DesignSettings;
-    return { primaryColor: '#B8860B', secondaryColor: '#DAA520', accentColor: '#F4C430', fontFamily: 'Heebo', fontSize: 16, logoUrl: '', headerBackground: 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)', showLogo: true, borderRadius: 12, companyName: 'שם החברה', companyAddress: 'כתובת החברה', companyPhone: '050-0000000', companyEmail: 'email@company.com' };
+    return { primaryColor: '#B8860B', secondaryColor: '#DAA520', accentColor: '#F4C430', fontFamily: 'Heebo', fontSize: 16, logoUrl: '', headerBackground: 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #F4C430 100%)', showLogo: true, borderRadius: 12, companyName: 'שם החברה', companyAddress: 'כתובת החברה', companyPhone: '050-0000000', companyEmail: 'email@company.com', logoSize: 120, logoPosition: 'inside-header', showHeaderStrip: true };
   });
   const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
     const saved = (template as any).text_boxes;
@@ -925,11 +925,22 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 </head>
 <body>
   <div class="container">
+    ${designSettings.showLogo && designSettings.logoUrl && (designSettings.logoPosition === 'above-header' || designSettings.logoPosition === 'centered-above') ? `
+    <div style="padding: 20px; background: white; ${designSettings.logoPosition === 'centered-above' ? 'text-align: center;' : ''}">
+      <img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto;">
+    </div>` : ''}
+    ${designSettings.showHeaderStrip !== false ? `
     <div class="header">
-      ${designSettings.showLogo && designSettings.logoUrl ? `<img src="${designSettings.logoUrl}" alt="Logo" style="max-height: 80px; margin-bottom: 15px;">` : ''}
+      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' ? `<div style="text-align: center; margin-bottom: 15px;"><img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 200}px; max-width: 100%; height: auto;"></div>` : ''}
+      ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === 'inside-header') ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ''}
       <h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
       <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ''}</p>
-    </div>
+    </div>` : `
+    <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
+      ${designSettings.showLogo && designSettings.logoUrl ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ''}
+      <h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
+      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ''}</p>
+    </div>`}
     <div class="content">
       ${renderTextBoxes('header')}
       
@@ -1392,10 +1403,17 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         <EmailDialog open={showEmailDialog} onOpenChange={setShowEmailDialog} clients={allClients} onSend={handleSendEmail} templateName={editedTemplate.name} />
 
         {/* Gold Header */}
-        <div className="shrink-0 text-white p-6" style={{ background: designSettings.headerBackground }}>
+        {/* Logo Above Header */}
+        {designSettings.showLogo && designSettings.logoUrl && (designSettings.logoPosition === 'above-header' || designSettings.logoPosition === 'centered-above') && (
+          <div className={`p-4 bg-white ${designSettings.logoPosition === 'centered-above' ? 'text-center' : ''}`}>
+            <img src={designSettings.logoUrl} alt="Logo" style={{ width: designSettings.logoSize || 120, height: 'auto' }} />
+          </div>
+        )}
+        
+        <div className={`shrink-0 text-white p-6 ${designSettings.showHeaderStrip === false ? 'bg-white border-b-2' : ''}`} style={{ background: designSettings.showHeaderStrip !== false ? designSettings.headerBackground : 'white', borderColor: designSettings.primaryColor }}>
           <div className="flex justify-between items-start max-w-6xl mx-auto">
             <div className="flex items-center gap-4">
-              {designSettings.showLogo && (<div className="relative group cursor-pointer" onClick={() => logoInputRef.current?.click()}>{designSettings.logoUrl ? <img src={designSettings.logoUrl} alt="Logo" className="h-16 w-auto object-contain" /> : <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center"><Image className="h-8 w-8 text-white/60" /></div>}<div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"><Upload className="h-6 w-6" /></div></div>)}
+              {designSettings.showLogo && (!designSettings.logoPosition || designSettings.logoPosition === 'inside-header' || designSettings.logoPosition === 'full-width') && (<div className="relative group cursor-pointer" onClick={() => logoInputRef.current?.click()}>{designSettings.logoUrl ? <img src={designSettings.logoUrl} alt="Logo" style={{ width: designSettings.logoSize || 120, height: 'auto' }} className="object-contain" /> : <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center"><Image className="h-8 w-8 text-white/60" /></div>}<div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg"><Upload className="h-6 w-6" /></div></div>)}
               <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
               <div className="flex-1">
                 <Input value={editedTemplate.name} onChange={(e) => setEditedTemplate({ ...editedTemplate, name: e.target.value })} className="text-2xl font-bold bg-transparent border-0 text-white placeholder:text-white/60 p-0 h-auto focus-visible:ring-0" placeholder="כותרת ההצעה" dir="rtl" />
@@ -1520,6 +1538,45 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                         {designSettings.logoUrl && <Button variant="outline" size="sm" onClick={() => setDesignSettings({ ...designSettings, logoUrl: '' })}><Trash2 className="h-4 w-4 ml-1" />הסר</Button>}
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Logo Settings */}
+                  {designSettings.logoUrl && (
+                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                      <h3 className="font-semibold text-sm">הגדרות לוגו</h3>
+                      
+                      {/* Logo Size */}
+                      <div>
+                        <Label className="text-sm text-gray-600">גודל לוגו: {designSettings.logoSize || 120}px</Label>
+                        <Slider value={[designSettings.logoSize || 120]} onValueChange={([v]) => setDesignSettings({ ...designSettings, logoSize: v })} min={60} max={400} step={10} className="mt-2" />
+                      </div>
+                      
+                      {/* Logo Position */}
+                      <div>
+                        <Label className="text-sm text-gray-600">מיקום לוגו</Label>
+                        <select
+                          value={designSettings.logoPosition || 'inside-header'}
+                          onChange={(e) => setDesignSettings({ ...designSettings, logoPosition: e.target.value as any })}
+                          className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
+                        >
+                          <option value="inside-header">בתוך הסטריפ</option>
+                          <option value="above-header">מעל הסטריפ</option>
+                          <option value="centered-above">ממורכז מעל הסטריפ</option>
+                          <option value="full-width">רוחב מלא בסטריפ</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Header Strip Toggle */}
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center gap-3">
+                      <Switch checked={designSettings.showHeaderStrip !== false} onCheckedChange={(checked) => setDesignSettings({ ...designSettings, showHeaderStrip: checked })} />
+                      <Label>הצג סטריפ כותרת צבעוני</Label>
+                    </div>
+                    {designSettings.showHeaderStrip === false && (
+                      <p className="text-xs text-gray-500 mt-2">הכותרת תוצג ללא רקע צבעוני, רק עם קו תחתון</p>
+                    )}
                   </div>
                 </div>
                 
