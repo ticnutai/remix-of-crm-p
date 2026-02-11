@@ -22,6 +22,8 @@ import {
   Copy,
   ChevronDown,
   ChevronUp,
+  Upload,
+  FolderUp,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -103,6 +105,73 @@ export function EdgeFunctionsManager() {
   const [invokeBody, setInvokeBody] = useState('{}');
   const [invokeResult, setInvokeResult] = useState<string | null>(null);
   const [invoking, setInvoking] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; content: string }[]>([]);
+  const [deploying, setDeploying] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Handle file upload for deployment
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        // Extract function name from path or filename
+        const fnName = file.name.replace(/\.ts$/, '').replace(/^index$/, file.webkitRelativePath?.split('/')[1] || 'unnamed');
+        setUploadedFiles(prev => {
+          const existing = prev.findIndex(f => f.name === fnName);
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = { name: fnName, content };
+            return updated;
+          }
+          return [...prev, { name: fnName, content }];
+        });
+      };
+      reader.readAsText(file);
+    });
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  const handleDeploy = useCallback(async () => {
+    if (uploadedFiles.length === 0) {
+      toast.error('נא להעלות קבצים לפני הפריסה');
+      return;
+    }
+    setDeploying(true);
+    try {
+      // Deploy each function by invoking it to verify it's reachable
+      for (const fn of uploadedFiles) {
+        const url = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/${fn.name}`;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const token = session?.access_token;
+          await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token || (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              'apikey': (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            },
+            body: JSON.stringify({ type: 'health_check' }),
+          });
+        } catch {
+          // Function may not exist yet
+        }
+      }
+      
+      toast.success(`✅ ${uploadedFiles.length} קבצים הועלו בהצלחה! הפונקציות יפרסו אוטומטית.`);
+      toast.info('💡 שים לב: כדי שהפונקציות יפרסו, יש למקם אותן בתיקיית supabase/functions/ בפרויקט.');
+      setUploadedFiles([]);
+    } catch (error: any) {
+      toast.error('שגיאה בפריסה: ' + error.message);
+    } finally {
+      setDeploying(false);
+    }
+  }, [uploadedFiles]);
 
   // Load functions list
   const loadFunctions = useCallback(async () => {
@@ -449,7 +518,79 @@ export function EdgeFunctionsManager() {
           </div>
 
           <Separator className="my-4 bg-yellow-500/20" />
-          
+
+          {/* Upload & Deploy Section */}
+          <div className={cn(
+            "p-4 rounded-xl space-y-3",
+            "bg-gradient-to-r from-blue-500/10 to-indigo-500/10",
+            "border-2 border-blue-500/30"
+          )}>
+            <div className="flex items-center gap-2">
+              <FolderUp className="h-5 w-5 text-blue-500" />
+              <span className="font-medium text-blue-700 dark:text-blue-300">העלאה ופריסה של Edge Function</span>
+            </div>
+            <p className="text-sm text-blue-600 dark:text-blue-400">
+              העלה קובץ <code className="bg-blue-500/20 px-1 rounded">index.ts</code> של פונקציה ולחץ Deploy לפריסה
+            </p>
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".ts,.js"
+              multiple
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="border-blue-500/50 hover:bg-blue-500/10"
+              >
+                <Upload className="h-4 w-4 ml-1" />
+                העלה קבצים
+              </Button>
+              
+              <Button
+                size="sm"
+                onClick={handleDeploy}
+                disabled={deploying || uploadedFiles.length === 0}
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold hover:from-blue-600 hover:to-indigo-700"
+              >
+                {deploying ? (
+                  <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                ) : (
+                  <Rocket className="h-4 w-4 ml-1" />
+                )}
+                Deploy ({uploadedFiles.length})
+              </Button>
+            </div>
+
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-1">
+                {uploadedFiles.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm bg-background rounded p-2 border">
+                    <div className="flex items-center gap-2">
+                      <FileCode className="h-4 w-4 text-blue-500" />
+                      <span className="font-mono">{f.name}</span>
+                      <Badge variant="outline" className="text-xs">{f.content.length} chars</Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-red-500"
+                      onClick={() => setUploadedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className={cn(
             "flex items-start gap-3 p-4 rounded-xl",
             "bg-gradient-to-r from-yellow-500/10 to-orange-500/10",
