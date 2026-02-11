@@ -1,12 +1,16 @@
 // Clients Filter Strip Component - tenarch CRM Pro
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Layers,
   Bell,
@@ -26,18 +30,23 @@ import {
   SortAsc,
   Pencil,
   Trash2,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export interface ClientFilterState {
   stages: string[];
-  dateFilter: 'all' | 'today' | 'week' | 'month' | 'older';
+  dateFilter: "all" | "today" | "week" | "month" | "older";
   hasReminders: boolean | null;
   hasTasks: boolean | null;
   hasMeetings: boolean | null;
   categories: string[];
   tags: string[];
-  sortBy: 'name_asc' | 'name_desc' | 'date_desc' | 'date_asc' | 'classification_asc';
+  sortBy:
+    | "name_asc"
+    | "name_desc"
+    | "date_desc"
+    | "date_asc"
+    | "classification_asc";
 }
 
 interface ClientStageDefinition {
@@ -80,12 +89,14 @@ export function ClientsFilterStrip({
   categories = [],
   allTags = [],
 }: ClientsFilterStripProps) {
-  const [stageDefinitions, setStageDefinitions] = useState<ClientStageDefinition[]>([]);
+  const [stageDefinitions, setStageDefinitions] = useState<
+    ClientStageDefinition[]
+  >([]);
   const [stagesDialogOpen, setStagesDialogOpen] = useState(false);
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
-  const [tagSearch, setTagSearch] = useState('');
+  const [tagSearch, setTagSearch] = useState("");
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
 
   // Fetch unique stages from all clients
@@ -96,29 +107,30 @@ export function ClientsFilterStrip({
   const fetchStageDefinitions = async () => {
     try {
       const { data, error } = await supabase
-        .from('client_stages')
-        .select('stage_id, stage_name, stage_icon')
-        .order('sort_order');
+        .from("client_stages")
+        .select("stage_id, stage_name, stage_icon")
+        .order("sort_order");
 
       if (error) throw error;
 
       // Deduplicate by stage_name to show each unique stage definition only once
-      const uniqueStages = data?.reduce((acc, stage) => {
-        if (!acc.some(s => s.stage_name === stage.stage_name)) {
-          acc.push(stage);
-        }
-        return acc;
-      }, [] as ClientStageDefinition[]) || [];
+      const uniqueStages =
+        data?.reduce((acc, stage) => {
+          if (!acc.some((s) => s.stage_name === stage.stage_name)) {
+            acc.push(stage);
+          }
+          return acc;
+        }, [] as ClientStageDefinition[]) || [];
 
       setStageDefinitions(uniqueStages);
     } catch (error) {
-      console.error('Error fetching stage definitions:', error);
+      console.error("Error fetching stage definitions:", error);
     }
   };
 
   const toggleStage = (stageName: string) => {
     const newStages = filters.stages.includes(stageName)
-      ? filters.stages.filter(s => s !== stageName)
+      ? filters.stages.filter((s) => s !== stageName)
       : [...filters.stages, stageName];
     onFiltersChange({ ...filters, stages: newStages });
   };
@@ -128,10 +140,13 @@ export function ClientsFilterStrip({
   };
 
   const selectAllStages = () => {
-    onFiltersChange({ ...filters, stages: stageDefinitions.map(s => s.stage_name) });
+    onFiltersChange({
+      ...filters,
+      stages: stageDefinitions.map((s) => s.stage_name),
+    });
   };
 
-  const setDateFilter = (value: ClientFilterState['dateFilter']) => {
+  const setDateFilter = (value: ClientFilterState["dateFilter"]) => {
     onFiltersChange({ ...filters, dateFilter: value });
     setDateDialogOpen(false);
   };
@@ -153,14 +168,14 @@ export function ClientsFilterStrip({
 
   const toggleCategory = (categoryId: string) => {
     const newCategories = filters.categories.includes(categoryId)
-      ? filters.categories.filter(c => c !== categoryId)
+      ? filters.categories.filter((c) => c !== categoryId)
       : [...filters.categories, categoryId];
     onFiltersChange({ ...filters, categories: newCategories });
   };
 
   const toggleTag = (tag: string) => {
     const newTags = filters.tags.includes(tag)
-      ? filters.tags.filter(t => t !== tag)
+      ? filters.tags.filter((t) => t !== tag)
       : [...filters.tags, tag];
     onFiltersChange({ ...filters, tags: newTags });
   };
@@ -173,11 +188,11 @@ export function ClientsFilterStrip({
     onFiltersChange({ ...filters, tags: [] });
   };
 
-  const hasActiveFilters = 
-    filters.stages.length > 0 || 
-    filters.dateFilter !== 'all' || 
-    filters.hasReminders !== null || 
-    filters.hasTasks !== null || 
+  const hasActiveFilters =
+    filters.stages.length > 0 ||
+    filters.dateFilter !== "all" ||
+    filters.hasReminders !== null ||
+    filters.hasTasks !== null ||
     filters.hasMeetings !== null ||
     filters.categories.length > 0 ||
     filters.tags.length > 0;
@@ -185,7 +200,7 @@ export function ClientsFilterStrip({
   const clearAllFilters = () => {
     onFiltersChange({
       stages: [],
-      dateFilter: 'all',
+      dateFilter: "all",
       hasReminders: null,
       hasTasks: null,
       hasMeetings: null,
@@ -196,27 +211,27 @@ export function ClientsFilterStrip({
   };
 
   const dateFilterLabels = {
-    all: 'כל התאריכים',
-    today: 'היום',
-    week: 'השבוע',
-    month: 'החודש',
-    older: 'ישן יותר',
+    all: "כל התאריכים",
+    today: "היום",
+    week: "השבוע",
+    month: "החודש",
+    older: "ישן יותר",
   };
 
-  const sortByLabels: Record<ClientFilterState['sortBy'], string> = {
-    date_desc: 'חדשים ראשון',
-    date_asc: 'ישנים ראשון',
-    name_asc: 'שם א-ת',
-    name_desc: 'שם ת-א',
-    classification_asc: 'סיווג א-ת',
+  const sortByLabels: Record<ClientFilterState["sortBy"], string> = {
+    date_desc: "חדשים ראשון",
+    date_asc: "ישנים ראשון",
+    name_asc: "שם א-ת",
+    name_desc: "שם ת-א",
+    classification_asc: "סיווג א-ת",
   };
 
-  const filteredTags = allTags.filter(tag => 
-    tag.toLowerCase().includes(tagSearch.toLowerCase())
+  const filteredTags = allTags.filter((tag) =>
+    tag.toLowerCase().includes(tagSearch.toLowerCase()),
   );
 
   return (
-    <div 
+    <div
       dir="rtl"
       className="bg-white rounded-xl border-2 border-[#d4a843] p-3 mb-4"
     >
@@ -240,18 +255,14 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-[220px] p-0" 
-            dir="rtl" 
-            align="end"
-          >
+          <PopoverContent className="w-[220px] p-0" dir="rtl" align="end">
             <div className="p-3 border-b">
               <div className="flex flex-row-reverse items-center gap-2">
                 <ArrowUpDown className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">מיין לפי</h3>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-6 w-6 ml-auto"
                   onClick={() => setSortDialogOpen(false)}
                 >
@@ -260,7 +271,12 @@ export function ClientsFilterStrip({
               </div>
             </div>
             <div className="p-2 space-y-1">
-              {(Object.entries(sortByLabels) as [ClientFilterState['sortBy'], string][]).map(([value, label]) => (
+              {(
+                Object.entries(sortByLabels) as [
+                  ClientFilterState["sortBy"],
+                  string,
+                ][]
+              ).map(([value, label]) => (
                 <Button
                   key={value}
                   variant={filters.sortBy === value ? "default" : "ghost"}
@@ -270,7 +286,7 @@ export function ClientsFilterStrip({
                     setSortDialogOpen(false);
                   }}
                 >
-                  {value.includes('date') ? (
+                  {value.includes("date") ? (
                     <CalendarDays className="h-4 w-4" />
                   ) : (
                     <SortAsc className="h-4 w-4" />
@@ -283,31 +299,34 @@ export function ClientsFilterStrip({
         </Popover>
 
         {/* Categories Filter */}
-        <Popover open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
+        <Popover
+          open={categoriesDialogOpen}
+          onOpenChange={setCategoriesDialogOpen}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               size="sm"
               className={cn(
                 "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-                filters.categories.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+                filters.categories.length > 0 &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
               )}
             >
               <FolderOpen className="h-4 w-4" />
               קטגוריות
               {filters.categories.length > 0 && (
-                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
+                <Badge
+                  variant="secondary"
+                  className="mr-1 bg-accent text-accent-foreground"
+                >
                   {filters.categories.length}
                 </Badge>
               )}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-[300px] p-0" 
-            dir="rtl" 
-            align="end"
-          >
+          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <FolderOpen className="h-5 w-5 text-primary" />
@@ -319,15 +338,15 @@ export function ClientsFilterStrip({
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: Open add category dialog
-                    console.log('Add category');
+                    console.log("Add category");
                   }}
                   title="הוסף קטגוריה"
                 >
                   <Plus className="h-4 w-4 text-primary" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-6 w-6"
                   onClick={() => setCategoriesDialogOpen(false)}
                 >
@@ -354,7 +373,7 @@ export function ClientsFilterStrip({
                         "group flex flex-row-reverse items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
                         filters.categories.includes(category.id)
                           ? "bg-primary/10 border-primary"
-                          : "bg-background border-border hover:border-primary/50"
+                          : "bg-background border-border hover:border-primary/50",
                       )}
                     >
                       <Checkbox
@@ -362,13 +381,15 @@ export function ClientsFilterStrip({
                         onCheckedChange={() => toggleCategory(category.id)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div 
+                      <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-white flex-shrink-0"
                         style={{ backgroundColor: category.color }}
                       >
-                        {iconMap[category.icon] || <FolderOpen className="h-3 w-3" />}
+                        {iconMap[category.icon] || (
+                          <FolderOpen className="h-3 w-3" />
+                        )}
                       </div>
-                      <button 
+                      <button
                         className="font-medium flex-1 text-right cursor-pointer bg-transparent border-0 p-0"
                         onClick={() => toggleCategory(category.id)}
                         type="button"
@@ -383,7 +404,7 @@ export function ClientsFilterStrip({
                           onClick={(e) => {
                             e.stopPropagation();
                             // TODO: Edit category
-                            console.log('Edit category:', category.id);
+                            console.log("Edit category:", category.id);
                           }}
                           title="ערוך קטגוריה"
                         >
@@ -396,7 +417,7 @@ export function ClientsFilterStrip({
                           onClick={(e) => {
                             e.stopPropagation();
                             // TODO: Delete category
-                            console.log('Delete category:', category.id);
+                            console.log("Delete category:", category.id);
                           }}
                           title="מחק קטגוריה"
                         >
@@ -419,31 +440,31 @@ export function ClientsFilterStrip({
               size="sm"
               className={cn(
                 "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-                filters.tags.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+                filters.tags.length > 0 &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
               )}
             >
               <Tag className="h-4 w-4" />
               תגיות
               {filters.tags.length > 0 && (
-                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
+                <Badge
+                  variant="secondary"
+                  className="mr-1 bg-accent text-accent-foreground"
+                >
                   {filters.tags.length}
                 </Badge>
               )}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-[300px] p-0" 
-            dir="rtl" 
-            align="end"
-          >
+          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Tag className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי תגיות</h3>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-6 w-6 ml-auto"
                   onClick={() => setTagsDialogOpen(false)}
                 >
@@ -466,18 +487,20 @@ export function ClientsFilterStrip({
               <div className="flex flex-wrap gap-2">
                 {filteredTags.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 w-full">
-                    {allTags.length === 0 ? 'אין תגיות' : 'לא נמצאו תגיות'}
+                    {allTags.length === 0 ? "אין תגיות" : "לא נמצאו תגיות"}
                   </p>
                 ) : (
                   filteredTags.map((tag) => (
                     <Badge
                       key={tag}
-                      variant={filters.tags.includes(tag) ? "default" : "outline"}
+                      variant={
+                        filters.tags.includes(tag) ? "default" : "outline"
+                      }
                       className={cn(
                         "cursor-pointer transition-all",
-                        filters.tags.includes(tag) 
-                          ? "bg-primary text-primary-foreground" 
-                          : "hover:bg-primary/10"
+                        filters.tags.includes(tag)
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-primary/10",
                       )}
                       onClick={() => toggleTag(tag)}
                     >
@@ -499,31 +522,31 @@ export function ClientsFilterStrip({
               size="sm"
               className={cn(
                 "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-                filters.stages.length > 0 && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+                filters.stages.length > 0 &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
               )}
             >
               <Layers className="h-4 w-4" />
               שלבים
               {filters.stages.length > 0 && (
-                <Badge variant="secondary" className="mr-1 bg-accent text-accent-foreground">
+                <Badge
+                  variant="secondary"
+                  className="mr-1 bg-accent text-accent-foreground"
+                >
                   {filters.stages.length}
                 </Badge>
               )}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-[350px] p-0" 
-            dir="rtl" 
-            align="end"
-          >
+          <PopoverContent className="w-[350px] p-0" dir="rtl" align="end">
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Layers className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי שלבים</h3>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-6 w-6 ml-auto"
                   onClick={() => setStagesDialogOpen(false)}
                 >
@@ -553,7 +576,7 @@ export function ClientsFilterStrip({
                         "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                         filters.stages.includes(stage.stage_name)
                           ? "bg-primary/10 border-primary"
-                          : "bg-background border-border hover:border-primary/50"
+                          : "bg-background border-border hover:border-primary/50",
                       )}
                       onClick={() => toggleStage(stage.stage_name)}
                     >
@@ -580,7 +603,8 @@ export function ClientsFilterStrip({
               size="sm"
               className={cn(
                 "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-                filters.dateFilter !== 'all' && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+                filters.dateFilter !== "all" &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
               )}
             >
               <CalendarDays className="h-4 w-4" />
@@ -588,18 +612,14 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent 
-            className="w-[280px] p-0" 
-            dir="rtl" 
-            align="end"
-          >
+          <PopoverContent className="w-[280px] p-0" dir="rtl" align="end">
             <div className="p-3 border-b">
               <div className="flex flex-row-reverse items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">סינון לפי תאריך יצירה</h3>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-6 w-6 ml-auto"
                   onClick={() => setDateDialogOpen(false)}
                 >
@@ -614,7 +634,7 @@ export function ClientsFilterStrip({
                   variant={filters.dateFilter === value ? "default" : "outline"}
                   className="w-full"
                   onClick={() => {
-                    setDateFilter(value as ClientFilterState['dateFilter']);
+                    setDateFilter(value as ClientFilterState["dateFilter"]);
                   }}
                 >
                   {label}
@@ -631,7 +651,8 @@ export function ClientsFilterStrip({
           onClick={toggleHasReminders}
           className={cn(
             "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-            filters.hasReminders === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+            filters.hasReminders === true &&
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
           )}
         >
           <Bell className="h-4 w-4" />
@@ -648,7 +669,8 @@ export function ClientsFilterStrip({
           onClick={toggleHasTasks}
           className={cn(
             "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-            filters.hasTasks === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+            filters.hasTasks === true &&
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
           )}
         >
           <CheckSquare className="h-4 w-4" />
@@ -665,7 +687,8 @@ export function ClientsFilterStrip({
           onClick={toggleHasMeetings}
           className={cn(
             "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
-            filters.hasMeetings === true && "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]"
+            filters.hasMeetings === true &&
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
           )}
         >
           <Users className="h-4 w-4" />
@@ -707,13 +730,19 @@ export function ClientsFilterStrip({
               {filters.stages.length} שלבים נבחרו
             </Badge>
           )}
-          {filters.dateFilter !== 'all' && (
-            <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+          {filters.dateFilter !== "all" && (
+            <Badge
+              variant="secondary"
+              className="bg-purple-100 text-purple-700"
+            >
               {dateFilterLabels[filters.dateFilter]}
             </Badge>
           )}
           {filters.hasReminders === true && (
-            <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+            <Badge
+              variant="secondary"
+              className="bg-orange-100 text-orange-700"
+            >
               עם תזכורות
             </Badge>
           )}

@@ -578,7 +578,9 @@ export default function Clients() {
       // Fetch all filter data in parallel
       const [stagesRes, remindersRes, tasksRes, meetingsRes] =
         await Promise.all([
-          supabase.from("client_stages").select("client_id, stage_id, stage_name"),
+          supabase
+            .from("client_stages")
+            .select("client_id, stage_id, stage_name"),
           supabase
             .from("reminders")
             .select("entity_id")

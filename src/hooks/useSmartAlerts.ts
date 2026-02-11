@@ -10,7 +10,16 @@ import { useAuth } from "@/hooks/useAuth";
 export interface SmartAlert {
   id: string;
   type: "warning" | "danger" | "info" | "success";
-  category: "client" | "project" | "payment" | "contract" | "task" | "meeting" | "stage" | "deadline" | "reminder";
+  category:
+    | "client"
+    | "project"
+    | "payment"
+    | "contract"
+    | "task"
+    | "meeting"
+    | "stage"
+    | "deadline"
+    | "reminder";
   title: string;
   message: string;
   actionLabel?: string;
@@ -31,7 +40,17 @@ export interface AlertSettings {
 }
 
 export const DEFAULT_ALERT_SETTINGS: AlertSettings = {
-  enabledCategories: ['client', 'project', 'payment', 'contract', 'task', 'meeting', 'stage', 'deadline', 'reminder'],
+  enabledCategories: [
+    "client",
+    "project",
+    "payment",
+    "contract",
+    "task",
+    "meeting",
+    "stage",
+    "deadline",
+    "reminder",
+  ],
   enableBrowserNotifications: false,
   checkIntervalMinutes: 5,
   inactiveClientDays: 30,
@@ -50,12 +69,14 @@ export function useSmartAlerts() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem('dismissed-alerts');
+    const saved = localStorage.getItem("dismissed-alerts");
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
   const [settings, setSettings] = useState<AlertSettings>(() => {
-    const saved = localStorage.getItem('alert-settings');
-    return saved ? { ...DEFAULT_ALERT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_ALERT_SETTINGS;
+    const saved = localStorage.getItem("alert-settings");
+    return saved
+      ? { ...DEFAULT_ALERT_SETTINGS, ...JSON.parse(saved) }
+      : DEFAULT_ALERT_SETTINGS;
   });
   const [stats, setStats] = useState<AlertStats>({
     total: 0,
@@ -68,28 +89,28 @@ export function useSmartAlerts() {
 
   // פונקציה לעדכון הגדרות
   const updateSettings = useCallback((newSettings: Partial<AlertSettings>) => {
-    setSettings(prev => {
+    setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
-      localStorage.setItem('alert-settings', JSON.stringify(updated));
+      localStorage.setItem("alert-settings", JSON.stringify(updated));
       return updated;
     });
   }, []);
 
   // פונקציה לסימון התראה כנקראה
   const dismissAlert = useCallback((alertId: string) => {
-    setDismissedAlerts(prev => {
+    setDismissedAlerts((prev) => {
       const updated = new Set(prev);
       updated.add(alertId);
-      localStorage.setItem('dismissed-alerts', JSON.stringify([...updated]));
+      localStorage.setItem("dismissed-alerts", JSON.stringify([...updated]));
       return updated;
     });
-    setAlerts(prev => prev.filter(a => a.id !== alertId));
+    setAlerts((prev) => prev.filter((a) => a.id !== alertId));
   }, []);
 
   // פונקציה לניקוי כל ההתראות שנסגרו
   const clearDismissedAlerts = useCallback(() => {
     setDismissedAlerts(new Set());
-    localStorage.removeItem('dismissed-alerts');
+    localStorage.removeItem("dismissed-alerts");
   }, []);
 
   /**
@@ -323,7 +344,7 @@ export function useSmartAlerts() {
       type: "warning" as const,
       category: "stage" as const,
       title: "שלב תקוע",
-      message: `${stage.stage_name} של ${(stage as any).clients?.name || 'לקוח'} לא עודכן 14+ ימים`,
+      message: `${stage.stage_name} של ${(stage as any).clients?.name || "לקוח"} לא עודכן 14+ ימים`,
       actionLabel: "פתח לקוח",
       actionUrl: `/clients/${stage.client_id}`,
       data: stage,
@@ -349,8 +370,11 @@ export function useSmartAlerts() {
       category: "reminder" as const,
       title: "תזכורת",
       message: reminder.title,
-      actionLabel: reminder.entity_type === 'client' ? "פתח לקוח" : "צפה",
-      actionUrl: reminder.entity_type === 'client' ? `/clients/${reminder.entity_id}` : undefined,
+      actionLabel: reminder.entity_type === "client" ? "פתח לקוח" : "צפה",
+      actionUrl:
+        reminder.entity_type === "client"
+          ? `/clients/${reminder.entity_id}`
+          : undefined,
       data: reminder,
       createdAt: new Date(reminder.remind_at),
       priority: 2,
@@ -360,7 +384,9 @@ export function useSmartAlerts() {
   /**
    * בדיקת דדליינים קרובים (7 ימים)
    */
-  const checkUpcomingDeadlines = useCallback(async (): Promise<SmartAlert[]> => {
+  const checkUpcomingDeadlines = useCallback(async (): Promise<
+    SmartAlert[]
+  > => {
     const sevenDaysFromNow = new Date();
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
     const today = new Date();
@@ -375,13 +401,21 @@ export function useSmartAlerts() {
       .limit(20);
 
     return (deadlines || []).map((deadline) => {
-      const daysUntil = Math.ceil((new Date(deadline.deadline_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const daysUntil = Math.ceil(
+        (new Date(deadline.deadline_date).getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
       return {
         id: `deadline-${deadline.id}`,
-        type: daysUntil <= 2 ? "danger" as const : "warning" as const,
+        type: daysUntil <= 2 ? ("danger" as const) : ("warning" as const),
         category: "deadline" as const,
-        title: daysUntil === 0 ? "דדליין היום!" : daysUntil === 1 ? "דדליין מחר!" : `דדליין בעוד ${daysUntil} ימים`,
-        message: `${deadline.title} - ${(deadline as any).clients?.name || 'לקוח'}`,
+        title:
+          daysUntil === 0
+            ? "דדליין היום!"
+            : daysUntil === 1
+              ? "דדליין מחר!"
+              : `דדליין בעוד ${daysUntil} ימים`,
+        message: `${deadline.title} - ${(deadline as any).clients?.name || "לקוח"}`,
         actionLabel: "פתח לקוח",
         actionUrl: `/clients/${deadline.client_id}`,
         data: deadline,
@@ -394,30 +428,38 @@ export function useSmartAlerts() {
   /**
    * בדיקת שלבים ללא משימות
    */
-  const checkStagesWithoutTasks = useCallback(async (): Promise<SmartAlert[]> => {
+  const checkStagesWithoutTasks = useCallback(async (): Promise<
+    SmartAlert[]
+  > => {
     const { data: stages } = await supabase
       .from("client_stages")
-      .select(`
+      .select(
+        `
         id, 
         stage_name, 
         client_id, 
         clients(name),
         client_stage_tasks(id)
-      `)
+      `,
+      )
       .limit(50);
 
-    const emptyStages = (stages || []).filter(s => !(s as any).client_stage_tasks || (s as any).client_stage_tasks.length === 0);
-    
+    const emptyStages = (stages || []).filter(
+      (s) =>
+        !(s as any).client_stage_tasks ||
+        (s as any).client_stage_tasks.length === 0,
+    );
+
     // Group by client to avoid too many alerts
     const clientsMap = new Map<string, { clientName: string; count: number }>();
-    emptyStages.forEach(stage => {
+    emptyStages.forEach((stage) => {
       const existing = clientsMap.get(stage.client_id);
       if (existing) {
         existing.count++;
       } else {
         clientsMap.set(stage.client_id, {
-          clientName: (stage as any).clients?.name || 'לקוח',
-          count: 1
+          clientName: (stage as any).clients?.name || "לקוח",
+          count: 1,
         });
       }
     });
@@ -460,17 +502,35 @@ export function useSmartAlerts() {
         upcomingDeadlines,
         stagesWithoutTasks,
       ] = await Promise.all([
-        settings.enabledCategories.includes('client') ? checkInactiveClients() : [],
-        settings.enabledCategories.includes('project') ? checkProjectBudgets() : [],
-        settings.enabledCategories.includes('contract') ? checkExpiringContracts() : [],
-        settings.enabledCategories.includes('payment') ? checkOverduePayments() : [],
-        settings.enabledCategories.includes('task') ? checkOverdueTasks() : [],
-        settings.enabledCategories.includes('meeting') ? checkTodayMeetings() : [],
-        settings.enabledCategories.includes('client') ? checkPendingLeads() : [],
-        settings.enabledCategories.includes('stage') ? checkStuckStages() : [],
-        settings.enabledCategories.includes('reminder') ? checkUnreadReminders() : [],
-        settings.enabledCategories.includes('deadline') ? checkUpcomingDeadlines() : [],
-        settings.enabledCategories.includes('stage') ? checkStagesWithoutTasks() : [],
+        settings.enabledCategories.includes("client")
+          ? checkInactiveClients()
+          : [],
+        settings.enabledCategories.includes("project")
+          ? checkProjectBudgets()
+          : [],
+        settings.enabledCategories.includes("contract")
+          ? checkExpiringContracts()
+          : [],
+        settings.enabledCategories.includes("payment")
+          ? checkOverduePayments()
+          : [],
+        settings.enabledCategories.includes("task") ? checkOverdueTasks() : [],
+        settings.enabledCategories.includes("meeting")
+          ? checkTodayMeetings()
+          : [],
+        settings.enabledCategories.includes("client")
+          ? checkPendingLeads()
+          : [],
+        settings.enabledCategories.includes("stage") ? checkStuckStages() : [],
+        settings.enabledCategories.includes("reminder")
+          ? checkUnreadReminders()
+          : [],
+        settings.enabledCategories.includes("deadline")
+          ? checkUpcomingDeadlines()
+          : [],
+        settings.enabledCategories.includes("stage")
+          ? checkStagesWithoutTasks()
+          : [],
       ]);
 
       let allAlerts = [
@@ -488,7 +548,7 @@ export function useSmartAlerts() {
       ];
 
       // Filter out dismissed alerts
-      allAlerts = allAlerts.filter(alert => !dismissedAlerts.has(alert.id));
+      allAlerts = allAlerts.filter((alert) => !dismissedAlerts.has(alert.id));
 
       // מיון לפי עדיפות ותאריך
       allAlerts.sort((a, b) => {
