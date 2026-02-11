@@ -327,23 +327,99 @@ function ProjectDetailsEditor({ details, onUpdate, clients, onOpenClientSelector
   );
 }
 
-function EditableItem({ item, onUpdate, onDelete }: { item: TemplateStageItem; onUpdate: (text: string) => void; onDelete: () => void }) {
+function EditableItem({ item, onUpdate, onDelete }: { item: TemplateStageItem; onUpdate: (item: TemplateStageItem) => void; onDelete: () => void }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [showFormatting, setShowFormatting] = useState(false);
   const [text, setText] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (isEditing && inputRef.current) inputRef.current.focus(); }, [isEditing]);
-  const handleSave = () => { onUpdate(text); setIsEditing(false); };
+  const handleSave = () => { onUpdate({ ...item, text }); setIsEditing(false); };
+  
+  const updateStyle = (updates: Partial<TemplateStageItem>) => {
+    onUpdate({ ...item, ...updates });
+  };
+
+  const quickColors = ['#000000', '#374151', '#6b7280', '#1e40af', '#b91c1c', '#15803d', '#854d0e', '#7e22ce'];
+
   if (isEditing) return (
-    <div className="flex items-center gap-2 py-2 px-3 bg-yellow-50 border border-yellow-300 rounded-lg">
-      <Input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSave()} onBlur={handleSave} className="flex-1 h-8 text-sm" dir="rtl" />
-      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}><X className="h-4 w-4" /></Button>
+    <div className="py-2 px-3 bg-yellow-50 border border-yellow-300 rounded-lg space-y-2">
+      <div className="flex items-center gap-2">
+        <Input ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSave()} className="flex-1 h-8 text-sm" dir="rtl" 
+          style={{
+            fontFamily: item.fontFamily || 'Heebo',
+            fontWeight: item.isBold ? 'bold' : 'normal',
+            fontStyle: item.isItalic ? 'italic' : 'normal',
+            textDecoration: item.isUnderline ? 'underline' : 'none',
+            textAlign: item.textAlign || 'right',
+            fontSize: item.fontSize ? `${item.fontSize}px` : undefined,
+            color: item.fontColor || undefined,
+          }}
+        />
+        <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}><X className="h-4 w-4" /></Button>
+      </div>
+      {/* Formatting toolbar */}
+      <div className="flex items-center gap-1 flex-wrap text-xs">
+        <Label className="text-xs">גופן:</Label>
+        <Select value={item.fontFamily || 'Heebo'} onValueChange={(v) => updateStyle({ fontFamily: v })}>
+          <SelectTrigger className="w-24 h-6 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {HEBREW_FONTS.map(f => <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <Label className="text-xs">גודל:</Label>
+        <Select value={String(item.fontSize || 14)} onValueChange={(v) => updateStyle({ fontSize: parseInt(v) })}>
+          <SelectTrigger className="w-14 h-6 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[10, 12, 14, 16, 18, 20, 24].map(s => <SelectItem key={s} value={String(s)}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="icon" variant="ghost" className="h-6 w-6" title="צבע טקסט">
+              <span className="w-4 h-4 rounded border" style={{ backgroundColor: item.fontColor || '#000000' }} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-2">
+            <div className="flex gap-1">
+              {quickColors.map(c => (
+                <button key={c} className="w-6 h-6 rounded border hover:scale-110 transition-transform" style={{ backgroundColor: c }} onClick={() => updateStyle({ fontColor: c === '#000000' ? undefined : c })} />
+              ))}
+              <Input type="color" value={item.fontColor || '#000000'} onChange={(e) => updateStyle({ fontColor: e.target.value })} className="w-7 h-6 p-0 border-0 cursor-pointer" />
+            </div>
+          </PopoverContent>
+        </Popover>
+        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <Button size="icon" variant={item.isBold ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ isBold: !item.isBold })}><Bold className="h-3 w-3" /></Button>
+        <Button size="icon" variant={item.isItalic ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ isItalic: !item.isItalic })}><Italic className="h-3 w-3" /></Button>
+        <Button size="icon" variant={item.isUnderline ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ isUnderline: !item.isUnderline })}><Underline className="h-3 w-3" /></Button>
+        <div className="w-px h-4 bg-gray-300 mx-1" />
+        <Button size="icon" variant={item.textAlign === 'right' || !item.textAlign ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ textAlign: 'right' })}><AlignRight className="h-3 w-3" /></Button>
+        <Button size="icon" variant={item.textAlign === 'center' ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ textAlign: 'center' })}><AlignCenter className="h-3 w-3" /></Button>
+        <Button size="icon" variant={item.textAlign === 'left' ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => updateStyle({ textAlign: 'left' })}><AlignLeft className="h-3 w-3" /></Button>
+      </div>
     </div>
   );
   return (
     <div className="flex items-center gap-2 py-2 group hover:bg-gray-50 rounded-lg px-1">
       <GripVertical className="h-4 w-4 text-gray-300 cursor-grab" />
       <span className="text-[#DAA520] text-lg">✓</span>
-      <span className="flex-1 text-gray-700 cursor-pointer hover:text-[#B8860B]" onClick={() => setIsEditing(true)}>{item.text}</span>
+      <span 
+        className="flex-1 cursor-pointer hover:text-[#B8860B]" 
+        onClick={() => setIsEditing(true)}
+        style={{
+          fontFamily: item.fontFamily || 'Heebo',
+          fontWeight: item.isBold ? 'bold' : 'normal',
+          fontStyle: item.isItalic ? 'italic' : 'normal',
+          textDecoration: item.isUnderline ? 'underline' : 'none',
+          textAlign: item.textAlign || 'right',
+          fontSize: item.fontSize ? `${item.fontSize}px` : undefined,
+          color: item.fontColor || '#374151',
+        }}
+      >
+        {item.text}
+      </span>
       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setIsEditing(true)}><Pencil className="h-3 w-3" /></Button>
         <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={onDelete}><Trash2 className="h-3 w-3" /></Button>
@@ -356,7 +432,7 @@ function StageEditor({ stage, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [stageName, setStageName] = useState(stage.name);
-  const updateItem = (itemId: string, text: string) => { onUpdate({ ...stage, items: stage.items.map(item => item.id === itemId ? { ...item, text } : item) }); };
+  const updateItem = (itemId: string, updatedItem: TemplateStageItem) => { onUpdate({ ...stage, items: stage.items.map(item => item.id === itemId ? updatedItem : item) }); };
   const deleteItem = (itemId: string) => { onUpdate({ ...stage, items: stage.items.filter(item => item.id !== itemId) }); };
   const addItem = () => { onUpdate({ ...stage, items: [...stage.items, { id: Date.now().toString(), text: 'פריט חדש' }] }); };
   const saveNameChange = () => { onUpdate({ ...stage, name: stageName }); setIsEditingName(false); };
@@ -380,7 +456,7 @@ function StageEditor({ stage, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveD
       </div>
       {isExpanded && (
         <div className="border-t border-gray-100">
-          <div className="p-4 space-y-1">{stage.items.map((item) => (<EditableItem key={item.id} item={item} onUpdate={(text) => updateItem(item.id, text)} onDelete={() => deleteItem(item.id)} />))}</div>
+          <div className="p-4 space-y-1">{stage.items.map((item) => (<EditableItem key={item.id} item={item} onUpdate={(updatedItem) => updateItem(item.id, updatedItem)} onDelete={() => deleteItem(item.id)} />))}</div>
           <div className="px-4 pb-4"><Button variant="ghost" size="sm" className="text-[#B8860B] hover:bg-[#DAA520]/10 w-full justify-center" onClick={addItem}><Plus className="h-4 w-4 ml-1" />הוסף פריט</Button></div>
         </div>
       )}
@@ -807,7 +883,16 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
       <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #e0e0e0; border-radius: ${designSettings.borderRadius}px;">
         <h3 style="color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${stage.icon || '📋'} ${stage.name}</h3>
         <ul style="list-style: none; padding: 0;">
-          ${stage.items.map(item => `<li style="padding: 5px 0; color: #333;">✓ ${item.text}</li>`).join('')}
+          ${stage.items.map(item => {
+            const itemFont = item.fontFamily || designSettings.fontFamily || 'Heebo';
+            const itemSize = item.fontSize || 14;
+            const itemColor = item.fontColor || '#333';
+            const itemBold = item.isBold ? 'font-weight: bold;' : '';
+            const itemItalic = item.isItalic ? 'font-style: italic;' : '';
+            const itemUnderline = item.isUnderline ? 'text-decoration: underline;' : '';
+            const itemAlign = item.textAlign ? `text-align: ${item.textAlign};` : '';
+            return `<li style="padding: 5px 0; color: ${itemColor}; font-family: '${itemFont}', sans-serif; font-size: ${itemSize}px; ${itemBold} ${itemItalic} ${itemUnderline} ${itemAlign}">✓ ${item.text}</li>`;
+          }).join('')}
         </ul>
       </div>
     `).join('');

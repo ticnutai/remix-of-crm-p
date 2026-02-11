@@ -21,6 +21,14 @@ export interface TemplateStageItem {
   id: string;
   text: string;
   isEditing?: boolean;
+  // Text formatting options
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+  isBold?: boolean;
+  isItalic?: boolean;
+  isUnderline?: boolean;
+  textAlign?: 'right' | 'center' | 'left';
 }
 
 export interface PaymentStep {
