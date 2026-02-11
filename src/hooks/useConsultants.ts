@@ -31,7 +31,7 @@ export interface TaskConsultant {
 }
 
 // Keywords to detect in task titles
-export const CONSULTANT_KEYWORDS = ['יועץ', 'מהנדס', 'אדריכל'];
+export const CONSULTANT_KEYWORDS = ['יועץ', 'מהנדס', 'אדריכל', 'מודד'];
 
 // Check if a task title contains consultant keywords
 export function detectConsultantKeywords(title: string): { keyword: string; context: string }[] {
