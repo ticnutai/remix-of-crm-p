@@ -1,19 +1,25 @@
 // Settings Page - tenarch CRM Pro
-import React, { useState, useEffect, useCallback } from 'react';
-import { AppLayout } from '@/components/layout';
-import { useAuth } from '@/hooks/useAuth';
-import { useTheme } from '@/hooks/useTheme';
-import { useUserPreferences } from '@/hooks/useUserPreferences';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
+import React, { useState, useEffect, useCallback } from "react";
+import { AppLayout } from "@/components/layout";
+import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -21,15 +27,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -37,7 +43,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   User,
   Calendar,
@@ -64,39 +70,41 @@ import {
   Contact,
   Mail,
   BellRing,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ActivityLogTab } from '@/components/settings/ActivityLogTab';
-import { ApiKeysManager } from '@/components/settings/ApiKeysManager';
-import { ThemeSettings } from '@/components/settings/ThemeSettings';
-import { AdvancedThemeSettings } from '@/components/settings/AdvancedThemeSettings';
-import { TypographySettings } from '@/components/settings/TypographySettings';
-import { AdvancedNotificationsSettings } from '@/components/settings/AdvancedNotificationsSettings';
-import { GoogleCalendarSettingsMulti } from '@/components/settings/GoogleCalendarSettingsMulti';
-import { GoogleContactsSettings } from '@/components/settings/GoogleContactsSettings';
-import { DataCleanupTab } from '@/components/settings/DataCleanupTab';
-import { DeveloperSettings } from '@/components/settings/DeveloperSettings';
-import { EmailTemplateManager } from '@/components/settings/EmailTemplateManager';
-import { RateLimitMonitor } from '@/components/settings/RateLimitMonitor';
-import { EmailSignatureManager } from '@/components/settings/EmailSignatureManager';
-import { usePushNotifications } from '@/lib/push-notifications';
-import { SignaturePad, SignatureDisplay, useSignature } from '@/components/signature';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ActivityLogTab } from "@/components/settings/ActivityLogTab";
+import { ApiKeysManager } from "@/components/settings/ApiKeysManager";
+import { ThemeSettings } from "@/components/settings/ThemeSettings";
+import { AdvancedThemeSettings } from "@/components/settings/AdvancedThemeSettings";
+import { TypographySettings } from "@/components/settings/TypographySettings";
+import { AdvancedNotificationsSettings } from "@/components/settings/AdvancedNotificationsSettings";
+import { GoogleCalendarSettingsMulti } from "@/components/settings/GoogleCalendarSettingsMulti";
+import { GoogleContactsSettings } from "@/components/settings/GoogleContactsSettings";
+import { DataCleanupTab } from "@/components/settings/DataCleanupTab";
+import { DeveloperSettings } from "@/components/settings/DeveloperSettings";
+import { EmailTemplateManager } from "@/components/settings/EmailTemplateManager";
+import { RateLimitMonitor } from "@/components/settings/RateLimitMonitor";
+import { EmailSignatureManager } from "@/components/settings/EmailSignatureManager";
+import { usePushNotifications } from "@/lib/push-notifications";
+import {
+  SignaturePad,
+  SignatureDisplay,
+  useSignature,
+} from "@/components/signature";
 
 interface UserWithRole {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'manager' | 'employee';
+  role: "admin" | "manager" | "employee";
 }
 
 // Push Notifications Settings Component
 function PushNotificationsSettings() {
   const { user } = useAuth();
-  const { 
-    isSupported, 
-    subscribe, 
-    unsubscribe 
-  } = usePushNotifications(user?.id);
+  const { isSupported, subscribe, unsubscribe } = usePushNotifications(
+    user?.id,
+  );
   const { toast } = useToast();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -107,19 +115,19 @@ function PushNotificationsSettings() {
       if (isSubscribed) {
         await unsubscribe();
         setIsSubscribed(false);
-        toast({ title: 'התראות Push כובו' });
+        toast({ title: "התראות Push כובו" });
       } else {
         const result = await subscribe();
         if (result) {
           setIsSubscribed(true);
-          toast({ title: 'התראות Push הופעלו בהצלחה' });
+          toast({ title: "התראות Push הופעלו בהצלחה" });
         }
       }
     } catch (error) {
-      toast({ 
-        title: 'שגיאה', 
-        description: 'לא הצלחנו לעדכן את הגדרות ההתראות',
-        variant: 'destructive'
+      toast({
+        title: "שגיאה",
+        description: "לא הצלחנו לעדכן את הגדרות ההתראות",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -169,7 +177,7 @@ function PushNotificationsSettings() {
             disabled={isLoading}
           />
         </div>
-        
+
         {isSubscribed && (
           <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg text-green-700 dark:text-green-300 text-sm">
             <Check className="inline h-4 w-4 ml-1" />
@@ -182,75 +190,84 @@ function PushNotificationsSettings() {
 }
 
 export default function Settings() {
-  const { user, profile, roles, isAdmin, updateProfile, updatePassword } = useAuth();
+  const { user, profile, roles, isAdmin, updateProfile, updatePassword } =
+    useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const { preferences, loading: prefsLoading, saving, savePreferences, resetToDefaults } = useUserPreferences();
+  const {
+    preferences,
+    loading: prefsLoading,
+    saving,
+    savePreferences,
+    resetToDefaults,
+  } = useUserPreferences();
   const { toast } = useToast();
-  
+
   // Profile form state
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [department, setDepartment] = useState('');
-  const [position, setPosition] = useState('');
-  const [hourlyRate, setHourlyRate] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [department, setDepartment] = useState("");
+  const [position, setPosition] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Password change state
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Admin password reset state
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
-  const [selectedUserForReset, setSelectedUserForReset] = useState<UserWithRole | null>(null);
-  const [adminResetPassword, setAdminResetPassword] = useState('');
-  const [adminResetPasswordConfirm, setAdminResetPasswordConfirm] = useState('');
+  const [selectedUserForReset, setSelectedUserForReset] =
+    useState<UserWithRole | null>(null);
+  const [adminResetPassword, setAdminResetPassword] = useState("");
+  const [adminResetPasswordConfirm, setAdminResetPasswordConfirm] =
+    useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  
+
   // VAT settings state
-  const [vatRate, setVatRate] = useState('18');
+  const [vatRate, setVatRate] = useState("18");
   const [isSavingVat, setIsSavingVat] = useState(false);
-  
+
   // Users & Roles state
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  
+
   // API Keys access state
   const [showApiKeysCodeInput, setShowApiKeysCodeInput] = useState(false);
-  const [apiKeysCode, setApiKeysCode] = useState('');
+  const [apiKeysCode, setApiKeysCode] = useState("");
   const [isApiKeysUnlocked, setIsApiKeysUnlocked] = useState(false);
-  const [codeError, setCodeError] = useState('');
-  
-  const API_ACCESS_CODE = '543211';
+  const [codeError, setCodeError] = useState("");
+
+  const API_ACCESS_CODE = "543211";
 
   const getTabFromUrl = () => {
-    const tab = new URLSearchParams(window.location.search).get('tab');
-    return tab || 'profile';
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    return tab || "profile";
   };
 
   const [activeTab, setActiveTab] = useState(getTabFromUrl);
 
   useEffect(() => {
     const onPopState = () => setActiveTab(getTabFromUrl());
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    window.history.replaceState({}, '', url.toString());
+    url.searchParams.set("tab", tab);
+    window.history.replaceState({}, "", url.toString());
   };
 
   // Initialize form with profile data
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
-      setDepartment(profile.department || '');
-      setPosition(profile.position || '');
-      setHourlyRate(profile.hourly_rate?.toString() || '');
+      setFullName(profile.full_name || "");
+      setPhone(profile.phone || "");
+      setDepartment(profile.department || "");
+      setPosition(profile.position || "");
+      setHourlyRate(profile.hourly_rate?.toString() || "");
     }
   }, [profile]);
 
@@ -259,12 +276,12 @@ export default function Settings() {
     const fetchVatSettings = async () => {
       if (!user) return;
       const { data } = await supabase
-        .from('app_settings')
-        .select('vat_rate')
-        .eq('user_id', user.id)
+        .from("app_settings")
+        .select("vat_rate")
+        .eq("user_id", user.id)
         .maybeSingle();
       if (data) {
-        setVatRate(data.vat_rate?.toString() || '18');
+        setVatRate(data.vat_rate?.toString() || "18");
       }
     };
     fetchVatSettings();
@@ -275,31 +292,32 @@ export default function Settings() {
     setIsLoadingUsers(true);
     try {
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .order('full_name');
+        .from("profiles")
+        .select("id, email, full_name")
+        .order("full_name");
 
       if (profilesError) throw profilesError;
 
       const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
+        .from("user_roles")
+        .select("user_id, role");
 
       if (rolesError) throw rolesError;
 
-      const usersWithRoles: UserWithRole[] = (profiles || []).map(p => {
-        const roleEntry = userRoles?.find(r => r.user_id === p.id);
+      const usersWithRoles: UserWithRole[] = (profiles || []).map((p) => {
+        const roleEntry = userRoles?.find((r) => r.user_id === p.id);
         return {
           id: p.id,
           email: p.email,
           full_name: p.full_name,
-          role: (roleEntry?.role as 'admin' | 'manager' | 'employee') || 'employee',
+          role:
+            (roleEntry?.role as "admin" | "manager" | "employee") || "employee",
         };
       });
 
       setUsers(usersWithRoles);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error("Error fetching users:", error);
     } finally {
       setIsLoadingUsers(false);
     }
@@ -325,14 +343,14 @@ export default function Settings() {
       if (error) throw error;
 
       toast({
-        title: 'הפרופיל עודכן',
-        description: 'הפרטים נשמרו בהצלחה',
+        title: "הפרופיל עודכן",
+        description: "הפרטים נשמרו בהצלחה",
       });
     } catch (error) {
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשמור את הפרופיל',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לשמור את הפרופיל",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -344,18 +362,18 @@ export default function Settings() {
 
     if (newPassword.length < 6) {
       toast({
-        title: 'סיסמה קצרה מדי',
-        description: 'סיסמה חייבת להכיל לפחות 6 תווים',
-        variant: 'destructive',
+        title: "סיסמה קצרה מדי",
+        description: "סיסמה חייבת להכיל לפחות 6 תווים",
+        variant: "destructive",
       });
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
       toast({
-        title: 'הסיסמאות אינן תואמות',
-        description: 'ודא/י שהזנת את אותה הסיסמה פעמיים',
-        variant: 'destructive',
+        title: "הסיסמאות אינן תואמות",
+        description: "ודא/י שהזנת את אותה הסיסמה פעמיים",
+        variant: "destructive",
       });
       return;
     }
@@ -365,24 +383,24 @@ export default function Settings() {
     setIsChangingPassword(false);
 
     if (error) {
-      const msg = error.message || 'שגיאה לא ידועה';
+      const msg = error.message || "שגיאה לא ידועה";
       let description = msg;
-      if (msg.includes('requires recent login')) {
-        description = 'מטעמי אבטחה צריך להתחבר מחדש ואז לנסות שוב.';
+      if (msg.includes("requires recent login")) {
+        description = "מטעמי אבטחה צריך להתחבר מחדש ואז לנסות שוב.";
       }
       toast({
-        title: 'שגיאה בעדכון סיסמה',
+        title: "שגיאה בעדכון סיסמה",
         description,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return;
     }
 
-    setNewPassword('');
-    setConfirmNewPassword('');
+    setNewPassword("");
+    setConfirmNewPassword("");
     toast({
-      title: 'הסיסמה עודכנה',
-      description: 'החלפת הסיסמה בוצעה בהצלחה',
+      title: "הסיסמה עודכנה",
+      description: "החלפת הסיסמה בוצעה בהצלחה",
     });
   };
 
@@ -391,19 +409,19 @@ export default function Settings() {
     setIsSavingVat(true);
     try {
       const { data: existing } = await supabase
-        .from('app_settings')
-        .select('id')
-        .eq('user_id', user.id)
+        .from("app_settings")
+        .select("id")
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (existing) {
         await supabase
-          .from('app_settings')
+          .from("app_settings")
           .update({ vat_rate: parseFloat(vatRate) || 18 })
-          .eq('user_id', user.id);
+          .eq("user_id", user.id);
       } else {
         await supabase
-          .from('app_settings')
+          .from("app_settings")
           .insert({ user_id: user.id, vat_rate: parseFloat(vatRate) || 18 });
       }
 
@@ -413,46 +431,49 @@ export default function Settings() {
       });
     } catch (error) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: 'לא ניתן לשמור את הגדרות המע"מ',
-        variant: 'destructive',
+        variant: "destructive",
       });
     } finally {
       setIsSavingVat(false);
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'manager' | 'employee') => {
+  const handleRoleChange = async (
+    userId: string,
+    newRole: "admin" | "manager" | "employee",
+  ) => {
     try {
       const { error } = await supabase
-        .from('user_roles')
+        .from("user_roles")
         .update({ role: newRole })
-        .eq('user_id', userId);
+        .eq("user_id", userId);
 
       if (error) throw error;
 
-      setUsers(prev => prev.map(u => 
-        u.id === userId ? { ...u, role: newRole } : u
-      ));
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
+      );
 
       toast({
-        title: 'התפקיד עודכן',
-        description: `התפקיד שונה ל-${newRole === 'admin' ? 'מנהל ראשי' : newRole === 'manager' ? 'מנהל' : 'עובד'}`,
+        title: "התפקיד עודכן",
+        description: `התפקיד שונה ל-${newRole === "admin" ? "מנהל ראשי" : newRole === "manager" ? "מנהל" : "עובד"}`,
       });
     } catch (error) {
-      console.error('Error updating role:', error);
+      console.error("Error updating role:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לעדכן את התפקיד',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את התפקיד",
+        variant: "destructive",
       });
     }
   };
 
   const handleOpenResetPasswordDialog = (userToReset: UserWithRole) => {
     setSelectedUserForReset(userToReset);
-    setAdminResetPassword('');
-    setAdminResetPasswordConfirm('');
+    setAdminResetPassword("");
+    setAdminResetPasswordConfirm("");
     setResetPasswordDialogOpen(true);
   };
 
@@ -461,18 +482,18 @@ export default function Settings() {
 
     if (adminResetPassword.length < 6) {
       toast({
-        title: 'סיסמה קצרה מדי',
-        description: 'סיסמה חייבת להכיל לפחות 6 תווים',
-        variant: 'destructive',
+        title: "סיסמה קצרה מדי",
+        description: "סיסמה חייבת להכיל לפחות 6 תווים",
+        variant: "destructive",
       });
       return;
     }
 
     if (adminResetPassword !== adminResetPasswordConfirm) {
       toast({
-        title: 'הסיסמאות אינן תואמות',
-        description: 'ודא/י שהזנת את אותה הסיסמה פעמיים',
-        variant: 'destructive',
+        title: "הסיסמאות אינן תואמות",
+        description: "ודא/י שהזנת את אותה הסיסמה פעמיים",
+        variant: "destructive",
       });
       return;
     }
@@ -482,30 +503,36 @@ export default function Settings() {
     try {
       // Reset password via SQL using extensions.crypt (bcrypt)
       const escapedPassword = adminResetPassword.replace(/'/g, "''");
-      const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
-        p_migration_name: 'settings_pw_reset_' + Date.now(),
-        p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${selectedUserForReset.id}'`
-      });
+      const { data: sqlResult, error: sqlError } = await supabase.rpc(
+        "execute_safe_migration",
+        {
+          p_migration_name: "settings_pw_reset_" + Date.now(),
+          p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${selectedUserForReset.id}'`,
+        },
+      );
 
-      if (sqlError || !(sqlResult as any)?.success) {
-        throw new Error(sqlError?.message || (sqlResult as any)?.error || 'שגיאה בעדכון סיסמה');
+      if (sqlError || !sqlResult?.success) {
+        throw new Error(
+          sqlError?.message || sqlResult?.error || "שגיאה בעדכון סיסמה",
+        );
       }
 
       toast({
-        title: 'הסיסמה אופסה',
+        title: "הסיסמה אופסה",
         description: `הסיסמה של ${selectedUserForReset.full_name} עודכנה בהצלחה`,
       });
 
       setResetPasswordDialogOpen(false);
       setSelectedUserForReset(null);
-      setAdminResetPassword('');
-      setAdminResetPasswordConfirm('');
+      setAdminResetPassword("");
+      setAdminResetPasswordConfirm("");
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       toast({
-        title: 'שגיאה באיפוס סיסמה',
-        description: error instanceof Error ? error.message : 'לא ניתן לאפס את הסיסמה',
-        variant: 'destructive',
+        title: "שגיאה באיפוס סיסמה",
+        description:
+          error instanceof Error ? error.message : "לא ניתן לאפס את הסיסמה",
+        variant: "destructive",
       });
     } finally {
       setIsResettingPassword(false);
@@ -514,26 +541,33 @@ export default function Settings() {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'admin': return 'מנהל ראשי';
-      case 'manager': return 'מנהל';
-      case 'employee': return 'עובד';
-      default: return role;
+      case "admin":
+        return "מנהל ראשי";
+      case "manager":
+        return "מנהל";
+      case "employee":
+        return "עובד";
+      default:
+        return role;
     }
   };
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'admin': return 'default';
-      case 'manager': return 'secondary';
-      default: return 'outline';
+      case "admin":
+        return "default";
+      case "manager":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
       .slice(0, 2)
       .toUpperCase();
   };
@@ -541,15 +575,15 @@ export default function Settings() {
   const handleApiKeysCodeSubmit = () => {
     if (apiKeysCode === API_ACCESS_CODE) {
       setIsApiKeysUnlocked(true);
-      setCodeError('');
+      setCodeError("");
       setShowApiKeysCodeInput(false);
       toast({
-        title: 'נפתחה גישה',
-        description: 'כעת תוכל לנהל את מפתחות ה-API',
+        title: "נפתחה גישה",
+        description: "כעת תוכל לנהל את מפתחות ה-API",
       });
     } else {
-      setCodeError('קוד שגוי');
-      setApiKeysCode('');
+      setCodeError("קוד שגוי");
+      setApiKeysCode("");
     }
   };
 
@@ -562,7 +596,11 @@ export default function Settings() {
   return (
     <AppLayout title="הגדרות">
       <div className="p-6 space-y-6 animate-fade-in" dir="rtl">
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="space-y-6"
+        >
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted p-1 justify-end">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -580,7 +618,10 @@ export default function Settings() {
               <Type className="h-4 w-4" />
               <span className="hidden sm:inline">טיפוגרפיה</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger
+              value="notifications"
+              className="flex items-center gap-2"
+            >
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">התראות</span>
             </TabsTrigger>
@@ -593,14 +634,17 @@ export default function Settings() {
               <span className="hidden sm:inline">אנשי קשר</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="email-templates" className="flex items-center gap-2">
+              <TabsTrigger
+                value="email-templates"
+                className="flex items-center gap-2"
+              >
                 <Mail className="h-4 w-4" />
                 <span className="hidden sm:inline">תבניות אימייל</span>
               </TabsTrigger>
             )}
             {isAdmin && (
-              <TabsTrigger 
-                value="apikeys" 
+              <TabsTrigger
+                value="apikeys"
                 className="flex items-center gap-2"
                 onClick={handleApiKeysTabClick}
               >
@@ -621,13 +665,19 @@ export default function Settings() {
               </TabsTrigger>
             )}
             {isAdmin && (
-              <TabsTrigger value="cleanup" className="flex items-center gap-2 text-destructive">
+              <TabsTrigger
+                value="cleanup"
+                className="flex items-center gap-2 text-destructive"
+              >
                 <Trash2 className="h-4 w-4" />
                 <span className="hidden sm:inline">ניקוי נתונים</span>
               </TabsTrigger>
             )}
             {isAdmin && (
-              <TabsTrigger value="developer" className="flex items-center gap-2 text-green-600 dark:text-green-400">
+              <TabsTrigger
+                value="developer"
+                className="flex items-center gap-2 text-green-600 dark:text-green-400"
+              >
                 <Code2 className="h-4 w-4" />
                 <span className="hidden sm:inline">פיתוח</span>
               </TabsTrigger>
@@ -640,16 +690,18 @@ export default function Settings() {
               <CardHeader className="text-right">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-20 w-20 border-2 border-border-gold">
-                    <AvatarImage src={profile?.avatar_url || ''} />
+                    <AvatarImage src={profile?.avatar_url || ""} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                      {getInitials(profile?.full_name || 'U')}
+                      {getInitials(profile?.full_name || "U")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <CardTitle className="text-2xl">{profile?.full_name}</CardTitle>
+                    <CardTitle className="text-2xl">
+                      {profile?.full_name}
+                    </CardTitle>
                     <CardDescription>{profile?.email}</CardDescription>
                     <div className="flex gap-2 mt-2">
-                      {roles.map(role => (
+                      {roles.map((role) => (
                         <Badge key={role} variant={getRoleBadgeVariant(role)}>
                           {getRoleLabel(role)}
                         </Badge>
@@ -665,7 +717,7 @@ export default function Settings() {
                     <Input
                       id="fullName"
                       value={fullName}
-                      onChange={e => setFullName(e.target.value)}
+                      onChange={(e) => setFullName(e.target.value)}
                       placeholder="הכנס שם מלא"
                     />
                   </div>
@@ -674,7 +726,7 @@ export default function Settings() {
                     <Input
                       id="phone"
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value)}
                       placeholder="050-1234567"
                       dir="ltr"
                     />
@@ -684,7 +736,7 @@ export default function Settings() {
                     <Input
                       id="department"
                       value={department}
-                      onChange={e => setDepartment(e.target.value)}
+                      onChange={(e) => setDepartment(e.target.value)}
                       placeholder="פיתוח / עיצוב / ניהול"
                     />
                   </div>
@@ -693,7 +745,7 @@ export default function Settings() {
                     <Input
                       id="position"
                       value={position}
-                      onChange={e => setPosition(e.target.value)}
+                      onChange={(e) => setPosition(e.target.value)}
                       placeholder="מפתח בכיר / מעצב"
                     />
                   </div>
@@ -703,7 +755,7 @@ export default function Settings() {
                       id="hourlyRate"
                       type="number"
                       value={hourlyRate}
-                      onChange={e => setHourlyRate(e.target.value)}
+                      onChange={(e) => setHourlyRate(e.target.value)}
                       placeholder="150"
                       dir="ltr"
                     />
@@ -735,9 +787,7 @@ export default function Settings() {
                   <Lock className="h-5 w-5 text-secondary" />
                   החלפת סיסמה
                 </CardTitle>
-                <CardDescription>
-                  עדכן סיסמה לחשבון שלך
-                </CardDescription>
+                <CardDescription>עדכן סיסמה לחשבון שלך</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
@@ -747,7 +797,7 @@ export default function Settings() {
                       id="newPassword"
                       type="password"
                       value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
+                      onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="••••••••"
                       dir="ltr"
                     />
@@ -758,7 +808,7 @@ export default function Settings() {
                       id="confirmNewPassword"
                       type="password"
                       value={confirmNewPassword}
-                      onChange={e => setConfirmNewPassword(e.target.value)}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
                       placeholder="••••••••"
                       dir="ltr"
                     />
@@ -805,7 +855,7 @@ export default function Settings() {
                           id="vatRate"
                           type="number"
                           value={vatRate}
-                          onChange={e => setVatRate(e.target.value)}
+                          onChange={(e) => setVatRate(e.target.value)}
                           placeholder="18"
                           className="max-w-[120px]"
                           dir="ltr"
@@ -829,11 +879,22 @@ export default function Settings() {
                       </p>
                       <p className="flex justify-between text-muted-foreground">
                         <span>סכום לפני מע"מ ({vatRate}%):</span>
-                        <span>₪{Math.round(118000 / (1 + (parseFloat(vatRate) || 18) / 100)).toLocaleString()}</span>
+                        <span>
+                          ₪
+                          {Math.round(
+                            118000 / (1 + (parseFloat(vatRate) || 18) / 100),
+                          ).toLocaleString()}
+                        </span>
                       </p>
                       <p className="flex justify-between text-muted-foreground">
                         <span>סכום המע"מ:</span>
-                        <span>₪{Math.round(118000 - 118000 / (1 + (parseFloat(vatRate) || 18) / 100)).toLocaleString()}</span>
+                        <span>
+                          ₪
+                          {Math.round(
+                            118000 -
+                              118000 / (1 + (parseFloat(vatRate) || 18) / 100),
+                          ).toLocaleString()}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -868,60 +929,62 @@ export default function Settings() {
                   <Monitor className="h-5 w-5 text-secondary" />
                   מצב תצוגה
                 </CardTitle>
-                <CardDescription>בחר בין מצב בהיר, כהה או אוטומטי</CardDescription>
+                <CardDescription>
+                  בחר בין מצב בהיר, כהה או אוטומטי
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-3 gap-4">
                   <button
-                    onClick={() => setTheme('light')}
+                    onClick={() => setTheme("light")}
                     className={cn(
                       "flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all",
-                      theme === 'light'
+                      theme === "light"
                         ? "border-secondary bg-secondary/10"
-                        : "border-border hover:border-secondary/50"
+                        : "border-border hover:border-secondary/50",
                     )}
                   >
                     <div className="p-3 rounded-full bg-amber-50 border border-amber-200">
                       <Sun className="h-6 w-6 text-amber-500" />
                     </div>
                     <span className="font-medium">בהיר</span>
-                    {theme === 'light' && (
+                    {theme === "light" && (
                       <Check className="h-4 w-4 text-secondary" />
                     )}
                   </button>
 
                   <button
-                    onClick={() => setTheme('dark')}
+                    onClick={() => setTheme("dark")}
                     className={cn(
                       "flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all",
-                      theme === 'dark'
+                      theme === "dark"
                         ? "border-secondary bg-secondary/10"
-                        : "border-border hover:border-secondary/50"
+                        : "border-border hover:border-secondary/50",
                     )}
                   >
                     <div className="p-3 rounded-full bg-slate-800 border border-slate-600">
                       <Moon className="h-6 w-6 text-slate-200" />
                     </div>
                     <span className="font-medium">כהה</span>
-                    {theme === 'dark' && (
+                    {theme === "dark" && (
                       <Check className="h-4 w-4 text-secondary" />
                     )}
                   </button>
 
                   <button
-                    onClick={() => setTheme('system')}
+                    onClick={() => setTheme("system")}
                     className={cn(
                       "flex flex-col items-center gap-3 p-4 rounded-lg border-2 transition-all",
-                      theme === 'system'
+                      theme === "system"
                         ? "border-secondary bg-secondary/10"
-                        : "border-border hover:border-secondary/50"
+                        : "border-border hover:border-secondary/50",
                     )}
                   >
                     <div className="p-3 rounded-full bg-gradient-to-br from-amber-50 to-slate-800 border">
                       <Monitor className="h-6 w-6 text-foreground" />
                     </div>
                     <span className="font-medium">מערכת</span>
-                    {theme === 'system' && (
+                    {theme === "system" && (
                       <Check className="h-4 w-4 text-secondary" />
                     )}
                   </button>
@@ -933,16 +996,17 @@ export default function Settings() {
                   <div className="space-y-1">
                     <Label>מצב נוכחי</Label>
                     <p className="text-sm text-muted-foreground">
-                      המערכת כרגע במצב {resolvedTheme === 'dark' ? 'כהה' : 'בהיר'}
+                      המערכת כרגע במצב{" "}
+                      {resolvedTheme === "dark" ? "כהה" : "בהיר"}
                     </p>
                   </div>
                   <Badge variant="outline" className="text-sm">
-                    {resolvedTheme === 'dark' ? (
+                    {resolvedTheme === "dark" ? (
                       <Moon className="h-3 w-3 ml-1" />
                     ) : (
                       <Sun className="h-3 w-3 ml-1" />
                     )}
-                    {resolvedTheme === 'dark' ? 'כהה' : 'בהיר'}
+                    {resolvedTheme === "dark" ? "כהה" : "בהיר"}
                   </Badge>
                 </div>
               </CardContent>
@@ -950,19 +1014,19 @@ export default function Settings() {
 
             {/* Theme Presets */}
             {!prefsLoading && (
-              <ThemeSettings 
-                preferences={preferences} 
-                onSave={savePreferences} 
-                saving={saving} 
+              <ThemeSettings
+                preferences={preferences}
+                onSave={savePreferences}
+                saving={saving}
               />
             )}
 
             {/* Advanced Theme Settings */}
             {!prefsLoading && (
-              <AdvancedThemeSettings 
-                preferences={preferences} 
-                onSave={savePreferences} 
-                saving={saving} 
+              <AdvancedThemeSettings
+                preferences={preferences}
+                onSave={savePreferences}
+                saving={saving}
               />
             )}
           </TabsContent>
@@ -988,7 +1052,7 @@ export default function Settings() {
                 saving={saving}
               />
             )}
-            
+
             {/* Push Notifications Card */}
             <PushNotificationsSettings />
           </TabsContent>
@@ -1017,9 +1081,9 @@ export default function Settings() {
                   <RateLimitMonitor />
                 </CardContent>
               </Card>
-              
+
               <EmailTemplateManager />
-              
+
               <Card dir="rtl">
                 <CardHeader className="text-right">
                   <CardTitle>חתימות אימייל</CardTitle>
@@ -1036,19 +1100,26 @@ export default function Settings() {
 
           {/* API Keys Tab (Admin Only) */}
           {isAdmin && (
-            <TabsContent value="apikeys" className="space-y-6">`
+            <TabsContent value="apikeys" className="space-y-6">
+              `
               <Card dir="rtl">
                 <CardHeader className="text-right">
                   <CardTitle className="flex items-center gap-2">
                     <Key className="h-5 w-5 text-secondary" />
                     ניהול מפתחות API
                     {isApiKeysUnlocked ? (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-600">
+                      <Badge
+                        variant="outline"
+                        className="bg-green-500/10 text-green-600"
+                      >
                         <Unlock className="h-3 w-3 ml-1" />
                         פתוח
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-red-500/10 text-red-600">
+                      <Badge
+                        variant="outline"
+                        className="bg-red-500/10 text-red-600"
+                      >
                         <Lock className="h-3 w-3 ml-1" />
                         נעול
                       </Badge>
@@ -1067,10 +1138,11 @@ export default function Settings() {
                       <div className="text-center space-y-2">
                         <h3 className="text-lg font-semibold">גישה מוגנת</h3>
                         <p className="text-muted-foreground max-w-md">
-                          הזן את קוד הגישה כדי לנהל את מפתחות ה-API והחיבורים לשירותים חיצוניים
+                          הזן את קוד הגישה כדי לנהל את מפתחות ה-API והחיבורים
+                          לשירותים חיצוניים
                         </p>
                       </div>
-                      
+
                       {showApiKeysCodeInput && (
                         <div className="space-y-4 w-full max-w-xs">
                           <div className="space-y-2">
@@ -1081,20 +1153,24 @@ export default function Settings() {
                               value={apiKeysCode}
                               onChange={(e) => {
                                 setApiKeysCode(e.target.value);
-                                setCodeError('');
+                                setCodeError("");
                               }}
-                              onKeyDown={(e) => e.key === 'Enter' && handleApiKeysCodeSubmit()}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && handleApiKeysCodeSubmit()
+                              }
                               placeholder="הזן קוד"
                               className="text-center text-lg tracking-widest"
                               dir="ltr"
                               autoFocus
                             />
                             {codeError && (
-                              <p className="text-sm text-destructive text-center">{codeError}</p>
+                              <p className="text-sm text-destructive text-center">
+                                {codeError}
+                              </p>
                             )}
                           </div>
-                          <Button 
-                            onClick={handleApiKeysCodeSubmit} 
+                          <Button
+                            onClick={handleApiKeysCodeSubmit}
                             className="w-full btn-gold"
                           >
                             <Unlock className="h-4 w-4 ml-2" />
@@ -1102,9 +1178,9 @@ export default function Settings() {
                           </Button>
                         </div>
                       )}
-                      
+
                       {!showApiKeysCodeInput && (
-                        <Button 
+                        <Button
                           onClick={() => setShowApiKeysCodeInput(true)}
                           variant="outline"
                         >
@@ -1145,13 +1221,17 @@ export default function Settings() {
                         <TableRow>
                           <TableHead className="text-right">משתמש</TableHead>
                           <TableHead className="text-right">אימייל</TableHead>
-                          <TableHead className="text-right">תפקיד נוכחי</TableHead>
-                          <TableHead className="text-right">שנה תפקיד</TableHead>
+                          <TableHead className="text-right">
+                            תפקיד נוכחי
+                          </TableHead>
+                          <TableHead className="text-right">
+                            שנה תפקיד
+                          </TableHead>
                           <TableHead className="text-right">פעולות</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {users.map(u => (
+                        {users.map((u) => (
                           <TableRow key={u.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
@@ -1160,29 +1240,42 @@ export default function Settings() {
                                     {getInitials(u.full_name)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="font-medium">{u.full_name}</span>
+                                <span className="font-medium">
+                                  {u.full_name}
+                                </span>
                                 {u.id === user?.id && (
-                                  <Badge variant="outline" className="text-xs">אתה</Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    אתה
+                                  </Badge>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="text-muted-foreground" dir="ltr">
+                            <TableCell
+                              className="text-muted-foreground"
+                              dir="ltr"
+                            >
                               {u.email}
                             </TableCell>
                             <TableCell>
                               <Badge variant={getRoleBadgeVariant(u.role)}>
-                                {u.role === 'admin' && <Crown className="h-3 w-3 ml-1" />}
-                                {u.role === 'manager' && <UserCog className="h-3 w-3 ml-1" />}
-                                {u.role === 'employee' && <Users className="h-3 w-3 ml-1" />}
+                                {u.role === "admin" && (
+                                  <Crown className="h-3 w-3 ml-1" />
+                                )}
+                                {u.role === "manager" && (
+                                  <UserCog className="h-3 w-3 ml-1" />
+                                )}
+                                {u.role === "employee" && (
+                                  <Users className="h-3 w-3 ml-1" />
+                                )}
                                 {getRoleLabel(u.role)}
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <Select
                                 value={u.role}
-                                onValueChange={(val: 'admin' | 'manager' | 'employee') => 
-                                  handleRoleChange(u.id, val)
-                                }
+                                onValueChange={(
+                                  val: "admin" | "manager" | "employee",
+                                ) => handleRoleChange(u.id, val)}
                                 disabled={u.id === user?.id}
                               >
                                 <SelectTrigger className="w-[140px]">
@@ -1287,7 +1380,10 @@ export default function Settings() {
           )}
 
           {/* Admin Password Reset Dialog */}
-          <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+          <Dialog
+            open={resetPasswordDialogOpen}
+            onOpenChange={setResetPasswordDialogOpen}
+          >
             <DialogContent dir="rtl">
               <DialogHeader className="text-right">
                 <DialogTitle>איפוס סיסמה למשתמש</DialogTitle>
@@ -1305,18 +1401,22 @@ export default function Settings() {
                     id="admin-reset-password"
                     type="password"
                     value={adminResetPassword}
-                    onChange={e => setAdminResetPassword(e.target.value)}
+                    onChange={(e) => setAdminResetPassword(e.target.value)}
                     placeholder="••••••••"
                     dir="ltr"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="admin-reset-password-confirm">אימות סיסמה</Label>
+                  <Label htmlFor="admin-reset-password-confirm">
+                    אימות סיסמה
+                  </Label>
                   <Input
                     id="admin-reset-password-confirm"
                     type="password"
                     value={adminResetPasswordConfirm}
-                    onChange={e => setAdminResetPasswordConfirm(e.target.value)}
+                    onChange={(e) =>
+                      setAdminResetPasswordConfirm(e.target.value)
+                    }
                     placeholder="••••••••"
                     dir="ltr"
                   />

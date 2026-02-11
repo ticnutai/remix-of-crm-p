@@ -1,18 +1,25 @@
 // Employees Management Page - tenarch CRM Pro
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
-import { ColumnDef } from '@/components/DataTable';
-import { UniversalDataTable } from '@/components/tables/UniversalDataTable';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { InfoTooltipButton } from '@/components/ui/info-tooltip-button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ViewToggle, useViewMode, GridView, ListView, CompactView, type ViewMode } from '@/components/shared/ViewToggle';
-import { MobileCard } from '@/components/shared/MobileCard';
-import { PullToRefresh } from '@/components/shared/PullToRefresh';
-import { useIsMobile } from '@/hooks/use-mobile';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { AppLayout } from "@/components/layout";
+import { ColumnDef } from "@/components/DataTable";
+import { UniversalDataTable } from "@/components/tables/UniversalDataTable";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTooltipButton } from "@/components/ui/info-tooltip-button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ViewToggle,
+  useViewMode,
+  GridView,
+  ListView,
+  CompactView,
+  type ViewMode,
+} from "@/components/shared/ViewToggle";
+import { MobileCard } from "@/components/shared/MobileCard";
+import { PullToRefresh } from "@/components/shared/PullToRefresh";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -20,20 +27,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { formatPhoneDisplay } from '@/utils/phoneValidation';
+} from "@/components/ui/dialog";
+import { formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import {
   Users,
   UserPlus,
@@ -59,7 +66,7 @@ import {
   Calculator,
   Clock,
   Download,
-} from 'lucide-react';
+} from "lucide-react";
 
 // Interface for time entries
 interface TimeEntry {
@@ -92,14 +99,26 @@ interface Employee {
   hourly_rate: number | null;
   is_active: boolean;
   created_at: string;
-  role: 'admin' | 'manager' | 'employee';
+  role: "admin" | "manager" | "employee";
   custom_data?: Record<string, any> | null;
 }
 
 const roleConfig = {
-  admin: { label: 'מנהל ראשי', icon: Crown, color: 'bg-destructive text-destructive-foreground' },
-  manager: { label: 'מנהל', icon: UserCog, color: 'bg-secondary text-secondary-foreground' },
-  employee: { label: 'עובד', icon: User, color: 'bg-muted text-muted-foreground' },
+  admin: {
+    label: "מנהל ראשי",
+    icon: Crown,
+    color: "bg-destructive text-destructive-foreground",
+  },
+  manager: {
+    label: "מנהל",
+    icon: UserCog,
+    color: "bg-secondary text-secondary-foreground",
+  },
+  employee: {
+    label: "עובד",
+    icon: User,
+    color: "bg-muted text-muted-foreground",
+  },
 };
 
 export default function Employees() {
@@ -108,64 +127,74 @@ export default function Employees() {
   const isMobile = useIsMobile();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // View mode with localStorage persistence
-  const [viewMode, setViewMode] = useViewMode('employees-view-mode', 'cards');
-  const [editDialog, setEditDialog] = useState<{ open: boolean; employee: Employee | null }>({
+  const [viewMode, setViewMode] = useViewMode("employees-view-mode", "cards");
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    employee: Employee | null;
+  }>({
     open: false,
     employee: null,
   });
   const [editForm, setEditForm] = useState({
-    full_name: '',
-    phone: '',
-    department: '',
-    position: '',
-    hourly_rate: '',
+    full_name: "",
+    phone: "",
+    department: "",
+    position: "",
+    hourly_rate: "",
     is_active: true,
-    role: 'employee' as 'admin' | 'manager' | 'employee',
+    role: "employee" as "admin" | "manager" | "employee",
   });
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Add employee dialog
   const [addDialog, setAddDialog] = useState(false);
   const [addForm, setAddForm] = useState({
-    email: '',
-    full_name: '',
-    phone: '',
-    department: '',
-    position: '',
-    hourly_rate: '',
-    role: 'employee' as 'admin' | 'manager' | 'employee',
+    email: "",
+    full_name: "",
+    phone: "",
+    department: "",
+    position: "",
+    hourly_rate: "",
+    role: "employee" as "admin" | "manager" | "employee",
   });
   const [isAdding, setIsAdding] = useState(false);
 
   // Password reset dialog
-  const [resetPasswordDialog, setResetPasswordDialog] = useState<{ open: boolean; employee: Employee | null }>({
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    employee: Employee | null;
+  }>({
     open: false,
     employee: null,
   });
-  const [newPassword, setNewPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
   // Delete employee dialog
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; employee: Employee | null }>({
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    employee: Employee | null;
+  }>({
     open: false,
     employee: null,
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState('employees');
+  const [activeTab, setActiveTab] = useState("employees");
 
   // Payroll state
   const [payrollMonth, setPayrollMonth] = useState(() => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [selectedEmployeeForPayroll, setSelectedEmployeeForPayroll] = useState<string>('all');
-  const [payrollHourlyRate, setPayrollHourlyRate] = useState<string>('');
-  const [payrollVatRate, setPayrollVatRate] = useState<string>('17');
+  const [selectedEmployeeForPayroll, setSelectedEmployeeForPayroll] =
+    useState<string>("all");
+  const [payrollHourlyRate, setPayrollHourlyRate] = useState<string>("");
+  const [payrollVatRate, setPayrollVatRate] = useState<string>("17");
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
 
@@ -173,35 +202,37 @@ export default function Employees() {
   const fetchTimeEntries = useCallback(async () => {
     setLoadingPayroll(true);
     try {
-      const [year, month] = payrollMonth.split('-').map(Number);
-      const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      const [year, month] = payrollMonth.split("-").map(Number);
+      const startDate = new Date(year, month - 1, 1)
+        .toISOString()
+        .split("T")[0];
+      const endDate = new Date(year, month, 0).toISOString().split("T")[0];
 
       let query = supabase
-        .from('time_entries')
-        .select('id, user_id, duration_minutes, start_time, description')
-        .gte('start_time', startDate)
-        .lte('start_time', endDate + 'T23:59:59');
+        .from("time_entries")
+        .select("id, user_id, duration_minutes, start_time, description")
+        .gte("start_time", startDate)
+        .lte("start_time", endDate + "T23:59:59");
 
-      if (selectedEmployeeForPayroll !== 'all') {
-        query = query.eq('user_id', selectedEmployeeForPayroll);
+      if (selectedEmployeeForPayroll !== "all") {
+        query = query.eq("user_id", selectedEmployeeForPayroll);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching time entries:', error);
+        console.error("Error fetching time entries:", error);
         toast({
-          title: 'שגיאה',
-          description: 'לא ניתן לטעון את רישומי הזמן',
-          variant: 'destructive',
+          title: "שגיאה",
+          description: "לא ניתן לטעון את רישומי הזמן",
+          variant: "destructive",
         });
         return;
       }
 
       setTimeEntries(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setLoadingPayroll(false);
     }
@@ -209,7 +240,7 @@ export default function Employees() {
 
   // Fetch time entries when payroll tab is active
   useEffect(() => {
-    if (activeTab === 'payroll') {
+    if (activeTab === "payroll") {
       fetchTimeEntries();
     }
   }, [activeTab, fetchTimeEntries]);
@@ -217,10 +248,10 @@ export default function Employees() {
   // Calculate payroll data
   const payrollData = useMemo(() => {
     const vatRate = parseFloat(payrollVatRate) || 0;
-    
+
     // Group entries by employee
     const entriesByEmployee: Record<string, TimeEntry[]> = {};
-    timeEntries.forEach(entry => {
+    timeEntries.forEach((entry) => {
       if (!entriesByEmployee[entry.user_id]) {
         entriesByEmployee[entry.user_id] = [];
       }
@@ -229,26 +260,30 @@ export default function Employees() {
 
     // Calculate payroll for each employee
     const result: PayrollData[] = [];
-    
-    const employeeList = selectedEmployeeForPayroll === 'all' 
-      ? employees 
-      : employees.filter(e => e.id === selectedEmployeeForPayroll);
 
-    employeeList.forEach(employee => {
+    const employeeList =
+      selectedEmployeeForPayroll === "all"
+        ? employees
+        : employees.filter((e) => e.id === selectedEmployeeForPayroll);
+
+    employeeList.forEach((employee) => {
       const employeeEntries = entriesByEmployee[employee.id] || [];
-      const totalMinutes = employeeEntries.reduce((sum, entry) => sum + (entry.duration_minutes || 0), 0);
+      const totalMinutes = employeeEntries.reduce(
+        (sum, entry) => sum + (entry.duration_minutes || 0),
+        0,
+      );
       const totalHours = totalMinutes / 60;
-      
+
       // Use custom hourly rate if set, otherwise use employee's rate
-      const hourlyRate = payrollHourlyRate 
-        ? parseFloat(payrollHourlyRate) 
-        : (employee.hourly_rate || 0);
-      
+      const hourlyRate = payrollHourlyRate
+        ? parseFloat(payrollHourlyRate)
+        : employee.hourly_rate || 0;
+
       const grossAmount = totalHours * hourlyRate;
       const vatAmount = grossAmount * (vatRate / 100);
       const netAmount = grossAmount + vatAmount;
 
-      if (totalHours > 0 || selectedEmployeeForPayroll !== 'all') {
+      if (totalHours > 0 || selectedEmployeeForPayroll !== "all") {
         result.push({
           employee,
           totalHours,
@@ -263,32 +298,50 @@ export default function Employees() {
     });
 
     return result.sort((a, b) => b.netAmount - a.netAmount);
-  }, [employees, timeEntries, payrollHourlyRate, payrollVatRate, selectedEmployeeForPayroll]);
+  }, [
+    employees,
+    timeEntries,
+    payrollHourlyRate,
+    payrollVatRate,
+    selectedEmployeeForPayroll,
+  ]);
 
   // Format month display in Hebrew
   const formatMonth = (monthStr: string) => {
-    const [year, month] = monthStr.split('-').map(Number);
-    const monthNames = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 
-                       'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+    const [year, month] = monthStr.split("-").map(Number);
+    const monthNames = [
+      "ינואר",
+      "פברואר",
+      "מרץ",
+      "אפריל",
+      "מאי",
+      "יוני",
+      "יולי",
+      "אוגוסט",
+      "ספטמבר",
+      "אוקטובר",
+      "נובמבר",
+      "דצמבר",
+    ];
     return `${monthNames[month - 1]} ${year}`;
   };
 
   // Fetch employees with their roles
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
-    
+
     // Fetch profiles
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('full_name');
+      .from("profiles")
+      .select("*")
+      .order("full_name");
 
     if (profilesError) {
-      console.error('Error fetching profiles:', profilesError);
+      console.error("Error fetching profiles:", profilesError);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לטעון את רשימת העובדים',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לטעון את רשימת העובדים",
+        variant: "destructive",
       });
       setIsLoading(false);
       return;
@@ -296,28 +349,30 @@ export default function Employees() {
 
     // Fetch roles for all users
     const { data: roles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('user_id, role');
+      .from("user_roles")
+      .select("user_id, role");
 
     if (rolesError) {
-      console.error('Error fetching roles:', rolesError);
+      console.error("Error fetching roles:", rolesError);
     }
 
     // Combine profiles with roles
-    const rolesMap: Record<string, 'admin' | 'manager' | 'employee'> = {};
-    (roles || []).forEach(r => {
+    const rolesMap: Record<string, "admin" | "manager" | "employee"> = {};
+    (roles || []).forEach((r) => {
       // If user has multiple roles, prioritize admin > manager > employee
       const currentRole = rolesMap[r.user_id];
-      if (!currentRole || 
-          (r.role === 'admin') || 
-          (r.role === 'manager' && currentRole === 'employee')) {
-        rolesMap[r.user_id] = r.role as 'admin' | 'manager' | 'employee';
+      if (
+        !currentRole ||
+        r.role === "admin" ||
+        (r.role === "manager" && currentRole === "employee")
+      ) {
+        rolesMap[r.user_id] = r.role as "admin" | "manager" | "employee";
       }
     });
 
-    const employeesWithRoles: Employee[] = (profiles || []).map(profile => ({
+    const employeesWithRoles: Employee[] = (profiles || []).map((profile) => ({
       ...profile,
-      role: rolesMap[profile.id] || 'employee',
+      role: rolesMap[profile.id] || "employee",
       custom_data: (profile.custom_data as Record<string, any>) || {},
     }));
 
@@ -327,7 +382,7 @@ export default function Employees() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
       return;
     }
     if (user) {
@@ -338,10 +393,10 @@ export default function Employees() {
   const handleEditClick = (employee: Employee) => {
     setEditForm({
       full_name: employee.full_name,
-      phone: employee.phone || '',
-      department: employee.department || '',
-      position: employee.position || '',
-      hourly_rate: employee.hourly_rate?.toString() || '',
+      phone: employee.phone || "",
+      department: employee.department || "",
+      position: employee.position || "",
+      hourly_rate: employee.hourly_rate?.toString() || "",
       is_active: employee.is_active ?? true,
       role: employee.role,
     });
@@ -350,28 +405,30 @@ export default function Employees() {
 
   const handleSaveEmployee = async () => {
     if (!editDialog.employee) return;
-    
+
     setIsSaving(true);
 
     // Update profile
     const { error: profileError } = await supabase
-      .from('profiles')
+      .from("profiles")
       .update({
         full_name: editForm.full_name,
         phone: editForm.phone || null,
         department: editForm.department || null,
         position: editForm.position || null,
-        hourly_rate: editForm.hourly_rate ? parseFloat(editForm.hourly_rate) : null,
+        hourly_rate: editForm.hourly_rate
+          ? parseFloat(editForm.hourly_rate)
+          : null,
         is_active: editForm.is_active,
       })
-      .eq('id', editDialog.employee.id);
+      .eq("id", editDialog.employee.id);
 
     if (profileError) {
-      console.error('Error updating profile:', profileError);
+      console.error("Error updating profile:", profileError);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לעדכן את פרטי העובד',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את פרטי העובד",
+        variant: "destructive",
       });
       setIsSaving(false);
       return;
@@ -381,31 +438,29 @@ export default function Employees() {
     if (isAdmin && editForm.role !== editDialog.employee.role) {
       // Delete existing roles
       await supabase
-        .from('user_roles')
+        .from("user_roles")
         .delete()
-        .eq('user_id', editDialog.employee.id);
+        .eq("user_id", editDialog.employee.id);
 
       // Insert new role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: editDialog.employee.id,
-          role: editForm.role,
-        });
+      const { error: roleError } = await supabase.from("user_roles").insert({
+        user_id: editDialog.employee.id,
+        role: editForm.role,
+      });
 
       if (roleError) {
-        console.error('Error updating role:', roleError);
+        console.error("Error updating role:", roleError);
         toast({
-          title: 'אזהרה',
-          description: 'פרטי העובד עודכנו אך לא ניתן לעדכן את ההרשאה',
-          variant: 'destructive',
+          title: "אזהרה",
+          description: "פרטי העובד עודכנו אך לא ניתן לעדכן את ההרשאה",
+          variant: "destructive",
         });
       }
     }
 
     toast({
-      title: 'העובד עודכן',
-      description: 'פרטי העובד נשמרו בהצלחה',
+      title: "העובד עודכן",
+      description: "פרטי העובד נשמרו בהצלחה",
     });
 
     setEditDialog({ open: false, employee: null });
@@ -416,9 +471,9 @@ export default function Employees() {
   const handleAddEmployee = async () => {
     if (!addForm.email || !addForm.full_name) {
       toast({
-        title: 'שגיאה',
-        description: 'נא למלא אימייל ושם מלא',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "נא למלא אימייל ושם מלא",
+        variant: "destructive",
       });
       return;
     }
@@ -427,24 +482,29 @@ export default function Employees() {
 
     try {
       // Call Edge Function to create employee
-      const { data, error } = await supabase.functions.invoke('create-employee', {
-        body: {
-          email: addForm.email,
-          full_name: addForm.full_name,
-          phone: addForm.phone || null,
-          department: addForm.department || null,
-          position: addForm.position || null,
-          hourly_rate: addForm.hourly_rate ? parseFloat(addForm.hourly_rate) : null,
-          role: addForm.role,
+      const { data, error } = await supabase.functions.invoke(
+        "create-employee",
+        {
+          body: {
+            email: addForm.email,
+            full_name: addForm.full_name,
+            phone: addForm.phone || null,
+            department: addForm.department || null,
+            position: addForm.position || null,
+            hourly_rate: addForm.hourly_rate
+              ? parseFloat(addForm.hourly_rate)
+              : null,
+            role: addForm.role,
+          },
         },
-      });
+      );
 
       if (error) {
-        console.error('Error creating employee:', error);
+        console.error("Error creating employee:", error);
         toast({
-          title: 'שגיאה',
-          description: error.message || 'לא ניתן ליצור עובד חדש',
-          variant: 'destructive',
+          title: "שגיאה",
+          description: error.message || "לא ניתן ליצור עובד חדש",
+          variant: "destructive",
         });
         setIsAdding(false);
         return;
@@ -452,41 +512,41 @@ export default function Employees() {
 
       if (!data?.success) {
         toast({
-          title: 'שגיאה',
-          description: data?.error || 'לא ניתן ליצור עובד חדש',
-          variant: 'destructive',
+          title: "שגיאה",
+          description: data?.error || "לא ניתן ליצור עובד חדש",
+          variant: "destructive",
         });
         setIsAdding(false);
         return;
       }
 
-      const message = data.is_existing_user 
+      const message = data.is_existing_user
         ? `משתמש קיים ${addForm.full_name} נוסף כעובד בהצלחה`
         : `עובד חדש ${addForm.full_name} נוסף בהצלחה. נשלח אליו אימייל לאיפוס סיסמה.`;
 
       toast({
-        title: 'עובד נוסף',
+        title: "עובד נוסף",
         description: message,
       });
 
       setAddDialog(false);
       setAddForm({
-        email: '',
-        full_name: '',
-        phone: '',
-        department: '',
-        position: '',
-        hourly_rate: '',
-        role: 'employee',
+        email: "",
+        full_name: "",
+        phone: "",
+        department: "",
+        position: "",
+        hourly_rate: "",
+        role: "employee",
       });
       setIsAdding(false);
       fetchEmployees();
     } catch (error) {
-      console.error('Error adding employee:', error);
+      console.error("Error adding employee:", error);
       toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה בהוספת העובד',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "אירעה שגיאה בהוספת העובד",
+        variant: "destructive",
       });
       setIsAdding(false);
     }
@@ -495,13 +555,13 @@ export default function Employees() {
   // Handle delete employee
   const handleDeleteEmployee = async () => {
     if (!deleteDialog.employee) return;
-    
+
     // Prevent deleting self
     if (deleteDialog.employee.id === user?.id) {
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן למחוק את המשתמש שלך',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן למחוק את המשתמש שלך",
+        variant: "destructive",
       });
       return;
     }
@@ -511,37 +571,37 @@ export default function Employees() {
     try {
       // First, delete from user_roles
       const { error: rolesError } = await supabase
-        .from('user_roles')
+        .from("user_roles")
         .delete()
-        .eq('user_id', deleteDialog.employee.id);
+        .eq("user_id", deleteDialog.employee.id);
 
       if (rolesError) {
-        console.error('Error deleting roles:', rolesError);
+        console.error("Error deleting roles:", rolesError);
       }
 
       // Delete from time_entries (if any)
       const { error: timeError } = await supabase
-        .from('time_entries')
+        .from("time_entries")
         .delete()
-        .eq('user_id', deleteDialog.employee.id);
+        .eq("user_id", deleteDialog.employee.id);
 
       if (timeError) {
-        console.error('Error deleting time_entries:', timeError);
+        console.error("Error deleting time_entries:", timeError);
       }
 
       // Then delete from profiles
       const { error: profileError, data: profileData } = await supabase
-        .from('profiles')
+        .from("profiles")
         .delete()
-        .eq('id', deleteDialog.employee.id)
+        .eq("id", deleteDialog.employee.id)
         .select();
 
       if (profileError) {
-        console.error('Error deleting profile:', profileError);
+        console.error("Error deleting profile:", profileError);
         toast({
-          title: 'שגיאה',
+          title: "שגיאה",
           description: `לא ניתן למחוק את העובד: ${profileError.message}`,
-          variant: 'destructive',
+          variant: "destructive",
         });
         setIsDeleting(false);
         return;
@@ -550,16 +610,16 @@ export default function Employees() {
       // Check if anything was actually deleted
       if (!profileData || profileData.length === 0) {
         toast({
-          title: 'שגיאה',
-          description: 'המחיקה נחסמה - אין לך הרשאות מספיקות',
-          variant: 'destructive',
+          title: "שגיאה",
+          description: "המחיקה נחסמה - אין לך הרשאות מספיקות",
+          variant: "destructive",
         });
         setIsDeleting(false);
         return;
       }
 
       toast({
-        title: 'עובד נמחק',
+        title: "עובד נמחק",
         description: `${deleteDialog.employee.full_name} הוסר בהצלחה`,
       });
 
@@ -567,11 +627,11 @@ export default function Employees() {
       setIsDeleting(false);
       fetchEmployees();
     } catch (error) {
-      console.error('Error deleting employee:', error);
+      console.error("Error deleting employee:", error);
       toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה במחיקת העובד',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "אירעה שגיאה במחיקת העובד",
+        variant: "destructive",
       });
       setIsDeleting(false);
     }
@@ -581,18 +641,18 @@ export default function Employees() {
   const handleResetPassword = async () => {
     if (!resetPasswordDialog.employee || !newPassword) {
       toast({
-        title: 'שגיאה',
-        description: 'נא להזין סיסמה חדשה',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "נא להזין סיסמה חדשה",
+        variant: "destructive",
       });
       return;
     }
 
     if (newPassword.length < 6) {
       toast({
-        title: 'שגיאה',
-        description: 'הסיסמה חייבת להכיל לפחות 6 תווים',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "הסיסמה חייבת להכיל לפחות 6 תווים",
+        variant: "destructive",
       });
       return;
     }
@@ -602,29 +662,34 @@ export default function Employees() {
     try {
       // Reset password via SQL using extensions.crypt (bcrypt)
       const escapedPassword = newPassword.replace(/'/g, "''");
-      const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
-        p_migration_name: 'admin_pw_reset_' + Date.now(),
-        p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${resetPasswordDialog.employee.id}'`
-      });
+      const { data: sqlResult, error: sqlError } = await supabase.rpc(
+        "execute_safe_migration",
+        {
+          p_migration_name: "admin_pw_reset_" + Date.now(),
+          p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${resetPasswordDialog.employee.id}'`,
+        },
+      );
 
-      if (sqlError || !(sqlResult as any)?.success) {
-        throw new Error(sqlError?.message || (sqlResult as any)?.error || 'שגיאה בעדכון סיסמה');
+      if (sqlError || !sqlResult?.success) {
+        throw new Error(
+          sqlError?.message || sqlResult?.error || "שגיאה בעדכון סיסמה",
+        );
       }
 
       toast({
-        title: 'הסיסמה אופסה בהצלחה',
+        title: "הסיסמה אופסה בהצלחה",
         description: `הסיסמה של ${resetPasswordDialog.employee.full_name} עודכנה`,
       });
 
       setResetPasswordDialog({ open: false, employee: null });
-      setNewPassword('');
+      setNewPassword("");
       setShowPassword(false);
     } catch (error) {
-      console.error('Error resetting password:', error);
+      console.error("Error resetting password:", error);
       toast({
-        title: 'שגיאה',
-        description: 'אירעה שגיאה באיפוס הסיסמה',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "אירעה שגיאה באיפוס הסיסמה",
+        variant: "destructive",
       });
     } finally {
       setIsResetting(false);
@@ -633,14 +698,14 @@ export default function Employees() {
 
   const columns: ColumnDef<Employee>[] = [
     {
-      id: 'full_name',
-      header: 'שם מלא',
-      accessorKey: 'full_name',
+      id: "full_name",
+      header: "שם מלא",
+      accessorKey: "full_name",
       sortable: true,
       cell: (value, row) => (
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground font-medium">
-            {value?.charAt(0) || '?'}
+            {value?.charAt(0) || "?"}
           </div>
           <div>
             <p className="font-medium">{value}</p>
@@ -650,9 +715,9 @@ export default function Employees() {
       ),
     },
     {
-      id: 'role',
-      header: 'תפקיד',
-      accessorKey: 'role',
+      id: "role",
+      header: "תפקיד",
+      accessorKey: "role",
       sortable: true,
       cell: (value) => {
         const config = roleConfig[value as keyof typeof roleConfig];
@@ -666,47 +731,55 @@ export default function Employees() {
       },
     },
     {
-      id: 'position',
-      header: 'משרה',
-      accessorKey: 'position',
+      id: "position",
+      header: "משרה",
+      accessorKey: "position",
       cell: (value) => value || null,
     },
     {
-      id: 'department',
-      header: 'מחלקה',
-      accessorKey: 'department',
+      id: "department",
+      header: "מחלקה",
+      accessorKey: "department",
       cell: (value) => value || null,
     },
     {
-      id: 'phone',
-      header: 'טלפון',
-      accessorKey: 'phone',
-      cell: (value) => <span dir="ltr" className="font-mono">{formatPhoneDisplay(value)}</span>,
-    },
-    {
-      id: 'hourly_rate',
-      header: 'תעריף שעתי',
-      accessorKey: 'hourly_rate',
-      sortable: true,
-      align: 'center',
-      cell: (value) => value ? (
-        <span className="font-medium text-success">₪{value}</span>
-      ) : null,
-    },
-    {
-      id: 'is_active',
-      header: 'סטטוס',
-      accessorKey: 'is_active',
+      id: "phone",
+      header: "טלפון",
+      accessorKey: "phone",
       cell: (value) => (
-        <Badge variant={value ? 'default' : 'secondary'} className={value ? 'bg-success' : ''}>
-          {value ? 'פעיל' : 'לא פעיל'}
+        <span dir="ltr" className="font-mono">
+          {formatPhoneDisplay(value)}
+        </span>
+      ),
+    },
+    {
+      id: "hourly_rate",
+      header: "תעריף שעתי",
+      accessorKey: "hourly_rate",
+      sortable: true,
+      align: "center",
+      cell: (value) =>
+        value ? (
+          <span className="font-medium text-success">₪{value}</span>
+        ) : null,
+    },
+    {
+      id: "is_active",
+      header: "סטטוס",
+      accessorKey: "is_active",
+      cell: (value) => (
+        <Badge
+          variant={value ? "default" : "secondary"}
+          className={value ? "bg-success" : ""}
+        >
+          {value ? "פעיל" : "לא פעיל"}
         </Badge>
       ),
     },
     {
-      id: 'actions',
-      header: 'פעולות',
-      accessorKey: 'id',
+      id: "actions",
+      header: "פעולות",
+      accessorKey: "id",
       cell: (_, row) => (
         <div className="flex items-center gap-1 min-w-[200px]">
           <Button
@@ -751,9 +824,9 @@ export default function Employees() {
   // Stats
   const stats = {
     total: employees.length,
-    active: employees.filter(e => e.is_active).length,
-    admins: employees.filter(e => e.role === 'admin').length,
-    managers: employees.filter(e => e.role === 'manager').length,
+    active: employees.filter((e) => e.is_active).length,
+    admins: employees.filter((e) => e.role === "admin").length,
+    managers: employees.filter((e) => e.role === "manager").length,
   };
 
   // Render functions for different view modes
@@ -763,45 +836,93 @@ export default function Employees() {
       title={employee.full_name}
       subtitle={`${roleConfig[employee.role].label} • ${employee.email}`}
       status={{
-        label: employee.is_active ? 'פעיל' : 'לא פעיל',
-        variant: employee.is_active ? 'default' : 'secondary'
+        label: employee.is_active ? "פעיל" : "לא פעיל",
+        variant: employee.is_active ? "default" : "secondary",
       }}
       fields={[
-        { label: 'משרה', value: employee.position || '-', icon: Briefcase },
-        { label: 'מחלקה', value: employee.department || '-', icon: Building },
-        { label: 'טלפון', value: formatPhoneDisplay(employee.phone), icon: Phone },
-        { label: 'תעריף', value: employee.hourly_rate ? `₪${employee.hourly_rate}` : '-', icon: DollarSign },
+        { label: "משרה", value: employee.position || "-", icon: Briefcase },
+        { label: "מחלקה", value: employee.department || "-", icon: Building },
+        {
+          label: "טלפון",
+          value: formatPhoneDisplay(employee.phone),
+          icon: Phone,
+        },
+        {
+          label: "תעריף",
+          value: employee.hourly_rate ? `₪${employee.hourly_rate}` : "-",
+          icon: DollarSign,
+        },
       ]}
       actions={[
-        ...(isManager ? [{ label: 'ערוך', icon: Pencil, onClick: () => handleEditClick(employee) }] : []),
-        ...(isManager ? [{ label: 'סיסמה', icon: KeyRound, onClick: () => setResetPasswordDialog({ open: true, employee }) }] : []),
-        ...(isManager ? [{ label: 'מחק', icon: Trash2, onClick: () => setDeleteDialog({ open: true, employee }), variant: 'destructive' as const }] : []),
+        ...(isManager
+          ? [
+              {
+                label: "ערוך",
+                icon: Pencil,
+                onClick: () => handleEditClick(employee),
+              },
+            ]
+          : []),
+        ...(isManager
+          ? [
+              {
+                label: "סיסמה",
+                icon: KeyRound,
+                onClick: () => setResetPasswordDialog({ open: true, employee }),
+              },
+            ]
+          : []),
+        ...(isManager
+          ? [
+              {
+                label: "מחק",
+                icon: Trash2,
+                onClick: () => setDeleteDialog({ open: true, employee }),
+                variant: "destructive" as const,
+              },
+            ]
+          : []),
       ]}
     />
   );
 
   const renderEmployeeGrid = (employee: Employee) => (
-    <Card key={employee.id} className="card-elegant hover:shadow-lg transition-all cursor-pointer" onClick={() => handleEditClick(employee)}>
+    <Card
+      key={employee.id}
+      className="card-elegant hover:shadow-lg transition-all cursor-pointer"
+      onClick={() => handleEditClick(employee)}
+    >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground font-medium">
-              {employee.full_name?.charAt(0) || '?'}
+              {employee.full_name?.charAt(0) || "?"}
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-base truncate">{employee.full_name}</h3>
-              <p className="text-sm text-muted-foreground truncate">{employee.email}</p>
+              <h3 className="font-semibold text-base truncate">
+                {employee.full_name}
+              </h3>
+              <p className="text-sm text-muted-foreground truncate">
+                {employee.email}
+              </p>
             </div>
           </div>
           <Badge className={roleConfig[employee.role].color}>
-            {React.createElement(roleConfig[employee.role].icon, { className: 'h-3 w-3 ml-1' })}
+            {React.createElement(roleConfig[employee.role].icon, {
+              className: "h-3 w-3 ml-1",
+            })}
             {roleConfig[employee.role].label}
           </Badge>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{employee.position || 'ללא משרה'}</span>
-          <Badge variant={employee.is_active ? 'default' : 'secondary'} className={employee.is_active ? 'bg-success' : ''}>
-            {employee.is_active ? 'פעיל' : 'לא פעיל'}
+          <span className="text-muted-foreground">
+            {employee.position || "ללא משרה"}
+          </span>
+          <Badge
+            variant={employee.is_active ? "default" : "secondary"}
+            className={employee.is_active ? "bg-success" : ""}
+          >
+            {employee.is_active ? "פעיל" : "לא פעיל"}
           </Badge>
         </div>
       </CardContent>
@@ -809,16 +930,28 @@ export default function Employees() {
   );
 
   const renderEmployeeList = (employee: Employee) => (
-    <div key={employee.id} className="flex items-center justify-between gap-4 hover:bg-muted/50 p-3 rounded-lg cursor-pointer transition-colors" onClick={() => handleEditClick(employee)}>
+    <div
+      key={employee.id}
+      className="flex items-center justify-between gap-4 hover:bg-muted/50 p-3 rounded-lg cursor-pointer transition-colors"
+      onClick={() => handleEditClick(employee)}
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground font-medium flex-shrink-0">
-          {employee.full_name?.charAt(0) || '?'}
+          {employee.full_name?.charAt(0) || "?"}
         </div>
         <div className="min-w-0">
           <h3 className="font-medium truncate">{employee.full_name}</h3>
           <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-            <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3" />{employee.email}</span>
-            {employee.position && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{employee.position}</span>}
+            <span className="flex items-center gap-1 truncate">
+              <Mail className="h-3 w-3" />
+              {employee.email}
+            </span>
+            {employee.position && (
+              <span className="flex items-center gap-1">
+                <Briefcase className="h-3 w-3" />
+                {employee.position}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -826,22 +959,35 @@ export default function Employees() {
         <Badge className={roleConfig[employee.role].color}>
           {roleConfig[employee.role].label}
         </Badge>
-        <Badge variant={employee.is_active ? 'default' : 'secondary'} className={employee.is_active ? 'bg-success' : ''}>
-          {employee.is_active ? 'פעיל' : 'לא פעיל'}
+        <Badge
+          variant={employee.is_active ? "default" : "secondary"}
+          className={employee.is_active ? "bg-success" : ""}
+        >
+          {employee.is_active ? "פעיל" : "לא פעיל"}
         </Badge>
       </div>
     </div>
   );
 
   const renderEmployeeCompact = (employee: Employee) => (
-    <div key={employee.id} className="flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer transition-colors rounded" onClick={() => handleEditClick(employee)}>
+    <div
+      key={employee.id}
+      className="flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer transition-colors rounded"
+      onClick={() => handleEditClick(employee)}
+    >
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className="font-medium truncate">{employee.full_name}</span>
-        <span className="text-sm text-muted-foreground truncate hidden sm:inline">({employee.email})</span>
+        <span className="text-sm text-muted-foreground truncate hidden sm:inline">
+          ({employee.email})
+        </span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Badge variant="outline" className={roleConfig[employee.role].color}>{roleConfig[employee.role].label}</Badge>
-        <div className={`w-2 h-2 rounded-full ${employee.is_active ? 'bg-success' : 'bg-muted-foreground'}`} />
+        <Badge variant="outline" className={roleConfig[employee.role].color}>
+          {roleConfig[employee.role].label}
+        </Badge>
+        <div
+          className={`w-2 h-2 rounded-full ${employee.is_active ? "bg-success" : "bg-muted-foreground"}`}
+        />
       </div>
     </div>
   );
@@ -862,11 +1008,17 @@ export default function Employees() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6 w-full sm:w-auto bg-muted/50 p-1 rounded-lg">
-            <TabsTrigger value="employees" className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger
+              value="employees"
+              className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
               <Users className="h-4 w-4" />
               <span>עובדים</span>
             </TabsTrigger>
-            <TabsTrigger value="payroll" className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger
+              value="payroll"
+              className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
               <Receipt className="h-4 w-4" />
               <span>תלוש שכר</span>
             </TabsTrigger>
@@ -880,8 +1032,12 @@ export default function Employees() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">סה"כ עובדים</p>
-                      <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        סה"כ עובדים
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {stats.total}
+                      </p>
                     </div>
                     <div className="p-3 rounded-lg bg-primary/10 text-primary">
                       <Users className="h-6 w-6" />
@@ -894,8 +1050,12 @@ export default function Employees() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">עובדים פעילים</p>
-                      <p className="text-2xl font-bold text-success">{stats.active}</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        עובדים פעילים
+                      </p>
+                      <p className="text-2xl font-bold text-success">
+                        {stats.active}
+                      </p>
                     </div>
                     <div className="p-3 rounded-lg bg-success/10 text-success">
                       <User className="h-6 w-6" />
@@ -908,8 +1068,12 @@ export default function Employees() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">מנהלים</p>
-                      <p className="text-2xl font-bold text-secondary">{stats.managers}</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        מנהלים
+                      </p>
+                      <p className="text-2xl font-bold text-secondary">
+                        {stats.managers}
+                      </p>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary/10 text-secondary">
                       <UserCog className="h-6 w-6" />
@@ -922,8 +1086,12 @@ export default function Employees() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">מנהלים ראשיים</p>
-                      <p className="text-2xl font-bold text-destructive">{stats.admins}</p>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        מנהלים ראשיים
+                      </p>
+                      <p className="text-2xl font-bold text-destructive">
+                        {stats.admins}
+                      </p>
                     </div>
                     <div className="p-3 rounded-lg bg-destructive/10 text-destructive">
                       <Crown className="h-6 w-6" />
@@ -948,9 +1116,12 @@ export default function Employees() {
                     showLabel={!isMobile}
                   />
                   {isAdmin && (
-                    <Button className="btn-gold flex-1 sm:flex-none" onClick={() => setAddDialog(true)}>
+                    <Button
+                      className="btn-gold flex-1 sm:flex-none"
+                      onClick={() => setAddDialog(true)}
+                    >
                       <UserPlus className="h-4 w-4 ml-2" />
-                      {isMobile ? 'הוסף' : 'הזמן עובד חדש'}
+                      {isMobile ? "הוסף" : "הזמן עובד חדש"}
                     </Button>
                   )}
                 </div>
@@ -963,13 +1134,13 @@ export default function Employees() {
                     לא נמצאו עובדים
                   </CardContent>
                 </Card>
-              ) : viewMode === 'cards' ? (
+              ) : viewMode === "cards" ? (
                 <PullToRefresh onRefresh={fetchEmployees}>
                   <div className="space-y-3">
-                    {employees.map(employee => renderEmployeeCard(employee))}
+                    {employees.map((employee) => renderEmployeeCard(employee))}
                   </div>
                 </PullToRefresh>
-              ) : viewMode === 'grid' ? (
+              ) : viewMode === "grid" ? (
                 <GridView
                   data={employees}
                   renderItem={(employee) => renderEmployeeGrid(employee)}
@@ -977,7 +1148,7 @@ export default function Employees() {
                   columns={{ mobile: 1, tablet: 2, desktop: 3 }}
                   gap={4}
                 />
-              ) : viewMode === 'list' ? (
+              ) : viewMode === "list" ? (
                 <Card>
                   <ListView
                     data={employees}
@@ -986,7 +1157,7 @@ export default function Employees() {
                     divided
                   />
                 </Card>
-              ) : viewMode === 'compact' ? (
+              ) : viewMode === "compact" ? (
                 <Card>
                   <CompactView
                     data={employees}
@@ -994,7 +1165,7 @@ export default function Employees() {
                     keyExtractor={(employee) => employee.id}
                   />
                 </Card>
-              ) : viewMode === 'table' ? (
+              ) : viewMode === "table" ? (
                 <UniversalDataTable
                   tableName="profiles"
                   data={employees}
@@ -1026,36 +1197,36 @@ export default function Employees() {
               <InfoTooltipButton
                 sections={[
                   {
-                    title: 'מנהל ראשי (Admin)',
+                    title: "מנהל ראשי (Admin)",
                     icon: <Crown className="h-4 w-4" />,
-                    variant: 'destructive',
+                    variant: "destructive",
                     items: [
-                      'גישה מלאה לכל המערכת',
-                      'ניהול הרשאות עובדים',
-                      'מחיקת לקוחות ופרויקטים',
-                      'צפייה בכל רישומי הזמן',
+                      "גישה מלאה לכל המערכת",
+                      "ניהול הרשאות עובדים",
+                      "מחיקת לקוחות ופרויקטים",
+                      "צפייה בכל רישומי הזמן",
                     ],
                   },
                   {
-                    title: 'מנהל (Manager)',
+                    title: "מנהל (Manager)",
                     icon: <UserCog className="h-4 w-4" />,
-                    variant: 'secondary',
+                    variant: "secondary",
                     items: [
-                      'הוספה ועריכת לקוחות',
-                      'הוספה ועריכת פרויקטים',
-                      'צפייה בכל רישומי הזמן',
-                      'עריכת פרטי עובדים',
+                      "הוספה ועריכת לקוחות",
+                      "הוספה ועריכת פרויקטים",
+                      "צפייה בכל רישומי הזמן",
+                      "עריכת פרטי עובדים",
                     ],
                   },
                   {
-                    title: 'עובד (Employee)',
+                    title: "עובד (Employee)",
                     icon: <User className="h-4 w-4" />,
-                    variant: 'muted',
+                    variant: "muted",
                     items: [
-                      'צפייה בלקוחות ופרויקטים',
-                      'ניהול רישומי הזמן שלו',
-                      'עריכת הפרופיל האישי',
-                      'שימוש בטיימר',
+                      "צפייה בלקוחות ופרויקטים",
+                      "ניהול רישומי הזמן שלו",
+                      "עריכת הפרופיל האישי",
+                      "שימוש בטיימר",
                     ],
                   },
                 ]}
@@ -1124,7 +1295,9 @@ export default function Employees() {
                       placeholder="מתעריף עובד"
                       dir="ltr"
                     />
-                    <p className="text-xs text-muted-foreground">השאר ריק לשימוש בתעריף העובד</p>
+                    <p className="text-xs text-muted-foreground">
+                      השאר ריק לשימוש בתעריף העובד
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -1144,7 +1317,9 @@ export default function Employees() {
 
                 <div className="flex justify-end mt-4">
                   <Button onClick={fetchTimeEntries} disabled={loadingPayroll}>
-                    {loadingPayroll && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+                    {loadingPayroll && (
+                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                    )}
                     <Calculator className="h-4 w-4 ml-2" />
                     חשב
                   </Button>
@@ -1167,22 +1342,31 @@ export default function Employees() {
             ) : (
               <div className="space-y-6">
                 {payrollData.map((data) => (
-                  <Card key={data.employee.id} className="card-elegant overflow-hidden">
+                  <Card
+                    key={data.employee.id}
+                    className="card-elegant overflow-hidden"
+                  >
                     {/* Payslip Header */}
                     <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                            {data.employee.full_name?.charAt(0) || '?'}
+                            {data.employee.full_name?.charAt(0) || "?"}
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold">{data.employee.full_name}</h3>
-                            <p className="text-sm opacity-90">{data.employee.position || data.employee.email}</p>
+                            <h3 className="text-xl font-bold">
+                              {data.employee.full_name}
+                            </h3>
+                            <p className="text-sm opacity-90">
+                              {data.employee.position || data.employee.email}
+                            </p>
                           </div>
                         </div>
                         <div className="text-left">
                           <p className="text-sm opacity-90">תלוש שכר</p>
-                          <p className="text-lg font-bold">{formatMonth(payrollMonth)}</p>
+                          <p className="text-lg font-bold">
+                            {formatMonth(payrollMonth)}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1198,12 +1382,20 @@ export default function Employees() {
                           </h4>
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">סה"כ שעות עבודה</span>
-                              <span className="font-semibold text-lg">{data.totalHours.toFixed(2)}</span>
+                              <span className="text-muted-foreground">
+                                סה"כ שעות עבודה
+                              </span>
+                              <span className="font-semibold text-lg">
+                                {data.totalHours.toFixed(2)}
+                              </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">תעריף שעתי</span>
-                              <span className="font-semibold">₪{data.hourlyRate.toFixed(2)}</span>
+                              <span className="text-muted-foreground">
+                                תעריף שעתי
+                              </span>
+                              <span className="font-semibold">
+                                ₪{data.hourlyRate.toFixed(2)}
+                              </span>
                             </div>
                             <div className="flex justify-between items-center text-sm text-muted-foreground">
                               <span>מספר רישומים</span>
@@ -1220,17 +1412,29 @@ export default function Employees() {
                           </h4>
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">סכום ברוטו</span>
-                              <span className="font-semibold">₪{data.grossAmount.toFixed(2)}</span>
+                              <span className="text-muted-foreground">
+                                סכום ברוטו
+                              </span>
+                              <span className="font-semibold">
+                                ₪{data.grossAmount.toFixed(2)}
+                              </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">מע"מ ({data.vatRate}%)</span>
-                              <span className="font-semibold text-orange-500">₪{data.vatAmount.toFixed(2)}</span>
+                              <span className="text-muted-foreground">
+                                מע"מ ({data.vatRate}%)
+                              </span>
+                              <span className="font-semibold text-orange-500">
+                                ₪{data.vatAmount.toFixed(2)}
+                              </span>
                             </div>
                             <div className="h-px bg-border my-2" />
                             <div className="flex justify-between items-center">
-                              <span className="font-semibold text-lg">סה"כ לתשלום</span>
-                              <span className="font-bold text-2xl text-success">₪{data.netAmount.toFixed(2)}</span>
+                              <span className="font-semibold text-lg">
+                                סה"כ לתשלום
+                              </span>
+                              <span className="font-bold text-2xl text-success">
+                                ₪{data.netAmount.toFixed(2)}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -1279,7 +1483,7 @@ export default function Employees() {
                               </body>
                               </html>
                             `;
-                            const printWindow = window.open('', '_blank');
+                            const printWindow = window.open("", "_blank");
                             if (printWindow) {
                               printWindow.document.write(printContent);
                               printWindow.document.close();
@@ -1305,17 +1509,30 @@ export default function Employees() {
                             <FileText className="h-6 w-6" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-lg">סיכום כולל</h3>
-                            <p className="text-sm text-muted-foreground">{payrollData.length} עובדים • {formatMonth(payrollMonth)}</p>
+                            <h3 className="font-semibold text-lg">
+                              סיכום כולל
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {payrollData.length} עובדים •{" "}
+                              {formatMonth(payrollMonth)}
+                            </p>
                           </div>
                         </div>
                         <div className="text-left">
-                          <p className="text-sm text-muted-foreground">סה"כ לתשלום</p>
+                          <p className="text-sm text-muted-foreground">
+                            סה"כ לתשלום
+                          </p>
                           <p className="text-3xl font-bold text-primary">
-                            ₪{payrollData.reduce((sum, d) => sum + d.netAmount, 0).toFixed(2)}
+                            ₪
+                            {payrollData
+                              .reduce((sum, d) => sum + d.netAmount, 0)
+                              .toFixed(2)}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {payrollData.reduce((sum, d) => sum + d.totalHours, 0).toFixed(1)} שעות
+                            {payrollData
+                              .reduce((sum, d) => sum + d.totalHours, 0)
+                              .toFixed(1)}{" "}
+                            שעות
                           </p>
                         </div>
                       </div>
@@ -1350,7 +1567,9 @@ export default function Employees() {
                   id="add_email"
                   type="email"
                   value={addForm.email}
-                  onChange={(e) => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, email: e.target.value }))
+                  }
                   className="pr-10"
                   dir="ltr"
                   placeholder="employee@example.com"
@@ -1365,7 +1584,9 @@ export default function Employees() {
                 <Input
                   id="add_full_name"
                   value={addForm.full_name}
-                  onChange={(e) => setAddForm(f => ({ ...f, full_name: e.target.value }))}
+                  onChange={(e) =>
+                    setAddForm((f) => ({ ...f, full_name: e.target.value }))
+                  }
                   className="pr-10"
                 />
               </div>
@@ -1379,7 +1600,9 @@ export default function Employees() {
                   <Input
                     id="add_phone"
                     value={addForm.phone}
-                    onChange={(e) => setAddForm(f => ({ ...f, phone: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, phone: e.target.value }))
+                    }
                     className="pr-10"
                     dir="ltr"
                   />
@@ -1394,7 +1617,9 @@ export default function Employees() {
                     id="add_hourly_rate"
                     type="number"
                     value={addForm.hourly_rate}
-                    onChange={(e) => setAddForm(f => ({ ...f, hourly_rate: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, hourly_rate: e.target.value }))
+                    }
                     className="pr-10"
                     dir="ltr"
                   />
@@ -1410,7 +1635,9 @@ export default function Employees() {
                   <Input
                     id="add_department"
                     value={addForm.department}
-                    onChange={(e) => setAddForm(f => ({ ...f, department: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, department: e.target.value }))
+                    }
                     className="pr-10"
                   />
                 </div>
@@ -1423,7 +1650,9 @@ export default function Employees() {
                   <Input
                     id="add_position"
                     value={addForm.position}
-                    onChange={(e) => setAddForm(f => ({ ...f, position: e.target.value }))}
+                    onChange={(e) =>
+                      setAddForm((f) => ({ ...f, position: e.target.value }))
+                    }
                     className="pr-10"
                   />
                 </div>
@@ -1434,7 +1663,9 @@ export default function Employees() {
               <Label htmlFor="add_role">הרשאה</Label>
               <Select
                 value={addForm.role}
-                onValueChange={(value: 'admin' | 'manager' | 'employee') => setAddForm(f => ({ ...f, role: value }))}
+                onValueChange={(value: "admin" | "manager" | "employee") =>
+                  setAddForm((f) => ({ ...f, role: value }))
+                }
               >
                 <SelectTrigger className="bg-background">
                   <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
@@ -1468,7 +1699,11 @@ export default function Employees() {
             <Button variant="outline" onClick={() => setAddDialog(false)}>
               ביטול
             </Button>
-            <Button onClick={handleAddEmployee} disabled={isAdding} className="btn-gold">
+            <Button
+              onClick={handleAddEmployee}
+              disabled={isAdding}
+              className="btn-gold"
+            >
               {isAdding && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
               הוסף עובד
             </Button>
@@ -1477,16 +1712,19 @@ export default function Employees() {
       </Dialog>
 
       {/* Edit Employee Dialog */}
-      <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, employee: open ? editDialog.employee : null })}>
+      <Dialog
+        open={editDialog.open}
+        onOpenChange={(open) =>
+          setEditDialog({ open, employee: open ? editDialog.employee : null })
+        }
+      >
         <DialogContent className="sm:max-w-[500px]" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCog className="h-5 w-5" />
               עריכת עובד
             </DialogTitle>
-            <DialogDescription>
-              עדכן את פרטי העובד והרשאותיו
-            </DialogDescription>
+            <DialogDescription>עדכן את פרטי העובד והרשאותיו</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -1497,7 +1735,9 @@ export default function Employees() {
                 <Input
                   id="full_name"
                   value={editForm.full_name}
-                  onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, full_name: e.target.value }))
+                  }
                   className="pr-10"
                 />
               </div>
@@ -1511,7 +1751,9 @@ export default function Employees() {
                   <Input
                     id="phone"
                     value={editForm.phone}
-                    onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, phone: e.target.value }))
+                    }
                     className="pr-10"
                     dir="ltr"
                   />
@@ -1526,7 +1768,12 @@ export default function Employees() {
                     id="hourly_rate"
                     type="number"
                     value={editForm.hourly_rate}
-                    onChange={(e) => setEditForm(f => ({ ...f, hourly_rate: e.target.value }))}
+                    onChange={(e) =>
+                      setEditForm((f) => ({
+                        ...f,
+                        hourly_rate: e.target.value,
+                      }))
+                    }
                     className="pr-10"
                     dir="ltr"
                   />
@@ -1542,7 +1789,9 @@ export default function Employees() {
                   <Input
                     id="department"
                     value={editForm.department}
-                    onChange={(e) => setEditForm(f => ({ ...f, department: e.target.value }))}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, department: e.target.value }))
+                    }
                     className="pr-10"
                   />
                 </div>
@@ -1555,7 +1804,9 @@ export default function Employees() {
                   <Input
                     id="position"
                     value={editForm.position}
-                    onChange={(e) => setEditForm(f => ({ ...f, position: e.target.value }))}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, position: e.target.value }))
+                    }
                     className="pr-10"
                   />
                 </div>
@@ -1567,7 +1818,9 @@ export default function Employees() {
                 <Label htmlFor="role">הרשאה</Label>
                 <Select
                   value={editForm.role}
-                  onValueChange={(value: 'admin' | 'manager' | 'employee') => setEditForm(f => ({ ...f, role: value }))}
+                  onValueChange={(value: "admin" | "manager" | "employee") =>
+                    setEditForm((f) => ({ ...f, role: value }))
+                  }
                 >
                   <SelectTrigger className="bg-background">
                     <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
@@ -1602,7 +1855,9 @@ export default function Employees() {
                 type="checkbox"
                 id="is_active"
                 checked={editForm.is_active}
-                onChange={(e) => setEditForm(f => ({ ...f, is_active: e.target.checked }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, is_active: e.target.checked }))
+                }
                 className="h-4 w-4 rounded border-border"
               />
               <Label htmlFor="is_active">עובד פעיל</Label>
@@ -1610,10 +1865,17 @@ export default function Employees() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog({ open: false, employee: null })}>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog({ open: false, employee: null })}
+            >
               ביטול
             </Button>
-            <Button onClick={handleSaveEmployee} disabled={isSaving} className="btn-gold">
+            <Button
+              onClick={handleSaveEmployee}
+              disabled={isSaving}
+              className="btn-gold"
+            >
               {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
               שמור שינויים
             </Button>
@@ -1622,12 +1884,15 @@ export default function Employees() {
       </Dialog>
 
       {/* Reset Password Dialog */}
-      <Dialog 
-        open={resetPasswordDialog.open} 
+      <Dialog
+        open={resetPasswordDialog.open}
         onOpenChange={(open) => {
-          setResetPasswordDialog({ open, employee: open ? resetPasswordDialog.employee : null });
+          setResetPasswordDialog({
+            open,
+            employee: open ? resetPasswordDialog.employee : null,
+          });
           if (!open) {
-            setNewPassword('');
+            setNewPassword("");
             setShowPassword(false);
           }
         }}
@@ -1650,7 +1915,7 @@ export default function Employees() {
                 <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="new_password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="pr-10 pl-10"
@@ -1678,18 +1943,18 @@ export default function Employees() {
           </div>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setResetPasswordDialog({ open: false, employee: null });
-                setNewPassword('');
+                setNewPassword("");
                 setShowPassword(false);
               }}
             >
               ביטול
             </Button>
-            <Button 
-              onClick={handleResetPassword} 
+            <Button
+              onClick={handleResetPassword}
               disabled={isResetting || newPassword.length < 6}
               className="btn-gold"
             >
@@ -1701,11 +1966,14 @@ export default function Employees() {
       </Dialog>
 
       {/* Delete Employee Dialog */}
-      <Dialog 
-        open={deleteDialog.open} 
+      <Dialog
+        open={deleteDialog.open}
         onOpenChange={(open) => {
           if (!isDeleting) {
-            setDeleteDialog({ open, employee: open ? deleteDialog.employee : null });
+            setDeleteDialog({
+              open,
+              employee: open ? deleteDialog.employee : null,
+            });
           }
         }}
       >
@@ -1716,22 +1984,27 @@ export default function Employees() {
               מחיקת עובד
             </DialogTitle>
             <DialogDescription className="text-right">
-              האם אתה בטוח שברצונך למחוק את{' '}
-              <span className="font-semibold">{deleteDialog.employee?.full_name}</span>?
+              האם אתה בטוח שברצונך למחוק את{" "}
+              <span className="font-semibold">
+                {deleteDialog.employee?.full_name}
+              </span>
+              ?
               <br />
-              <span className="text-red-600 font-semibold">פעולה זו היא בלתי הפיכה!</span>
+              <span className="text-red-600 font-semibold">
+                פעולה זו היא בלתי הפיכה!
+              </span>
             </DialogDescription>
           </DialogHeader>
 
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setDeleteDialog({ open: false, employee: null })}
               disabled={isDeleting}
             >
               ביטול
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={handleDeleteEmployee}
               disabled={isDeleting}

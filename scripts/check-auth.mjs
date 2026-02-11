@@ -1,25 +1,28 @@
 // Check auth.users vs profiles
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = 'https://eadeymehidcndudeycnf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhZGV5bWVoaWRjbmR1ZGV5Y25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4Mzg2ODQsImV4cCI6MjA4NDQxNDY4NH0.8t74NyPPHaWXHGyllAvdjPZ6DfAWM9fsAKopVEVogpM';
+const SUPABASE_URL = "https://eadeymehidcndudeycnf.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhZGV5bWVoaWRjbmR1ZGV5Y25mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4Mzg2ODQsImV4cCI6MjA4NDQxNDY4NH0.8t74NyPPHaWXHGyllAvdjPZ6DfAWM9fsAKopVEVogpM";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function run() {
   // Login as admin
-  const { data: auth, error: authErr } = await supabase.auth.signInWithPassword({
-    email: 'jj1212t@gmail.com',
-    password: '543211'
-  });
-  
+  const { data: auth, error: authErr } = await supabase.auth.signInWithPassword(
+    {
+      email: "jj1212t@gmail.com",
+      password: "543211",
+    },
+  );
+
   if (authErr) {
-    console.error('Login failed:', authErr.message);
+    console.error("Login failed:", authErr.message);
     return;
   }
-  console.log('Logged in as admin');
+  console.log("Logged in as admin");
 
-  // Check identities - GoTrue uses this for user lookup  
+  // Check identities - GoTrue uses this for user lookup
   const identitySql = `
     CREATE OR REPLACE FUNCTION public.check_auth_identities()
     RETURNS TABLE(
@@ -52,19 +55,24 @@ async function run() {
     NOTIFY pgrst, 'reload schema';
   `;
 
-  const { data: idData, error: idErr } = await supabase.rpc('execute_safe_migration', {
-    p_migration_name: 'create_identity_check_' + Date.now(),
-    p_migration_sql: identitySql
-  });
-  console.log('Identity function created:', idData?.success);
+  const { data: idData, error: idErr } = await supabase.rpc(
+    "execute_safe_migration",
+    {
+      p_migration_name: "create_identity_check_" + Date.now(),
+      p_migration_sql: identitySql,
+    },
+  );
+  console.log("Identity function created:", idData?.success);
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 3000));
 
-  const { data: identities, error: iErr } = await supabase.rpc('check_auth_identities');
+  const { data: identities, error: iErr } = await supabase.rpc(
+    "check_auth_identities",
+  );
   if (iErr) {
-    console.log('Identity check error:', iErr.message);
+    console.log("Identity check error:", iErr.message);
   } else {
-    console.log('\n=== AUTH IDENTITIES ===');
+    console.log("\n=== AUTH IDENTITIES ===");
     console.table(identities);
   }
 
@@ -95,19 +103,19 @@ async function run() {
     NOTIFY pgrst, 'reload schema';
   `;
 
-  const { data: mfaData } = await supabase.rpc('execute_safe_migration', {
-    p_migration_name: 'create_mfa_check_' + Date.now(),
-    p_migration_sql: mfaSql
+  const { data: mfaData } = await supabase.rpc("execute_safe_migration", {
+    p_migration_name: "create_mfa_check_" + Date.now(),
+    p_migration_sql: mfaSql,
   });
-  console.log('MFA function created:', mfaData?.success);
+  console.log("MFA function created:", mfaData?.success);
 
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise((r) => setTimeout(r, 3000));
 
-  const { data: mfa, error: mErr } = await supabase.rpc('check_mfa_status');
+  const { data: mfa, error: mErr } = await supabase.rpc("check_mfa_status");
   if (mErr) {
-    console.log('MFA check error:', mErr.message);
+    console.log("MFA check error:", mErr.message);
   } else {
-    console.log('\n=== MFA STATUS ===');
+    console.log("\n=== MFA STATUS ===");
     console.table(mfa);
   }
 }
