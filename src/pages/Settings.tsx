@@ -480,35 +480,15 @@ export default function Settings() {
     setIsResettingPassword(true);
 
     try {
-      let success = false;
+      // Reset password via SQL using extensions.crypt (bcrypt)
+      const escapedPassword = adminResetPassword.replace(/'/g, "''");
+      const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
+        p_migration_name: 'settings_pw_reset_' + Date.now(),
+        p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${selectedUserForReset.id}'`
+      });
 
-      // Try Edge Function first
-      try {
-        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-          body: {
-            userId: selectedUserForReset.id,
-            newPassword: adminResetPassword,
-          },
-        });
-        if (!error && !data?.error) {
-          success = true;
-        } else {
-          console.warn('Edge function failed, trying SQL fallback:', error?.message || data?.error);
-        }
-      } catch (fnErr) {
-        console.warn('Edge function call failed, trying SQL fallback:', fnErr);
-      }
-
-      // Fallback: reset password via SQL
-      if (!success) {
-        const escapedPassword = adminResetPassword.replace(/'/g, "''");
-        const { data: sqlResult, error: sqlError } = await supabase.rpc('execute_safe_migration', {
-          p_migration_name: 'settings_pw_reset_' + Date.now(),
-          p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${selectedUserForReset.id}'`
-        });
-        if (sqlError || !sqlResult?.success) {
-          throw new Error(sqlError?.message || sqlResult?.error || 'שגיאה בעדכון סיסמה');
-        }
+      if (sqlError || !sqlResult?.success) {
+        throw new Error(sqlError?.message || sqlResult?.error || 'שגיאה בעדכון סיסמה');
       }
 
       toast({
