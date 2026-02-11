@@ -660,7 +660,7 @@ export function NotificationCenter() {
                                       <Clock className="h-3.5 w-3.5 text-amber-600" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="start" dir="rtl">
+                                  <DropdownMenuContent align="start" className="direction-rtl">
                                     <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
                                       הזכר לי שוב...
                                     </div>

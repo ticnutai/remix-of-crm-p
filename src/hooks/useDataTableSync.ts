@@ -34,6 +34,7 @@ export interface SyncedClient {
   notes: string;
   created_at: string;
   custom_data?: Record<string, any>;
+  category_id?: string | null;
 }
 
 // Map DB status to demo status

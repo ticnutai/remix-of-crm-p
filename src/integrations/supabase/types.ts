@@ -433,6 +433,66 @@ export type Database = {
         }
         Relationships: []
       }
+      client_additional_payments: {
+        Row: {
+          amount: number
+          amount_with_vat: number | null
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string
+          id: string
+          is_paid: boolean | null
+          notes: string | null
+          paid_amount: number | null
+          paid_by: string | null
+          paid_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          payment_type: string
+          updated_at: string | null
+          vat_rate: number | null
+        }
+        Insert: {
+          amount?: number
+          amount_with_vat?: number | null
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description: string
+          id?: string
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_type?: string
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Update: {
+          amount?: number
+          amount_with_vat?: number | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string
+          id?: string
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          payment_type?: string
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Relationships: []
+      }
       client_categories: {
         Row: {
           color: string | null
@@ -947,6 +1007,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_payment_stages: {
+        Row: {
+          amount: number
+          amount_with_vat: number | null
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_paid: boolean | null
+          notes: string | null
+          paid_amount: number | null
+          paid_by: string | null
+          paid_date: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          stage_name: string
+          stage_number: number
+          updated_at: string | null
+          vat_rate: number | null
+        }
+        Insert: {
+          amount?: number
+          amount_with_vat?: number | null
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          stage_name: string
+          stage_number?: number
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Update: {
+          amount?: number
+          amount_with_vat?: number | null
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_paid?: boolean | null
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          stage_name?: string
+          stage_number?: number
+          updated_at?: string | null
+          vat_rate?: number | null
+        }
+        Relationships: []
       }
       client_portal_tokens: {
         Row: {
@@ -5796,11 +5919,114 @@ export type Database = {
       }
     }
     Functions: {
+      check_auth_hooks_v2: {
+        Args: never
+        Returns: {
+          func_name: string
+          func_schema: string
+        }[]
+      }
+      check_auth_identities: {
+        Args: never
+        Returns: {
+          has_identity: boolean
+          identity_created: string
+          identity_email: string
+          identity_last_signin: string
+          identity_provider: string
+          user_email: string
+        }[]
+      }
+      check_auth_status: {
+        Args: never
+        Returns: {
+          email_confirmed: boolean
+          has_password: boolean
+          in_auth_users: boolean
+          is_banned: boolean
+          last_sign_in: string
+          profile_email: string
+        }[]
+      }
+      check_auth_status_v2: {
+        Args: never
+        Returns: {
+          email_confirmed: boolean
+          has_password: boolean
+          in_auth_users: boolean
+          is_banned: boolean
+          last_sign_in: string
+          profile_email: string
+        }[]
+      }
+      check_auth_triggers: {
+        Args: never
+        Returns: {
+          trigger_def: string
+          trigger_name: string
+        }[]
+      }
+      check_auth_triggers_v3: {
+        Args: never
+        Returns: {
+          event_type: string
+          function_name: string
+          table_name: string
+          trigger_name: string
+        }[]
+      }
       check_email_rate_limit: {
         Args: { p_user_id: string; p_user_role?: string }
         Returns: Json
       }
+      check_mfa_status: {
+        Args: never
+        Returns: {
+          factor_type: string
+          has_mfa: boolean
+          user_email: string
+        }[]
+      }
       check_overdue_payments: { Args: never; Returns: number }
+      check_pw_format_v4: {
+        Args: never
+        Returns: {
+          is_sso: boolean
+          pw_length: number
+          pw_prefix: string
+          role_name: string
+          user_created: string
+          user_email: string
+        }[]
+      }
+      check_user_metadata_v2: {
+        Args: never
+        Returns: {
+          aud: string
+          confirmation_token: string
+          instance_id: string
+          last_sign_in: string
+          raw_app_metadata: string
+          recovery_token: string
+          user_email: string
+        }[]
+      }
+      check_user_nulls: {
+        Args: never
+        Returns: {
+          has_confirmation_token: boolean
+          has_email_change: string
+          has_email_change_token: string
+          has_phone: string
+          has_phone_change: string
+          has_reauthentication_token: boolean
+          has_recovery_token: boolean
+          identity_data: string
+          last_sign_in: string
+          raw_user_meta: string
+          user_email: string
+        }[]
+      }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       convert_quote_to_contract: {
         Args: {
