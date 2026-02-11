@@ -134,24 +134,27 @@ export function DocumentPreview({
       }}
     >
       {/* Logo Above Header */}
-      {doc.showLogo && doc.companyLogo && (doc.logoPosition === 'above-header' || doc.logoPosition === 'centered-above') && (
-        <div 
-          className={cn(
-            "p-4 bg-white",
-            doc.logoPosition === 'centered-above' && "flex justify-center"
-          )}
-        >
-          <img 
-            src={doc.companyLogo} 
-            alt="Logo" 
-            style={{ 
-              width: doc.logoSize || 120,
-              height: 'auto',
-              objectFit: 'contain'
-            }} 
-          />
-        </div>
-      )}
+      {doc.showLogo &&
+        doc.companyLogo &&
+        (doc.logoPosition === "above-header" ||
+          doc.logoPosition === "centered-above") && (
+          <div
+            className={cn(
+              "p-4 bg-white",
+              doc.logoPosition === "centered-above" && "flex justify-center",
+            )}
+          >
+            <img
+              src={doc.companyLogo}
+              alt="Logo"
+              style={{
+                width: doc.logoSize || 120,
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+        )}
 
       {/* Header */}
       {doc.showHeaderStrip !== false && (
@@ -169,39 +172,44 @@ export function DocumentPreview({
               />
             </div>
           )}
-          
+
           {/* Full Width Logo */}
-          {doc.showLogo && doc.companyLogo && doc.logoPosition === 'full-width' && (
-            <div className="flex justify-center mb-4">
-              <img 
-                src={doc.companyLogo} 
-                alt="Logo" 
-                style={{ 
-                  width: doc.logoSize || 200,
-                  maxWidth: '100%',
-                  height: 'auto',
-                  objectFit: 'contain'
-                }} 
-              />
-            </div>
-          )}
-          
+          {doc.showLogo &&
+            doc.companyLogo &&
+            doc.logoPosition === "full-width" && (
+              <div className="flex justify-center mb-4">
+                <img
+                  src={doc.companyLogo}
+                  alt="Logo"
+                  style={{
+                    width: doc.logoSize || 200,
+                    maxWidth: "100%",
+                    height: "auto",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+            )}
+
           <div className="flex justify-between items-start">
             {/* Company Info */}
             <SectionWrapper sectionKey="companyInfo" showFormatButton={false}>
               <div className="space-y-1">
-                {doc.showLogo && doc.companyLogo && (doc.logoPosition === 'inside-header' || !doc.logoPosition) && (
-                  <img 
-                    src={doc.companyLogo} 
-                    alt="Logo" 
-                    style={{ 
-                      width: doc.logoSize || 120,
-                      height: 'auto',
-                      objectFit: 'contain',
-                      marginBottom: '8px'
-                    }} 
-                  />
-                )}
+                {doc.showLogo &&
+                  doc.companyLogo &&
+                  (doc.logoPosition === "inside-header" ||
+                    !doc.logoPosition) && (
+                    <img
+                      src={doc.companyLogo}
+                      alt="Logo"
+                      style={{
+                        width: doc.logoSize || 120,
+                        height: "auto",
+                        objectFit: "contain",
+                        marginBottom: "8px",
+                      }}
+                    />
+                  )}
                 <EditableField
                   field="companyName"
                   className="text-2xl font-bold block"
@@ -235,7 +243,10 @@ export function DocumentPreview({
             {/* Quote Info */}
             <SectionWrapper sectionKey="quoteInfo" showFormatButton={false}>
               <div className="text-left space-y-1">
-                <EditableField field="title" className="text-xl font-bold block">
+                <EditableField
+                  field="title"
+                  className="text-xl font-bold block"
+                >
                   {doc.title}
                 </EditableField>
                 <div className="text-sm opacity-90">
@@ -268,18 +279,20 @@ export function DocumentPreview({
       {doc.showHeaderStrip === false && (
         <div className="p-8 pb-4 relative group border-b">
           {doc.showLogo && doc.companyLogo && (
-            <div className={cn(
-              "mb-4",
-              doc.logoPosition === 'centered-above' && "flex justify-center"
-            )}>
-              <img 
-                src={doc.companyLogo} 
-                alt="Logo" 
-                style={{ 
+            <div
+              className={cn(
+                "mb-4",
+                doc.logoPosition === "centered-above" && "flex justify-center",
+              )}
+            >
+              <img
+                src={doc.companyLogo}
+                alt="Logo"
+                style={{
                   width: doc.logoSize || 120,
-                  height: 'auto',
-                  objectFit: 'contain'
-                }} 
+                  height: "auto",
+                  objectFit: "contain",
+                }}
               />
             </div>
           )}
@@ -318,7 +331,11 @@ export function DocumentPreview({
 
             {/* Quote Info */}
             <div className="text-left space-y-1">
-              <EditableField field="title" className="text-xl font-bold block" style={{ color: doc.primaryColor }}>
+              <EditableField
+                field="title"
+                className="text-xl font-bold block"
+                style={{ color: doc.primaryColor }}
+              >
                 {doc.title}
               </EditableField>
               <div className="text-sm text-gray-600">
@@ -406,7 +423,10 @@ export function DocumentPreview({
         {/* Items Table */}
         <SectionWrapper sectionKey="itemsTable">
           <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm" style={getSectionCSS('itemsTable')}>
+            <table
+              className="w-full text-sm"
+              style={getSectionCSS("itemsTable")}
+            >
               <thead
                 style={{ backgroundColor: doc.primaryColor, color: "white" }}
               >
@@ -534,7 +554,10 @@ export function DocumentPreview({
 
         {/* Notes */}
         {doc.notes && (
-          <SectionWrapper sectionKey="notes" className="bg-gray-50 p-4 rounded-lg">
+          <SectionWrapper
+            sectionKey="notes"
+            className="bg-gray-50 p-4 rounded-lg"
+          >
             <h3
               className="font-semibold mb-2"
               style={{ color: doc.primaryColor }}

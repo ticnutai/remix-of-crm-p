@@ -1,28 +1,33 @@
-import React, { useState, useCallback } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { useQuotes, Quote } from '@/hooks/useQuotes';
-import { EditorToolbar } from './EditorToolbar';
-import { EditorSidebar } from './EditorSidebar';
-import { DocumentPreview } from './DocumentPreview';
-import { ItemsEditor } from './ItemsEditor';
-import { QuotesList } from './QuotesList';
-import { useQuoteDocument } from './hooks/useQuoteDocument';
-import { ViewMode, SectionKey, SectionTextStyle } from './types';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Button } from '@/components/ui/button';
+import React, { useState, useCallback } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { useQuotes, Quote } from "@/hooks/useQuotes";
+import { EditorToolbar } from "./EditorToolbar";
+import { EditorSidebar } from "./EditorSidebar";
+import { DocumentPreview } from "./DocumentPreview";
+import { ItemsEditor } from "./ItemsEditor";
+import { QuotesList } from "./QuotesList";
+import { useQuoteDocument } from "./hooks/useQuoteDocument";
+import { ViewMode, SectionKey, SectionTextStyle } from "./types";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
-} from '@/components/ui/resizable';
-import { importFile, getSupportedFileTypes } from '@/utils/fileImporter';
+} from "@/components/ui/resizable";
+import { importFile, getSupportedFileTypes } from "@/utils/fileImporter";
 
 export function QuoteDocumentEditor() {
   const { toast } = useToast();
-  const { quotes, isLoading: quotesLoading, updateQuote, createQuote } = useQuotes();
-  
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const {
+    quotes,
+    isLoading: quotesLoading,
+    updateQuote,
+    createQuote,
+  } = useQuotes();
+
+  const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [scale, setScale] = useState(0.7);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quotesListCollapsed, setQuotesListCollapsed] = useState(false);
@@ -47,9 +52,9 @@ export function QuoteDocumentEditor() {
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const items = document.items.map(item => ({
+      const items = document.items.map((item) => ({
         name: item.description,
-        description: item.details || '',
+        description: item.details || "",
         quantity: item.quantity,
         unit_price: item.unitPrice,
         total: item.total,
@@ -66,25 +71,29 @@ export function QuoteDocumentEditor() {
           terms_and_conditions: document.terms,
         });
       } else {
-        toast({ 
-          title: 'שים לב', 
-          description: 'כדי לשמור הצעה חדשה, יש לבחור לקוח תחילה',
-          variant: 'destructive'
+        toast({
+          title: "שים לב",
+          description: "כדי לשמור הצעה חדשה, יש לבחור לקוח תחילה",
+          variant: "destructive",
         });
         setIsSaving(false);
         return;
       }
-      
-      toast({ title: 'נשמר בהצלחה', description: 'הצעת המחיר נשמרה' });
+
+      toast({ title: "נשמר בהצלחה", description: "הצעת המחיר נשמרה" });
     } catch (error) {
-      toast({ title: 'שגיאה', description: 'לא ניתן לשמור', variant: 'destructive' });
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
   }, [document, originalQuoteId, updateQuote, toast]);
 
   const handleExportPdf = useCallback(() => {
-    toast({ title: 'מייצא PDF...', description: 'המסמך מיוצא' });
+    toast({ title: "מייצא PDF...", description: "המסמך מיוצא" });
     window.print();
   }, [toast]);
 
@@ -92,52 +101,62 @@ export function QuoteDocumentEditor() {
     window.print();
   }, []);
 
-  const handleImport = useCallback(async (file: File) => {
-    toast({ title: 'מייבא קובץ...', description: file.name });
-    
-    try {
-      const imported = await importFile(file);
-      loadImportedContent(imported);
-      
-      toast({ 
-        title: 'קובץ יובא בהצלחה', 
-        description: `נמצאו ${imported.items.length} פריטים` 
-      });
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({ 
-        title: 'שגיאה בייבוא', 
-        description: error instanceof Error ? error.message : 'לא ניתן לקרוא את הקובץ',
-        variant: 'destructive'
-      });
-    }
-  }, [toast, loadImportedContent]);
+  const handleImport = useCallback(
+    async (file: File) => {
+      toast({ title: "מייבא קובץ...", description: file.name });
 
-  const handleSelectQuote = useCallback((quote: Quote) => {
-    if (isDirty) {
-      const confirm = window.confirm('יש שינויים שלא נשמרו. האם להמשיך?');
-      if (!confirm) return;
-    }
-    loadQuote(quote);
-    toast({ title: 'הצעת מחיר נטענה', description: quote.quote_number });
-  }, [isDirty, loadQuote, toast]);
+      try {
+        const imported = await importFile(file);
+        loadImportedContent(imported);
+
+        toast({
+          title: "קובץ יובא בהצלחה",
+          description: `נמצאו ${imported.items.length} פריטים`,
+        });
+      } catch (error) {
+        console.error("Import error:", error);
+        toast({
+          title: "שגיאה בייבוא",
+          description:
+            error instanceof Error ? error.message : "לא ניתן לקרוא את הקובץ",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast, loadImportedContent],
+  );
+
+  const handleSelectQuote = useCallback(
+    (quote: Quote) => {
+      if (isDirty) {
+        const confirm = window.confirm("יש שינויים שלא נשמרו. האם להמשיך?");
+        if (!confirm) return;
+      }
+      loadQuote(quote);
+      toast({ title: "הצעת מחיר נטענה", description: quote.quote_number });
+    },
+    [isDirty, loadQuote, toast],
+  );
 
   const handleNewQuote = useCallback(() => {
     if (isDirty) {
-      const confirm = window.confirm('יש שינויים שלא נשמרו. האם להמשיך?');
+      const confirm = window.confirm("יש שינויים שלא נשמרו. האם להמשיך?");
       if (!confirm) return;
     }
     resetDocument();
   }, [isDirty, resetDocument]);
 
-  const handleUpdateSectionStyle = useCallback((sectionKey: SectionKey, style: SectionTextStyle) => {
-    updateDocument({
-      sectionStyles: {
-        ...document.sectionStyles,
-        [sectionKey]: style,
-      }
-    });
-  }, [document.sectionStyles, updateDocument]);
+  const handleUpdateSectionStyle = useCallback(
+    (sectionKey: SectionKey, style: SectionTextStyle) => {
+      updateDocument({
+        sectionStyles: {
+          ...document.sectionStyles,
+          [sectionKey]: style,
+        },
+      });
+    },
+    [document.sectionStyles, updateDocument],
+  );
 
   return (
     <TooltipProvider>
@@ -151,12 +170,27 @@ export function QuoteDocumentEditor() {
           isDirty={isDirty}
           onSave={handleSave}
           onExportPdf={handleExportPdf}
-          onExportImage={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
+          onExportImage={() =>
+            toast({
+              title: "בקרוב",
+              description: "פונקציה זו תהיה זמינה בקרוב",
+            })
+          }
           onPrint={handlePrint}
           onImport={handleImport}
           onNew={handleNewQuote}
-          onLoadTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
-          onSaveAsTemplate={() => toast({ title: 'בקרוב', description: 'פונקציה זו תהיה זמינה בקרוב' })}
+          onLoadTemplate={() =>
+            toast({
+              title: "בקרוב",
+              description: "פונקציה זו תהיה זמינה בקרוב",
+            })
+          }
+          onSaveAsTemplate={() =>
+            toast({
+              title: "בקרוב",
+              description: "פונקציה זו תהיה זמינה בקרוב",
+            })
+          }
           isSaving={isSaving}
           document={document}
         />
@@ -166,11 +200,11 @@ export function QuoteDocumentEditor() {
           {/* Quotes List panel */}
           {!quotesListCollapsed && (
             <>
-              <ResizablePanel 
+              <ResizablePanel
                 id="quotes-list-panel"
                 order={1}
-                defaultSize={15} 
-                minSize={10} 
+                defaultSize={15}
+                minSize={10}
                 maxSize={25}
               >
                 <QuotesList
@@ -189,11 +223,11 @@ export function QuoteDocumentEditor() {
           {/* Sidebar panel */}
           {!sidebarCollapsed && (
             <>
-              <ResizablePanel 
+              <ResizablePanel
                 id="sidebar-panel"
                 order={2}
-                defaultSize={15} 
-                minSize={10} 
+                defaultSize={15}
+                minSize={10}
                 maxSize={25}
               >
                 <div className="h-full overflow-hidden relative z-10">
@@ -210,12 +244,12 @@ export function QuoteDocumentEditor() {
           )}
 
           {/* Edit panel */}
-          {(viewMode === 'edit' || viewMode === 'split') && (
+          {(viewMode === "edit" || viewMode === "split") && (
             <>
-              <ResizablePanel 
+              <ResizablePanel
                 id="edit-panel"
                 order={3}
-                defaultSize={viewMode === 'split' ? 35 : 70} 
+                defaultSize={viewMode === "split" ? 35 : 70}
                 minSize={20}
               >
                 <div className="h-full bg-card border-l overflow-hidden flex flex-col">
@@ -234,16 +268,16 @@ export function QuoteDocumentEditor() {
                   </ScrollArea>
                 </div>
               </ResizablePanel>
-              {viewMode === 'split' && <ResizableHandle withHandle />}
+              {viewMode === "split" && <ResizableHandle withHandle />}
             </>
           )}
 
           {/* Preview panel */}
-          {(viewMode === 'preview' || viewMode === 'split') && (
-            <ResizablePanel 
+          {(viewMode === "preview" || viewMode === "split") && (
+            <ResizablePanel
               id="preview-panel"
               order={4}
-              defaultSize={viewMode === 'split' ? 35 : 70} 
+              defaultSize={viewMode === "split" ? 35 : 70}
               minSize={20}
             >
               <div className="h-full bg-muted/50 overflow-hidden">
@@ -252,7 +286,7 @@ export function QuoteDocumentEditor() {
                     <DocumentPreview
                       document={document}
                       scale={scale}
-                      editable={viewMode !== 'preview'}
+                      editable={viewMode !== "preview"}
                       onUpdateSectionStyle={handleUpdateSectionStyle}
                     />
                   </div>

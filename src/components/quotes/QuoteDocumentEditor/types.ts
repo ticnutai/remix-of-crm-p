@@ -138,7 +138,11 @@ export interface QuoteDocumentData {
 
   // Logo settings
   logoSize?: number; // Width in pixels (default: 120)
-  logoPosition?: 'inside-header' | 'above-header' | 'centered-above' | 'full-width';
+  logoPosition?:
+    | "inside-header"
+    | "above-header"
+    | "centered-above"
+    | "full-width";
   showHeaderStrip?: boolean; // Show/hide the colored header strip
 
   // Sections visibility

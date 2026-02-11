@@ -1,25 +1,25 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion';
+} from "@/components/ui/accordion";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { TooltipProvider } from '@/components/ui/tooltip';
+} from "@/components/ui/select";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   Building2,
   User,
@@ -33,13 +33,13 @@ import {
   Sparkles,
   FormInput,
   Image,
-} from 'lucide-react';
-import { QuoteDocumentData } from './types';
-import { ClientCombobox } from './ClientCombobox';
-import { Client } from '@/hooks/useClients';
-import { LogoUploadSection } from './LogoUploadSection';
-import { AdvancedDesignSettings } from './AdvancedDesignSettings';
-import { CustomFieldsEditor } from './CustomFieldsEditor';
+} from "lucide-react";
+import { QuoteDocumentData } from "./types";
+import { ClientCombobox } from "./ClientCombobox";
+import { Client } from "@/hooks/useClients";
+import { LogoUploadSection } from "./LogoUploadSection";
+import { AdvancedDesignSettings } from "./AdvancedDesignSettings";
+import { CustomFieldsEditor } from "./CustomFieldsEditor";
 
 interface EditorSidebarProps {
   document: QuoteDocumentData;
@@ -49,32 +49,40 @@ interface EditorSidebarProps {
 }
 
 const FONT_OPTIONS = [
-  { value: 'Heebo', label: 'Heebo' },
-  { value: 'Assistant', label: 'Assistant' },
-  { value: 'Rubik', label: 'Rubik' },
-  { value: 'Open Sans Hebrew', label: 'Open Sans' },
+  { value: "Heebo", label: "Heebo" },
+  { value: "Assistant", label: "Assistant" },
+  { value: "Rubik", label: "Rubik" },
+  { value: "Open Sans Hebrew", label: "Open Sans" },
 ];
 
 const UNITS = [
-  { value: 'יח\'', label: 'יחידה' },
+  { value: "יח'", label: "יחידה" },
   { value: 'מ"ר', label: 'מ"ר' },
   { value: 'מ"א', label: 'מ"א' },
-  { value: 'שעה', label: 'שעה' },
-  { value: 'יום', label: 'יום' },
-  { value: 'חודש', label: 'חודש' },
-  { value: 'קומפלט', label: 'קומפלט' },
+  { value: "שעה", label: "שעה" },
+  { value: "יום", label: "יום" },
+  { value: "חודש", label: "חודש" },
+  { value: "קומפלט", label: "קומפלט" },
 ];
 
-export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: EditorSidebarProps) {
-  const [openSections, setOpenSections] = useState<string[]>(['company', 'client']);
+export function EditorSidebar({
+  document,
+  onUpdate,
+  collapsed,
+  onToggle,
+}: EditorSidebarProps) {
+  const [openSections, setOpenSections] = useState<string[]>([
+    "company",
+    "client",
+  ]);
 
   const handleClientSelect = (client: Client) => {
     onUpdate({
       clientName: client.name,
-      clientCompany: client.company || '',
-      clientEmail: client.email || '',
-      clientPhone: client.phone || '',
-      clientAddress: client.address || '',
+      clientCompany: client.company || "",
+      clientEmail: client.email || "",
+      clientPhone: client.phone || "",
+      clientAddress: client.address || "",
     });
   };
 
@@ -105,7 +113,10 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
   }
 
   return (
-    <div className="w-full h-full bg-card border-l flex flex-col overflow-hidden" dir="rtl">
+    <div
+      className="w-full h-full bg-card border-l flex flex-col overflow-hidden"
+      dir="rtl"
+    >
       {/* Header */}
       <div className="p-3 border-b flex items-center justify-between shrink-0">
         <h3 className="font-semibold text-sm">הגדרות מסמך</h3>
@@ -138,58 +149,74 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
                   onLogoChange={(logo) => onUpdate({ companyLogo: logo })}
                 />
               </TooltipProvider>
-              
+
               {/* Logo Settings */}
               {document.companyLogo && (
                 <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
                   <Label className="text-xs font-medium">הגדרות לוגו</Label>
-                  
+
                   {/* Logo Size */}
                   <div>
-                    <Label className="text-xs text-muted-foreground">גודל לוגו: {document.logoSize || 120}px</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      גודל לוגו: {document.logoSize || 120}px
+                    </Label>
                     <Input
                       type="range"
                       min="60"
                       max="400"
                       step="10"
                       value={document.logoSize || 120}
-                      onChange={(e) => onUpdate({ logoSize: Number(e.target.value) })}
+                      onChange={(e) =>
+                        onUpdate({ logoSize: Number(e.target.value) })
+                      }
                       className="mt-1"
                     />
                   </div>
-                  
+
                   {/* Logo Position */}
                   <div>
-                    <Label className="text-xs text-muted-foreground">מיקום לוגו</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      מיקום לוגו
+                    </Label>
                     <Select
-                      value={document.logoPosition || 'inside-header'}
-                      onValueChange={(value: any) => onUpdate({ logoPosition: value })}
+                      value={document.logoPosition || "inside-header"}
+                      onValueChange={(value: any) =>
+                        onUpdate({ logoPosition: value })
+                      }
                     >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="inside-header">בתוך הסטריפ</SelectItem>
+                        <SelectItem value="inside-header">
+                          בתוך הסטריפ
+                        </SelectItem>
                         <SelectItem value="above-header">מעל הסטריפ</SelectItem>
-                        <SelectItem value="centered-above">ממורכז מעל הסטריפ</SelectItem>
-                        <SelectItem value="full-width">רוחב מלא בסטריפ</SelectItem>
+                        <SelectItem value="centered-above">
+                          ממורכז מעל הסטריפ
+                        </SelectItem>
+                        <SelectItem value="full-width">
+                          רוחב מלא בסטריפ
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
               )}
-              
+
               {/* Header Strip Toggle */}
               <div className="flex items-center justify-between">
                 <Label className="text-xs">הצג סטריפ כותרת צבעוני</Label>
                 <Switch
                   checked={document.showHeaderStrip !== false}
-                  onCheckedChange={(checked) => onUpdate({ showHeaderStrip: checked })}
+                  onCheckedChange={(checked) =>
+                    onUpdate({ showHeaderStrip: checked })
+                  }
                 />
               </div>
-              
+
               <Separator />
-              
+
               <div>
                 <Label className="text-xs">שם החברה</Label>
                 <Input
@@ -253,7 +280,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">חברה</Label>
                 <Input
-                  value={document.clientCompany || ''}
+                  value={document.clientCompany || ""}
                   onChange={(e) => onUpdate({ clientCompany: e.target.value })}
                   placeholder="שם החברה"
                   className="mt-1"
@@ -262,7 +289,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">כתובת</Label>
                 <Input
-                  value={document.clientAddress || ''}
+                  value={document.clientAddress || ""}
                   onChange={(e) => onUpdate({ clientAddress: e.target.value })}
                   placeholder="כתובת"
                   className="mt-1"
@@ -272,7 +299,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
                 <div>
                   <Label className="text-xs">טלפון</Label>
                   <Input
-                    value={document.clientPhone || ''}
+                    value={document.clientPhone || ""}
                     onChange={(e) => onUpdate({ clientPhone: e.target.value })}
                     placeholder="טלפון"
                     className="mt-1"
@@ -281,7 +308,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
                 <div>
                   <Label className="text-xs">אימייל</Label>
                   <Input
-                    value={document.clientEmail || ''}
+                    value={document.clientEmail || ""}
                     onChange={(e) => onUpdate({ clientEmail: e.target.value })}
                     placeholder="אימייל"
                     className="mt-1"
@@ -311,7 +338,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">פתיחה</Label>
                 <Textarea
-                  value={document.introduction || ''}
+                  value={document.introduction || ""}
                   onChange={(e) => onUpdate({ introduction: e.target.value })}
                   rows={3}
                   className="mt-1 text-sm"
@@ -320,7 +347,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">תנאים</Label>
                 <Textarea
-                  value={document.terms || ''}
+                  value={document.terms || ""}
                   onChange={(e) => onUpdate({ terms: e.target.value })}
                   rows={3}
                   className="mt-1 text-sm"
@@ -329,7 +356,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">הערות</Label>
                 <Textarea
-                  value={document.notes || ''}
+                  value={document.notes || ""}
                   onChange={(e) => onUpdate({ notes: e.target.value })}
                   rows={2}
                   className="mt-1 text-sm"
@@ -338,7 +365,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               <div>
                 <Label className="text-xs">חתימה</Label>
                 <Textarea
-                  value={document.footer || ''}
+                  value={document.footer || ""}
                   onChange={(e) => onUpdate({ footer: e.target.value })}
                   rows={2}
                   className="mt-1 text-sm"
@@ -374,10 +401,7 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CustomFieldsEditor
-                document={document}
-                onUpdate={onUpdate}
-              />
+              <CustomFieldsEditor document={document} onUpdate={onUpdate} />
             </AccordionContent>
           </AccordionItem>
 
@@ -439,34 +463,40 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
                   onCheckedChange={(v) => onUpdate({ showSignature: v })}
                 />
               </div>
-              
+
               <Separator />
-              
+
               <div>
                 <Label className="text-xs">אחוז מע"מ</Label>
                 <Input
                   type="number"
                   value={document.vatRate}
-                  onChange={(e) => onUpdate({ vatRate: parseFloat(e.target.value) || 0 })}
+                  onChange={(e) =>
+                    onUpdate({ vatRate: parseFloat(e.target.value) || 0 })
+                  }
                   min={0}
                   max={100}
                   className="mt-1"
                 />
               </div>
-              
+
               <div>
                 <Label className="text-xs">הנחה</Label>
                 <div className="flex gap-2 mt-1">
                   <Input
                     type="number"
                     value={document.discount}
-                    onChange={(e) => onUpdate({ discount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      onUpdate({ discount: parseFloat(e.target.value) || 0 })
+                    }
                     min={0}
                     className="flex-1"
                   />
                   <Select
                     value={document.discountType}
-                    onValueChange={(v: 'percent' | 'fixed') => onUpdate({ discountType: v })}
+                    onValueChange={(v: "percent" | "fixed") =>
+                      onUpdate({ discountType: v })
+                    }
                   >
                     <SelectTrigger className="w-24">
                       <SelectValue />

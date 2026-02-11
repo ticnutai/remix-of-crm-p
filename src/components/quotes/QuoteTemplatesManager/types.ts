@@ -28,7 +28,7 @@ export interface TemplateStageItem {
   isBold?: boolean;
   isItalic?: boolean;
   isUnderline?: boolean;
-  textAlign?: 'right' | 'center' | 'left';
+  textAlign?: "right" | "center" | "left";
 }
 
 export interface PaymentStep {
