@@ -2185,9 +2185,21 @@ export function HtmlTemplateEditor({
     table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
+    .full-width-logo { width: 100%; max-width: 100%; margin: 0 auto; }
+    .full-width-logo img { width: 100%; height: auto; display: block; }
   </style>
 </head>
 <body>
+  ${
+    designSettings.showLogo &&
+    designSettings.logoUrl &&
+    designSettings.logoPosition === "full-width"
+      ? `
+  <div class="full-width-logo">
+    <img src="${designSettings.logoUrl}" alt="Logo">
+  </div>`
+      : ""
+  }
   <div class="container">
     ${
       designSettings.showLogo &&
@@ -2204,14 +2216,13 @@ export function HtmlTemplateEditor({
       designSettings.showHeaderStrip !== false
         ? `
     <div class="header">
-      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<div style="width: 100%; margin: -40px -40px 15px -40px; padding: 0;"><img src="${designSettings.logoUrl}" alt="Logo" style="width: 100%; height: auto; display: block;"></div>` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
       <h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
       <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>
     </div>`
         : `
     <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
-      ${designSettings.showLogo && designSettings.logoUrl ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
+      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
       <h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
       <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>
     </div>`
@@ -4632,6 +4643,24 @@ export function HtmlTemplateEditor({
                               : "100%",
                       }}
                     >
+                      {/* Full Width Logo - Spans entire width at top */}
+                      {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
+                        <div 
+                          className="cursor-pointer relative group w-full"
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          <img
+                            src={designSettings.logoUrl}
+                            alt="Logo"
+                            style={{ width: '100%', height: 'auto', display: 'block' }}
+                          />
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
+                              <Upload className="h-3 w-3 ml-1" />החלף לוגו
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <div
                         className="p-6 space-y-4"
                         dir="rtl"
@@ -4666,20 +4695,6 @@ export function HtmlTemplateEditor({
                                   : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
                             }}
                           >
-                            {/* Full Width Logo inside header - spans entire width */}
-                            {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
-                              <div 
-                                className="cursor-pointer -mx-6 -mt-6 mb-4" 
-                                style={{ width: 'calc(100% + 48px)' }}
-                                onClick={() => logoInputRef.current?.click()}
-                              >
-                                <img
-                                  src={designSettings.logoUrl}
-                                  alt="Logo"
-                                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                                />
-                              </div>
-                            )}
                             {/* Regular Logo inside header */}
                             {designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === 'inside-header') && (
                               <div className="cursor-pointer" onClick={() => logoInputRef.current?.click()}>
