@@ -53,7 +53,6 @@ import { ErrorMonitor } from '@/components/dev/ErrorMonitor';
 import { useErrorMonitoring } from '@/hooks/useErrorMonitoring';
 import { ScriptRunner } from './ScriptRunner';
 import { SystemHealthCheck } from './SystemHealthCheck';
-import { EdgeFunctionsManager } from './EdgeFunctionsManager';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
 const DEV_TOOLS_CONFIG_KEY = 'dev-tools-config';
@@ -626,9 +625,6 @@ export function DeveloperSettings() {
 
       {/* System Health Check */}
       {devMode && <SystemHealthCheck />}
-
-      {/* Edge Functions Manager - Always visible, separate section */}
-      <EdgeFunctionsManager />
     </div>
   );
 }

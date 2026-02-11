@@ -70,6 +70,7 @@ import {
   Contact,
   Mail,
   BellRing,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivityLogTab } from "@/components/settings/ActivityLogTab";
@@ -82,6 +83,7 @@ import { GoogleCalendarSettingsMulti } from "@/components/settings/GoogleCalenda
 import { GoogleContactsSettings } from "@/components/settings/GoogleContactsSettings";
 import { DataCleanupTab } from "@/components/settings/DataCleanupTab";
 import { DeveloperSettings } from "@/components/settings/DeveloperSettings";
+import { EdgeFunctionsManager } from "@/components/settings/EdgeFunctionsManager";
 import { EmailTemplateManager } from "@/components/settings/EmailTemplateManager";
 import { RateLimitMonitor } from "@/components/settings/RateLimitMonitor";
 import { EmailSignatureManager } from "@/components/settings/EmailSignatureManager";
@@ -671,6 +673,15 @@ export default function Settings() {
               >
                 <Trash2 className="h-4 w-4" />
                 <span className="hidden sm:inline">ניקוי נתונים</span>
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger
+                value="edge-functions"
+                className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">Edge Functions</span>
               </TabsTrigger>
             )}
             {isAdmin && (
@@ -1458,6 +1469,13 @@ export default function Settings() {
           {isAdmin && (
             <TabsContent value="cleanup" className="space-y-6">
               <DataCleanupTab />
+            </TabsContent>
+          )}
+
+          {/* Edge Functions Tab (Admin Only) */}
+          {isAdmin && (
+            <TabsContent value="edge-functions" className="space-y-6">
+              <EdgeFunctionsManager />
             </TabsContent>
           )}
 
