@@ -1911,7 +1911,7 @@ export function HtmlTemplateEditor({
       logoSize: 120,
       logoPosition: "inside-header",
       showHeaderStrip: true,
-      headerStripHeight: 200,
+      headerStripHeight: 150,
     };
   });
   const [textBoxes, setTextBoxes] = useState<TextBox[]>(() => {
@@ -2442,7 +2442,7 @@ export function HtmlTemplateEditor({
             setDesignSettings(prev => ({
               ...prev,
               logoUrl: dataUrl,
-              headerStripHeight: Math.min(Math.max(calculatedHeight, 100), 500),
+              headerStripHeight: Math.min(Math.max(calculatedHeight, 80), 250),
             }));
           } else {
             setDesignSettings(prev => ({
@@ -3701,7 +3701,7 @@ export function HtmlTemplateEditor({
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <Label className="text-sm text-gray-600">
-                              גובה סטריפ: {designSettings.headerStripHeight || 200}px
+                              גובה סטריפ: {designSettings.headerStripHeight || 150}px
                             </Label>
                             <Button
                               size="sm"
@@ -3718,7 +3718,7 @@ export function HtmlTemplateEditor({
                                     console.log('[AUTO-FIT] Calculated height:', calculatedHeight);
                                     setDesignSettings(prev => ({
                                       ...prev,
-                                      headerStripHeight: Math.min(Math.max(calculatedHeight, 100), 500),
+                                      headerStripHeight: Math.min(Math.max(calculatedHeight, 80), 250),
                                     }));
                                   };
                                   img.src = designSettings.logoUrl;
@@ -3730,15 +3730,15 @@ export function HtmlTemplateEditor({
                             </Button>
                           </div>
                           <Slider
-                            value={[designSettings.headerStripHeight || 200]}
+                            value={[designSettings.headerStripHeight || 150]}
                             onValueChange={([v]) =>
                               setDesignSettings({
                                 ...designSettings,
                                 headerStripHeight: v,
                               })
                             }
-                            min={100}
-                            max={500}
+                            min={80}
+                            max={250}
                             step={10}
                             className="mt-2"
                           />
