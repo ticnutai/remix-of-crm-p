@@ -16,7 +16,7 @@ import {
   X, Save, Download, FileCode, Mail, ChevronDown, ChevronUp, Pencil, Plus, Trash2,
   GripVertical, Image, Palette, Type, CreditCard, FileText, Settings, Upload, Copy, RotateCcw,
   User, MapPin, Search, Check, Send, File, Eye, Columns, Menu, MessageCircle, Sparkles, Layers, Box,
-  QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench,
+  QrCode, PenTool, Clock, History, Calculator, Smartphone, Calendar, Wrench, Edit,
   Bold, Italic, Underline, AlignRight, AlignCenter, AlignLeft, BookTemplate, Minimize2, Maximize2,
   Undo2, Redo2, Lock, Unlock, Share2, FileDown, GitBranch, ArrowLeftRight,
 } from 'lucide-react';
@@ -752,6 +752,8 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [interactiveEditMode, setInteractiveEditMode] = useState(false);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // DnD sensors for text boxes
@@ -2022,6 +2024,17 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                     <Smartphone className="h-3.5 w-3.5 ml-1" />נייד
                   </Button>
                 </div>
+                {/* Interactive Edit Mode Toggle */}
+                <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={interactiveEditMode ? 'default' : 'ghost'}
+                    className={`h-8 text-xs ${interactiveEditMode ? 'bg-purple-500 hover:bg-purple-600 text-white' : ''}`}
+                    onClick={() => setInteractiveEditMode(!interactiveEditMode)}
+                  >
+                    <Edit className="h-3.5 w-3.5 ml-1" />עריכה אינטראקטיבית
+                  </Button>
+                </div>
                 {/* Version save button */}
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => saveVersion()} disabled={isSavingVersion || !editedTemplate.id}>
                   <GitBranch className="h-3.5 w-3.5 ml-1" />{isSavingVersion ? 'שומר...' : 'שמור גרסה ☁️'}
@@ -2049,12 +2062,182 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
                       <div className="w-20 h-4 bg-gray-900 rounded-full" />
                     </div>
                   )}
-                  <iframe
-                    srcDoc={generateHtmlContent()}
-                    title="תצוגה מקדימה"
-                    className="w-full border-0"
-                    style={{ height: previewDevice === 'mobile' ? '630px' : previewDevice === 'tablet' ? '1000px' : '100%' }}
-                  />
+                  
+                  {/* Interactive Edit Preview */}
+                  {interactiveEditMode ? (
+                    <ScrollArea className="w-full h-full" style={{ height: previewDevice === 'mobile' ? '630px' : previewDevice === 'tablet' ? '1000px' : '100%' }}>
+                      <div className="p-6 space-y-4" dir="rtl" style={{ fontFamily: designSettings.fontFamily }}>
+                        
+                        {/* Header Section - Editable */}
+                        <div className="relative group">
+                          <div 
+                            className="rounded-xl p-6 text-white text-center"
+                            style={{ background: designSettings.showHeaderStrip !== false ? designSettings.headerBackground : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})` }}
+                          >
+                            {designSettings.showLogo && designSettings.logoUrl && (
+                              <img src={designSettings.logoUrl} alt="Logo" style={{ width: designSettings.logoSize || 120, height: 'auto', margin: '0 auto 16px' }} />
+                            )}
+                            <h1 className="text-2xl font-bold">{editedTemplate.name}</h1>
+                            <p className="opacity-90 text-sm mt-1">{editedTemplate.description}</p>
+                          </div>
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('design')}>
+                              <Palette className="h-3 w-3 ml-1" />עיצוב
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Project Details Section - Editable */}
+                        {projectDetails.clientName && (
+                          <div className="relative group">
+                            <div className="bg-gray-50 rounded-xl p-4 border" style={{ borderRadius: designSettings.borderRadius }}>
+                              <h2 className="font-bold mb-3" style={{ color: designSettings.primaryColor }}>פרטי הפרויקט</h2>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                {projectDetails.clientName && <div><span className="font-medium">לקוח:</span> {projectDetails.clientName}</div>}
+                                {projectDetails.address && <div><span className="font-medium">כתובת:</span> {projectDetails.address}</div>}
+                                {projectDetails.gush && <div><span className="font-medium">גוש:</span> {projectDetails.gush}</div>}
+                                {projectDetails.helka && <div><span className="font-medium">חלקה:</span> {projectDetails.helka}</div>}
+                              </div>
+                            </div>
+                            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('project')}>
+                                <Edit className="h-3 w-3 ml-1" />ערוך
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Work Stages Section - Editable */}
+                        <div className="relative group">
+                          <div className="bg-white rounded-xl p-4 border shadow-sm" style={{ borderRadius: designSettings.borderRadius }}>
+                            <h2 className="font-bold mb-4" style={{ color: designSettings.primaryColor }}>שלבי העבודה</h2>
+                            <div className="space-y-3">
+                              {editedTemplate.stages.map((stage) => (
+                                <div key={stage.id} className="bg-gray-50 rounded-lg p-3 border" style={{ borderRadius: designSettings.borderRadius }}>
+                                  <h3 className="font-semibold flex items-center gap-2" style={{ color: designSettings.primaryColor }}>
+                                    <span>{stage.icon || '📋'}</span> {stage.name}
+                                  </h3>
+                                  <ul className="mt-2 space-y-1">
+                                    {stage.items.map((item: any) => (
+                                      <li key={item.id} className="text-sm text-gray-600 flex items-center gap-2">
+                                        <span className="text-green-500">✓</span>
+                                        <span style={{
+                                          fontFamily: item.fontFamily || designSettings.fontFamily,
+                                          fontSize: item.fontSize || 14,
+                                          color: item.fontColor || '#333',
+                                          fontWeight: item.isBold ? 'bold' : 'normal',
+                                          fontStyle: item.isItalic ? 'italic' : 'normal',
+                                          textDecoration: item.isUnderline ? 'underline' : 'none',
+                                        }}>{item.text}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('content')}>
+                              <Edit className="h-3 w-3 ml-1" />ערוך שלבים
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Payments Section - Editable */}
+                        <div className="relative group">
+                          <div className="bg-white rounded-xl p-4 border shadow-sm" style={{ borderRadius: designSettings.borderRadius }}>
+                            <h2 className="font-bold mb-4" style={{ color: designSettings.primaryColor }}>סדר תשלומים</h2>
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr style={{ backgroundColor: designSettings.primaryColor }} className="text-white">
+                                  <th className="p-2 text-right rounded-tr-lg">שלב</th>
+                                  <th className="p-2 text-center">אחוז</th>
+                                  <th className="p-2 text-left rounded-tl-lg">סכום</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {paymentSteps.map((step, i) => (
+                                  <tr key={step.id} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
+                                    <td className="p-2">{step.name}</td>
+                                    <td className="p-2 text-center">{step.percentage}%</td>
+                                    <td className="p-2 text-left">₪{Math.round((editedTemplate.base_price || 35000) * step.percentage / 100).toLocaleString()}</td>
+                                  </tr>
+                                ))}
+                                <tr className="font-bold bg-gray-100">
+                                  <td className="p-2">סה"כ</td>
+                                  <td className="p-2 text-center">100%</td>
+                                  <td className="p-2 text-left">₪{(editedTemplate.base_price || 35000).toLocaleString()}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('payments')}>
+                              <Edit className="h-3 w-3 ml-1" />ערוך תשלומים
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Text Boxes - Editable */}
+                        {textBoxes.length > 0 && (
+                          <div className="relative group">
+                            <div className="space-y-3">
+                              {textBoxes.map((tb) => (
+                                <div 
+                                  key={tb.id} 
+                                  className="rounded-lg p-4 border"
+                                  style={{ 
+                                    backgroundColor: tb.customBg || (tb.style === 'highlight' ? '#fef3c7' : tb.style === 'warning' ? '#fef2f2' : tb.style === 'info' ? '#eff6ff' : '#f9fafb'),
+                                    borderColor: tb.customBorder || (tb.style === 'highlight' ? '#fcd34d' : tb.style === 'warning' ? '#fca5a5' : tb.style === 'info' ? '#93c5fd' : '#e5e7eb'),
+                                    borderRadius: designSettings.borderRadius
+                                  }}
+                                >
+                                  {tb.title && <h3 className="font-semibold mb-2" style={{ color: designSettings.primaryColor }}>{tb.title}</h3>}
+                                  <p className="text-sm" style={{
+                                    color: tb.customTextColor || '#333',
+                                    fontSize: tb.fontSize || 14,
+                                    fontWeight: tb.isBold ? 'bold' : 'normal',
+                                    fontStyle: tb.isItalic ? 'italic' : 'normal',
+                                    textDecoration: tb.isUnderline ? 'underline' : 'none',
+                                    textAlign: tb.textAlign || 'right',
+                                    fontFamily: tb.fontFamily || designSettings.fontFamily,
+                                  }}>{tb.content}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                              <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('text-boxes')}>
+                                <Type className="h-3 w-3 ml-1" />ערוך תיבות
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Footer Section - Editable */}
+                        <div className="relative group">
+                          <div className="bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-600">
+                            <p className="font-semibold">{designSettings.companyName}</p>
+                            <p>{designSettings.companyAddress} | {designSettings.companyPhone} | {designSettings.companyEmail}</p>
+                            <p className="mt-2 text-xs">* המחירים אינם כוללים מע"מ. תוקף ההצעה: {editedTemplate.validity_days || 30} יום.</p>
+                          </div>
+                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                            <Button size="sm" variant="secondary" className="h-7 text-xs shadow-lg" onClick={() => setActiveTab('settings')}>
+                              <Settings className="h-3 w-3 ml-1" />הגדרות
+                            </Button>
+                          </div>
+                        </div>
+
+                      </div>
+                    </ScrollArea>
+                  ) : (
+                    <iframe
+                      srcDoc={generateHtmlContent()}
+                      title="תצוגה מקדימה"
+                      className="w-full border-0"
+                      style={{ height: previewDevice === 'mobile' ? '630px' : previewDevice === 'tablet' ? '1000px' : '100%' }}
+                    />
+                  )}
+                  
                   {/* Phone bottom bar */}
                   {previewDevice === 'mobile' && (
                     <div className="bg-gray-800 flex justify-center py-1">
