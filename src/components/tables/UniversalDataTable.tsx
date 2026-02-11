@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { DataTable } from '@/components/DataTable';
-import { ColumnDef } from '@/components/DataTable/types';
+import { ColumnDef, TableStyleConfig } from '@/components/DataTable/types';
 import { AddColumnDialog, CustomColumn } from '@/components/tables/AddColumnDialog';
 import { BulkColumnWizard } from '@/components/custom-tables/BulkColumnWizard';
 import { CustomTemplateManager } from '@/components/custom-tables/CustomTemplateManager';
@@ -74,6 +74,10 @@ export interface UniversalDataTableProps<T extends { id: string; custom_data?: R
 
   // Optional: portal DataTable toolbar into an external container
   toolbarPortalId?: string;
+
+  // Table styling config
+  tableStyleConfig?: TableStyleConfig;
+  onTableStyleChange?: (config: TableStyleConfig) => void;
 }
 
 export function UniversalDataTable<T extends { id: string; custom_data?: Record<string, any> }>({
@@ -102,6 +106,8 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
   canDeleteColumns = true,
   maxViewportHeightOffset,
   toolbarPortalId,
+  tableStyleConfig,
+  onTableStyleChange,
 }: UniversalDataTableProps<T>) {
   const [isAddColumnOpen, setIsAddColumnOpen] = useState(false);
   const [isBulkWizardOpen, setIsBulkWizardOpen] = useState(false);
@@ -604,6 +610,8 @@ export function UniversalDataTable<T extends { id: string; custom_data?: Record<
         onQuickAddColumns={canAddColumns ? () => setIsQuickAddColumnsOpen(true) : undefined}
         maxViewportHeightOffset={maxViewportHeightOffset}
         toolbarPortalId={toolbarPortalId}
+        tableStyleConfig={tableStyleConfig}
+        onTableStyleChange={onTableStyleChange}
       />
 
       {/* Add Column Dialog */}

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTimer } from '@/hooks/useTimer';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useClients } from '@/hooks/useClients';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,13 @@ import { TimeEntriesList } from './TimeEntriesList';
 import { TimerSettingsDialog } from './TimerSettingsDialog';
 import { QuickInputSection } from './QuickInputSection';
 import { TimerThemeProvider, useTimerTheme } from './TimerThemeContext';
-import { Timer, Play, Square, Clock, Sparkles, Gem, Palette, Pause, Save, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { Timer, Play, Square, Clock, Sparkles, Gem, Palette, Pause, Save, RotateCcw, Maximize2, Minimize2, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 const TIMER_POSITION_KEY = 'timer-position';
 const TIMER_SIZE_KEY = 'timer-size';
+const TIMER_MINIMIZED_KEY = 'timer-widget-minimized';
 
 // Preset sizes for mobile quick resize
 const SIZE_PRESETS = {
@@ -47,6 +49,7 @@ function FloatingTimerContent() {
     resetTimer,
     saveEntry
   } = useTimer();
+  const { clients } = useClients();
   const {
     theme: timerTheme,
     setTheme: setTimerTheme
@@ -55,10 +58,26 @@ function FloatingTimerContent() {
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
+  // Get current client name from current entry
+  const currentClientName = timerState.currentEntry?.client_id 
+    ? clients.find(c => c.id === timerState.currentEntry?.client_id)?.name 
+    : null;
+  
   // Stop dialog state
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
   const [stopDescription, setStopDescription] = useState('');
   const [stopNotes, setStopNotes] = useState('');
+
+  // Minimized state
+  const [isMinimized, setIsMinimized] = useState(() => {
+    const saved = localStorage.getItem(TIMER_MINIMIZED_KEY);
+    return saved === 'true';
+  });
+
+  // Save minimized state
+  useEffect(() => {
+    localStorage.setItem(TIMER_MINIMIZED_KEY, String(isMinimized));
+  }, [isMinimized]);
 
   // Dragging state
   const [isDragging, setIsDragging] = useState(false);
@@ -333,13 +352,48 @@ function FloatingTimerContent() {
             {/* Static glow when running */}
             {timerState.isRunning && <span className="absolute inset-0 rounded-full bg-[hsl(45,80%,50%)]/15" />}
             
-            <span className="relative flex items-center justify-center h-full w-full">
-              <Timer className={cn("h-7 w-7 transition-colors duration-300", timerState.isRunning ? "text-[hsl(45,85%,60%)]" : "text-[hsl(45,70%,55%)] group-hover:text-[hsl(45,85%,65%)]")} strokeWidth={1.8} />
+            <span className="relative flex flex-col items-center justify-center h-full w-full">
+              {/* Show only timer icon when not minimized OR no timer running */}
+              {(!isMinimized || timerState.elapsed === 0) && (
+                <Timer className={cn("h-7 w-7 transition-colors duration-300", timerState.isRunning ? "text-[hsl(45,85%,60%)]" : "text-[hsl(45,70%,55%)] group-hover:text-[hsl(45,85%,65%)]")} strokeWidth={1.8} />
+              )}
+              {/* Show compact time display when minimized AND timer is active */}
+              {isMinimized && timerState.elapsed > 0 && (
+                <>
+                  <Timer className={cn("h-4 w-4 mb-0.5 transition-colors duration-300", timerState.isRunning ? "text-[hsl(45,85%,60%)]" : "text-[hsl(45,70%,55%)]")} strokeWidth={1.8} />
+                  <span className={cn(
+                    "font-mono text-[10px] font-bold tracking-tight leading-none",
+                    timerState.isRunning ? "text-[hsl(45,85%,60%)]" : "text-[hsl(45,70%,55%)]"
+                  )}>
+                    {formatTime(timerState.elapsed).slice(0, 5)}
+                  </span>
+                </>
+              )}
             </span>
           </button>
 
-          {/* Floating Timer Badge - Navy & Gold Theme */}
-          {(timerState.isRunning || timerState.elapsed > 0) && <div className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl", "bg-gradient-to-l from-[hsl(220,60%,18%)] via-[hsl(220,60%,22%)] to-[hsl(220,60%,20%)]", "border-2 border-[hsl(45,80%,50%)]", "shadow-[0_0_20px_rgba(180,140,50,0.25)]", "animate-fade-in cursor-pointer", "hover:shadow-[0_0_30px_rgba(180,140,50,0.4)] transition-all duration-300")} onClick={() => setOpen(true)}>
+          {/* Minimize/Maximize Toggle - Shows when timer is active */}
+          {(timerState.isRunning || timerState.elapsed > 0) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(!isMinimized);
+              }}
+              className={cn(
+                "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-200",
+                "bg-[hsl(220,60%,25%)] border border-[hsl(45,80%,50%)]/50",
+                "hover:bg-[hsl(220,60%,30%)] hover:border-[hsl(45,80%,50%)]",
+                "text-[hsl(45,80%,60%)] hover:text-[hsl(45,85%,70%)]",
+                "shadow-sm"
+              )}
+              title={isMinimized ? "הרחבה" : "מזעור"}
+            >
+              {isMinimized ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+            </button>
+          )}
+
+          {/* Floating Timer Badge - Navy & Gold Theme - Hidden when minimized */}
+          {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && <div className={cn("flex items-center gap-3 px-4 py-3 rounded-2xl", "bg-gradient-to-l from-[hsl(220,60%,18%)] via-[hsl(220,60%,22%)] to-[hsl(220,60%,20%)]", "border-2 border-[hsl(45,80%,50%)]", "shadow-[0_0_20px_rgba(180,140,50,0.25)]", "animate-fade-in cursor-pointer", "hover:shadow-[0_0_30px_rgba(180,140,50,0.4)] transition-all duration-300")} onClick={() => setOpen(true)}>
               {/* Quick Action Buttons */}
               <div className="flex items-center gap-1.5">
                 {/* Play/Pause Button */}
@@ -388,6 +442,13 @@ function FloatingTimerContent() {
             }}>
                   {formatTime(timerState.elapsed)}
                 </span>
+                {/* Client name badge */}
+                {currentClientName && (
+                  <div className="flex items-center gap-1 text-[10px] mt-1 bg-[hsl(45,80%,50%)]/20 text-[hsl(45,80%,70%)] px-2 py-0.5 rounded-full border border-[hsl(45,80%,50%)]/30 max-w-[120px] truncate">
+                    <User className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{currentClientName}</span>
+                  </div>
+                )}
                 {timerState.currentEntry?.description && <span className="text-[11px] mt-1 max-w-[120px] truncate text-right" style={{
               color: timerTheme.labelsColor || 'hsl(45,60%,70%)'
             }}>

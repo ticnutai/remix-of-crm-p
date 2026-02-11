@@ -3,7 +3,9 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { UniversalDataTable } from '@/components/tables/UniversalDataTable';
-import { ColumnDef, Preset, FilterState, SortState } from '@/components/DataTable/types';
+import { ColumnDef, Preset, FilterState, SortState, TableStyleConfig } from '@/components/DataTable/types';
+import { TableStyleSettings } from '@/components/DataTable/components/TableStyleSettings';
+import { useTableStyleConfig } from '@/components/DataTable/hooks/useTableStyleConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -99,6 +101,7 @@ import {
   Heart,
   ChevronDown,
   ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -270,6 +273,9 @@ export default function DataTablePro() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('clients');
+  
+  // Table styling configuration
+  const { config: tableStyleConfig, updateConfig: updateTableStyleConfig, resetConfig: resetTableStyleConfig } = useTableStyleConfig('clients');
   
   // Database sync hook
   const {
@@ -2550,6 +2556,34 @@ export default function DataTablePro() {
                 </Tooltip>
               </TooltipProvider>
             )}
+
+            {/* Table Style Settings */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <TableStyleSettings
+                      config={tableStyleConfig}
+                      onChange={updateTableStyleConfig}
+                      onReset={resetTableStyleConfig}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 shrink-0"
+                          title="עיצוב טבלה"
+                        >
+                          <SlidersHorizontal className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>עיצוב טבלה</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Create Table Dialog */}
@@ -2660,7 +2694,7 @@ export default function DataTablePro() {
                       <Redo2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   {/* Bulk Actions - Always visible section */}
                   {selectedClients.length > 0 ? (
                     <div className="flex items-center gap-2 border-r pr-2 bg-primary/5 rounded-lg px-3 py-1">
@@ -2973,6 +3007,8 @@ export default function DataTablePro() {
                     onCellEdit={handleClientCellEdit}
                     onSelectionChange={handleClientSelectionChange}
                     loading={isSyncing}
+                    tableStyleConfig={tableStyleConfig}
+                    onTableStyleChange={updateTableStyleConfig}
                   />
                 )}
               </CardContent>

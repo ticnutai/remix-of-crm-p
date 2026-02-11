@@ -47,6 +47,7 @@ const SYNC_KEYS = [
   // DataTable & Presets
   "datatable-pro-presets",
   "customColumnTemplates",
+  "clients-table-style-config",
 
   // Timelogs filters
   "timelogs-view-mode",
@@ -98,6 +99,7 @@ const SYNC_KEYS = [
   "timer-quick-options",
   "custom-timer-themes",
   "timer-widget-collapsed",
+  "timer-widget-minimized",
   "timer-recent-clients",
 
   // Google integrations config
@@ -116,6 +118,9 @@ const SYNC_KEYS = [
   "dev-tools-minimized",
 ] as const;
 
+// Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
+const SYNC_KEY_PREFIXES = ["dashboard-dynamic-stats-"] as const;
+
 interface CloudPreferences {
   ui_preferences: Record<string, any>;
 }
@@ -129,6 +134,7 @@ export function useCloudPreferences() {
   const collectLocalPreferences = useCallback((): Record<string, any> => {
     const prefs: Record<string, any> = {};
 
+    // Collect static keys
     SYNC_KEYS.forEach((key) => {
       const value = localStorage.getItem(key);
       if (value !== null) {
@@ -141,6 +147,21 @@ export function useCloudPreferences() {
         }
       }
     });
+
+    // Collect dynamic keys by prefix (e.g., dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && SYNC_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          try {
+            prefs[key] = JSON.parse(value);
+          } catch {
+            prefs[key] = value;
+          }
+        }
+      }
+    }
 
     return prefs;
   }, []);
@@ -235,19 +256,27 @@ export function useCloudPreferences() {
     }
   }, [user?.id, applyToLocalStorage]);
 
+  // Helper to check if a key should be synced
+  const shouldSyncKey = useCallback((key: string): boolean => {
+    return (
+      SYNC_KEYS.includes(key as any) ||
+      SYNC_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))
+    );
+  }, []);
+
   // Listen for localStorage changes and sync
   useEffect(() => {
     if (!user?.id) return;
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key && SYNC_KEYS.includes(e.key as any)) {
+      if (e.key && shouldSyncKey(e.key)) {
         saveToCloud();
       }
     };
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, [user?.id, saveToCloud]);
+  }, [user?.id, saveToCloud, shouldSyncKey]);
 
   return {
     saveToCloud,

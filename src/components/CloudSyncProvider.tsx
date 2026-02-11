@@ -46,6 +46,7 @@ const WATCH_KEYS = [
   // DataTable & Presets
   "datatable-pro-presets",
   "customColumnTemplates",
+  "clients-table-style-config",
 
   // Timelogs filters
   "timelogs-view-mode",
@@ -97,6 +98,7 @@ const WATCH_KEYS = [
   "timer-quick-options",
   "custom-timer-themes",
   "timer-widget-collapsed",
+  "timer-widget-minimized",
   "timer-recent-clients",
 
   // Google integrations config
@@ -114,6 +116,17 @@ const WATCH_KEYS = [
   "dev-buttons-positions",
   "dev-tools-minimized",
 ];
+
+// Additional prefixes for dynamic keys (like dashboard-dynamic-stats-1, dashboard-dynamic-stats-2)
+const WATCH_KEY_PREFIXES = ["dashboard-dynamic-stats-"];
+
+// Helper to check if a key should be watched
+const shouldWatchKey = (key: string): boolean => {
+  return (
+    WATCH_KEYS.includes(key) ||
+    WATCH_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))
+  );
+};
 
 export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -180,8 +193,8 @@ export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem = (key: string, value: string) => {
       originalSetItem(key, value);
 
-      // If it's a watched key, schedule a save
-      if (WATCH_KEYS.includes(key) && !isLoadingFromCloud.current) {
+      // If it's a watched key (static or by prefix), schedule a save
+      if (shouldWatchKey(key) && !isLoadingFromCloud.current) {
         if (saveTimeout.current) {
           clearTimeout(saveTimeout.current);
         }

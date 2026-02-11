@@ -259,6 +259,14 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     if (timerState.currentEntry?.tags) {
       setSelectedTags(timerState.currentEntry.tags);
     }
+    // Sync client from current entry
+    if (timerState.currentEntry?.client_id) {
+      setSelectedClient(timerState.currentEntry.client_id);
+    }
+    // Sync project from current entry
+    if (timerState.currentEntry?.project_id) {
+      setSelectedProject(timerState.currentEntry.project_id);
+    }
   }, [timerState.currentEntry]);
 
   // Auto-select client when project is selected
