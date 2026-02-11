@@ -218,13 +218,32 @@ export function SaveAllStagesDialog({
   };
 
   const handleSave = async () => {
-    if (!name.trim() || selectedStages.size === 0) return;
+    if (!name.trim() || selectedStages.size === 0) {
+      console.log('[SaveAllStagesDialog] Validation failed:', { name: name.trim(), selectedStagesCount: selectedStages.size });
+      return;
+    }
     
     const stagesToSave = stages.filter(s => selectedStages.has(s.stage_id));
+    
+    console.log('[SaveAllStagesDialog] Saving template:', {
+      name,
+      description,
+      includeTaskContent,
+      stagesToSave: stagesToSave.map(s => ({
+        stage_id: s.stage_id,
+        stage_name: s.stage_name,
+        stage_icon: s.stage_icon,
+        sort_order: s.sort_order,
+        tasksCount: s.tasks?.length || 0,
+        tasks: s.tasks,
+      })),
+    });
     
     setSaving(true);
     const result = await saveMultiStageTemplate(stagesToSave, name, description || undefined, includeTaskContent);
     setSaving(false);
+
+    console.log('[SaveAllStagesDialog] Save result:', result);
 
     if (result) {
       onOpenChange(false);

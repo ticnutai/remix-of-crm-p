@@ -207,27 +207,79 @@ export function useStageTemplates() {
     description?: string,
     includeTaskContent: boolean = false
   ) => {
-    if (!user) return null;
+    if (!user) {
+      console.error('[saveMultiStageTemplate] No user logged in');
+      return null;
+    }
+
+    console.log('[saveMultiStageTemplate] Starting save:', {
+      templateName,
+      description,
+      includeTaskContent,
+      stagesCount: stages.length,
+      stages: stages.map(s => ({
+        stage_id: s.stage_id,
+        stage_name: s.stage_name,
+        tasksCount: s.tasks?.length || 0,
+      })),
+    });
 
     try {
       // Create template
-      const { data: template, error: templateError } = await db
+      console.log('[saveMultiStageTemplate] Creating template...');
+      
+      // Build insert object - only add includes_task_content if it's true
+      // (The column might not exist in older deployments)
+      const insertData: Record<string, unknown> = {
+        name: templateName,
+        description,
+        icon: 'Layers',
+        is_multi_stage: true,
+        created_by: user.id,
+      };
+      
+      // Try with includes_task_content first, if it fails we'll retry without
+      if (includeTaskContent) {
+        insertData.includes_task_content = true;
+      }
+      
+      console.log('[saveMultiStageTemplate] Insert data:', insertData);
+      
+      let template;
+      let templateError;
+      
+      // First try with includes_task_content
+      const result = await db
         .from('stage_templates')
-        .insert({
-          name: templateName,
-          description,
-          icon: 'Layers',
-          is_multi_stage: true,
-          created_by: user.id,
-          includes_task_content: includeTaskContent,
-        })
+        .insert(insertData)
         .select()
         .single();
+        
+      template = result.data;
+      templateError = result.error;
+      
+      // If it failed and we included includes_task_content, try without it
+      if (templateError && includeTaskContent) {
+        console.log('[saveMultiStageTemplate] Retrying without includes_task_content...');
+        delete insertData.includes_task_content;
+        const retryResult = await db
+          .from('stage_templates')
+          .insert(insertData)
+          .select()
+          .single();
+        template = retryResult.data;
+        templateError = retryResult.error;
+      }
 
-      if (templateError) throw templateError;
+      if (templateError) {
+        console.error('[saveMultiStageTemplate] Template creation failed:', templateError);
+        throw templateError;
+      }
+      console.log('[saveMultiStageTemplate] Template created:', template);
 
       // Create all template stages
       for (const stage of stages) {
+        console.log('[saveMultiStageTemplate] Creating stage:', stage.stage_name);
         const { data: templateStage, error: stageError } = await db
           .from('stage_template_stages')
           .insert({
@@ -239,45 +291,42 @@ export function useStageTemplates() {
           .select()
           .single();
 
-        if (stageError) throw stageError;
+        if (stageError) {
+          console.error('[saveMultiStageTemplate] Stage creation failed:', stageError);
+          throw stageError;
+        }
+        console.log('[saveMultiStageTemplate] Stage created:', templateStage);
 
         // Create tasks for this stage
         if (stage.tasks && stage.tasks.length > 0) {
+          console.log('[saveMultiStageTemplate] Creating', stage.tasks.length, 'tasks for stage', stage.stage_name);
           const templateTasks = stage.tasks.map((task: any, index) => {
-            const baseTask = {
+            // Basic task fields only - the content fields might not exist in the DB
+            return {
               template_id: template.id,
               template_stage_id: templateStage.id,
               title: task.title,
               sort_order: task.sort_order ?? index,
             };
-
-            // If including task content, add completion status and styling
-            if (includeTaskContent) {
-              return {
-                ...baseTask,
-                completed: task.completed || false,
-                completed_at: task.completed_at || null,
-                background_color: task.background_color || null,
-                text_color: task.text_color || null,
-                is_bold: task.is_bold || false,
-                target_working_days: task.target_working_days || null,
-                started_at: task.started_at || null,
-              };
-            }
-
-            return baseTask;
           });
+
+          console.log('[saveMultiStageTemplate] Template tasks to insert:', templateTasks);
 
           const { error: tasksError } = await db
             .from('stage_template_tasks')
             .insert(templateTasks);
 
-          if (tasksError) throw tasksError;
+          if (tasksError) {
+            console.error('[saveMultiStageTemplate] Tasks creation failed:', tasksError);
+            throw tasksError;
+          }
+          console.log('[saveMultiStageTemplate] Tasks created successfully');
         }
       }
 
       const totalTasks = stages.reduce((sum, s) => sum + (s.tasks?.length || 0), 0);
       const contentNote = includeTaskContent ? ' (כולל מילוי)' : '';
+      console.log('[saveMultiStageTemplate] SUCCESS! Template saved with', stages.length, 'stages and', totalTasks, 'tasks');
       toast({
         title: 'התבנית נשמרה בהצלחה',
         description: `"${templateName}" עם ${stages.length} שלבים ו-${totalTasks} משימות${contentNote}`,
@@ -286,9 +335,10 @@ export function useStageTemplates() {
       await loadTemplates();
       return template;
     } catch (error) {
-      console.error('Error saving multi-stage template:', error);
+      console.error('[saveMultiStageTemplate] Error:', error);
       toast({
         title: 'שגיאה בשמירת התבנית',
+        description: error instanceof Error ? error.message : 'שגיאה לא ידועה',
         variant: 'destructive',
       });
       return null;
