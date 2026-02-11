@@ -607,8 +607,8 @@ export default function Employees() {
         p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${resetPasswordDialog.employee.id}'`
       });
 
-      if (sqlError || !sqlResult?.success) {
-        throw new Error(sqlError?.message || sqlResult?.error || 'שגיאה בעדכון סיסמה');
+      if (sqlError || !(sqlResult as any)?.success) {
+        throw new Error(sqlError?.message || (sqlResult as any)?.error || 'שגיאה בעדכון סיסמה');
       }
 
       toast({
