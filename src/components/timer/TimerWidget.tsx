@@ -1,43 +1,48 @@
 // Timer Widget - tenarch CRM Pro - Unified Luxurious Design
-import React, { useState, useEffect } from 'react';
-import { useTimer } from '@/hooks/useTimer';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useState, useEffect } from "react";
+import { useTimer } from "@/hooks/useTimer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+} from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import { supabase } from '@/integrations/supabase/client';
-import { 
-  Play, Square, Briefcase, User, 
-  Pause, RotateCcw, Save, FileText,
-  ChevronDown, ChevronUp, Settings, Plus, Trash2
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { useTimerTheme } from './TimerThemeContext';
-import { SaveTimeDialog } from './SaveTimeDialog';
+  Play,
+  Square,
+  Briefcase,
+  User,
+  Pause,
+  RotateCcw,
+  Save,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useTimerTheme } from "./TimerThemeContext";
+import { SaveTimeDialog } from "./SaveTimeDialog";
 
 // Get hooks outside component to use in render
 
@@ -54,57 +59,64 @@ interface Client {
 
 // Default quick options - can be customized
 const DEFAULT_QUICK_TITLES = [
-  'פגישת לקוח',
-  'עדכון פרויקט',
-  'תכנון ועיצוב',
-  'ביקורת באתר',
+  "פגישת לקוח",
+  "עדכון פרויקט",
+  "תכנון ועיצוב",
+  "ביקורת באתר",
 ];
 
 const QUICK_NOTES = [
-  'מיילים והתכתבויות',
-  'הכנת מסמכים',
-  'עבודה פנימית',
-  'פיקוח ובקרה',
-  'מחקר ולמידה',
-  'תיאום לוחות זמנים',
+  "מיילים והתכתבויות",
+  "הכנת מסמכים",
+  "עבודה פנימית",
+  "פיקוח ובקרה",
+  "מחקר ולמידה",
+  "תיאום לוחות זמנים",
 ];
 
-const TIMER_COLLAPSED_KEY = 'timer-widget-collapsed';
-const RECENT_CLIENTS_KEY = 'timer-recent-clients';
-const QUICK_TITLES_KEY = 'timer-quick-titles';
-const QUICK_NOTES_KEY = 'timer-quick-notes';
+const TIMER_COLLAPSED_KEY = "timer-widget-collapsed";
+const RECENT_CLIENTS_KEY = "timer-recent-clients";
+const QUICK_TITLES_KEY = "timer-quick-titles";
+const QUICK_NOTES_KEY = "timer-quick-notes";
 
 interface TimerWidgetProps {
   showTimerDisplay?: boolean;
 }
 
 export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
-  const { theme, getInputBgStyle, getInputTextStyle, getIconStyle, getFrameStyle, getTimerDisplayStyle } = useTimerTheme();
-  const { 
-    timerState, 
-    startTimer, 
-    stopTimer, 
-    pauseTimer, 
+  const {
+    theme,
+    getInputBgStyle,
+    getInputTextStyle,
+    getIconStyle,
+    getFrameStyle,
+    getTimerDisplayStyle,
+  } = useTimerTheme();
+  const {
+    timerState,
+    startTimer,
+    stopTimer,
+    pauseTimer,
     resumeTimer,
-    updateDescription, 
-    todayTotal, 
+    updateDescription,
+    todayTotal,
     weekTotal,
     resetTimer,
     saveEntry,
-    updateTags
+    updateTags,
   } = useTimer();
-  
-  const [description, setDescription] = useState('');
-  const [notes, setNotes] = useState('');
-  const [selectedProject, setSelectedProject] = useState<string>('');
-  const [selectedClient, setSelectedClient] = useState<string>('');
+
+  const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [showSavePanel, setShowSavePanel] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem(TIMER_COLLAPSED_KEY);
-    return saved === 'true';
+    return saved === "true";
   });
   const [recentClients, setRecentClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem(RECENT_CLIENTS_KEY);
@@ -119,18 +131,20 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     return saved ? JSON.parse(saved) : QUICK_NOTES;
   });
   const [editingTabIndex, setEditingTabIndex] = useState<number | null>(null);
-  const [editingTabValue, setEditingTabValue] = useState('');
+  const [editingTabValue, setEditingTabValue] = useState("");
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [newTitleInput, setNewTitleInput] = useState('');
-  const [newNoteInput, setNewNoteInput] = useState('');
-  const [bulkTitlesInput, setBulkTitlesInput] = useState('');
-  const [bulkNotesInput, setBulkNotesInput] = useState('');
+  const [newTitleInput, setNewTitleInput] = useState("");
+  const [newNoteInput, setNewNoteInput] = useState("");
+  const [bulkTitlesInput, setBulkTitlesInput] = useState("");
+  const [bulkNotesInput, setBulkNotesInput] = useState("");
   const [showBulkTitles, setShowBulkTitles] = useState(false);
   const [showBulkNotes, setShowBulkNotes] = useState(false);
-  const [editingTitleIndex, setEditingTitleIndex] = useState<number | null>(null);
+  const [editingTitleIndex, setEditingTitleIndex] = useState<number | null>(
+    null,
+  );
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
-  const [editingTitleValue, setEditingTitleValue] = useState('');
-  const [editingNoteValue, setEditingNoteValue] = useState('');
+  const [editingTitleValue, setEditingTitleValue] = useState("");
+  const [editingNoteValue, setEditingNoteValue] = useState("");
 
   // Save quick titles to localStorage
   useEffect(() => {
@@ -146,7 +160,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const addQuickTitle = () => {
     if (newTitleInput.trim() && !quickTitles.includes(newTitleInput.trim())) {
       setQuickTitles([...quickTitles, newTitleInput.trim()]);
-      setNewTitleInput('');
+      setNewTitleInput("");
     }
   };
 
@@ -158,7 +172,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const addQuickNote = () => {
     if (newNoteInput.trim() && !quickNotes.includes(newNoteInput.trim())) {
       setQuickNotes([...quickNotes, newNoteInput.trim()]);
-      setNewNoteInput('');
+      setNewNoteInput("");
     }
   };
 
@@ -174,13 +188,13 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const addBulkTitles = () => {
     if (bulkTitlesInput.trim()) {
       const newTitles = bulkTitlesInput
-        .split('\n')
-        .map(t => t.trim())
-        .filter(t => t && !quickTitles.includes(t));
+        .split("\n")
+        .map((t) => t.trim())
+        .filter((t) => t && !quickTitles.includes(t));
       if (newTitles.length > 0) {
         setQuickTitles([...quickTitles, ...newTitles]);
       }
-      setBulkTitlesInput('');
+      setBulkTitlesInput("");
       setShowBulkTitles(false);
     }
   };
@@ -189,13 +203,13 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const addBulkNotes = () => {
     if (bulkNotesInput.trim()) {
       const newNotes = bulkNotesInput
-        .split('\n')
-        .map(n => n.trim())
-        .filter(n => n && !quickNotes.includes(n));
+        .split("\n")
+        .map((n) => n.trim())
+        .filter((n) => n && !quickNotes.includes(n));
       if (newNotes.length > 0) {
         setQuickNotes([...quickNotes, ...newNotes]);
       }
-      setBulkNotesInput('');
+      setBulkNotesInput("");
       setShowBulkNotes(false);
     }
   };
@@ -213,7 +227,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
       setQuickTitles(newTitles);
     }
     setEditingTitleIndex(null);
-    setEditingTitleValue('');
+    setEditingTitleValue("");
   };
 
   // Edit note
@@ -229,7 +243,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
       setQuickNotes(newNotes);
     }
     setEditingNoteIndex(null);
-    setEditingNoteValue('');
+    setEditingNoteValue("");
   };
 
   // Save collapsed state
@@ -241,8 +255,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   useEffect(() => {
     async function fetchData() {
       const [projectsRes, clientsRes] = await Promise.all([
-        supabase.from('projects').select('id, name, client_id').order('name'),
-        supabase.from('clients').select('id, name').order('name'),
+        supabase.from("projects").select("id, name, client_id").order("name"),
+        supabase.from("clients").select("id, name").order("name"),
       ]);
 
       if (projectsRes.data) setProjects(projectsRes.data);
@@ -272,7 +286,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   // Auto-select client when project is selected
   useEffect(() => {
     if (selectedProject) {
-      const project = projects.find(p => p.id === selectedProject);
+      const project = projects.find((p) => p.id === selectedProject);
       if (project?.client_id) {
         setSelectedClient(project.client_id);
       }
@@ -280,15 +294,25 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   }, [selectedProject, projects]);
 
   // Get selected client name
-  const selectedClientName = clients.find(c => c.id === selectedClient)?.name;
-  const selectedProjectName = projects.find(p => p.id === selectedProject)?.name;
+  const selectedClientName = clients.find((c) => c.id === selectedClient)?.name;
+  const selectedProjectName = projects.find(
+    (p) => p.id === selectedProject,
+  )?.name;
+
+  // Get current running timer's client name directly from entry (more reliable)
+  const currentClientName = timerState.currentEntry?.client_id
+    ? clients.find((c) => c.id === timerState.currentEntry?.client_id)?.name
+    : null;
+  const currentProjectName = timerState.currentEntry?.project_id
+    ? projects.find((p) => p.id === timerState.currentEntry?.project_id)?.name
+    : null;
 
   // Add client to recent list when selected
   const addToRecentClients = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find((c) => c.id === clientId);
     if (!client) return;
-    
-    const filtered = recentClients.filter(c => c.id !== clientId);
+
+    const filtered = recentClients.filter((c) => c.id !== clientId);
     const updated = [client, ...filtered].slice(0, 5);
     setRecentClients(updated);
     localStorage.setItem(RECENT_CLIENTS_KEY, JSON.stringify(updated));
@@ -305,32 +329,32 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
           selectedProject || undefined,
           clientId,
           description || undefined,
-          selectedTags.length > 0 ? selectedTags : undefined
+          selectedTags.length > 0 ? selectedTags : undefined,
         );
-        toast.success('הטיימר התחיל לרוץ');
+        toast.success("הטיימר התחיל לרוץ");
       }
     }
   };
 
   const handleStart = async () => {
     if (!selectedClient) {
-      toast.error('יש לבחור לקוח לפני הפעלת הטיימר');
+      toast.error("יש לבחור לקוח לפני הפעלת הטיימר");
       return;
     }
     await startTimer(
       selectedProject || undefined,
       selectedClient || undefined,
       description || undefined,
-      selectedTags.length > 0 ? selectedTags : undefined
+      selectedTags.length > 0 ? selectedTags : undefined,
     );
   };
 
   const handleStop = async () => {
     await stopTimer();
-    setDescription('');
-    setNotes('');
-    setSelectedProject('');
-    setSelectedClient('');
+    setDescription("");
+    setNotes("");
+    setSelectedProject("");
+    setSelectedClient("");
     setSelectedTags([]);
     setShowSavePanel(false);
   };
@@ -347,8 +371,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     if (resetTimer) {
       resetTimer();
     }
-    setDescription('');
-    setNotes('');
+    setDescription("");
+    setNotes("");
     setSelectedTags([]);
   };
 
@@ -357,21 +381,24 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
       await saveEntry(notes);
     }
     setShowSavePanel(false);
-    setNotes('');
+    setNotes("");
   };
 
   const handleDescriptionBlur = () => {
-    if (timerState.isRunning && description !== timerState.currentEntry?.description) {
+    if (
+      timerState.isRunning &&
+      description !== timerState.currentEntry?.description
+    ) {
       updateDescription(description);
     }
   };
 
   const toggleTag = (tagId: string) => {
     const newTags = selectedTags.includes(tagId)
-      ? selectedTags.filter(t => t !== tagId)
+      ? selectedTags.filter((t) => t !== tagId)
       : [...selectedTags, tagId];
     setSelectedTags(newTags);
-    
+
     if (timerState.isRunning && updateTags) {
       updateTags(newTags);
     }
@@ -389,16 +416,17 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const formatMinutes = (minutes: number) => {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}`;
   };
 
-  const isPaused = !timerState.isRunning && timerState.currentEntry && timerState.elapsed > 0;
+  const isPaused =
+    !timerState.isRunning && timerState.currentEntry && timerState.elapsed > 0;
 
   return (
     <div className="relative" dir="rtl">
@@ -412,10 +440,12 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               onValueChange={handleClientSelect}
               disabled={timerState.isRunning}
             >
-              <SelectTrigger 
+              <SelectTrigger
                 className={cn(
                   "flex-1 h-9 text-xs rounded-xl shadow-sm",
-                  !selectedClient ? "border-[hsl(45,80%,50%)]/50 ring-1 ring-[hsl(45,80%,50%)]/30" : ""
+                  !selectedClient
+                    ? "border-[hsl(45,80%,50%)]/50 ring-1 ring-[hsl(45,80%,50%)]/30"
+                    : "",
                 )}
                 style={{
                   ...getInputBgStyle(),
@@ -425,16 +455,22 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 <User className="h-3.5 w-3.5 ml-1" style={getIconStyle()} />
                 <SelectValue placeholder="בחר לקוח *" />
               </SelectTrigger>
-              <SelectContent 
+              <SelectContent
                 className="z-[9999]"
                 style={{
                   ...getInputBgStyle(),
                   ...getInputTextStyle(),
                 }}
               >
-                <SelectItem value="__none__" style={getInputTextStyle()}>בחר לקוח</SelectItem>
-                {clients.map(client => (
-                  <SelectItem key={client.id} value={client.id} style={getInputTextStyle()}>
+                <SelectItem value="__none__" style={getInputTextStyle()}>
+                  בחר לקוח
+                </SelectItem>
+                {clients.map((client) => (
+                  <SelectItem
+                    key={client.id}
+                    value={client.id}
+                    style={getInputTextStyle()}
+                  >
                     {client.name}
                   </SelectItem>
                 ))}
@@ -445,117 +481,85 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
         {/* Timer Display + Control Buttons - Only shown if showTimerDisplay is true */}
         {showTimerDisplay && (
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex flex-col flex-1">
-            <div 
-              className={cn(
-                "font-mono font-bold tracking-widest transition-all duration-300",
-                timerState.isRunning && "drop-shadow-[0_0_10px_rgba(212,175,55,0.4)]"
-              )}
-              style={{
-                ...getTimerDisplayStyle(),
-                // Override color based on state
-                color: timerState.isRunning 
-                  ? 'hsl(45, 85%, 65%)' 
-                  : isPaused 
-                    ? 'hsl(30, 90%, 60%)' // Orange for paused
-                    : getTimerDisplayStyle().color, // Use contrast color when not running
-              }}
-            >
-              {formatTime(timerState.elapsed)}
-            </div>
-            
-            {/* Show selected client/project when running */}
-            {(timerState.isRunning || isPaused) && (selectedClientName || selectedProjectName) && (
-              <div className="flex items-center gap-2 mt-1.5">
-                {selectedClientName && (
-                  <div className="flex items-center gap-1 text-[10px] bg-[hsl(45,80%,50%)]/20 text-[hsl(45,80%,70%)] px-2 py-0.5 rounded-full border border-[hsl(45,80%,50%)]/30">
-                    <User className="h-2.5 w-2.5" />
-                    <span>{selectedClientName}</span>
-                  </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col flex-1">
+              <div
+                className={cn(
+                  "font-mono font-bold tracking-widest transition-all duration-300",
+                  timerState.isRunning &&
+                    "drop-shadow-[0_0_10px_rgba(212,175,55,0.4)]",
                 )}
-                {selectedProjectName && (
-                  <div className="flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
-                    <Briefcase className="h-2.5 w-2.5" />
-                    <span className="truncate max-w-[80px]">{selectedProjectName}</span>
-                  </div>
-                )}
+                style={{
+                  ...getTimerDisplayStyle(),
+                  // Override color based on state
+                  color: timerState.isRunning
+                    ? "hsl(45, 85%, 65%)"
+                    : isPaused
+                      ? "hsl(30, 90%, 60%)" // Orange for paused
+                      : getTimerDisplayStyle().color, // Use contrast color when not running
+                }}
+              >
+                {formatTime(timerState.elapsed)}
               </div>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2">
-            {/* Play/Pause Button */}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 transition-all"
-              style={{
-                color: timerState.isRunning 
-                  ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
-                  : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
-              }}
-              onClick={timerState.isRunning ? handlePause : isPaused ? handleResume : handleStart}
-            >
-              {timerState.isRunning ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-            </Button>
+              {/* Show selected client/project when running */}
+              {(timerState.isRunning || isPaused) &&
+                (currentClientName || currentProjectName || selectedClientName || selectedProjectName) && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {(currentClientName || selectedClientName) && (
+                      <div className="flex items-center gap-1 text-[10px] bg-[hsl(45,80%,50%)]/20 text-[hsl(45,80%,70%)] px-2 py-0.5 rounded-full border border-[hsl(45,80%,50%)]/30">
+                        <User className="h-2.5 w-2.5" />
+                        <span>{currentClientName || selectedClientName}</span>
+                      </div>
+                    )}
+                    {(currentProjectName || selectedProjectName) && (
+                      <div className="flex items-center gap-1 text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                        <Briefcase className="h-2.5 w-2.5" />
+                        <span className="truncate max-w-[80px]">
+                          {currentProjectName || selectedProjectName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
 
-            {/* Stop Button - Pauses and opens save dialog */}
-            {(timerState.isRunning || isPaused) && (
+            <div className="flex items-center gap-2">
+              {/* Play/Pause Button */}
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-8 w-8 p-0 transition-all"
                 style={{
-                  color: timerState.isRunning 
-                    ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
-                    : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
+                  color: timerState.isRunning
+                    ? theme.controlButtonsActiveColor || "hsl(45, 85%, 65%)"
+                    : theme.controlButtonsIdleColor || "hsl(45, 80%, 55%)",
                 }}
-                onClick={() => {
-                  // Pause timer and show save dialog
-                  pauseTimer();
-                  setShowSavePanel(true);
-                }}
+                onClick={
+                  timerState.isRunning
+                    ? handlePause
+                    : isPaused
+                      ? handleResume
+                      : handleStart
+                }
               >
-                <Square className="h-4 w-4" />
+                {timerState.isRunning ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
               </Button>
-            )}
 
-            {/* Reset Button */}
-            {timerState.elapsed > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 transition-all"
-                style={{
-                  color: timerState.isRunning 
-                    ? (theme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)') 
-                    : (theme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'),
-                }}
-                onClick={handleReset}
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-            )}
-
-            {/* Save Button */}
-            {timerState.elapsed > 0 && (
-              <>
+              {/* Stop Button - Pauses and opens save dialog */}
+              {(timerState.isRunning || isPaused) && (
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 transition-all"
                   style={{
-                    borderColor: timerState.isRunning 
-                      ? `${theme.controlButtonsActiveColor || 'hsl(45, 80%, 50%)'}80` 
-                      : 'rgba(255,255,255,0.3)',
-                    color: timerState.isRunning 
-                      ? (theme.controlButtonsActiveColor || 'hsl(45, 80%, 60%)') 
-                      : 'white',
+                    color: timerState.isRunning
+                      ? theme.controlButtonsActiveColor || "hsl(45, 85%, 65%)"
+                      : theme.controlButtonsIdleColor || "hsl(45, 80%, 55%)",
                   }}
                   onClick={() => {
                     // Pause timer and show save dialog
@@ -563,38 +567,85 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     setShowSavePanel(true);
                   }}
                 >
-                  <Save className="h-4 w-4" />
+                  <Square className="h-4 w-4" />
                 </Button>
-                <SaveTimeDialog
-                  open={showSavePanel}
-                  onOpenChange={setShowSavePanel}
-                  elapsedTime={timerState.elapsed}
-                  onCancel={() => {
-                    // Resume timer when user cancels
-                    resumeTimer();
+              )}
+
+              {/* Reset Button */}
+              {timerState.elapsed > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 transition-all"
+                  style={{
+                    color: timerState.isRunning
+                      ? theme.controlButtonsActiveColor || "hsl(45, 85%, 65%)"
+                      : theme.controlButtonsIdleColor || "hsl(45, 80%, 55%)",
                   }}
-                  onSave={async (title, notesText) => {
-                    try {
-                      // Stop and save
-                      await stopTimer();
-                      setDescription(title);
-                      setNotes(notesText);
-                      await saveEntry(title + (notesText ? ` | ${notesText}` : ''));
-                      toast.success('רישום הזמן נשמר בהצלחה! ✅');
-                    } catch (error) {
-                      toast.error('שגיאה בשמירת רישום הזמן');
-                      console.error('Save error:', error);
-                    }
-                  }}
-                />
-              </>
-            )}
+                  onClick={handleReset}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+
+              {/* Save Button */}
+              {timerState.elapsed > 0 && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
+                    style={{
+                      borderColor: timerState.isRunning
+                        ? `${theme.controlButtonsActiveColor || "hsl(45, 80%, 50%)"}80`
+                        : "rgba(255,255,255,0.3)",
+                      color: timerState.isRunning
+                        ? theme.controlButtonsActiveColor || "hsl(45, 80%, 60%)"
+                        : "white",
+                    }}
+                    onClick={() => {
+                      // Pause timer and show save dialog
+                      pauseTimer();
+                      setShowSavePanel(true);
+                    }}
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                  <SaveTimeDialog
+                    open={showSavePanel}
+                    onOpenChange={setShowSavePanel}
+                    elapsedTime={timerState.elapsed}
+                    onCancel={() => {
+                      // Resume timer when user cancels
+                      resumeTimer();
+                    }}
+                    onSave={async (title, notesText) => {
+                      try {
+                        // Stop and save
+                        await stopTimer();
+                        setDescription(title);
+                        setNotes(notesText);
+                        await saveEntry(
+                          title + (notesText ? ` | ${notesText}` : ""),
+                        );
+                        toast.success("רישום הזמן נשמר בהצלחה! ✅");
+                      } catch (error) {
+                        toast.error("שגיאה בשמירת רישום הזמן");
+                        console.error("Save error:", error);
+                      }
+                    }}
+                  />
+                </>
+              )}
+            </div>
           </div>
-        </div>
         )}
 
         {/* Collapsible Section with proper trigger */}
-        <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+        <Collapsible
+          open={!isCollapsed}
+          onOpenChange={(open) => setIsCollapsed(!open)}
+        >
           {/* Collapse Toggle Header */}
           <div className="flex items-center justify-between py-1.5 border-t border-white/10">
             <span className="text-[10px] text-white flex items-center gap-1">
@@ -607,8 +658,14 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 size="sm"
                 className="h-6 px-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded gap-0.5"
               >
-                <span className="text-[10px]">{isCollapsed ? 'הצג' : 'הסתר'}</span>
-                {isCollapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+                <span className="text-[10px]">
+                  {isCollapsed ? "הצג" : "הסתר"}
+                </span>
+                {isCollapsed ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronUp className="h-3 w-3" />
+                )}
               </Button>
             </CollapsibleTrigger>
           </div>
@@ -618,7 +675,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
             <Input
               placeholder="על מה אתה עובד?"
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               onBlur={handleDescriptionBlur}
               className="w-full px-3 h-9 text-xs rounded-lg shadow-inner"
               style={{
@@ -630,7 +687,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
             {/* Quick Topic Tabs - Editable */}
             <div className="grid grid-cols-2 gap-2">
-              {quickTitles.map((title, index) => (
+              {quickTitles.map((title, index) =>
                 editingTabIndex === index ? (
                   <input
                     key={index}
@@ -646,14 +703,14 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                       setEditingTabIndex(null);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      if (e.key === "Enter") {
                         if (editingTabValue.trim()) {
                           const newTitles = [...quickTitles];
                           newTitles[index] = editingTabValue.trim();
                           setQuickTitles(newTitles);
                         }
                         setEditingTabIndex(null);
-                      } else if (e.key === 'Escape') {
+                      } else if (e.key === "Escape") {
                         setEditingTabIndex(null);
                       }
                     }}
@@ -673,8 +730,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                   >
                     {title}
                   </button>
-                )
-              ))}
+                ),
+              )}
             </div>
 
             {/* Quick Notes Tabs */}
@@ -685,7 +742,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                   onClick={() => selectQuickNote(note)}
                   className={cn(
                     "px-2 py-1.5 text-[10px] text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[hsl(200,70%,50%)]/30 rounded-lg transition-all",
-                    notes === note && "bg-[hsl(200,70%,50%)]/20 border-[hsl(200,70%,50%)]/50 text-white"
+                    notes === note &&
+                      "bg-[hsl(200,70%,50%)]/20 border-[hsl(200,70%,50%)]/50 text-white",
                   )}
                 >
                   {note}
@@ -696,29 +754,40 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
             {/* Project Selector */}
             <Select
               value={selectedProject || "__none__"}
-              onValueChange={(val) => setSelectedProject(val === "__none__" ? "" : val)}
+              onValueChange={(val) =>
+                setSelectedProject(val === "__none__" ? "" : val)
+              }
               disabled={timerState.isRunning}
             >
-              <SelectTrigger 
+              <SelectTrigger
                 className="w-full h-8 text-[10px] rounded-lg shadow-sm"
                 style={{
                   ...getInputBgStyle(),
-                  color: 'white',
+                  color: "white",
                 }}
               >
-                <Briefcase className="h-3 w-3 ml-1" style={{ color: 'white' }} />
+                <Briefcase
+                  className="h-3 w-3 ml-1"
+                  style={{ color: "white" }}
+                />
                 <SelectValue placeholder="פרויקט" />
               </SelectTrigger>
-              <SelectContent 
+              <SelectContent
                 className="z-[9999]"
                 style={{
                   ...getInputBgStyle(),
                   ...getInputTextStyle(),
                 }}
               >
-                <SelectItem value="__none__" style={getInputTextStyle()}>ללא פרויקט</SelectItem>
-                {projects.map(project => (
-                  <SelectItem key={project.id} value={project.id} style={getInputTextStyle()}>
+                <SelectItem value="__none__" style={getInputTextStyle()}>
+                  ללא פרויקט
+                </SelectItem>
+                {projects.map((project) => (
+                  <SelectItem
+                    key={project.id}
+                    value={project.id}
+                    style={getInputTextStyle()}
+                  >
                     {project.name}
                   </SelectItem>
                 ))}
@@ -737,7 +806,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <Settings className="h-3.5 w-3.5" />
             </button>
           </DialogTrigger>
-          <DialogContent 
+          <DialogContent
             dir="rtl"
             className="max-w-md bg-gradient-to-br from-[hsl(220,60%,18%)] to-[hsl(220,60%,22%)] border-[hsl(45,80%,50%)] text-white"
           >
@@ -747,17 +816,23 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 הגדרות כותרות והערות מוצעות
               </DialogTitle>
             </DialogHeader>
-            
+
             <Tabs defaultValue="titles" className="w-full mt-4">
               <TabsList className="grid w-full grid-cols-2 bg-white/10">
-                <TabsTrigger value="titles" className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]">
+                <TabsTrigger
+                  value="titles"
+                  className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]"
+                >
                   כותרות
                 </TabsTrigger>
-                <TabsTrigger value="notes" className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]">
+                <TabsTrigger
+                  value="notes"
+                  className="data-[state=active]:bg-[hsl(45,80%,50%)] data-[state=active]:text-[hsl(220,60%,15%)]"
+                >
                   הערות
                 </TabsTrigger>
               </TabsList>
-              
+
               {/* Titles Tab */}
               <TabsContent value="titles" className="space-y-3 mt-4">
                 <div className="flex gap-2">
@@ -766,7 +841,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     onChange={(e) => setNewTitleInput(e.target.value)}
                     placeholder="הוסף כותרת חדשה..."
                     className="flex-1 h-9 bg-white/10 border-white/20 text-white text-sm"
-                    onKeyDown={(e) => e.key === 'Enter' && addQuickTitle()}
+                    onKeyDown={(e) => e.key === "Enter" && addQuickTitle()}
                   />
                   <Button
                     size="sm"
@@ -778,7 +853,10 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 </div>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {quickTitles.map((title, index) => (
-                    <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10"
+                    >
                       <span className="text-sm">{title}</span>
                       <button
                         onClick={() => removeQuickTitle(index)}
@@ -789,9 +867,11 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/40">* לחיצה כפולה על כותרת בווידג'ט מאפשרת עריכה ישירה</p>
+                <p className="text-[10px] text-white/40">
+                  * לחיצה כפולה על כותרת בווידג'ט מאפשרת עריכה ישירה
+                </p>
               </TabsContent>
-              
+
               {/* Notes Tab */}
               <TabsContent value="notes" className="space-y-3 mt-4">
                 <div className="flex gap-2">
@@ -800,7 +880,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     onChange={(e) => setNewNoteInput(e.target.value)}
                     placeholder="הוסף הערה חדשה..."
                     className="flex-1 h-9 bg-white/10 border-white/20 text-white text-sm"
-                    onKeyDown={(e) => e.key === 'Enter' && addQuickNote()}
+                    onKeyDown={(e) => e.key === "Enter" && addQuickNote()}
                   />
                   <Button
                     size="sm"
@@ -812,7 +892,10 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 </div>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {quickNotes.map((note, index) => (
-                    <div key={index} className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10"
+                    >
                       <span className="text-sm">{note}</span>
                       <button
                         onClick={() => removeQuickNote(index)}
@@ -823,7 +906,9 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/40">* ההערות יופיעו כטאבים לבחירה מהירה</p>
+                <p className="text-[10px] text-white/40">
+                  * ההערות יופיעו כטאבים לבחירה מהירה
+                </p>
               </TabsContent>
             </Tabs>
           </DialogContent>

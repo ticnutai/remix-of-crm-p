@@ -244,43 +244,100 @@ export function TableStyleSettings({
           <Label className="text-sm">ערכות צבעים מוכנות</Label>
           <div className="grid grid-cols-4 gap-2">
             {[
-              { name: "ברירת מחדל", header: undefined, row: undefined, alt: undefined, accent: undefined },
-              { name: "זהב יוקרתי", header: "#1e3a5f", row: "#faf8f5", alt: "#f5f0e8", accent: "#d4af37" },
-              { name: "כחול מודרני", header: "#1e40af", row: "#ffffff", alt: "#eff6ff", accent: "#3b82f6" },
-              { name: "ירוק טבעי", header: "#166534", row: "#ffffff", alt: "#f0fdf4", accent: "#22c55e" },
-              { name: "סגול עמוק", header: "#581c87", row: "#ffffff", alt: "#faf5ff", accent: "#a855f7" },
-              { name: "אפור אלגנטי", header: "#374151", row: "#ffffff", alt: "#f9fafb", accent: "#6b7280" },
-              { name: "כתום חם", header: "#9a3412", row: "#ffffff", alt: "#fff7ed", accent: "#f97316" },
-              { name: "ורוד עדין", header: "#9d174d", row: "#ffffff", alt: "#fdf2f8", accent: "#ec4899" },
+              {
+                name: "ברירת מחדל",
+                header: undefined,
+                row: undefined,
+                alt: undefined,
+                accent: undefined,
+              },
+              {
+                name: "זהב יוקרתי",
+                header: "#1e3a5f",
+                row: "#faf8f5",
+                alt: "#f5f0e8",
+                accent: "#d4af37",
+              },
+              {
+                name: "כחול מודרני",
+                header: "#1e40af",
+                row: "#ffffff",
+                alt: "#eff6ff",
+                accent: "#3b82f6",
+              },
+              {
+                name: "ירוק טבעי",
+                header: "#166534",
+                row: "#ffffff",
+                alt: "#f0fdf4",
+                accent: "#22c55e",
+              },
+              {
+                name: "סגול עמוק",
+                header: "#581c87",
+                row: "#ffffff",
+                alt: "#faf5ff",
+                accent: "#a855f7",
+              },
+              {
+                name: "אפור אלגנטי",
+                header: "#374151",
+                row: "#ffffff",
+                alt: "#f9fafb",
+                accent: "#6b7280",
+              },
+              {
+                name: "כתום חם",
+                header: "#9a3412",
+                row: "#ffffff",
+                alt: "#fff7ed",
+                accent: "#f97316",
+              },
+              {
+                name: "ורוד עדין",
+                header: "#9d174d",
+                row: "#ffffff",
+                alt: "#fdf2f8",
+                accent: "#ec4899",
+              },
             ].map((theme, idx) => (
               <button
                 key={idx}
-                onClick={() => updateConfig({
-                  headerBgColor: theme.header,
-                  rowBgColor: theme.row,
-                  rowAltBgColor: theme.alt,
-                  accentColor: theme.accent,
-                })}
+                onClick={() =>
+                  updateConfig({
+                    headerBgColor: theme.header,
+                    rowBgColor: theme.row,
+                    rowAltBgColor: theme.alt,
+                    accentColor: theme.accent,
+                  })
+                }
                 className={cn(
                   "p-2 rounded-lg border-2 transition-all text-center text-[10px]",
-                  config.headerBgColor === theme.header && config.accentColor === theme.accent
+                  config.headerBgColor === theme.header &&
+                    config.accentColor === theme.accent
                     ? "border-primary ring-2 ring-primary/30"
                     : "border-muted hover:border-primary/50",
                 )}
                 title={theme.name}
               >
                 <div className="flex flex-col gap-0.5">
-                  <div 
-                    className="h-2 rounded-sm" 
-                    style={{ backgroundColor: theme.header || 'hsl(var(--muted))' }} 
+                  <div
+                    className="h-2 rounded-sm"
+                    style={{
+                      backgroundColor: theme.header || "hsl(var(--muted))",
+                    }}
                   />
-                  <div 
-                    className="h-1.5 rounded-sm" 
-                    style={{ backgroundColor: theme.row || 'hsl(var(--background))' }} 
+                  <div
+                    className="h-1.5 rounded-sm"
+                    style={{
+                      backgroundColor: theme.row || "hsl(var(--background))",
+                    }}
                   />
-                  <div 
-                    className="h-1.5 rounded-sm" 
-                    style={{ backgroundColor: theme.alt || 'hsl(var(--muted)/0.3)' }} 
+                  <div
+                    className="h-1.5 rounded-sm"
+                    style={{
+                      backgroundColor: theme.alt || "hsl(var(--muted)/0.3)",
+                    }}
                   />
                 </div>
                 <span className="mt-1 block truncate">{theme.name}</span>
@@ -292,7 +349,7 @@ export function TableStyleSettings({
         {/* Custom Colors */}
         <div className="space-y-3 pt-2">
           <Label className="text-sm font-medium">צבעים מותאמים אישית</Label>
-          
+
           <div className="grid grid-cols-2 gap-3">
             {/* Header Background */}
             <div className="space-y-1">
@@ -301,13 +358,17 @@ export function TableStyleSettings({
                 <Input
                   type="color"
                   value={config.headerBgColor || "#1e3a5f"}
-                  onChange={(e) => updateConfig({ headerBgColor: e.target.value })}
+                  onChange={(e) =>
+                    updateConfig({ headerBgColor: e.target.value })
+                  }
                   className="w-10 h-8 p-0.5 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={config.headerBgColor || ""}
-                  onChange={(e) => updateConfig({ headerBgColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({ headerBgColor: e.target.value || undefined })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />
@@ -316,18 +377,26 @@ export function TableStyleSettings({
 
             {/* Header Text */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">טקסט כותרת</Label>
+              <Label className="text-xs text-muted-foreground">
+                טקסט כותרת
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
                   value={config.headerTextColor || "#ffffff"}
-                  onChange={(e) => updateConfig({ headerTextColor: e.target.value })}
+                  onChange={(e) =>
+                    updateConfig({ headerTextColor: e.target.value })
+                  }
                   className="w-10 h-8 p-0.5 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={config.headerTextColor || ""}
-                  onChange={(e) => updateConfig({ headerTextColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({
+                      headerTextColor: e.target.value || undefined,
+                    })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />
@@ -347,7 +416,9 @@ export function TableStyleSettings({
                 <Input
                   type="text"
                   value={config.rowBgColor || ""}
-                  onChange={(e) => updateConfig({ rowBgColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({ rowBgColor: e.target.value || undefined })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />
@@ -356,18 +427,24 @@ export function TableStyleSettings({
 
             {/* Alternating Row */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">שורה חלופית</Label>
+              <Label className="text-xs text-muted-foreground">
+                שורה חלופית
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
                   value={config.rowAltBgColor || "#f5f5f5"}
-                  onChange={(e) => updateConfig({ rowAltBgColor: e.target.value })}
+                  onChange={(e) =>
+                    updateConfig({ rowAltBgColor: e.target.value })
+                  }
                   className="w-10 h-8 p-0.5 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={config.rowAltBgColor || ""}
-                  onChange={(e) => updateConfig({ rowAltBgColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({ rowAltBgColor: e.target.value || undefined })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />
@@ -376,18 +453,24 @@ export function TableStyleSettings({
 
             {/* Divider Color */}
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">צבע חוצצים</Label>
+              <Label className="text-xs text-muted-foreground">
+                צבע חוצצים
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type="color"
                   value={config.dividerColor || "#e5e7eb"}
-                  onChange={(e) => updateConfig({ dividerColor: e.target.value })}
+                  onChange={(e) =>
+                    updateConfig({ dividerColor: e.target.value })
+                  }
                   className="w-10 h-8 p-0.5 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={config.dividerColor || ""}
-                  onChange={(e) => updateConfig({ dividerColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({ dividerColor: e.target.value || undefined })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />
@@ -401,13 +484,17 @@ export function TableStyleSettings({
                 <Input
                   type="color"
                   value={config.accentColor || "#d4af37"}
-                  onChange={(e) => updateConfig({ accentColor: e.target.value })}
+                  onChange={(e) =>
+                    updateConfig({ accentColor: e.target.value })
+                  }
                   className="w-10 h-8 p-0.5 cursor-pointer"
                 />
                 <Input
                   type="text"
                   value={config.accentColor || ""}
-                  onChange={(e) => updateConfig({ accentColor: e.target.value || undefined })}
+                  onChange={(e) =>
+                    updateConfig({ accentColor: e.target.value || undefined })
+                  }
                   placeholder="ברירת מחדל"
                   className="flex-1 h-8 text-xs"
                 />

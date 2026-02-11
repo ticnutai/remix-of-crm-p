@@ -97,30 +97,44 @@ export function TableHeader<T>({
 
   const headerClasses = cn("sticky top-0 z-10", {
     // Variant styling (skip if custom colors are set)
-    "text-table-header-foreground": !customHeaderTextColor && (variant === "default" || variant === "navy"),
-    "text-foreground border-b-2 border-border-gold": !customHeaderBgColor && variant === "gold",
+    "text-table-header-foreground":
+      !customHeaderTextColor && (variant === "default" || variant === "navy"),
+    "text-foreground border-b-2 border-border-gold":
+      !customHeaderBgColor && variant === "gold",
     "text-foreground": !customHeaderTextColor && variant === "minimal",
     // Header opacity - solid background (no transparency) - skip if custom bg
     "bg-table-header":
-      !customHeaderBgColor && headerOpacity === "solid" &&
+      !customHeaderBgColor &&
+      headerOpacity === "solid" &&
       (variant === "default" || variant === "navy"),
-    "bg-secondary/20": !customHeaderBgColor && headerOpacity === "solid" && variant === "gold",
-    "bg-muted": !customHeaderBgColor && headerOpacity === "solid" && variant === "minimal",
+    "bg-secondary/20":
+      !customHeaderBgColor && headerOpacity === "solid" && variant === "gold",
+    "bg-muted":
+      !customHeaderBgColor &&
+      headerOpacity === "solid" &&
+      variant === "minimal",
     // Semi-transparent with blur
     "bg-table-header/80 backdrop-blur-sm":
-      !customHeaderBgColor && headerOpacity === "semi" && (variant === "default" || variant === "navy"),
+      !customHeaderBgColor &&
+      headerOpacity === "semi" &&
+      (variant === "default" || variant === "navy"),
     "bg-secondary/15 backdrop-blur-sm":
       !customHeaderBgColor && headerOpacity === "semi" && variant === "gold",
     "bg-muted/80 backdrop-blur-sm":
       !customHeaderBgColor && headerOpacity === "semi" && variant === "minimal",
     // Transparent with stronger blur
     "bg-table-header/50 backdrop-blur-md":
-      !customHeaderBgColor && headerOpacity === "transparent" &&
+      !customHeaderBgColor &&
+      headerOpacity === "transparent" &&
       (variant === "default" || variant === "navy"),
     "bg-secondary/10 backdrop-blur-md":
-      !customHeaderBgColor && headerOpacity === "transparent" && variant === "gold",
+      !customHeaderBgColor &&
+      headerOpacity === "transparent" &&
+      variant === "gold",
     "bg-muted/50 backdrop-blur-md":
-      !customHeaderBgColor && headerOpacity === "transparent" && variant === "minimal",
+      !customHeaderBgColor &&
+      headerOpacity === "transparent" &&
+      variant === "minimal",
   });
 
   // Custom header styles
@@ -172,11 +186,17 @@ export function TableHeader<T>({
         {selectable && (
           <th
             className={cn("w-12 p-3 text-center sticky right-0 z-20", {
-              "bg-table-header": !customHeaderBgColor && (variant === "default" || variant === "navy"),
+              "bg-table-header":
+                !customHeaderBgColor &&
+                (variant === "default" || variant === "navy"),
               "bg-secondary/20": !customHeaderBgColor && variant === "gold",
               "bg-muted": !customHeaderBgColor && variant === "minimal",
             })}
-            style={customHeaderBgColor ? { backgroundColor: customHeaderBgColor } : undefined}
+            style={
+              customHeaderBgColor
+                ? { backgroundColor: customHeaderBgColor }
+                : undefined
+            }
           >
             <Checkbox
               checked={allSelected}

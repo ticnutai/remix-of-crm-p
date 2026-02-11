@@ -264,9 +264,9 @@ export function DataTable<T extends Record<string, any>>(
   // Merge tableStyleConfig with props
   const effectiveStriped = tableStyleConfig?.striped ?? striped;
   const effectiveBordered = tableStyleConfig?.bordered ?? bordered;
-  const dividers = tableStyleConfig?.dividers ?? 'none';
+  const dividers = tableStyleConfig?.dividers ?? "none";
   const rowGap = tableStyleConfig?.rowGap ?? 0;
-  
+
   // Custom colors from config
   const customColors = {
     headerBg: tableStyleConfig?.headerBgColor,
@@ -295,28 +295,40 @@ export function DataTable<T extends Record<string, any>>(
   const getRowClasses = (index: number, isSelected: boolean) =>
     cn(
       "transition-colors duration-150",
-      !customColors.rowBg && effectiveStriped && index % 2 === 1 && "bg-muted/30",
+      !customColors.rowBg &&
+        effectiveStriped &&
+        index % 2 === 1 &&
+        "bg-muted/30",
       isSelected && "bg-table-row-selected",
       !isSelected && !customColors.hover && "hover:bg-table-row-hover",
       onRowClick && "cursor-pointer",
       // Horizontal dividers
-      (dividers === 'horizontal' || dividers === 'both') && !customColors.divider && "border-b border-table-border",
+      (dividers === "horizontal" || dividers === "both") &&
+        !customColors.divider &&
+        "border-b border-table-border",
     );
 
   // Row style for custom colors
-  const getRowStyle = (index: number, isSelected: boolean): React.CSSProperties => {
+  const getRowStyle = (
+    index: number,
+    isSelected: boolean,
+  ): React.CSSProperties => {
     const style: React.CSSProperties = {};
-    
+
     if (customColors.rowBg) {
-      style.backgroundColor = effectiveStriped && index % 2 === 1 
-        ? (customColors.rowAltBg || customColors.rowBg) 
-        : customColors.rowBg;
+      style.backgroundColor =
+        effectiveStriped && index % 2 === 1
+          ? customColors.rowAltBg || customColors.rowBg
+          : customColors.rowBg;
     }
-    
-    if (customColors.divider && (dividers === 'horizontal' || dividers === 'both')) {
+
+    if (
+      customColors.divider &&
+      (dividers === "horizontal" || dividers === "both")
+    ) {
       style.borderBottom = `1px solid ${customColors.divider}`;
     }
-    
+
     return style;
   };
 
@@ -324,19 +336,27 @@ export function DataTable<T extends Record<string, any>>(
   const getCellClasses = (colIndex: number, totalCols: number) =>
     cn(
       // Vertical dividers (not on last column)
-      (dividers === 'vertical' || dividers === 'both') && 
-        colIndex < totalCols - 1 && 
-        !customColors.divider && "border-l border-table-border",
+      (dividers === "vertical" || dividers === "both") &&
+        colIndex < totalCols - 1 &&
+        !customColors.divider &&
+        "border-l border-table-border",
     );
 
   // Cell style for custom divider color
-  const getCellStyle = (colIndex: number, totalCols: number): React.CSSProperties => {
+  const getCellStyle = (
+    colIndex: number,
+    totalCols: number,
+  ): React.CSSProperties => {
     const style: React.CSSProperties = {};
-    
-    if (customColors.divider && (dividers === 'vertical' || dividers === 'both') && colIndex < totalCols - 1) {
+
+    if (
+      customColors.divider &&
+      (dividers === "vertical" || dividers === "both") &&
+      colIndex < totalCols - 1
+    ) {
       style.borderLeft = `1px solid ${customColors.divider}`;
     }
-    
+
     return style;
   };
 
@@ -527,7 +547,8 @@ export function DataTable<T extends Record<string, any>>(
             // Add border-separate for row gap support
             rowGap > 0 && "border-separate",
             // Vertical dividers on cells
-            (dividers === 'vertical' || dividers === 'both') && "[&_td:not(:last-child)]:border-l [&_td]:border-table-border [&_th:not(:last-child)]:border-l [&_th]:border-table-border",
+            (dividers === "vertical" || dividers === "both") &&
+              "[&_td:not(:last-child)]:border-l [&_td]:border-table-border [&_th:not(:last-child)]:border-l [&_th]:border-table-border",
           )}
           style={{
             tableLayout: "fixed",
@@ -608,7 +629,10 @@ export function DataTable<T extends Record<string, any>>(
                         !customColors.rowBg && "bg-muted sticky z-[5]",
                         customColors.rowBg && "sticky z-[5]",
                       )}
-                      style={{ top: `${topOffset}px`, ...getRowStyle(rowIndex, isSelected) }}
+                      style={{
+                        top: `${topOffset}px`,
+                        ...getRowStyle(rowIndex, isSelected),
+                      }}
                     >
                       {" "}
                       {/* Checkbox FIRST in RTL = right side */}
@@ -688,7 +712,10 @@ export function DataTable<T extends Record<string, any>>(
                   <React.Fragment key={rowIndex}>
                     <tr
                       className={getRowClasses(rowIndex, isSelected)}
-                      style={{ ...(isVirtual ? style : undefined), ...getRowStyle(rowIndex, isSelected) }}
+                      style={{
+                        ...(isVirtual ? style : undefined),
+                        ...getRowStyle(rowIndex, isSelected),
+                      }}
                       onClick={() => onRowClick?.(row, rowIndex)}
                       onDoubleClick={() => onRowDoubleClick?.(row, rowIndex)}
                     >

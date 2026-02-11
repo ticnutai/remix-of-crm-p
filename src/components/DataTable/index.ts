@@ -1,6 +1,6 @@
-export { DataTable } from './DataTable';
-export { TableStyleSettings } from './components/TableStyleSettings';
-export { useTableStyleConfig } from './hooks/useTableStyleConfig';
+export { DataTable } from "./DataTable";
+export { TableStyleSettings } from "./components/TableStyleSettings";
+export { useTableStyleConfig } from "./hooks/useTableStyleConfig";
 export type {
   DataTableProps,
   ColumnDef,
@@ -10,4 +10,4 @@ export type {
   TableStyleConfig,
   TableDividers,
   TableHeaderOpacity,
-} from './types';
+} from "./types";
