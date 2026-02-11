@@ -2204,7 +2204,7 @@ export function HtmlTemplateEditor({
       designSettings.showHeaderStrip !== false
         ? `
     <div class="header">
-      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<div style="text-align: center; margin-bottom: 15px;"><img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 200}px; max-width: 100%; height: auto;"></div>` : ""}
+      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<div style="width: 100%; margin: -40px -40px 15px -40px; padding: 0;"><img src="${designSettings.logoUrl}" alt="Logo" style="width: 100%; height: auto; display: block;"></div>` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
       <h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
       <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>
@@ -4666,13 +4666,17 @@ export function HtmlTemplateEditor({
                                   : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
                             }}
                           >
-                            {/* Full Width Logo inside header */}
+                            {/* Full Width Logo inside header - spans entire width */}
                             {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
-                              <div className="mb-4 cursor-pointer" onClick={() => logoInputRef.current?.click()}>
+                              <div 
+                                className="cursor-pointer -mx-6 -mt-6 mb-4" 
+                                style={{ width: 'calc(100% + 48px)' }}
+                                onClick={() => logoInputRef.current?.click()}
+                              >
                                 <img
                                   src={designSettings.logoUrl}
                                   alt="Logo"
-                                  style={{ width: designSettings.logoSize || 200, maxWidth: '100%', height: 'auto', margin: '0 auto' }}
+                                  style={{ width: '100%', height: 'auto', display: 'block' }}
                                 />
                               </div>
                             )}
