@@ -1,36 +1,43 @@
-import React, { useState } from 'react';
-import { 
-  DndContext, 
-  closestCenter, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
+import React, { useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
   useSensors,
-  DragEndEvent
-} from '@dnd-kit/core';
+  DragEndEvent,
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+} from "@/components/ui/context-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +47,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { 
-  Folder, 
-  FolderOpen, 
-  FolderPlus, 
+} from "@/components/ui/alert-dialog";
+import {
+  Folder,
+  FolderOpen,
+  FolderPlus,
   Plus,
   Loader2,
   Pencil,
@@ -67,10 +74,18 @@ import {
   ExternalLink,
   Link,
   Grid3x3,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useClientFolders, ClientFolderStage, ClientFolderTask } from '@/hooks/useClientFolders';
-import { useClientStages } from '@/hooks/useClientStages';
+  BookTemplate,
+  Save,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  useClientFolders,
+  ClientFolderStage,
+  ClientFolderTask,
+} from "@/hooks/useClientFolders";
+import { useClientStages } from "@/hooks/useClientStages";
+import { useStageTemplates } from "@/hooks/useStageTemplates";
+import { Label } from "@/components/ui/label";
 
 interface ClientFoldersManagerProps {
   clientId: string;
@@ -91,25 +106,25 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 const ICON_OPTIONS = [
-  { value: 'Folder', label: 'תיקייה' },
-  { value: 'FolderOpen', label: 'תיקייה פתוחה' },
-  { value: 'FileText', label: 'מסמך' },
-  { value: 'Building', label: 'בניין' },
-  { value: 'Clock', label: 'שעון' },
-  { value: 'CheckCircle', label: 'אישור' },
-  { value: 'Phone', label: 'טלפון' },
-  { value: 'Send', label: 'שליחה' },
-  { value: 'MapPin', label: 'מיקום' },
+  { value: "Folder", label: "תיקייה" },
+  { value: "FolderOpen", label: "תיקייה פתוחה" },
+  { value: "FileText", label: "מסמך" },
+  { value: "Building", label: "בניין" },
+  { value: "Clock", label: "שעון" },
+  { value: "CheckCircle", label: "אישור" },
+  { value: "Phone", label: "טלפון" },
+  { value: "Send", label: "שליחה" },
+  { value: "MapPin", label: "מיקום" },
 ];
 
 // Sortable Task Component
-function SortableTask({ 
-  task, 
-  onToggle, 
-  onDelete, 
-  onUpdate 
-}: { 
-  task: ClientFolderTask; 
+function SortableTask({
+  task,
+  onToggle,
+  onDelete,
+  onUpdate,
+}: {
+  task: ClientFolderTask;
   onToggle: () => void;
   onDelete: () => void;
   onUpdate: (updates: Partial<ClientFolderTask>) => void;
@@ -146,22 +161,15 @@ function SortableTask({
       className={cn(
         "flex items-center gap-2 p-2 rounded-lg border bg-card",
         task.completed && "opacity-60",
-        task.background_color && `bg-[${task.background_color}]`
+        task.background_color && `bg-[${task.background_color}]`,
       )}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab touch-none"
-      >
+      <div {...attributes} {...listeners} className="cursor-grab touch-none">
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </div>
-      
-      <Checkbox 
-        checked={task.completed} 
-        onCheckedChange={onToggle}
-      />
-      
+
+      <Checkbox checked={task.completed} onCheckedChange={onToggle} />
+
       {isEditing ? (
         <div className="flex-1 flex items-center gap-2">
           <Input
@@ -170,42 +178,52 @@ function SortableTask({
             className="h-7 text-sm"
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSaveEdit();
-              if (e.key === 'Escape') setIsEditing(false);
+              if (e.key === "Enter") handleSaveEdit();
+              if (e.key === "Escape") setIsEditing(false);
             }}
           />
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleSaveEdit}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            onClick={handleSaveEdit}
+          >
             <Check className="h-4 w-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setIsEditing(false)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            onClick={() => setIsEditing(false)}
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
       ) : (
         <>
-          <span 
+          <span
             className={cn(
               "flex-1 text-sm",
               task.completed && "line-through",
-              task.is_bold && "font-bold"
+              task.is_bold && "font-bold",
             )}
             style={{ color: task.text_color || undefined }}
             onDoubleClick={() => setIsEditing(true)}
           >
             {task.title}
           </span>
-          
-          <Button 
-            size="sm" 
-            variant="ghost" 
+
+          <Button
+            size="sm"
+            variant="ghost"
             className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
             onClick={() => setIsEditing(true)}
           >
             <Pencil className="h-3 w-3" />
           </Button>
-          <Button 
-            size="sm" 
-            variant="ghost" 
+          <Button
+            size="sm"
+            variant="ghost"
             className="h-6 w-6 p-0 text-destructive opacity-0 group-hover:opacity-100"
             onClick={onDelete}
           >
@@ -230,7 +248,10 @@ function StageCard({
   onReorderTasks,
 }: {
   stage: ClientFolderStage & { tasks: ClientFolderTask[] };
-  onUpdate: (stageId: string, updates: { stage_name?: string; stage_icon?: string }) => void;
+  onUpdate: (
+    stageId: string,
+    updates: { stage_name?: string; stage_icon?: string },
+  ) => void;
   onDelete: (stageId: string) => void;
   onAddTask: (stageId: string, title: string) => void;
   onAddBulkTasks: (stageId: string, titles: string[]) => void;
@@ -242,15 +263,17 @@ function StageCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(stage.stage_name);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskTitle, setNewTaskTitle] = useState("");
   const [isBulkMode, setIsBulkMode] = useState(false);
-  const [bulkTasks, setBulkTasks] = useState('');
+  const [bulkTasks, setBulkTasks] = useState("");
 
-  const IconComponent = iconMap[stage.stage_icon || 'FileText'] || FileText;
+  const IconComponent = iconMap[stage.stage_icon || "FileText"] || FileText;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -273,22 +296,23 @@ function StageCard({
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
       onAddTask(stage.id, newTaskTitle.trim());
-      setNewTaskTitle('');
+      setNewTaskTitle("");
     }
   };
 
   const handleAddBulkTasks = () => {
-    const titles = bulkTasks.split('\n').filter(t => t.trim());
+    const titles = bulkTasks.split("\n").filter((t) => t.trim());
     if (titles.length > 0) {
       onAddBulkTasks(stage.id, titles);
-      setBulkTasks('');
+      setBulkTasks("");
       setIsBulkMode(false);
     }
   };
 
-  const completedCount = stage.tasks.filter(t => t.completed).length;
+  const completedCount = stage.tasks.filter((t) => t.completed).length;
   const totalCount = stage.tasks.length;
-  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const progress =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
     <Card className="border bg-card/50">
@@ -301,13 +325,17 @@ function StageCard({
               className="h-7 w-7 p-0"
               onClick={() => setIsExpanded(!isExpanded)}
             >
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {isExpanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </Button>
-            
+
             <div className="p-1.5 rounded-lg bg-primary/10">
               <IconComponent className="h-4 w-4 text-primary" />
             </div>
-            
+
             {isEditingName ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -316,16 +344,21 @@ function StageCard({
                   className="h-7 text-sm w-40"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveName();
-                    if (e.key === 'Escape') setIsEditingName(false);
+                    if (e.key === "Enter") handleSaveName();
+                    if (e.key === "Escape") setIsEditingName(false);
                   }}
                 />
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handleSaveName}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={handleSaveName}
+                >
                   <Check className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <span 
+              <span
                 className="font-medium cursor-pointer hover:text-primary"
                 onDoubleClick={() => setIsEditingName(true)}
               >
@@ -340,9 +373,9 @@ function StageCard({
             </Badge>
             {progress > 0 && (
               <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary transition-all" 
-                  style={{ width: `${progress}%` }} 
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             )}
@@ -366,7 +399,10 @@ function StageCard({
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={stage.tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={stage.tasks.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
               <div className="space-y-1 group">
                 {stage.tasks.map((task) => (
                   <SortableTask
@@ -395,7 +431,11 @@ function StageCard({
                 <Button size="sm" onClick={handleAddBulkTasks}>
                   הוסף משימות
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setIsBulkMode(false)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsBulkMode(false)}
+                >
                   ביטול
                 </Button>
               </div>
@@ -409,13 +449,23 @@ function StageCard({
                 className="h-8 text-sm"
                 dir="rtl"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddTask();
+                  if (e.key === "Enter") handleAddTask();
                 }}
               />
-              <Button size="sm" className="h-8" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={handleAddTask}
+                disabled={!newTaskTitle.trim()}
+              >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="outline" className="h-8" onClick={() => setIsBulkMode(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                onClick={() => setIsBulkMode(true)}
+              >
                 <ListPlus className="h-4 w-4" />
               </Button>
             </div>
@@ -427,7 +477,10 @@ function StageCard({
 }
 
 // Main Component
-export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFoldersManagerProps) {
+export function ClientFoldersManager({
+  clientId,
+  onOpenFolderStages,
+}: ClientFoldersManagerProps) {
   const {
     folders,
     stages,
@@ -457,49 +510,82 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
     getStagesByFolder,
   } = useClientStages(clientId);
 
+  // Template functions
+  const {
+    templates,
+    loading: templatesLoading,
+    saveFolderStagesAsTemplate,
+    applyTemplateToFolder,
+  } = useStageTemplates();
+
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderIcon, setNewFolderIcon] = useState('Folder');
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderIcon, setNewFolderIcon] = useState("Folder");
   const [isAddStageOpen, setIsAddStageOpen] = useState(false);
-  const [newStageName, setNewStageName] = useState('');
-  const [newStageIcon, setNewStageIcon] = useState('FileText');
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageIcon, setNewStageIcon] = useState("FileText");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [editingFolder, setEditingFolder] = useState<{ id: string; name: string } | null>(null);
-  const [duplicateDialog, setDuplicateDialog] = useState<{ id: string; name: string } | null>(null);
-  const [duplicateName, setDuplicateName] = useState('');
-  
+  const [editingFolder, setEditingFolder] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [duplicateDialog, setDuplicateDialog] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [duplicateName, setDuplicateName] = useState("");
+
   // Dialog for assigning main stages to folder
   const [isAssignStagesOpen, setIsAssignStagesOpen] = useState(false);
-  const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(new Set());
-  
+  const [selectedStageIds, setSelectedStageIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Columns count for grid layout
   const [columnsCount, setColumnsCount] = useState(() => {
-    const saved = localStorage.getItem('folder-stages-columns-count');
+    const saved = localStorage.getItem("folder-stages-columns-count");
     return saved ? parseInt(saved, 10) : 1; // Default 1 = list view
   });
 
   // Grid columns class helper
   const getGridColumnsClass = () => {
-    if (columnsCount === 1) return 'flex flex-col space-y-3';
+    if (columnsCount === 1) return "flex flex-col space-y-3";
     switch (columnsCount) {
-      case 2: return 'grid grid-cols-2 gap-3';
-      case 3: return 'grid grid-cols-3 gap-3';
-      case 4: return 'grid grid-cols-4 gap-3';
-      case 5: return 'grid grid-cols-5 gap-3';
-      case 6: return 'grid grid-cols-6 gap-3';
-      default: return 'flex flex-col space-y-3';
+      case 2:
+        return "grid grid-cols-2 gap-3";
+      case 3:
+        return "grid grid-cols-3 gap-3";
+      case 4:
+        return "grid grid-cols-4 gap-3";
+      case 5:
+        return "grid grid-cols-5 gap-3";
+      case 6:
+        return "grid grid-cols-6 gap-3";
+      default:
+        return "flex flex-col space-y-3";
     }
   };
 
   const handleColumnsChange = (count: number) => {
     setColumnsCount(count);
-    localStorage.setItem('folder-stages-columns-count', count.toString());
+    localStorage.setItem("folder-stages-columns-count", count.toString());
   };
 
+  // Template dialogs state
+  const [applyTemplateDialog, setApplyTemplateDialog] = useState(false);
+  const [saveTemplateDialog, setSaveTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDescription, setTemplateDescription] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
   // Get stages already assigned to this folder
-  const assignedStages = mainStages.filter(s => s.folder_id === activeFolderId);
+  const assignedStages = mainStages.filter(
+    (s) => s.folder_id === activeFolderId,
+  );
   // Get stages not assigned to any folder (available for assignment)
-  const availableStages = mainStages.filter(s => !s.folder_id);
+  const availableStages = mainStages.filter((s) => !s.folder_id);
 
   const handleAssignStages = async () => {
     for (const stageId of selectedStageIds) {
@@ -513,11 +599,60 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
     await assignStageToFolder(stageId, null);
   };
 
+  // Template handlers
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim() || !activeFolder) return;
+    
+    setSavingTemplate(true);
+    try {
+      const stagesWithTasks = stages.map((stage) => ({
+        stage_name: stage.stage_name,
+        stage_icon: stage.stage_icon,
+        sort_order: stage.sort_order,
+        tasks: stage.tasks?.map((t) => ({
+          title: t.title,
+          sort_order: t.sort_order,
+        })) || [],
+      }));
+
+      await saveFolderStagesAsTemplate(
+        templateName.trim(),
+        templateDescription.trim(),
+        stagesWithTasks,
+      );
+      
+      setSaveTemplateDialog(false);
+      setTemplateName("");
+      setTemplateDescription("");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!selectedTemplateId || !activeFolder) return;
+    
+    setApplyingTemplate(true);
+    try {
+      await applyTemplateToFolder(
+        selectedTemplateId,
+        activeFolder.id,
+        stages.length,
+      );
+      // Reload folder stages - need to refresh
+      window.location.reload(); // Simple refresh for now
+    } finally {
+      setApplyingTemplate(false);
+      setApplyTemplateDialog(false);
+      setSelectedTemplateId(null);
+    }
+  };
+
   const handleAddFolder = async () => {
     if (newFolderName.trim()) {
       await addFolder(newFolderName.trim(), newFolderIcon);
-      setNewFolderName('');
-      setNewFolderIcon('Folder');
+      setNewFolderName("");
+      setNewFolderIcon("Folder");
       setIsAddFolderOpen(false);
     }
   };
@@ -525,8 +660,8 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
   const handleAddStage = async () => {
     if (newStageName.trim()) {
       await addStage(newStageName.trim(), newStageIcon);
-      setNewStageName('');
-      setNewStageIcon('FileText');
+      setNewStageName("");
+      setNewStageIcon("FileText");
       setIsAddStageOpen(false);
     }
   };
@@ -535,11 +670,11 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
     if (duplicateDialog && duplicateName.trim()) {
       await duplicateFolder(duplicateDialog.id, duplicateName.trim());
       setDuplicateDialog(null);
-      setDuplicateName('');
+      setDuplicateName("");
     }
   };
 
-  const activeFolder = folders.find(f => f.id === activeFolderId);
+  const activeFolder = folders.find((f) => f.id === activeFolderId);
 
   if (loading && folders.length === 0) {
     return (
@@ -554,12 +689,13 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
       {/* Folders Tabs */}
       <div className="flex items-center gap-2 flex-wrap border-b pb-2">
         {folders.map((folder) => {
-          const IconComponent = iconMap[folder.folder_icon || 'Folder'] || Folder;
+          const IconComponent =
+            iconMap[folder.folder_icon || "Folder"] || Folder;
           return (
             <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
                 <Button
-                  variant={activeFolderId === folder.id ? 'default' : 'outline'}
+                  variant={activeFolderId === folder.id ? "default" : "outline"}
                   size="sm"
                   className="gap-2"
                   onClick={() => setActiveFolderId(folder.id)}
@@ -568,22 +704,31 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                   {editingFolder?.id === folder.id ? (
                     <Input
                       value={editingFolder.name}
-                      onChange={(e) => setEditingFolder({ ...editingFolder, name: e.target.value })}
+                      onChange={(e) =>
+                        setEditingFolder({
+                          ...editingFolder,
+                          name: e.target.value,
+                        })
+                      }
                       className="h-6 w-24 text-xs"
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => {
                         e.stopPropagation();
-                        if (e.key === 'Enter') {
-                          updateFolder(folder.id, { folder_name: editingFolder.name });
+                        if (e.key === "Enter") {
+                          updateFolder(folder.id, {
+                            folder_name: editingFolder.name,
+                          });
                           setEditingFolder(null);
                         }
-                        if (e.key === 'Escape') {
+                        if (e.key === "Escape") {
                           setEditingFolder(null);
                         }
                       }}
                       onBlur={() => {
-                        updateFolder(folder.id, { folder_name: editingFolder.name });
+                        updateFolder(folder.id, {
+                          folder_name: editingFolder.name,
+                        });
                         setEditingFolder(null);
                       }}
                     />
@@ -593,19 +738,31 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                 </Button>
               </ContextMenuTrigger>
               <ContextMenuContent>
-                <ContextMenuItem onClick={() => setEditingFolder({ id: folder.id, name: folder.folder_name })}>
+                <ContextMenuItem
+                  onClick={() =>
+                    setEditingFolder({
+                      id: folder.id,
+                      name: folder.folder_name,
+                    })
+                  }
+                >
                   <Pencil className="h-4 w-4 ml-2" />
                   שנה שם
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => {
-                  setDuplicateDialog({ id: folder.id, name: folder.folder_name });
-                  setDuplicateName(`${folder.folder_name} - העתק`);
-                }}>
+                <ContextMenuItem
+                  onClick={() => {
+                    setDuplicateDialog({
+                      id: folder.id,
+                      name: folder.folder_name,
+                    });
+                    setDuplicateName(`${folder.folder_name} - העתק`);
+                  }}
+                >
                   <Copy className="h-4 w-4 ml-2" />
                   שכפל תיקייה
                 </ContextMenuItem>
                 <ContextMenuSeparator />
-                <ContextMenuItem 
+                <ContextMenuItem
                   className="text-destructive"
                   onClick={() => setDeleteConfirm(folder.id)}
                 >
@@ -616,7 +773,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
             </ContextMenu>
           );
         })}
-        
+
         {/* Add Folder Button */}
         <Button
           variant="ghost"
@@ -651,22 +808,49 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                 {[1, 2, 3, 4, 5, 6].map((count) => (
                   <Button
                     key={count}
-                    variant={columnsCount === count ? 'default' : 'ghost'}
+                    variant={columnsCount === count ? "default" : "ghost"}
                     size="sm"
                     className="h-6 w-6 p-0 text-xs"
                     onClick={() => handleColumnsChange(count)}
-                    title={count === 1 ? 'תצוגת רשימה' : `${count} עמודות`}
+                    title={count === 1 ? "תצוגת רשימה" : `${count} עמודות`}
                   >
                     {count}
                   </Button>
                 ))}
               </div>
+              {/* Template Actions */}
+              <div className="border-r border-border pr-2 mr-2" />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setApplyTemplateDialog(true)}
+                className="gap-2"
+              >
+                <BookTemplate className="h-4 w-4" />
+                הוסף מתבנית
+              </Button>
+              {stages.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSaveTemplateDialog(true)}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  שמור כתבנית
+                </Button>
+              )}
               {/* Open Stages in Board Button */}
               {onOpenFolderStages && assignedStages.length > 0 && (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
-                  onClick={() => onOpenFolderStages(activeFolder.id, activeFolder.folder_name)} 
+                  onClick={() =>
+                    onOpenFolderStages(
+                      activeFolder.id,
+                      activeFolder.folder_name,
+                    )
+                  }
                   className="gap-2"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -674,16 +858,20 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                 </Button>
               )}
               {/* Assign Stages Button */}
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
-                onClick={() => setIsAssignStagesOpen(true)} 
+                onClick={() => setIsAssignStagesOpen(true)}
                 className="gap-2"
               >
                 <Link className="h-4 w-4" />
                 קשר שלבים
               </Button>
-              <Button size="sm" onClick={() => setIsAddStageOpen(true)} className="gap-2">
+              <Button
+                size="sm"
+                onClick={() => setIsAddStageOpen(true)}
+                className="gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 הוסף שלב
               </Button>
@@ -695,12 +883,14 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
             <div className="border rounded-lg p-3 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
                 <Layers className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">שלבים מקושרים מהלוח הראשי</span>
+                <span className="text-sm font-medium">
+                  שלבים מקושרים מהלוח הראשי
+                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {assignedStages.map((stage) => (
-                  <Badge 
-                    key={stage.id} 
+                  <Badge
+                    key={stage.id}
                     variant="secondary"
                     className="gap-1 cursor-pointer hover:bg-destructive/20"
                     onClick={() => handleRemoveStageFromFolder(stage.stage_id)}
@@ -716,11 +906,13 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
 
           {/* Stages */}
           <ScrollArea className="h-[500px]">
-            <div className={cn(getGridColumnsClass(), 'pr-4')}>
+            <div className={cn(getGridColumnsClass(), "pr-4")}>
               {stages.map((stage) => (
                 <StageCard
                   key={stage.id}
-                  stage={stage as ClientFolderStage & { tasks: ClientFolderTask[] }}
+                  stage={
+                    stage as ClientFolderStage & { tasks: ClientFolderTask[] }
+                  }
                   onUpdate={updateStage}
                   onDelete={deleteStage}
                   onAddTask={addTask}
@@ -731,13 +923,13 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                   onReorderTasks={reorderTasks}
                 />
               ))}
-              
+
               {stages.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>אין שלבים בתיקייה זו</p>
-                  <Button 
-                    variant="link" 
+                  <Button
+                    variant="link"
                     onClick={() => setIsAddStageOpen(true)}
                   >
                     הוסף שלב ראשון
@@ -768,7 +960,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               צור תיקייה חדשה לניהול שלבים ומשימות
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">שם התיקייה</label>
@@ -777,11 +969,11 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddFolder();
+                  if (e.key === "Enter") handleAddFolder();
                 }}
               />
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium">אייקון</label>
               <div className="grid grid-cols-5 gap-2">
@@ -790,7 +982,9 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                   return (
                     <Button
                       key={option.value}
-                      variant={newFolderIcon === option.value ? 'default' : 'outline'}
+                      variant={
+                        newFolderIcon === option.value ? "default" : "outline"
+                      }
                       size="sm"
                       className="h-10 w-10 p-0"
                       onClick={() => setNewFolderIcon(option.value)}
@@ -824,7 +1018,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               הוסף שלב חדש לתיקייה "{activeFolder?.folder_name}"
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">שם השלב</label>
@@ -833,11 +1027,11 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                 value={newStageName}
                 onChange={(e) => setNewStageName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddStage();
+                  if (e.key === "Enter") handleAddStage();
                 }}
               />
             </div>
-            
+
             <div className="space-y-2">
               <label className="text-sm font-medium">אייקון</label>
               <div className="grid grid-cols-5 gap-2">
@@ -846,7 +1040,9 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                   return (
                     <Button
                       key={option.value}
-                      variant={newStageIcon === option.value ? 'default' : 'outline'}
+                      variant={
+                        newStageIcon === option.value ? "default" : "outline"
+                      }
                       size="sm"
                       className="h-10 w-10 p-0"
                       onClick={() => setNewStageIcon(option.value)}
@@ -872,7 +1068,10 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
       </Dialog>
 
       {/* Duplicate Folder Dialog */}
-      <Dialog open={!!duplicateDialog} onOpenChange={() => setDuplicateDialog(null)}>
+      <Dialog
+        open={!!duplicateDialog}
+        onOpenChange={() => setDuplicateDialog(null)}
+      >
         <DialogContent dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle>שכפול תיקייה</DialogTitle>
@@ -880,14 +1079,14 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               שכפל את "{duplicateDialog?.name}" כולל כל השלבים והמשימות
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-2">
             <label className="text-sm font-medium">שם התיקייה החדשה</label>
             <Input
               value={duplicateName}
               onChange={(e) => setDuplicateName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleDuplicateFolder();
+                if (e.key === "Enter") handleDuplicateFolder();
               }}
             />
           </div>
@@ -896,7 +1095,10 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
             <Button variant="outline" onClick={() => setDuplicateDialog(null)}>
               ביטול
             </Button>
-            <Button onClick={handleDuplicateFolder} disabled={!duplicateName.trim()}>
+            <Button
+              onClick={handleDuplicateFolder}
+              disabled={!duplicateName.trim()}
+            >
               שכפל תיקייה
             </Button>
           </DialogFooter>
@@ -904,12 +1106,16 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader className="text-right">
             <AlertDialogTitle>האם למחוק את התיקייה?</AlertDialogTitle>
             <AlertDialogDescription>
-              פעולה זו תמחק את התיקייה וכל השלבים והמשימות שבה. לא ניתן לבטל פעולה זו.
+              פעולה זו תמחק את התיקייה וכל השלבים והמשימות שבה. לא ניתן לבטל
+              פעולה זו.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2">
@@ -941,19 +1147,19 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
               בחר שלבים מהלוח הראשי לקישור לתיקייה "{activeFolder?.folder_name}"
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {availableStages.length > 0 ? (
               <ScrollArea className="h-[300px] border rounded-lg p-2">
                 <div className="space-y-2">
                   {availableStages.map((stage) => (
-                    <div 
+                    <div
                       key={stage.id}
                       className={cn(
                         "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
                         selectedStageIds.has(stage.stage_id)
                           ? "bg-primary/10 border-primary"
-                          : "hover:bg-muted"
+                          : "hover:bg-muted",
                       )}
                       onClick={() => {
                         const newSet = new Set(selectedStageIds);
@@ -965,7 +1171,7 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
                         setSelectedStageIds(newSet);
                       }}
                     >
-                      <Checkbox 
+                      <Checkbox
                         checked={selectedStageIds.has(stage.stage_id)}
                         className="pointer-events-none"
                       />
@@ -994,19 +1200,158 @@ export function ClientFoldersManager({ clientId, onOpenFolderStages }: ClientFol
           </div>
 
           <DialogFooter className="flex-row-reverse gap-2">
-            <Button variant="outline" onClick={() => {
-              setIsAssignStagesOpen(false);
-              setSelectedStageIds(new Set());
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAssignStagesOpen(false);
+                setSelectedStageIds(new Set());
+              }}
+            >
               ביטול
             </Button>
-            <Button 
-              onClick={handleAssignStages} 
+            <Button
+              onClick={handleAssignStages}
               disabled={selectedStageIds.size === 0}
               className="gap-2"
             >
               <Link className="h-4 w-4" />
-              קשר {selectedStageIds.size > 0 ? `(${selectedStageIds.size})` : ''}
+              קשר{" "}
+              {selectedStageIds.size > 0 ? `(${selectedStageIds.size})` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Apply Template Dialog */}
+      <Dialog open={applyTemplateDialog} onOpenChange={setApplyTemplateDialog}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader className="text-right">
+            <DialogTitle>הוסף שלבים מתבנית</DialogTitle>
+            <DialogDescription>
+              בחר תבנית להוספת שלבים לתיקייה "{activeFolder?.folder_name}"
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : templates.filter((t) => t.is_multi_stage).length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <BookTemplate className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>אין תבניות זמינות</p>
+                <p className="text-sm">שמור שלבים כתבנית ללוח הראשי כדי להשתמש בהם כאן</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {templates
+                    .filter((t) => t.is_multi_stage)
+                    .map((template) => (
+                      <div
+                        key={template.id}
+                        className={cn(
+                          "p-3 border rounded-lg cursor-pointer transition-colors",
+                          selectedTemplateId === template.id
+                            ? "border-primary bg-primary/5"
+                            : "hover:bg-muted/50",
+                        )}
+                        onClick={() => setSelectedTemplateId(template.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookTemplate className="h-4 w-4" />
+                          <span className="font-medium">{template.name}</span>
+                          <Badge variant="secondary" className="mr-auto">
+                            {template.stages?.length || 0} שלבים
+                          </Badge>
+                        </div>
+                        {template.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {template.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setApplyTemplateDialog(false);
+                setSelectedTemplateId(null);
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleApplyTemplate}
+              disabled={!selectedTemplateId || applyingTemplate}
+              className="gap-2"
+            >
+              {applyingTemplate && <Loader2 className="h-4 w-4 animate-spin" />}
+              הוסף תבנית
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save as Template Dialog */}
+      <Dialog open={saveTemplateDialog} onOpenChange={setSaveTemplateDialog}>
+        <DialogContent dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle>שמור כתבנית</DialogTitle>
+            <DialogDescription>
+              שמור את השלבים של "{activeFolder?.folder_name}" כתבנית לשימוש עתידי
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>שם התבנית</Label>
+              <Input
+                placeholder="למשל: תהליך היתר בניה..."
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>תיאור (אופציונלי)</Label>
+              <Input
+                placeholder="תיאור קצר של התבנית..."
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              יישמרו {stages.length} שלבים עם{" "}
+              {stages.reduce((sum, s) => sum + (s.tasks?.length || 0), 0)} משימות
+            </div>
+          </div>
+
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSaveTemplateDialog(false);
+                setTemplateName("");
+                setTemplateDescription("");
+              }}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={!templateName.trim() || savingTemplate}
+              className="gap-2"
+            >
+              {savingTemplate && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Save className="h-4 w-4" />
+              שמור תבנית
             </Button>
           </DialogFooter>
         </DialogContent>

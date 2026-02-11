@@ -504,7 +504,10 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
 
               {/* Show selected client/project when running */}
               {(timerState.isRunning || isPaused) &&
-                (currentClientName || currentProjectName || selectedClientName || selectedProjectName) && (
+                (currentClientName ||
+                  currentProjectName ||
+                  selectedClientName ||
+                  selectedProjectName) && (
                   <div className="flex items-center gap-2 mt-1.5">
                     {(currentClientName || selectedClientName) && (
                       <div className="flex items-center gap-1 text-[10px] bg-[hsl(45,80%,50%)]/20 text-[hsl(45,80%,70%)] px-2 py-0.5 rounded-full border border-[hsl(45,80%,50%)]/30">
