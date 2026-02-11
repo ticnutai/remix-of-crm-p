@@ -57,7 +57,22 @@ interface HtmlTemplateEditorProps {
 
 interface PaymentStep { id: string; name: string; percentage: number; description: string; }
 interface DesignSettings { primaryColor: string; secondaryColor: string; accentColor: string; fontFamily: string; fontSize: number; logoUrl: string; headerBackground: string; showLogo: boolean; borderRadius: number; companyName: string; companyAddress: string; companyPhone: string; companyEmail: string; }
-interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; customBg?: string; customBorder?: string; customTextColor?: string; fontSize?: number; isBold?: boolean; isItalic?: boolean; isUnderline?: boolean; textAlign?: 'right' | 'center' | 'left'; }
+interface TextBox { id: string; title: string; content: string; position: 'header' | 'before-stages' | 'after-stages' | 'before-payments' | 'after-payments' | 'footer'; style: 'default' | 'highlight' | 'warning' | 'info'; customBg?: string; customBorder?: string; customTextColor?: string; fontSize?: number; isBold?: boolean; isItalic?: boolean; isUnderline?: boolean; textAlign?: 'right' | 'center' | 'left'; fontFamily?: string; }
+
+// Hebrew fonts available in text boxes
+const HEBREW_FONTS = [
+  { value: 'Heebo', label: 'Heebo' },
+  { value: 'Assistant', label: 'Assistant' },
+  { value: 'Rubik', label: 'Rubik' },
+  { value: 'Alef', label: 'Alef' },
+  { value: 'David Libre', label: 'David Libre' },
+  { value: 'Frank Ruhl Libre', label: 'Frank Ruhl' },
+  { value: 'Varela Round', label: 'Varela Round' },
+  { value: 'Noto Sans Hebrew', label: 'Noto Sans' },
+  { value: 'Secular One', label: 'Secular One' },
+  { value: 'Suez One', label: 'Suez One' },
+  { value: 'Amatic SC', label: 'Amatic SC' },
+];
 interface QuoteVersion { id: string; timestamp: string; label: string; data: { stages: TemplateStage[]; paymentSteps: PaymentStep[]; textBoxes: TextBox[]; designSettings: DesignSettings; basePrice: number; upgrades?: any[]; pricingTiers?: any[]; projectDetails?: any; }; }
 type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
 interface ProjectDetails { clientId: string; clientName: string; gush: string; helka: string; migrash: string; taba: string; address: string; projectType: string; phone?: string; }
@@ -518,7 +533,16 @@ function TextBoxEditor({ textBox, onUpdate, onDelete, onDuplicate, dragHandlePro
           )}
 
           {/* Formatting toolbar */}
-          <div className="flex items-center gap-1 mr-7">
+          <div className="flex items-center gap-1 mr-7 flex-wrap">
+            {/* Font selector */}
+            <Label className="text-xs">גופן:</Label>
+            <Select value={textBox.fontFamily || 'Heebo'} onValueChange={(v) => onUpdate({ ...textBox, fontFamily: v })}>
+              <SelectTrigger className="w-28 h-6 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {HEBREW_FONTS.map(f => <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>{f.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="w-px h-4 bg-gray-300 mx-1" />
             <Button size="icon" variant={textBox.isBold ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isBold: !textBox.isBold })}><Bold className="h-3 w-3" /></Button>
             <Button size="icon" variant={textBox.isItalic ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isItalic: !textBox.isItalic })}><Italic className="h-3 w-3" /></Button>
             <Button size="icon" variant={textBox.isUnderline ? 'default' : 'ghost'} className="h-6 w-6" onClick={() => onUpdate({ ...textBox, isUnderline: !textBox.isUnderline })}><Underline className="h-3 w-3" /></Button>
@@ -544,6 +568,7 @@ function TextBoxEditor({ textBox, onUpdate, onDelete, onDuplicate, dragHandlePro
             className="min-h-[80px] bg-transparent border-0 focus-visible:ring-0 p-0 mr-7"
             dir="rtl"
             style={{
+              fontFamily: textBox.fontFamily || 'Heebo',
               fontWeight: textBox.isBold ? 'bold' : 'normal',
               fontStyle: textBox.isItalic ? 'italic' : 'normal',
               textDecoration: textBox.isUnderline ? 'underline' : 'none',
@@ -766,13 +791,14 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
         const borderColor = tb.customBorder || s.border;
         const textColor = tb.customTextColor || '#444';
         const fontSize = tb.fontSize || 14;
+        const fontFamily = tb.fontFamily || designSettings.fontFamily || 'Heebo';
         const fontWeight = tb.isBold ? 'font-weight: bold;' : '';
         const fontStyle = tb.isItalic ? 'font-style: italic;' : '';
         const textDecor = tb.isUnderline ? 'text-decoration: underline;' : '';
         const textAlign = `text-align: ${tb.textAlign || 'right'};`;
         return `<div style="margin: 15px 0; padding: 15px; background: ${bgColor}; border: 2px solid ${borderColor}; border-radius: ${designSettings.borderRadius}px;">
-          ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${designSettings.fontFamily};">${s.icon} ${tb.title}</h4>` : ''}
-          <div style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
+          ${tb.title ? `<h4 style="margin: 0 0 8px 0; color: ${designSettings.primaryColor}; font-family: ${fontFamily};">${s.icon} ${tb.title}</h4>` : ''}
+          <div style="color: ${textColor}; white-space: pre-wrap; font-size: ${fontSize}px; font-family: ${fontFamily}; ${fontWeight} ${fontStyle} ${textDecor} ${textAlign}">${tb.content}</div>
         </div>`;
       }).join('');
     };
@@ -795,7 +821,7 @@ export function HtmlTemplateEditor({ open, onClose, template, onSave }: HtmlTemp
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Assistant:wght@200;300;400;500;600;700;800&family=Rubik:wght@300;400;500;600;700&family=Alef:wght@400;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@300;400;500;700&family=Varela+Round&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Secular+One&family=Suez+One&family=Amatic+SC:wght@400;700&display=swap" rel="stylesheet">
   <title>${editedTemplate.name}</title>
   <style>
     body { font-family: '${designSettings.fontFamily}', sans-serif; font-size: ${designSettings.fontSize}px; margin: 0; padding: 0; background: #f5f5f5; }
