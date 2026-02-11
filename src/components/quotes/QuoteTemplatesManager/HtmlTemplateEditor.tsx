@@ -2185,21 +2185,11 @@ export function HtmlTemplateEditor({
     table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
-    .full-width-logo { width: 100%; max-width: 100%; margin: 0 auto; }
-    .full-width-logo img { width: 100%; height: auto; display: block; }
+    .full-width-header { padding: 0 !important; }
+    .full-width-header img { width: 100%; height: auto; display: block; }
   </style>
 </head>
 <body>
-  ${
-    designSettings.showLogo &&
-    designSettings.logoUrl &&
-    designSettings.logoPosition === "full-width"
-      ? `
-  <div class="full-width-logo">
-    <img src="${designSettings.logoUrl}" alt="Logo">
-  </div>`
-      : ""
-  }
   <div class="container">
     ${
       designSettings.showLogo &&
@@ -2215,16 +2205,17 @@ export function HtmlTemplateEditor({
     ${
       designSettings.showHeaderStrip !== false
         ? `
-    <div class="header">
+    <div class="header${designSettings.logoPosition === 'full-width' ? ' full-width-header' : ''}">
+      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
       ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
-      <h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
-      <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>
+      ${designSettings.logoPosition !== "full-width" ? `<h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
+      <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>` : ""}
     </div>`
         : `
     <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
-      <h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
-      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>
+      ${designSettings.logoPosition !== "full-width" ? `<h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
+      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>` : ""}
     </div>`
     }
     <div class="content">
@@ -2989,26 +2980,6 @@ export function HtmlTemplateEditor({
           logoPosition: designSettings.logoPosition,
         })}
 
-        {/* Full Width Logo - Spans entire page width */}
-        {designSettings.showLogo &&
-          designSettings.logoUrl &&
-          designSettings.logoPosition === "full-width" && (
-            <div
-              className="w-full relative group cursor-pointer bg-blue-500"
-              onClick={() => logoInputRef.current?.click()}
-            >
-              {console.log('[LOGO DEBUG - Regular Preview] Rendering FULL-WIDTH logo!')}
-              <img
-                src={designSettings.logoUrl}
-                alt="Logo"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-              <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
-              </div>
-            </div>
-          )}
-
         {/* Gold Header */}
         {/* Logo Above Header */}
         {designSettings.showLogo &&
@@ -3030,7 +3001,7 @@ export function HtmlTemplateEditor({
           )}
 
         <div
-          className={`shrink-0 text-white p-6 ${designSettings.showHeaderStrip === false ? "bg-white border-b-2" : ""}`}
+          className={`shrink-0 text-white ${designSettings.logoPosition === 'full-width' ? 'p-0' : 'p-6'} ${designSettings.showHeaderStrip === false ? "bg-white border-b-2" : ""}`}
           style={{
             background:
               designSettings.showHeaderStrip !== false
@@ -3039,6 +3010,27 @@ export function HtmlTemplateEditor({
             borderColor: designSettings.primaryColor,
           }}
         >
+          {/* Full Width Logo - Inside header, spanning full width */}
+          {designSettings.showLogo &&
+            designSettings.logoUrl &&
+            designSettings.logoPosition === "full-width" && (
+              <div
+                className="w-full relative group cursor-pointer"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {console.log('[LOGO DEBUG - Regular Preview] Rendering FULL-WIDTH logo inside header!')}
+                <img
+                  src={designSettings.logoUrl}
+                  alt="Logo"
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
+                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
+                </div>
+              </div>
+            )}
+          {/* Regular header content - only show when not full-width logo */}
+          {designSettings.logoPosition !== "full-width" && (
           <div className="flex justify-between items-start max-w-6xl mx-auto">
             <div className="flex items-center gap-4">
               {designSettings.showLogo &&
@@ -3130,6 +3122,7 @@ export function HtmlTemplateEditor({
               </Button>
             </div>
           </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -4680,25 +4673,6 @@ export function HtmlTemplateEditor({
                         logoSize: designSettings.logoSize,
                         showHeaderStrip: designSettings.showHeaderStrip
                       })}
-                      {/* Full Width Logo - Spans entire width at top */}
-                      {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
-                        <div 
-                          className="cursor-pointer relative group w-full bg-red-500"
-                          onClick={() => logoInputRef.current?.click()}
-                        >
-                          {console.log('[LOGO DEBUG] Rendering FULL-WIDTH logo!')}
-                          <img
-                            src={designSettings.logoUrl}
-                            alt="Logo"
-                            style={{ width: '100%', height: 'auto', display: 'block' }}
-                          />
-                          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
-                              <Upload className="h-3 w-3 ml-1" />החלף לוגו
-                            </Button>
-                          </div>
-                        </div>
-                      )}
                       <div
                         className="p-6 space-y-4"
                         dir="rtl"
@@ -4725,7 +4699,7 @@ export function HtmlTemplateEditor({
                         {/* Header Section - Editable */}
                         <div className="relative group">
                           <div
-                            className="rounded-xl p-6 text-white text-center"
+                            className={`rounded-xl text-white text-center ${designSettings.logoPosition === 'full-width' ? 'p-0 overflow-hidden' : 'p-6'}`}
                             style={{
                               background:
                                 designSettings.showHeaderStrip !== false
@@ -4733,6 +4707,25 @@ export function HtmlTemplateEditor({
                                   : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
                             }}
                           >
+                            {/* Full Width Logo - Inside header, spanning full width */}
+                            {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
+                              <div 
+                                className="cursor-pointer relative group w-full"
+                                onClick={() => logoInputRef.current?.click()}
+                              >
+                                {console.log('[LOGO DEBUG] Rendering FULL-WIDTH logo inside header!')}
+                                <img
+                                  src={designSettings.logoUrl}
+                                  alt="Logo"
+                                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                                />
+                                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
+                                    <Upload className="h-3 w-3 ml-1" />החלף לוגו
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                             {/* Regular Logo inside header */}
                             {designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === 'inside-header') && (
                               <div className="cursor-pointer" onClick={() => logoInputRef.current?.click()}>
@@ -4743,22 +4736,27 @@ export function HtmlTemplateEditor({
                                 />
                               </div>
                             )}
-                            <h1 
-                              className="text-2xl font-bold outline-none focus:bg-white/20 rounded px-2"
-                              contentEditable
-                              suppressContentEditableWarning
-                              onBlur={(e) => setEditedTemplate({ ...editedTemplate, name: e.currentTarget.textContent || '' })}
-                            >
-                              {editedTemplate.name}
-                            </h1>
-                            <p 
-                              className="opacity-90 text-sm mt-1 outline-none focus:bg-white/20 rounded px-2"
-                              contentEditable
-                              suppressContentEditableWarning
-                              onBlur={(e) => setEditedTemplate({ ...editedTemplate, description: e.currentTarget.textContent || '' })}
-                            >
-                              {editedTemplate.description}
-                            </p>
+                            {/* Title and description - only when NOT full-width logo */}
+                            {designSettings.logoPosition !== 'full-width' && (
+                              <>
+                                <h1 
+                                  className="text-2xl font-bold outline-none focus:bg-white/20 rounded px-2"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  onBlur={(e) => setEditedTemplate({ ...editedTemplate, name: e.currentTarget.textContent || '' })}
+                                >
+                                  {editedTemplate.name}
+                                </h1>
+                                <p 
+                                  className="opacity-90 text-sm mt-1 outline-none focus:bg-white/20 rounded px-2"
+                                  contentEditable
+                                  suppressContentEditableWarning
+                                  onBlur={(e) => setEditedTemplate({ ...editedTemplate, description: e.currentTarget.textContent || '' })}
+                                >
+                                  {editedTemplate.description}
+                                </p>
+                              </>
+                            )}
                           </div>
                           <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             <Button
