@@ -102,8 +102,9 @@ export function ClientsFilterStrip({
 
       if (error) throw error;
 
+      // Deduplicate by stage_name to show each unique stage definition only once
       const uniqueStages = data?.reduce((acc, stage) => {
-        if (!acc.some(s => s.stage_id === stage.stage_id)) {
+        if (!acc.some(s => s.stage_name === stage.stage_name)) {
           acc.push(stage);
         }
         return acc;
@@ -115,10 +116,10 @@ export function ClientsFilterStrip({
     }
   };
 
-  const toggleStage = (stageId: string) => {
-    const newStages = filters.stages.includes(stageId)
-      ? filters.stages.filter(s => s !== stageId)
-      : [...filters.stages, stageId];
+  const toggleStage = (stageName: string) => {
+    const newStages = filters.stages.includes(stageName)
+      ? filters.stages.filter(s => s !== stageName)
+      : [...filters.stages, stageName];
     onFiltersChange({ ...filters, stages: newStages });
   };
 
@@ -127,7 +128,7 @@ export function ClientsFilterStrip({
   };
 
   const selectAllStages = () => {
-    onFiltersChange({ ...filters, stages: stageDefinitions.map(s => s.stage_id) });
+    onFiltersChange({ ...filters, stages: stageDefinitions.map(s => s.stage_name) });
   };
 
   const setDateFilter = (value: ClientFilterState['dateFilter']) => {
@@ -547,18 +548,18 @@ export function ClientsFilterStrip({
                 ) : (
                   stageDefinitions.map((stage) => (
                     <div
-                      key={stage.stage_id}
+                      key={stage.stage_name}
                       className={cn(
                         "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                        filters.stages.includes(stage.stage_id)
+                        filters.stages.includes(stage.stage_name)
                           ? "bg-primary/10 border-primary"
                           : "bg-background border-border hover:border-primary/50"
                       )}
-                      onClick={() => toggleStage(stage.stage_id)}
+                      onClick={() => toggleStage(stage.stage_name)}
                     >
                       <Checkbox
-                        checked={filters.stages.includes(stage.stage_id)}
-                        onCheckedChange={() => toggleStage(stage.stage_id)}
+                        checked={filters.stages.includes(stage.stage_name)}
+                        onCheckedChange={() => toggleStage(stage.stage_name)}
                       />
                       <span className="font-medium text-foreground flex-1">
                         {stage.stage_name}

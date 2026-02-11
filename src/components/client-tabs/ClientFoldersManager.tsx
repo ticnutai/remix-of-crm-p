@@ -578,7 +578,9 @@ export function ClientFoldersManager({
   const [templateDescription, setTemplateDescription] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
 
   // Get stages already assigned to this folder
   const assignedStages = mainStages.filter(
@@ -602,17 +604,18 @@ export function ClientFoldersManager({
   // Template handlers
   const handleSaveAsTemplate = async () => {
     if (!templateName.trim() || !activeFolder) return;
-    
+
     setSavingTemplate(true);
     try {
       const stagesWithTasks = stages.map((stage) => ({
         stage_name: stage.stage_name,
         stage_icon: stage.stage_icon,
         sort_order: stage.sort_order,
-        tasks: stage.tasks?.map((t) => ({
-          title: t.title,
-          sort_order: t.sort_order,
-        })) || [],
+        tasks:
+          stage.tasks?.map((t) => ({
+            title: t.title,
+            sort_order: t.sort_order,
+          })) || [],
       }));
 
       await saveFolderStagesAsTemplate(
@@ -620,7 +623,7 @@ export function ClientFoldersManager({
         templateDescription.trim(),
         stagesWithTasks,
       );
-      
+
       setSaveTemplateDialog(false);
       setTemplateName("");
       setTemplateDescription("");
@@ -631,7 +634,7 @@ export function ClientFoldersManager({
 
   const handleApplyTemplate = async () => {
     if (!selectedTemplateId || !activeFolder) return;
-    
+
     setApplyingTemplate(true);
     try {
       await applyTemplateToFolder(
@@ -1241,7 +1244,9 @@ export function ClientFoldersManager({
               <div className="text-center py-8 text-muted-foreground">
                 <BookTemplate className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>אין תבניות זמינות</p>
-                <p className="text-sm">שמור שלבים כתבנית ללוח הראשי כדי להשתמש בהם כאן</p>
+                <p className="text-sm">
+                  שמור שלבים כתבנית ללוח הראשי כדי להשתמש בהם כאן
+                </p>
               </div>
             ) : (
               <ScrollArea className="h-[300px]">
@@ -1306,7 +1311,8 @@ export function ClientFoldersManager({
           <DialogHeader className="text-right">
             <DialogTitle>שמור כתבנית</DialogTitle>
             <DialogDescription>
-              שמור את השלבים של "{activeFolder?.folder_name}" כתבנית לשימוש עתידי
+              שמור את השלבים של "{activeFolder?.folder_name}" כתבנית לשימוש
+              עתידי
             </DialogDescription>
           </DialogHeader>
 
@@ -1329,7 +1335,8 @@ export function ClientFoldersManager({
             </div>
             <div className="text-sm text-muted-foreground">
               יישמרו {stages.length} שלבים עם{" "}
-              {stages.reduce((sum, s) => sum + (s.tasks?.length || 0), 0)} משימות
+              {stages.reduce((sum, s) => sum + (s.tasks?.length || 0), 0)}{" "}
+              משימות
             </div>
           </div>
 

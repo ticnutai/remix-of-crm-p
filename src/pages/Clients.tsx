@@ -118,6 +118,7 @@ interface ClientCategory {
 interface ClientStageInfo {
   client_id: string;
   stage_id: string;
+  stage_name: string;
 }
 
 export default function Clients() {
@@ -291,11 +292,11 @@ export default function Clients() {
       );
     }
 
-    // Stage filter
+    // Stage filter - filter by stage name (not stage_id) to match all clients with same stage name
     if (filters.stages.length > 0) {
       const clientIdsWithSelectedStages = new Set(
         clientStages
-          .filter((cs) => filters.stages.includes(cs.stage_id))
+          .filter((cs) => filters.stages.includes(cs.stage_name))
           .map((cs) => cs.client_id),
       );
       result = result.filter((client) =>
@@ -577,7 +578,7 @@ export default function Clients() {
       // Fetch all filter data in parallel
       const [stagesRes, remindersRes, tasksRes, meetingsRes] =
         await Promise.all([
-          supabase.from("client_stages").select("client_id, stage_id"),
+          supabase.from("client_stages").select("client_id, stage_id, stage_name"),
           supabase
             .from("reminders")
             .select("entity_id")

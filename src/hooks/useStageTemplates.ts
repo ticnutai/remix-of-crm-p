@@ -705,7 +705,12 @@ export function useStageTemplates() {
     async (
       templateName: string,
       description: string,
-      folderStages: { stage_name: string; stage_icon: string; sort_order: number; tasks?: { title: string; sort_order: number }[] }[],
+      folderStages: {
+        stage_name: string;
+        stage_icon: string;
+        sort_order: number;
+        tasks?: { title: string; sort_order: number }[];
+      }[],
       icon: string = "Folder",
       color: string = "blue",
     ) => {
