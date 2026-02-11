@@ -799,6 +799,14 @@ function FloatingTimerContent() {
               {formatTime(timerState.elapsed)}
             </div>
 
+            {/* Client Name Badge - Show when running */}
+            {(timerState.isRunning || timerState.elapsed > 0) && currentClientName && (
+              <div className="flex items-center gap-1 text-sm bg-[hsl(45,80%,50%)]/20 text-[hsl(45,80%,70%)] px-3 py-1 rounded-full border border-[hsl(45,80%,50%)]/30">
+                <User className="h-3.5 w-3.5" />
+                <span>{currentClientName}</span>
+              </div>
+            )}
+
             {/* Control Buttons Row - White/Light buttons */}
             <div className="flex items-center gap-4">
               {/* Stop Button */}
