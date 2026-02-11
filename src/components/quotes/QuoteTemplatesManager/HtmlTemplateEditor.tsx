@@ -3008,13 +3008,13 @@ export function HtmlTemplateEditor({
             designSettings.logoUrl &&
             designSettings.logoPosition === "full-width" && (
               <div
-                className="w-full relative group cursor-pointer max-w-4xl mx-auto"
+                className="w-full relative group cursor-pointer"
                 onClick={() => logoInputRef.current?.click()}
               >
                 <img
                   src={designSettings.logoUrl}
                   alt="Logo"
-                  style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '200px', objectFit: 'contain' }}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
                 />
                 <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
@@ -4691,13 +4691,13 @@ export function HtmlTemplateEditor({
                             {/* Full Width Logo - Inside header, spanning full width */}
                             {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
                               <div 
-                                className="cursor-pointer relative group w-full max-w-4xl mx-auto"
+                                className="cursor-pointer relative group w-full"
                                 onClick={() => logoInputRef.current?.click()}
                               >
                                 <img
                                   src={designSettings.logoUrl}
                                   alt="Logo"
-                                  style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '200px', objectFit: 'contain' }}
+                                  style={{ width: '100%', height: 'auto', display: 'block' }}
                                 />
                                 <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
