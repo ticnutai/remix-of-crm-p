@@ -136,6 +136,11 @@ export interface QuoteDocumentData {
   // Hidden Elements
   hiddenElements?: string[];
 
+  // Logo settings
+  logoSize?: number; // Width in pixels (default: 120)
+  logoPosition?: 'inside-header' | 'above-header' | 'centered-above' | 'full-width';
+  showHeaderStrip?: boolean; // Show/hide the colored header strip
+
   // Sections visibility
   showLogo: boolean;
   showCompanyDetails: boolean;

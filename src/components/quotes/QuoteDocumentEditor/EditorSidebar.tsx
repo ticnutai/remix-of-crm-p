@@ -139,6 +139,55 @@ export function EditorSidebar({ document, onUpdate, collapsed, onToggle }: Edito
                 />
               </TooltipProvider>
               
+              {/* Logo Settings */}
+              {document.companyLogo && (
+                <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                  <Label className="text-xs font-medium">הגדרות לוגו</Label>
+                  
+                  {/* Logo Size */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">גודל לוגו: {document.logoSize || 120}px</Label>
+                    <Input
+                      type="range"
+                      min="60"
+                      max="400"
+                      step="10"
+                      value={document.logoSize || 120}
+                      onChange={(e) => onUpdate({ logoSize: Number(e.target.value) })}
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  {/* Logo Position */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground">מיקום לוגו</Label>
+                    <Select
+                      value={document.logoPosition || 'inside-header'}
+                      onValueChange={(value: any) => onUpdate({ logoPosition: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inside-header">בתוך הסטריפ</SelectItem>
+                        <SelectItem value="above-header">מעל הסטריפ</SelectItem>
+                        <SelectItem value="centered-above">ממורכז מעל הסטריפ</SelectItem>
+                        <SelectItem value="full-width">רוחב מלא בסטריפ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              
+              {/* Header Strip Toggle */}
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">הצג סטריפ כותרת צבעוני</Label>
+                <Switch
+                  checked={document.showHeaderStrip !== false}
+                  onCheckedChange={(checked) => onUpdate({ showHeaderStrip: checked })}
+                />
+              </div>
+              
               <Separator />
               
               <div>

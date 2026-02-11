@@ -133,36 +133,168 @@ export function DocumentPreview({
         direction: "rtl",
       }}
     >
+      {/* Logo Above Header */}
+      {doc.showLogo && doc.companyLogo && (doc.logoPosition === 'above-header' || doc.logoPosition === 'centered-above') && (
+        <div 
+          className={cn(
+            "p-4 bg-white",
+            doc.logoPosition === 'centered-above' && "flex justify-center"
+          )}
+        >
+          <img 
+            src={doc.companyLogo} 
+            alt="Logo" 
+            style={{ 
+              width: doc.logoSize || 120,
+              height: 'auto',
+              objectFit: 'contain'
+            }} 
+          />
+        </div>
+      )}
+
       {/* Header */}
-      <div
-        className="p-8 pb-4 relative group"
-        style={{ backgroundColor: doc.primaryColor, color: "white" }}
-      >
-        {editable && onUpdateSectionStyle && (
-          <div className="absolute left-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-            <TextFormatPopover
-              sectionKey="header"
-              sectionLabel={SECTION_LABELS.header}
-              style={getSectionStyle("header")}
-              onChange={onUpdateSectionStyle}
-            />
+      {doc.showHeaderStrip !== false && (
+        <div
+          className="p-8 pb-4 relative group"
+          style={{ backgroundColor: doc.primaryColor, color: "white" }}
+        >
+          {editable && onUpdateSectionStyle && (
+            <div className="absolute left-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <TextFormatPopover
+                sectionKey="header"
+                sectionLabel={SECTION_LABELS.header}
+                style={getSectionStyle("header")}
+                onChange={onUpdateSectionStyle}
+              />
+            </div>
+          )}
+          
+          {/* Full Width Logo */}
+          {doc.showLogo && doc.companyLogo && doc.logoPosition === 'full-width' && (
+            <div className="flex justify-center mb-4">
+              <img 
+                src={doc.companyLogo} 
+                alt="Logo" 
+                style={{ 
+                  width: doc.logoSize || 200,
+                  maxWidth: '100%',
+                  height: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
+            </div>
+          )}
+          
+          <div className="flex justify-between items-start">
+            {/* Company Info */}
+            <SectionWrapper sectionKey="companyInfo" showFormatButton={false}>
+              <div className="space-y-1">
+                {doc.showLogo && doc.companyLogo && (doc.logoPosition === 'inside-header' || !doc.logoPosition) && (
+                  <img 
+                    src={doc.companyLogo} 
+                    alt="Logo" 
+                    style={{ 
+                      width: doc.logoSize || 120,
+                      height: 'auto',
+                      objectFit: 'contain',
+                      marginBottom: '8px'
+                    }} 
+                  />
+                )}
+                <EditableField
+                  field="companyName"
+                  className="text-2xl font-bold block"
+                >
+                  {doc.companyName || "שם החברה"}
+                </EditableField>
+                {doc.showCompanyDetails && (
+                  <div className="text-sm opacity-90 space-y-0.5">
+                    {doc.companyAddress && (
+                      <EditableField field="companyAddress" className="block">
+                        {doc.companyAddress}
+                      </EditableField>
+                    )}
+                    <div className="flex gap-4">
+                      {doc.companyPhone && (
+                        <EditableField field="companyPhone">
+                          {doc.companyPhone}
+                        </EditableField>
+                      )}
+                      {doc.companyEmail && (
+                        <EditableField field="companyEmail">
+                          {doc.companyEmail}
+                        </EditableField>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SectionWrapper>
+
+            {/* Quote Info */}
+            <SectionWrapper sectionKey="quoteInfo" showFormatButton={false}>
+              <div className="text-left space-y-1">
+                <EditableField field="title" className="text-xl font-bold block">
+                  {doc.title}
+                </EditableField>
+                <div className="text-sm opacity-90">
+                  <div>
+                    מספר:{" "}
+                    <EditableField field="quoteNumber">
+                      {doc.quoteNumber}
+                    </EditableField>
+                  </div>
+                  <div>
+                    תאריך:{" "}
+                    <EditableField field="date">
+                      {formatDate(doc.date)}
+                    </EditableField>
+                  </div>
+                  <div>
+                    בתוקף עד:{" "}
+                    <EditableField field="validUntil">
+                      {formatDate(doc.validUntil)}
+                    </EditableField>
+                  </div>
+                </div>
+              </div>
+            </SectionWrapper>
           </div>
-        )}
-        <div className="flex justify-between items-start">
-          {/* Company Info */}
-          <SectionWrapper sectionKey="companyInfo" showFormatButton={false}>
+        </div>
+      )}
+
+      {/* Header without strip */}
+      {doc.showHeaderStrip === false && (
+        <div className="p-8 pb-4 relative group border-b">
+          {doc.showLogo && doc.companyLogo && (
+            <div className={cn(
+              "mb-4",
+              doc.logoPosition === 'centered-above' && "flex justify-center"
+            )}>
+              <img 
+                src={doc.companyLogo} 
+                alt="Logo" 
+                style={{ 
+                  width: doc.logoSize || 120,
+                  height: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
+            </div>
+          )}
+          <div className="flex justify-between items-start">
+            {/* Company Info */}
             <div className="space-y-1">
-              {doc.showLogo && doc.companyLogo && (
-                <img src={doc.companyLogo} alt="Logo" className="h-12 mb-2" />
-              )}
               <EditableField
                 field="companyName"
                 className="text-2xl font-bold block"
+                style={{ color: doc.primaryColor }}
               >
                 {doc.companyName || "שם החברה"}
               </EditableField>
               {doc.showCompanyDetails && (
-                <div className="text-sm opacity-90 space-y-0.5">
+                <div className="text-sm text-gray-600 space-y-0.5">
                   {doc.companyAddress && (
                     <EditableField field="companyAddress" className="block">
                       {doc.companyAddress}
@@ -183,15 +315,13 @@ export function DocumentPreview({
                 </div>
               )}
             </div>
-          </SectionWrapper>
 
-          {/* Quote Info */}
-          <SectionWrapper sectionKey="quoteInfo" showFormatButton={false}>
+            {/* Quote Info */}
             <div className="text-left space-y-1">
-              <EditableField field="title" className="text-xl font-bold block">
+              <EditableField field="title" className="text-xl font-bold block" style={{ color: doc.primaryColor }}>
                 {doc.title}
               </EditableField>
-              <div className="text-sm opacity-90">
+              <div className="text-sm text-gray-600">
                 <div>
                   מספר:{" "}
                   <EditableField field="quoteNumber">
@@ -212,9 +342,9 @@ export function DocumentPreview({
                 </div>
               </div>
             </div>
-          </SectionWrapper>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       <div className="p-8 space-y-6">
