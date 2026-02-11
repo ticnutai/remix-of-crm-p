@@ -8,7 +8,7 @@ import { DocumentPreview } from './DocumentPreview';
 import { ItemsEditor } from './ItemsEditor';
 import { QuotesList } from './QuotesList';
 import { useQuoteDocument } from './hooks/useQuoteDocument';
-import { ViewMode } from './types';
+import { ViewMode, SectionKey, SectionTextStyle } from './types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
@@ -130,6 +130,15 @@ export function QuoteDocumentEditor() {
     resetDocument();
   }, [isDirty, resetDocument]);
 
+  const handleUpdateSectionStyle = useCallback((sectionKey: SectionKey, style: SectionTextStyle) => {
+    updateDocument({
+      sectionStyles: {
+        ...document.sectionStyles,
+        [sectionKey]: style,
+      }
+    });
+  }, [document.sectionStyles, updateDocument]);
+
   return (
     <TooltipProvider>
       <div className="h-full flex flex-col bg-muted/30" dir="rtl">
@@ -244,6 +253,7 @@ export function QuoteDocumentEditor() {
                       document={document}
                       scale={scale}
                       editable={viewMode !== 'preview'}
+                      onUpdateSectionStyle={handleUpdateSectionStyle}
                     />
                   </div>
                 </ScrollArea>
