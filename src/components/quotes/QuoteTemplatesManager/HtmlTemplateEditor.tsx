@@ -91,6 +91,11 @@ import {
   FileDown,
   GitBranch,
   ArrowLeftRight,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Move,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -176,6 +181,8 @@ interface DesignSettings {
   companyPhone: string;
   companyEmail: string;
   logoSize?: number;
+  logoWidth?: number;
+  logoHeight?: number;
   logoPosition?:
     | "inside-header"
     | "above-header"
@@ -183,6 +190,13 @@ interface DesignSettings {
     | "full-width";
   showHeaderStrip?: boolean;
   headerStripHeight?: number;
+  stripWidth?: number;
+  logoCropData?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 interface TextBox {
   id: string;
@@ -1956,6 +1970,251 @@ export function HtmlTemplateEditor({
   const [interactiveEditMode, setInteractiveEditMode] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const cropFileInputRef = useRef<HTMLInputElement>(null);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropRegion, setCropRegion] = useState({ x: 0, y: 0, w: 100, h: 100 });
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropRotation, setCropRotation] = useState(0);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [cropDragStart, setCropDragStart] = useState({ x: 0, y: 0 });
+  const [cropImageDimensions, setCropImageDimensions] = useState({
+    w: 0,
+    h: 0,
+  });
+  const [isConvertingFile, setIsConvertingFile] = useState(false);
+
+  // === Strip Maker State ===
+  const stripMakerInputRef = useRef<HTMLInputElement>(null);
+  const [stripSourceImage, setStripSourceImage] = useState<string | null>(null);
+  const [stripSourceDimensions, setStripSourceDimensions] = useState({ w: 0, h: 0 });
+  const [stripTargetWidth, setStripTargetWidth] = useState(800);
+  const [stripTargetHeight, setStripTargetHeight] = useState(150);
+  const [stripOffsetX, setStripOffsetX] = useState(0);
+  const [stripOffsetY, setStripOffsetY] = useState(0);
+  const [stripScale, setStripScale] = useState(100);
+  const [stripBgColor, setStripBgColor] = useState("#ffffff");
+  const [stripFitMode, setStripFitMode] = useState<"cover" | "contain" | "stretch" | "manual">("contain");
+  const [isConvertingStrip, setIsConvertingStrip] = useState(false);
+
+  // === Strip Maker Functions ===
+  const handleStripFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsConvertingStrip(true);
+    try {
+      const dataUrl = await convertFileToImage(file);
+      if (!dataUrl) { setIsConvertingStrip(false); return; }
+      setStripSourceImage(dataUrl);
+      setStripOffsetX(0);
+      setStripOffsetY(0);
+      setStripScale(100);
+      const img = new window.Image();
+      img.onload = () => {
+        setStripSourceDimensions({ w: img.width, h: img.height });
+        setIsConvertingStrip(false);
+      };
+      img.onerror = () => setIsConvertingStrip(false);
+      img.src = dataUrl;
+    } catch { setIsConvertingStrip(false); }
+    if (e.target) e.target.value = "";
+  }, [convertFileToImage]);
+
+  const generateStripImage = useCallback((): string | null => {
+    if (!stripSourceImage) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = stripTargetWidth;
+    canvas.height = stripTargetHeight;
+    const ctx = canvas.getContext("2d")!;
+
+    // Background
+    ctx.fillStyle = stripBgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const img = new window.Image();
+    img.src = stripSourceImage;
+
+    const scale = stripScale / 100;
+    let drawW: number, drawH: number, drawX: number, drawY: number;
+
+    if (stripFitMode === "stretch") {
+      drawW = stripTargetWidth;
+      drawH = stripTargetHeight;
+      drawX = 0;
+      drawY = 0;
+    } else if (stripFitMode === "cover") {
+      const ratio = Math.max(stripTargetWidth / img.width, stripTargetHeight / img.height);
+      drawW = img.width * ratio;
+      drawH = img.height * ratio;
+      drawX = (stripTargetWidth - drawW) / 2 + stripOffsetX;
+      drawY = (stripTargetHeight - drawH) / 2 + stripOffsetY;
+    } else if (stripFitMode === "contain") {
+      const ratio = Math.min(stripTargetWidth / img.width, stripTargetHeight / img.height);
+      drawW = img.width * ratio * scale;
+      drawH = img.height * ratio * scale;
+      drawX = (stripTargetWidth - drawW) / 2 + stripOffsetX;
+      drawY = (stripTargetHeight - drawH) / 2 + stripOffsetY;
+    } else {
+      // manual
+      drawW = img.width * scale;
+      drawH = img.height * scale;
+      drawX = stripOffsetX;
+      drawY = stripOffsetY;
+    }
+
+    ctx.drawImage(img, drawX, drawY, drawW, drawH);
+    return canvas.toDataURL("image/png");
+  }, [stripSourceImage, stripTargetWidth, stripTargetHeight, stripOffsetX, stripOffsetY, stripScale, stripBgColor, stripFitMode]);
+
+  const applyStripAsLogo = useCallback(() => {
+    const dataUrl = generateStripImage();
+    if (dataUrl) {
+      setDesignSettings((prev) => ({
+        ...prev,
+        logoUrl: dataUrl,
+        logoPosition: "full-width" as const,
+        logoWidth: undefined,
+        logoHeight: undefined,
+        headerStripHeight: undefined,
+      }));
+    }
+  }, [generateStripImage]);
+
+  // === Convert PDF / Word / HTML file to image data URL ===
+  const convertFileToImage = useCallback(async (file: File): Promise<string> => {
+    const fileType = file.type;
+    const fileName = file.name.toLowerCase();
+
+    // PDF → render first page to canvas
+    if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+      const pdfjsLib = await import("pdfjs-dist");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const scale = 3; // High quality
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      return canvas.toDataURL("image/png");
+    }
+
+    // Word (.docx) → convert to HTML → render to canvas
+    if (
+      fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      fileName.endsWith(".docx") ||
+      fileName.endsWith(".doc")
+    ) {
+      const mammoth = await import("mammoth");
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.default.convertToHtml(
+        { arrayBuffer },
+        {
+          convertImage: mammoth.default.images.imgElement(function (image: any) {
+            return image.read("base64").then(function (imageBuffer: string) {
+              return { src: "data:" + image.contentType + ";base64," + imageBuffer };
+            });
+          }),
+        },
+      );
+      // Render HTML to canvas via hidden iframe
+      return await htmlStringToImage(result.value);
+    }
+
+    // HTML file → read and render to canvas
+    if (fileType === "text/html" || fileName.endsWith(".html") || fileName.endsWith(".htm")) {
+      const text = await file.text();
+      return await htmlStringToImage(text);
+    }
+
+    // Regular image - just read as data URL
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  // Helper: render HTML string to image via offscreen iframe
+  const htmlStringToImage = useCallback(async (htmlContent: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-9999px";
+      iframe.style.top = "-9999px";
+      iframe.style.width = "800px";
+      iframe.style.height = "600px";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+
+      iframe.onload = () => {
+        setTimeout(() => {
+          try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (!doc) {
+              document.body.removeChild(iframe);
+              resolve("");
+              return;
+            }
+            // Use canvas to capture
+            const body = doc.body;
+            const width = Math.max(body.scrollWidth, 800);
+            const height = Math.max(body.scrollHeight, 100);
+
+            const canvas = document.createElement("canvas");
+            const scale = 2;
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+            const ctx = canvas.getContext("2d")!;
+            ctx.scale(scale, scale);
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, width, height);
+
+            // Serialize to SVG foreignObject for rendering
+            const svgData = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+                <foreignObject width="100%" height="100%">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                    ${body.innerHTML}
+                  </div>
+                </foreignObject>
+              </svg>`;
+            const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new window.Image();
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0);
+              URL.revokeObjectURL(url);
+              document.body.removeChild(iframe);
+              resolve(canvas.toDataURL("image/png"));
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(url);
+              document.body.removeChild(iframe);
+              resolve("");
+            };
+            img.src = url;
+          } catch {
+            document.body.removeChild(iframe);
+            resolve("");
+          }
+        }, 500); // Wait for content to render
+      };
+
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}</style></head><body>${htmlContent}</body></html>`);
+        doc.close();
+      }
+    });
+  }, []);
 
   // DnD sensors for text boxes
   const textBoxSensors = useSensors(
@@ -2187,8 +2446,8 @@ export function HtmlTemplateEditor({
     table.payments { width: 100%; border-collapse: collapse; margin-top: 20px; }
     table.payments th { background: ${designSettings.primaryColor}; color: white; padding: 12px; text-align: right; }
     .footer { text-align: center; padding: 30px; background: #f9f9f9; color: #666; font-size: 14px; }
-    .full-width-header { padding: 0 !important; overflow: hidden; ${designSettings.headerStripHeight ? `height: ${designSettings.headerStripHeight}px;` : ''} }
-    .full-width-header img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; }
+    .full-width-header { padding: 0 !important; overflow: hidden; background: transparent !important; margin: 0; }
+    .full-width-header img { width: 100%; height: auto; display: block; object-fit: fill; object-position: center; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -2200,24 +2459,32 @@ export function HtmlTemplateEditor({
         designSettings.logoPosition === "centered-above")
         ? `
     <div style="padding: 20px; background: white; ${designSettings.logoPosition === "centered-above" ? "text-align: center;" : ""}">
-      <img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto;">
+      <img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"}">
     </div>`
         : ""
     }
     ${
       designSettings.showHeaderStrip !== false
         ? `
-    <div class="header${designSettings.logoPosition === 'full-width' ? ' full-width-header' : ''}"${designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? ` style="height: ${designSettings.headerStripHeight}px;"` : ''}>
+    <div class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
-      ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
-      ${designSettings.logoPosition !== "full-width" ? `<h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
-      <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>` : ""}
+      ${designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === "inside-header") ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
+      ${
+        designSettings.logoPosition !== "full-width"
+          ? `<h1 style="margin: 0; font-size: 32px;">${editedTemplate.name}</h1>
+      <p style="opacity: 0.9; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
+          : ""
+      }
     </div>`
         : `
     <div style="padding: 40px; text-align: center; border-bottom: 2px solid ${designSettings.primaryColor};">
-      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoSize || 120}px; height: auto; margin-bottom: 15px;">` : ""}
-      ${designSettings.logoPosition !== "full-width" ? `<h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
-      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>` : ""}
+      ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition !== "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo" style="width: ${designSettings.logoWidth || designSettings.logoSize || 120}px; ${designSettings.logoHeight ? `height: ${designSettings.logoHeight}px; object-fit: contain;` : "height: auto;"} margin-bottom: 15px;">` : ""}
+      ${
+        designSettings.logoPosition !== "full-width"
+          ? `<h1 style="margin: 0; font-size: 32px; color: ${designSettings.primaryColor};">${editedTemplate.name}</h1>
+      <p style="opacity: 0.7; margin: 10px 0 0;">${editedTemplate.description || ""}</p>`
+          : ""
+      }
     </div>`
     }
     <div class="content">
@@ -2416,44 +2683,171 @@ export function HtmlTemplateEditor({
         enabled: true,
       },
     ]);
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log('[LOGO UPLOAD] File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        console.log('[LOGO UPLOAD] Data URL created, length:', dataUrl.length);
-        
+
+  // === Logo Crop Tool Functions ===
+  const handleCropFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsConvertingFile(true);
+      try {
+        const dataUrl = await convertFileToImage(file);
+        if (!dataUrl) {
+          setIsConvertingFile(false);
+          return;
+        }
+        setCropImageSrc(dataUrl);
+        setCropRegion({ x: 0, y: 0, w: 100, h: 100 });
+        setCropZoom(1);
+        setCropRotation(0);
         // Get image dimensions
         const img = new window.Image();
         img.onload = () => {
-          console.log('[LOGO UPLOAD] Image loaded - Width:', img.width, 'Height:', img.height);
-          console.log('[LOGO UPLOAD] Current logoPosition:', designSettings.logoPosition);
-          
-          // Auto-adjust header strip height for full-width mode
-          if (designSettings.logoPosition === 'full-width') {
-            // Calculate proportional height based on container width (~800px max)
-            const containerWidth = 800;
-            const aspectRatio = img.height / img.width;
-            const calculatedHeight = Math.round(containerWidth * aspectRatio);
-            console.log('[LOGO UPLOAD] Auto-calculated header height:', calculatedHeight);
-            
-            setDesignSettings(prev => ({
+          setCropImageDimensions({ w: img.width, h: img.height });
+          setIsConvertingFile(false);
+        };
+        img.onerror = () => setIsConvertingFile(false);
+        img.src = dataUrl;
+      } catch (err) {
+        console.error("[CROP UPLOAD] Error converting file:", err);
+        setIsConvertingFile(false);
+      }
+      // Reset input
+      if (e.target) e.target.value = "";
+    },
+    [convertFileToImage],
+  );
+
+  const loadCurrentLogoForCrop = useCallback(() => {
+    if (designSettings.logoUrl) {
+      setCropImageSrc(designSettings.logoUrl);
+      setCropRegion({ x: 0, y: 0, w: 100, h: 100 });
+      setCropZoom(1);
+      setCropRotation(0);
+      const img = new window.Image();
+      img.onload = () => {
+        setCropImageDimensions({ w: img.width, h: img.height });
+      };
+      img.src = designSettings.logoUrl;
+    }
+  }, [designSettings.logoUrl]);
+
+  const applyCrop = useCallback(() => {
+    if (!cropImageSrc) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Calculate actual crop region from percentages
+      const srcX = (cropRegion.x / 100) * img.width;
+      const srcY = (cropRegion.y / 100) * img.height;
+      const srcW = (cropRegion.w / 100) * img.width;
+      const srcH = (cropRegion.h / 100) * img.height;
+
+      // Handle rotation
+      const radians = (cropRotation * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(radians));
+      const sin = Math.abs(Math.sin(radians));
+      const rotatedW = srcW * cos + srcH * sin;
+      const rotatedH = srcW * sin + srcH * cos;
+
+      canvas.width = Math.round(rotatedW * cropZoom);
+      canvas.height = Math.round(rotatedH * cropZoom);
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(radians);
+      ctx.scale(cropZoom, cropZoom);
+      ctx.drawImage(
+        img,
+        srcX,
+        srcY,
+        srcW,
+        srcH,
+        -srcW / 2,
+        -srcH / 2,
+        srcW,
+        srcH,
+      );
+
+      const croppedDataUrl = canvas.toDataURL("image/png");
+      setDesignSettings((prev) => ({
+        ...prev,
+        logoUrl: croppedDataUrl,
+        logoCropData: {
+          x: cropRegion.x,
+          y: cropRegion.y,
+          width: cropRegion.w,
+          height: cropRegion.h,
+        },
+      }));
+
+      // Reset crop tool
+      setCropImageSrc(null);
+      setCropRegion({ x: 0, y: 0, w: 100, h: 100 });
+      setCropZoom(1);
+      setCropRotation(0);
+    };
+    img.src = cropImageSrc;
+  }, [cropImageSrc, cropRegion, cropZoom, cropRotation]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log(
+        "[LOGO UPLOAD] File selected:",
+        file.name,
+        "Size:",
+        file.size,
+        "Type:",
+        file.type,
+      );
+      setIsConvertingFile(true);
+      try {
+        const dataUrl = await convertFileToImage(file);
+        if (!dataUrl) {
+          console.error("[LOGO UPLOAD] Failed to convert file");
+          setIsConvertingFile(false);
+          return;
+        }
+        console.log("[LOGO UPLOAD] Data URL created, length:", dataUrl.length);
+
+        // Get image dimensions
+        const img = new window.Image();
+        img.onload = () => {
+          console.log(
+            "[LOGO UPLOAD] Image loaded - Width:",
+            img.width,
+            "Height:",
+            img.height,
+          );
+
+          // Auto-adjust for full-width mode - let the logo dictate the size
+          if (designSettings.logoPosition === "full-width") {
+            setDesignSettings((prev) => ({
               ...prev,
               logoUrl: dataUrl,
-              headerStripHeight: Math.min(Math.max(calculatedHeight, 80), 250),
+              logoWidth: undefined,
+              logoHeight: undefined,
+              headerStripHeight: undefined,
             }));
           } else {
-            setDesignSettings(prev => ({
+            setDesignSettings((prev) => ({
               ...prev,
               logoUrl: dataUrl,
             }));
           }
+          setIsConvertingFile(false);
         };
+        img.onerror = () => setIsConvertingFile(false);
         img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("[LOGO UPLOAD] Error converting file:", err);
+        setIsConvertingFile(false);
+      }
+      // Reset input
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -3012,26 +3406,122 @@ export function HtmlTemplateEditor({
             <div
               className={`p-4 bg-white ${designSettings.logoPosition === "centered-above" ? "text-center" : ""}`}
             >
-              <img
-                src={designSettings.logoUrl}
-                alt="Logo"
+              <div
+                className="relative group inline-block"
                 style={{
-                  width: designSettings.logoSize || 120,
-                  height: "auto",
+                  width:
+                    designSettings.logoWidth || designSettings.logoSize || 120,
+                  height: designSettings.logoHeight || "auto",
+                  cursor: "pointer",
                 }}
-              />
+                onClick={() => logoInputRef.current?.click()}
+              >
+                <img
+                  src={designSettings.logoUrl}
+                  alt="Logo"
+                  style={{
+                    width: "100%",
+                    height: designSettings.logoHeight ? "100%" : "auto",
+                    objectFit: designSettings.logoHeight
+                      ? "contain"
+                      : undefined,
+                  }}
+                />
+                {/* Corner resize handle - maintains aspect ratio */}
+                <div
+                  className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const startWidth =
+                      designSettings.logoWidth ||
+                      designSettings.logoSize ||
+                      120;
+                    const parentEl = e.currentTarget.parentElement;
+                    const startHeight =
+                      designSettings.logoHeight || parentEl?.offsetHeight || 80;
+                    const ratio = startHeight / startWidth;
+                    const onMouseMove = (ev: MouseEvent) => {
+                      const deltaX = ev.clientX - startX;
+                      const newWidth = Math.min(
+                        Math.max(startWidth + deltaX, 40),
+                        500,
+                      );
+                      const newHeight = Math.round(newWidth * ratio);
+                      setDesignSettings((prev) => ({
+                        ...prev,
+                        logoWidth: newWidth,
+                        logoHeight: newHeight,
+                        logoSize: newWidth,
+                      }));
+                    };
+                    const onMouseUp = () => {
+                      document.removeEventListener("mousemove", onMouseMove);
+                      document.removeEventListener("mouseup", onMouseUp);
+                    };
+                    document.addEventListener("mousemove", onMouseMove);
+                    document.addEventListener("mouseup", onMouseUp);
+                  }}
+                >
+                  <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-gray-400 hover:border-blue-500 rounded-br-sm" />
+                </div>
+                {/* Right edge resize handle - maintains aspect ratio */}
+                <div
+                  className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors z-10 opacity-0 group-hover:opacity-100"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const startX = e.clientX;
+                    const startWidth =
+                      designSettings.logoWidth ||
+                      designSettings.logoSize ||
+                      120;
+                    const parentEl = e.currentTarget.parentElement;
+                    const startHeight =
+                      designSettings.logoHeight || parentEl?.offsetHeight || 80;
+                    const ratio = startHeight / startWidth;
+                    const onMouseMove = (ev: MouseEvent) => {
+                      const delta = ev.clientX - startX;
+                      const newWidth = Math.min(
+                        Math.max(startWidth + delta, 40),
+                        500,
+                      );
+                      const newHeight = Math.round(newWidth * ratio);
+                      setDesignSettings((prev) => ({
+                        ...prev,
+                        logoWidth: newWidth,
+                        logoHeight: newHeight,
+                        logoSize: newWidth,
+                      }));
+                    };
+                    const onMouseUp = () => {
+                      document.removeEventListener("mousemove", onMouseMove);
+                      document.removeEventListener("mouseup", onMouseUp);
+                    };
+                    document.addEventListener("mousemove", onMouseMove);
+                    document.addEventListener("mouseup", onMouseUp);
+                  }}
+                />
+              </div>
             </div>
           )}
 
         <div
-          className={`shrink-0 text-white ${designSettings.logoPosition === 'full-width' ? 'p-0 overflow-hidden' : 'p-6'} ${designSettings.showHeaderStrip === false ? "bg-white border-b-2" : ""}`}
+          className={`shrink-0 text-white ${designSettings.logoPosition === "full-width" ? "p-0 overflow-hidden relative" : "p-6"} ${designSettings.showHeaderStrip === false && designSettings.logoPosition !== "full-width" ? "bg-white border-b-2" : ""}`}
           style={{
             background:
-              designSettings.showHeaderStrip !== false
-                ? designSettings.headerBackground
-                : "white",
-            borderColor: designSettings.primaryColor,
-            ...(designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? { height: designSettings.headerStripHeight } : {}),
+              designSettings.logoPosition === "full-width"
+                ? "transparent"
+                : designSettings.showHeaderStrip !== false
+                  ? designSettings.headerBackground
+                  : "white",
+            borderColor:
+              designSettings.logoPosition !== "full-width"
+                ? designSettings.primaryColor
+                : undefined,
           }}
         >
           {/* Full Width Logo - Inside header, spanning full width */}
@@ -3039,118 +3529,192 @@ export function HtmlTemplateEditor({
             designSettings.logoUrl &&
             designSettings.logoPosition === "full-width" && (
               <div
-                className="w-full h-full relative group cursor-pointer"
+                className="relative group"
+                style={{
+                  width: "100%",
+                  margin: "0 auto",
+                  cursor: "pointer",
+                }}
                 onClick={() => logoInputRef.current?.click()}
               >
                 <img
                   src={designSettings.logoUrl}
                   alt="Logo"
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    display: 'block',
-                    objectFit: 'cover',
-                    objectPosition: 'center',
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    display: "block",
+                    objectFit: "cover",
+                    objectPosition: "center",
                   }}
                 />
-                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">לחץ להחלפה</div>
+                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  <div className="bg-white/80 text-black text-xs px-2 py-1 rounded shadow">
+                    לחץ להחלפה
+                  </div>
                 </div>
               </div>
             )}
           {/* Regular header content - only show when not full-width logo */}
           {designSettings.logoPosition !== "full-width" && (
-          <div className="flex justify-between items-start max-w-6xl mx-auto">
-            <div className="flex items-center gap-4">
-              {designSettings.showLogo &&
-                (!designSettings.logoPosition ||
-                  designSettings.logoPosition === "inside-header") && (
-                  <div
-                    className="relative group cursor-pointer"
-                    onClick={() => logoInputRef.current?.click()}
-                  >
-                    {designSettings.logoUrl ? (
-                      <img
-                        src={designSettings.logoUrl}
-                        alt="Logo"
-                        style={{
-                          width: designSettings.logoSize || 120,
-                          height: "auto",
-                        }}
-                        className="object-contain"
-                      />
-                    ) : (
-                      <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center">
-                        <Image className="h-8 w-8 text-white/60" />
+            <div className="flex justify-between items-start max-w-6xl mx-auto">
+              <div className="flex items-center gap-4">
+                {designSettings.showLogo &&
+                  (!designSettings.logoPosition ||
+                    designSettings.logoPosition === "inside-header") && (
+                    <div
+                      className="relative group cursor-pointer"
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      {designSettings.logoUrl ? (
+                        <div
+                          className="relative"
+                          style={{
+                            width:
+                              designSettings.logoWidth ||
+                              designSettings.logoSize ||
+                              120,
+                            height: designSettings.logoHeight || "auto",
+                          }}
+                        >
+                          <img
+                            src={designSettings.logoUrl}
+                            alt="Logo"
+                            style={{
+                              width: "100%",
+                              height: designSettings.logoHeight
+                                ? "100%"
+                                : "auto",
+                              objectFit: designSettings.logoHeight
+                                ? "contain"
+                                : undefined,
+                            }}
+                            className="object-contain"
+                          />
+                          {/* Corner resize handle for regular logo - maintains aspect ratio */}
+                          <div
+                            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-20 flex items-center justify-center"
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const startX = e.clientX;
+                              const startWidth =
+                                designSettings.logoWidth ||
+                                designSettings.logoSize ||
+                                120;
+                              const parentEl = e.currentTarget.parentElement;
+                              const startHeight =
+                                designSettings.logoHeight ||
+                                parentEl?.offsetHeight ||
+                                80;
+                              const ratio = startHeight / startWidth;
+                              const onMouseMove = (ev: MouseEvent) => {
+                                const deltaX = ev.clientX - startX;
+                                const newWidth = Math.min(
+                                  Math.max(startWidth + deltaX, 40),
+                                  500,
+                                );
+                                const newHeight = Math.round(newWidth * ratio);
+                                setDesignSettings((prev) => ({
+                                  ...prev,
+                                  logoWidth: newWidth,
+                                  logoHeight: newHeight,
+                                  logoSize: newWidth,
+                                }));
+                              };
+                              const onMouseUp = () => {
+                                document.removeEventListener(
+                                  "mousemove",
+                                  onMouseMove,
+                                );
+                                document.removeEventListener(
+                                  "mouseup",
+                                  onMouseUp,
+                                );
+                              };
+                              document.addEventListener(
+                                "mousemove",
+                                onMouseMove,
+                              );
+                              document.addEventListener("mouseup", onMouseUp);
+                            }}
+                          >
+                            <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-white/60 hover:border-blue-400 rounded-br-sm" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center">
+                          <Image className="h-8 w-8 text-white/60" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg pointer-events-none">
+                        <Upload className="h-6 w-6" />
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                      <Upload className="h-6 w-6" />
                     </div>
-                  </div>
-                )}
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleLogoUpload}
-              />
-              <div className="flex-1">
-                <Input
-                  value={editedTemplate.name}
-                  onChange={(e) =>
-                    setEditedTemplate({
-                      ...editedTemplate,
-                      name: e.target.value,
-                    })
-                  }
-                  className="text-2xl font-bold bg-transparent border-0 text-white placeholder:text-white/60 p-0 h-auto focus-visible:ring-0"
-                  placeholder="כותרת ההצעה"
-                  dir="rtl"
+                  )}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={handleLogoUpload}
                 />
-                <Input
-                  value={editedTemplate.description || ""}
-                  onChange={(e) =>
-                    setEditedTemplate({
-                      ...editedTemplate,
-                      description: e.target.value,
-                    })
-                  }
-                  className="text-sm opacity-90 bg-transparent border-0 text-white placeholder:text-white/60 p-0 h-auto focus-visible:ring-0 mt-1"
-                  placeholder="תיאור ההצעה"
-                  dir="rtl"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-left">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-base opacity-80">₪</span>
+                <div className="flex-1">
                   <Input
-                    type="number"
-                    value={editedTemplate.base_price || 35000}
+                    value={editedTemplate.name}
                     onChange={(e) =>
                       setEditedTemplate({
                         ...editedTemplate,
-                        base_price: parseInt(e.target.value) || 0,
+                        name: e.target.value,
                       })
                     }
-                    className="text-3xl font-bold bg-transparent border-0 text-white p-0 h-auto focus-visible:ring-0 w-32 text-left"
+                    className="text-2xl font-bold bg-transparent border-0 text-white placeholder:text-white/60 p-0 h-auto focus-visible:ring-0"
+                    placeholder="כותרת ההצעה"
+                    dir="rtl"
                   />
-                  <span className="text-base opacity-80">+ מע״מ</span>
+                  <Input
+                    value={editedTemplate.description || ""}
+                    onChange={(e) =>
+                      setEditedTemplate({
+                        ...editedTemplate,
+                        description: e.target.value,
+                      })
+                    }
+                    className="text-sm opacity-90 bg-transparent border-0 text-white placeholder:text-white/60 p-0 h-auto focus-visible:ring-0 mt-1"
+                    placeholder="תיאור ההצעה"
+                    dir="rtl"
+                  />
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="text-white hover:bg-white/20"
-              >
-                <X className="h-6 w-6" />
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="text-left">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-base opacity-80">₪</span>
+                    <Input
+                      type="number"
+                      value={editedTemplate.base_price || 35000}
+                      onChange={(e) =>
+                        setEditedTemplate({
+                          ...editedTemplate,
+                          base_price: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      className="text-3xl font-bold bg-transparent border-0 text-white p-0 h-auto focus-visible:ring-0 w-32 text-left"
+                    />
+                    <span className="text-base opacity-80">+ מע״מ</span>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="h-6 w-6" />
+                </Button>
+              </div>
             </div>
-          </div>
           )}
         </div>
 
@@ -3189,6 +3753,20 @@ export function HtmlTemplateEditor({
               >
                 <Palette className="h-4 w-4 ml-2" />
                 עיצוב
+              </TabsTrigger>
+              <TabsTrigger
+                value="logo-strip"
+                className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700"
+              >
+                <Crop className="h-4 w-4 ml-2" />
+                לוגו וסטריפ
+              </TabsTrigger>
+              <TabsTrigger
+                value="strip-maker"
+                className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700"
+              >
+                <Layers className="h-4 w-4 ml-2" />
+                מכין סטריפים
               </TabsTrigger>
               <TabsTrigger
                 value="text-boxes"
@@ -3593,7 +4171,12 @@ export function HtmlTemplateEditor({
                       className="relative w-32 h-32 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#DAA520] transition-colors"
                       onClick={() => logoInputRef.current?.click()}
                     >
-                      {designSettings.logoUrl ? (
+                      {isConvertingFile ? (
+                        <div className="text-center text-gray-400">
+                          <div className="h-8 w-8 mx-auto mb-2 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-xs">ממיר קובץ...</span>
+                        </div>
+                      ) : designSettings.logoUrl ? (
                         <img
                           src={designSettings.logoUrl}
                           alt="Logo"
@@ -3603,6 +4186,7 @@ export function HtmlTemplateEditor({
                         <div className="text-center text-gray-400">
                           <Upload className="h-8 w-8 mx-auto mb-2" />
                           <span className="text-xs">העלה לוגו</span>
+                          <span className="text-[10px] block text-gray-300 mt-1">PDF, Word, HTML, תמונה</span>
                         </div>
                       )}
                     </div>
@@ -3697,11 +4281,12 @@ export function HtmlTemplateEditor({
                       </div>
 
                       {/* Header Strip Height - only for full-width mode */}
-                      {designSettings.logoPosition === 'full-width' && (
+                      {designSettings.logoPosition === "full-width" && (
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <Label className="text-sm text-gray-600">
-                              גובה סטריפ: {designSettings.headerStripHeight || 150}px
+                              גובה סטריפ:{" "}
+                              {designSettings.headerStripHeight || 150}px
                             </Label>
                             <Button
                               size="sm"
@@ -3714,11 +4299,19 @@ export function HtmlTemplateEditor({
                                   img.onload = () => {
                                     const containerWidth = 800;
                                     const aspectRatio = img.height / img.width;
-                                    const calculatedHeight = Math.round(containerWidth * aspectRatio);
-                                    console.log('[AUTO-FIT] Calculated height:', calculatedHeight);
-                                    setDesignSettings(prev => ({
+                                    const calculatedHeight = Math.round(
+                                      containerWidth * aspectRatio,
+                                    );
+                                    console.log(
+                                      "[AUTO-FIT] Calculated height:",
+                                      calculatedHeight,
+                                    );
+                                    setDesignSettings((prev) => ({
                                       ...prev,
-                                      headerStripHeight: Math.min(Math.max(calculatedHeight, 80), 250),
+                                      headerStripHeight: Math.min(
+                                        Math.max(calculatedHeight, 80),
+                                        250,
+                                      ),
                                     }));
                                   };
                                   img.src = designSettings.logoUrl;
@@ -4032,6 +4625,1032 @@ export function HtmlTemplateEditor({
                     </p>
                   </div>
                 </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Logo & Strip Tab */}
+          <TabsContent
+            value="logo-strip"
+            className="flex-1 m-0 overflow-hidden"
+          >
+            <ScrollArea className="h-full bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                {/* Logo Crop / Adjust Section */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Crop className="h-6 w-6 text-orange-600" />
+                    חיתוך והתאמת לוגו
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    העלה קובץ תמונה (מ-PDF, Word, צילום מסך) וחתוך את החלק הרצוי
+                    ללוגו
+                  </p>
+
+                  {/* Upload for crop */}
+                  <div className="flex gap-3 mb-4 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={() => cropFileInputRef.current?.click()}
+                      disabled={isConvertingFile}
+                    >
+                      {isConvertingFile ? (
+                        <div className="h-4 w-4 ml-2 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 ml-2" />
+                      )}
+                      {isConvertingFile ? "ממיר קובץ..." : "העלה קובץ לחיתוך"}
+                    </Button>
+                    {designSettings.logoUrl && !cropImageSrc && (
+                      <Button
+                        variant="outline"
+                        onClick={loadCurrentLogoForCrop}
+                      >
+                        <Image className="h-4 w-4 ml-2" />
+                        ערוך לוגו נוכחי
+                      </Button>
+                    )}
+                    <input
+                      ref={cropFileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="hidden"
+                      onChange={handleCropFileUpload}
+                    />
+                  </div>
+
+                  {/* Crop Canvas Area */}
+                  {cropImageSrc ? (
+                    <div className="space-y-4">
+                      {/* Crop Controls */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <ZoomOut className="h-4 w-4 text-gray-500" />
+                          <Slider
+                            value={[cropZoom * 100]}
+                            onValueChange={([v]) => setCropZoom(v / 100)}
+                            min={50}
+                            max={300}
+                            step={10}
+                            className="w-32"
+                          />
+                          <ZoomIn className="h-4 w-4 text-gray-500" />
+                          <span className="text-xs text-gray-500 min-w-[40px]">
+                            {Math.round(cropZoom * 100)}%
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCropRotation((r) => (r + 90) % 360)}
+                        >
+                          <RotateCw className="h-4 w-4 ml-1" />
+                          סיבוב
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCropRegion({ x: 0, y: 0, w: 100, h: 100 })
+                          }
+                        >
+                          <Maximize2 className="h-4 w-4 ml-1" />
+                          אפס חיתוך
+                        </Button>
+                      </div>
+
+                      {/* Visual Crop Area */}
+                      <div
+                        className="relative border-2 border-gray-300 rounded-lg overflow-hidden bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%2210%22%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3C%2Fsvg%3E')]"
+                        style={{ maxHeight: "400px", maxWidth: "100%" }}
+                      >
+                        <div
+                          style={{
+                            transform: `scale(${cropZoom}) rotate(${cropRotation}deg)`,
+                            transformOrigin: "center center",
+                            transition: "transform 0.2s ease",
+                          }}
+                        >
+                          <img
+                            src={cropImageSrc}
+                            alt="Crop source"
+                            className="max-w-full block mx-auto"
+                            style={{ maxHeight: "350px" }}
+                            draggable={false}
+                          />
+                        </div>
+                        {/* Crop overlay */}
+                        <div
+                          className="absolute inset-0"
+                          style={{ pointerEvents: "none" }}
+                        >
+                          {/* Dark overlay outside crop region */}
+                          <div className="absolute inset-0 bg-black/40" />
+                          {/* Clear crop window */}
+                          <div
+                            className="absolute border-2 border-white shadow-lg"
+                            style={{
+                              left: `${cropRegion.x}%`,
+                              top: `${cropRegion.y}%`,
+                              width: `${cropRegion.w}%`,
+                              height: `${cropRegion.h}%`,
+                              backgroundColor: "transparent",
+                              boxShadow: `0 0 0 9999px rgba(0,0,0,0.4)`,
+                              pointerEvents: "auto",
+                              cursor: "move",
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setIsDraggingCrop(true);
+                              setCropDragStart({ x: e.clientX, y: e.clientY });
+                            }}
+                          >
+                            {/* Grid lines */}
+                            <div className="absolute inset-0 pointer-events-none">
+                              <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/50" />
+                              <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/50" />
+                              <div className="absolute top-1/3 left-0 right-0 h-px bg-white/50" />
+                              <div className="absolute top-2/3 left-0 right-0 h-px bg-white/50" />
+                            </div>
+                            {/* Corner handles */}
+                            {[
+                              "top-left",
+                              "top-right",
+                              "bottom-left",
+                              "bottom-right",
+                            ].map((corner) => (
+                              <div
+                                key={corner}
+                                className="absolute w-3 h-3 bg-white border border-gray-400 rounded-sm"
+                                style={{
+                                  ...(corner.includes("top")
+                                    ? { top: -5 }
+                                    : { bottom: -5 }),
+                                  ...(corner.includes("left")
+                                    ? { left: -5 }
+                                    : { right: -5 }),
+                                  cursor:
+                                    corner === "top-left" ||
+                                    corner === "bottom-right"
+                                      ? "nwse-resize"
+                                      : "nesw-resize",
+                                  pointerEvents: "auto",
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const startX = e.clientX;
+                                  const startY = e.clientY;
+                                  const startRegion = { ...cropRegion };
+                                  const parent =
+                                    e.currentTarget.closest(".relative")!;
+                                  const rect = parent.getBoundingClientRect();
+
+                                  const onMove = (ev: MouseEvent) => {
+                                    const dx =
+                                      ((ev.clientX - startX) / rect.width) *
+                                      100;
+                                    const dy =
+                                      ((ev.clientY - startY) / rect.height) *
+                                      100;
+                                    const nr = { ...startRegion };
+
+                                    if (corner.includes("left")) {
+                                      nr.x = Math.max(
+                                        0,
+                                        Math.min(
+                                          startRegion.x + dx,
+                                          startRegion.x + startRegion.w - 5,
+                                        ),
+                                      );
+                                      nr.w =
+                                        startRegion.w - (nr.x - startRegion.x);
+                                    }
+                                    if (corner.includes("right")) {
+                                      nr.w = Math.max(
+                                        5,
+                                        Math.min(
+                                          startRegion.w + dx,
+                                          100 - startRegion.x,
+                                        ),
+                                      );
+                                    }
+                                    if (corner.includes("top")) {
+                                      nr.y = Math.max(
+                                        0,
+                                        Math.min(
+                                          startRegion.y + dy,
+                                          startRegion.y + startRegion.h - 5,
+                                        ),
+                                      );
+                                      nr.h =
+                                        startRegion.h - (nr.y - startRegion.y);
+                                    }
+                                    if (corner.includes("bottom")) {
+                                      nr.h = Math.max(
+                                        5,
+                                        Math.min(
+                                          startRegion.h + dy,
+                                          100 - startRegion.y,
+                                        ),
+                                      );
+                                    }
+                                    setCropRegion(nr);
+                                  };
+                                  const onUp = () => {
+                                    window.removeEventListener(
+                                      "mousemove",
+                                      onMove,
+                                    );
+                                    window.removeEventListener("mouseup", onUp);
+                                  };
+                                  window.addEventListener("mousemove", onMove);
+                                  window.addEventListener("mouseup", onUp);
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {/* Global mouse handlers for crop drag */}
+                        {isDraggingCrop && (
+                          <div
+                            className="fixed inset-0 z-50"
+                            style={{ cursor: "move" }}
+                            onMouseMove={(e) => {
+                              if (!isDraggingCrop) return;
+                              const parent =
+                                cropCanvasRef.current?.parentElement ||
+                                e.currentTarget.previousElementSibling;
+                              if (!parent) return;
+                              const container = document.querySelector(
+                                '[class*="relative border-2 border-gray-300"]',
+                              );
+                              if (!container) return;
+                              const rect = container.getBoundingClientRect();
+                              const dx =
+                                ((e.clientX - cropDragStart.x) / rect.width) *
+                                100;
+                              const dy =
+                                ((e.clientY - cropDragStart.y) / rect.height) *
+                                100;
+                              setCropRegion((prev) => ({
+                                ...prev,
+                                x: Math.max(
+                                  0,
+                                  Math.min(prev.x + dx, 100 - prev.w),
+                                ),
+                                y: Math.max(
+                                  0,
+                                  Math.min(prev.y + dy, 100 - prev.h),
+                                ),
+                              }));
+                              setCropDragStart({ x: e.clientX, y: e.clientY });
+                            }}
+                            onMouseUp={() => setIsDraggingCrop(false)}
+                          />
+                        )}
+                      </div>
+
+                      {/* Crop dimensions info */}
+                      {cropImageDimensions.w > 0 && (
+                        <div className="text-xs text-gray-500 flex items-center gap-4">
+                          <span>
+                            מקור: {cropImageDimensions.w} ×{" "}
+                            {cropImageDimensions.h}px
+                          </span>
+                          <span>
+                            חיתוך:{" "}
+                            {Math.round(
+                              (cropImageDimensions.w * cropRegion.w) / 100,
+                            )}{" "}
+                            ×{" "}
+                            {Math.round(
+                              (cropImageDimensions.h * cropRegion.h) / 100,
+                            )}
+                            px
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Crop Region Sliders */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm text-gray-600">
+                            מיקום X: {Math.round(cropRegion.x)}%
+                          </Label>
+                          <Slider
+                            value={[cropRegion.x]}
+                            onValueChange={([v]) =>
+                              setCropRegion((r) => ({
+                                ...r,
+                                x: Math.min(v, 100 - r.w),
+                              }))
+                            }
+                            min={0}
+                            max={95}
+                            step={1}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">
+                            מיקום Y: {Math.round(cropRegion.y)}%
+                          </Label>
+                          <Slider
+                            value={[cropRegion.y]}
+                            onValueChange={([v]) =>
+                              setCropRegion((r) => ({
+                                ...r,
+                                y: Math.min(v, 100 - r.h),
+                              }))
+                            }
+                            min={0}
+                            max={95}
+                            step={1}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">
+                            רוחב: {Math.round(cropRegion.w)}%
+                          </Label>
+                          <Slider
+                            value={[cropRegion.w]}
+                            onValueChange={([v]) =>
+                              setCropRegion((r) => ({
+                                ...r,
+                                w: Math.min(v, 100 - r.x),
+                              }))
+                            }
+                            min={5}
+                            max={100}
+                            step={1}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm text-gray-600">
+                            גובה: {Math.round(cropRegion.h)}%
+                          </Label>
+                          <Slider
+                            value={[cropRegion.h]}
+                            onValueChange={([v]) =>
+                              setCropRegion((r) => ({
+                                ...r,
+                                h: Math.min(v, 100 - r.y),
+                              }))
+                            }
+                            min={5}
+                            max={100}
+                            step={1}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Apply / Cancel */}
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={applyCrop}
+                          className="bg-orange-600 hover:bg-orange-700 text-white"
+                        >
+                          <Check className="h-4 w-4 ml-2" />
+                          החל חיתוך כלוגו
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCropImageSrc(null);
+                            setCropRegion({ x: 0, y: 0, w: 100, h: 100 });
+                            setCropZoom(1);
+                            setCropRotation(0);
+                          }}
+                        >
+                          ביטול
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center text-gray-400">
+                      <Crop className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-sm">
+                        העלה קובץ או ערוך את הלוגו הנוכחי
+                      </p>
+                      <p className="text-xs mt-1">
+                        תומך ב: PDF, Word (.docx), HTML, תמונות (PNG, JPG, SVG, WebP)
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Strip Size Section */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Maximize2 className="h-6 w-6 text-blue-600" />
+                    גודל סטריפ (פס עליון)
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    הגדר את מידות הסטריפ העליון שמכיל את הלוגו וכותרת ההצעה
+                  </p>
+
+                  {/* Strip Toggle */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <Switch
+                      checked={designSettings.showHeaderStrip !== false}
+                      onCheckedChange={(checked) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          showHeaderStrip: checked,
+                        })
+                      }
+                    />
+                    <Label className="font-medium">הצג סטריפ עליון</Label>
+                  </div>
+
+                  {designSettings.showHeaderStrip !== false && (
+                    <div className="space-y-6">
+                      {/* Strip Height */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-sm font-medium">
+                            גובה סטריפ
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={designSettings.headerStripHeight || 150}
+                              onChange={(e) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  headerStripHeight: Math.max(
+                                    40,
+                                    Math.min(
+                                      500,
+                                      parseInt(e.target.value) || 150,
+                                    ),
+                                  ),
+                                })
+                              }
+                              className="w-20 text-center border rounded px-2 py-1 text-sm"
+                            />
+                            <span className="text-xs text-gray-500">px</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[designSettings.headerStripHeight || 150]}
+                          onValueChange={([v]) =>
+                            setDesignSettings({
+                              ...designSettings,
+                              headerStripHeight: v,
+                            })
+                          }
+                          min={40}
+                          max={500}
+                          step={5}
+                          className="mt-1"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>40px</span>
+                          <span>500px</span>
+                        </div>
+                      </div>
+
+                      {/* Strip Width */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-sm font-medium">
+                            רוחב סטריפ
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={designSettings.stripWidth || 100}
+                              onChange={(e) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  stripWidth: Math.max(
+                                    50,
+                                    Math.min(
+                                      100,
+                                      parseInt(e.target.value) || 100,
+                                    ),
+                                  ),
+                                })
+                              }
+                              className="w-20 text-center border rounded px-2 py-1 text-sm"
+                            />
+                            <span className="text-xs text-gray-500">%</span>
+                          </div>
+                        </div>
+                        <Slider
+                          value={[designSettings.stripWidth || 100]}
+                          onValueChange={([v]) =>
+                            setDesignSettings({
+                              ...designSettings,
+                              stripWidth: v,
+                            })
+                          }
+                          min={50}
+                          max={100}
+                          step={5}
+                          className="mt-1"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>50%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+
+                      {/* Auto-fit button */}
+                      {designSettings.logoUrl && (
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            if (designSettings.logoUrl) {
+                              const img = new window.Image();
+                              img.onload = () => {
+                                const containerWidth = 800;
+                                const aspectRatio = img.height / img.width;
+                                const calculatedHeight = Math.round(
+                                  containerWidth * aspectRatio,
+                                );
+                                setDesignSettings((prev) => ({
+                                  ...prev,
+                                  headerStripHeight: Math.min(
+                                    Math.max(calculatedHeight, 40),
+                                    500,
+                                  ),
+                                  stripWidth: 100,
+                                }));
+                              };
+                              img.src = designSettings.logoUrl;
+                            }
+                          }}
+                        >
+                          <Maximize2 className="h-4 w-4 ml-2" />
+                          התאם אוטומטית לגודל הלוגו
+                        </Button>
+                      )}
+
+                      {/* Strip Preview */}
+                      <div className="space-y-2">
+                        <Label className="text-sm text-gray-500">
+                          תצוגה מקדימה
+                        </Label>
+                        <div
+                          className="rounded-lg overflow-hidden border"
+                          style={{
+                            width: `${designSettings.stripWidth || 100}%`,
+                            height: `${Math.min(designSettings.headerStripHeight || 150, 200)}px`,
+                            background: `linear-gradient(135deg, ${designSettings.primaryColor || "#1A1A2E"}, ${designSettings.secondaryColor || "#16213E"})`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            margin: "0 auto",
+                          }}
+                        >
+                          {designSettings.logoUrl ? (
+                            <img
+                              src={designSettings.logoUrl}
+                              alt="Strip preview"
+                              className="max-h-full max-w-full object-contain"
+                              style={{
+                                maxHeight: `${Math.min(designSettings.headerStripHeight || 150, 200) - 20}px`,
+                              }}
+                            />
+                          ) : (
+                            <span className="text-white/50 text-sm">סטריפ</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-2">
+                        <Label className="text-sm text-gray-500">
+                          מידות מהירות
+                        </Label>
+                        <div className="flex gap-2 flex-wrap">
+                          {[
+                            { label: "קטן", h: 80, w: 100 },
+                            { label: "רגיל", h: 150, w: 100 },
+                            { label: "גדול", h: 250, w: 100 },
+                            { label: "בינוני צר", h: 150, w: 80 },
+                            { label: "באנר רחב", h: 100, w: 100 },
+                          ].map((preset) => (
+                            <Button
+                              key={preset.label}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  headerStripHeight: preset.h,
+                                  stripWidth: preset.w,
+                                })
+                              }
+                            >
+                              {preset.label} ({preset.h}×{preset.w}%)
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Strip Maker Tab */}
+          <TabsContent value="strip-maker" className="flex-1 m-0 overflow-hidden">
+            <ScrollArea className="h-full bg-gray-50">
+              <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                {/* Upload Source */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                    <Layers className="h-6 w-6 text-teal-600" />
+                    מכין סטריפים
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    העלה קובץ מכל פורמט (PDF, Word, HTML, תמונה) והכן ממנו סטריפ במידות מדויקות
+                  </p>
+
+                  <div className="flex gap-3 mb-4 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={() => stripMakerInputRef.current?.click()}
+                      disabled={isConvertingStrip}
+                    >
+                      {isConvertingStrip ? (
+                        <div className="h-4 w-4 ml-2 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 ml-2" />
+                      )}
+                      {isConvertingStrip ? "ממיר..." : "העלה קובץ מקור"}
+                    </Button>
+                    {designSettings.logoUrl && !stripSourceImage && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setStripSourceImage(designSettings.logoUrl);
+                          setStripOffsetX(0);
+                          setStripOffsetY(0);
+                          setStripScale(100);
+                          const img = new window.Image();
+                          img.onload = () => setStripSourceDimensions({ w: img.width, h: img.height });
+                          img.src = designSettings.logoUrl;
+                        }}
+                      >
+                        <Image className="h-4 w-4 ml-2" />
+                        השתמש בלוגו הנוכחי
+                      </Button>
+                    )}
+                    {stripSourceImage && (
+                      <Button
+                        variant="outline"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => {
+                          setStripSourceImage(null);
+                          setStripSourceDimensions({ w: 0, h: 0 });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 ml-2" />
+                        נקה
+                      </Button>
+                    )}
+                    <input
+                      ref={stripMakerInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="hidden"
+                      onChange={handleStripFileUpload}
+                    />
+                  </div>
+
+                  {stripSourceImage && stripSourceDimensions.w > 0 && (
+                    <div className="text-xs text-gray-500 mb-2">
+                      גודל מקור: {stripSourceDimensions.w} × {stripSourceDimensions.h}px
+                    </div>
+                  )}
+                </div>
+
+                {/* Strip Dimensions */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    <Maximize2 className="h-5 w-5 text-teal-600" />
+                    מידות הסטריפ
+                  </h3>
+
+                  {/* Quick Presets */}
+                  <div className="mb-6">
+                    <Label className="text-sm text-gray-500 mb-2 block">מידות מוכנות</Label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { label: "באנר רחב", w: 800, h: 100 },
+                        { label: "סטריפ רגיל", w: 800, h: 150 },
+                        { label: "סטריפ גבוה", w: 800, h: 250 },
+                        { label: "סטריפ גדול", w: 800, h: 350 },
+                        { label: "ריבועי", w: 800, h: 800 },
+                        { label: "Facebook Cover", w: 820, h: 312 },
+                        { label: "LinkedIn Banner", w: 1584, h: 396 },
+                        { label: "YouTube Banner", w: 2560, h: 423 },
+                        { label: "Email Header", w: 600, h: 200 },
+                        { label: "A4 Header", w: 794, h: 200 },
+                      ].map((preset) => (
+                        <Button
+                          key={preset.label}
+                          variant="outline"
+                          size="sm"
+                          className={`text-xs ${stripTargetWidth === preset.w && stripTargetHeight === preset.h ? "border-teal-500 bg-teal-50 text-teal-700" : ""}`}
+                          onClick={() => {
+                            setStripTargetWidth(preset.w);
+                            setStripTargetHeight(preset.h);
+                          }}
+                        >
+                          {preset.label}
+                          <span className="text-[10px] text-gray-400 mr-1">({preset.w}×{preset.h})</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Dimensions */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-sm font-medium">רוחב (px)</Label>
+                        <input
+                          type="number"
+                          value={stripTargetWidth}
+                          onChange={(e) => setStripTargetWidth(Math.max(100, parseInt(e.target.value) || 800))}
+                          className="w-24 text-center border rounded px-2 py-1 text-sm"
+                        />
+                      </div>
+                      <Slider
+                        value={[stripTargetWidth]}
+                        onValueChange={([v]) => setStripTargetWidth(v)}
+                        min={200}
+                        max={2560}
+                        step={10}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-sm font-medium">גובה (px)</Label>
+                        <input
+                          type="number"
+                          value={stripTargetHeight}
+                          onChange={(e) => setStripTargetHeight(Math.max(40, parseInt(e.target.value) || 150))}
+                          className="w-24 text-center border rounded px-2 py-1 text-sm"
+                        />
+                      </div>
+                      <Slider
+                        value={[stripTargetHeight]}
+                        onValueChange={([v]) => setStripTargetHeight(v)}
+                        min={40}
+                        max={1000}
+                        step={5}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Image Fit & Position Controls */}
+                {stripSourceImage && (
+                  <div className="bg-white rounded-xl border p-6 shadow-sm">
+                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                      <Move className="h-5 w-5 text-teal-600" />
+                      התאמת תמונה
+                    </h3>
+
+                    {/* Fit Mode */}
+                    <div className="mb-4">
+                      <Label className="text-sm text-gray-500 mb-2 block">מצב התאמה</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        {[
+                          { value: "contain" as const, label: "הכל נראה", desc: "כל התמונה נראית, עם שוליים" },
+                          { value: "cover" as const, label: "ממלא הכל", desc: "ממלא את הסטריפ, חלקים ייחתכו" },
+                          { value: "stretch" as const, label: "מתיחה", desc: "מותח בדיוק למידות" },
+                          { value: "manual" as const, label: "ידני", desc: "שליטה מלאה על מיקום וגודל" },
+                        ].map((mode) => (
+                          <Button
+                            key={mode.value}
+                            variant="outline"
+                            size="sm"
+                            className={`text-xs ${stripFitMode === mode.value ? "border-teal-500 bg-teal-50 text-teal-700" : ""}`}
+                            onClick={() => setStripFitMode(mode.value)}
+                            title={mode.desc}
+                          >
+                            {mode.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Scale - for contain and manual */}
+                    {(stripFitMode === "contain" || stripFitMode === "manual") && (
+                      <div className="mb-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-sm font-medium">גודל: {stripScale}%</Label>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setStripScale(100)}
+                          >
+                            איפוס
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <ZoomOut className="h-4 w-4 text-gray-400" />
+                          <Slider
+                            value={[stripScale]}
+                            onValueChange={([v]) => setStripScale(v)}
+                            min={10}
+                            max={400}
+                            step={5}
+                          />
+                          <ZoomIn className="h-4 w-4 text-gray-400" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Offset - for contain, cover, manual */}
+                    {stripFitMode !== "stretch" && (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">הזזה אופקית: {stripOffsetX}px</Label>
+                          <Slider
+                            value={[stripOffsetX]}
+                            onValueChange={([v]) => setStripOffsetX(v)}
+                            min={-stripTargetWidth}
+                            max={stripTargetWidth}
+                            step={1}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">הזזה אנכית: {stripOffsetY}px</Label>
+                          <Slider
+                            value={[stripOffsetY]}
+                            onValueChange={([v]) => setStripOffsetY(v)}
+                            min={-stripTargetHeight}
+                            max={stripTargetHeight}
+                            step={1}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Background Color */}
+                    <div className="flex items-center gap-3">
+                      <Label className="text-sm font-medium">צבע רקע:</Label>
+                      <input
+                        type="color"
+                        value={stripBgColor}
+                        onChange={(e) => setStripBgColor(e.target.value)}
+                        className="h-8 w-8 rounded cursor-pointer border"
+                      />
+                      <div className="flex gap-1">
+                        {["#ffffff", "#000000", "#f5f5f5", designSettings.primaryColor, designSettings.secondaryColor].map((c) => (
+                          <button
+                            key={c}
+                            className={`w-6 h-6 rounded border ${stripBgColor === c ? "ring-2 ring-teal-500" : ""}`}
+                            style={{ backgroundColor: c }}
+                            onClick={() => setStripBgColor(c)}
+                          />
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setStripBgColor("transparent")}
+                      >
+                        שקוף
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Live Preview */}
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                  <h3 className="font-bold mb-4 flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-teal-600" />
+                    תצוגה מקדימה
+                    <span className="text-xs text-gray-400 font-normal mr-auto">{stripTargetWidth} × {stripTargetHeight}px</span>
+                  </h3>
+
+                  <div
+                    className="border-2 border-gray-200 rounded-lg overflow-hidden mx-auto"
+                    style={{
+                      width: "100%",
+                      maxWidth: Math.min(stripTargetWidth, 780),
+                      aspectRatio: `${stripTargetWidth} / ${stripTargetHeight}`,
+                      backgroundColor: stripBgColor === "transparent" ? undefined : stripBgColor,
+                      backgroundImage: stripBgColor === "transparent" ? "url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%2210%22%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3C%2Fsvg%3E')" : undefined,
+                      position: "relative",
+                    }}
+                  >
+                    {stripSourceImage ? (
+                      <img
+                        src={stripSourceImage}
+                        alt="Strip preview"
+                        style={{
+                          position: "absolute",
+                          ...(stripFitMode === "stretch"
+                            ? { width: "100%", height: "100%", objectFit: "fill" }
+                            : stripFitMode === "cover"
+                              ? {
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  objectPosition: `calc(50% + ${stripOffsetX}px) calc(50% + ${stripOffsetY}px)`,
+                                }
+                              : stripFitMode === "contain"
+                                ? {
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "contain",
+                                    objectPosition: `calc(50% + ${stripOffsetX}px) calc(50% + ${stripOffsetY}px)`,
+                                    transform: `scale(${stripScale / 100})`,
+                                  }
+                                : {
+                                    // manual
+                                    width: `${stripScale}%`,
+                                    height: "auto",
+                                    top: stripOffsetY,
+                                    left: stripOffsetX,
+                                    objectFit: "none",
+                                  }),
+                        }}
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                        <div className="text-center">
+                          <Layers className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                          <span className="text-sm">העלה קובץ כדי לצפות בסטריפ</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {stripSourceImage && (
+                  <div className="bg-white rounded-xl border p-6 shadow-sm">
+                    <h3 className="font-bold mb-4">פעולות</h3>
+                    <div className="flex gap-3 flex-wrap">
+                      <Button
+                        className="bg-teal-600 hover:bg-teal-700 text-white"
+                        onClick={applyStripAsLogo}
+                      >
+                        <Check className="h-4 w-4 ml-2" />
+                        החל כלוגו סטריפ
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const dataUrl = generateStripImage();
+                          if (dataUrl) {
+                            const link = document.createElement("a");
+                            link.download = `strip-${stripTargetWidth}x${stripTargetHeight}.png`;
+                            link.href = dataUrl;
+                            link.click();
+                          }
+                        }}
+                      >
+                        <FileDown className="h-4 w-4 ml-2" />
+                        הורד כתמונה
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setStripOffsetX(0);
+                          setStripOffsetY(0);
+                          setStripScale(100);
+                          setStripFitMode("contain");
+                          setStripBgColor("#ffffff");
+                        }}
+                      >
+                        <RotateCcw className="h-4 w-4 ml-2" />
+                        אפס הכל
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {!stripSourceImage && (
+                  <div className="bg-white rounded-xl border p-8 shadow-sm text-center text-gray-400">
+                    <Layers className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-1">מכין סטריפים מכל פורמט</p>
+                    <p className="text-sm">PDF · Word · HTML · PNG · JPG · SVG</p>
+                    <p className="text-xs mt-2">בחר מידות, העלה קובץ, והתאם את הסטריפ בדיוק כמו שאתה רוצה</p>
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
@@ -4631,22 +6250,38 @@ export function HtmlTemplateEditor({
                     עריכה ישירה
                   </Button>
                 </div>
-                
+
                 {/* Global Page Settings - only shown in edit mode */}
                 {interactiveEditMode && (
                   <div className="bg-white rounded-lg shadow-sm border p-1 flex gap-2 items-center">
-                    <span className="text-xs text-gray-500 px-1">עיצוב כללי:</span>
+                    <span className="text-xs text-gray-500 px-1">
+                      עיצוב כללי:
+                    </span>
                     <select
                       value={designSettings.fontFamily}
-                      onChange={(e) => setDesignSettings({ ...designSettings, fontFamily: e.target.value })}
+                      onChange={(e) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          fontFamily: e.target.value,
+                        })
+                      }
                       className="h-7 text-xs border rounded px-1"
                     >
-                      {HEBREW_FONTS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                      {HEBREW_FONTS.map((f) => (
+                        <option key={f.value} value={f.value}>
+                          {f.label}
+                        </option>
+                      ))}
                     </select>
                     <input
                       type="number"
                       value={designSettings.fontSize}
-                      onChange={(e) => setDesignSettings({ ...designSettings, fontSize: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          fontSize: Number(e.target.value),
+                        })
+                      }
                       className="h-7 w-12 text-xs border rounded px-1 text-center"
                       min={12}
                       max={24}
@@ -4654,22 +6289,37 @@ export function HtmlTemplateEditor({
                     <input
                       type="color"
                       value={designSettings.primaryColor}
-                      onChange={(e) => setDesignSettings({ ...designSettings, primaryColor: e.target.value })}
+                      onChange={(e) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          primaryColor: e.target.value,
+                        })
+                      }
                       className="h-7 w-7 rounded cursor-pointer border-0"
                       title="צבע ראשי"
                     />
                     <input
                       type="range"
                       value={designSettings.logoSize || 120}
-                      onChange={(e) => setDesignSettings({ ...designSettings, logoSize: Number(e.target.value) })}
+                      onChange={(e) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          logoSize: Number(e.target.value),
+                        })
+                      }
                       min={60}
                       max={500}
                       className="w-20 h-2"
                       title={`גודל לוגו: ${designSettings.logoSize || 120}px`}
                     />
                     <select
-                      value={designSettings.logoPosition || 'inside-header'}
-                      onChange={(e) => setDesignSettings({ ...designSettings, logoPosition: e.target.value as any })}
+                      value={designSettings.logoPosition || "inside-header"}
+                      onChange={(e) =>
+                        setDesignSettings({
+                          ...designSettings,
+                          logoPosition: e.target.value as any,
+                        })
+                      }
                       className="h-7 text-xs border rounded px-1"
                     >
                       <option value="inside-header">לוגו בסטריפ</option>
@@ -4743,88 +6393,350 @@ export function HtmlTemplateEditor({
                       <div
                         className="p-6 space-y-4"
                         dir="rtl"
-                        style={{ fontFamily: designSettings.fontFamily, fontSize: designSettings.fontSize }}
+                        style={{
+                          fontFamily: designSettings.fontFamily,
+                          fontSize: designSettings.fontSize,
+                        }}
                       >
                         {/* Logo Above Header */}
-                        {designSettings.showLogo && designSettings.logoUrl && (designSettings.logoPosition === 'above-header' || designSettings.logoPosition === 'centered-above') && (
-                          <div className={`relative group ${designSettings.logoPosition === 'centered-above' ? 'text-center' : ''}`}>
-                            <img
-                              src={designSettings.logoUrl}
-                              alt="Logo"
-                              style={{ width: designSettings.logoSize || 120, maxWidth: '100%', height: 'auto', cursor: 'pointer' }}
-                              onClick={() => logoInputRef.current?.click()}
-                              title="לחץ להחלפת לוגו"
-                            />
-                            <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={() => logoInputRef.current?.click()}>
-                                <Upload className="h-3 w-3 ml-1" />החלף
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Header Section - Editable */}
-                        <div className="relative group">
-                          <div
-                            className={`rounded-xl text-white text-center ${designSettings.logoPosition === 'full-width' ? 'p-0 overflow-hidden' : 'p-6'}`}
-                            style={{
-                              background:
-                                designSettings.showHeaderStrip !== false
-                                  ? designSettings.headerBackground
-                                  : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
-                              ...(designSettings.logoPosition === 'full-width' && designSettings.headerStripHeight ? { height: designSettings.headerStripHeight } : {}),
-                            }}
-                          >
-                            {/* Full Width Logo - Inside header, spanning full width */}
-                            {designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === 'full-width' && (
-                              <div 
-                                className="cursor-pointer relative group w-full h-full"
+                        {designSettings.showLogo &&
+                          designSettings.logoUrl &&
+                          (designSettings.logoPosition === "above-header" ||
+                            designSettings.logoPosition ===
+                              "centered-above") && (
+                            <div
+                              className={`relative ${designSettings.logoPosition === "centered-above" ? "text-center" : ""}`}
+                            >
+                              <div
+                                className="relative group inline-block"
+                                style={{
+                                  width:
+                                    designSettings.logoWidth ||
+                                    designSettings.logoSize ||
+                                    120,
+                                  height: designSettings.logoHeight || "auto",
+                                  maxWidth: "100%",
+                                  cursor: "pointer",
+                                }}
                                 onClick={() => logoInputRef.current?.click()}
                               >
                                 <img
                                   src={designSettings.logoUrl}
                                   alt="Logo"
-                                  style={{ 
-                                    width: '100%', 
-                                    height: '100%', 
-                                    display: 'block',
-                                    objectFit: 'cover',
-                                    objectPosition: 'center',
+                                  style={{
+                                    width: "100%",
+                                    height: designSettings.logoHeight
+                                      ? "100%"
+                                      : "auto",
+                                    objectFit: designSettings.logoHeight
+                                      ? "contain"
+                                      : undefined,
+                                  }}
+                                  title="לחץ להחלפת לוגו"
+                                />
+                                {/* Corner resize handle */}
+                                <div
+                                  className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const startX = e.clientX;
+                                    const startWidth =
+                                      designSettings.logoWidth ||
+                                      designSettings.logoSize ||
+                                      120;
+                                    const parentEl =
+                                      e.currentTarget.parentElement;
+                                    const startHeight =
+                                      designSettings.logoHeight ||
+                                      parentEl?.offsetHeight ||
+                                      80;
+                                    const ratio = startHeight / startWidth;
+                                    const onMouseMove = (ev: MouseEvent) => {
+                                      const deltaX = ev.clientX - startX;
+                                      const newWidth = Math.min(
+                                        Math.max(startWidth + deltaX, 40),
+                                        500,
+                                      );
+                                      const newHeight = Math.round(
+                                        newWidth * ratio,
+                                      );
+                                      setDesignSettings((prev) => ({
+                                        ...prev,
+                                        logoWidth: newWidth,
+                                        logoHeight: newHeight,
+                                        logoSize: newWidth,
+                                      }));
+                                    };
+                                    const onMouseUp = () => {
+                                      document.removeEventListener(
+                                        "mousemove",
+                                        onMouseMove,
+                                      );
+                                      document.removeEventListener(
+                                        "mouseup",
+                                        onMouseUp,
+                                      );
+                                    };
+                                    document.addEventListener(
+                                      "mousemove",
+                                      onMouseMove,
+                                    );
+                                    document.addEventListener(
+                                      "mouseup",
+                                      onMouseUp,
+                                    );
+                                  }}
+                                >
+                                  <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-gray-400 hover:border-blue-500 rounded-br-sm" />
+                                </div>
+                                {/* Right edge resize handle - maintains aspect ratio */}
+                                <div
+                                  className="absolute top-0 right-0 w-2 h-full cursor-ew-resize bg-transparent hover:bg-blue-500/30 transition-colors z-10 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const startX = e.clientX;
+                                    const startWidth =
+                                      designSettings.logoWidth ||
+                                      designSettings.logoSize ||
+                                      120;
+                                    const parentEl =
+                                      e.currentTarget.parentElement;
+                                    const startHeight =
+                                      designSettings.logoHeight ||
+                                      parentEl?.offsetHeight ||
+                                      80;
+                                    const ratio = startHeight / startWidth;
+                                    const onMouseMove = (ev: MouseEvent) => {
+                                      const delta = ev.clientX - startX;
+                                      const newWidth = Math.min(
+                                        Math.max(startWidth + delta, 40),
+                                        500,
+                                      );
+                                      const newHeight = Math.round(
+                                        newWidth * ratio,
+                                      );
+                                      setDesignSettings((prev) => ({
+                                        ...prev,
+                                        logoWidth: newWidth,
+                                        logoHeight: newHeight,
+                                        logoSize: newWidth,
+                                      }));
+                                    };
+                                    const onMouseUp = () => {
+                                      document.removeEventListener(
+                                        "mousemove",
+                                        onMouseMove,
+                                      );
+                                      document.removeEventListener(
+                                        "mouseup",
+                                        onMouseUp,
+                                      );
+                                    };
+                                    document.addEventListener(
+                                      "mousemove",
+                                      onMouseMove,
+                                    );
+                                    document.addEventListener(
+                                      "mouseup",
+                                      onMouseUp,
+                                    );
                                   }}
                                 />
-                                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button size="sm" variant="secondary" className="h-6 text-xs shadow-lg" onClick={(e) => { e.stopPropagation(); logoInputRef.current?.click(); }}>
-                                    <Upload className="h-3 w-3 ml-1" />החלף לוגו
-                                  </Button>
+                              </div>
+                              <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-6 text-xs shadow-lg"
+                                  onClick={() => logoInputRef.current?.click()}
+                                >
+                                  <Upload className="h-3 w-3 ml-1" />
+                                  החלף
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                        {/* Header Section - Editable */}
+                        <div
+                          className="relative group"
+                          style={
+                            designSettings.logoPosition === "full-width"
+                              ? { margin: "-1.5rem -1.5rem 0 -1.5rem" }
+                              : undefined
+                          }
+                        >
+                          <div
+                            className={`text-white text-center ${designSettings.logoPosition === "full-width" ? "p-0 overflow-hidden relative" : "rounded-xl p-6"}`}
+                            style={{
+                              background:
+                                designSettings.logoPosition === "full-width"
+                                  ? "transparent"
+                                  : designSettings.showHeaderStrip !== false
+                                    ? designSettings.headerBackground
+                                    : `linear-gradient(135deg, ${designSettings.primaryColor}, ${designSettings.secondaryColor})`,
+                            }}
+                          >
+                            {/* Full Width Logo - Inside header, spanning full width */}
+                            {designSettings.showLogo &&
+                              designSettings.logoUrl &&
+                              designSettings.logoPosition === "full-width" && (
+                                <div
+                                  className="cursor-pointer relative group"
+                                  style={{
+                                    width: "100%",
+                                    margin: "0 auto",
+                                  }}
+                                  onClick={() => logoInputRef.current?.click()}
+                                >
+                                  <img
+                                    src={designSettings.logoUrl}
+                                    alt="Logo"
+                                    style={{
+                                      width: "100%",
+                                      height: "auto",
+                                      display: "block",
+                                      objectFit: "cover",
+                                      objectPosition: "center",
+                                    }}
+                                  />
+                                  <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-6 text-xs shadow-lg"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        logoInputRef.current?.click();
+                                      }}
+                                    >
+                                      <Upload className="h-3 w-3 ml-1" />
+                                      החלף לוגו
+                                    </Button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                             {/* Regular Logo inside header */}
-                            {designSettings.showLogo && designSettings.logoUrl && (!designSettings.logoPosition || designSettings.logoPosition === 'inside-header') && (
-                              <div className="cursor-pointer" onClick={() => logoInputRef.current?.click()}>
-                                <img
-                                  src={designSettings.logoUrl}
-                                  alt="Logo"
-                                  style={{ width: designSettings.logoSize || 120, height: 'auto', margin: '0 auto 16px' }}
-                                />
-                              </div>
-                            )}
+                            {designSettings.showLogo &&
+                              designSettings.logoUrl &&
+                              (!designSettings.logoPosition ||
+                                designSettings.logoPosition ===
+                                  "inside-header") && (
+                                <div
+                                  className="cursor-pointer relative group inline-block"
+                                  style={{
+                                    width:
+                                      designSettings.logoWidth ||
+                                      designSettings.logoSize ||
+                                      120,
+                                    height: designSettings.logoHeight || "auto",
+                                    margin: "0 auto 16px",
+                                  }}
+                                  onClick={() => logoInputRef.current?.click()}
+                                >
+                                  <img
+                                    src={designSettings.logoUrl}
+                                    alt="Logo"
+                                    style={{
+                                      width: "100%",
+                                      height: designSettings.logoHeight
+                                        ? "100%"
+                                        : "auto",
+                                      objectFit: designSettings.logoHeight
+                                        ? "contain"
+                                        : undefined,
+                                    }}
+                                  />
+                                  {/* Corner resize handle - maintains aspect ratio */}
+                                  <div
+                                    className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const startX = e.clientX;
+                                      const startWidth =
+                                        designSettings.logoWidth ||
+                                        designSettings.logoSize ||
+                                        120;
+                                      const parentEl =
+                                        e.currentTarget.parentElement;
+                                      const startHeight =
+                                        designSettings.logoHeight ||
+                                        parentEl?.offsetHeight ||
+                                        80;
+                                      const ratio = startHeight / startWidth;
+                                      const onMouseMove = (ev: MouseEvent) => {
+                                        const deltaX = ev.clientX - startX;
+                                        const newWidth = Math.min(
+                                          Math.max(startWidth + deltaX, 40),
+                                          500,
+                                        );
+                                        const newHeight = Math.round(
+                                          newWidth * ratio,
+                                        );
+                                        setDesignSettings((prev) => ({
+                                          ...prev,
+                                          logoWidth: newWidth,
+                                          logoHeight: newHeight,
+                                          logoSize: newWidth,
+                                        }));
+                                      };
+                                      const onMouseUp = () => {
+                                        document.removeEventListener(
+                                          "mousemove",
+                                          onMouseMove,
+                                        );
+                                        document.removeEventListener(
+                                          "mouseup",
+                                          onMouseUp,
+                                        );
+                                      };
+                                      document.addEventListener(
+                                        "mousemove",
+                                        onMouseMove,
+                                      );
+                                      document.addEventListener(
+                                        "mouseup",
+                                        onMouseUp,
+                                      );
+                                    }}
+                                  >
+                                    <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-white/60 hover:border-blue-400 rounded-br-sm" />
+                                  </div>
+                                </div>
+                              )}
                             {/* Title and description - only when NOT full-width logo */}
-                            {designSettings.logoPosition !== 'full-width' && (
+                            {designSettings.logoPosition !== "full-width" && (
                               <>
-                                <h1 
+                                <h1
                                   className="text-2xl font-bold outline-none focus:bg-white/20 rounded px-2"
                                   contentEditable
                                   suppressContentEditableWarning
-                                  onBlur={(e) => setEditedTemplate({ ...editedTemplate, name: e.currentTarget.textContent || '' })}
+                                  onBlur={(e) =>
+                                    setEditedTemplate({
+                                      ...editedTemplate,
+                                      name: e.currentTarget.textContent || "",
+                                    })
+                                  }
                                 >
                                   {editedTemplate.name}
                                 </h1>
-                                <p 
+                                <p
                                   className="opacity-90 text-sm mt-1 outline-none focus:bg-white/20 rounded px-2"
                                   contentEditable
                                   suppressContentEditableWarning
-                                  onBlur={(e) => setEditedTemplate({ ...editedTemplate, description: e.currentTarget.textContent || '' })}
+                                  onBlur={(e) =>
+                                    setEditedTemplate({
+                                      ...editedTemplate,
+                                      description:
+                                        e.currentTarget.textContent || "",
+                                    })
+                                  }
                                 >
                                   {editedTemplate.description}
                                 </p>
@@ -4874,45 +6786,77 @@ export function HtmlTemplateEditor({
                                 {projectDetails.clientName && (
                                   <div className="flex items-center gap-1">
                                     <span className="font-medium">לקוח:</span>
-                                    <span 
-                                      contentEditable 
+                                    <span
+                                      contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => setProjectDetails({ ...projectDetails, clientName: e.currentTarget.textContent || '' })}
-                                    >{projectDetails.clientName}</span>
+                                      onBlur={(e) =>
+                                        setProjectDetails({
+                                          ...projectDetails,
+                                          clientName:
+                                            e.currentTarget.textContent || "",
+                                        })
+                                      }
+                                    >
+                                      {projectDetails.clientName}
+                                    </span>
                                   </div>
                                 )}
                                 {projectDetails.address && (
                                   <div className="flex items-center gap-1">
                                     <span className="font-medium">כתובת:</span>
-                                    <span 
-                                      contentEditable 
+                                    <span
+                                      contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => setProjectDetails({ ...projectDetails, address: e.currentTarget.textContent || '' })}
-                                    >{projectDetails.address}</span>
+                                      onBlur={(e) =>
+                                        setProjectDetails({
+                                          ...projectDetails,
+                                          address:
+                                            e.currentTarget.textContent || "",
+                                        })
+                                      }
+                                    >
+                                      {projectDetails.address}
+                                    </span>
                                   </div>
                                 )}
                                 {projectDetails.gush && (
                                   <div className="flex items-center gap-1">
                                     <span className="font-medium">גוש:</span>
-                                    <span 
-                                      contentEditable 
+                                    <span
+                                      contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => setProjectDetails({ ...projectDetails, gush: e.currentTarget.textContent || '' })}
-                                    >{projectDetails.gush}</span>
+                                      onBlur={(e) =>
+                                        setProjectDetails({
+                                          ...projectDetails,
+                                          gush:
+                                            e.currentTarget.textContent || "",
+                                        })
+                                      }
+                                    >
+                                      {projectDetails.gush}
+                                    </span>
                                   </div>
                                 )}
                                 {projectDetails.helka && (
                                   <div className="flex items-center gap-1">
                                     <span className="font-medium">חלקה:</span>
-                                    <span 
-                                      contentEditable 
+                                    <span
+                                      contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => setProjectDetails({ ...projectDetails, helka: e.currentTarget.textContent || '' })}
-                                    >{projectDetails.helka}</span>
+                                      onBlur={(e) =>
+                                        setProjectDetails({
+                                          ...projectDetails,
+                                          helka:
+                                            e.currentTarget.textContent || "",
+                                        })
+                                      }
+                                    >
+                                      {projectDetails.helka}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -4965,8 +6909,16 @@ export function HtmlTemplateEditor({
                                       contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => updateStage(stage.id, { ...stage, name: e.currentTarget.textContent || '' })}
-                                    >{stage.name}</span>
+                                      onBlur={(e) =>
+                                        updateStage(stage.id, {
+                                          ...stage,
+                                          name:
+                                            e.currentTarget.textContent || "",
+                                        })
+                                      }
+                                    >
+                                      {stage.name}
+                                    </span>
                                   </h3>
                                   <ul className="mt-2 space-y-1">
                                     {stage.items.map((item: any) => (
@@ -4982,10 +6934,21 @@ export function HtmlTemplateEditor({
                                           suppressContentEditableWarning
                                           className="outline-none focus:bg-yellow-100 rounded px-1 flex-1"
                                           onBlur={(e) => {
-                                            const newItems = stage.items.map((i: any) => 
-                                              i.id === item.id ? { ...i, text: e.currentTarget.textContent || '' } : i
+                                            const newItems = stage.items.map(
+                                              (i: any) =>
+                                                i.id === item.id
+                                                  ? {
+                                                      ...i,
+                                                      text:
+                                                        e.currentTarget
+                                                          .textContent || "",
+                                                    }
+                                                  : i,
                                             );
-                                            updateStage(stage.id, { ...stage, items: newItems });
+                                            updateStage(stage.id, {
+                                              ...stage,
+                                              items: newItems,
+                                            });
                                           }}
                                           style={{
                                             fontFamily:
@@ -5069,16 +7032,49 @@ export function HtmlTemplateEditor({
                                         contentEditable
                                         suppressContentEditableWarning
                                         className="outline-none focus:bg-yellow-100 rounded px-1"
-                                        onBlur={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, name: e.currentTarget.textContent || '' } : s))}
-                                      >{step.name}</span>
+                                        onBlur={(e) =>
+                                          setPaymentSteps(
+                                            paymentSteps.map((s) =>
+                                              s.id === step.id
+                                                ? {
+                                                    ...s,
+                                                    name:
+                                                      e.currentTarget
+                                                        .textContent || "",
+                                                  }
+                                                : s,
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        {step.name}
+                                      </span>
                                     </td>
                                     <td className="p-2 text-center">
                                       <span
                                         contentEditable
                                         suppressContentEditableWarning
                                         className="outline-none focus:bg-yellow-100 rounded px-1"
-                                        onBlur={(e) => setPaymentSteps(paymentSteps.map(s => s.id === step.id ? { ...s, percentage: parseInt(e.currentTarget.textContent || '0') || 0 } : s))}
-                                      >{step.percentage}</span>%
+                                        onBlur={(e) =>
+                                          setPaymentSteps(
+                                            paymentSteps.map((s) =>
+                                              s.id === step.id
+                                                ? {
+                                                    ...s,
+                                                    percentage:
+                                                      parseInt(
+                                                        e.currentTarget
+                                                          .textContent || "0",
+                                                      ) || 0,
+                                                  }
+                                                : s,
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        {step.percentage}
+                                      </span>
+                                      %
                                     </td>
                                     <td className="p-2 text-left">
                                       ₪
@@ -5092,15 +7088,36 @@ export function HtmlTemplateEditor({
                                 ))}
                                 <tr className="font-bold bg-gray-100">
                                   <td className="p-2">סה"כ</td>
-                                  <td className="p-2 text-center">{paymentSteps.reduce((sum, s) => sum + s.percentage, 0)}%</td>
+                                  <td className="p-2 text-center">
+                                    {paymentSteps.reduce(
+                                      (sum, s) => sum + s.percentage,
+                                      0,
+                                    )}
+                                    %
+                                  </td>
                                   <td className="p-2 text-left">
                                     ₪
                                     <span
                                       contentEditable
                                       suppressContentEditableWarning
                                       className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) => setEditedTemplate({ ...editedTemplate, base_price: parseInt(e.currentTarget.textContent?.replace(/,/g, '') || '35000') || 35000 })}
-                                    >{(editedTemplate.base_price || 35000).toLocaleString()}</span>
+                                      onBlur={(e) =>
+                                        setEditedTemplate({
+                                          ...editedTemplate,
+                                          base_price:
+                                            parseInt(
+                                              e.currentTarget.textContent?.replace(
+                                                /,/g,
+                                                "",
+                                              ) || "35000",
+                                            ) || 35000,
+                                        })
+                                      }
+                                    >
+                                      {(
+                                        editedTemplate.base_price || 35000
+                                      ).toLocaleString()}
+                                    </span>
                                   </td>
                                 </tr>
                               </tbody>
@@ -5157,7 +7174,20 @@ export function HtmlTemplateEditor({
                                       }}
                                       contentEditable
                                       suppressContentEditableWarning
-                                      onBlur={(e) => setTextBoxes(textBoxes.map(t => t.id === tb.id ? { ...t, title: e.currentTarget.textContent || '' } : t))}
+                                      onBlur={(e) =>
+                                        setTextBoxes(
+                                          textBoxes.map((t) =>
+                                            t.id === tb.id
+                                              ? {
+                                                  ...t,
+                                                  title:
+                                                    e.currentTarget
+                                                      .textContent || "",
+                                                }
+                                              : t,
+                                          ),
+                                        )
+                                      }
                                     >
                                       {tb.title}
                                     </h3>
@@ -5181,7 +7211,20 @@ export function HtmlTemplateEditor({
                                     }}
                                     contentEditable
                                     suppressContentEditableWarning
-                                    onBlur={(e) => setTextBoxes(textBoxes.map(t => t.id === tb.id ? { ...t, content: e.currentTarget.textContent || '' } : t))}
+                                    onBlur={(e) =>
+                                      setTextBoxes(
+                                        textBoxes.map((t) =>
+                                          t.id === tb.id
+                                            ? {
+                                                ...t,
+                                                content:
+                                                  e.currentTarget.textContent ||
+                                                  "",
+                                              }
+                                            : t,
+                                        ),
+                                      )
+                                    }
                                   >
                                     {tb.content}
                                   </p>
@@ -5205,42 +7248,85 @@ export function HtmlTemplateEditor({
                         {/* Footer Section - Editable */}
                         <div className="relative group">
                           <div className="bg-gray-100 rounded-xl p-4 text-center text-sm text-gray-600">
-                            <p 
+                            <p
                               className="font-semibold outline-none focus:bg-yellow-100 rounded px-1 inline-block"
                               contentEditable
                               suppressContentEditableWarning
-                              onBlur={(e) => setDesignSettings({ ...designSettings, companyName: e.currentTarget.textContent || '' })}
+                              onBlur={(e) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  companyName:
+                                    e.currentTarget.textContent || "",
+                                })
+                              }
                             >
                               {designSettings.companyName}
                             </p>
                             <p className="mt-1">
-                              <span 
+                              <span
                                 className="outline-none focus:bg-yellow-100 rounded px-1"
                                 contentEditable
                                 suppressContentEditableWarning
-                                onBlur={(e) => setDesignSettings({ ...designSettings, companyAddress: e.currentTarget.textContent || '' })}
-                              >{designSettings.companyAddress}</span> |{" "}
-                              <span 
+                                onBlur={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    companyAddress:
+                                      e.currentTarget.textContent || "",
+                                  })
+                                }
+                              >
+                                {designSettings.companyAddress}
+                              </span>{" "}
+                              |{" "}
+                              <span
                                 className="outline-none focus:bg-yellow-100 rounded px-1"
                                 contentEditable
                                 suppressContentEditableWarning
-                                onBlur={(e) => setDesignSettings({ ...designSettings, companyPhone: e.currentTarget.textContent || '' })}
-                              >{designSettings.companyPhone}</span> |{" "}
-                              <span 
+                                onBlur={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    companyPhone:
+                                      e.currentTarget.textContent || "",
+                                  })
+                                }
+                              >
+                                {designSettings.companyPhone}
+                              </span>{" "}
+                              |{" "}
+                              <span
                                 className="outline-none focus:bg-yellow-100 rounded px-1"
                                 contentEditable
                                 suppressContentEditableWarning
-                                onBlur={(e) => setDesignSettings({ ...designSettings, companyEmail: e.currentTarget.textContent || '' })}
-                              >{designSettings.companyEmail}</span>
+                                onBlur={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    companyEmail:
+                                      e.currentTarget.textContent || "",
+                                  })
+                                }
+                              >
+                                {designSettings.companyEmail}
+                              </span>
                             </p>
                             <p className="mt-2 text-xs">
                               * המחירים אינם כוללים מע"מ. תוקף ההצעה:{" "}
-                              <span 
+                              <span
                                 className="outline-none focus:bg-yellow-100 rounded px-1"
                                 contentEditable
                                 suppressContentEditableWarning
-                                onBlur={(e) => setEditedTemplate({ ...editedTemplate, validity_days: parseInt(e.currentTarget.textContent || '30') || 30 })}
-                              >{editedTemplate.validity_days || 30}</span> יום.
+                                onBlur={(e) =>
+                                  setEditedTemplate({
+                                    ...editedTemplate,
+                                    validity_days:
+                                      parseInt(
+                                        e.currentTarget.textContent || "30",
+                                      ) || 30,
+                                  })
+                                }
+                              >
+                                {editedTemplate.validity_days || 30}
+                              </span>{" "}
+                              יום.
                             </p>
                           </div>
                           <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
