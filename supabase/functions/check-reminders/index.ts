@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -8,12 +8,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-async function sendEmail(to: string, title: string, message: string, userName?: string) {
+async function sendEmail(
+  to: string,
+  title: string,
+  message: string,
+  userName?: string,
+) {
   if (!RESEND_API_KEY) {
     console.log("RESEND_API_KEY not configured, skipping email");
     return false;
@@ -43,9 +48,9 @@ async function sendEmail(to: string, title: string, message: string, userName?: 
                 <h1 style="color: white; margin: 0; font-size: 28px;">⏰ תזכורת</h1>
               </div>
               <div style="padding: 30px;">
-                ${userName ? `<p style="color: #666; font-size: 16px; margin-bottom: 20px;">שלום ${userName},</p>` : ''}
+                ${userName ? `<p style="color: #666; font-size: 16px; margin-bottom: 20px;">שלום ${userName},</p>` : ""}
                 <h2 style="color: #333; font-size: 24px; margin-bottom: 15px;">${title}</h2>
-                ${message ? `<p style="color: #666; font-size: 16px; line-height: 1.6;">${message}</p>` : ''}
+                ${message ? `<p style="color: #666; font-size: 16px; line-height: 1.6;">${message}</p>` : ""}
                 <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
                   <p style="color: #999; font-size: 14px; text-align: center;">
                     זוהי תזכורת אוטומטית מ-ArchFlow
@@ -86,11 +91,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get reminders that are due and not yet sent
     const { data: dueReminders, error: fetchError } = await supabase
-      .from('reminders')
-      .select('*, profiles:user_id(full_name, email), email_templates:email_template_id(*)')
-      .lte('remind_at', now)
-      .eq('is_sent', false)
-      .eq('is_dismissed', false);
+      .from("reminders")
+      .select(
+        "*, profiles:user_id(full_name, email), email_templates:email_template_id(*)",
+      )
+      .lte("remind_at", now)
+      .eq("is_sent", false)
+      .eq("is_dismissed", false);
 
     if (fetchError) {
       throw fetchError;
@@ -108,16 +115,16 @@ const handler = async (req: Request): Promise<Response> => {
       for (const reminder of dueReminders) {
         try {
           const profile = reminder.profiles as any;
-          const reminderTypes = reminder.reminder_types || ['browser'];
+          const reminderTypes = reminder.reminder_types || ["browser"];
           const emailTemplate = reminder.email_templates as any;
-          
+
           // Check if email should be sent
-          if (reminderTypes.includes('email') && profile?.email) {
+          if (reminderTypes.includes("email") && profile?.email) {
             // Prepare email payload with template support
             const emailPayload: any = {
               to: profile.email,
               title: reminder.title,
-              message: reminder.message || '',
+              message: reminder.message || "",
               userName: profile.full_name,
               reminderId: reminder.id,
               userId: reminder.user_id,
@@ -130,14 +137,17 @@ const handler = async (req: Request): Promise<Response> => {
             }
 
             // Call send-reminder-email function
-            const emailRes = await fetch(`${SUPABASE_URL}/functions/v1/send-reminder-email`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            const emailRes = await fetch(
+              `${SUPABASE_URL}/functions/v1/send-reminder-email`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                },
+                body: JSON.stringify(emailPayload),
               },
-              body: JSON.stringify(emailPayload),
-            });
+            );
 
             if (emailRes.ok) {
               results.emailsSent++;
@@ -145,13 +155,16 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           // Also send to recipient emails if specified
-          if (reminder.recipient_emails && reminder.recipient_emails.length > 0) {
+          if (
+            reminder.recipient_emails &&
+            reminder.recipient_emails.length > 0
+          ) {
             for (const email of reminder.recipient_emails) {
               const emailSent = await sendEmail(
                 email,
                 reminder.title,
-                reminder.message || '',
-                undefined
+                reminder.message || "",
+                undefined,
               );
               if (emailSent) {
                 results.emailsSent++;
@@ -171,13 +184,17 @@ const handler = async (req: Request): Promise<Response> => {
             let nextRemindAt: Date;
 
             switch (reminder.recurring_interval) {
-              case 'daily':
-                nextRemindAt = new Date(currentRemindAt.getTime() + 24 * 60 * 60 * 1000);
+              case "daily":
+                nextRemindAt = new Date(
+                  currentRemindAt.getTime() + 24 * 60 * 60 * 1000,
+                );
                 break;
-              case 'weekly':
-                nextRemindAt = new Date(currentRemindAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+              case "weekly":
+                nextRemindAt = new Date(
+                  currentRemindAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+                );
                 break;
-              case 'monthly':
+              case "monthly":
                 nextRemindAt = new Date(currentRemindAt);
                 nextRemindAt.setMonth(nextRemindAt.getMonth() + 1);
                 break;
@@ -194,18 +211,24 @@ const handler = async (req: Request): Promise<Response> => {
           }
 
           const { error: updateError } = await supabase
-            .from('reminders')
+            .from("reminders")
             .update(updateData)
-            .eq('id', reminder.id);
+            .eq("id", reminder.id);
 
           if (updateError) {
-            console.error(`Error updating reminder ${reminder.id}:`, updateError);
+            console.error(
+              `Error updating reminder ${reminder.id}:`,
+              updateError,
+            );
             results.errors++;
           } else {
             results.processed++;
           }
         } catch (reminderError) {
-          console.error(`Error processing reminder ${reminder.id}:`, reminderError);
+          console.error(
+            `Error processing reminder ${reminder.id}:`,
+            reminderError,
+          );
           results.errors++;
         }
       }
@@ -222,17 +245,14 @@ const handler = async (req: Request): Promise<Response> => {
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
   } catch (error: any) {
     console.error("Error checking reminders:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 

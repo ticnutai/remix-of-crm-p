@@ -5,7 +5,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 interface InviteClientRequest {
@@ -24,9 +25,18 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { clientId, clientEmail, clientName, temporaryPassword, portalUrl, businessName = "ArchFlow" }: InviteClientRequest = await req.json();
+    const {
+      clientId,
+      clientEmail,
+      clientName,
+      temporaryPassword,
+      portalUrl,
+      businessName = "ArchFlow",
+    }: InviteClientRequest = await req.json();
 
-    console.log(`Sending invitation email to ${clientEmail} for client ${clientName}`);
+    console.log(
+      `Sending invitation email to ${clientEmail} for client ${clientName}`,
+    );
 
     // שליחת אימייל הזמנה
     const emailResponse = await resend.emails.send({
@@ -121,17 +131,14 @@ const handler = async (req: Request): Promise<Response> => {
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
   } catch (error: any) {
     console.error("Error in invite-client function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 

@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 // Enhanced System prompt for the CRM AI assistant with full tool capabilities
@@ -94,7 +95,7 @@ serve(async (req) => {
 
   try {
     const { messages, context } = await req.json();
-    
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -105,9 +106,9 @@ serve(async (req) => {
     if (context) {
       const now = new Date();
       contextMessage = `
-📆 תאריך ושעה נוכחיים: ${now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} ${now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-📆 תאריך היום בפורמט ISO: ${now.toISOString().split('T')[0]}
-📆 מחר בפורמט ISO: ${new Date(now.getTime() + 86400000).toISOString().split('T')[0]}
+📆 תאריך ושעה נוכחיים: ${now.toLocaleDateString("he-IL", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} ${now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+📆 תאריך היום בפורמט ISO: ${now.toISOString().split("T")[0]}
+📆 מחר בפורמט ISO: ${new Date(now.getTime() + 86400000).toISOString().split("T")[0]}
 
 ══════ סיכום המערכת ══════
 👥 לקוחות: ${context.clientsCount || 0} סה"כ
@@ -116,13 +117,13 @@ serve(async (req) => {
 📅 פגישות היום: ${context.meetingsToday || 0}
 💰 הכנסות החודש: ₪${(context.monthlyRevenue || 0).toLocaleString()}
 ⏱️ שעות עבודה היום: ${(context.hoursToday || 0).toFixed(1)} שעות
-${context.weeklyHours ? `⏱️ שעות עבודה השבוע: ${context.weeklyHours.toFixed(1)} שעות` : ''}
+${context.weeklyHours ? `⏱️ שעות עבודה השבוע: ${context.weeklyHours.toFixed(1)} שעות` : ""}
 
-${context.recentClients ? `👥 לקוחות אחרונים: ${context.recentClients}` : ''}
-${context.upcomingMeetings ? `📅 פגישות קרובות:\n${context.upcomingMeetings}` : ''}
-${context.overdueTasksList ? `⚠️ משימות באיחור:\n${context.overdueTasksList}` : ''}
-${context.todaysTasks ? `📋 משימות להיום:\n${context.todaysTasks}` : ''}
-${context.recentActivity ? `🔄 פעילות אחרונה:\n${context.recentActivity}` : ''}
+${context.recentClients ? `👥 לקוחות אחרונים: ${context.recentClients}` : ""}
+${context.upcomingMeetings ? `📅 פגישות קרובות:\n${context.upcomingMeetings}` : ""}
+${context.overdueTasksList ? `⚠️ משימות באיחור:\n${context.overdueTasksList}` : ""}
+${context.todaysTasks ? `📋 משימות להיום:\n${context.todaysTasks}` : ""}
+${context.recentActivity ? `🔄 פעילות אחרונה:\n${context.recentActivity}` : ""}
 `;
 
       // Add client search results if available
@@ -130,13 +131,19 @@ ${context.recentActivity ? `🔄 פעילות אחרונה:\n${context.recentAct
         contextMessage += `
 🔍 חיפוש לקוח: "${context.clientSearch}"
 תוצאות חיפוש (${context.searchedClients.length} לקוחות מתאימים):
-${context.searchedClients.map((c: any, i: number) => 
-  `${i + 1}. **${c.name}**${c.company ? ` (${c.company})` : ''}${c.phone ? ` | טלפון: ${c.phone}` : ''}${c.email ? ` | מייל: ${c.email}` : ''}`
-).join('\n')}
+${context.searchedClients
+  .map(
+    (c: any, i: number) =>
+      `${i + 1}. **${c.name}**${c.company ? ` (${c.company})` : ""}${c.phone ? ` | טלפון: ${c.phone}` : ""}${c.email ? ` | מייל: ${c.email}` : ""}`,
+  )
+  .join("\n")}
 
 הערה: השתמש בתוצאות אלו לענות על שאלת המשתמש. אם הלקוח המבוקש נמצא ברשימה - ציין אותו בתשובתך.
 `;
-      } else if (context.clientSearch && (!context.searchedClients || context.searchedClients.length === 0)) {
+      } else if (
+        context.clientSearch &&
+        (!context.searchedClients || context.searchedClients.length === 0)
+      ) {
         contextMessage += `
 🔍 חיפוש לקוח: "${context.clientSearch}"
 לא נמצאו לקוחות תואמים. יש להודיע למשתמש ולהציע לו לבדוק את כתיב השם או לנסות חיפוש אחר.
@@ -146,7 +153,11 @@ ${context.searchedClients.map((c: any, i: number) =>
 
     // Prepare messages for AI
     const aiMessages = [
-      { role: "system", content: SYSTEM_PROMPT + (contextMessage ? `\n\n${contextMessage}` : "") },
+      {
+        role: "system",
+        content:
+          SYSTEM_PROMPT + (contextMessage ? `\n\n${contextMessage}` : ""),
+      },
       ...messages.map((m: { role: string; content: string }) => ({
         role: m.role,
         content: m.content,
@@ -154,41 +165,50 @@ ${context.searchedClients.map((c: any, i: number) =>
     ];
 
     // Call Lovable AI Gateway with streaming
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: aiMessages,
+          stream: true,
+          max_tokens: 4096,
+          temperature: 0.4,
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: aiMessages,
-        stream: true,
-        max_tokens: 4096,
-        temperature: 0.4,
-      }),
-    });
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "חרגת ממגבלת הבקשות, נסה שוב מאוחר יותר" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "נדרש תשלום - אנא הוסף קרדיטים לחשבון" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
         );
       }
-      
+
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: "שגיאה בשירות ה-AI" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "שגיאה בשירות ה-AI" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Return streaming response
@@ -197,15 +217,16 @@ ${context.searchedClients.map((c: any, i: number) =>
         ...corsHeaders,
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
       },
     });
   } catch (error) {
     console.error("AI chat error:", error);
-    const errorMessage = error instanceof Error ? error.message : "שגיאה לא ידועה";
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "שגיאה לא ידועה";
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

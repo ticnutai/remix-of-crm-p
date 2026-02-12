@@ -1796,7 +1796,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       const newFolders = [...folders];
-                      [newFolders[folderIndex - 1], newFolders[folderIndex]] = [newFolders[folderIndex], newFolders[folderIndex - 1]];
+                      [newFolders[folderIndex - 1], newFolders[folderIndex]] = [
+                        newFolders[folderIndex],
+                        newFolders[folderIndex - 1],
+                      ];
                       reorderFolders(newFolders);
                     }}
                   >
@@ -1811,7 +1814,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       const newFolders = [...folders];
-                      [newFolders[folderIndex], newFolders[folderIndex + 1]] = [newFolders[folderIndex + 1], newFolders[folderIndex]];
+                      [newFolders[folderIndex], newFolders[folderIndex + 1]] = [
+                        newFolders[folderIndex + 1],
+                        newFolders[folderIndex],
+                      ];
                       reorderFolders(newFolders);
                     }}
                   >

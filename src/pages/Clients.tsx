@@ -47,6 +47,11 @@ import {
 } from "@/components/clients/ClientsFilterStrip";
 import { ClientQuickClassify } from "@/components/clients/ClientQuickClassify";
 import SmartComboField from "@/components/clients/SmartComboField";
+import CustomFieldsSection from "@/components/clients/CustomFieldsSection";
+import {
+  useClientCustomFields,
+  CustomFieldValues,
+} from "@/hooks/useClientCustomFields";
 import { ClientsByStageView } from "@/components/clients/ClientsByStageView";
 import { ClientsStatisticsView } from "@/components/clients/ClientsStatisticsView";
 import { BulkClassifyDialog } from "@/components/clients/BulkClassifyDialog";
@@ -237,6 +242,19 @@ export default function Clients() {
     vaadMoshavEmail: "",
   });
   const [isAddingClient, setIsAddingClient] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValues>(
+    {},
+  );
+
+  // Custom fields hook
+  const {
+    definitions: customFieldDefs,
+    isLoading: customFieldsLoading,
+    addField: addCustomField,
+    deleteField: deleteCustomField,
+    updateField: updateCustomField,
+    buildCustomData,
+  } = useClientCustomFields();
 
   // Filter state
   const [filters, setFilters] = useState<ClientFilterState>({
@@ -743,6 +761,7 @@ export default function Clients() {
     aguda_email: newClientForm.agudaEmail.trim() || null,
     vaad_moshav_address: newClientForm.vaadMoshavAddress.trim() || null,
     vaad_moshav_email: newClientForm.vaadMoshavEmail.trim() || null,
+    custom_data: buildCustomData(customFieldValues),
     status: "active" as const,
     user_id: userId,
     created_by: userId,
@@ -937,6 +956,7 @@ export default function Clients() {
       vaadMoshavAddress: "",
       vaadMoshavEmail: "",
     });
+    setCustomFieldValues({});
   };
 
   const getStatusConfig = (status: string | null) => {
@@ -3781,6 +3801,17 @@ export default function Clients() {
                 />
               </div>
             </div>
+
+            {/* שדות מותאמים אישית */}
+            <CustomFieldsSection
+              definitions={customFieldDefs}
+              values={customFieldValues}
+              onChange={setCustomFieldValues}
+              onAddField={addCustomField}
+              onDeleteField={deleteCustomField}
+              onUpdateField={updateCustomField}
+              isLoading={customFieldsLoading}
+            />
           </div>
 
           <DialogFooter className="flex-row-reverse gap-2 shrink-0 border-t pt-4">

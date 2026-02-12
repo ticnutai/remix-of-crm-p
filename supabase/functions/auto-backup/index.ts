@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 interface BackupResult {
@@ -29,7 +30,7 @@ serve(async (req) => {
 
     const timestamp = new Date().toISOString();
     const dateStr = timestamp.split("T")[0];
-    
+
     // Define tables to backup
     const tablesToBackup = [
       "clients",
@@ -52,7 +53,7 @@ serve(async (req) => {
     for (const table of tablesToBackup) {
       try {
         const { data, error } = await supabase.from(table).select("*");
-        
+
         if (error) {
           console.error(`Error fetching ${table}:`, error);
           backupData[table] = [];
@@ -69,7 +70,9 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Backup collected ${totalRecords} records from ${tablesToBackup.length} tables`);
+    console.log(
+      `Backup collected ${totalRecords} records from ${tablesToBackup.length} tables`,
+    );
 
     // Create backup object
     const backup = {
@@ -88,15 +91,18 @@ serve(async (req) => {
 
     // Check if backups bucket exists, create if not
     const { data: buckets } = await supabase.storage.listBuckets();
-    const backupsBucket = buckets?.find(b => b.name === "backups");
-    
+    const backupsBucket = buckets?.find((b) => b.name === "backups");
+
     if (!backupsBucket) {
       console.log("Creating backups bucket...");
-      const { error: createError } = await supabase.storage.createBucket("backups", {
-        public: false,
-        fileSizeLimit: 52428800, // 50MB
-      });
-      
+      const { error: createError } = await supabase.storage.createBucket(
+        "backups",
+        {
+          public: false,
+          fileSizeLimit: 52428800, // 50MB
+        },
+      );
+
       if (createError) {
         console.error("Error creating backups bucket:", createError);
       }
@@ -124,7 +130,7 @@ serve(async (req) => {
       const { data: urlData } = await supabase.storage
         .from("backups")
         .createSignedUrl(fileName, 86400 * 7); // 7 days
-      
+
       storageUrl = urlData?.signedUrl;
     }
 
@@ -135,9 +141,9 @@ serve(async (req) => {
       });
 
       if (files && files.length > 30) {
-        const filesToDelete = files.slice(30).map(f => f.name);
+        const filesToDelete = files.slice(30).map((f) => f.name);
         console.log(`Deleting ${filesToDelete.length} old backups...`);
-        
+
         await supabase.storage.from("backups").remove(filesToDelete);
       }
     } catch (e) {
@@ -154,14 +160,12 @@ serve(async (req) => {
 
     console.log("Automatic backup completed successfully");
 
-    return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: unknown) {
     console.error("Backup failed:", error);
-    
+
     const result: BackupResult = {
       success: false,
       tables: {},
@@ -170,9 +174,9 @@ serve(async (req) => {
       error: error instanceof Error ? error.message : "Unknown error",
     };
 
-    return new Response(
-      JSON.stringify(result),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify(result), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

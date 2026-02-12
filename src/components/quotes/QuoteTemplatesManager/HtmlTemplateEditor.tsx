@@ -2002,6 +2002,162 @@ export function HtmlTemplateEditor({
   >("contain");
   const [isConvertingStrip, setIsConvertingStrip] = useState(false);
 
+  // Helper: render HTML string to image via offscreen iframe
+  const htmlStringToImage = useCallback(
+    async (htmlContent: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.top = "-9999px";
+        iframe.style.width = "800px";
+        iframe.style.height = "600px";
+        iframe.style.border = "none";
+        document.body.appendChild(iframe);
+
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              const doc =
+                iframe.contentDocument || iframe.contentWindow?.document;
+              if (!doc) {
+                document.body.removeChild(iframe);
+                resolve("");
+                return;
+              }
+              // Use canvas to capture
+              const body = doc.body;
+              const width = Math.max(body.scrollWidth, 800);
+              const height = Math.max(body.scrollHeight, 100);
+
+              const canvas = document.createElement("canvas");
+              const scale = 2;
+              canvas.width = width * scale;
+              canvas.height = height * scale;
+              const ctx = canvas.getContext("2d")!;
+              ctx.scale(scale, scale);
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, width, height);
+
+              // Serialize to SVG foreignObject for rendering
+              const svgData = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+                <foreignObject width="100%" height="100%">
+                  <div xmlns="http://www.w3.org/1999/xhtml">
+                    ${body.innerHTML}
+                  </div>
+                </foreignObject>
+              </svg>`;
+              const svgBlob = new Blob([svgData], {
+                type: "image/svg+xml;charset=utf-8",
+              });
+              const url = URL.createObjectURL(svgBlob);
+              const img = new window.Image();
+              img.onload = () => {
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                document.body.removeChild(iframe);
+                resolve(canvas.toDataURL("image/png"));
+              };
+              img.onerror = () => {
+                URL.revokeObjectURL(url);
+                document.body.removeChild(iframe);
+                resolve("");
+              };
+              img.src = url;
+            } catch {
+              document.body.removeChild(iframe);
+              resolve("");
+            }
+          }, 500); // Wait for content to render
+        };
+
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(
+            `<!DOCTYPE html><html><head><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}</style></head><body>${htmlContent}</body></html>`,
+          );
+          doc.close();
+        }
+      });
+    },
+    [],
+  );
+
+  // === Convert PDF / Word / HTML file to image data URL ===
+  const convertFileToImage = useCallback(
+    async (file: File): Promise<string> => {
+      const fileType = file.type;
+      const fileName = file.name.toLowerCase();
+
+      // PDF → render first page to canvas
+      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const scale = 3; // High quality
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        return canvas.toDataURL("image/png");
+      }
+
+      // Word (.docx) → convert to HTML → render to canvas
+      if (
+        fileType ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        fileName.endsWith(".docx") ||
+        fileName.endsWith(".doc")
+      ) {
+        const mammoth = await import("mammoth");
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.default.convertToHtml(
+          { arrayBuffer },
+          {
+            convertImage: mammoth.default.images.imgElement(function (
+              image: any,
+            ) {
+              return image.read("base64").then(function (imageBuffer: string) {
+                return {
+                  src: "data:" + image.contentType + ";base64," + imageBuffer,
+                };
+              });
+            }),
+          },
+        );
+        // Render HTML to canvas via hidden iframe
+        return await htmlStringToImage(result.value);
+      }
+
+      // HTML file → read and render to canvas
+      if (
+        fileType === "text/html" ||
+        fileName.endsWith(".html") ||
+        fileName.endsWith(".htm")
+      ) {
+        const text = await file.text();
+        return await htmlStringToImage(text);
+      }
+
+      // Regular image - just read as data URL
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    },
+    [],
+  );
+
   // === Strip Maker Functions ===
   const handleStripFileUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2107,162 +2263,6 @@ export function HtmlTemplateEditor({
       }));
     }
   }, [generateStripImage]);
-
-  // === Convert PDF / Word / HTML file to image data URL ===
-  const convertFileToImage = useCallback(
-    async (file: File): Promise<string> => {
-      const fileType = file.type;
-      const fileName = file.name.toLowerCase();
-
-      // PDF → render first page to canvas
-      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
-        const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-        const scale = 3; // High quality
-        const viewport = page.getViewport({ scale });
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d")!;
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        return canvas.toDataURL("image/png");
-      }
-
-      // Word (.docx) → convert to HTML → render to canvas
-      if (
-        fileType ===
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-        fileName.endsWith(".docx") ||
-        fileName.endsWith(".doc")
-      ) {
-        const mammoth = await import("mammoth");
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.default.convertToHtml(
-          { arrayBuffer },
-          {
-            convertImage: mammoth.default.images.imgElement(function (
-              image: any,
-            ) {
-              return image.read("base64").then(function (imageBuffer: string) {
-                return {
-                  src: "data:" + image.contentType + ";base64," + imageBuffer,
-                };
-              });
-            }),
-          },
-        );
-        // Render HTML to canvas via hidden iframe
-        return await htmlStringToImage(result.value);
-      }
-
-      // HTML file → read and render to canvas
-      if (
-        fileType === "text/html" ||
-        fileName.endsWith(".html") ||
-        fileName.endsWith(".htm")
-      ) {
-        const text = await file.text();
-        return await htmlStringToImage(text);
-      }
-
-      // Regular image - just read as data URL
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    },
-    [],
-  );
-
-  // Helper: render HTML string to image via offscreen iframe
-  const htmlStringToImage = useCallback(
-    async (htmlContent: string): Promise<string> => {
-      return new Promise((resolve) => {
-        const iframe = document.createElement("iframe");
-        iframe.style.position = "fixed";
-        iframe.style.left = "-9999px";
-        iframe.style.top = "-9999px";
-        iframe.style.width = "800px";
-        iframe.style.height = "600px";
-        iframe.style.border = "none";
-        document.body.appendChild(iframe);
-
-        iframe.onload = () => {
-          setTimeout(() => {
-            try {
-              const doc =
-                iframe.contentDocument || iframe.contentWindow?.document;
-              if (!doc) {
-                document.body.removeChild(iframe);
-                resolve("");
-                return;
-              }
-              // Use canvas to capture
-              const body = doc.body;
-              const width = Math.max(body.scrollWidth, 800);
-              const height = Math.max(body.scrollHeight, 100);
-
-              const canvas = document.createElement("canvas");
-              const scale = 2;
-              canvas.width = width * scale;
-              canvas.height = height * scale;
-              const ctx = canvas.getContext("2d")!;
-              ctx.scale(scale, scale);
-              ctx.fillStyle = "white";
-              ctx.fillRect(0, 0, width, height);
-
-              // Serialize to SVG foreignObject for rendering
-              const svgData = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-                <foreignObject width="100%" height="100%">
-                  <div xmlns="http://www.w3.org/1999/xhtml">
-                    ${body.innerHTML}
-                  </div>
-                </foreignObject>
-              </svg>`;
-              const svgBlob = new Blob([svgData], {
-                type: "image/svg+xml;charset=utf-8",
-              });
-              const url = URL.createObjectURL(svgBlob);
-              const img = new window.Image();
-              img.onload = () => {
-                ctx.drawImage(img, 0, 0);
-                URL.revokeObjectURL(url);
-                document.body.removeChild(iframe);
-                resolve(canvas.toDataURL("image/png"));
-              };
-              img.onerror = () => {
-                URL.revokeObjectURL(url);
-                document.body.removeChild(iframe);
-                resolve("");
-              };
-              img.src = url;
-            } catch {
-              document.body.removeChild(iframe);
-              resolve("");
-            }
-          }, 500); // Wait for content to render
-        };
-
-        const doc = iframe.contentDocument || iframe.contentWindow?.document;
-        if (doc) {
-          doc.open();
-          doc.write(
-            `<!DOCTYPE html><html><head><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}</style></head><body>${htmlContent}</body></html>`,
-          );
-          doc.close();
-        }
-      });
-    },
-    [],
-  );
 
   // DnD sensors for text boxes
   const textBoxSensors = useSensors(

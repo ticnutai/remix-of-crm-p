@@ -70,11 +70,23 @@ export interface DesignSettings {
   };
 }
 
+export interface QuoteTemplateFolder {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  sort_order: number;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface QuoteTemplate {
   id: string;
   name: string;
   description?: string;
   category: string;
+  folder_id?: string | null;
   items: TemplateItem[];
   stages: TemplateStage[];
   payment_schedule: PaymentStep[];
@@ -98,6 +110,20 @@ export interface QuoteTemplate {
   project_details?: any;
   pricing_tiers?: any[];
 }
+
+// צבעי תיקיות
+export const FOLDER_COLORS = [
+  "#d8ac27",
+  "#3b82f6",
+  "#10b981",
+  "#ef4444",
+  "#8b5cf6",
+  "#f59e0b",
+  "#06b6d4",
+  "#ec4899",
+  "#6366f1",
+  "#84cc16",
+];
 
 // קטגוריות - values must match DB CHECK constraint on quote_templates.category
 export const CATEGORIES = [

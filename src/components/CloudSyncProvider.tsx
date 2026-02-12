@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { useCloudPreferences } from "@/hooks/useCloudPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { AutoBackupScheduler } from "@/lib/smartBackup";
+import { useToast } from "@/hooks/use-toast";
 
 // Keys that trigger auto-save when changed
 const WATCH_KEYS = [
@@ -131,10 +132,30 @@ const shouldWatchKey = (key: string): boolean => {
 export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { saveToCloud, loadFromCloud } = useCloudPreferences();
+  const { toast } = useToast();
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
   const hasLoadedFromCloud = useRef(false);
   const isLoadingFromCloud = useRef(false);
   const backupSchedulerRef = useRef<AutoBackupScheduler | null>(null);
+
+  // Listen for auto-backup notifications and show as toast
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type === "success") {
+        toast({ title: "✅ גיבוי אוטומטי הושלם", description: detail.message });
+      } else if (detail?.type === "error") {
+        toast({
+          title: "❌ שגיאת גיבוי",
+          description: detail.message,
+          variant: "destructive",
+        });
+      }
+    };
+    window.addEventListener("auto-backup-notification", handler);
+    return () =>
+      window.removeEventListener("auto-backup-notification", handler);
+  }, [toast]);
 
   // Initialize auto backup scheduler
   useEffect(() => {

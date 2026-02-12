@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout";
 import { useClientData } from "@/hooks/useClientData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { BulkFileUploader } from "@/components/files/BulkFileUploader";
 import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
   Card,
@@ -44,6 +45,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useClientCustomTabs } from "@/hooks/useClientCustomTabs";
+import {
+  useClientCustomFields,
+  CustomFieldValues,
+} from "@/hooks/useClientCustomFields";
+import CustomFieldsSection from "@/components/clients/CustomFieldsSection";
 import {
   AddCustomTabDialog,
   ClientCustomTableTab,
@@ -326,6 +332,20 @@ export default function ClientProfile() {
     migrash: "",
     taba: "",
   });
+  const [editCustomFieldValues, setEditCustomFieldValues] =
+    useState<CustomFieldValues>({});
+
+  // Custom fields hook
+  const {
+    definitions: customFieldDefs,
+    isLoading: customFieldsLoading,
+    addField: addCustomField,
+    deleteField: deleteCustomField,
+    updateField: updateCustomField,
+    parseCustomData,
+    buildCustomData,
+  } = useClientCustomFields();
+
   const [invoiceForm, setInvoiceForm] = useState({
     invoice_number: "",
     amount: "",
@@ -366,8 +386,6 @@ export default function ClientProfile() {
     include_vat: false,
     notes: "",
   });
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Open edit dialog
@@ -387,77 +405,20 @@ export default function ClientProfile() {
         migrash: client.migrash || "",
         taba: client.taba || "",
       });
+      // Load custom field values from client's custom_data
+      setEditCustomFieldValues(parseCustomData((client as any).custom_data));
       setIsEditDialogOpen(true);
     }
   };
 
   // Save client edits
   const handleSaveEdit = async () => {
-    await updateClient(editForm);
+    const customData = buildCustomData(editCustomFieldValues);
+    await updateClient({
+      ...editForm,
+      custom_data: Object.keys(customData).length > 0 ? customData : {},
+    });
     setIsEditDialogOpen(false);
-  };
-
-  // Handle file upload
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles || selectedFiles.length === 0 || !clientId || !user)
-      return;
-
-    setIsUploading(true);
-
-    try {
-      for (const file of Array.from(selectedFiles)) {
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${clientId}/${Date.now()}-${file.name}`;
-
-        // Upload to Supabase storage
-        const { error: uploadError } = await supabase.storage
-          .from("client-files")
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from("client-files")
-          .getPublicUrl(fileName);
-
-        // Insert file record
-        const { error: insertError } = await supabase
-          .from("client_files")
-          .insert({
-            client_id: clientId,
-            file_name: file.name,
-            file_url: urlData.publicUrl,
-            file_size: file.size,
-            file_type: file.type || fileExt,
-            uploaded_by: user.id,
-            uploader_type: "staff",
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      toast({
-        title: "הקבצים הועלו בהצלחה",
-      });
-
-      refresh();
-    } catch (error: any) {
-      console.error("Error uploading file:", error);
-      toast({
-        title: "שגיאה בהעלאת הקבצים",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
   };
 
   // Create invoice
@@ -845,6 +806,39 @@ export default function ClientProfile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Custom Fields Display */}
+        {(() => {
+          const clientCustomData = (client as any)?.custom_data;
+          const customValues = parseCustomData(clientCustomData);
+          const filledFields = customFieldDefs.filter(
+            (def) => customValues[def.field_key],
+          );
+          if (filledFields.length === 0) return null;
+          return (
+            <Card className="bg-card/95 backdrop-blur-sm border border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    שדות מותאמים
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {filledFields.map((def) => (
+                    <div key={def.id} className="text-sm">
+                      <span className="text-muted-foreground text-xs">
+                        {def.label}
+                      </span>
+                      <p className="font-medium text-foreground">
+                        {customValues[def.field_key]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1469,73 +1463,71 @@ export default function ClientProfile() {
           {/* Files Tab */}
           <TabsContent value="files" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white"
-                  >
-                    {isUploading ? (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4 ml-2" />
-                    )}
-                    העלאת קובץ
-                  </Button>
-                </div>
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                 <CardTitle className="text-lg">קבצים</CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-96">
-                  <div className="divide-y divide-border/30">
-                    {files.map((file) => (
-                      <div
-                        key={file.id}
-                        className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                      >
-                        <Button variant="ghost" size="sm" asChild>
-                          <a
-                            href={file.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <p className="font-medium">{file.file_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {file.file_size
-                                ? `${(file.file_size / 1024).toFixed(1)} KB`
-                                : ""}{" "}
-                              •{" "}
-                              {format(new Date(file.created_at), "dd/MM/yyyy", {
-                                locale: he,
-                              })}
-                            </p>
+              <CardContent className="p-4 space-y-4">
+                {/* Bulk Uploader */}
+                {user && clientId && (
+                  <BulkFileUploader
+                    clientId={clientId}
+                    userId={user.id}
+                    onComplete={() => refresh()}
+                  />
+                )}
+
+                {/* Existing files list */}
+                <div className="border-t border-border/30 pt-4">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3 text-right">
+                    קבצים שהועלו ({files.length})
+                  </h4>
+                  <ScrollArea className="h-72">
+                    <div className="divide-y divide-border/30">
+                      {files.map((file) => (
+                        <div
+                          key={file.id}
+                          className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors"
+                        >
+                          <Button variant="ghost" size="sm" asChild>
+                            <a
+                              href={file.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-medium text-sm">
+                                {file.file_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {file.file_size
+                                  ? `${(file.file_size / 1024).toFixed(1)} KB`
+                                  : ""}{" "}
+                                •{" "}
+                                {format(
+                                  new Date(file.created_at),
+                                  "dd/MM/yyyy",
+                                  {
+                                    locale: he,
+                                  },
+                                )}
+                              </p>
+                            </div>
+                            <FileText className="h-6 w-6 text-[hsl(45,70%,55%)]" />
                           </div>
-                          <FileText className="h-8 w-8 text-[hsl(45,70%,55%)]" />
                         </div>
-                      </div>
-                    ))}
-                    {files.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">
-                        אין קבצים
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
+                      ))}
+                      {files.length === 0 && (
+                        <p className="text-muted-foreground text-center py-6 text-sm">
+                          אין קבצים
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -2242,6 +2234,17 @@ export default function ClientProfile() {
                   </div>
                 </div>
               </div>
+
+              {/* שדות מותאמים אישית */}
+              <CustomFieldsSection
+                definitions={customFieldDefs}
+                values={editCustomFieldValues}
+                onChange={setEditCustomFieldValues}
+                onAddField={addCustomField}
+                onDeleteField={deleteCustomField}
+                onUpdateField={updateCustomField}
+                isLoading={customFieldsLoading}
+              />
 
               <div className="space-y-2">
                 <Label>הערות</Label>

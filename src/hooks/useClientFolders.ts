@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export interface ClientFolder {
   id: string;
@@ -42,9 +42,9 @@ export interface ClientFolderTask {
 
 // Default stages for new folders
 const DEFAULT_FOLDER_STAGES = [
-  { stage_name: 'שלב 1', stage_icon: 'FileText', sort_order: 0 },
-  { stage_name: 'שלב 2', stage_icon: 'Clock', sort_order: 1 },
-  { stage_name: 'שלב 3', stage_icon: 'CheckCircle', sort_order: 2 },
+  { stage_name: "שלב 1", stage_icon: "FileText", sort_order: 0 },
+  { stage_name: "שלב 2", stage_icon: "Clock", sort_order: 1 },
+  { stage_name: "שלב 3", stage_icon: "CheckCircle", sort_order: 2 },
 ];
 
 export function useClientFolders(clientId: string) {
@@ -63,10 +63,10 @@ export function useClientFolders(clientId: string) {
 
       // Load folders
       const { data: foldersData, error: foldersError } = await supabase
-        .from('client_folders')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('sort_order');
+        .from("client_folders")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("sort_order");
 
       if (foldersError) throw foldersError;
 
@@ -77,7 +77,7 @@ export function useClientFolders(clientId: string) {
         setActiveFolderId(foldersData[0].id);
       }
     } catch (error: any) {
-      console.error('Error loading folders:', error);
+      console.error("Error loading folders:", error);
     } finally {
       setLoading(false);
     }
@@ -94,10 +94,10 @@ export function useClientFolders(clientId: string) {
     try {
       // Load stages
       const { data: stagesData, error: stagesError } = await supabase
-        .from('client_folder_stages')
-        .select('*')
-        .eq('folder_id', activeFolderId)
-        .order('sort_order');
+        .from("client_folder_stages")
+        .select("*")
+        .eq("folder_id", activeFolderId)
+        .order("sort_order");
 
       if (stagesError) throw stagesError;
 
@@ -105,12 +105,12 @@ export function useClientFolders(clientId: string) {
 
       // Load tasks for all stages in folder
       if (stagesData && stagesData.length > 0) {
-        const stageIds = stagesData.map(s => s.id);
+        const stageIds = stagesData.map((s) => s.id);
         const { data: tasksData, error: tasksError } = await supabase
-          .from('client_folder_tasks')
-          .select('*')
-          .in('stage_id', stageIds)
-          .order('sort_order');
+          .from("client_folder_tasks")
+          .select("*")
+          .in("stage_id", stageIds)
+          .order("sort_order");
 
         if (tasksError) throw tasksError;
 
@@ -119,7 +119,7 @@ export function useClientFolders(clientId: string) {
         setTasks([]);
       }
     } catch (error: any) {
-      console.error('Error loading stages and tasks:', error);
+      console.error("Error loading stages and tasks:", error);
     }
   }, [activeFolderId]);
 
@@ -134,14 +134,17 @@ export function useClientFolders(clientId: string) {
   }, [loadStagesAndTasks]);
 
   // Add new folder
-  const addFolder = async (folderName: string, folderIcon: string = 'Folder') => {
+  const addFolder = async (
+    folderName: string,
+    folderIcon: string = "Folder",
+  ) => {
     if (!clientId) return null;
 
     try {
       const newSortOrder = folders.length;
 
       const { data: newFolder, error } = await supabase
-        .from('client_folders')
+        .from("client_folders")
         .insert({
           client_id: clientId,
           folder_name: folderName,
@@ -154,21 +157,21 @@ export function useClientFolders(clientId: string) {
       if (error) throw error;
 
       // Create default stages for the folder
-      const stagesToInsert = DEFAULT_FOLDER_STAGES.map(stage => ({
+      const stagesToInsert = DEFAULT_FOLDER_STAGES.map((stage) => ({
         folder_id: newFolder.id,
         ...stage,
       }));
 
       const { error: stagesError } = await supabase
-        .from('client_folder_stages')
+        .from("client_folder_stages")
         .insert(stagesToInsert);
 
       if (stagesError) {
-        console.error('Error creating default stages:', stagesError);
+        console.error("Error creating default stages:", stagesError);
       }
 
       toast({
-        title: 'התיקייה נוצרה בהצלחה',
+        title: "התיקייה נוצרה בהצלחה",
         description: `"${folderName}" נוספה ללקוח`,
       });
 
@@ -176,37 +179,40 @@ export function useClientFolders(clientId: string) {
       setActiveFolderId(newFolder.id);
       return newFolder;
     } catch (error: any) {
-      console.error('Error adding folder:', error);
+      console.error("Error adding folder:", error);
       toast({
-        title: 'שגיאה ביצירת תיקייה',
+        title: "שגיאה ביצירת תיקייה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return null;
     }
   };
 
   // Update folder
-  const updateFolder = async (folderId: string, updates: { folder_name?: string; folder_icon?: string }) => {
+  const updateFolder = async (
+    folderId: string,
+    updates: { folder_name?: string; folder_icon?: string },
+  ) => {
     try {
       const { error } = await supabase
-        .from('client_folders')
+        .from("client_folders")
         .update(updates)
-        .eq('id', folderId);
+        .eq("id", folderId);
 
       if (error) throw error;
 
       toast({
-        title: 'התיקייה עודכנה',
+        title: "התיקייה עודכנה",
       });
 
       await loadFolders();
     } catch (error: any) {
-      console.error('Error updating folder:', error);
+      console.error("Error updating folder:", error);
       toast({
-        title: 'שגיאה בעדכון תיקייה',
+        title: "שגיאה בעדכון תיקייה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -215,45 +221,45 @@ export function useClientFolders(clientId: string) {
   const deleteFolder = async (folderId: string) => {
     try {
       // Delete tasks first
-      const stageIds = stages.filter(s => s.id).map(s => s.id);
+      const stageIds = stages.filter((s) => s.id).map((s) => s.id);
       if (stageIds.length > 0) {
         await supabase
-          .from('client_folder_tasks')
+          .from("client_folder_tasks")
           .delete()
-          .in('stage_id', stageIds);
+          .in("stage_id", stageIds);
       }
 
       // Delete stages
       await supabase
-        .from('client_folder_stages')
+        .from("client_folder_stages")
         .delete()
-        .eq('folder_id', folderId);
+        .eq("folder_id", folderId);
 
       // Delete folder
       const { error } = await supabase
-        .from('client_folders')
+        .from("client_folders")
         .delete()
-        .eq('id', folderId);
+        .eq("id", folderId);
 
       if (error) throw error;
 
       toast({
-        title: 'התיקייה נמחקה',
+        title: "התיקייה נמחקה",
       });
 
       // Reset active folder
       if (activeFolderId === folderId) {
-        const remaining = folders.filter(f => f.id !== folderId);
+        const remaining = folders.filter((f) => f.id !== folderId);
         setActiveFolderId(remaining.length > 0 ? remaining[0].id : null);
       }
 
       await loadFolders();
     } catch (error: any) {
-      console.error('Error deleting folder:', error);
+      console.error("Error deleting folder:", error);
       toast({
-        title: 'שגיאה במחיקת תיקייה',
+        title: "שגיאה במחיקת תיקייה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -268,27 +274,30 @@ export function useClientFolders(clientId: string) {
 
       for (const update of updates) {
         await supabase
-          .from('client_folders')
+          .from("client_folders")
           .update({ sort_order: update.sort_order })
-          .eq('id', update.id);
+          .eq("id", update.id);
       }
 
       setFolders(newOrder.map((f, i) => ({ ...f, sort_order: i })));
     } catch (error: any) {
-      console.error('Error reordering folders:', error);
+      console.error("Error reordering folders:", error);
       await loadFolders();
     }
   };
 
   // Add stage to folder
-  const addStage = async (stageName: string, stageIcon: string = 'FileText') => {
+  const addStage = async (
+    stageName: string,
+    stageIcon: string = "FileText",
+  ) => {
     if (!activeFolderId) return null;
 
     try {
       const newSortOrder = stages.length;
 
       const { data: newStage, error } = await supabase
-        .from('client_folder_stages')
+        .from("client_folder_stages")
         .insert({
           folder_id: activeFolderId,
           stage_name: stageName,
@@ -301,39 +310,42 @@ export function useClientFolders(clientId: string) {
       if (error) throw error;
 
       toast({
-        title: 'השלב נוסף בהצלחה',
+        title: "השלב נוסף בהצלחה",
       });
 
       await loadStagesAndTasks();
       return newStage;
     } catch (error: any) {
-      console.error('Error adding stage:', error);
+      console.error("Error adding stage:", error);
       toast({
-        title: 'שגיאה בהוספת שלב',
+        title: "שגיאה בהוספת שלב",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return null;
     }
   };
 
   // Update stage
-  const updateStage = async (stageId: string, updates: { stage_name?: string; stage_icon?: string }) => {
+  const updateStage = async (
+    stageId: string,
+    updates: { stage_name?: string; stage_icon?: string },
+  ) => {
     try {
       const { error } = await supabase
-        .from('client_folder_stages')
+        .from("client_folder_stages")
         .update(updates)
-        .eq('id', stageId);
+        .eq("id", stageId);
 
       if (error) throw error;
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error updating stage:', error);
+      console.error("Error updating stage:", error);
       toast({
-        title: 'שגיאה בעדכון שלב',
+        title: "שגיאה בעדכון שלב",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -343,29 +355,29 @@ export function useClientFolders(clientId: string) {
     try {
       // Delete tasks first
       await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .delete()
-        .eq('stage_id', stageId);
+        .eq("stage_id", stageId);
 
       // Delete stage
       const { error } = await supabase
-        .from('client_folder_stages')
+        .from("client_folder_stages")
         .delete()
-        .eq('id', stageId);
+        .eq("id", stageId);
 
       if (error) throw error;
 
       toast({
-        title: 'השלב נמחק',
+        title: "השלב נמחק",
       });
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error deleting stage:', error);
+      console.error("Error deleting stage:", error);
       toast({
-        title: 'שגיאה במחיקת שלב',
+        title: "שגיאה במחיקת שלב",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -373,11 +385,11 @@ export function useClientFolders(clientId: string) {
   // Add task
   const addTask = async (stageId: string, title: string) => {
     try {
-      const stageTasks = tasks.filter(t => t.stage_id === stageId);
+      const stageTasks = tasks.filter((t) => t.stage_id === stageId);
       const newSortOrder = stageTasks.length;
 
       const { data: newTask, error } = await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .insert({
           stage_id: stageId,
           title,
@@ -392,11 +404,11 @@ export function useClientFolders(clientId: string) {
       await loadStagesAndTasks();
       return newTask;
     } catch (error: any) {
-      console.error('Error adding task:', error);
+      console.error("Error adding task:", error);
       toast({
-        title: 'שגיאה בהוספת משימה',
+        title: "שגיאה בהוספת משימה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return null;
     }
@@ -405,10 +417,10 @@ export function useClientFolders(clientId: string) {
   // Add bulk tasks
   const addBulkTasks = async (stageId: string, titles: string[]) => {
     try {
-      const stageTasks = tasks.filter(t => t.stage_id === stageId);
+      const stageTasks = tasks.filter((t) => t.stage_id === stageId);
       let sortOrder = stageTasks.length;
 
-      const tasksToInsert = titles.map(title => ({
+      const tasksToInsert = titles.map((title) => ({
         stage_id: stageId,
         title: title.trim(),
         completed: false,
@@ -416,7 +428,7 @@ export function useClientFolders(clientId: string) {
       }));
 
       const { error } = await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .insert(tasksToInsert);
 
       if (error) throw error;
@@ -427,55 +439,58 @@ export function useClientFolders(clientId: string) {
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error adding bulk tasks:', error);
+      console.error("Error adding bulk tasks:", error);
       toast({
-        title: 'שגיאה בהוספת משימות',
+        title: "שגיאה בהוספת משימות",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   // Toggle task completion
   const toggleTask = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
     try {
       const newCompleted = !task.completed;
       const { error } = await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .update({
           completed: newCompleted,
           completed_at: newCompleted ? new Date().toISOString() : null,
         })
-        .eq('id', taskId);
+        .eq("id", taskId);
 
       if (error) throw error;
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error toggling task:', error);
+      console.error("Error toggling task:", error);
     }
   };
 
   // Update task
-  const updateTask = async (taskId: string, updates: Partial<ClientFolderTask>) => {
+  const updateTask = async (
+    taskId: string,
+    updates: Partial<ClientFolderTask>,
+  ) => {
     try {
       const { error } = await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .update(updates)
-        .eq('id', taskId);
+        .eq("id", taskId);
 
       if (error) throw error;
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error updating task:', error);
+      console.error("Error updating task:", error);
       toast({
-        title: 'שגיאה בעדכון משימה',
+        title: "שגיאה בעדכון משימה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -484,19 +499,19 @@ export function useClientFolders(clientId: string) {
   const deleteTask = async (taskId: string) => {
     try {
       const { error } = await supabase
-        .from('client_folder_tasks')
+        .from("client_folder_tasks")
         .delete()
-        .eq('id', taskId);
+        .eq("id", taskId);
 
       if (error) throw error;
 
       await loadStagesAndTasks();
     } catch (error: any) {
-      console.error('Error deleting task:', error);
+      console.error("Error deleting task:", error);
       toast({
-        title: 'שגיאה במחיקת משימה',
+        title: "שגיאה במחיקת משימה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -511,20 +526,23 @@ export function useClientFolders(clientId: string) {
 
       for (const update of updates) {
         await supabase
-          .from('client_folder_stages')
+          .from("client_folder_stages")
           .update({ sort_order: update.sort_order })
-          .eq('id', update.id);
+          .eq("id", update.id);
       }
 
       setStages(newOrder);
     } catch (error: any) {
-      console.error('Error reordering stages:', error);
+      console.error("Error reordering stages:", error);
       await loadStagesAndTasks();
     }
   };
 
   // Reorder tasks
-  const reorderTasks = async (stageId: string, newOrder: ClientFolderTask[]) => {
+  const reorderTasks = async (
+    stageId: string,
+    newOrder: ClientFolderTask[],
+  ) => {
     try {
       const updates = newOrder.map((task, index) => ({
         id: task.id,
@@ -533,18 +551,18 @@ export function useClientFolders(clientId: string) {
 
       for (const update of updates) {
         await supabase
-          .from('client_folder_tasks')
+          .from("client_folder_tasks")
           .update({ sort_order: update.sort_order })
-          .eq('id', update.id);
+          .eq("id", update.id);
       }
 
       // Update local state
-      setTasks(prev => {
-        const otherTasks = prev.filter(t => t.stage_id !== stageId);
+      setTasks((prev) => {
+        const otherTasks = prev.filter((t) => t.stage_id !== stageId);
         return [...otherTasks, ...newOrder];
       });
     } catch (error: any) {
-      console.error('Error reordering tasks:', error);
+      console.error("Error reordering tasks:", error);
       await loadStagesAndTasks();
     }
   };
@@ -552,7 +570,7 @@ export function useClientFolders(clientId: string) {
   // Duplicate folder (copy all stages and tasks)
   const duplicateFolder = async (folderId: string, newName: string) => {
     try {
-      const sourceFolder = folders.find(f => f.id === folderId);
+      const sourceFolder = folders.find((f) => f.id === folderId);
       if (!sourceFolder) return null;
 
       // Create new folder
@@ -561,10 +579,10 @@ export function useClientFolders(clientId: string) {
 
       // Get source stages
       const { data: sourceStages } = await supabase
-        .from('client_folder_stages')
-        .select('*')
-        .eq('folder_id', folderId)
-        .order('sort_order');
+        .from("client_folder_stages")
+        .select("*")
+        .eq("folder_id", folderId)
+        .order("sort_order");
 
       if (!sourceStages) return newFolder;
 
@@ -572,7 +590,7 @@ export function useClientFolders(clientId: string) {
       for (const sourceStage of sourceStages) {
         // Create new stage
         const { data: newStage, error: stageError } = await supabase
-          .from('client_folder_stages')
+          .from("client_folder_stages")
           .insert({
             folder_id: newFolder.id,
             stage_name: sourceStage.stage_name,
@@ -586,14 +604,14 @@ export function useClientFolders(clientId: string) {
 
         // Get source tasks for this stage
         const { data: sourceTasks } = await supabase
-          .from('client_folder_tasks')
-          .select('*')
-          .eq('stage_id', sourceStage.id)
-          .order('sort_order');
+          .from("client_folder_tasks")
+          .select("*")
+          .eq("stage_id", sourceStage.id)
+          .order("sort_order");
 
         if (sourceTasks && sourceTasks.length > 0) {
           // Copy tasks
-          const tasksToInsert = sourceTasks.map(task => ({
+          const tasksToInsert = sourceTasks.map((task) => ({
             stage_id: newStage.id,
             title: task.title,
             completed: false, // Reset completion status
@@ -604,34 +622,32 @@ export function useClientFolders(clientId: string) {
             target_working_days: task.target_working_days,
           }));
 
-          await supabase
-            .from('client_folder_tasks')
-            .insert(tasksToInsert);
+          await supabase.from("client_folder_tasks").insert(tasksToInsert);
         }
       }
 
       toast({
-        title: 'התיקייה שוכפלה בהצלחה',
+        title: "התיקייה שוכפלה בהצלחה",
       });
 
       await loadFolders();
       setActiveFolderId(newFolder.id);
       return newFolder;
     } catch (error: any) {
-      console.error('Error duplicating folder:', error);
+      console.error("Error duplicating folder:", error);
       toast({
-        title: 'שגיאה בשכפול תיקייה',
+        title: "שגיאה בשכפול תיקייה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return null;
     }
   };
 
   // Get stages with tasks
-  const stagesWithTasks = stages.map(stage => ({
+  const stagesWithTasks = stages.map((stage) => ({
     ...stage,
-    tasks: tasks.filter(t => t.stage_id === stage.id),
+    tasks: tasks.filter((t) => t.stage_id === stage.id),
   }));
 
   return {
