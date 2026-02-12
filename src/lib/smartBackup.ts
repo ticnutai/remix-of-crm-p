@@ -654,14 +654,18 @@ export class AutoBackupScheduler {
 
     // בדיקת יום בשבוע (אם מוגדר)
     const daysOfWeek = this.config.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6];
-    if (this.config.frequency !== "monthly" && !daysOfWeek.includes(now.getDay())) {
+    if (
+      this.config.frequency !== "monthly" &&
+      !daysOfWeek.includes(now.getDay())
+    ) {
       return false;
     }
 
     // רשימת כל השעות המתוכננות
-    const times = this.config.timesPerDay > 1 && this.config.customTimes?.length > 0
-      ? this.config.customTimes
-      : [this.config.time];
+    const times =
+      this.config.timesPerDay > 1 && this.config.customTimes?.length > 0
+        ? this.config.customTimes
+        : [this.config.time];
 
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
@@ -1048,9 +1052,10 @@ export class AutoBackupScheduler {
    */
   private calculateNextBackup(lastBackup: Date | null): Date | null {
     const now = new Date();
-    const times = this.config.timesPerDay > 1 && this.config.customTimes?.length > 0
-      ? this.config.customTimes.sort()
-      : [this.config.time || "02:00"];
+    const times =
+      this.config.timesPerDay > 1 && this.config.customTimes?.length > 0
+        ? this.config.customTimes.sort()
+        : [this.config.time || "02:00"];
     const daysOfWeek = this.config.daysOfWeek ?? [0, 1, 2, 3, 4, 5, 6];
 
     if (this.config.frequency === "hourly") {
@@ -1072,7 +1077,10 @@ export class AutoBackupScheduler {
       const candidate = new Date(now);
       candidate.setDate(candidate.getDate() + dayOffset);
 
-      if (this.config.frequency === "weekly" || this.config.frequency === "custom") {
+      if (
+        this.config.frequency === "weekly" ||
+        this.config.frequency === "custom"
+      ) {
         if (!daysOfWeek.includes(candidate.getDay())) continue;
       }
 

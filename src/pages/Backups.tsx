@@ -539,35 +539,36 @@ function AutoBackupSettings() {
           </div>
 
           {/* Days of Week - for weekly / custom / daily */}
-          {config?.frequency !== "hourly" && config?.frequency !== "monthly" && (
-            <div className="space-y-2">
-              <Label>ימים בשבוע</Label>
-              <div className="flex gap-1.5 flex-wrap">
-                {DAY_LABELS.map((day) => {
-                  const isSelected = selectedDays.includes(day.value);
-                  return (
-                    <button
-                      key={day.value}
-                      onClick={() => toggleDay(day.value)}
-                      className={cn(
-                        "w-9 h-9 rounded-full text-sm font-medium transition-colors border",
-                        isSelected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted text-muted-foreground border-muted hover:bg-muted/80"
-                      )}
-                    >
-                      {day.label}
-                    </button>
-                  );
-                })}
+          {config?.frequency !== "hourly" &&
+            config?.frequency !== "monthly" && (
+              <div className="space-y-2">
+                <Label>ימים בשבוע</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {DAY_LABELS.map((day) => {
+                    const isSelected = selectedDays.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        onClick={() => toggleDay(day.value)}
+                        className={cn(
+                          "w-9 h-9 rounded-full text-sm font-medium transition-colors border",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-muted hover:bg-muted/80",
+                        )}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {selectedDays.length === 7
+                    ? "כל יום"
+                    : `${selectedDays.length} ימים בשבוע`}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {selectedDays.length === 7
-                  ? "כל יום"
-                  : `${selectedDays.length} ימים בשבוע`}
-              </p>
-            </div>
-          )}
+            )}
 
           {/* Times per day */}
           {config?.frequency !== "hourly" && (
@@ -595,10 +596,7 @@ function AutoBackupSettings() {
                 {Array.from({ length: timesPerDay }).map((_, i) => (
                   <div key={i} className="flex items-center justify-between">
                     <Label className="text-sm text-muted-foreground">
-                      {timesPerDay === 1
-                        ? "שעת גיבוי"
-                        : `גיבוי ${i + 1}`
-                      }
+                      {timesPerDay === 1 ? "שעת גיבוי" : `גיבוי ${i + 1}`}
                     </Label>
                     <Input
                       type="time"
@@ -657,15 +655,21 @@ function AutoBackupSettings() {
             <p className="font-medium">📅 סיכום תזמון</p>
             <p className="text-muted-foreground">
               {config?.frequency === "hourly" && "כל שעה, כל יום"}
-              {config?.frequency === "monthly" && `פעם בחודש בשעה ${customTimes[0] || config?.time}`}
-              {(config?.frequency === "daily" || config?.frequency === "weekly" || config?.frequency === "custom") && (
+              {config?.frequency === "monthly" &&
+                `פעם בחודש בשעה ${customTimes[0] || config?.time}`}
+              {(config?.frequency === "daily" ||
+                config?.frequency === "weekly" ||
+                config?.frequency === "custom") && (
                 <>
-                  {selectedDays.length === 7 ? "כל יום" : DAY_LABELS.filter(d => selectedDays.includes(d.value)).map(d => d.label).join(", ")}
+                  {selectedDays.length === 7
+                    ? "כל יום"
+                    : DAY_LABELS.filter((d) => selectedDays.includes(d.value))
+                        .map((d) => d.label)
+                        .join(", ")}
                   {" • "}
                   {timesPerDay === 1
                     ? `בשעה ${customTimes[0] || config?.time}`
-                    : `${timesPerDay} פעמים: ${customTimes.join(", ")}`
-                  }
+                    : `${timesPerDay} פעמים: ${customTimes.join(", ")}`}
                 </>
               )}
             </p>
@@ -826,7 +830,7 @@ export default function Backups() {
   const [selectedCloudBackup, setSelectedCloudBackup] =
     useState<CloudBackup | null>(null);
   const [restoringCloud, setRestoringCloud] = useState(false);
-  const [runningManualBackup, setRunningManualBackup] = useState(false);
+  const [showAutoBackupSettings, setShowAutoBackupSettings] = useState(false);
   const [isContactsImportOpen, setIsContactsImportOpen] = useState(false);
   const [importPhases, setImportPhases] = useState<ImportPhase[]>([]);
   const [currentImportPhase, setCurrentImportPhase] = useState<string>("");
@@ -863,33 +867,6 @@ export default function Backups() {
       console.error("Error:", error);
     } finally {
       setLoadingCloudBackups(false);
-    }
-  };
-
-  // Run manual cloud backup
-  const runManualBackup = async () => {
-    setRunningManualBackup(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("auto-backup");
-
-      if (error) throw error;
-
-      toast({
-        title: "גיבוי הושלם",
-        description: `נשמרו ${data?.totalRecords || 0} רשומות`,
-      });
-
-      // Refresh list
-      await fetchCloudBackups();
-    } catch (error) {
-      console.error("Backup error:", error);
-      toast({
-        title: "שגיאה בגיבוי",
-        description: error instanceof Error ? error.message : "שגיאה לא ידועה",
-        variant: "destructive",
-      });
-    } finally {
-      setRunningManualBackup(false);
     }
   };
 
@@ -3877,22 +3854,24 @@ export default function Backups() {
                   />
                 </Button>
                 <Button
-                  variant="default"
+                  variant={showAutoBackupSettings ? "default" : "outline"}
                   size="sm"
-                  onClick={runManualBackup}
-                  disabled={runningManualBackup}
+                  onClick={() => setShowAutoBackupSettings((v) => !v)}
                 >
-                  {runningManualBackup ? (
-                    <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                  ) : (
-                    <Play className="h-4 w-4 ml-2" />
-                  )}
-                  גיבוי עכשיו
+                  <Settings2 className="h-4 w-4 ml-2" />
+                  הגדרות
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
+            {/* Collapsible Auto Backup Settings */}
+            {showAutoBackupSettings && (
+              <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+                <AutoBackupSettings />
+              </div>
+            )}
+
             {loadingCloudBackups ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -3902,7 +3881,7 @@ export default function Backups() {
                 <Cloud className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p className="text-lg">אין גיבויים בענן</p>
                 <p className="text-sm">
-                  הגדר את הגיבוי האוטומטי למטה, או לחץ על "גיבוי עכשיו"
+                  לחץ על "הגדרות" כדי להגדיר גיבוי אוטומטי
                 </p>
               </div>
             ) : (
@@ -4006,22 +3985,6 @@ export default function Backups() {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Auto Backup Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-orange-500" />
-              גיבוי אוטומטי
-            </CardTitle>
-            <CardDescription>
-              הגדרות גיבוי אוטומטי • נשמר לענן ולמחשב
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <AutoBackupSettings />
           </CardContent>
         </Card>
 
