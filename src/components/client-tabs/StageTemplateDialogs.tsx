@@ -433,6 +433,7 @@ interface ApplyTemplateDialogProps {
   clientId: string;
   existingStagesCount: number;
   onApplied?: () => void;
+  folderId?: string | null;
 }
 
 export function ApplyTemplateDialog({
@@ -441,6 +442,7 @@ export function ApplyTemplateDialog({
   clientId,
   existingStagesCount,
   onApplied,
+  folderId,
 }: ApplyTemplateDialogProps) {
   const { templates, loading, applyTemplate, deleteTemplate, updateTemplate } =
     useStageTemplates();
@@ -463,6 +465,7 @@ export function ApplyTemplateDialog({
       templateId,
       clientId,
       existingStagesCount,
+      folderId,
     );
     setApplying(false);
 
@@ -751,6 +754,7 @@ interface CopyStagesDialogProps {
   onOpenChange: (open: boolean) => void;
   targetClientId: string;
   onCopied?: () => void;
+  folderId?: string | null;
 }
 
 export function CopyStagesDialog({
@@ -758,6 +762,7 @@ export function CopyStagesDialog({
   onOpenChange,
   targetClientId,
   onCopied,
+  folderId,
 }: CopyStagesDialogProps) {
   const { getClientsForCopy, getClientStages, copyStagesFromClient } =
     useStageTemplates();
@@ -815,6 +820,7 @@ export function CopyStagesDialog({
       selectedClient,
       targetClientId,
       Array.from(selectedStages),
+      folderId,
     );
     setCopying(false);
 

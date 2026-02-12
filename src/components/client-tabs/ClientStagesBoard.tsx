@@ -105,10 +105,11 @@ import {
   ApplyTemplateDialog,
   CopyStagesDialog,
 } from "./StageTemplateDialogs";
+import { useClientFolders } from "@/hooks/useClientFolders";
+import { Folder, FolderPlus } from "lucide-react";
+
 interface ClientStagesBoardProps {
   clientId: string;
-  filterByFolderId?: string | null;
-  filterByFolderName?: string;
 }
 
 // Icon mapping
@@ -1336,11 +1337,7 @@ function SortableStageItem({
     </div>
   );
 }
-export function ClientStagesBoard({
-  clientId,
-  filterByFolderId,
-  filterByFolderName,
-}: ClientStagesBoardProps) {
+export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
   const {
     stages: allStages,
     loading,
@@ -1367,13 +1364,32 @@ export function ClientStagesBoard({
     copyStageData,
     pasteStageData,
     refresh,
+    assignStageToFolder,
   } = useClientStages(clientId);
 
-  // Filter stages by folder if filter is provided
-  const stages =
-    filterByFolderId !== undefined
-      ? allStages.filter((s) => s.folder_id === filterByFolderId)
-      : allStages;
+  // Folder system
+  const {
+    folders,
+    loading: foldersLoading,
+    addFolder: createFolder,
+    updateFolder,
+    deleteFolder,
+    refresh: refreshFolders,
+  } = useClientFolders(clientId);
+
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [addFolderDialog, setAddFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [editingFolder, setEditingFolder] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [renameFolderDialog, setRenameFolderDialog] = useState(false);
+
+  // Filter stages by selected folder
+  const stages = selectedFolderId
+    ? allStages.filter((s) => s.folder_id === selectedFolderId)
+    : allStages.filter((s) => !s.folder_id);
 
   const [addingTask, setAddingTask] = useState<{
     stageId: string;
@@ -1563,7 +1579,12 @@ export function ClientStagesBoard({
   };
   const handleAddStage = async () => {
     if (!newStageName.trim()) return;
-    await addStage(newStageName, newStageIcon);
+    const newStage = await addStage(newStageName, newStageIcon);
+    // If a folder is selected, assign the new stage to it
+    if (newStage && selectedFolderId) {
+      await assignStageToFolder(newStage.id, selectedFolderId);
+      refresh();
+    }
     setNewStageName("");
     setNewStageIcon("Phone");
     setAddStageDialog(false);
@@ -1746,16 +1767,131 @@ export function ClientStagesBoard({
   }
   return (
     <div className="space-y-4">
-      {/* Folder Filter Indicator */}
-      {filterByFolderName && (
-        <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
-          <FolderOpen className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium">
-            מציג שלבים מתיקייה: {filterByFolderName}
-          </span>
-          <Badge variant="secondary">{stages.length} שלבים</Badge>
-        </div>
-      )}
+      {/* Folder Tabs Bar */}
+      <div
+        className="flex items-center gap-2 flex-wrap pt-6 pb-2 px-2 bg-gradient-to-r from-[hsl(222,47%,14%)] to-[hsl(222,47%,18%)] rounded-xl border border-[hsl(222,47%,25%)]/50 relative"
+        dir="rtl"
+      >
+        {/* "All stages" tab */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={cn(
+            "h-8 px-3 gap-2 rounded-lg transition-all font-medium",
+            selectedFolderId === null
+              ? "bg-gradient-to-r from-yellow-500/90 to-amber-500/90 text-slate-900 shadow-md shadow-yellow-500/20 hover:from-yellow-500 hover:to-amber-500"
+              : "text-slate-300 hover:text-white hover:bg-white/10",
+          )}
+          onClick={() => setSelectedFolderId(null)}
+        >
+          <Layers className="h-4 w-4" />
+          כל השלבים
+          <Badge
+            variant="secondary"
+            className={cn(
+              "text-xs h-5 px-1.5",
+              selectedFolderId === null
+                ? "bg-slate-900/20 text-slate-900"
+                : "bg-white/10 text-slate-400",
+            )}
+          >
+            {allStages.filter((s) => !s.folder_id).length}
+          </Badge>
+        </Button>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-[hsl(222,47%,30%)]" />
+
+        {/* Folder tabs */}
+        {folders.map((folder) => {
+          const folderStagesCount = allStages.filter(
+            (s) => s.folder_id === folder.id,
+          ).length;
+          const isActive = selectedFolderId === folder.id;
+          return (
+            <div
+              key={folder.id}
+              className="relative group/folder flex flex-col items-center"
+            >
+              {/* Edit/Delete buttons above the folder tab */}
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity z-10">
+                <button
+                  className="h-5 w-5 flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
+                  title="ערוך שם תיקייה"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingFolder({
+                      id: folder.id,
+                      name: folder.folder_name,
+                    });
+                    setRenameFolderDialog(true);
+                  }}
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+                <button
+                  className="h-5 w-5 flex items-center justify-center rounded bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white transition-colors"
+                  title="מחק תיקייה"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`למחוק את התיקייה "${folder.folder_name}"?`))
+                      return;
+                    const folderStages = allStages.filter(
+                      (s) => s.folder_id === folder.id,
+                    );
+                    for (const s of folderStages) {
+                      await assignStageToFolder(s.id, null);
+                    }
+                    await deleteFolder(folder.id);
+                    if (selectedFolderId === folder.id) {
+                      setSelectedFolderId(null);
+                    }
+                    await refreshFolders();
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  "h-8 px-3 gap-2 rounded-lg transition-all font-medium",
+                  isActive
+                    ? "bg-gradient-to-r from-yellow-500/90 to-amber-500/90 text-slate-900 shadow-md shadow-yellow-500/20 hover:from-yellow-500 hover:to-amber-500"
+                    : "text-slate-300 hover:text-white hover:bg-white/10",
+                )}
+                onClick={() => setSelectedFolderId(folder.id)}
+              >
+                <Folder className="h-4 w-4" />
+                {folder.folder_name}
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "text-xs h-5 px-1.5",
+                    isActive
+                      ? "bg-slate-900/20 text-slate-900"
+                      : "bg-white/10 text-slate-400",
+                  )}
+                >
+                  {folderStagesCount}
+                </Badge>
+              </Button>
+            </div>
+          );
+        })}
+
+        {/* Add folder button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 px-3 gap-1 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg border border-dashed border-[hsl(222,47%,30%)] hover:border-yellow-500/50"
+          onClick={() => setAddFolderDialog(true)}
+        >
+          <FolderPlus className="h-4 w-4" />
+          תיקייה חדשה
+        </Button>
+      </div>
 
       {/* Stage Management Buttons */}
       <div className="flex justify-start gap-2 flex-wrap">
@@ -2122,6 +2258,72 @@ export function ClientStagesBoard({
                     >
                       <BookTemplate className="h-3.5 w-3.5" />
                     </Button>
+
+                    {/* Move to Folder */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
+                          className={cn(
+                            "h-7 w-7 p-0",
+                            isActiveStage &&
+                              !isStageCompleted &&
+                              "hover:bg-white/20",
+                            stage.folder_id && "text-amber-400",
+                          )}
+                          title="העבר לתיקייה"
+                        >
+                          <Folder className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="end">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-medium text-center py-1 text-muted-foreground">
+                            העבר לתיקייה
+                          </p>
+                          <button
+                            className={cn(
+                              "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted/50 transition-colors text-right",
+                              !stage.folder_id &&
+                                "bg-amber-500/10 text-amber-500 font-medium",
+                            )}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await assignStageToFolder(stage.id, null);
+                              refresh();
+                            }}
+                          >
+                            <Layers className="h-3.5 w-3.5" />
+                            ללא תיקייה
+                          </button>
+                          {folders.map((f) => (
+                            <button
+                              key={f.id}
+                              className={cn(
+                                "w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-muted/50 transition-colors text-right",
+                                stage.folder_id === f.id &&
+                                  "bg-amber-500/10 text-amber-500 font-medium",
+                              )}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await assignStageToFolder(stage.id, f.id);
+                                refresh();
+                              }}
+                            >
+                              <Folder className="h-3.5 w-3.5" />
+                              {f.folder_name}
+                            </button>
+                          ))}
+                          {folders.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-2">
+                              אין תיקיות. צור תיקייה חדשה למעלה.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
 
                     {/* Timer Controls - in hover actions */}
                     {!stage.started_at ? (
@@ -3292,6 +3494,7 @@ export function ClientStagesBoard({
         clientId={clientId}
         existingStagesCount={sortedStages.length}
         onApplied={refresh}
+        folderId={selectedFolderId}
       />
 
       <SaveAllStagesDialog
@@ -3306,6 +3509,7 @@ export function ClientStagesBoard({
         onOpenChange={setCopyStagesDialog}
         targetClientId={clientId}
         onCopied={refresh}
+        folderId={selectedFolderId}
       />
 
       {saveAsTemplateDialog && (
@@ -3315,6 +3519,120 @@ export function ClientStagesBoard({
           stage={sortedStages.find((s) => s.stage_id === saveAsTemplateDialog)!}
         />
       )}
+
+      {/* Add Folder Dialog */}
+      <Dialog open={addFolderDialog} onOpenChange={setAddFolderDialog}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle>תיקייה חדשה</DialogTitle>
+            <DialogDescription className="text-right">
+              הוסף תיקייה חדשה לארגון השלבים
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="שם התיקייה..."
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              className="text-right"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newFolderName.trim()) {
+                  createFolder(newFolderName.trim());
+                  setNewFolderName("");
+                  setAddFolderDialog(false);
+                  refreshFolders();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={async () => {
+                if (newFolderName.trim()) {
+                  await createFolder(newFolderName.trim());
+                  setNewFolderName("");
+                  setAddFolderDialog(false);
+                  await refreshFolders();
+                }
+              }}
+              disabled={!newFolderName.trim()}
+              className="gap-2"
+            >
+              <FolderPlus className="h-4 w-4" />
+              צור תיקייה
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddFolderDialog(false);
+                setNewFolderName("");
+              }}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Folder Dialog */}
+      <Dialog open={renameFolderDialog} onOpenChange={setRenameFolderDialog}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle>שנה שם תיקייה</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="שם חדש..."
+              value={editingFolder?.name || ""}
+              onChange={(e) =>
+                setEditingFolder((prev) =>
+                  prev ? { ...prev, name: e.target.value } : null,
+                )
+              }
+              className="text-right"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && editingFolder?.name.trim()) {
+                  updateFolder(editingFolder.id, {
+                    folder_name: editingFolder.name.trim(),
+                  });
+                  setRenameFolderDialog(false);
+                  setEditingFolder(null);
+                  refreshFolders();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={async () => {
+                if (editingFolder?.name.trim()) {
+                  await updateFolder(editingFolder.id, {
+                    folder_name: editingFolder.name.trim(),
+                  });
+                  setRenameFolderDialog(false);
+                  setEditingFolder(null);
+                  await refreshFolders();
+                }
+              }}
+              disabled={!editingFolder?.name.trim()}
+            >
+              <Save className="h-4 w-4 ml-2" />
+              שמור
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameFolderDialog(false);
+                setEditingFolder(null);
+              }}
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

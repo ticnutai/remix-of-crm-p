@@ -1987,38 +1987,51 @@ export function HtmlTemplateEditor({
   // === Strip Maker State ===
   const stripMakerInputRef = useRef<HTMLInputElement>(null);
   const [stripSourceImage, setStripSourceImage] = useState<string | null>(null);
-  const [stripSourceDimensions, setStripSourceDimensions] = useState({ w: 0, h: 0 });
+  const [stripSourceDimensions, setStripSourceDimensions] = useState({
+    w: 0,
+    h: 0,
+  });
   const [stripTargetWidth, setStripTargetWidth] = useState(800);
   const [stripTargetHeight, setStripTargetHeight] = useState(150);
   const [stripOffsetX, setStripOffsetX] = useState(0);
   const [stripOffsetY, setStripOffsetY] = useState(0);
   const [stripScale, setStripScale] = useState(100);
   const [stripBgColor, setStripBgColor] = useState("#ffffff");
-  const [stripFitMode, setStripFitMode] = useState<"cover" | "contain" | "stretch" | "manual">("contain");
+  const [stripFitMode, setStripFitMode] = useState<
+    "cover" | "contain" | "stretch" | "manual"
+  >("contain");
   const [isConvertingStrip, setIsConvertingStrip] = useState(false);
 
   // === Strip Maker Functions ===
-  const handleStripFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsConvertingStrip(true);
-    try {
-      const dataUrl = await convertFileToImage(file);
-      if (!dataUrl) { setIsConvertingStrip(false); return; }
-      setStripSourceImage(dataUrl);
-      setStripOffsetX(0);
-      setStripOffsetY(0);
-      setStripScale(100);
-      const img = new window.Image();
-      img.onload = () => {
-        setStripSourceDimensions({ w: img.width, h: img.height });
+  const handleStripFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsConvertingStrip(true);
+      try {
+        const dataUrl = await convertFileToImage(file);
+        if (!dataUrl) {
+          setIsConvertingStrip(false);
+          return;
+        }
+        setStripSourceImage(dataUrl);
+        setStripOffsetX(0);
+        setStripOffsetY(0);
+        setStripScale(100);
+        const img = new window.Image();
+        img.onload = () => {
+          setStripSourceDimensions({ w: img.width, h: img.height });
+          setIsConvertingStrip(false);
+        };
+        img.onerror = () => setIsConvertingStrip(false);
+        img.src = dataUrl;
+      } catch {
         setIsConvertingStrip(false);
-      };
-      img.onerror = () => setIsConvertingStrip(false);
-      img.src = dataUrl;
-    } catch { setIsConvertingStrip(false); }
-    if (e.target) e.target.value = "";
-  }, [convertFileToImage]);
+      }
+      if (e.target) e.target.value = "";
+    },
+    [convertFileToImage],
+  );
 
   const generateStripImage = useCallback((): string | null => {
     if (!stripSourceImage) return null;
@@ -2043,13 +2056,19 @@ export function HtmlTemplateEditor({
       drawX = 0;
       drawY = 0;
     } else if (stripFitMode === "cover") {
-      const ratio = Math.max(stripTargetWidth / img.width, stripTargetHeight / img.height);
+      const ratio = Math.max(
+        stripTargetWidth / img.width,
+        stripTargetHeight / img.height,
+      );
       drawW = img.width * ratio;
       drawH = img.height * ratio;
       drawX = (stripTargetWidth - drawW) / 2 + stripOffsetX;
       drawY = (stripTargetHeight - drawH) / 2 + stripOffsetY;
     } else if (stripFitMode === "contain") {
-      const ratio = Math.min(stripTargetWidth / img.width, stripTargetHeight / img.height);
+      const ratio = Math.min(
+        stripTargetWidth / img.width,
+        stripTargetHeight / img.height,
+      );
       drawW = img.width * ratio * scale;
       drawH = img.height * ratio * scale;
       drawX = (stripTargetWidth - drawW) / 2 + stripOffsetX;
@@ -2064,7 +2083,16 @@ export function HtmlTemplateEditor({
 
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
     return canvas.toDataURL("image/png");
-  }, [stripSourceImage, stripTargetWidth, stripTargetHeight, stripOffsetX, stripOffsetY, stripScale, stripBgColor, stripFitMode]);
+  }, [
+    stripSourceImage,
+    stripTargetWidth,
+    stripTargetHeight,
+    stripOffsetX,
+    stripOffsetY,
+    stripScale,
+    stripBgColor,
+    stripFitMode,
+  ]);
 
   const applyStripAsLogo = useCallback(() => {
     const dataUrl = generateStripImage();
@@ -2081,103 +2109,117 @@ export function HtmlTemplateEditor({
   }, [generateStripImage]);
 
   // === Convert PDF / Word / HTML file to image data URL ===
-  const convertFileToImage = useCallback(async (file: File): Promise<string> => {
-    const fileType = file.type;
-    const fileName = file.name.toLowerCase();
+  const convertFileToImage = useCallback(
+    async (file: File): Promise<string> => {
+      const fileType = file.type;
+      const fileName = file.name.toLowerCase();
 
-    // PDF → render first page to canvas
-    if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1);
-      const scale = 3; // High quality
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      return canvas.toDataURL("image/png");
-    }
+      // PDF → render first page to canvas
+      if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const scale = 3; // High quality
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        return canvas.toDataURL("image/png");
+      }
 
-    // Word (.docx) → convert to HTML → render to canvas
-    if (
-      fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      fileName.endsWith(".docx") ||
-      fileName.endsWith(".doc")
-    ) {
-      const mammoth = await import("mammoth");
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.default.convertToHtml(
-        { arrayBuffer },
-        {
-          convertImage: mammoth.default.images.imgElement(function (image: any) {
-            return image.read("base64").then(function (imageBuffer: string) {
-              return { src: "data:" + image.contentType + ";base64," + imageBuffer };
-            });
-          }),
-        },
-      );
-      // Render HTML to canvas via hidden iframe
-      return await htmlStringToImage(result.value);
-    }
+      // Word (.docx) → convert to HTML → render to canvas
+      if (
+        fileType ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        fileName.endsWith(".docx") ||
+        fileName.endsWith(".doc")
+      ) {
+        const mammoth = await import("mammoth");
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.default.convertToHtml(
+          { arrayBuffer },
+          {
+            convertImage: mammoth.default.images.imgElement(function (
+              image: any,
+            ) {
+              return image.read("base64").then(function (imageBuffer: string) {
+                return {
+                  src: "data:" + image.contentType + ";base64," + imageBuffer,
+                };
+              });
+            }),
+          },
+        );
+        // Render HTML to canvas via hidden iframe
+        return await htmlStringToImage(result.value);
+      }
 
-    // HTML file → read and render to canvas
-    if (fileType === "text/html" || fileName.endsWith(".html") || fileName.endsWith(".htm")) {
-      const text = await file.text();
-      return await htmlStringToImage(text);
-    }
+      // HTML file → read and render to canvas
+      if (
+        fileType === "text/html" ||
+        fileName.endsWith(".html") ||
+        fileName.endsWith(".htm")
+      ) {
+        const text = await file.text();
+        return await htmlStringToImage(text);
+      }
 
-    // Regular image - just read as data URL
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }, []);
+      // Regular image - just read as data URL
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    },
+    [],
+  );
 
   // Helper: render HTML string to image via offscreen iframe
-  const htmlStringToImage = useCallback(async (htmlContent: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.left = "-9999px";
-      iframe.style.top = "-9999px";
-      iframe.style.width = "800px";
-      iframe.style.height = "600px";
-      iframe.style.border = "none";
-      document.body.appendChild(iframe);
+  const htmlStringToImage = useCallback(
+    async (htmlContent: string): Promise<string> => {
+      return new Promise((resolve) => {
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.top = "-9999px";
+        iframe.style.width = "800px";
+        iframe.style.height = "600px";
+        iframe.style.border = "none";
+        document.body.appendChild(iframe);
 
-      iframe.onload = () => {
-        setTimeout(() => {
-          try {
-            const doc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (!doc) {
-              document.body.removeChild(iframe);
-              resolve("");
-              return;
-            }
-            // Use canvas to capture
-            const body = doc.body;
-            const width = Math.max(body.scrollWidth, 800);
-            const height = Math.max(body.scrollHeight, 100);
+        iframe.onload = () => {
+          setTimeout(() => {
+            try {
+              const doc =
+                iframe.contentDocument || iframe.contentWindow?.document;
+              if (!doc) {
+                document.body.removeChild(iframe);
+                resolve("");
+                return;
+              }
+              // Use canvas to capture
+              const body = doc.body;
+              const width = Math.max(body.scrollWidth, 800);
+              const height = Math.max(body.scrollHeight, 100);
 
-            const canvas = document.createElement("canvas");
-            const scale = 2;
-            canvas.width = width * scale;
-            canvas.height = height * scale;
-            const ctx = canvas.getContext("2d")!;
-            ctx.scale(scale, scale);
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, width, height);
+              const canvas = document.createElement("canvas");
+              const scale = 2;
+              canvas.width = width * scale;
+              canvas.height = height * scale;
+              const ctx = canvas.getContext("2d")!;
+              ctx.scale(scale, scale);
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, width, height);
 
-            // Serialize to SVG foreignObject for rendering
-            const svgData = `
+              // Serialize to SVG foreignObject for rendering
+              const svgData = `
               <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
                 <foreignObject width="100%" height="100%">
                   <div xmlns="http://www.w3.org/1999/xhtml">
@@ -2185,36 +2227,42 @@ export function HtmlTemplateEditor({
                   </div>
                 </foreignObject>
               </svg>`;
-            const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-            const url = URL.createObjectURL(svgBlob);
-            const img = new window.Image();
-            img.onload = () => {
-              ctx.drawImage(img, 0, 0);
-              URL.revokeObjectURL(url);
-              document.body.removeChild(iframe);
-              resolve(canvas.toDataURL("image/png"));
-            };
-            img.onerror = () => {
-              URL.revokeObjectURL(url);
+              const svgBlob = new Blob([svgData], {
+                type: "image/svg+xml;charset=utf-8",
+              });
+              const url = URL.createObjectURL(svgBlob);
+              const img = new window.Image();
+              img.onload = () => {
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+                document.body.removeChild(iframe);
+                resolve(canvas.toDataURL("image/png"));
+              };
+              img.onerror = () => {
+                URL.revokeObjectURL(url);
+                document.body.removeChild(iframe);
+                resolve("");
+              };
+              img.src = url;
+            } catch {
               document.body.removeChild(iframe);
               resolve("");
-            };
-            img.src = url;
-          } catch {
-            document.body.removeChild(iframe);
-            resolve("");
-          }
-        }, 500); // Wait for content to render
-      };
+            }
+          }, 500); // Wait for content to render
+        };
 
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (doc) {
-        doc.open();
-        doc.write(`<!DOCTYPE html><html><head><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}</style></head><body>${htmlContent}</body></html>`);
-        doc.close();
-      }
-    });
-  }, []);
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(
+            `<!DOCTYPE html><html><head><style>body{margin:0;padding:20px;font-family:Arial,sans-serif;}</style></head><body>${htmlContent}</body></html>`,
+          );
+          doc.close();
+        }
+      });
+    },
+    [],
+  );
 
   // DnD sensors for text boxes
   const textBoxSensors = useSensors(
@@ -4186,7 +4234,9 @@ export function HtmlTemplateEditor({
                         <div className="text-center text-gray-400">
                           <Upload className="h-8 w-8 mx-auto mb-2" />
                           <span className="text-xs">העלה לוגו</span>
-                          <span className="text-[10px] block text-gray-300 mt-1">PDF, Word, HTML, תמונה</span>
+                          <span className="text-[10px] block text-gray-300 mt-1">
+                            PDF, Word, HTML, תמונה
+                          </span>
                         </div>
                       )}
                     </div>
@@ -5037,7 +5087,8 @@ export function HtmlTemplateEditor({
                         העלה קובץ או ערוך את הלוגו הנוכחי
                       </p>
                       <p className="text-xs mt-1">
-                        תומך ב: PDF, Word (.docx), HTML, תמונות (PNG, JPG, SVG, WebP)
+                        תומך ב: PDF, Word (.docx), HTML, תמונות (PNG, JPG, SVG,
+                        WebP)
                       </p>
                     </div>
                   )}
@@ -5264,7 +5315,10 @@ export function HtmlTemplateEditor({
           </TabsContent>
 
           {/* Strip Maker Tab */}
-          <TabsContent value="strip-maker" className="flex-1 m-0 overflow-hidden">
+          <TabsContent
+            value="strip-maker"
+            className="flex-1 m-0 overflow-hidden"
+          >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
                 {/* Upload Source */}
@@ -5274,7 +5328,8 @@ export function HtmlTemplateEditor({
                     מכין סטריפים
                   </h2>
                   <p className="text-sm text-gray-500 mb-4">
-                    העלה קובץ מכל פורמט (PDF, Word, HTML, תמונה) והכן ממנו סטריפ במידות מדויקות
+                    העלה קובץ מכל פורמט (PDF, Word, HTML, תמונה) והכן ממנו סטריפ
+                    במידות מדויקות
                   </p>
 
                   <div className="flex gap-3 mb-4 flex-wrap">
@@ -5299,7 +5354,11 @@ export function HtmlTemplateEditor({
                           setStripOffsetY(0);
                           setStripScale(100);
                           const img = new window.Image();
-                          img.onload = () => setStripSourceDimensions({ w: img.width, h: img.height });
+                          img.onload = () =>
+                            setStripSourceDimensions({
+                              w: img.width,
+                              h: img.height,
+                            });
                           img.src = designSettings.logoUrl;
                         }}
                       >
@@ -5331,7 +5390,8 @@ export function HtmlTemplateEditor({
 
                   {stripSourceImage && stripSourceDimensions.w > 0 && (
                     <div className="text-xs text-gray-500 mb-2">
-                      גודל מקור: {stripSourceDimensions.w} × {stripSourceDimensions.h}px
+                      גודל מקור: {stripSourceDimensions.w} ×{" "}
+                      {stripSourceDimensions.h}px
                     </div>
                   )}
                 </div>
@@ -5345,7 +5405,9 @@ export function HtmlTemplateEditor({
 
                   {/* Quick Presets */}
                   <div className="mb-6">
-                    <Label className="text-sm text-gray-500 mb-2 block">מידות מוכנות</Label>
+                    <Label className="text-sm text-gray-500 mb-2 block">
+                      מידות מוכנות
+                    </Label>
                     <div className="flex gap-2 flex-wrap">
                       {[
                         { label: "באנר רחב", w: 800, h: 100 },
@@ -5370,7 +5432,9 @@ export function HtmlTemplateEditor({
                           }}
                         >
                           {preset.label}
-                          <span className="text-[10px] text-gray-400 mr-1">({preset.w}×{preset.h})</span>
+                          <span className="text-[10px] text-gray-400 mr-1">
+                            ({preset.w}×{preset.h})
+                          </span>
                         </Button>
                       ))}
                     </div>
@@ -5384,7 +5448,11 @@ export function HtmlTemplateEditor({
                         <input
                           type="number"
                           value={stripTargetWidth}
-                          onChange={(e) => setStripTargetWidth(Math.max(100, parseInt(e.target.value) || 800))}
+                          onChange={(e) =>
+                            setStripTargetWidth(
+                              Math.max(100, parseInt(e.target.value) || 800),
+                            )
+                          }
                           className="w-24 text-center border rounded px-2 py-1 text-sm"
                         />
                       </div>
@@ -5402,7 +5470,11 @@ export function HtmlTemplateEditor({
                         <input
                           type="number"
                           value={stripTargetHeight}
-                          onChange={(e) => setStripTargetHeight(Math.max(40, parseInt(e.target.value) || 150))}
+                          onChange={(e) =>
+                            setStripTargetHeight(
+                              Math.max(40, parseInt(e.target.value) || 150),
+                            )
+                          }
                           className="w-24 text-center border rounded px-2 py-1 text-sm"
                         />
                       </div>
@@ -5427,13 +5499,31 @@ export function HtmlTemplateEditor({
 
                     {/* Fit Mode */}
                     <div className="mb-4">
-                      <Label className="text-sm text-gray-500 mb-2 block">מצב התאמה</Label>
+                      <Label className="text-sm text-gray-500 mb-2 block">
+                        מצב התאמה
+                      </Label>
                       <div className="flex gap-2 flex-wrap">
                         {[
-                          { value: "contain" as const, label: "הכל נראה", desc: "כל התמונה נראית, עם שוליים" },
-                          { value: "cover" as const, label: "ממלא הכל", desc: "ממלא את הסטריפ, חלקים ייחתכו" },
-                          { value: "stretch" as const, label: "מתיחה", desc: "מותח בדיוק למידות" },
-                          { value: "manual" as const, label: "ידני", desc: "שליטה מלאה על מיקום וגודל" },
+                          {
+                            value: "contain" as const,
+                            label: "הכל נראה",
+                            desc: "כל התמונה נראית, עם שוליים",
+                          },
+                          {
+                            value: "cover" as const,
+                            label: "ממלא הכל",
+                            desc: "ממלא את הסטריפ, חלקים ייחתכו",
+                          },
+                          {
+                            value: "stretch" as const,
+                            label: "מתיחה",
+                            desc: "מותח בדיוק למידות",
+                          },
+                          {
+                            value: "manual" as const,
+                            label: "ידני",
+                            desc: "שליטה מלאה על מיקום וגודל",
+                          },
                         ].map((mode) => (
                           <Button
                             key={mode.value}
@@ -5450,10 +5540,13 @@ export function HtmlTemplateEditor({
                     </div>
 
                     {/* Scale - for contain and manual */}
-                    {(stripFitMode === "contain" || stripFitMode === "manual") && (
+                    {(stripFitMode === "contain" ||
+                      stripFitMode === "manual") && (
                       <div className="mb-4 space-y-2">
                         <div className="flex justify-between items-center">
-                          <Label className="text-sm font-medium">גודל: {stripScale}%</Label>
+                          <Label className="text-sm font-medium">
+                            גודל: {stripScale}%
+                          </Label>
                           <Button
                             variant="outline"
                             size="sm"
@@ -5481,7 +5574,9 @@ export function HtmlTemplateEditor({
                     {stripFitMode !== "stretch" && (
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">הזזה אופקית: {stripOffsetX}px</Label>
+                          <Label className="text-sm font-medium">
+                            הזזה אופקית: {stripOffsetX}px
+                          </Label>
                           <Slider
                             value={[stripOffsetX]}
                             onValueChange={([v]) => setStripOffsetX(v)}
@@ -5491,7 +5586,9 @@ export function HtmlTemplateEditor({
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">הזזה אנכית: {stripOffsetY}px</Label>
+                          <Label className="text-sm font-medium">
+                            הזזה אנכית: {stripOffsetY}px
+                          </Label>
                           <Slider
                             value={[stripOffsetY]}
                             onValueChange={([v]) => setStripOffsetY(v)}
@@ -5513,7 +5610,13 @@ export function HtmlTemplateEditor({
                         className="h-8 w-8 rounded cursor-pointer border"
                       />
                       <div className="flex gap-1">
-                        {["#ffffff", "#000000", "#f5f5f5", designSettings.primaryColor, designSettings.secondaryColor].map((c) => (
+                        {[
+                          "#ffffff",
+                          "#000000",
+                          "#f5f5f5",
+                          designSettings.primaryColor,
+                          designSettings.secondaryColor,
+                        ].map((c) => (
                           <button
                             key={c}
                             className={`w-6 h-6 rounded border ${stripBgColor === c ? "ring-2 ring-teal-500" : ""}`}
@@ -5539,7 +5642,9 @@ export function HtmlTemplateEditor({
                   <h3 className="font-bold mb-4 flex items-center gap-2">
                     <Eye className="h-5 w-5 text-teal-600" />
                     תצוגה מקדימה
-                    <span className="text-xs text-gray-400 font-normal mr-auto">{stripTargetWidth} × {stripTargetHeight}px</span>
+                    <span className="text-xs text-gray-400 font-normal mr-auto">
+                      {stripTargetWidth} × {stripTargetHeight}px
+                    </span>
                   </h3>
 
                   <div
@@ -5548,8 +5653,14 @@ export function HtmlTemplateEditor({
                       width: "100%",
                       maxWidth: Math.min(stripTargetWidth, 780),
                       aspectRatio: `${stripTargetWidth} / ${stripTargetHeight}`,
-                      backgroundColor: stripBgColor === "transparent" ? undefined : stripBgColor,
-                      backgroundImage: stripBgColor === "transparent" ? "url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%2210%22%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3C%2Fsvg%3E')" : undefined,
+                      backgroundColor:
+                        stripBgColor === "transparent"
+                          ? undefined
+                          : stripBgColor,
+                      backgroundImage:
+                        stripBgColor === "transparent"
+                          ? "url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2220%22%20height%3D%2220%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%2210%22%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f0f0f0%22%2F%3E%3C%2Fsvg%3E')"
+                          : undefined,
                       position: "relative",
                     }}
                   >
@@ -5560,7 +5671,11 @@ export function HtmlTemplateEditor({
                         style={{
                           position: "absolute",
                           ...(stripFitMode === "stretch"
-                            ? { width: "100%", height: "100%", objectFit: "fill" }
+                            ? {
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "fill",
+                              }
                             : stripFitMode === "cover"
                               ? {
                                   width: "100%",
@@ -5591,7 +5706,9 @@ export function HtmlTemplateEditor({
                       <div className="absolute inset-0 flex items-center justify-center text-gray-300">
                         <div className="text-center">
                           <Layers className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                          <span className="text-sm">העלה קובץ כדי לצפות בסטריפ</span>
+                          <span className="text-sm">
+                            העלה קובץ כדי לצפות בסטריפ
+                          </span>
                         </div>
                       </div>
                     )}
@@ -5646,9 +5763,15 @@ export function HtmlTemplateEditor({
                 {!stripSourceImage && (
                   <div className="bg-white rounded-xl border p-8 shadow-sm text-center text-gray-400">
                     <Layers className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                    <p className="text-lg font-medium mb-1">מכין סטריפים מכל פורמט</p>
-                    <p className="text-sm">PDF · Word · HTML · PNG · JPG · SVG</p>
-                    <p className="text-xs mt-2">בחר מידות, העלה קובץ, והתאם את הסטריפ בדיוק כמו שאתה רוצה</p>
+                    <p className="text-lg font-medium mb-1">
+                      מכין סטריפים מכל פורמט
+                    </p>
+                    <p className="text-sm">
+                      PDF · Word · HTML · PNG · JPG · SVG
+                    </p>
+                    <p className="text-xs mt-2">
+                      בחר מידות, העלה קובץ, והתאם את הסטריפ בדיוק כמו שאתה רוצה
+                    </p>
                   </div>
                 )}
               </div>

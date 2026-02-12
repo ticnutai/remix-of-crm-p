@@ -54,7 +54,6 @@ import {
   ClientStagesBoard,
   ClientTimeLogsTab,
   ClientDeadlinesTab,
-  ClientFoldersManager,
 } from "@/components/client-tabs";
 import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
@@ -98,7 +97,6 @@ import {
   ChevronLeft,
   ChevronDown,
   Timer,
-  Folder,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -895,13 +893,7 @@ export default function ClientProfile() {
               <Layers className="h-4 w-4" />
               כל הנתונים
             </TabsTrigger>
-            <TabsTrigger
-              value="projects"
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <FolderKanban className="h-4 w-4" />
-              פרויקטים ({projects.length})
-            </TabsTrigger>
+
             <TabsTrigger
               value="time"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
@@ -1346,66 +1338,6 @@ export default function ClientProfile() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          {/* Projects Tab */}
-          <TabsContent value="projects" dir="rtl">
-            <Card className="border border-[hsl(222,47%,25%)]/50">
-              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                <CardTitle className="text-lg">פרויקטים</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-96">
-                  <div className="divide-y divide-border/30">
-                    {projects.map((project) => (
-                      <div
-                        key={project.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <Badge
-                            variant="outline"
-                            className="border-[hsl(222,47%,25%)]"
-                          >
-                            {project.status}
-                          </Badge>
-                          <h3 className="font-semibold text-right">
-                            {project.name}
-                          </h3>
-                        </div>
-                        {project.description && (
-                          <p className="text-sm text-muted-foreground mt-2 text-right">
-                            {project.description}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-end gap-4 mt-2 text-sm text-muted-foreground">
-                          {project.start_date && (
-                            <span>
-                              התחלה:{" "}
-                              {format(
-                                new Date(project.start_date),
-                                "dd/MM/yyyy",
-                                { locale: he },
-                              )}
-                            </span>
-                          )}
-                          {project.budget && (
-                            <span>
-                              תקציב: ₪{project.budget.toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {projects.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">
-                        אין פרויקטים
-                      </p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Time Entries Tab - Full Featured */}
@@ -2897,13 +2829,9 @@ export default function ClientProfile() {
 
 // Client Stages Section with View Toggle
 function ClientStagesSection({ clientId }: { clientId: string }) {
-  const [viewMode, setViewMode] = React.useState<
-    "list" | "board" | "table" | "folders"
-  >("board");
-  const [folderFilter, setFolderFilter] = React.useState<{
-    folderId: string;
-    folderName: string;
-  } | null>(null);
+  const [viewMode, setViewMode] = React.useState<"list" | "board" | "table">(
+    "board",
+  );
 
   // Dynamically import ClientStagesTable
   const ClientStagesTable = React.lazy(() =>
@@ -2912,33 +2840,11 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
     })),
   );
 
-  // Handler for opening folder stages in board view
-  const handleOpenFolderStages = (folderId: string, folderName: string) => {
-    setFolderFilter({ folderId, folderName });
-    setViewMode("board");
-  };
-
-  // Clear folder filter
-  const clearFolderFilter = () => {
-    setFolderFilter(null);
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
-          {folderFilter && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
-              onClick={clearFolderFilter}
-            >
-              <FolderOpen className="h-3 w-3" />
-              {folderFilter.folderName}
-              <span className="text-xs">✕</span>
-            </Badge>
-          )}
         </div>
         <div className="flex gap-1 border rounded-lg p-1">
           <Button
@@ -2968,24 +2874,11 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
             <Table className="h-4 w-4 ml-1" />
             טבלה
           </Button>
-          <Button
-            size="sm"
-            variant={viewMode === "folders" ? "default" : "ghost"}
-            className="h-7 px-3"
-            onClick={() => setViewMode("folders")}
-          >
-            <Folder className="h-4 w-4 ml-1" />
-            תיקיות
-          </Button>
         </div>
       </div>
 
       {viewMode === "board" ? (
-        <ClientStagesBoard
-          clientId={clientId}
-          filterByFolderId={folderFilter?.folderId}
-          filterByFolderName={folderFilter?.folderName}
-        />
+        <ClientStagesBoard clientId={clientId} />
       ) : viewMode === "table" ? (
         <React.Suspense
           fallback={
@@ -2996,11 +2889,6 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
         >
           <ClientStagesTable clientId={clientId} />
         </React.Suspense>
-      ) : viewMode === "folders" ? (
-        <ClientFoldersManager
-          clientId={clientId}
-          onOpenFolderStages={handleOpenFolderStages}
-        />
       ) : (
         <ClientStagesTracker
           clientId={clientId}

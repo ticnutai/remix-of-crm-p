@@ -395,6 +395,7 @@ export function useStageTemplates() {
       templateId: string,
       clientId: string,
       existingStagesCount: number = 0,
+      folderId?: string | null,
     ) => {
       try {
         const template = templates.find((t) => t.id === templateId);
@@ -416,6 +417,7 @@ export function useStageTemplates() {
                 stage_name: templateStage.stage_name,
                 stage_icon: templateStage.stage_icon,
                 sort_order: existingStagesCount + templateStage.sort_order,
+                ...(folderId ? { folder_id: folderId } : {}),
               });
 
             if (stageError) throw stageError;
@@ -483,6 +485,7 @@ export function useStageTemplates() {
       sourceClientId: string,
       targetClientId: string,
       stageIds?: string[], // If empty, copy all stages
+      folderId?: string | null,
     ) => {
       try {
         // Fetch source stages
@@ -543,6 +546,7 @@ export function useStageTemplates() {
               stage_name: stage.stage_name,
               stage_icon: stage.stage_icon,
               sort_order: maxSortOrder + 1 + i,
+              ...(folderId ? { folder_id: folderId } : {}),
             });
 
           if (insertError) throw insertError;
