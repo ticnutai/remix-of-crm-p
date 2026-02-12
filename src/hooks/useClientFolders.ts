@@ -258,6 +258,28 @@ export function useClientFolders(clientId: string) {
     }
   };
 
+  // Reorder folders
+  const reorderFolders = async (newOrder: ClientFolder[]) => {
+    try {
+      const updates = newOrder.map((folder, index) => ({
+        id: folder.id,
+        sort_order: index,
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('client_folders')
+          .update({ sort_order: update.sort_order })
+          .eq('id', update.id);
+      }
+
+      setFolders(newOrder.map((f, i) => ({ ...f, sort_order: i })));
+    } catch (error: any) {
+      console.error('Error reordering folders:', error);
+      await loadFolders();
+    }
+  };
+
   // Add stage to folder
   const addStage = async (stageName: string, stageIcon: string = 'FileText') => {
     if (!activeFolderId) return null;
@@ -623,6 +645,7 @@ export function useClientFolders(clientId: string) {
     updateFolder,
     deleteFolder,
     duplicateFolder,
+    reorderFolders,
     // Stage operations
     addStage,
     updateStage,

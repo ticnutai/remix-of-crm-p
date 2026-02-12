@@ -106,7 +106,7 @@ import {
   CopyStagesDialog,
 } from "./StageTemplateDialogs";
 import { useClientFolders } from "@/hooks/useClientFolders";
-import { Folder, FolderPlus } from "lucide-react";
+import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
 
 interface ClientStagesBoardProps {
   clientId: string;
@@ -1374,6 +1374,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     addFolder: createFolder,
     updateFolder,
     deleteFolder,
+    reorderFolders,
     refresh: refreshFolders,
   } = useClientFolders(clientId);
 
@@ -1386,10 +1387,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
   } | null>(null);
   const [renameFolderDialog, setRenameFolderDialog] = useState(false);
 
-  // Filter stages by selected folder
+  // Filter stages by selected folder (no folder = show ALL stages)
   const stages = selectedFolderId
     ? allStages.filter((s) => s.folder_id === selectedFolderId)
-    : allStages.filter((s) => !s.folder_id);
+    : allStages;
 
   const [addingTask, setAddingTask] = useState<{
     stageId: string;
@@ -1772,49 +1773,51 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
         className="flex items-center gap-2 flex-wrap pt-6 pb-2 px-2 bg-gradient-to-r from-[hsl(222,47%,14%)] to-[hsl(222,47%,18%)] rounded-xl border border-[hsl(222,47%,25%)]/50 relative"
         dir="rtl"
       >
-        {/* "All stages" tab */}
-        <Button
-          size="sm"
-          variant="ghost"
-          className={cn(
-            "h-8 px-3 gap-2 rounded-lg transition-all font-medium",
-            selectedFolderId === null
-              ? "bg-gradient-to-r from-yellow-500/90 to-amber-500/90 text-slate-900 shadow-md shadow-yellow-500/20 hover:from-yellow-500 hover:to-amber-500"
-              : "text-slate-300 hover:text-white hover:bg-white/10",
-          )}
-          onClick={() => setSelectedFolderId(null)}
-        >
-          <Layers className="h-4 w-4" />
-          כל השלבים
-          <Badge
-            variant="secondary"
-            className={cn(
-              "text-xs h-5 px-1.5",
-              selectedFolderId === null
-                ? "bg-slate-900/20 text-slate-900"
-                : "bg-white/10 text-slate-400",
-            )}
-          >
-            {allStages.filter((s) => !s.folder_id).length}
-          </Badge>
-        </Button>
-
-        {/* Separator */}
-        <div className="h-6 w-px bg-[hsl(222,47%,30%)]" />
-
         {/* Folder tabs */}
-        {folders.map((folder) => {
+        {folders.map((folder, folderIndex) => {
           const folderStagesCount = allStages.filter(
             (s) => s.folder_id === folder.id,
           ).length;
           const isActive = selectedFolderId === folder.id;
+          const isFirst = folderIndex === 0;
+          const isLast = folderIndex === folders.length - 1;
           return (
             <div
               key={folder.id}
               className="relative group/folder flex flex-col items-center"
             >
-              {/* Edit/Delete buttons above the folder tab */}
+              {/* Edit/Delete/Reorder buttons above the folder tab */}
               <div className="absolute -top-7 left-1/2 -translate-x-1/2 flex gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity z-10">
+                {/* Move right (earlier in RTL) */}
+                {!isFirst && (
+                  <button
+                    className="h-5 w-5 flex items-center justify-center rounded bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                    title="הזז ימינה"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newFolders = [...folders];
+                      [newFolders[folderIndex - 1], newFolders[folderIndex]] = [newFolders[folderIndex], newFolders[folderIndex - 1]];
+                      reorderFolders(newFolders);
+                    }}
+                  >
+                    <ChevronRight className="h-3 w-3" />
+                  </button>
+                )}
+                {/* Move left (later in RTL) */}
+                {!isLast && (
+                  <button
+                    className="h-5 w-5 flex items-center justify-center rounded bg-slate-700 hover:bg-indigo-600 text-slate-300 hover:text-white transition-colors"
+                    title="הזז שמאלה"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newFolders = [...folders];
+                      [newFolders[folderIndex], newFolders[folderIndex + 1]] = [newFolders[folderIndex + 1], newFolders[folderIndex]];
+                      reorderFolders(newFolders);
+                    }}
+                  >
+                    <ChevronLeft className="h-3 w-3" />
+                  </button>
+                )}
                 <button
                   className="h-5 w-5 flex items-center justify-center rounded bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white transition-colors"
                   title="ערוך שם תיקייה"
@@ -1861,7 +1864,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     ? "bg-gradient-to-r from-yellow-500/90 to-amber-500/90 text-slate-900 shadow-md shadow-yellow-500/20 hover:from-yellow-500 hover:to-amber-500"
                     : "text-slate-300 hover:text-white hover:bg-white/10",
                 )}
-                onClick={() => setSelectedFolderId(folder.id)}
+                onClick={() => setSelectedFolderId(isActive ? null : folder.id)}
               >
                 <Folder className="h-4 w-4" />
                 {folder.folder_name}
