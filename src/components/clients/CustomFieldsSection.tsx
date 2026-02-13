@@ -426,14 +426,19 @@ const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
 
   const handleDeleteField = async () => {
     if (!deleteConfirmId) return;
-    await onDeleteField(deleteConfirmId);
-    const def = definitions.find((d) => d.id === deleteConfirmId);
-    if (def) {
-      const v = { ...values };
-      delete v[def.field_key];
-      onChange(v);
-    }
+    const fieldIdToDelete = deleteConfirmId;
+    // Close dialog first to avoid nested modal issues
     setDeleteConfirmId(null);
+    
+    const success = await onDeleteField(fieldIdToDelete);
+    if (success) {
+      const def = definitions.find((d) => d.id === fieldIdToDelete);
+      if (def) {
+        const v = { ...values };
+        delete v[def.field_key];
+        onChange(v);
+      }
+    }
   };
 
   // Render the appropriate input per field type
@@ -551,7 +556,11 @@ const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteConfirmId(def.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDeleteConfirmId(def.id);
+                      }}
                       className="h-5 w-5 p-0 text-red-400 hover:text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -688,7 +697,11 @@ const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
         open={!!deleteConfirmId}
         onOpenChange={(open) => !open && setDeleteConfirmId(null)}
       >
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent
+          dir="rtl"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right">
               מחיקת שדה מותאם
@@ -699,9 +712,12 @@ const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>ביטול</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteField}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteField();
+              }}
               className="bg-red-600 hover:bg-red-700"
             >
               מחק
