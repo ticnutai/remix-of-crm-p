@@ -13,8 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Palette, Type, Sparkles, RotateCcw, Layout } from 'lucide-react';
+import { Palette, Type, Sparkles, RotateCcw, Layout, Plus, Pencil, Trash2, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export interface SidebarTheme {
   backgroundColor: string;
@@ -112,6 +113,28 @@ const colorPresets = [
   { name: '🌿 זית מלכותי', bg: '#F7FEE7', text: '#365314', accent: '#84CC16', border: '#65A30D60' },
 ];
 
+// Custom sidebar themes
+export interface CustomSidebarTheme {
+  id: string;
+  name: string;
+  theme: SidebarTheme;
+}
+
+const CUSTOM_SIDEBAR_THEMES_KEY = 'sidebar-custom-themes';
+
+const loadCustomSidebarThemes = (): CustomSidebarTheme[] => {
+  try {
+    const saved = localStorage.getItem(CUSTOM_SIDEBAR_THEMES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCustomSidebarThemes = (themes: CustomSidebarTheme[]) => {
+  localStorage.setItem(CUSTOM_SIDEBAR_THEMES_KEY, JSON.stringify(themes));
+};
+
 interface SidebarSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -126,10 +149,19 @@ export function SidebarSettingsDialog({
   onThemeChange,
 }: SidebarSettingsDialogProps) {
   const [localTheme, setLocalTheme] = useState<SidebarTheme>({ ...defaultTheme, ...theme });
+  const [customThemes, setCustomThemes] = useState<CustomSidebarTheme[]>([]);
+  const [newThemeName, setNewThemeName] = useState('');
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
+  const [editingThemeName, setEditingThemeName] = useState('');
 
   useEffect(() => {
     setLocalTheme({ ...defaultTheme, ...theme });
   }, [theme]);
+
+  useEffect(() => {
+    setCustomThemes(loadCustomSidebarThemes());
+  }, []);
 
   const handleChange = (key: keyof SidebarTheme, value: string | number) => {
     const newTheme = { ...localTheme, [key]: value };
@@ -167,6 +199,56 @@ export function SidebarSettingsDialog({
   const resetToDefault = () => {
     setLocalTheme(defaultTheme);
     onThemeChange(defaultTheme);
+  };
+
+  const handleSaveCustomTheme = () => {
+    if (!newThemeName.trim()) {
+      toast.error('יש להזין שם לערכת הנושא');
+      return;
+    }
+    const newCustom: CustomSidebarTheme = {
+      id: Date.now().toString(),
+      name: newThemeName.trim(),
+      theme: { ...localTheme },
+    };
+    const updated = [...customThemes, newCustom];
+    setCustomThemes(updated);
+    saveCustomSidebarThemes(updated);
+    setNewThemeName('');
+    setShowSaveForm(false);
+    toast.success('ערכת הנושא נשמרה בהצלחה');
+  };
+
+  const applyCustomTheme = (custom: CustomSidebarTheme) => {
+    setLocalTheme({ ...defaultTheme, ...custom.theme });
+    onThemeChange({ ...defaultTheme, ...custom.theme });
+  };
+
+  const startEditCustom = (custom: CustomSidebarTheme) => {
+    setEditingThemeId(custom.id);
+    setEditingThemeName(custom.name);
+  };
+
+  const saveEditCustom = (id: string) => {
+    if (!editingThemeName.trim()) {
+      toast.error('יש להזין שם');
+      return;
+    }
+    const updated = customThemes.map(t =>
+      t.id === id ? { ...t, name: editingThemeName.trim(), theme: { ...localTheme } } : t
+    );
+    setCustomThemes(updated);
+    saveCustomSidebarThemes(updated);
+    setEditingThemeId(null);
+    setEditingThemeName('');
+    toast.success('ערכת הנושא עודכנה');
+  };
+
+  const deleteCustomTheme = (id: string) => {
+    const updated = customThemes.filter(t => t.id !== id);
+    setCustomThemes(updated);
+    saveCustomSidebarThemes(updated);
+    toast.success('ערכת הנושא נמחקה');
   };
 
   return (
@@ -433,6 +515,101 @@ export function SidebarSettingsDialog({
 
             {/* Presets Tab */}
             <TabsContent value="presets" className="mt-4 pb-4">
+              {/* Save Current as Custom */}
+              <div className="mb-4 p-3 border rounded-lg bg-muted/30">
+                {showSaveForm ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newThemeName}
+                      onChange={(e) => setNewThemeName(e.target.value)}
+                      placeholder="שם ערכת הנושא..."
+                      className="flex-1 h-9"
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveCustomTheme()}
+                    />
+                    <Button size="sm" onClick={handleSaveCustomTheme} className="h-9 gap-1.5">
+                      <Save className="h-3.5 w-3.5" />
+                      שמור
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowSaveForm(false); setNewThemeName(''); }} className="h-9 w-9 p-0">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSaveForm(true)}
+                    className="w-full gap-2 h-9 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5"
+                  >
+                    <Plus className="h-4 w-4" />
+                    שמור ערכת נושא אישית מהעיצוב הנוכחי
+                  </Button>
+                )}
+              </div>
+
+              {/* Custom Themes */}
+              {customThemes.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground mb-2 font-medium">⭐ ערכות אישיות</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {customThemes.map((custom) => (
+                      <div key={custom.id} className="relative group">
+                        <button
+                          onClick={() => applyCustomTheme(custom)}
+                          className={cn(
+                            "w-full p-3 rounded-lg transition-all hover:scale-105",
+                            "flex flex-col items-center gap-1.5"
+                          )}
+                          style={{
+                            backgroundColor: custom.theme.backgroundColor,
+                            border: `2px solid ${custom.theme.borderColor || custom.theme.activeItemColor}`,
+                          }}
+                        >
+                          <div
+                            className="w-6 h-6 rounded-full"
+                            style={{ backgroundColor: custom.theme.activeItemColor }}
+                          />
+                          {editingThemeId === custom.id ? (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Input
+                                value={editingThemeName}
+                                onChange={(e) => setEditingThemeName(e.target.value)}
+                                className="h-6 text-xs px-1 w-20 bg-background"
+                                onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') saveEditCustom(custom.id); }}
+                              />
+                              <button onClick={(e) => { e.stopPropagation(); saveEditCustom(custom.id); }} className="p-0.5 rounded hover:bg-white/20">
+                                <Save className="h-3 w-3" style={{ color: custom.theme.textColor }} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ color: custom.theme.textColor }} className="text-xs font-medium">
+                              {custom.name}
+                            </span>
+                          )}
+                        </button>
+                        {/* Edit/Delete overlay */}
+                        <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startEditCustom(custom); }}
+                            className="p-1 rounded bg-background/80 hover:bg-background shadow-sm"
+                            title="ערוך שם"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteCustomTheme(custom.id); }}
+                            className="p-1 rounded bg-background/80 hover:bg-destructive/20 hover:text-destructive shadow-sm"
+                            title="מחק"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="mb-4">
                 <p className="text-sm text-muted-foreground mb-2">ערכות נושא כהות</p>
                 <div className="grid grid-cols-2 gap-2">

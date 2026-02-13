@@ -100,7 +100,8 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
           localStorage.setItem('sidebar-theme', JSON.stringify(theme));
           themeLoadedFromCloud.current = true;
         }
-      } catch {
+      } catch (err) {
+        console.error('Error loading sidebar theme from cloud:', err);
         // Silently fall back to localStorage
       }
     };
@@ -110,28 +111,31 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
   // Save theme to localStorage + Supabase
   useEffect(() => {
     localStorage.setItem('sidebar-theme', JSON.stringify(sidebarTheme));
-    // Save to cloud (debounced by nature of state changes)
-    const saveToCloud = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        await (supabase as any)
-          .from('user_preferences')
-          .upsert({
-            user_id: user.id,
-            sidebar_theme: sidebarTheme as unknown as Record<string, unknown>,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' });
-      } catch {
-        // Silently fail - localStorage is the fallback
-      }
-    };
     // Don't save on initial cloud load
     if (themeLoadedFromCloud.current) {
       themeLoadedFromCloud.current = false;
       return;
     }
-    saveToCloud();
+    // Debounce cloud save to avoid rapid writes when adjusting sliders
+    const timer = setTimeout(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { error } = await supabase
+          .from('user_preferences')
+          .upsert({
+            user_id: user.id,
+            sidebar_theme: sidebarTheme as unknown as Record<string, unknown>,
+            updated_at: new Date().toISOString(),
+          } as any, { onConflict: 'user_id' });
+        if (error) {
+          console.error('Failed to save sidebar theme to cloud:', error.message);
+        }
+      } catch (err) {
+        console.error('Error saving sidebar theme to cloud:', err);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
   }, [sidebarTheme]);
 
   // Detect light theme for contrast adjustments
