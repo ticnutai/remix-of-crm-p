@@ -3297,14 +3297,12 @@ export default function DataTablePro() {
           {/* Clients Tab */}
           <TabsContent value="clients" className="mt-6">
             <Card>
-              <CardHeader className="pb-3 space-y-3">
-                {/* Row 1: Title + Status */}
+              <CardHeader className="pb-3 space-y-2">
+                {/* Row 1: Title + Info */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Users className="h-5 w-5 text-secondary" />
-                      טבלת לקוחות
-                    </CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Users className="h-5 w-5 text-secondary" />
+                    טבלת לקוחות
                     <Badge variant="outline" className="text-xs gap-1">
                       <Database className="h-3 w-3" />
                       מחובר למסד נתונים
@@ -3312,22 +3310,21 @@ export default function DataTablePro() {
                     {isSyncing && (
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     )}
-                  </div>
-                  <CardDescription className="text-xs mt-0">
+                  </CardTitle>
+                  <span className="text-xs text-muted-foreground">
                     {displayClients.length} לקוחות
                     {selectedClients.length > 0 && (
                       <span className="text-primary font-semibold">
-                        {" "}
-                        | {selectedClients.length} נבחרו
+                        {" "}| {selectedClients.length} נבחרו
                       </span>
                     )}
                     {" | שינויים נשמרים אוטומטית"}
-                  </CardDescription>
+                  </span>
                 </div>
 
-                {/* Row 2: Unified Action Bar */}
-                <div className="flex items-center gap-1.5 flex-wrap border rounded-xl bg-muted/30 px-3 py-2">
-                  {/* Primary Action: Add Client */}
+                {/* Row 2: ALL buttons unified */}
+                <div className="flex items-center gap-1.5 flex-wrap border rounded-xl bg-muted/20 px-3 py-2">
+                  {/* Add Client - special styling */}
                   <Sheet
                     open={isAddClientDialogOpen}
                     onOpenChange={setIsAddClientDialogOpen}
@@ -3335,7 +3332,7 @@ export default function DataTablePro() {
                     <SheetTrigger asChild>
                       <Button
                         size="sm"
-                        className="h-8 gap-1.5 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white shadow-sm"
+                        className="h-9 gap-2 px-4 bg-gradient-to-l from-[#1e3a8a] to-[#2d4a9a] hover:from-[#1a3278] hover:to-[#263f85] text-white shadow-md font-semibold rounded-lg border border-[#D4AF37]/40"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         הוסף לקוח
@@ -3419,14 +3416,14 @@ export default function DataTablePro() {
                     variant="outline"
                     size="sm"
                     onClick={() => setIsAddClientColumnDialogOpen(true)}
-                    className="h-8 gap-1.5 border-[#D4AF37]/60 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                    className="h-9 gap-2 px-3 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg text-sm font-medium"
                   >
-                    <Columns className="h-3.5 w-3.5 text-[#D4AF37]" />
-                    <span className="text-sm">הוסף עמודה</span>
+                    <Columns className="h-4 w-4 text-[#D4AF37]" />
+                    הוסף עמודה
                   </Button>
 
                   {/* Divider */}
-                  <div className="w-px h-6 bg-border mx-0.5" />
+                  <div className="w-px h-7 bg-border/60 mx-0.5" />
 
                   {/* Import */}
                   <input
@@ -3437,80 +3434,136 @@ export default function DataTablePro() {
                     className="hidden"
                   />
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => clientFileInputRef.current?.click()}
-                    className="h-8 gap-1.5 hover:bg-accent"
+                    className="h-9 gap-2 px-3 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg text-sm font-medium"
                     title="ייבא מקובץ"
                   >
-                    <Upload className="h-3.5 w-3.5" />
-                    <span className="text-sm">ייבוא</span>
+                    <Upload className="h-4 w-4" />
+                    ייבוא
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={handleConnectGoogleSheets}
-                    className="h-8 gap-1.5 hover:bg-accent"
+                    className="h-9 gap-2 px-3 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg text-sm font-medium"
                     title="חבר ל-Google Sheets"
                   >
-                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                    <span className="text-sm">Sheets</span>
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Sheets
                   </Button>
 
                   {/* Divider */}
-                  <div className="w-px h-6 bg-border mx-0.5" />
+                  <div className="w-px h-7 bg-border/60 mx-0.5" />
 
                   {/* Undo/Redo */}
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={handleClientUndo}
                     disabled={clientHistory.length === 0}
-                    className="h-8 w-8"
+                    className="h-9 w-9 p-0 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg"
                     title="בטל (Undo)"
                   >
-                    <Undo2 className="h-3.5 w-3.5" />
+                    <Undo2 className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={handleClientRedo}
                     disabled={clientFuture.length === 0}
-                    className="h-8 w-8"
+                    className="h-9 w-9 p-0 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg"
                     title="חזור (Redo)"
                   >
-                    <Redo2 className="h-3.5 w-3.5" />
+                    <Redo2 className="h-4 w-4" />
                   </Button>
 
                   {/* Refresh */}
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
                     onClick={() => refreshData()}
                     disabled={dbLoading}
-                    className="h-8 w-8"
+                    className="h-9 w-9 p-0 border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50 rounded-lg"
                     title="רענן נתונים"
                   >
                     <RefreshCw
-                      className={`h-3.5 w-3.5 ${dbLoading ? "animate-spin" : ""}`}
+                      className={`h-4 w-4 ${dbLoading ? "animate-spin" : ""}`}
                     />
                   </Button>
+
+                  {/* Divider */}
+                  <div className="w-px h-7 bg-border/60 mx-0.5" />
+
+                  {/* Categories */}
+                  {categories.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCategories(!showCategories)}
+                      className={cn(
+                        "h-9 gap-2 px-3 rounded-lg text-sm font-medium",
+                        showCategories
+                          ? "bg-[#D4AF37]/15 border-[#D4AF37] text-[#1e3a8a] hover:bg-[#D4AF37]/25"
+                          : "border-border/60 bg-background hover:bg-muted/60 hover:border-[#D4AF37]/50",
+                      )}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      קטגוריות
+                      {showCategories ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      {selectedCategoryIds.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 h-4"
+                        >
+                          {selectedCategoryIds.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Filter Panel (יועץ, סינון מתקדם) */}
+                  <ClientFilterPanel
+                    consultants={consultants}
+                    activeFilters={clientFilter}
+                    onFilterChange={async (filter) => {
+                      setClientFilter(filter);
+                      if (
+                        Object.keys(filter).some(
+                          (k) => filter[k as keyof ClientFilter],
+                        )
+                      ) {
+                        const filtered = await filterClients(filter);
+                        setFilteredClients(filtered as SyncedClient[]);
+                      } else {
+                        setFilteredClients(null);
+                      }
+                    }}
+                    onClear={() => {
+                      setClientFilter({});
+                      setFilteredClients(null);
+                    }}
+                    totalClients={dbClients.length}
+                    filteredCount={displayClients.length}
+                  />
 
                   {/* Restore Hidden Columns */}
                   {hiddenClientColumns.size > 0 && (
                     <>
-                      <div className="w-px h-6 bg-border mx-0.5" />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8 gap-1.5 text-orange-600 hover:bg-orange-50"
+                            className="h-9 gap-2 px-3 border-orange-400/60 bg-background hover:bg-orange-50 rounded-lg text-sm font-medium text-orange-600"
                           >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span className="text-sm">
-                              מוסתרות ({hiddenClientColumns.size})
-                            </span>
+                            <Eye className="h-4 w-4" />
+                            מוסתרות ({hiddenClientColumns.size})
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -3624,63 +3677,6 @@ export default function DataTablePro() {
                   onColumnAdded={handleClientColumnAdded}
                   existingColumns={clientCustomColumns}
                 />
-
-                {/* Row 3: Filters */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Categories Toggle Button */}
-                  {categories.length > 0 && (
-                    <Button
-                      variant={showCategories ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowCategories(!showCategories)}
-                      className={cn(
-                        "h-8 gap-1.5",
-                        showCategories
-                          ? "bg-[#d4a843] hover:bg-[#c49a33] text-white border-[#d4a843]"
-                          : "border-[#d4a843]/50 hover:border-[#d4a843] hover:bg-[#fef9ee]",
-                      )}
-                    >
-                      <FolderOpen className="h-3.5 w-3.5" />
-                      קטגוריות
-                      {showCategories ? (
-                        <ChevronDown className="h-3 w-3" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3" />
-                      )}
-                      {selectedCategoryIds.length > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="mr-0.5 text-[10px] px-1.5 py-0 h-4 bg-white/20 text-current"
-                        >
-                          {selectedCategoryIds.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  )}
-                  <ClientFilterPanel
-                    consultants={consultants}
-                    activeFilters={clientFilter}
-                    onFilterChange={async (filter) => {
-                      setClientFilter(filter);
-                      if (
-                        Object.keys(filter).some(
-                          (k) => filter[k as keyof ClientFilter],
-                        )
-                      ) {
-                        const filtered = await filterClients(filter);
-                        setFilteredClients(filtered as SyncedClient[]);
-                      } else {
-                        setFilteredClients(null);
-                      }
-                    }}
-                    onClear={() => {
-                      setClientFilter({});
-                      setFilteredClients(null);
-                    }}
-                    totalClients={dbClients.length}
-                    filteredCount={displayClients.length}
-                  />
-                </div>
               </CardHeader>
 
               {/* Collapsible Categories Panel - inside the card */}
