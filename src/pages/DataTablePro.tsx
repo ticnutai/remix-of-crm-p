@@ -3296,208 +3296,219 @@ export default function DataTablePro() {
           {/* Clients Tab */}
           <TabsContent value="clients" className="mt-6">
             <Card>
-              <CardHeader className="flex flex-col gap-4">
-                <div className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
+              <CardHeader className="pb-3 space-y-3">
+                {/* Row 1: Title + Status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
                       <Users className="h-5 w-5 text-secondary" />
                       טבלת לקוחות
-                      <Badge variant="outline" className="text-xs gap-1 mr-2">
-                        <Database className="h-3 w-3" />
-                        מחובר למסד נתונים
-                      </Badge>
-                      {isSyncing && (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      )}
                     </CardTitle>
-                    <CardDescription>
-                      {displayClients.length} לקוחות
-                      {selectedClients.length > 0 && (
-                        <span className="text-primary font-semibold">
-                          {" "}
-                          | {selectedClients.length} נבחרו
-                        </span>
-                      )}
-                      {" | לחץ על תא כדי לערוך | שינויים נשמרים אוטומטית"}
-                      {selectedClients.length === 0 &&
-                        displayClients.length > 0 && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            | ✓ סמן לקוחות בעמודת הבחירה
-                          </span>
-                        )}
-                    </CardDescription>
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Database className="h-3 w-3" />
+                      מחובר למסד נתונים
+                    </Badge>
+                    {isSyncing && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Refresh button */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refreshData()}
-                      disabled={dbLoading}
-                      title="רענן נתונים"
+                  <CardDescription className="text-xs mt-0">
+                    {displayClients.length} לקוחות
+                    {selectedClients.length > 0 && (
+                      <span className="text-primary font-semibold">
+                        {" "}| {selectedClients.length} נבחרו
+                      </span>
+                    )}
+                    {" | שינויים נשמרים אוטומטית"}
+                  </CardDescription>
+                </div>
+
+                {/* Row 2: Unified Action Bar */}
+                <div className="flex items-center gap-1.5 flex-wrap border rounded-xl bg-muted/30 px-3 py-2">
+                  
+                  {/* Primary Action: Add Client */}
+                  <Sheet
+                    open={isAddClientDialogOpen}
+                    onOpenChange={setIsAddClientDialogOpen}
+                  >
+                    <SheetTrigger asChild>
+                      <Button size="sm" className="h-8 gap-1.5 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white shadow-sm">
+                        <Plus className="h-3.5 w-3.5" />
+                        הוסף לקוח
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent
+                      side="right"
+                      className="sm:max-w-xl"
+                      dir="rtl"
                     >
-                      <RefreshCw
-                        className={`h-4 w-4 ${dbLoading ? "animate-spin" : ""}`}
-                      />
-                    </Button>
-
-                    {/* Import buttons */}
-                    <div className="flex items-center gap-1 border-l pl-2">
-                      <input
-                        ref={clientFileInputRef}
-                        type="file"
-                        accept=".csv,.xlsx,.xls"
-                        onChange={handleClientImportFile}
-                        className="hidden"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => clientFileInputRef.current?.click()}
-                        title="ייבא מקובץ"
-                      >
-                        <Upload className="h-4 w-4 ml-1" />
-                        ייבוא
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleConnectGoogleSheets}
-                        title="חבר ל-Google Sheets"
-                      >
-                        <FileSpreadsheet className="h-4 w-4 ml-1" />
-                        Sheets
-                      </Button>
-                    </div>
-
-                    {/* Undo/Redo buttons */}
-                    <div className="flex items-center gap-1 border-l pl-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClientUndo}
-                        disabled={clientHistory.length === 0}
-                        title="בטל (Undo)"
-                      >
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleClientRedo}
-                        disabled={clientFuture.length === 0}
-                        title="חזור (Redo)"
-                      >
-                        <Redo2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* Bulk Actions - Always visible section */}
-                    {selectedClients.length > 0 ? (
-                      <div className="flex items-center gap-2 border-r pr-2 bg-primary/5 rounded-lg px-3 py-1">
-                        <Badge
-                          variant="default"
-                          className="bg-primary text-white text-sm px-3 py-1"
-                        >
-                          ✓ {selectedClients.length} נבחרו
-                        </Badge>
-                        {/* Bulk Set Stage Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-primary bg-white hover:bg-primary/5"
-                            >
-                              <Layers className="h-4 w-4 ml-2 text-primary" />
-                              קבע שלב ({selectedClients.length})
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="max-h-[300px] overflow-y-auto"
-                          >
-                            <DropdownMenuLabel>
-                              בחר שלב עבור {selectedClients.length} לקוחות
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {availableStages.length > 0 ? (
-                              availableStages.map((stage) => (
-                                <DropdownMenuItem
-                                  key={stage.stage_id}
-                                  onClick={() =>
-                                    handleBulkSetStage(stage.stage_name)
-                                  }
-                                  className="flex items-center gap-2"
-                                >
-                                  <Layers className="h-4 w-4 text-primary" />
-                                  {stage.stage_name}
-                                </DropdownMenuItem>
-                              ))
-                            ) : (
-                              <DropdownMenuItem disabled>
-                                אין שלבים זמינים
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Bulk Assign Consultant Button */}
+                      <SheetHeader>
+                        <SheetTitle>הוספת לקוח חדש</SheetTitle>
+                        <SheetDescription>
+                          הזן את פרטי הלקוח החדש
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <Label htmlFor="newClientName">שם לקוח *</Label>
+                          <Input
+                            id="newClientName"
+                            value={newClientName}
+                            onChange={(e) => setNewClientName(e.target.value)}
+                            placeholder="הזן שם לקוח"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientCompany">חברה</Label>
+                          <Input
+                            id="newClientCompany"
+                            value={newClientCompany}
+                            onChange={(e) =>
+                              setNewClientCompany(e.target.value)
+                            }
+                            placeholder="הזן שם חברה"
+                            className="mt-2"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientEmail">אימייל</Label>
+                          <Input
+                            id="newClientEmail"
+                            type="email"
+                            value={newClientEmail}
+                            onChange={(e) =>
+                              setNewClientEmail(e.target.value)
+                            }
+                            placeholder="email@example.com"
+                            className="mt-2"
+                            dir="ltr"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="newClientPhone">טלפון</Label>
+                          <Input
+                            id="newClientPhone"
+                            value={newClientPhone}
+                            onChange={(e) =>
+                              setNewClientPhone(e.target.value)
+                            }
+                            placeholder="050-0000000"
+                            className="mt-2"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
+                      <SheetFooter>
                         <Button
                           variant="outline"
-                          size="sm"
-                          onClick={() => setIsBulkConsultantOpen(true)}
-                          className="border-primary bg-white hover:bg-primary/5"
+                          onClick={() => setIsAddClientDialogOpen(false)}
                         >
-                          <UserCog className="h-4 w-4 ml-2 text-primary" />
-                          שייך יועץ ({selectedClients.length})
+                          ביטול
                         </Button>
-
-                        {/* Delete Button */}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleDeleteSelectedClients}
-                        >
-                          <Trash2 className="h-4 w-4 ml-2" />
-                          מחק ({selectedClients.length})
+                        <Button onClick={handleAddClient}>
+                          <Plus className="h-4 w-4 ml-2" />
+                          הוסף
                         </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 border-r pr-2">
-                        <span className="text-xs text-muted-foreground">
-                          ← סמן לקוחות בצ'קבוקס לפעולות מרובות
-                        </span>
-                      </div>
-                    )}
+                      </SheetFooter>
+                    </SheetContent>
+                  </Sheet>
 
-                    {/* Add Client Column Button and Dialog */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsAddClientColumnDialogOpen(true)}
-                      className="border-[#D4AF37] bg-white hover:bg-[#1e3a8a]/5 hover:border-[#D4AF37]/80 transition-all shadow-sm"
-                    >
-                      <Columns className="h-4 w-4 ml-2 text-[#D4AF37]" />
-                      <span className="text-[#1e3a8a] font-medium">
-                        הוסף עמודה
-                      </span>
-                    </Button>
+                  {/* Add Column */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddClientColumnDialogOpen(true)}
+                    className="h-8 gap-1.5 border-[#D4AF37]/60 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                  >
+                    <Columns className="h-3.5 w-3.5 text-[#D4AF37]" />
+                    <span className="text-sm">הוסף עמודה</span>
+                  </Button>
 
-                    {/* Restore Hidden Columns Button */}
-                    {hiddenClientColumns.size > 0 && (
+                  {/* Divider */}
+                  <div className="w-px h-6 bg-border mx-0.5" />
+
+                  {/* Import */}
+                  <input
+                    ref={clientFileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleClientImportFile}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => clientFileInputRef.current?.click()}
+                    className="h-8 gap-1.5 hover:bg-accent"
+                    title="ייבא מקובץ"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span className="text-sm">ייבוא</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleConnectGoogleSheets}
+                    className="h-8 gap-1.5 hover:bg-accent"
+                    title="חבר ל-Google Sheets"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                    <span className="text-sm">Sheets</span>
+                  </Button>
+
+                  {/* Divider */}
+                  <div className="w-px h-6 bg-border mx-0.5" />
+
+                  {/* Undo/Redo */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleClientUndo}
+                    disabled={clientHistory.length === 0}
+                    className="h-8 w-8"
+                    title="בטל (Undo)"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleClientRedo}
+                    disabled={clientFuture.length === 0}
+                    className="h-8 w-8"
+                    title="חזור (Redo)"
+                  >
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+
+                  {/* Refresh */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => refreshData()}
+                    disabled={dbLoading}
+                    className="h-8 w-8"
+                    title="רענן נתונים"
+                  >
+                    <RefreshCw
+                      className={`h-3.5 w-3.5 ${dbLoading ? "animate-spin" : ""}`}
+                    />
+                  </Button>
+
+                  {/* Restore Hidden Columns */}
+                  {hiddenClientColumns.size > 0 && (
+                    <>
+                      <div className="w-px h-6 bg-border mx-0.5" />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="border-orange-400 bg-white hover:bg-orange-50 transition-all shadow-sm"
+                            className="h-8 gap-1.5 text-orange-600 hover:bg-orange-50"
                           >
-                            <Eye className="h-4 w-4 ml-2 text-orange-500" />
-                            <span className="text-orange-700 font-medium">
-                              עמודות מוסתרות ({hiddenClientColumns.size})
-                            </span>
+                            <Eye className="h-3.5 w-3.5" />
+                            <span className="text-sm">מוסתרות ({hiddenClientColumns.size})</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -3524,131 +3535,120 @@ export default function DataTablePro() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
+                    </>
+                  )}
 
-                    <AddColumnDialog
-                      open={isAddClientColumnDialogOpen}
-                      onOpenChange={setIsAddClientColumnDialogOpen}
-                      tableName="clients"
-                      onColumnAdded={handleClientColumnAdded}
-                      existingColumns={clientCustomColumns}
-                    />
+                  {/* Spacer to push bulk actions to the left */}
+                  <div className="flex-1" />
 
-                    {/* Add Client Sheet */}
-                    <Sheet
-                      open={isAddClientDialogOpen}
-                      onOpenChange={setIsAddClientDialogOpen}
-                    >
-                      <SheetTrigger asChild>
-                        <Button variant="default" size="sm">
-                          <Plus className="h-4 w-4 ml-2" />
-                          הוסף לקוח
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent
-                        side="right"
-                        className="sm:max-w-xl"
-                        dir="rtl"
+                  {/* Bulk Actions */}
+                  {selectedClients.length > 0 ? (
+                    <div className="flex items-center gap-1.5 bg-primary/5 rounded-lg px-2.5 py-1 border border-primary/20">
+                      <Badge
+                        variant="default"
+                        className="bg-primary text-white text-xs px-2 py-0.5"
                       >
-                        <SheetHeader>
-                          <SheetTitle>הוספת לקוח חדש</SheetTitle>
-                          <SheetDescription>
-                            הזן את פרטי הלקוח החדש
-                          </SheetDescription>
-                        </SheetHeader>
-                        <div className="space-y-4 py-4">
-                          <div>
-                            <Label htmlFor="newClientName">שם לקוח *</Label>
-                            <Input
-                              id="newClientName"
-                              value={newClientName}
-                              onChange={(e) => setNewClientName(e.target.value)}
-                              placeholder="הזן שם לקוח"
-                              className="mt-2"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="newClientCompany">חברה</Label>
-                            <Input
-                              id="newClientCompany"
-                              value={newClientCompany}
-                              onChange={(e) =>
-                                setNewClientCompany(e.target.value)
-                              }
-                              placeholder="הזן שם חברה"
-                              className="mt-2"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="newClientEmail">אימייל</Label>
-                            <Input
-                              id="newClientEmail"
-                              type="email"
-                              value={newClientEmail}
-                              onChange={(e) =>
-                                setNewClientEmail(e.target.value)
-                              }
-                              placeholder="email@example.com"
-                              className="mt-2"
-                              dir="ltr"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="newClientPhone">טלפון</Label>
-                            <Input
-                              id="newClientPhone"
-                              value={newClientPhone}
-                              onChange={(e) =>
-                                setNewClientPhone(e.target.value)
-                              }
-                              placeholder="050-0000000"
-                              className="mt-2"
-                              dir="ltr"
-                            />
-                          </div>
-                        </div>
-                        <SheetFooter>
+                        ✓ {selectedClients.length}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="outline"
-                            onClick={() => setIsAddClientDialogOpen(false)}
+                            size="sm"
+                            className="h-7 gap-1 text-xs border-primary/30 hover:bg-primary/5"
                           >
-                            ביטול
+                            <Layers className="h-3 w-3 text-primary" />
+                            שלב
                           </Button>
-                          <Button onClick={handleAddClient}>
-                            <Plus className="h-4 w-4 ml-2" />
-                            הוסף
-                          </Button>
-                        </SheetFooter>
-                      </SheetContent>
-                    </Sheet>
-                  </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="max-h-[300px] overflow-y-auto"
+                        >
+                          <DropdownMenuLabel>
+                            בחר שלב עבור {selectedClients.length} לקוחות
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {availableStages.length > 0 ? (
+                            availableStages.map((stage) => (
+                              <DropdownMenuItem
+                                key={stage.stage_id}
+                                onClick={() =>
+                                  handleBulkSetStage(stage.stage_name)
+                                }
+                                className="flex items-center gap-2"
+                              >
+                                <Layers className="h-4 w-4 text-primary" />
+                                {stage.stage_name}
+                              </DropdownMenuItem>
+                            ))
+                          ) : (
+                            <DropdownMenuItem disabled>
+                              אין שלבים זמינים
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsBulkConsultantOpen(true)}
+                        className="h-7 gap-1 text-xs border-primary/30 hover:bg-primary/5"
+                      >
+                        <UserCog className="h-3 w-3 text-primary" />
+                        יועץ
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDeleteSelectedClients}
+                        className="h-7 gap-1 text-xs"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        מחק
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      ← סמן לקוחות לפעולות
+                    </span>
+                  )}
                 </div>
 
-                {/* Client Filter Panel */}
-                <div className="border-t pt-4 flex items-center gap-3 flex-wrap">
+                <AddColumnDialog
+                  open={isAddClientColumnDialogOpen}
+                  onOpenChange={setIsAddClientColumnDialogOpen}
+                  tableName="clients"
+                  onColumnAdded={handleClientColumnAdded}
+                  existingColumns={clientCustomColumns}
+                />
+
+                {/* Row 3: Filters */}
+                <div className="flex items-center gap-2 flex-wrap">
                   {/* Categories Toggle Button */}
                   {categories.length > 0 && (
                     <Button
                       variant={showCategories ? "default" : "outline"}
                       size="sm"
                       onClick={() => setShowCategories(!showCategories)}
-                      className={
+                      className={cn(
+                        "h-8 gap-1.5",
                         showCategories
                           ? "bg-[#d4a843] hover:bg-[#c49a33] text-white border-[#d4a843]"
                           : "border-[#d4a843]/50 hover:border-[#d4a843] hover:bg-[#fef9ee]"
-                      }
+                      )}
                     >
-                      <FolderOpen className="h-4 w-4 ml-1.5" />
+                      <FolderOpen className="h-3.5 w-3.5" />
                       קטגוריות
                       {showCategories ? (
-                        <ChevronDown className="h-3.5 w-3.5 mr-1" />
+                        <ChevronDown className="h-3 w-3" />
                       ) : (
-                        <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                        <ChevronRight className="h-3 w-3" />
                       )}
                       {selectedCategoryIds.length > 0 && (
                         <Badge
                           variant="secondary"
-                          className="mr-1 text-xs px-1.5 py-0 h-5 bg-white/20 text-current"
+                          className="mr-0.5 text-[10px] px-1.5 py-0 h-4 bg-white/20 text-current"
                         >
                           {selectedCategoryIds.length}
                         </Badge>
