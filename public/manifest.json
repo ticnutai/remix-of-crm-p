@@ -4,6 +4,7 @@
   "description": "מערכת ניהול לקוחות ופרויקטים לאדריכלים",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay"],
   "background_color": "#0f1729",
   "theme_color": "#1e3a8a",
   "orientation": "any",
