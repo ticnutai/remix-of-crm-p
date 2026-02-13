@@ -1,34 +1,39 @@
 // Dashboard Settings Dialog - Professional Widget & Theme Management
 // tenarch CRM Pro - Rebuilt for clarity and functionality
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { 
-  Palette, 
-  LayoutGrid, 
-  RotateCcw, 
-  Eye, 
+} from "@/components/ui/select";
+import {
+  Palette,
+  LayoutGrid,
+  RotateCcw,
+  Eye,
   EyeOff,
   Check,
   Sparkles,
@@ -45,11 +50,20 @@ import {
   Cloud,
   MoveHorizontal,
   MoveVertical,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useDashboardTheme, dashboardThemes, DashboardTheme } from './DashboardThemeProvider';
-import { useWidgetLayout, WidgetSize, SIZE_LABELS, GridGap } from './WidgetLayoutManager';
-import { useToast } from '@/hooks/use-toast';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  useDashboardTheme,
+  dashboardThemes,
+  DashboardTheme,
+} from "./DashboardThemeProvider";
+import {
+  useWidgetLayout,
+  WidgetSize,
+  SIZE_LABELS,
+  GridGap,
+} from "./WidgetLayoutManager";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardSettingsDialogProps {
   open: boolean;
@@ -60,54 +74,60 @@ interface DashboardSettingsDialogProps {
 // CONSTANTS
 // ============================================
 
-type WidgetCategory = 'stats' | 'charts' | 'tables' | 'other';
+type WidgetCategory = "stats" | "charts" | "tables" | "other";
 
 const WIDGET_CATEGORIES: Record<string, WidgetCategory> = {
-  'stats-clients': 'stats',
-  'stats-projects': 'stats',
-  'stats-revenue': 'stats',
-  'stats-hours': 'stats',
-  'dynamic-stats': 'stats',
-  'chart-revenue': 'charts',
-  'chart-projects': 'charts',
-  'chart-hours': 'charts',
-  'table-hours': 'tables',
-  'table-clients': 'tables',
-  'table-vip': 'tables',
-  'features-info': 'other',
+  "stats-clients": "stats",
+  "stats-projects": "stats",
+  "stats-revenue": "stats",
+  "stats-hours": "stats",
+  "dynamic-stats": "stats",
+  "chart-revenue": "charts",
+  "chart-projects": "charts",
+  "chart-hours": "charts",
+  "table-hours": "tables",
+  "table-clients": "tables",
+  "table-vip": "tables",
+  "features-info": "other",
 };
 
-const CATEGORY_INFO: Record<WidgetCategory, { name: string; icon: React.ReactNode }> = {
-  stats: { name: 'סטטיסטיקות', icon: <BarChart3 className="h-4 w-4" /> },
-  charts: { name: 'גרפים', icon: <PieChart className="h-4 w-4" /> },
-  tables: { name: 'טבלאות', icon: <Table className="h-4 w-4" /> },
-  other: { name: 'אחר', icon: <Sparkles className="h-4 w-4" /> },
+const CATEGORY_INFO: Record<
+  WidgetCategory,
+  { name: string; icon: React.ReactNode }
+> = {
+  stats: { name: "סטטיסטיקות", icon: <BarChart3 className="h-4 w-4" /> },
+  charts: { name: "גרפים", icon: <PieChart className="h-4 w-4" /> },
+  tables: { name: "טבלאות", icon: <Table className="h-4 w-4" /> },
+  other: { name: "אחר", icon: <Sparkles className="h-4 w-4" /> },
 };
 
 const SIZE_OPTIONS: { value: WidgetSize; label: string; width: string }[] = [
-  { value: 'small', label: 'קטן', width: '25%' },
-  { value: 'medium', label: 'בינוני', width: '50%' },
-  { value: 'large', label: 'גדול', width: '75%' },
-  { value: 'full', label: 'מלא', width: '100%' },
+  { value: "small", label: "קטן", width: "25%" },
+  { value: "medium", label: "בינוני", width: "50%" },
+  { value: "large", label: "גדול", width: "75%" },
+  { value: "full", label: "מלא", width: "100%" },
 ];
 
 const GAP_OPTIONS: { value: GridGap; label: string; size: string }[] = [
-  { value: 'tight', label: 'צפוף', size: '8px' },
-  { value: 'normal', label: 'רגיל', size: '16px' },
-  { value: 'wide', label: 'רחב', size: '24px' },
+  { value: "tight", label: "צפוף", size: "8px" },
+  { value: "normal", label: "רגיל", size: "16px" },
+  { value: "wide", label: "רחב", size: "24px" },
 ];
 
 // ============================================
 // MAIN COMPONENT
 // ============================================
 
-export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSettingsDialogProps) {
+export function DashboardSettingsDialog({
+  open,
+  onOpenChange,
+}: DashboardSettingsDialogProps) {
   const { currentTheme, setTheme, themeConfig } = useDashboardTheme();
-  const { 
-    layouts: widgets, 
-    toggleVisibility, 
-    resetAll, 
-    moveWidget, 
+  const {
+    layouts: widgets,
+    toggleVisibility,
+    resetAll,
+    moveWidget,
     setSize,
     autoArrangeWidgets,
     gridGap,
@@ -124,12 +144,12 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     isSaving,
   } = useWidgetLayout();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('layout');
+  const [activeTab, setActiveTab] = useState("layout");
 
   // Memoized sorted widgets
-  const sortedWidgets = useMemo(() => 
-    [...widgets].sort((a, b) => a.order - b.order), 
-    [widgets]
+  const sortedWidgets = useMemo(
+    () => [...widgets].sort((a, b) => a.order - b.order),
+    [widgets],
   );
 
   // Memoized widgets grouped by category
@@ -140,8 +160,8 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
       tables: [],
       other: [],
     };
-    sortedWidgets.forEach(widget => {
-      const category = WIDGET_CATEGORIES[widget.id] || 'other';
+    sortedWidgets.forEach((widget) => {
+      const category = WIDGET_CATEGORIES[widget.id] || "other";
       groups[category].push(widget);
     });
     return groups;
@@ -152,7 +172,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
     setTheme(theme);
     setDashboardTheme(theme);
     toast({
-      title: '🎨 ערכת נושא שונתה',
+      title: "🎨 ערכת נושא שונתה",
       description: `עברת לערכת "${dashboardThemes[theme].name}"`,
     });
   };
@@ -160,23 +180,25 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
   const handleReset = () => {
     resetAll();
     toast({
-      title: '🔄 ההגדרות אופסו',
-      description: 'כל ההגדרות חזרו לברירת המחדל',
+      title: "🔄 ההגדרות אופסו",
+      description: "כל ההגדרות חזרו לברירת המחדל",
     });
   };
 
   const handleAutoArrange = () => {
     autoArrangeWidgets();
     toast({
-      title: '✨ סידור אוטומטי',
-      description: 'הווידג\'טים סודרו בצורה אופטימלית',
+      title: "✨ סידור אוטומטי",
+      description: "הווידג'טים סודרו בצורה אופטימלית",
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[850px] max-h-[90vh] p-0 overflow-hidden" dir="rtl">
-        
+      <DialogContent
+        className="sm:max-w-[850px] max-h-[90vh] p-0 overflow-hidden flex flex-col"
+        dir="rtl"
+      >
         {/* ======== HEADER ======== */}
         <DialogHeader className="px-8 pt-6 pb-5 border-b bg-gradient-to-l from-muted/50 to-background">
           <div className="flex items-center justify-between">
@@ -191,29 +213,42 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                 התאם את מראה הדשבורד והווידג'טים לפי העדפותיך האישיות
               </DialogDescription>
             </div>
-            <Badge 
-              variant={isSaving ? "outline" : "secondary"} 
+            <Badge
+              variant={isSaving ? "outline" : "secondary"}
               className="gap-2 px-3 py-1.5"
             >
               <Cloud className={cn("h-4 w-4", isSaving && "animate-pulse")} />
-              {isSaving ? 'שומר...' : 'מסונכרן'}
+              {isSaving ? "שומר..." : "מסונכרן"}
             </Badge>
           </div>
         </DialogHeader>
 
         {/* ======== TABS ======== */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 flex flex-col min-h-0 overflow-hidden"
+        >
           <div className="px-8 pt-5">
             <TabsList className="grid w-full grid-cols-3 h-14 p-1 bg-muted/50">
-              <TabsTrigger value="layout" className="gap-2 text-sm h-12 data-[state=active]:shadow-md">
+              <TabsTrigger
+                value="layout"
+                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+              >
                 <LayoutGrid className="h-5 w-5" />
                 <span className="font-medium">פריסה ומרווחים</span>
               </TabsTrigger>
-              <TabsTrigger value="widgets" className="gap-2 text-sm h-12 data-[state=active]:shadow-md">
+              <TabsTrigger
+                value="widgets"
+                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+              >
                 <Grid3X3 className="h-5 w-5" />
                 <span className="font-medium">ווידג'טים</span>
               </TabsTrigger>
-              <TabsTrigger value="themes" className="gap-2 text-sm h-12 data-[state=active]:shadow-md">
+              <TabsTrigger
+                value="themes"
+                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+              >
                 <Palette className="h-5 w-5" />
                 <span className="font-medium">ערכות נושא</span>
               </TabsTrigger>
@@ -221,10 +256,13 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
           </div>
 
           {/* ======== LAYOUT TAB ======== */}
-          <TabsContent value="layout" className="px-8 py-6" dir="rtl">
-            <ScrollArea className="h-[500px] pr-4">
-              <div className="grid gap-8">
-              
+          <TabsContent
+            value="layout"
+            className="mt-0 px-8 py-6 overflow-y-auto"
+            style={{ maxHeight: "calc(90vh - 280px)" }}
+            dir="rtl"
+          >
+            <div className="grid gap-8">
               {/* Grid Gap Section */}
               <section>
                 <div className="flex items-center gap-3 mb-4">
@@ -232,20 +270,29 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                     <Grid3X3 className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">מרווחים בין ווידג'טים</h3>
-                    <p className="text-sm text-muted-foreground">התאם את הריווחים בין הרכיבים</p>
+                    <h3 className="font-semibold text-lg">
+                      מרווחים בין ווידג'טים
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      התאם את הריווחים בין הרכיבים
+                    </p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-6">
                   {/* Horizontal Gap Slider */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <MoveHorizontal className="h-4 w-4 text-muted-foreground" />
-                        <Label className="text-sm font-medium">מרווח אופקי</Label>
+                        <Label className="text-sm font-medium">
+                          מרווח אופקי
+                        </Label>
                       </div>
-                      <Badge variant="secondary" className="min-w-[60px] justify-center">
+                      <Badge
+                        variant="secondary"
+                        className="min-w-[60px] justify-center"
+                      >
                         {gapX}px
                       </Badge>
                     </div>
@@ -268,9 +315,14 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <MoveVertical className="h-4 w-4 text-muted-foreground" />
-                        <Label className="text-sm font-medium">מרווח אנכי</Label>
+                        <Label className="text-sm font-medium">
+                          מרווח אנכי
+                        </Label>
                       </div>
-                      <Badge variant="secondary" className="min-w-[60px] justify-center">
+                      <Badge
+                        variant="secondary"
+                        className="min-w-[60px] justify-center"
+                      >
                         {gapY}px
                       </Badge>
                     </div>
@@ -290,13 +342,20 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
                   {/* Preset Buttons */}
                   <div className="pt-2">
-                    <p className="text-xs text-muted-foreground mb-3">הגדרות מוכנות:</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      הגדרות מוכנות:
+                    </p>
                     <div className="grid grid-cols-3 gap-2">
                       {GAP_OPTIONS.map((option) => (
                         <button
                           key={option.value}
                           onClick={() => {
-                            const gapValue = option.value === 'tight' ? 8 : option.value === 'normal' ? 16 : 24;
+                            const gapValue =
+                              option.value === "tight"
+                                ? 8
+                                : option.value === "normal"
+                                  ? 16
+                                  : 24;
                             setGapX(gapValue);
                             setGapY(gapValue);
                             setGridGap(option.value);
@@ -304,13 +363,17 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                           className={cn(
                             "relative p-3 rounded-xl border text-center transition-all duration-200",
                             "hover:border-primary/50 hover:shadow-sm",
-                            gridGap === option.value 
-                              ? "border-primary bg-primary/5" 
-                              : "border-border bg-card"
+                            gridGap === option.value
+                              ? "border-primary bg-primary/5"
+                              : "border-border bg-card",
                           )}
                         >
-                          <div className="text-sm font-medium">{option.label}</div>
-                          <div className="text-xs text-muted-foreground">{option.size}</div>
+                          <div className="text-sm font-medium">
+                            {option.label}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {option.size}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -328,14 +391,19 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">התנהגות פריסה</h3>
-                    <p className="text-sm text-muted-foreground">הגדר כיצד הווידג'טים מתארגנים</p>
+                    <p className="text-sm text-muted-foreground">
+                      הגדר כיצד הווידג'טים מתארגנים
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid gap-4">
                   <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/30 border hover:bg-muted/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="equalize" className="text-base font-medium cursor-pointer">
+                      <Label
+                        htmlFor="equalize"
+                        className="text-base font-medium cursor-pointer"
+                      >
                         השווה גבהים אוטומטית
                       </Label>
                       <p className="text-sm text-muted-foreground">
@@ -352,7 +420,10 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
                   <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/30 border hover:bg-muted/50 transition-colors">
                     <div className="space-y-1">
-                      <Label htmlFor="expand" className="text-base font-medium cursor-pointer">
+                      <Label
+                        htmlFor="expand"
+                        className="text-base font-medium cursor-pointer"
+                      >
                         הרחבה אוטומטית לשטח ריק
                       </Label>
                       <p className="text-sm text-muted-foreground">
@@ -379,7 +450,9 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">פעולות מהירות</h3>
-                    <p className="text-sm text-muted-foreground">כלים לניהול מהיר של הדשבורד</p>
+                    <p className="text-sm text-muted-foreground">
+                      כלים לניהול מהיר של הדשבורד
+                    </p>
                   </div>
                 </div>
 
@@ -403,14 +476,18 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                 </div>
               </section>
             </div>
-            </ScrollArea>
           </TabsContent>
 
           {/* ======== WIDGETS TAB ======== */}
-          <TabsContent value="widgets" className="px-8 py-6" dir="rtl">
-            <ScrollArea className="h-[500px] pr-4">
-              <div className="space-y-8">
-                {(Object.keys(widgetsByCategory) as WidgetCategory[]).map((category) => {
+          <TabsContent
+            value="widgets"
+            className="mt-0 px-8 py-6 overflow-y-auto"
+            style={{ maxHeight: "calc(90vh - 280px)" }}
+            dir="rtl"
+          >
+            <div className="space-y-8">
+              {(Object.keys(widgetsByCategory) as WidgetCategory[]).map(
+                (category) => {
                   const categoryWidgets = widgetsByCategory[category];
                   if (categoryWidgets.length === 0) return null;
                   const { name, icon } = CATEGORY_INFO[category];
@@ -436,7 +513,8 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                             className={cn(
                               "flex items-center gap-5 p-5 rounded-2xl border-2 bg-card transition-all",
                               "hover:shadow-md hover:border-primary/30",
-                              !widget.visible && "opacity-50 bg-muted/20 border-dashed"
+                              !widget.visible &&
+                                "opacity-50 bg-muted/20 border-dashed",
                             )}
                           >
                             {/* Drag Handle */}
@@ -446,10 +524,13 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
                             {/* Widget Info */}
                             <div className="flex-1 min-w-0">
-                              <div className={cn(
-                                "font-semibold text-base",
-                                !widget.visible && "line-through text-muted-foreground"
-                              )}>
+                              <div
+                                className={cn(
+                                  "font-semibold text-base",
+                                  !widget.visible &&
+                                    "line-through text-muted-foreground",
+                                )}
+                              >
                                 {widget.name}
                               </div>
                               <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
@@ -467,7 +548,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 hover:bg-primary/10"
-                                  onClick={() => moveWidget(widget.id, 'up')}
+                                  onClick={() => moveWidget(widget.id, "up")}
                                   disabled={widget.order === 1}
                                 >
                                   <ChevronUp className="h-4 w-4" />
@@ -476,7 +557,7 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 hover:bg-primary/10"
-                                  onClick={() => moveWidget(widget.id, 'down')}
+                                  onClick={() => moveWidget(widget.id, "down")}
                                   disabled={widget.order === widgets.length}
                                 >
                                   <ChevronDown className="h-4 w-4" />
@@ -486,14 +567,19 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                               {/* Size Select */}
                               <Select
                                 value={widget.size}
-                                onValueChange={(value) => setSize(widget.id, value as WidgetSize)}
+                                onValueChange={(value) =>
+                                  setSize(widget.id, value as WidgetSize)
+                                }
                               >
                                 <SelectTrigger className="w-[110px] h-10 font-medium">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {SIZE_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
+                                    <SelectItem
+                                      key={opt.value}
+                                      value={opt.value}
+                                    >
                                       {opt.label} ({opt.width})
                                     </SelectItem>
                                   ))}
@@ -519,59 +605,66 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                       </div>
                     </section>
                   );
-                })}
-              </div>
-            </ScrollArea>
+                },
+              )}
+            </div>
           </TabsContent>
 
           {/* ======== THEMES TAB ======== */}
-          <TabsContent value="themes" className="px-8 py-6" dir="rtl">
-            <ScrollArea className="h-[500px] pr-4">
-              {/* Current Theme Card */}
-              <Card className="mb-8 border-2 border-primary/50 bg-gradient-to-l from-primary/5 to-background">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-primary/20">
-                      <Check className="h-5 w-5 text-primary" />
+          <TabsContent
+            value="themes"
+            className="mt-0 px-8 py-6 overflow-y-auto"
+            style={{ maxHeight: "calc(90vh - 280px)" }}
+            dir="rtl"
+          >
+            {/* Current Theme Card */}
+            <Card className="mb-8 border-2 border-primary/50 bg-gradient-to-l from-primary/5 to-background">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-primary/20">
+                    <Check className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle>ערכת נושא פעילה</CardTitle>
+                    <CardDescription>הערכה הנוכחית בשימוש</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-2xl font-bold">{themeConfig.name}</div>
+                    <div className="text-muted-foreground mt-1">
+                      {themeConfig.description}
                     </div>
-                    <div>
-                      <CardTitle>ערכת נושא פעילה</CardTitle>
-                      <CardDescription>הערכה הנוכחית בשימוש</CardDescription>
+                    <div className="flex gap-2 mt-4">
+                      {themeConfig.effects.glow && <Badge>✨ זוהר</Badge>}
+                      {themeConfig.effects.reflection && (
+                        <Badge>🪞 השתקפות</Badge>
+                      )}
+                      {themeConfig.effects.gradient && (
+                        <Badge>🎨 גרדיאנט</Badge>
+                      )}
+                      <Badge variant="outline">
+                        פינות: {themeConfig.effects.roundedCorners}
+                      </Badge>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-bold">{themeConfig.name}</div>
-                      <div className="text-muted-foreground mt-1">{themeConfig.description}</div>
-                      <div className="flex gap-2 mt-4">
-                        {themeConfig.effects.glow && (
-                          <Badge>✨ זוהר</Badge>
-                        )}
-                        {themeConfig.effects.reflection && (
-                          <Badge>🪞 השתקפות</Badge>
-                        )}
-                        {themeConfig.effects.gradient && (
-                          <Badge>🎨 גרדיאנט</Badge>
-                        )}
-                        <Badge variant="outline">פינות: {themeConfig.effects.roundedCorners}</Badge>
-                      </div>
-                    </div>
-                    <div 
-                      className="w-24 h-24 rounded-2xl border-2 shadow-lg"
-                      style={{
-                        background: themeConfig.colors.background,
-                        borderColor: themeConfig.colors.border,
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                  <div
+                    className="w-24 h-24 rounded-2xl border-2 shadow-lg"
+                    style={{
+                      background: themeConfig.colors.background,
+                      borderColor: themeConfig.colors.border,
+                    }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Themes Grid */}
-              <div className="grid grid-cols-2 gap-5">
-                {(Object.keys(dashboardThemes) as DashboardTheme[]).map((themeKey) => {
+            {/* Themes Grid */}
+            <div className="grid grid-cols-2 gap-5">
+              {(Object.keys(dashboardThemes) as DashboardTheme[]).map(
+                (themeKey) => {
                   const theme = dashboardThemes[themeKey];
                   const isActive = currentTheme === themeKey;
 
@@ -582,16 +675,16 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                       className={cn(
                         "relative p-5 rounded-2xl border-2 text-right transition-all duration-200",
                         "hover:shadow-xl hover:scale-[1.02]",
-                        isActive 
-                          ? "border-primary ring-4 ring-primary/20 shadow-lg" 
-                          : "border-border hover:border-primary/50"
+                        isActive
+                          ? "border-primary ring-4 ring-primary/20 shadow-lg"
+                          : "border-border hover:border-primary/50",
                       )}
                       style={{ background: theme.colors.background }}
                     >
                       {/* Selection Indicator */}
                       {isActive && (
                         <div className="absolute top-4 left-4">
-                          <div 
+                          <div
                             className="p-1.5 rounded-full"
                             style={{ backgroundColor: theme.colors.accent }}
                           >
@@ -602,9 +695,11 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
                       {/* Mini Preview */}
                       <div className="space-y-2 mb-4">
-                        <div 
+                        <div
                           className="h-4 rounded-md"
-                          style={{ backgroundColor: theme.colors.headerBackground }}
+                          style={{
+                            backgroundColor: theme.colors.headerBackground,
+                          }}
                         />
                         <div className="flex gap-1.5">
                           {[1, 2, 3, 4].map((i) => (
@@ -632,13 +727,13 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
 
                       {/* Theme Info */}
                       <div className="space-y-1">
-                        <div 
+                        <div
                           className="text-lg font-bold"
                           style={{ color: theme.colors.text }}
                         >
                           {theme.name}
                         </div>
-                        <div 
+                        <div
                           className="text-sm"
                           style={{ color: theme.colors.textMuted }}
                         >
@@ -647,9 +742,9 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
                       </div>
                     </button>
                   );
-                })}
-              </div>
-            </ScrollArea>
+                },
+              )}
+            </div>
           </TabsContent>
         </Tabs>
 
@@ -658,7 +753,11 @@ export function DashboardSettingsDialog({ open, onOpenChange }: DashboardSetting
           <p className="text-sm text-muted-foreground">
             💾 כל ההגדרות נשמרות אוטומטית ומסונכרנות בין המכשירים שלך
           </p>
-          <Button onClick={() => onOpenChange(false)} size="lg" className="px-8">
+          <Button
+            onClick={() => onOpenChange(false)}
+            size="lg"
+            className="px-8"
+          >
             סיום
           </Button>
         </div>

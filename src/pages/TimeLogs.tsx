@@ -785,9 +785,9 @@ export default function TimeLogs() {
       editType: "select",
       editOptions: clients.map((c) => ({ value: c.id, label: c.name })),
       cell: (value) => (
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4 text-muted-foreground" />
-          {getClientName(value)}
+        <div className="flex items-center gap-2" title={getClientName(value)}>
+          <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="truncate">{getClientName(value)}</span>
         </div>
       ),
     },
@@ -801,7 +801,7 @@ export default function TimeLogs() {
       cell: (value) => {
         const foundUser = users.find((u) => u.id === value);
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" title={getUserName(value)}>
             {foundUser?.avatar_url ? (
               <img
                 src={foundUser.avatar_url}
@@ -828,9 +828,9 @@ export default function TimeLogs() {
       editType: "select",
       editOptions: projects.map((p) => ({ value: p.id, label: p.name })),
       cell: (value) => (
-        <div className="flex items-center gap-2">
-          <Briefcase className="h-4 w-4 text-muted-foreground" />
-          {getProjectName(value)}
+        <div className="flex items-center gap-2" title={getProjectName(value)}>
+          <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <span className="truncate">{getProjectName(value)}</span>
         </div>
       ),
     },
@@ -843,7 +843,7 @@ export default function TimeLogs() {
       editable: true,
       editType: "text",
       cell: (value) => (
-        <span className="block truncate max-w-[200px]">
+        <span className="block truncate max-w-[200px]" title={value || ""}>
           {value || "לחץ להוספת תיאור..."}
         </span>
       ),
