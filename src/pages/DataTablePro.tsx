@@ -3297,32 +3297,8 @@ export default function DataTablePro() {
           {/* Clients Tab */}
           <TabsContent value="clients" className="mt-6">
             <Card>
-              <CardHeader className="pb-3 space-y-2">
-                {/* Row 1: Title + Info */}
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Users className="h-5 w-5 text-secondary" />
-                    טבלת לקוחות
-                    <Badge variant="outline" className="text-xs gap-1">
-                      <Database className="h-3 w-3" />
-                      מחובר למסד נתונים
-                    </Badge>
-                    {isSyncing && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                  </CardTitle>
-                  <span className="text-xs text-muted-foreground">
-                    {displayClients.length} לקוחות
-                    {selectedClients.length > 0 && (
-                      <span className="text-primary font-semibold">
-                        {" "}| {selectedClients.length} נבחרו
-                      </span>
-                    )}
-                    {" | שינויים נשמרים אוטומטית"}
-                  </span>
-                </div>
-
-                {/* Row 2: ALL buttons unified */}
+              <CardHeader className="pb-3">
+                {/* Unified Action Bar */}
                 <div className="flex items-center gap-1.5 flex-wrap border rounded-xl bg-muted/20 px-3 py-2">
                   {/* Add Client - special styling */}
                   <Sheet
