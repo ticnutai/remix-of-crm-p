@@ -169,6 +169,7 @@ import {
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // Demo data types
 interface DemoProject {
@@ -3316,7 +3317,8 @@ export default function DataTablePro() {
                     {displayClients.length} לקוחות
                     {selectedClients.length > 0 && (
                       <span className="text-primary font-semibold">
-                        {" "}| {selectedClients.length} נבחרו
+                        {" "}
+                        | {selectedClients.length} נבחרו
                       </span>
                     )}
                     {" | שינויים נשמרים אוטומטית"}
@@ -3325,14 +3327,16 @@ export default function DataTablePro() {
 
                 {/* Row 2: Unified Action Bar */}
                 <div className="flex items-center gap-1.5 flex-wrap border rounded-xl bg-muted/30 px-3 py-2">
-                  
                   {/* Primary Action: Add Client */}
                   <Sheet
                     open={isAddClientDialogOpen}
                     onOpenChange={setIsAddClientDialogOpen}
                   >
                     <SheetTrigger asChild>
-                      <Button size="sm" className="h-8 gap-1.5 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white shadow-sm">
+                      <Button
+                        size="sm"
+                        className="h-8 gap-1.5 bg-[#1e3a8a] hover:bg-[#1e3a8a]/90 text-white shadow-sm"
+                      >
                         <Plus className="h-3.5 w-3.5" />
                         הוסף לקוח
                       </Button>
@@ -3377,9 +3381,7 @@ export default function DataTablePro() {
                             id="newClientEmail"
                             type="email"
                             value={newClientEmail}
-                            onChange={(e) =>
-                              setNewClientEmail(e.target.value)
-                            }
+                            onChange={(e) => setNewClientEmail(e.target.value)}
                             placeholder="email@example.com"
                             className="mt-2"
                             dir="ltr"
@@ -3390,9 +3392,7 @@ export default function DataTablePro() {
                           <Input
                             id="newClientPhone"
                             value={newClientPhone}
-                            onChange={(e) =>
-                              setNewClientPhone(e.target.value)
-                            }
+                            onChange={(e) => setNewClientPhone(e.target.value)}
                             placeholder="050-0000000"
                             className="mt-2"
                             dir="ltr"
@@ -3508,7 +3508,9 @@ export default function DataTablePro() {
                             className="h-8 gap-1.5 text-orange-600 hover:bg-orange-50"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            <span className="text-sm">מוסתרות ({hiddenClientColumns.size})</span>
+                            <span className="text-sm">
+                              מוסתרות ({hiddenClientColumns.size})
+                            </span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -3635,7 +3637,7 @@ export default function DataTablePro() {
                         "h-8 gap-1.5",
                         showCategories
                           ? "bg-[#d4a843] hover:bg-[#c49a33] text-white border-[#d4a843]"
-                          : "border-[#d4a843]/50 hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                          : "border-[#d4a843]/50 hover:border-[#d4a843] hover:bg-[#fef9ee]",
                       )}
                     >
                       <FolderOpen className="h-3.5 w-3.5" />
