@@ -32,6 +32,8 @@ import {
   CheckCircle,
   Plus,
   X,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   useConsultants,
@@ -76,9 +78,12 @@ export function ConsultantDialog({
   keywordContext,
   onSelectConsultant,
 }: ConsultantDialogProps) {
-  const { consultants, loading, addConsultant } = useConsultants();
+  const { consultants, loading, addConsultant, updateConsultant, deleteConsultant } = useConsultants();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"select" | "add">("select");
+  const [editingConsultant, setEditingConsultant] = useState<Consultant | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Consultant>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [professions, setProfessions] = useState(loadProfessions);
   const [addingProfession, setAddingProfession] = useState(false);
   const [newProfessionName, setNewProfessionName] = useState("");
@@ -171,6 +176,40 @@ export function ConsultantDialog({
     onOpenChange(false);
   };
 
+  const handleStartEdit = (consultant: Consultant, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingConsultant(consultant);
+    setEditForm({
+      name: consultant.name,
+      profession: consultant.profession,
+      license_number: consultant.license_number || "",
+      id_number: consultant.id_number || "",
+      phone: consultant.phone || "",
+      email: consultant.email || "",
+      company: consultant.company || "",
+      specialty: consultant.specialty || "",
+      notes: consultant.notes || "",
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingConsultant || !editForm.name?.trim()) return;
+    await updateConsultant(editingConsultant.id, editForm);
+    setEditingConsultant(null);
+    setEditForm({});
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    await deleteConsultant(deleteConfirm);
+    setDeleteConfirm(null);
+  };
+
   const resetForm = () => {
     setNewConsultant({
       name: "",
@@ -186,6 +225,7 @@ export function ConsultantDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-2xl max-h-[85vh] overflow-hidden"
@@ -292,18 +332,38 @@ export function ConsultantDialog({
                                       )}
                                     </div>
                                   </div>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSelectConsultant(consultant);
-                                    }}
-                                  >
-                                    <CheckCircle className="h-4 w-4 ml-1" />
-                                    בחר
-                                  </Button>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 hover:bg-blue-50"
+                                      title="ערוך פרטים"
+                                      onClick={(e) => handleStartEdit(consultant, e)}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5 text-blue-600" />
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 hover:bg-red-50"
+                                      title="מחק"
+                                      onClick={(e) => handleDelete(consultant.id, e)}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSelectConsultant(consultant);
+                                      }}
+                                    >
+                                      <CheckCircle className="h-4 w-4 ml-1" />
+                                      בחר
+                                    </Button>
+                                  </div>
                                 </div>
                               </CardContent>
                             </Card>
@@ -552,6 +612,194 @@ export function ConsultantDialog({
             </ScrollArea>
           </TabsContent>
         </Tabs>
+      </DialogContent>
+    </Dialog>
+
+    {/* Edit Dialog */}
+    {editingConsultant && (
+      <EditConsultantDialog
+        consultant={editingConsultant}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onSave={handleSaveEdit}
+        onCancel={() => { setEditingConsultant(null); setEditForm({}); }}
+        professions={professions}
+      />
+    )}
+
+    {/* Delete Confirmation */}
+    <DeleteConfirmDialog
+      open={!!deleteConfirm}
+      onConfirm={confirmDelete}
+      onCancel={() => setDeleteConfirm(null)}
+    />
+  </>);
+}
+
+/* Edit Consultant Dialog */
+function EditConsultantDialog({
+  consultant,
+  editForm,
+  setEditForm,
+  onSave,
+  onCancel,
+  professions,
+}: {
+  consultant: Consultant;
+  editForm: Partial<Consultant>;
+  setEditForm: (f: Partial<Consultant>) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  professions: { value: string; label: string }[];
+}) {
+  return (
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent className="max-w-lg" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-blue-600" />
+            עריכת {consultant.profession} - {consultant.name}
+          </DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[60vh]">
+          <div className="grid gap-4 p-1">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>שם *</Label>
+                <Input
+                  value={editForm.name || ""}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="שם"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>מקצוע</Label>
+                <Select
+                  value={editForm.profession || ""}
+                  onValueChange={(v) => setEditForm({ ...editForm, profession: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {professions.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>מספר רישיון</Label>
+                <Input
+                  value={editForm.license_number || ""}
+                  onChange={(e) => setEditForm({ ...editForm, license_number: e.target.value })}
+                  placeholder="מספר רישיון"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>מספר ת.ז</Label>
+                <Input
+                  value={editForm.id_number || ""}
+                  onChange={(e) => setEditForm({ ...editForm, id_number: e.target.value })}
+                  placeholder="מספר ת.ז"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>טלפון</Label>
+                <Input
+                  value={editForm.phone || ""}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  placeholder="טלפון"
+                  dir="ltr"
+                  className="text-right"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>אימייל</Label>
+                <Input
+                  value={editForm.email || ""}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  placeholder="אימייל"
+                  dir="ltr"
+                  className="text-right"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>חברה</Label>
+                <Input
+                  value={editForm.company || ""}
+                  onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                  placeholder="שם החברה"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>התמחות</Label>
+                <Input
+                  value={editForm.specialty || ""}
+                  onChange={(e) => setEditForm({ ...editForm, specialty: e.target.value })}
+                  placeholder="תחום התמחות"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>הערות</Label>
+              <Input
+                value={editForm.notes || ""}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                placeholder="הערות"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={onCancel}>ביטול</Button>
+              <Button onClick={onSave} disabled={!editForm.name?.trim()}>
+                <Pencil className="h-4 w-4 ml-2" />
+                שמור שינויים
+              </Button>
+            </div>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* Delete Confirmation Dialog */
+function DeleteConfirmDialog({
+  open,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <Trash2 className="h-5 w-5" />
+            מחיקת בעל מקצוע
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground text-right">
+          האם אתה בטוח שברצונך למחוק בעל מקצוע זה? פעולה זו אינה ניתנת לביטול.
+        </p>
+        <div className="flex gap-2 justify-end mt-4">
+          <Button variant="outline" onClick={onCancel}>ביטול</Button>
+          <Button variant="destructive" onClick={onConfirm}>
+            <Trash2 className="h-4 w-4 ml-2" />
+            מחק
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
