@@ -1356,6 +1356,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     deleteTask,
     bulkDeleteTasks,
     addStage,
+    addBulkStages,
     updateStage,
     deleteStage,
     bulkDeleteStages,
@@ -1413,6 +1414,8 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
   const [addStageDialog, setAddStageDialog] = useState(false);
   const [newStageName, setNewStageName] = useState("");
   const [newStageIcon, setNewStageIcon] = useState("Phone");
+  const [addStageMode, setAddStageMode] = useState<"single" | "bulk">("single");
+  const [bulkStagesText, setBulkStagesText] = useState("");
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
@@ -1589,6 +1592,25 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     setNewStageName("");
     setNewStageIcon("Phone");
     setAddStageDialog(false);
+  };
+  const handleBulkAddStages = async () => {
+    if (!bulkStagesText.trim()) return;
+    const names = bulkStagesText
+      .split("\n")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (names.length > 0) {
+      const newStages = await addBulkStages(names, newStageIcon);
+      if (newStages && selectedFolderId) {
+        for (const stage of newStages) {
+          await assignStageToFolder(stage.id, selectedFolderId);
+        }
+        refresh();
+      }
+      setBulkStagesText("");
+      setNewStageIcon("Phone");
+      setAddStageDialog(false);
+    }
   };
   const handleDeleteStage = async (stageId: string) => {
     if (confirm("האם אתה בטוח שברצונך למחוק שלב זה וכל המשימות שבו?")) {
@@ -3347,7 +3369,15 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
       </Dialog>
 
       {/* Add Stage Dialog */}
-      <Dialog open={addStageDialog} onOpenChange={setAddStageDialog}>
+      <Dialog open={addStageDialog} onOpenChange={(open) => {
+        setAddStageDialog(open);
+        if (!open) {
+          setAddStageMode("single");
+          setBulkStagesText("");
+          setNewStageName("");
+          setNewStageIcon("Phone");
+        }
+      }}>
         <DialogContent className="text-right" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">הוספת שלב חדש</DialogTitle>
@@ -3355,24 +3385,51 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
               בחר שם ואייקון לשלב החדש
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-right">
-                שם השלב
-              </label>
-              <Input
-                value={newStageName}
-                onChange={(e) => setNewStageName(e.target.value)}
-                placeholder="הזן שם לשלב..."
-                className="text-right"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleAddStage();
-                  }
-                }}
-              />
-            </div>
-            <div>
+          <Tabs value={addStageMode} onValueChange={(v) => setAddStageMode(v as "single" | "bulk")} dir="rtl">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="single">שלב בודד</TabsTrigger>
+              <TabsTrigger value="bulk">שלבים מרובים</TabsTrigger>
+            </TabsList>
+            <TabsContent value="single">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">
+                    שם השלב
+                  </label>
+                  <Input
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    placeholder="הזן שם לשלב..."
+                    className="text-right"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleAddStage();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="bulk">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-right">
+                    הזן שלב אחד בכל שורה
+                  </label>
+                  <Textarea
+                    value={bulkStagesText}
+                    onChange={(e) => setBulkStagesText(e.target.value)}
+                    placeholder="שלב 1&#10;שלב 2&#10;שלב 3"
+                    rows={8}
+                    className="font-mono text-right"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1 text-right">
+                    {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים יתווספו
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+            <div className="mt-4">
               <label className="block text-sm font-medium mb-2 text-right">
                 אייקון
               </label>
@@ -3397,14 +3454,20 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 })}
               </div>
             </div>
-          </div>
+          </Tabs>
           <DialogFooter className="flex-row-reverse gap-2">
             <Button variant="outline" onClick={() => setAddStageDialog(false)}>
               ביטול
             </Button>
-            <Button onClick={handleAddStage} disabled={!newStageName.trim()}>
-              הוסף שלב
-            </Button>
+            {addStageMode === "single" ? (
+              <Button onClick={handleAddStage} disabled={!newStageName.trim()}>
+                הוסף שלב
+              </Button>
+            ) : (
+              <Button onClick={handleBulkAddStages} disabled={!bulkStagesText.trim()}>
+                הוסף {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

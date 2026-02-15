@@ -676,6 +676,46 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Add multiple stages at once (bulk)
+  const addBulkStages = async (stageNames: string[], stageIcon: string = 'Phone') => {
+    try {
+      const maxSortOrder = stages.reduce((max, s) => Math.max(max, s.sort_order), -1);
+      const now = Date.now();
+
+      const stagesToInsert = stageNames.map((name, index) => ({
+        client_id: clientId,
+        stage_id: `custom_${now}_${index}`,
+        stage_name: name,
+        stage_icon: stageIcon,
+        sort_order: maxSortOrder + 1 + index,
+      }));
+
+      const { data, error } = await supabase
+        .from('client_stages')
+        .insert(stagesToInsert)
+        .select();
+
+      if (error) throw error;
+
+      if (data) {
+        setStages(prev => [...prev, ...data]);
+      }
+      toast({
+        title: 'הצלחה',
+        description: `${stageNames.length} שלבים נוספו בהצלחה`,
+      });
+      return data;
+    } catch (error: unknown) {
+      console.error('Error adding bulk stages:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן להוסיף שלבים',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
   // Delete stage
   const deleteStage = async (stageId: string) => {
     try {
@@ -1317,6 +1357,7 @@ export function useClientStages(clientId: string) {
     deleteTask,
     bulkDeleteTasks,
     addStage,
+    addBulkStages,
     updateStage,
     deleteStage,
     bulkDeleteStages,
