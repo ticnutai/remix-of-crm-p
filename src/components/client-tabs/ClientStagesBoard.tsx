@@ -1600,19 +1600,19 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
     if (names.length === 0) return;
-    
+
     // Save values before closing dialog
     const icon = newStageIcon;
     const folderId = selectedFolderId;
-    
+
     // Close dialog
     setBulkStagesText("");
     setNewStageIcon("Phone");
     setAddStageDialog(false);
-    
+
     // Use addBulkStages with folder_id included directly in the insert
     const result = await addBulkStages(names, icon, folderId || null);
-    
+
     if (result && folderId) {
       refresh();
     }
@@ -3374,16 +3374,19 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
       </Dialog>
 
       {/* Add Stage Dialog */}
-      <Dialog open={addStageDialog} onOpenChange={(open) => {
-        console.log('[ADD-STAGE-DIALOG] open:', open);
-        setAddStageDialog(open);
-        if (!open) {
-          setAddStageMode("single");
-          setBulkStagesText("");
-          setNewStageName("");
-          setNewStageIcon("Phone");
-        }
-      }}>
+      <Dialog
+        open={addStageDialog}
+        onOpenChange={(open) => {
+          console.log("[ADD-STAGE-DIALOG] open:", open);
+          setAddStageDialog(open);
+          if (!open) {
+            setAddStageMode("single");
+            setBulkStagesText("");
+            setNewStageName("");
+            setNewStageIcon("Phone");
+          }
+        }}
+      >
         <DialogContent className="text-right" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="text-right">הוספת שלב חדש</DialogTitle>
@@ -3391,7 +3394,11 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
               בחר שם ואייקון לשלב החדש
             </DialogDescription>
           </DialogHeader>
-          <Tabs value={addStageMode} onValueChange={(v) => setAddStageMode(v as "single" | "bulk")} dir="rtl">
+          <Tabs
+            value={addStageMode}
+            onValueChange={(v) => setAddStageMode(v as "single" | "bulk")}
+            dir="rtl"
+          >
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="single">שלב בודד</TabsTrigger>
               <TabsTrigger value="bulk">שלבים מרובים</TabsTrigger>
@@ -3430,7 +3437,8 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                     className="font-mono text-right"
                   />
                   <p className="text-xs text-muted-foreground mt-1 text-right">
-                    {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים יתווספו
+                    {bulkStagesText.split("\n").filter((t) => t.trim()).length}{" "}
+                    שלבים יתווספו
                   </p>
                 </div>
               </div>
@@ -3470,8 +3478,12 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 הוסף שלב
               </Button>
             ) : (
-              <Button onClick={handleBulkAddStages} disabled={!bulkStagesText.trim()}>
-                הוסף {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים
+              <Button
+                onClick={handleBulkAddStages}
+                disabled={!bulkStagesText.trim()}
+              >
+                הוסף {bulkStagesText.split("\n").filter((t) => t.trim()).length}{" "}
+                שלבים
               </Button>
             )}
           </DialogFooter>
