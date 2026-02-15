@@ -2423,9 +2423,10 @@ export default function DataTablePro() {
             </div>
           );
         },
-        // Make it editable via dropdown
+        // Make it editable via dropdown (enhanced-select opens instantly on click)
         editable: true,
-        editType: "select",
+        editType: "enhanced-select",
+        allowAddOptions: true,
         editOptions: availableStages.map((s) => ({
           value: s.stage_name,
           label: s.stage_name,
