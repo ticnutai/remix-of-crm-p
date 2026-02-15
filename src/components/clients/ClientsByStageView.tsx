@@ -1,15 +1,30 @@
 // Clients By Stage View - Modern compact design with icons
-import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,15 +32,23 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useClientsByStage, type ClientInStage, type StageGroup } from '@/hooks/useClientsByStage';
-import { useClientsByConsultant, type ConsultantGroup, type ConsultantClient } from '@/hooks/useClientsByConsultant';
-import { useClients } from '@/hooks/useClients';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  useClientsByStage,
+  type ClientInStage,
+  type StageGroup,
+} from "@/hooks/useClientsByStage";
+import {
+  useClientsByConsultant,
+  type ConsultantGroup,
+  type ConsultantClient,
+} from "@/hooks/useClientsByConsultant";
+import { useClients } from "@/hooks/useClients";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import {
   Users,
   ChevronDown,
@@ -51,52 +74,55 @@ import {
   FolderPlus,
   Trash2,
   Pencil,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // localStorage keys
-const STORAGE_KEY_VIEW_FILTER = 'clientsByStage_viewFilter';
-const STORAGE_KEY_EXPANDED_GROUPS = 'clientsByStage_expandedGroups';
-const STORAGE_KEY_EXPANDED_CONSULTANTS = 'clientsByStage_expandedConsultants';
+const STORAGE_KEY_VIEW_FILTER = "clientsByStage_viewFilter";
+const STORAGE_KEY_EXPANDED_GROUPS = "clientsByStage_expandedGroups";
+const STORAGE_KEY_EXPANDED_CONSULTANTS = "clientsByStage_expandedConsultants";
 
 interface ClientsByStageViewProps {
   className?: string;
 }
 
-type ViewFilter = 'all' | 'recent' | 'consultants';
+type ViewFilter = "all" | "recent" | "consultants";
 
 // Compact Client Row
-function ClientRow({ 
-  client, 
-  isExpanded, 
+function ClientRow({
+  client,
+  isExpanded,
   onToggle,
   onOpenClient,
   isSelected,
   onSelect,
-}: { 
-  client: ClientInStage; 
+}: {
+  client: ClientInStage;
   isExpanded: boolean;
   onToggle: () => void;
   onOpenClient: () => void;
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
 }) {
-  const completedTasks = client.tasks.filter(t => t.is_completed).length;
+  const completedTasks = client.tasks.filter((t) => t.is_completed).length;
   const totalTasks = client.tasks.length;
   const hasProgress = totalTasks > 0;
 
   return (
     <TooltipProvider>
-      <div className={cn(
-        "border-b last:border-0 hover:bg-muted/30 transition-colors",
-        isSelected && "bg-primary/5"
-      )} dir="rtl">
+      <div
+        className={cn(
+          "border-b last:border-0 hover:bg-muted/30 transition-colors",
+          isSelected && "bg-primary/5",
+        )}
+        dir="rtl"
+      >
         <Collapsible open={isExpanded} onOpenChange={onToggle}>
           <CollapsibleTrigger asChild>
             <div className="flex items-center gap-2 py-2 px-3 cursor-pointer flex-row-reverse">
               {/* Checkbox for selection */}
-              <div 
-                className="flex-shrink-0" 
+              <div
+                className="flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
@@ -109,64 +135,75 @@ function ClientRow({
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
-              
+
               {/* Expand Icon - use ChevronLeft for RTL */}
               {isExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               ) : (
                 <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               )}
-              
+
               {/* Avatar/Icon */}
               <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-medium text-white">
                   {client.name.charAt(0)}
                 </span>
               </div>
-              
+
               {/* Name */}
               <span className="font-medium text-sm truncate flex-1 min-w-0">
                 {client.name}
               </span>
-              
+
               {/* Stage Progress Info */}
               {client.total_stages > 0 && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0 h-5 gap-1"
+                    >
                       <Layers className="h-3 w-3" />
                       {client.completed_stages}/{client.total_stages}
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{client.completed_stages} שלבים הושלמו מתוך {client.total_stages}</p>
+                    <p>
+                      {client.completed_stages} שלבים הושלמו מתוך{" "}
+                      {client.total_stages}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               )}
-              
+
               {/* Task Progress Badge */}
               {hasProgress && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-1 flex-row-reverse">
-                      <Progress value={client.stage_progress} className="h-1.5 w-12" />
+                      <Progress
+                        value={client.stage_progress}
+                        className="h-1.5 w-12"
+                      />
                       <span className="text-[10px] text-muted-foreground w-8 text-left">
                         {completedTasks}/{totalTasks}
                       </span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{completedTasks} מתוך {totalTasks} משימות</p>
+                    <p>
+                      {completedTasks} מתוך {totalTasks} משימות
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               )}
-              
+
               {/* Quick Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
                 {client.phone && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <a 
+                      <a
                         href={`tel:${client.phone}`}
                         onClick={(e) => e.stopPropagation()}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -180,7 +217,7 @@ function ClientRow({
                 {client.email && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <a 
+                      <a
                         href={`mailto:${client.email}`}
                         onClick={(e) => e.stopPropagation()}
                         className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -208,7 +245,7 @@ function ClientRow({
               </div>
             </div>
           </CollapsibleTrigger>
-          
+
           <CollapsibleContent>
             <div className="px-3 pb-2 mr-9 space-y-2">
               {/* Company if exists */}
@@ -218,16 +255,17 @@ function ClientRow({
                   {client.company}
                 </div>
               )}
-              
+
               {/* Tasks */}
               {client.tasks.length > 0 && (
                 <div className="space-y-1">
-                  {client.tasks.slice(0, 5).map(task => (
-                    <div 
-                      key={task.task_id} 
+                  {client.tasks.slice(0, 5).map((task) => (
+                    <div
+                      key={task.task_id}
                       className={cn(
                         "flex items-center gap-1.5 text-xs",
-                        task.is_completed && "text-muted-foreground line-through"
+                        task.is_completed &&
+                          "text-muted-foreground line-through",
                       )}
                     >
                       {task.is_completed ? (
@@ -245,9 +283,11 @@ function ClientRow({
                   )}
                 </div>
               )}
-              
+
               {client.tasks.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">אין משימות</p>
+                <p className="text-xs text-muted-foreground italic">
+                  אין משימות
+                </p>
               )}
             </div>
           </CollapsibleContent>
@@ -284,15 +324,18 @@ function StageCard({
   onSelectAllInStage: (stageName: string, checked: boolean) => void;
 }) {
   const [isHovered, setIsHovered] = useState(false);
-  const allClientIdsInStage = group.clients.map(c => c.id);
-  const allSelected = allClientIdsInStage.every(id => selectedClientIds.has(id));
-  const someSelected = allClientIdsInStage.some(id => selectedClientIds.has(id)) && !allSelected;
-  
+  const allClientIdsInStage = group.clients.map((c) => c.id);
+  const allSelected = allClientIdsInStage.every((id) =>
+    selectedClientIds.has(id),
+  );
+  const someSelected =
+    allClientIdsInStage.some((id) => selectedClientIds.has(id)) && !allSelected;
+
   return (
     <Card className="overflow-hidden" dir="rtl">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <CardHeader 
+          <CardHeader
             className="cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-4"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -300,7 +343,7 @@ function StageCard({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {/* Select All Checkbox */}
-                <div 
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
@@ -326,8 +369,8 @@ function StageCard({
                 <span className="font-semibold text-[#1e3a5f] dark:text-white">
                   {group.stage_name}
                 </span>
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className="h-5 px-1.5 text-[10px] font-bold"
                 >
                   {group.clients.length}
@@ -386,7 +429,7 @@ function StageCard({
           <CardContent className="p-0">
             {group.clients.length > 0 ? (
               <div className="divide-y">
-                {group.clients.map(client => (
+                {group.clients.map((client) => (
                   <ClientRow
                     key={`${group.stage_name}-${client.id}`}
                     client={client}
@@ -412,12 +455,12 @@ function StageCard({
 }
 
 // Consultant Client Row - Simple version
-function ConsultantClientRow({ 
-  client, 
+function ConsultantClientRow({
+  client,
   onOpenClient,
   isSelected,
   onSelect,
-}: { 
+}: {
   client: ConsultantClient;
   onOpenClient: () => void;
   isSelected: boolean;
@@ -425,13 +468,16 @@ function ConsultantClientRow({
 }) {
   return (
     <TooltipProvider>
-      <div className={cn(
-        "border-b last:border-0 hover:bg-muted/30 transition-colors py-2 px-3",
-        isSelected && "bg-primary/5"
-      )} dir="rtl">
+      <div
+        className={cn(
+          "border-b last:border-0 hover:bg-muted/30 transition-colors py-2 px-3",
+          isSelected && "bg-primary/5",
+        )}
+        dir="rtl"
+      >
         <div className="flex items-center gap-3">
           {/* Checkbox for selection */}
-          <div 
+          <div
             onClick={(e) => {
               e.stopPropagation();
             }}
@@ -444,32 +490,32 @@ function ConsultantClientRow({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-          
+
           {/* Avatar */}
           <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
             <span className="text-xs font-medium text-white">
               {client.name.charAt(0)}
             </span>
           </div>
-          
+
           {/* Name */}
           <span className="font-medium text-sm truncate flex-1 min-w-0">
             {client.name}
           </span>
-          
+
           {/* Status */}
           {client.status && (
             <Badge variant="outline" className="text-[10px]">
               {client.status}
             </Badge>
           )}
-          
+
           {/* Quick Actions */}
           <div className="flex items-center gap-1 flex-shrink-0">
             {client.phone && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <a 
+                  <a
                     href={`tel:${client.phone}`}
                     onClick={(e) => e.stopPropagation()}
                     className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -483,7 +529,7 @@ function ConsultantClientRow({
             {client.email && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <a 
+                  <a
                     href={`mailto:${client.email}`}
                     onClick={(e) => e.stopPropagation()}
                     className="p-1 hover:bg-primary/10 rounded transition-colors"
@@ -531,10 +577,11 @@ function ConsultantCard({
   onSelectAllInConsultant: (consultantId: string, checked: boolean) => void;
 }) {
   const { consultant, clients } = group;
-  const allClientIds = clients.map(c => c.id);
-  const allSelected = allClientIds.every(id => selectedClientIds.has(id));
-  const someSelected = allClientIds.some(id => selectedClientIds.has(id)) && !allSelected;
-  
+  const allClientIds = clients.map((c) => c.id);
+  const allSelected = allClientIds.every((id) => selectedClientIds.has(id));
+  const someSelected =
+    allClientIds.some((id) => selectedClientIds.has(id)) && !allSelected;
+
   return (
     <Card className="overflow-hidden" dir="rtl">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
@@ -543,7 +590,7 @@ function ConsultantCard({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {/* Select All Checkbox */}
-                <div 
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
@@ -556,7 +603,10 @@ function ConsultantCard({
                       }
                     }}
                     onCheckedChange={(checked) => {
-                      onSelectAllInConsultant(consultant.id, checked as boolean);
+                      onSelectAllInConsultant(
+                        consultant.id,
+                        checked as boolean,
+                      );
                     }}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -569,8 +619,8 @@ function ConsultantCard({
                     <span className="font-semibold text-[#1e3a5f] dark:text-white">
                       {consultant.name}
                     </span>
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className="h-5 px-1.5 text-[10px] font-bold"
                     >
                       {clients.length} לקוחות
@@ -600,7 +650,7 @@ function ConsultantCard({
           <CardContent className="p-0">
             {clients.length > 0 ? (
               <div className="divide-y">
-                {clients.map(client => (
+                {clients.map((client) => (
                   <ConsultantClientRow
                     key={client.id}
                     client={client}
@@ -627,60 +677,78 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { stageGroups, allStageNames, loading, refresh } = useClientsByStage();
-  const { consultantGroups, loading: consultantsLoading, refresh: refreshConsultants } = useClientsByConsultant();
+  const {
+    consultantGroups,
+    loading: consultantsLoading,
+    refresh: refreshConsultants,
+  } = useClientsByConsultant();
   const { clients: allClients } = useClients();
-  
+
   // Load saved preferences from localStorage
   const [viewFilter, setViewFilter] = useState<ViewFilter>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_VIEW_FILTER);
-    return (saved as ViewFilter) || 'all';
+    return (saved as ViewFilter) || "all";
   });
-  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_GROUPS);
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
-  const [expandedConsultants, setExpandedConsultants] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_CONSULTANTS);
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
-  
+  const [expandedConsultants, setExpandedConsultants] = useState<Set<string>>(
+    () => {
+      const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_CONSULTANTS);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    },
+  );
+
   // Bulk add clients dialog state
   const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
-  const [targetStageName, setTargetStageName] = useState<string>('');
-  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
-  const [clientSearch, setClientSearch] = useState('');
+  const [targetStageName, setTargetStageName] = useState<string>("");
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [clientSearch, setClientSearch] = useState("");
   const [isAddingClients, setIsAddingClients] = useState(false);
-  
+
   // New stage creation dialog state
   const [newStageDialogOpen, setNewStageDialogOpen] = useState(false);
 
   // Edit stage name dialog state
   const [editStageDialogOpen, setEditStageDialogOpen] = useState(false);
-  const [editingStageName, setEditingStageName] = useState('');
-  const [editStageNewName, setEditStageNewName] = useState('');
-  const [newStageName, setNewStageName] = useState('');
+  const [editingStageName, setEditingStageName] = useState("");
+  const [editStageNewName, setEditStageNewName] = useState("");
+  const [newStageName, setNewStageName] = useState("");
   const [isCreatingStage, setIsCreatingStage] = useState(false);
   const [isNewStageMode, setIsNewStageMode] = useState(false);
-  
+
   // Bulk selection for delete/actions
-  const [selectedForBulkAction, setSelectedForBulkAction] = useState<Set<string>>(new Set());
-  
+  const [selectedForBulkAction, setSelectedForBulkAction] = useState<
+    Set<string>
+  >(new Set());
+
   // Save view filter to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_VIEW_FILTER, viewFilter);
   }, [viewFilter]);
-  
+
   // Save expanded groups to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_EXPANDED_GROUPS, JSON.stringify(Array.from(expandedGroups)));
+    localStorage.setItem(
+      STORAGE_KEY_EXPANDED_GROUPS,
+      JSON.stringify(Array.from(expandedGroups)),
+    );
   }, [expandedGroups]);
-  
+
   // Save expanded consultants to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_EXPANDED_CONSULTANTS, JSON.stringify(Array.from(expandedConsultants)));
+    localStorage.setItem(
+      STORAGE_KEY_EXPANDED_CONSULTANTS,
+      JSON.stringify(Array.from(expandedConsultants)),
+    );
   }, [expandedConsultants]);
-  
+
   // Update expanded groups when stage names load (only if no saved state)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_GROUPS);
@@ -692,8 +760,8 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   // Get recent clients (last 20 clients by created_at assumption)
   const recentClients = useMemo(() => {
     const allClients: (ClientInStage & { stageName: string })[] = [];
-    stageGroups.forEach(group => {
-      group.clients.forEach(client => {
+    stageGroups.forEach((group) => {
+      group.clients.forEach((client) => {
         allClients.push({ ...client, stageName: group.stage_name });
       });
     });
@@ -703,14 +771,16 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
   // Filter groups based on view
   const displayGroups = useMemo(() => {
-    if (viewFilter === 'recent') {
+    if (viewFilter === "recent") {
       // Create a single group with recent clients
-      return [{
-        stage_name: 'לקוחות אחרונים',
-        stage_icon: null,
-        sort_order: 0,
-        clients: recentClients,
-      }] as StageGroup[];
+      return [
+        {
+          stage_name: "לקוחות אחרונים",
+          stage_icon: null,
+          sort_order: 0,
+          clients: recentClients,
+        },
+      ] as StageGroup[];
     }
     return stageGroups;
   }, [stageGroups, recentClients, viewFilter]);
@@ -722,7 +792,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
   // Actions
   const toggleClient = (clientId: string) => {
-    setExpandedClients(prev => {
+    setExpandedClients((prev) => {
       const next = new Set(prev);
       if (next.has(clientId)) {
         next.delete(clientId);
@@ -734,7 +804,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   const toggleGroup = (stageName: string) => {
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(stageName)) {
         next.delete(stageName);
@@ -746,21 +816,23 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   const expandAllGroups = () => {
-    if (viewFilter === 'consultants') {
-      setExpandedConsultants(new Set(consultantGroups.map(g => g.consultant.id)));
+    if (viewFilter === "consultants") {
+      setExpandedConsultants(
+        new Set(consultantGroups.map((g) => g.consultant.id)),
+      );
     } else {
-      setExpandedGroups(new Set(displayGroups.map(g => g.stage_name)));
+      setExpandedGroups(new Set(displayGroups.map((g) => g.stage_name)));
     }
   };
-  
-  const collapseAllGroups = () => { 
-    setExpandedGroups(new Set()); 
-    setExpandedClients(new Set()); 
+
+  const collapseAllGroups = () => {
+    setExpandedGroups(new Set());
+    setExpandedClients(new Set());
     setExpandedConsultants(new Set());
   };
 
   const toggleConsultant = (consultantId: string) => {
-    setExpandedConsultants(prev => {
+    setExpandedConsultants((prev) => {
       const next = new Set(prev);
       if (next.has(consultantId)) {
         next.delete(consultantId);
@@ -776,11 +848,12 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     refreshConsultants();
   };
 
-  const openClient = (clientId: string) => navigate(`/client-profile/${clientId}`);
+  const openClient = (clientId: string) =>
+    navigate(`/client-profile/${clientId}`);
 
   // Bulk action handlers
   const handleSelectClient = (clientId: string, checked: boolean) => {
-    setSelectedForBulkAction(prev => {
+    setSelectedForBulkAction((prev) => {
       const next = new Set(prev);
       if (checked) {
         next.add(clientId);
@@ -792,12 +865,12 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   const handleSelectAllInStage = (stageName: string, checked: boolean) => {
-    const group = displayGroups.find(g => g.stage_name === stageName);
+    const group = displayGroups.find((g) => g.stage_name === stageName);
     if (!group) return;
 
-    setSelectedForBulkAction(prev => {
+    setSelectedForBulkAction((prev) => {
       const next = new Set(prev);
-      group.clients.forEach(client => {
+      group.clients.forEach((client) => {
         if (checked) {
           next.add(client.id);
         } else {
@@ -808,13 +881,18 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     });
   };
 
-  const handleSelectAllInConsultant = (consultantId: string, checked: boolean) => {
-    const group = consultantGroups.find(g => g.consultant.id === consultantId);
+  const handleSelectAllInConsultant = (
+    consultantId: string,
+    checked: boolean,
+  ) => {
+    const group = consultantGroups.find(
+      (g) => g.consultant.id === consultantId,
+    );
     if (!group) return;
 
-    setSelectedForBulkAction(prev => {
+    setSelectedForBulkAction((prev) => {
       const next = new Set(prev);
-      group.clients.forEach(client => {
+      group.clients.forEach((client) => {
         if (checked) {
           next.add(client.id);
         } else {
@@ -829,25 +907,25 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     if (selectedForBulkAction.size === 0) return;
 
     const confirmDelete = window.confirm(
-      `האם אתה בטוח שברצונך למחוק ${selectedForBulkAction.size} לקוחות? פעולה זו אינה הפיכה!`
+      `האם אתה בטוח שברצונך למחוק ${selectedForBulkAction.size} לקוחות? פעולה זו אינה הפיכה!`,
     );
 
     if (!confirmDelete) return;
 
     try {
       const clientIds = Array.from(selectedForBulkAction);
-      
+
       for (const clientId of clientIds) {
         const { error } = await supabase
-          .from('clients')
+          .from("clients")
           .delete()
-          .eq('id', clientId);
+          .eq("id", clientId);
 
         if (error) throw error;
       }
 
       toast({
-        title: 'נמחק בהצלחה',
+        title: "נמחק בהצלחה",
         description: `${clientIds.length} לקוחות נמחקו`,
       });
 
@@ -855,11 +933,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
       refresh();
       refreshConsultants();
     } catch (error) {
-      console.error('Error deleting clients:', error);
+      console.error("Error deleting clients:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן למחוק את הלקוחות',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן למחוק את הלקוחות",
+        variant: "destructive",
       });
     }
   };
@@ -869,37 +947,38 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
     try {
       const clientIds = Array.from(selectedForBulkAction);
-      
+
       for (const clientId of clientIds) {
         // Update or insert stage
-        const { error } = await supabase
-          .from('client_stages')
-          .upsert({
+        const { error } = await supabase.from("client_stages").upsert(
+          {
             client_id: clientId,
             stage_id: `stage_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
             stage_name: stageName,
-            stage_icon: 'FolderOpen',
+            stage_icon: "FolderOpen",
             sort_order: 0,
-          }, {
-            onConflict: 'client_id,stage_name'
-          });
+          },
+          {
+            onConflict: "client_id,stage_name",
+          },
+        );
 
         if (error) throw error;
       }
 
       toast({
-        title: 'עודכן בהצלחה',
+        title: "עודכן בהצלחה",
         description: `${clientIds.length} לקוחות הועברו לשלב "${stageName}"`,
       });
 
       setSelectedForBulkAction(new Set());
       refresh();
     } catch (error) {
-      console.error('Error setting stage for clients:', error);
+      console.error("Error setting stage for clients:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לעדכן את השלבים',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לעדכן את השלבים",
+        variant: "destructive",
       });
     }
   };
@@ -923,25 +1002,25 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     try {
       // Update all client_stages with the old stage_name to the new name
       const { error } = await supabase
-        .from('client_stages')
+        .from("client_stages")
         .update({ stage_name: newName })
-        .eq('stage_name', editingStageName);
+        .eq("stage_name", editingStageName);
 
       if (error) throw error;
 
       toast({
-        title: 'עודכן בהצלחה',
+        title: "עודכן בהצלחה",
         description: `שם השלב שונה מ-"${editingStageName}" ל-"${newName}"`,
       });
 
       setEditStageDialogOpen(false);
       refresh();
     } catch (error) {
-      console.error('Error renaming stage:', error);
+      console.error("Error renaming stage:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשנות את שם השלב',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לשנות את שם השלב",
+        variant: "destructive",
       });
     }
   };
@@ -949,86 +1028,87 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   const openBulkAddDialog = (stageName: string) => {
     setTargetStageName(stageName);
     setSelectedClientIds(new Set());
-    setClientSearch('');
+    setClientSearch("");
     setIsNewStageMode(false);
     setBulkAddDialogOpen(true);
   };
-  
+
   // Open new stage dialog
   const openNewStageDialog = () => {
-    setNewStageName('');
+    setNewStageName("");
     setSelectedClientIds(new Set());
-    setClientSearch('');
+    setClientSearch("");
     setIsNewStageMode(true);
     setNewStageDialogOpen(true);
   };
-  
+
   // Create new stage and add clients
   const handleCreateNewStage = async () => {
     if (!newStageName.trim()) {
       toast({
-        title: 'שגיאה',
-        description: 'נא להזין שם לשלב',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "נא להזין שם לשלב",
+        variant: "destructive",
       });
       return;
     }
-    
+
     // Check if stage already exists
     if (allStageNames.includes(newStageName.trim())) {
       toast({
-        title: 'שלב קיים',
-        description: 'שלב בשם הזה כבר קיים. השתמש בכפתור + ליד השלב להוסיף לקוחות.',
-        variant: 'destructive',
+        title: "שלב קיים",
+        description:
+          "שלב בשם הזה כבר קיים. השתמש בכפתור + ליד השלב להוסיף לקוחות.",
+        variant: "destructive",
       });
       return;
     }
-    
+
     setIsCreatingStage(true);
     try {
       const clientsToAdd = Array.from(selectedClientIds);
-      
+
       if (clientsToAdd.length === 0) {
         toast({
-          title: 'שגיאה',
-          description: 'נא לבחור לפחות לקוח אחד לשלב החדש',
-          variant: 'destructive',
+          title: "שגיאה",
+          description: "נא לבחור לפחות לקוח אחד לשלב החדש",
+          variant: "destructive",
         });
         return;
       }
-      
+
       // Add each client to the new stage
       for (const clientId of clientsToAdd) {
         const newStageId = `stage_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-        const { error } = await supabase.from('client_stages').insert({
+        const { error } = await supabase.from("client_stages").insert({
           client_id: clientId,
           stage_id: newStageId,
           stage_name: newStageName.trim(),
-          stage_icon: 'FolderOpen',
+          stage_icon: "FolderOpen",
           sort_order: 0,
         });
-        
+
         if (error) {
-          console.error('Error adding client to new stage:', error);
+          console.error("Error adding client to new stage:", error);
           throw error;
         }
       }
-      
+
       toast({
-        title: 'שלב נוצר בהצלחה',
+        title: "שלב נוצר בהצלחה",
         description: `שלב "${newStageName}" נוצר עם ${clientsToAdd.length} לקוחות`,
       });
-      
+
       setNewStageDialogOpen(false);
-      setNewStageName('');
+      setNewStageName("");
       setSelectedClientIds(new Set());
       refresh();
     } catch (error) {
-      console.error('Error creating new stage:', error);
+      console.error("Error creating new stage:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן ליצור את השלב',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן ליצור את השלב",
+        variant: "destructive",
       });
     } finally {
       setIsCreatingStage(false);
@@ -1037,7 +1117,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
   // Toggle client selection
   const toggleClientSelection = (clientId: string) => {
-    setSelectedClientIds(prev => {
+    setSelectedClientIds((prev) => {
       const next = new Set(prev);
       if (next.has(clientId)) {
         next.delete(clientId);
@@ -1050,13 +1130,13 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
   // Get clients already in the target stage
   const clientsInTargetStage = useMemo(() => {
-    const group = stageGroups.find(g => g.stage_name === targetStageName);
-    return new Set(group?.clients.map(c => c.id) || []);
+    const group = stageGroups.find((g) => g.stage_name === targetStageName);
+    return new Set(group?.clients.map((c) => c.id) || []);
   }, [stageGroups, targetStageName]);
 
   // Filtered clients for the dialog
   const filteredClientsForDialog = useMemo(() => {
-    return allClients.filter(client => {
+    return allClients.filter((client) => {
       // Filter by search
       if (clientSearch) {
         const search = clientSearch.toLowerCase();
@@ -1072,17 +1152,17 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   // Add selected clients to stage
   const handleAddClientsToStage = async () => {
     if (selectedClientIds.size === 0) return;
-    
+
     setIsAddingClients(true);
     try {
       const clientsToAdd = Array.from(selectedClientIds).filter(
-        id => !clientsInTargetStage.has(id)
+        (id) => !clientsInTargetStage.has(id),
       );
-      
+
       if (clientsToAdd.length === 0) {
         toast({
-          title: 'כל הלקוחות כבר בשלב',
-          description: 'הלקוחות שבחרת כבר נמצאים בשלב זה',
+          title: "כל הלקוחות כבר בשלב",
+          description: "הלקוחות שבחרת כבר נמצאים בשלב זה",
         });
         return;
       }
@@ -1090,33 +1170,33 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
       // Add each client to the stage
       for (const clientId of clientsToAdd) {
         const newStageId = `stage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const { error } = await supabase.from('client_stages').insert({
+        const { error } = await supabase.from("client_stages").insert({
           client_id: clientId,
           stage_id: newStageId,
           stage_name: targetStageName,
-          stage_icon: 'FolderOpen',
+          stage_icon: "FolderOpen",
           sort_order: 0,
         });
-        
+
         if (error) {
-          console.error('Error adding client to stage:', error);
+          console.error("Error adding client to stage:", error);
           throw error;
         }
       }
-      
+
       toast({
-        title: 'לקוחות נוספו בהצלחה',
+        title: "לקוחות נוספו בהצלחה",
         description: `${clientsToAdd.length} לקוחות נוספו לשלב "${targetStageName}"`,
       });
-      
+
       setBulkAddDialogOpen(false);
       refresh();
     } catch (error) {
-      console.error('Error adding clients to stage:', error);
+      console.error("Error adding clients to stage:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן להוסיף לקוחות לשלב',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן להוסיף לקוחות לשלב",
+        variant: "destructive",
       });
     } finally {
       setIsAddingClients(false);
@@ -1130,7 +1210,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
           <Skeleton className="h-9 w-40" />
           <Skeleton className="h-9 w-24" />
         </div>
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader className="py-3">
               <Skeleton className="h-5 w-32" />
@@ -1146,7 +1226,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   }
 
   return (
-    <div className={cn("space-y-3 w-full", className)} dir="rtl" style={{ textAlign: 'right' }}>
+    <div
+      className={cn("space-y-3 w-full", className)}
+      dir="rtl"
+      style={{ textAlign: "right" }}
+    >
       {/* Compact Header */}
       <div className="flex items-center justify-between gap-2 bg-card/50 backdrop-blur p-2 rounded-lg border sticky top-0 z-10">
         {/* Right: Filter Buttons */}
@@ -1155,17 +1239,20 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={viewFilter === 'all' ? 'default' : 'ghost'}
+                  variant={viewFilter === "all" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setViewFilter('all')}
+                  onClick={() => setViewFilter("all")}
                   className={cn(
                     "h-8 px-2.5 gap-1.5",
-                    viewFilter === 'all' && "bg-[#1e3a5f] hover:bg-[#2d4a6f]"
+                    viewFilter === "all" && "bg-[#1e3a5f] hover:bg-[#2d4a6f]",
                   )}
                 >
                   <Layers className="h-4 w-4" />
                   <span className="hidden sm:inline">שלבים</span>
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-white/20">
+                  <Badge
+                    variant="secondary"
+                    className="h-4 px-1 text-[10px] bg-white/20"
+                  >
                     {stageGroups.length}
                   </Badge>
                 </Button>
@@ -1176,12 +1263,13 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={viewFilter === 'recent' ? 'default' : 'ghost'}
+                  variant={viewFilter === "recent" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setViewFilter('recent')}
+                  onClick={() => setViewFilter("recent")}
                   className={cn(
                     "h-8 px-2.5 gap-1.5",
-                    viewFilter === 'recent' && "bg-[#d4a843] hover:bg-[#c49733] text-white"
+                    viewFilter === "recent" &&
+                      "bg-[#d4a843] hover:bg-[#c49733] text-white",
                   )}
                 >
                   <Clock className="h-4 w-4" />
@@ -1194,17 +1282,21 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={viewFilter === 'consultants' ? 'default' : 'ghost'}
+                  variant={viewFilter === "consultants" ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setViewFilter('consultants')}
+                  onClick={() => setViewFilter("consultants")}
                   className={cn(
                     "h-8 px-2.5 gap-1.5",
-                    viewFilter === 'consultants' && "bg-emerald-600 hover:bg-emerald-700 text-white"
+                    viewFilter === "consultants" &&
+                      "bg-emerald-600 hover:bg-emerald-700 text-white",
                   )}
                 >
                   <Briefcase className="h-4 w-4" />
                   <span className="hidden sm:inline">יועצים</span>
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-white/20">
+                  <Badge
+                    variant="secondary"
+                    className="h-4 px-1 text-[10px] bg-white/20"
+                  >
                     {consultantGroups.length}
                   </Badge>
                 </Button>
@@ -1225,10 +1317,10 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  onClick={openNewStageDialog} 
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={openNewStageDialog}
                   className="h-8 px-2.5 gap-1.5 bg-[#d4a843] hover:bg-[#b8860b] text-white"
                 >
                   <FolderPlus className="h-4 w-4" />
@@ -1237,10 +1329,15 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               </TooltipTrigger>
               <TooltipContent>צור שלב חדש</TooltipContent>
             </Tooltip>
-            
+
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-8 w-8 p-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="h-8 w-8 p-0"
+                >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1249,7 +1346,12 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={expandAllGroups} className="h-8 w-8 p-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAllGroups}
+                  className="h-8 w-8 p-0"
+                >
                   <Maximize2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -1258,39 +1360,55 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={collapseAllGroups} className="h-8 w-8 p-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAllGroups}
+                  className="h-8 w-8 p-0"
+                >
                   <Minimize2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>סגור הכל</TooltipContent>
             </Tooltip>
-            
+
             {/* Bulk action buttons - show when clients are selected */}
             {selectedForBulkAction.size > 0 && (
               <>
                 <div className="h-6 w-px bg-border mx-1" />
-                
+
                 {/* Set Stage Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       className="h-8 px-2.5 gap-1.5 border-primary bg-white hover:bg-primary/5"
                     >
                       <Layers className="h-4 w-4 text-primary" />
-                      <span className="hidden sm:inline">קבע שלב ({selectedForBulkAction.size})</span>
-                      <span className="sm:hidden">({selectedForBulkAction.size})</span>
+                      <span className="hidden sm:inline">
+                        קבע שלב ({selectedForBulkAction.size})
+                      </span>
+                      <span className="sm:hidden">
+                        ({selectedForBulkAction.size})
+                      </span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="max-h-[300px] overflow-y-auto">
-                    <DropdownMenuLabel>בחר שלב עבור {selectedForBulkAction.size} לקוחות</DropdownMenuLabel>
+                  <DropdownMenuContent
+                    align="end"
+                    className="max-h-[300px] overflow-y-auto"
+                  >
+                    <DropdownMenuLabel>
+                      בחר שלב עבור {selectedForBulkAction.size} לקוחות
+                    </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {allStageNames.length > 0 ? (
                       allStageNames.map((stageName) => (
                         <DropdownMenuItem
                           key={stageName}
-                          onClick={() => handleBulkSetStageForSelected(stageName)}
+                          onClick={() =>
+                            handleBulkSetStageForSelected(stageName)
+                          }
                           className="flex items-center gap-2"
                         >
                           <Layers className="h-4 w-4 text-primary" />
@@ -1304,19 +1422,23 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                
+
                 {/* Delete Button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       size="sm"
                       onClick={handleDeleteSelected}
                       className="h-8 px-2.5 gap-1.5"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="hidden sm:inline">מחק ({selectedForBulkAction.size})</span>
-                      <span className="sm:hidden">({selectedForBulkAction.size})</span>
+                      <span className="hidden sm:inline">
+                        מחק ({selectedForBulkAction.size})
+                      </span>
+                      <span className="sm:hidden">
+                        ({selectedForBulkAction.size})
+                      </span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>מחק לקוחות נבחרים</TooltipContent>
@@ -1330,10 +1452,10 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
       {/* Content Area */}
       <ScrollArea className="h-[calc(100vh-300px)]">
         <div className="space-y-2 pr-1">
-          {viewFilter === 'consultants' ? (
+          {viewFilter === "consultants" ? (
             // Consultants View
             consultantGroups.length > 0 ? (
-              consultantGroups.map(group => (
+              consultantGroups.map((group) => (
                 <ConsultantCard
                   key={group.consultant.id}
                   group={group}
@@ -1350,52 +1472,58 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                 <div className="text-center text-muted-foreground">
                   <Briefcase className="h-10 w-10 mx-auto mb-2 opacity-50" />
                   <p className="font-medium">אין יועצים</p>
-                  <p className="text-xs mt-1">הוסף יועצים ללקוחות כדי לראות אותם כאן</p>
+                  <p className="text-xs mt-1">
+                    הוסף יועצים ללקוחות כדי לראות אותם כאן
+                  </p>
                 </div>
               </Card>
             )
+          ) : // Stages View
+          displayGroups.length > 0 ? (
+            displayGroups.map((group) => (
+              <StageCard
+                key={group.stage_name}
+                group={group}
+                expandedClients={expandedClients}
+                onToggleClient={toggleClient}
+                isExpanded={expandedGroups.has(group.stage_name)}
+                onToggle={() => toggleGroup(group.stage_name)}
+                onOpenClient={openClient}
+                onAddClients={openBulkAddDialog}
+                onEditStage={openEditStageDialog}
+                selectedClientIds={selectedForBulkAction}
+                onSelectClient={handleSelectClient}
+                onSelectAllInStage={handleSelectAllInStage}
+              />
+            ))
           ) : (
-            // Stages View
-            displayGroups.length > 0 ? (
-              displayGroups.map(group => (
-                <StageCard
-                  key={group.stage_name}
-                  group={group}
-                  expandedClients={expandedClients}
-                  onToggleClient={toggleClient}
-                  isExpanded={expandedGroups.has(group.stage_name)}
-                  onToggle={() => toggleGroup(group.stage_name)}
-                  onOpenClient={openClient}
-                  onAddClients={openBulkAddDialog}
-                  onEditStage={openEditStageDialog}
-                  selectedClientIds={selectedForBulkAction}
-                  onSelectClient={handleSelectClient}
-                  onSelectAllInStage={handleSelectAllInStage}
-                />
-              ))
-            ) : (
-              <Card className="p-6">
-                <div className="text-center text-muted-foreground">
-                  <Layers className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <p className="font-medium">אין לקוחות בשלבים</p>
-                  <p className="text-xs mt-1">הוסף שלבים ללקוחות כדי לראות אותם כאן</p>
-                </div>
-              </Card>
-            )
+            <Card className="p-6">
+              <div className="text-center text-muted-foreground">
+                <Layers className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                <p className="font-medium">אין לקוחות בשלבים</p>
+                <p className="text-xs mt-1">
+                  הוסף שלבים ללקוחות כדי לראות אותם כאן
+                </p>
+              </div>
+            </Card>
           )}
         </div>
       </ScrollArea>
 
       {/* Bulk Add Clients Dialog */}
       <Dialog open={bulkAddDialogOpen} onOpenChange={setBulkAddDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden" dir="rtl">
+        <DialogContent
+          className="max-w-2xl max-h-[80vh] overflow-hidden"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-[#d4a843]" />
-              הוסף לקוחות לשלב: <span className="text-[#d4a843]">{targetStageName}</span>
+              הוסף לקוחות לשלב:{" "}
+              <span className="text-[#d4a843]">{targetStageName}</span>
             </DialogTitle>
           </DialogHeader>
-          
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1407,65 +1535,70 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               dir="rtl"
             />
           </div>
-          
+
           {/* Selected count */}
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {filteredClientsForDialog.length} לקוחות
             </span>
-            <Badge variant="secondary">
-              {selectedClientIds.size} נבחרו
-            </Badge>
+            <Badge variant="secondary">{selectedClientIds.size} נבחרו</Badge>
           </div>
-          
+
           {/* Clients list */}
           <ScrollArea className="h-[400px] border rounded-lg">
             <div className="divide-y">
-              {filteredClientsForDialog.map(client => {
+              {filteredClientsForDialog.map((client) => {
                 const isInStage = clientsInTargetStage.has(client.id);
                 const isSelected = selectedClientIds.has(client.id);
-                
+
                 return (
                   <div
                     key={client.id}
                     className={cn(
                       "flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer",
                       isInStage && "bg-green-50 dark:bg-green-950/20",
-                      isSelected && !isInStage && "bg-[#d4a843]/10"
+                      isSelected && !isInStage && "bg-[#d4a843]/10",
                     )}
-                    onClick={() => !isInStage && toggleClientSelection(client.id)}
+                    onClick={() =>
+                      !isInStage && toggleClientSelection(client.id)
+                    }
                   >
                     <Checkbox
                       checked={isSelected || isInStage}
                       disabled={isInStage}
-                      onCheckedChange={() => !isInStage && toggleClientSelection(client.id)}
+                      onCheckedChange={() =>
+                        !isInStage && toggleClientSelection(client.id)
+                      }
                     />
-                    
+
                     {/* Avatar */}
                     <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
                       <span className="text-xs font-medium text-white">
-                        {client.name?.charAt(0) || '?'}
+                        {client.name?.charAt(0) || "?"}
                       </span>
                     </div>
-                    
+
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{client.name}</div>
                       <div className="text-xs text-muted-foreground truncate">
-                        {client.email || client.phone || 'ללא פרטים'}
+                        {client.email || client.phone || "ללא פרטים"}
                       </div>
                     </div>
-                    
+
                     {/* Status */}
                     {isInStage && (
-                      <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+                      <Badge
+                        variant="outline"
+                        className="text-green-600 border-green-300 text-xs"
+                      >
                         כבר בשלב
                       </Badge>
                     )}
                   </div>
                 );
               })}
-              
+
               {filteredClientsForDialog.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -1474,9 +1607,12 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               )}
             </div>
           </ScrollArea>
-          
+
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setBulkAddDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setBulkAddDialogOpen(false)}
+            >
               ביטול
             </Button>
             <Button
@@ -1489,12 +1625,15 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               ) : (
                 <Plus className="h-4 w-4 ml-2" />
               )}
-              הוסף {selectedClientIds.size > 0 ? `${selectedClientIds.size} לקוחות` : 'לקוחות'}
+              הוסף{" "}
+              {selectedClientIds.size > 0
+                ? `${selectedClientIds.size} לקוחות`
+                : "לקוחות"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Edit Stage Name Dialog */}
       <Dialog open={editStageDialogOpen} onOpenChange={setEditStageDialogOpen}>
         <DialogContent className="max-w-sm" dir="rtl">
@@ -1510,16 +1649,27 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               value={editStageNewName}
               onChange={(e) => setEditStageNewName(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameStage();
-                if (e.key === 'Escape') setEditStageDialogOpen(false);
+                if (e.key === "Enter") handleRenameStage();
+                if (e.key === "Escape") setEditStageDialogOpen(false);
               }}
               className="text-right"
               autoFocus
             />
           </div>
           <DialogFooter className="flex-row-reverse gap-2">
-            <Button variant="outline" onClick={() => setEditStageDialogOpen(false)}>ביטול</Button>
-            <Button onClick={handleRenameStage} disabled={!editStageNewName.trim() || editStageNewName.trim() === editingStageName}>
+            <Button
+              variant="outline"
+              onClick={() => setEditStageDialogOpen(false)}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleRenameStage}
+              disabled={
+                !editStageNewName.trim() ||
+                editStageNewName.trim() === editingStageName
+              }
+            >
               שמור
             </Button>
           </DialogFooter>
@@ -1528,14 +1678,17 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
 
       {/* New Stage Creation Dialog */}
       <Dialog open={newStageDialogOpen} onOpenChange={setNewStageDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden" dir="rtl">
+        <DialogContent
+          className="max-w-2xl max-h-[80vh] overflow-hidden"
+          dir="rtl"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FolderPlus className="h-5 w-5 text-[#d4a843]" />
               צור שלב חדש
             </DialogTitle>
           </DialogHeader>
-          
+
           {/* Stage Name Input */}
           <div className="space-y-2">
             <Label>שם השלב</Label>
@@ -1547,7 +1700,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               className="text-lg"
             />
           </div>
-          
+
           {/* Search Clients */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1559,22 +1712,20 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               dir="rtl"
             />
           </div>
-          
+
           {/* Selected count */}
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {allClients.length} לקוחות
             </span>
-            <Badge variant="secondary">
-              {selectedClientIds.size} נבחרו
-            </Badge>
+            <Badge variant="secondary">{selectedClientIds.size} נבחרו</Badge>
           </div>
-          
+
           {/* Clients list */}
           <ScrollArea className="h-[300px] border rounded-lg">
             <div className="divide-y">
               {allClients
-                .filter(client => {
+                .filter((client) => {
                   if (!clientSearch) return true;
                   const search = clientSearch.toLowerCase();
                   return (
@@ -1583,9 +1734,9 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                     client.phone?.includes(search)
                   );
                 })
-                .map(client => {
+                .map((client) => {
                   const isSelected = selectedClientIds.has(client.id);
-                  
+
                   return (
                     <div
                       key={client.id}
@@ -1593,34 +1744,38 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                       tabIndex={0}
                       className={cn(
                         "flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors cursor-pointer",
-                        isSelected && "bg-[#d4a843]/10"
+                        isSelected && "bg-[#d4a843]/10",
                       )}
                       onClick={() => toggleClientSelection(client.id)}
-                      onKeyDown={(e) => e.key === 'Enter' && toggleClientSelection(client.id)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && toggleClientSelection(client.id)
+                      }
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleClientSelection(client.id)}
                       />
-                      
+
                       {/* Avatar */}
                       <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
                         <span className="text-xs font-medium text-white">
-                          {client.name?.charAt(0) || '?'}
+                          {client.name?.charAt(0) || "?"}
                         </span>
                       </div>
-                      
+
                       {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{client.name}</div>
+                        <div className="font-medium truncate">
+                          {client.name}
+                        </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {client.email || client.phone || 'ללא פרטים'}
+                          {client.email || client.phone || "ללא פרטים"}
                         </div>
                       </div>
                     </div>
                   );
                 })}
-                
+
               {allClients.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -1629,14 +1784,21 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               )}
             </div>
           </ScrollArea>
-          
+
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setNewStageDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setNewStageDialogOpen(false)}
+            >
               ביטול
             </Button>
             <Button
               onClick={handleCreateNewStage}
-              disabled={!newStageName.trim() || selectedClientIds.size === 0 || isCreatingStage}
+              disabled={
+                !newStageName.trim() ||
+                selectedClientIds.size === 0 ||
+                isCreatingStage
+              }
               className="bg-[#d4a843] hover:bg-[#b8860b] text-white"
             >
               {isCreatingStage ? (
@@ -1644,7 +1806,10 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
               ) : (
                 <FolderPlus className="h-4 w-4 ml-2" />
               )}
-              צור שלב עם {selectedClientIds.size > 0 ? `${selectedClientIds.size} לקוחות` : 'לקוחות'}
+              צור שלב עם{" "}
+              {selectedClientIds.size > 0
+                ? `${selectedClientIds.size} לקוחות`
+                : "לקוחות"}
             </Button>
           </DialogFooter>
         </DialogContent>
