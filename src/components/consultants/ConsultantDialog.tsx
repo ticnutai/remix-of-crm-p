@@ -50,7 +50,7 @@ interface ConsultantDialogProps {
   onSelectConsultant: (consultant: Consultant) => void;
 }
 
-const DEFAULT_PROFESSIONS = ["יועץ", "מהנדס", "אדריכל"];
+const DEFAULT_PROFESSIONS = ["יועץ", "מהנדס", "אדריכל", "מודד", "יועץ ניקוז", "יועץ אקוסטיקה"];
 const PROFESSIONS_KEY = "consultant-professions";
 
 function loadProfessions(): { value: string; label: string }[] {
