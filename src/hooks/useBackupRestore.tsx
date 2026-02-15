@@ -298,46 +298,46 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           description: `הגיבוי "${name}" נשמר במחשב בלבד`,
         });
       } else {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const { error } = await supabase.from("backups").insert({
-            backup_id: backup.metadata.id,
-            name: backup.metadata.name,
-            size: backup.metadata.size,
-            version: backup.metadata.version,
-            data: backup.data,
-            user_id: user.id,
-          });
-
-          if (error) {
-            cloudAvailable.current = false;
-            toast({
-              title: "גיבוי נשמר מקומית",
-              description: "הגיבוי נשמר במחשב בלבד (שגיאה בשמירה לענן)",
-              variant: "default",
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase.from("backups").insert({
+              backup_id: backup.metadata.id,
+              name: backup.metadata.name,
+              size: backup.metadata.size,
+              version: backup.metadata.version,
+              data: backup.data,
+              user_id: user.id,
             });
+
+            if (error) {
+              cloudAvailable.current = false;
+              toast({
+                title: "גיבוי נשמר מקומית",
+                description: "הגיבוי נשמר במחשב בלבד (שגיאה בשמירה לענן)",
+                variant: "default",
+              });
+            } else {
+              toast({
+                title: "גיבוי נוצר בהצלחה",
+                description: `הגיבוי "${name}" נשמר במחשב ובענן ☁️`,
+              });
+            }
           } else {
             toast({
-              title: "גיבוי נוצר בהצלחה",
-              description: `הגיבוי "${name}" נשמר במחשב ובענן ☁️`,
+              title: "גיבוי נשמר מקומית",
+              description: `הגיבוי "${name}" נשמר במחשב בלבד`,
             });
           }
-        } else {
+        } catch (e) {
+          console.error("Cloud backup error:", e);
           toast({
             title: "גיבוי נשמר מקומית",
             description: `הגיבוי "${name}" נשמר במחשב בלבד`,
           });
         }
-      } catch (e) {
-        console.error("Cloud backup error:", e);
-        toast({
-          title: "גיבוי נשמר מקומית",
-          description: `הגיבוי "${name}" נשמר במחשב בלבד`,
-        });
-      }
       }
 
       return backup;
@@ -378,24 +378,24 @@ export function BackupProvider({ children }: { children: ReactNode }) {
 
       // Delete from Supabase cloud
       if (cloudAvailable.current) {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
-          const { error } = await supabase
-            .from("backups")
-            .delete()
-            .eq("backup_id", backupId)
-            .eq("user_id", user.id);
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await supabase
+              .from("backups")
+              .delete()
+              .eq("backup_id", backupId)
+              .eq("user_id", user.id);
 
-          if (error) {
-            cloudAvailable.current = false;
+            if (error) {
+              cloudAvailable.current = false;
+            }
           }
+        } catch (e) {
+          console.error("Cloud delete error:", e);
         }
-      } catch (e) {
-        console.error("Cloud delete error:", e);
-      }
       }
 
       toast({
@@ -476,23 +476,23 @@ export function BackupProvider({ children }: { children: ReactNode }) {
 
     // Clear from Supabase cloud
     if (cloudAvailable.current) {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { error } = await supabase
-          .from("backups")
-          .delete()
-          .eq("user_id", user.id);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await supabase
+            .from("backups")
+            .delete()
+            .eq("user_id", user.id);
 
-        if (error) {
-          cloudAvailable.current = false;
+          if (error) {
+            cloudAvailable.current = false;
+          }
         }
+      } catch (e) {
+        console.error("Cloud clear error:", e);
       }
-    } catch (e) {
-      console.error("Cloud clear error:", e);
-    }
     }
 
     toast({

@@ -639,6 +639,141 @@ export default function Gmail() {
     );
   }, [mutedThreads]);
 
+  // Filter and sort messages
+  const filteredMessages = useMemo(() => {
+    // When server search is active, skip local text filtering (results already filtered by Gmail API)
+    let result = serverSearchActive
+      ? [...messages]
+      : messages.filter(
+          (msg) =>
+            !searchQuery ||
+            msg.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            msg.fromName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            msg.from?.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
+
+    // Filter by tab
+    if (activeTab === "starred") {
+      result = result.filter((msg) => msg.isStarred);
+    } else if (activeTab === "sent") {
+      result = result.filter(
+        (msg) =>
+          msg.labels?.includes("SENT") ||
+          msg.from?.toLowerCase() === user?.email?.toLowerCase(),
+      );
+    } else if (activeTab === "reminders") {
+      result = result.filter((msg) => emailReminders[msg.id]);
+    } else if (activeTab === "drafts") {
+      result = result.filter((msg) => msg.labels?.includes("DRAFT"));
+    } else if (activeTab === "spam") {
+      result = result.filter((msg) => msg.labels?.includes("SPAM"));
+    } else if (activeTab === "trash") {
+      result = result.filter((msg) => msg.labels?.includes("TRASH"));
+    }
+
+    // Filter by folder
+    if (selectedFolderId && folderEmailIds.size > 0) {
+      result = result.filter((msg) => folderEmailIds.has(msg.id));
+    }
+
+    // Filter by pinned first
+    const pinned = result.filter(
+      (msg) => emailMetadata.getMetadata(msg.id)?.is_pinned,
+    );
+    const unpinned = result.filter(
+      (msg) => !emailMetadata.getMetadata(msg.id)?.is_pinned,
+    );
+
+    // Filter by label
+    if (filterByLabel) {
+      const pinnedFiltered = pinned.filter((msg) =>
+        emailLabels[msg.id]?.includes(filterByLabel),
+      );
+      const unpinnedFiltered = unpinned.filter((msg) =>
+        emailLabels[msg.id]?.includes(filterByLabel),
+      );
+      result = [...pinnedFiltered, ...unpinnedFiltered];
+    } else {
+      result = [...pinned, ...unpinned];
+    }
+
+    // Filter by priority
+    if (filterByPriority) {
+      result = result.filter(
+        (msg) => emailPriority[msg.id] === filterByPriority,
+      );
+    }
+
+    // Filter by client
+    if (filterByClient) {
+      result = result.filter((msg) => {
+        const client = getClientForMessage(msg);
+        return client && client.id === filterByClient;
+      });
+    }
+
+    // Sort
+    switch (sortBy) {
+      case "priority":
+        const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
+        result.sort((a, b) => {
+          const aPriority = emailPriority[a.id] || "none";
+          const bPriority = emailPriority[b.id] || "none";
+          return priorityOrder[aPriority] - priorityOrder[bPriority];
+        });
+        break;
+      case "sender":
+        result.sort((a, b) =>
+          (a.fromName || "").localeCompare(b.fromName || "", "he"),
+        );
+        break;
+      case "date":
+      default:
+        result.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+        );
+    }
+
+    // Filter out snoozed emails (unless they've expired)
+    const snoozedIds = (() => {
+      try {
+        const snoozed = JSON.parse(
+          localStorage.getItem("gmail_snoozed") || "[]",
+        );
+        const now = new Date();
+        return new Set(
+          snoozed
+            .filter((s: any) => new Date(s.until) > now)
+            .map((s: any) => s.emailId),
+        );
+      } catch {
+        return new Set();
+      }
+    })();
+    if (snoozedIds.size > 0) {
+      result = result.filter((msg) => !snoozedIds.has(msg.id));
+    }
+
+    return result;
+  }, [
+    messages,
+    searchQuery,
+    serverSearchActive,
+    activeTab,
+    filterByLabel,
+    filterByPriority,
+    filterByClient,
+    sortBy,
+    emailLabels,
+    emailPriority,
+    clientEmailMap,
+    selectedFolderId,
+    folderEmailIds,
+    emailReminders,
+    emailMetadata,
+    user?.email,
+  ]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -764,7 +899,9 @@ export default function Gmail() {
         }
         if (e.key === "o") {
           e.preventDefault();
-          openChatView(selectedEmail);
+          setSelectedThreadId(selectedEmail.threadId);
+          setViewMode("chat");
+          loadThreadMessages(selectedEmail.threadId);
         }
       }
     };
@@ -1168,141 +1305,6 @@ export default function Gmail() {
       date: selectedEmail?.date ? new Date(selectedEmail.date) : undefined,
     });
   };
-
-  // Filter and sort messages
-  const filteredMessages = useMemo(() => {
-    // When server search is active, skip local text filtering (results already filtered by Gmail API)
-    let result = serverSearchActive
-      ? [...messages]
-      : messages.filter(
-          (msg) =>
-            !searchQuery ||
-            msg.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            msg.fromName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            msg.from?.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
-
-    // Filter by tab
-    if (activeTab === "starred") {
-      result = result.filter((msg) => msg.isStarred);
-    } else if (activeTab === "sent") {
-      result = result.filter(
-        (msg) =>
-          msg.labels?.includes("SENT") ||
-          msg.from?.toLowerCase() === user?.email?.toLowerCase(),
-      );
-    } else if (activeTab === "reminders") {
-      result = result.filter((msg) => emailReminders[msg.id]);
-    } else if (activeTab === "drafts") {
-      result = result.filter((msg) => msg.labels?.includes("DRAFT"));
-    } else if (activeTab === "spam") {
-      result = result.filter((msg) => msg.labels?.includes("SPAM"));
-    } else if (activeTab === "trash") {
-      result = result.filter((msg) => msg.labels?.includes("TRASH"));
-    }
-
-    // Filter by folder
-    if (selectedFolderId && folderEmailIds.size > 0) {
-      result = result.filter((msg) => folderEmailIds.has(msg.id));
-    }
-
-    // Filter by pinned first
-    const pinned = result.filter(
-      (msg) => emailMetadata.getMetadata(msg.id)?.is_pinned,
-    );
-    const unpinned = result.filter(
-      (msg) => !emailMetadata.getMetadata(msg.id)?.is_pinned,
-    );
-
-    // Filter by label
-    if (filterByLabel) {
-      const pinnedFiltered = pinned.filter((msg) =>
-        emailLabels[msg.id]?.includes(filterByLabel),
-      );
-      const unpinnedFiltered = unpinned.filter((msg) =>
-        emailLabels[msg.id]?.includes(filterByLabel),
-      );
-      result = [...pinnedFiltered, ...unpinnedFiltered];
-    } else {
-      result = [...pinned, ...unpinned];
-    }
-
-    // Filter by priority
-    if (filterByPriority) {
-      result = result.filter(
-        (msg) => emailPriority[msg.id] === filterByPriority,
-      );
-    }
-
-    // Filter by client
-    if (filterByClient) {
-      result = result.filter((msg) => {
-        const client = getClientForMessage(msg);
-        return client && client.id === filterByClient;
-      });
-    }
-
-    // Sort
-    switch (sortBy) {
-      case "priority":
-        const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
-        result.sort((a, b) => {
-          const aPriority = emailPriority[a.id] || "none";
-          const bPriority = emailPriority[b.id] || "none";
-          return priorityOrder[aPriority] - priorityOrder[bPriority];
-        });
-        break;
-      case "sender":
-        result.sort((a, b) =>
-          (a.fromName || "").localeCompare(b.fromName || "", "he"),
-        );
-        break;
-      case "date":
-      default:
-        result.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-    }
-
-    // Filter out snoozed emails (unless they've expired)
-    const snoozedIds = (() => {
-      try {
-        const snoozed = JSON.parse(
-          localStorage.getItem("gmail_snoozed") || "[]",
-        );
-        const now = new Date();
-        return new Set(
-          snoozed
-            .filter((s: any) => new Date(s.until) > now)
-            .map((s: any) => s.emailId),
-        );
-      } catch {
-        return new Set();
-      }
-    })();
-    if (snoozedIds.size > 0) {
-      result = result.filter((msg) => !snoozedIds.has(msg.id));
-    }
-
-    return result;
-  }, [
-    messages,
-    searchQuery,
-    serverSearchActive,
-    activeTab,
-    filterByLabel,
-    filterByPriority,
-    filterByClient,
-    sortBy,
-    emailLabels,
-    emailPriority,
-    clientEmailMap,
-    selectedFolderId,
-    folderEmailIds,
-    emailReminders,
-    emailMetadata,
-    user?.email,
-  ]);
 
   // Pre-compute thread counts to avoid O(n²) in render loop
   const threadCounts = useMemo(() => {
