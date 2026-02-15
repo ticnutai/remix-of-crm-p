@@ -4,6 +4,7 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useRef,
   ReactNode,
   useEffect,
 } from "react";
@@ -68,6 +69,7 @@ const cleanOldLocalBackups = (backups: BackupData[]): BackupData[] => {
 
 export function BackupProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
+  const cloudAvailable = useRef(true);
   const [backups, setBackups] = useState<BackupData[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -137,6 +139,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadCloudBackups = useCallback(async () => {
+    if (!cloudAvailable.current) return;
     try {
       const {
         data: { user },
@@ -149,7 +152,8 @@ export function BackupProvider({ children }: { children: ReactNode }) {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Failed to load cloud backups:", error);
+        console.warn("Cloud backups unavailable, using local storage only");
+        cloudAvailable.current = false;
         return;
       }
 
@@ -209,46 +213,53 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       }
 
       // Load from cloud
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from("backups")
-          .select("*")
-          .order("created_at", { ascending: false });
+      if (!cloudAvailable.current) {
+        setBackups(localBackups);
+      } else {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from("backups")
+            .select("*")
+            .order("created_at", { ascending: false });
 
-        if (!error && data) {
-          const cloudBackups: BackupData[] = data.map((b) => ({
-            metadata: {
-              id: b.backup_id,
-              name: b.name,
-              createdAt: new Date(b.created_at || Date.now()),
-              size: b.size,
-              version: b.version,
-            },
-            data: (typeof b.data === "object" && b.data !== null
-              ? b.data
-              : {}) as Record<string, any>,
-          }));
+          if (!error && data) {
+            const cloudBackups: BackupData[] = data.map((b) => ({
+              metadata: {
+                id: b.backup_id,
+                name: b.name,
+                createdAt: new Date(b.created_at || Date.now()),
+                size: b.size,
+                version: b.version,
+              },
+              data: (typeof b.data === "object" && b.data !== null
+                ? b.data
+                : {}) as Record<string, any>,
+            }));
 
-          // Merge local and cloud
-          const mergedBackups = [...cloudBackups];
-          localBackups.forEach((local) => {
-            if (
-              !cloudBackups.find((c) => c.metadata.id === local.metadata.id)
-            ) {
-              mergedBackups.push(local);
+            // Merge local and cloud
+            const mergedBackups = [...cloudBackups];
+            localBackups.forEach((local) => {
+              if (
+                !cloudBackups.find((c) => c.metadata.id === local.metadata.id)
+              ) {
+                mergedBackups.push(local);
+              }
+            });
+
+            setBackups(mergedBackups);
+            saveToStorage(mergedBackups);
+          } else {
+            if (error) {
+              cloudAvailable.current = false;
             }
-          });
-
-          setBackups(mergedBackups);
-          saveToStorage(mergedBackups);
+            setBackups(localBackups);
+          }
         } else {
           setBackups(localBackups);
         }
-      } else {
-        setBackups(localBackups);
       }
     } catch (e) {
       console.error("Failed to refresh backups:", e);
@@ -281,6 +292,12 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       });
 
       // Save to Supabase cloud
+      if (!cloudAvailable.current) {
+        toast({
+          title: "גיבוי נשמר מקומית",
+          description: `הגיבוי "${name}" נשמר במחשב בלבד`,
+        });
+      } else {
       try {
         const {
           data: { user },
@@ -296,7 +313,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           });
 
           if (error) {
-            console.error("Failed to save to cloud:", error);
+            cloudAvailable.current = false;
             toast({
               title: "גיבוי נשמר מקומית",
               description: "הגיבוי נשמר במחשב בלבד (שגיאה בשמירה לענן)",
@@ -320,6 +337,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           title: "גיבוי נשמר מקומית",
           description: `הגיבוי "${name}" נשמר במחשב בלבד`,
         });
+      }
       }
 
       return backup;
@@ -359,6 +377,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       });
 
       // Delete from Supabase cloud
+      if (cloudAvailable.current) {
       try {
         const {
           data: { user },
@@ -371,11 +390,12 @@ export function BackupProvider({ children }: { children: ReactNode }) {
             .eq("user_id", user.id);
 
           if (error) {
-            console.error("Failed to delete from cloud:", error);
+            cloudAvailable.current = false;
           }
         }
       } catch (e) {
         console.error("Cloud delete error:", e);
+      }
       }
 
       toast({
@@ -455,6 +475,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
 
     // Clear from Supabase cloud
+    if (cloudAvailable.current) {
     try {
       const {
         data: { user },
@@ -466,11 +487,12 @@ export function BackupProvider({ children }: { children: ReactNode }) {
           .eq("user_id", user.id);
 
         if (error) {
-          console.error("Failed to clear cloud backups:", error);
+          cloudAvailable.current = false;
         }
       }
     } catch (e) {
       console.error("Cloud clear error:", e);
+    }
     }
 
     toast({
