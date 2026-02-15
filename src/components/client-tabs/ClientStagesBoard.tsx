@@ -1594,7 +1594,6 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     setAddStageDialog(false);
   };
   const handleBulkAddStages = async () => {
-    console.log('[BULK-ADD] === START ===' );
     if (!bulkStagesText.trim()) return;
     const names = bulkStagesText
       .split("\n")
@@ -1605,7 +1604,6 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     // Save values before closing dialog
     const icon = newStageIcon;
     const folderId = selectedFolderId;
-    console.log('[BULK-ADD] names:', names, 'icon:', icon, 'folderId:', folderId);
     
     // Close dialog
     setBulkStagesText("");
@@ -1614,13 +1612,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     
     // Use addBulkStages with folder_id included directly in the insert
     const result = await addBulkStages(names, icon, folderId || null);
-    console.log('[BULK-ADD] result:', result);
     
     if (result && folderId) {
       refresh();
     }
-    
-    console.log('[BULK-ADD] === END ===');
   };
   const handleDeleteStage = async (stageId: string) => {
     if (confirm("האם אתה בטוח שברצונך למחוק שלב זה וכל המשימות שבו?")) {
@@ -3396,10 +3391,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
               בחר שם ואייקון לשלב החדש
             </DialogDescription>
           </DialogHeader>
-          <Tabs value={addStageMode} onValueChange={(v) => {
-            console.log('[TAB-CHANGE] Switching to:', v);
-            setAddStageMode(v as "single" | "bulk");
-          }} dir="rtl">
+          <Tabs value={addStageMode} onValueChange={(v) => setAddStageMode(v as "single" | "bulk")} dir="rtl">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="single">שלב בודד</TabsTrigger>
               <TabsTrigger value="bulk">שלבים מרובים</TabsTrigger>
@@ -3432,10 +3424,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                   </label>
                   <Textarea
                     value={bulkStagesText}
-                    onChange={(e) => {
-                      console.log('[TEXTAREA] value changing to:', JSON.stringify(e.target.value));
-                      setBulkStagesText(e.target.value);
-                    }}
+                    onChange={(e) => setBulkStagesText(e.target.value)}
                     placeholder="שלב 1&#10;שלב 2&#10;שלב 3"
                     rows={8}
                     className="font-mono text-right"
@@ -3481,12 +3470,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 הוסף שלב
               </Button>
             ) : (
-              <Button onClick={() => {
-                console.log('[BULK-BTN] Button clicked! bulkStagesText:', JSON.stringify(bulkStagesText));
-                console.log('[BULK-BTN] addStageMode:', addStageMode);
-                console.log('[BULK-BTN] typeof handleBulkAddStages:', typeof handleBulkAddStages);
-                handleBulkAddStages();
-              }} disabled={!bulkStagesText.trim()}>
+              <Button onClick={handleBulkAddStages} disabled={!bulkStagesText.trim()}>
                 הוסף {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים
               </Button>
             )}

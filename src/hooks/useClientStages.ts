@@ -644,8 +644,6 @@ export function useClientStages(clientId: string) {
     try {
       const maxSortOrder = stages.reduce((max, s) => Math.max(max, s.sort_order), -1);
       const stageId = `custom_${Date.now()}`;
-      
-      console.log('[addStage] Adding stage:', { stageName, stageIcon, stageId, maxSortOrder, clientId });
 
       const { data, error } = await supabase
         .from('client_stages')
@@ -659,12 +657,8 @@ export function useClientStages(clientId: string) {
         .select()
         .single();
 
-      if (error) {
-        console.error('[addStage] Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('[addStage] Success - data:', data);
       setStages(prev => [...prev, data]);
       toast({
         title: 'הצלחה',
@@ -672,7 +666,6 @@ export function useClientStages(clientId: string) {
       });
       return data;
     } catch (error: unknown) {
-      console.error('[addStage] Error adding stage:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן להוסיף שלב',
@@ -684,9 +677,6 @@ export function useClientStages(clientId: string) {
 
   // Add multiple stages at once (bulk)
   const addBulkStages = async (stageNames: string[], stageIcon: string = 'Phone', folderId?: string | null) => {
-    console.log('[addBulkStages] === START ===');
-    console.log('[addBulkStages] stageNames:', stageNames, 'folderId:', folderId);
-    
     try {
       const maxSortOrder = stages.reduce((max, s) => Math.max(max, s.sort_order), -1);
       const now = Date.now();
@@ -699,21 +689,15 @@ export function useClientStages(clientId: string) {
         sort_order: maxSortOrder + 1 + index,
         ...(folderId ? { folder_id: folderId } : {}),
       }));
-      console.log('[addBulkStages] stagesToInsert:', JSON.stringify(stagesToInsert, null, 2));
 
-      const { data, error, status } = await supabase
+      const { data, error } = await supabase
         .from('client_stages')
         .insert(stagesToInsert)
         .select();
 
-      console.log('[addBulkStages] response - status:', status, 'data:', data, 'error:', error);
+      if (error) throw error;
 
-      if (error) {
-        console.error('[addBulkStages] Supabase error:', error);
-        throw error;
-      }
       if (data) {
-        console.log('[addBulkStages] Success! Inserted', data.length, 'stages');
         setStages(prev => [...prev, ...data]);
       }
       toast({
@@ -722,7 +706,6 @@ export function useClientStages(clientId: string) {
       });
       return data;
     } catch (error: unknown) {
-      console.error('[addBulkStages] CATCH error:', error);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן להוסיף שלבים',
