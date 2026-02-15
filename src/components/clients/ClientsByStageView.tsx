@@ -50,6 +50,7 @@ import {
   Search,
   FolderPlus,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -265,6 +266,7 @@ function StageCard({
   onToggle,
   onOpenClient,
   onAddClients,
+  onEditStage,
   selectedClientIds,
   onSelectClient,
   onSelectAllInStage,
@@ -276,10 +278,12 @@ function StageCard({
   onToggle: () => void;
   onOpenClient: (clientId: string) => void;
   onAddClients: (stageName: string) => void;
+  onEditStage: (stageName: string) => void;
   selectedClientIds: Set<string>;
   onSelectClient: (clientId: string, checked: boolean) => void;
   onSelectAllInStage: (stageName: string, checked: boolean) => void;
 }) {
+  const [isHovered, setIsHovered] = useState(false);
   const allClientIdsInStage = group.clients.map(c => c.id);
   const allSelected = allClientIdsInStage.every(id => selectedClientIds.has(id));
   const someSelected = allClientIdsInStage.some(id => selectedClientIds.has(id)) && !allSelected;
@@ -288,7 +292,11 @@ function StageCard({
     <Card className="overflow-hidden" dir="rtl">
       <Collapsible open={isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-4">
+          <CardHeader 
+            className="cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-4"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {/* Select All Checkbox */}
@@ -324,25 +332,47 @@ function StageCard({
                 >
                   {group.clients.length}
                 </Badge>
-                {/* Add Clients Button */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-[#d4a843]/20 hover:text-[#d4a843]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddClients(group.stage_name);
-                        }}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>הוסף לקוחות לשלב</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Add Clients & Edit Stage Buttons - visible only on hover */}
+                {isHovered && (
+                  <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-[#d4a843]/20 hover:text-[#d4a843]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAddClients(group.stage_name);
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>הוסף לקוחות לשלב</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-blue-500/20 hover:text-blue-500"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditStage(group.stage_name);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>ערוך שם שלב</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                )}
               </div>
               {isExpanded ? (
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -624,6 +654,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   
   // New stage creation dialog state
   const [newStageDialogOpen, setNewStageDialogOpen] = useState(false);
+
+  // Edit stage name dialog state
+  const [editStageDialogOpen, setEditStageDialogOpen] = useState(false);
+  const [editingStageName, setEditingStageName] = useState('');
+  const [editStageNewName, setEditStageNewName] = useState('');
   const [newStageName, setNewStageName] = useState('');
   const [isCreatingStage, setIsCreatingStage] = useState(false);
   const [isNewStageMode, setIsNewStageMode] = useState(false);
@@ -870,6 +905,47 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   };
 
   // Open bulk add dialog
+  // Open edit stage dialog
+  const openEditStageDialog = (stageName: string) => {
+    setEditingStageName(stageName);
+    setEditStageNewName(stageName);
+    setEditStageDialogOpen(true);
+  };
+
+  // Handle rename stage
+  const handleRenameStage = async () => {
+    const newName = editStageNewName.trim();
+    if (!newName || newName === editingStageName) {
+      setEditStageDialogOpen(false);
+      return;
+    }
+
+    try {
+      // Update all client_stages with the old stage_name to the new name
+      const { error } = await supabase
+        .from('client_stages')
+        .update({ stage_name: newName })
+        .eq('stage_name', editingStageName);
+
+      if (error) throw error;
+
+      toast({
+        title: 'עודכן בהצלחה',
+        description: `שם השלב שונה מ-"${editingStageName}" ל-"${newName}"`,
+      });
+
+      setEditStageDialogOpen(false);
+      refresh();
+    } catch (error) {
+      console.error('Error renaming stage:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לשנות את שם השלב',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const openBulkAddDialog = (stageName: string) => {
     setTargetStageName(stageName);
     setSelectedClientIds(new Set());
@@ -1291,6 +1367,7 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
                   onToggle={() => toggleGroup(group.stage_name)}
                   onOpenClient={openClient}
                   onAddClients={openBulkAddDialog}
+                  onEditStage={openEditStageDialog}
                   selectedClientIds={selectedForBulkAction}
                   onSelectClient={handleSelectClient}
                   onSelectAllInStage={handleSelectAllInStage}
@@ -1418,6 +1495,37 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
         </DialogContent>
       </Dialog>
       
+      {/* Edit Stage Name Dialog */}
+      <Dialog open={editStageDialogOpen} onOpenChange={setEditStageDialogOpen}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-500" />
+              עריכת שם שלב
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>שם חדש לשלב</Label>
+            <Input
+              value={editStageNewName}
+              onChange={(e) => setEditStageNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRenameStage();
+                if (e.key === 'Escape') setEditStageDialogOpen(false);
+              }}
+              className="text-right"
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button variant="outline" onClick={() => setEditStageDialogOpen(false)}>ביטול</Button>
+            <Button onClick={handleRenameStage} disabled={!editStageNewName.trim() || editStageNewName.trim() === editingStageName}>
+              שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* New Stage Creation Dialog */}
       <Dialog open={newStageDialogOpen} onOpenChange={setNewStageDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden" dir="rtl">
