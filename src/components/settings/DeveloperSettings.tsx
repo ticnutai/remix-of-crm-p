@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { ClientFieldManager } from "@/components/settings/ClientFieldManager";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -683,6 +684,9 @@ export function DeveloperSettings() {
 
       {/* System Health Check */}
       {devMode && <SystemHealthCheck />}
+
+      {/* Client Field Manager */}
+      <ClientFieldManager />
     </div>
   );
 }

@@ -71,6 +71,7 @@ import {
   Mail,
   BellRing,
   Zap,
+  FormInput,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivityLogTab } from "@/components/settings/ActivityLogTab";
@@ -83,6 +84,7 @@ import { GoogleCalendarSettingsMulti } from "@/components/settings/GoogleCalenda
 import { GoogleContactsSettings } from "@/components/settings/GoogleContactsSettings";
 import { DataCleanupTab } from "@/components/settings/DataCleanupTab";
 import { DeveloperSettings } from "@/components/settings/DeveloperSettings";
+import { ClientFieldManager } from "@/components/settings/ClientFieldManager";
 import { EdgeFunctionsManager } from "@/components/settings/EdgeFunctionsManager";
 import { EmailTemplateManager } from "@/components/settings/EmailTemplateManager";
 import { RateLimitMonitor } from "@/components/settings/RateLimitMonitor";
@@ -703,6 +705,15 @@ export default function Settings() {
                 >
                   <Zap className="h-4 w-4" />
                   <span className="hidden sm:inline">Edge Functions</span>
+                </TabsTrigger>
+              )}
+              {isAdmin && (
+                <TabsTrigger
+                  value="client-fields"
+                  className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400"
+                >
+                  <FormInput className="h-4 w-4" />
+                  <span className="hidden sm:inline">שדות לקוח</span>
                 </TabsTrigger>
               )}
               {isAdmin && (
@@ -1505,6 +1516,13 @@ export default function Settings() {
             {isAdmin && (
               <TabsContent value="edge-functions" className="space-y-6">
                 <EdgeFunctionsManager />
+              </TabsContent>
+            )}
+
+            {/* Client Fields Tab (Admin Only) */}
+            {isAdmin && (
+              <TabsContent value="client-fields" className="space-y-6">
+                <ClientFieldManager />
               </TabsContent>
             )}
 

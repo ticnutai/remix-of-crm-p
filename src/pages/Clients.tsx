@@ -52,6 +52,7 @@ import {
   useClientCustomFields,
   CustomFieldValues,
 } from "@/hooks/useClientCustomFields";
+import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
 import { ClientsByStageView } from "@/components/clients/ClientsByStageView";
 import { ClientsStatisticsView } from "@/components/clients/ClientsStatisticsView";
 import { BulkClassifyDialog } from "@/components/clients/BulkClassifyDialog";
@@ -255,6 +256,9 @@ export default function Clients() {
     updateField: updateCustomField,
     buildCustomData,
   } = useClientCustomFields();
+
+  // Built-in field visibility config
+  const { isVisible } = useClientFieldConfig();
 
   // Filter state
   const [filters, setFilters] = useState<ClientFilterState>({
@@ -3604,6 +3608,7 @@ export default function Clients() {
               />
             </div>
 
+            {isVisible('email') && (
             <div className="space-y-2">
               <Label htmlFor="client-email" className="text-right">
                 אימייל
@@ -3623,7 +3628,9 @@ export default function Clients() {
                 dir="ltr"
               />
             </div>
+            )}
 
+            {isVisible('phone') && (
             <div className="space-y-2">
               <Label htmlFor="client-phone" className="text-right">
                 טלפון
@@ -3643,13 +3650,16 @@ export default function Clients() {
                 dir="ltr"
               />
             </div>
+            )}
 
             {/* כתובת ומיקום */}
+            {(isVisible('street') || isVisible('moshav')) && (
             <div className="border-t pt-4 mt-2">
               <Label className="text-sm font-medium text-muted-foreground mb-3 block">
                 כתובת ומיקום
               </Label>
               <div className="grid grid-cols-2 gap-3">
+                {isVisible('street') && (
                 <SmartComboField
                   label="רחוב"
                   value={newClientForm.street}
@@ -3659,6 +3669,8 @@ export default function Clients() {
                   placeholder="שם הרחוב"
                   fieldColumn="street"
                 />
+                )}
+                {isVisible('moshav') && (
                 <SmartComboField
                   label="מושב / ישוב"
                   value={newClientForm.moshav}
@@ -3668,15 +3680,19 @@ export default function Clients() {
                   placeholder="שם המושב"
                   fieldColumn="moshav"
                 />
+                )}
               </div>
             </div>
+            )}
 
             {/* שדות נדל"ן */}
+            {(isVisible('idNumber') || isVisible('taba') || isVisible('gush') || isVisible('helka') || isVisible('migrash')) && (
             <div className="border-t pt-4 mt-2">
               <Label className="text-sm font-medium text-muted-foreground mb-3 block">
                 פרטי נדל"ן (אופציונלי)
               </Label>
               <div className="grid grid-cols-2 gap-3">
+                {isVisible('idNumber') && (
                 <div className="space-y-1">
                   <Label
                     htmlFor="client-id-number"
@@ -3697,6 +3713,8 @@ export default function Clients() {
                     className="text-right"
                   />
                 </div>
+                )}
+                {isVisible('taba') && (
                 <SmartComboField
                   label='תב"ע'
                   value={newClientForm.taba}
@@ -3706,8 +3724,10 @@ export default function Clients() {
                   placeholder="תב''ע"
                   fieldColumn="taba"
                 />
+                )}
               </div>
               <div className="grid grid-cols-3 gap-3 mt-3">
+                {isVisible('gush') && (
                 <SmartComboField
                   label="גוש"
                   value={newClientForm.gush}
@@ -3717,6 +3737,8 @@ export default function Clients() {
                   placeholder="גוש"
                   fieldColumn="gush"
                 />
+                )}
+                {isVisible('helka') && (
                 <SmartComboField
                   label="חלקה"
                   value={newClientForm.helka}
@@ -3726,6 +3748,8 @@ export default function Clients() {
                   placeholder="חלקה"
                   fieldColumn="helka"
                 />
+                )}
+                {isVisible('migrash') && (
                 <SmartComboField
                   label="מגרש"
                   value={newClientForm.migrash}
@@ -3735,15 +3759,19 @@ export default function Clients() {
                   placeholder="מגרש"
                   fieldColumn="migrash"
                 />
+                )}
               </div>
             </div>
+            )}
 
             {/* ועד האגודה */}
+            {(isVisible('agudaAddress') || isVisible('agudaEmail')) && (
             <div className="border-t pt-4 mt-2">
               <Label className="text-sm font-medium text-muted-foreground mb-3 block">
                 ועד האגודה
               </Label>
               <div className="grid grid-cols-2 gap-3">
+                {isVisible('agudaAddress') && (
                 <SmartComboField
                   label="כתובת ועד האגודה"
                   value={newClientForm.agudaAddress}
@@ -3753,6 +3781,8 @@ export default function Clients() {
                   placeholder="כתובת"
                   fieldColumn="aguda_address"
                 />
+                )}
+                {isVisible('agudaEmail') && (
                 <SmartComboField
                   label="מייל ועד האגודה"
                   value={newClientForm.agudaEmail}
@@ -3764,15 +3794,19 @@ export default function Clients() {
                   dir="ltr"
                   type="email"
                 />
+                )}
               </div>
             </div>
+            )}
 
             {/* ועד המושב */}
+            {(isVisible('vaadMoshavAddress') || isVisible('vaadMoshavEmail')) && (
             <div className="border-t pt-4 mt-2">
               <Label className="text-sm font-medium text-muted-foreground mb-3 block">
                 ועד המושב
               </Label>
               <div className="grid grid-cols-2 gap-3">
+                {isVisible('vaadMoshavAddress') && (
                 <SmartComboField
                   label="כתובת ועד המושב"
                   value={newClientForm.vaadMoshavAddress}
@@ -3785,6 +3819,8 @@ export default function Clients() {
                   placeholder="כתובת"
                   fieldColumn="vaad_moshav_address"
                 />
+                )}
+                {isVisible('vaadMoshavEmail') && (
                 <SmartComboField
                   label="מייל ועד המושב"
                   value={newClientForm.vaadMoshavEmail}
@@ -3799,8 +3835,10 @@ export default function Clients() {
                   dir="ltr"
                   type="email"
                 />
+                )}
               </div>
             </div>
+            )}
 
             {/* שדות מותאמים אישית */}
             <CustomFieldsSection

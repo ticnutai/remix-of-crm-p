@@ -204,7 +204,7 @@ const PRIORITY_CONFIG: Record<
 };
 
 export default function Gmail() {
-  console.log('🔍 [Gmail] Component render START');
+  console.log("🔍 [Gmail] Component render START");
   const {
     messages,
     isLoading,
@@ -379,7 +379,7 @@ export default function Gmail() {
   );
   const [autoTagEnabled, setAutoTagEnabled] = useState(true);
 
-  console.log('🔍 [Gmail] State declarations done, starting useMemo hooks');
+  console.log("🔍 [Gmail] State declarations done, starting useMemo hooks");
 
   // Derived persistent data from useEmailMetadata
   const emailLabels = useMemo(
@@ -399,7 +399,7 @@ export default function Gmail() {
     [emailMetadata.metadata],
   );
 
-  console.log('🔍 [Gmail] useMemo metadata hooks done, starting useEffects');
+  console.log("🔍 [Gmail] useMemo metadata hooks done, starting useEffects");
 
   // Load clients for auto-tagging
   useEffect(() => {
@@ -644,10 +644,10 @@ export default function Gmail() {
     );
   }, [mutedThreads]);
 
-  console.log('🔍 [Gmail] Before filteredMessages useMemo');
+  console.log("🔍 [Gmail] Before filteredMessages useMemo");
   // Filter and sort messages
   const filteredMessages = useMemo(() => {
-    console.log('🔍 [Gmail] filteredMessages useMemo computing...');
+    console.log("🔍 [Gmail] filteredMessages useMemo computing...");
     // When server search is active, skip local text filtering (results already filtered by Gmail API)
     let result = serverSearchActive
       ? [...messages]
@@ -781,7 +781,11 @@ export default function Gmail() {
     user?.email,
   ]);
 
-  console.log('🔍 [Gmail] filteredMessages ready, length:', filteredMessages?.length, 'setting up keyboard shortcuts');
+  console.log(
+    "🔍 [Gmail] filteredMessages ready, length:",
+    filteredMessages?.length,
+    "setting up keyboard shortcuts",
+  );
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -935,7 +939,9 @@ export default function Gmail() {
     return () => clearInterval(interval);
   }, [undoSendState?.params]);
 
-  console.log('🔍 [Gmail] Keyboard effect registered, continuing to buildQuotedBody');
+  console.log(
+    "🔍 [Gmail] Keyboard effect registered, continuing to buildQuotedBody",
+  );
 
   // Build quoted body for reply / forward
   const buildQuotedBody = useCallback(
@@ -1073,7 +1079,9 @@ export default function Gmail() {
     [getAttachment],
   );
 
-  console.log('🔍 [Gmail] buildQuotedBody + handlePrintEmail + snooze/mute/undoSend ready');
+  console.log(
+    "🔍 [Gmail] buildQuotedBody + handlePrintEmail + snooze/mute/undoSend ready",
+  );
 
   const handleConnect = useCallback(async () => {
     await fetchEmails(50);
@@ -1100,7 +1108,7 @@ export default function Gmail() {
     await fetchEmails(50);
   };
 
-  console.log('🔍 [Gmail] handleConnect/handleRefresh/handleDateFilter ready');
+  console.log("🔍 [Gmail] handleConnect/handleRefresh/handleDateFilter ready");
 
   // Load thread messages for chat view (from API)
   const loadThreadMessages = async (threadId: string) => {
@@ -1321,7 +1329,7 @@ export default function Gmail() {
     });
   };
 
-  console.log('🔍 [Gmail] All functions declared, computing threadCounts');
+  console.log("🔍 [Gmail] All functions declared, computing threadCounts");
 
   // Pre-compute thread counts to avoid O(n²) in render loop
   const threadCounts = useMemo(() => {
@@ -1344,7 +1352,7 @@ export default function Gmail() {
       return reminderDate.getTime() === today.getTime();
     }).length;
   }, [emailReminders]);
-  console.log('🔍 [Gmail] Component render COMPLETE - about to return JSX');
+  console.log("🔍 [Gmail] Component render COMPLETE - about to return JSX");
   return (
     <AppLayout>
       <div
