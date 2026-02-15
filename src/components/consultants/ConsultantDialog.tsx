@@ -40,6 +40,7 @@ import {
   Consultant,
   CONSULTANT_KEYWORDS,
 } from "@/hooks/useConsultants";
+import { useClients } from "@/hooks/useClients";
 import { cn } from "@/lib/utils";
 
 interface ConsultantDialogProps {
@@ -79,11 +80,38 @@ export function ConsultantDialog({
   onSelectConsultant,
 }: ConsultantDialogProps) {
   const { consultants, loading, addConsultant, updateConsultant, deleteConsultant } = useConsultants();
+  const { clients: allClients } = useClients();
   const [searchTerm, setSearchTerm] = useState("");
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState<"select" | "add">("select");
   const [editingConsultant, setEditingConsultant] = useState<Consultant | null>(null);
   const [editForm, setEditForm] = useState<Partial<Consultant>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+  // Filter clients for autocomplete
+  const filteredClients = useMemo(() => {
+    if (!clientSearchTerm.trim()) return [];
+    const term = clientSearchTerm.toLowerCase();
+    return allClients.filter(c =>
+      c.name.toLowerCase().includes(term) ||
+      c.phone?.toLowerCase().includes(term) ||
+      c.email?.toLowerCase().includes(term) ||
+      c.company?.toLowerCase().includes(term)
+    ).slice(0, 8);
+  }, [allClients, clientSearchTerm]);
+
+  const handleSelectClient = (client: typeof allClients[0]) => {
+    setNewConsultant(prev => ({
+      ...prev,
+      name: client.name || prev.name,
+      phone: client.phone || prev.phone,
+      email: client.email || prev.email,
+      company: client.company || prev.company,
+    }));
+    setClientSearchTerm("");
+    setShowClientDropdown(false);
+  };
   const [professions, setProfessions] = useState(loadProfessions);
   const [addingProfession, setAddingProfession] = useState(false);
   const [newProfessionName, setNewProfessionName] = useState("");
@@ -380,6 +408,55 @@ export function ConsultantDialog({
           <TabsContent value="add" className="mt-4">
             <ScrollArea className="h-[400px] pl-4">
               <div className="grid gap-4">
+                {/* Import from client */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    ייבא מלקוח קיים
+                    <span className="text-xs text-muted-foreground">(אופציונלי)</span>
+                  </Label>
+                  <div className="relative">
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={clientSearchTerm}
+                      onChange={(e) => {
+                        setClientSearchTerm(e.target.value);
+                        setShowClientDropdown(e.target.value.trim().length > 0);
+                      }}
+                      onFocus={() => clientSearchTerm.trim() && setShowClientDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                      placeholder="חפש לקוח לפי שם, טלפון, אימייל..."
+                      className="pr-10"
+                    />
+                    {showClientDropdown && filteredClients.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-auto">
+                        {filteredClients.map(client => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className="w-full text-right px-3 py-2 hover:bg-accent transition-colors flex items-center justify-between gap-2 text-sm"
+                            onMouseDown={(e) => { e.preventDefault(); handleSelectClient(client); }}
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium">{client.name}</div>
+                              <div className="text-xs text-muted-foreground flex gap-2">
+                                {client.phone && <span>{client.phone}</span>}
+                                {client.company && <span>• {client.company}</span>}
+                              </div>
+                            </div>
+                            <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-x-0 border-t border-dashed" />
+                  <p className="text-center text-xs text-muted-foreground bg-background px-2 relative -top-2 w-fit mx-auto">או הזן ידנית</p>
+                </div>
+
                 {/* Name & Profession */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
