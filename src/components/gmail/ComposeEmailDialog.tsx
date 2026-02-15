@@ -16,7 +16,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 import {
   Dialog,
   DialogContent,
@@ -987,7 +987,9 @@ export const ComposeEmailDialog = ({
                 {signatureHtml && (
                   <div
                     className="p-2 border rounded bg-background text-sm border-dashed"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(signatureHtml) }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(signatureHtml),
+                    }}
                   />
                 )}
                 <div className="flex gap-1">

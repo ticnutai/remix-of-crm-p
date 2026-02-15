@@ -5,7 +5,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -150,7 +150,9 @@ export const RichTextEditor = forwardRef<
       const text = e.clipboardData.getData("text/plain");
 
       if (html) {
-        const clean = DOMPurify.sanitize(html, { ALLOW_UNKNOWN_PROTOCOLS: true });
+        const clean = DOMPurify.sanitize(html, {
+          ALLOW_UNKNOWN_PROTOCOLS: true,
+        });
         document.execCommand("insertHTML", false, clean);
       } else {
         document.execCommand("insertText", false, text);
