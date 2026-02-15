@@ -3398,6 +3398,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
 
       {/* Add Stage Dialog */}
       <Dialog open={addStageDialog} onOpenChange={(open) => {
+        console.log('[ADD-STAGE-DIALOG] open:', open);
         setAddStageDialog(open);
         if (!open) {
           setAddStageMode("single");
@@ -3413,7 +3414,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
               בחר שם ואייקון לשלב החדש
             </DialogDescription>
           </DialogHeader>
-          <Tabs value={addStageMode} onValueChange={(v) => setAddStageMode(v as "single" | "bulk")} dir="rtl">
+          <Tabs value={addStageMode} onValueChange={(v) => {
+            console.log('[TAB-CHANGE] Switching to:', v);
+            setAddStageMode(v as "single" | "bulk");
+          }} dir="rtl">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="single">שלב בודד</TabsTrigger>
               <TabsTrigger value="bulk">שלבים מרובים</TabsTrigger>
@@ -3446,7 +3450,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                   </label>
                   <Textarea
                     value={bulkStagesText}
-                    onChange={(e) => setBulkStagesText(e.target.value)}
+                    onChange={(e) => {
+                      console.log('[TEXTAREA] value changing to:', JSON.stringify(e.target.value));
+                      setBulkStagesText(e.target.value);
+                    }}
                     placeholder="שלב 1&#10;שלב 2&#10;שלב 3"
                     rows={8}
                     className="font-mono text-right"
@@ -3492,7 +3499,12 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 הוסף שלב
               </Button>
             ) : (
-              <Button onClick={handleBulkAddStages} disabled={!bulkStagesText.trim()}>
+              <Button onClick={() => {
+                console.log('[BULK-BTN] Button clicked! bulkStagesText:', JSON.stringify(bulkStagesText));
+                console.log('[BULK-BTN] addStageMode:', addStageMode);
+                console.log('[BULK-BTN] typeof handleBulkAddStages:', typeof handleBulkAddStages);
+                handleBulkAddStages();
+              }} disabled={!bulkStagesText.trim()}>
                 הוסף {bulkStagesText.split("\n").filter((t) => t.trim()).length} שלבים
               </Button>
             )}
