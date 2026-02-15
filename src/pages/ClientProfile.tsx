@@ -49,6 +49,7 @@ import {
   useClientCustomFields,
   CustomFieldValues,
 } from "@/hooks/useClientCustomFields";
+import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
 import CustomFieldsSection from "@/components/clients/CustomFieldsSection";
 import {
   AddCustomTabDialog,
@@ -345,6 +346,8 @@ export default function ClientProfile() {
     parseCustomData,
     buildCustomData,
   } = useClientCustomFields();
+
+  const fieldConfig = useClientFieldConfig();
 
   const [invoiceForm, setInvoiceForm] = useState({
     invoice_number: "",
@@ -2107,7 +2110,9 @@ export default function ClientProfile() {
                   }
                 />
               </div>
+              {(fieldConfig.isVisible('email') || fieldConfig.isVisible('phone')) && (
               <div className="grid grid-cols-2 gap-4">
+                {fieldConfig.isVisible('email') && (
                 <div className="space-y-2">
                   <Label>אימייל</Label>
                   <Input
@@ -2121,6 +2126,8 @@ export default function ClientProfile() {
                     }
                   />
                 </div>
+                )}
+                {fieldConfig.isVisible('phone') && (
                 <div className="space-y-2">
                   <Label>טלפון</Label>
                   <Input
@@ -2133,7 +2140,9 @@ export default function ClientProfile() {
                     }
                   />
                 </div>
+                )}
               </div>
+              )}
               <div className="space-y-2">
                 <Label>חברה</Label>
                 <Input
@@ -2146,6 +2155,7 @@ export default function ClientProfile() {
                   }
                 />
               </div>
+              {(fieldConfig.isVisible('street') || fieldConfig.isVisible('moshav')) && (
               <div className="space-y-2">
                 <Label>כתובת</Label>
                 <Input
@@ -2158,13 +2168,16 @@ export default function ClientProfile() {
                   }
                 />
               </div>
+              )}
 
               {/* שדות נדל"ן */}
+              {(fieldConfig.isVisible('idNumber') || fieldConfig.isVisible('taba') || fieldConfig.isVisible('gush') || fieldConfig.isVisible('helka') || fieldConfig.isVisible('migrash')) && (
               <div className="border-t pt-4 mt-4">
                 <Label className="text-sm font-semibold mb-3 block">
                   פרטי נדל"ן
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
+                  {fieldConfig.isVisible('idNumber') && (
                   <div className="space-y-2">
                     <Label>ת.ז.</Label>
                     <Input
@@ -2178,6 +2191,8 @@ export default function ClientProfile() {
                       placeholder="תעודת זהות"
                     />
                   </div>
+                  )}
+                  {fieldConfig.isVisible('taba') && (
                   <div className="space-y-2">
                     <Label>תב"ע</Label>
                     <Input
@@ -2191,8 +2206,10 @@ export default function ClientProfile() {
                       placeholder="תב''ע"
                     />
                   </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-3">
+                  {fieldConfig.isVisible('gush') && (
                   <div className="space-y-2">
                     <Label>גוש</Label>
                     <Input
@@ -2206,6 +2223,8 @@ export default function ClientProfile() {
                       placeholder="גוש"
                     />
                   </div>
+                  )}
+                  {fieldConfig.isVisible('helka') && (
                   <div className="space-y-2">
                     <Label>חלקה</Label>
                     <Input
@@ -2219,6 +2238,8 @@ export default function ClientProfile() {
                       placeholder="חלקה"
                     />
                   </div>
+                  )}
+                  {fieldConfig.isVisible('migrash') && (
                   <div className="space-y-2">
                     <Label>מגרש</Label>
                     <Input
@@ -2232,8 +2253,10 @@ export default function ClientProfile() {
                       placeholder="מגרש"
                     />
                   </div>
+                  )}
                 </div>
               </div>
+              )}
 
               {/* שדות מותאמים אישית */}
               <CustomFieldsSection

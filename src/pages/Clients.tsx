@@ -258,7 +258,7 @@ export default function Clients() {
   } = useClientCustomFields();
 
   // Built-in field visibility config
-  const { isVisible } = useClientFieldConfig();
+  const { isVisible, isConditionallyVisible } = useClientFieldConfig();
 
   // Filter state
   const [filters, setFilters] = useState<ClientFilterState>({
