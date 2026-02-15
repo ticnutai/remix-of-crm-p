@@ -1,15 +1,15 @@
 // Modern Time Logs Table - Clean & Functional
-import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import React, { useState, useEffect } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/dropdown-menu";
 import {
   Clock,
   MoreVertical,
@@ -27,10 +27,10 @@ import {
   Tag,
   Timer,
   TrendingUp,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface TimeEntry {
   id: string;
@@ -89,23 +89,28 @@ export function TimeLogsModernTable({
   loading = false,
   canDelete = false,
 }: TimeLogsModernTableProps) {
-  console.log('🔍 [TimeLogsModernTable] Component rendered', { 
-    canDelete, 
+  console.log("🔍 [TimeLogsModernTable] Component rendered", {
+    canDelete,
     entriesCount: timeEntries.length,
-    hasOnDelete: !!onDelete 
+    hasOnDelete: !!onDelete,
   });
-  
-  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(new Set());
+
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(
+    new Set(),
+  );
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
   const [hoveredEntry, setHoveredEntry] = useState<string | null>(null);
 
   // Group entries by date
-  const entriesByDate = timeEntries.reduce((acc, entry) => {
-    const date = format(new Date(entry.start_time), 'yyyy-MM-dd');
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(entry);
-    return acc;
-  }, {} as Record<string, TimeEntry[]>);
+  const entriesByDate = timeEntries.reduce(
+    (acc, entry) => {
+      const date = format(new Date(entry.start_time), "yyyy-MM-dd");
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(entry);
+      return acc;
+    },
+    {} as Record<string, TimeEntry[]>,
+  );
 
   const dates = Object.keys(entriesByDate).sort().reverse();
 
@@ -118,22 +123,22 @@ export function TimeLogsModernTable({
 
   // Helper functions
   const getClientName = (clientId: string | null) => {
-    if (!clientId) return 'לא משויך';
-    return clients.find(c => c.id === clientId)?.name || 'לא ידוע';
+    if (!clientId) return "לא משויך";
+    return clients.find((c) => c.id === clientId)?.name || "לא ידוע";
   };
 
   const getProjectName = (projectId: string | null) => {
     if (!projectId) return null;
-    return projects.find(p => p.id === projectId)?.name || 'לא ידוע';
+    return projects.find((p) => p.id === projectId)?.name || "לא ידוע";
   };
 
   const getUserInfo = (userId: string | null) => {
     if (!userId) return null;
-    return users.find(u => u.id === userId);
+    return users.find((u) => u.id === userId);
   };
 
   const formatDuration = (minutes: number | null) => {
-    if (!minutes || minutes === 0) return '0 דק\'';
+    if (!minutes || minutes === 0) return "0 דק'";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     // Under 1 hour: show minutes only
@@ -141,15 +146,15 @@ export function TimeLogsModernTable({
     // Full hours: show H:00
     if (mins === 0) return `${hours}:00`;
     // Hours + minutes: show H:MM
-    return `${hours}:${mins.toString().padStart(2, '0')}`;
+    return `${hours}:${mins.toString().padStart(2, "0")}`;
   };
 
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), 'H:mm');
+    return format(new Date(dateString), "H:mm");
   };
 
   const formatDateFull = (dateString: string) => {
-    return format(new Date(dateString), 'EEEE, dd MMMM yyyy', { locale: he });
+    return format(new Date(dateString), "EEEE, dd MMMM yyyy", { locale: he });
   };
 
   const toggleSelect = (id: string) => {
@@ -224,17 +229,20 @@ export function TimeLogsModernTable({
                 ייצא
               </Button>
               {canDelete && (
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   onClick={() => {
-                    console.log('🗑️ [TimeLogsModernTable] Bulk delete clicked', { 
-                      selectedCount: selectedEntries.size,
-                      selectedIds: Array.from(selectedEntries) 
-                    });
+                    console.log(
+                      "🗑️ [TimeLogsModernTable] Bulk delete clicked",
+                      {
+                        selectedCount: selectedEntries.size,
+                        selectedIds: Array.from(selectedEntries),
+                      },
+                    );
                     // Delete all selected entries
                     const idsToDelete = Array.from(selectedEntries);
-                    idsToDelete.forEach(id => onDelete(id));
+                    idsToDelete.forEach((id) => onDelete(id));
                     setSelectedEntries(new Set());
                   }}
                 >
@@ -248,17 +256,21 @@ export function TimeLogsModernTable({
       )}
 
       {/* Entries by Date */}
-      {dates.map(date => {
+      {dates.map((date) => {
         const dateEntries = entriesByDate[date];
-        const totalMinutes = dateEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
-        const billableMinutes = dateEntries.reduce((sum, e) => 
-          sum + (e.is_billable ? (e.duration_minutes || 0) : 0), 0
+        const totalMinutes = dateEntries.reduce(
+          (sum, e) => sum + (e.duration_minutes || 0),
+          0,
+        );
+        const billableMinutes = dateEntries.reduce(
+          (sum, e) => sum + (e.is_billable ? e.duration_minutes || 0 : 0),
+          0,
         );
 
         return (
           <div key={date} className="space-y-3">
             {/* Date Header - Collapsible */}
-            <div 
+            <div
               className="flex items-center justify-between px-1 cursor-pointer hover:bg-muted/30 rounded-lg p-2 transition-colors group"
               onClick={() => toggleDateExpansion(date)}
             >
@@ -304,7 +316,10 @@ export function TimeLogsModernTable({
 
             {/* Entries - Collapsible */}
             {expandedDates.has(date) && (
-              <Card dir="rtl" className="overflow-hidden border-l-4 border-l-primary/20">
+              <Card
+                dir="rtl"
+                className="overflow-hidden border-r-4 border-r-primary/20"
+              >
                 <div className="divide-y divide-border">
                   {dateEntries.map((entry) => {
                     const projectName = getProjectName(entry.project_id);
@@ -319,18 +334,24 @@ export function TimeLogsModernTable({
                         onMouseLeave={() => setHoveredEntry(null)}
                         className={cn(
                           "group relative p-5 transition-all",
-                          isSelected && "bg-yellow-500/10 border-r-4 border-yellow-500",
-                          isRunning && "bg-green-500/5 border-r-4 border-green-500",
+                          isSelected &&
+                            "bg-yellow-500/10 border-r-4 border-yellow-500",
+                          isRunning &&
+                            "bg-green-500/5 border-r-4 border-green-500",
                           !isSelected && !isRunning && "hover:bg-muted/50",
-                          isHovered && "shadow-md"
+                          isHovered && "shadow-md",
                         )}
                       >
                         <div className="flex items-start gap-4">
                           {/* Checkbox */}
-                          <div className={cn(
-                            "pt-1 transition-opacity",
-                            isHovered || isSelected ? "opacity-100" : "opacity-30"
-                          )}>
+                          <div
+                            className={cn(
+                              "pt-1 transition-opacity",
+                              isHovered || isSelected
+                                ? "opacity-100"
+                                : "opacity-30",
+                            )}
+                          >
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={() => toggleSelect(entry.id)}
@@ -363,12 +384,18 @@ export function TimeLogsModernTable({
                           <div className="flex-1 min-w-0 space-y-3">
                             {/* Client & Project & User Row */}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="outline" className="gap-1.5 font-medium">
+                              <Badge
+                                variant="outline"
+                                className="gap-1.5 font-medium"
+                              >
                                 <User className="h-3.5 w-3.5" />
                                 {getClientName(entry.client_id)}
                               </Badge>
                               {projectName && (
-                                <Badge variant="outline" className="gap-1.5 bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
+                                <Badge
+                                  variant="outline"
+                                  className="gap-1.5 bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
+                                >
                                   <Briefcase className="h-3.5 w-3.5" />
                                   {projectName}
                                 </Badge>
@@ -378,11 +405,14 @@ export function TimeLogsModernTable({
                                 const userInfo = getUserInfo(entry.user_id);
                                 if (!userInfo) return null;
                                 return (
-                                  <Badge variant="outline" className="gap-1.5 bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400">
+                                  <Badge
+                                    variant="outline"
+                                    className="gap-1.5 bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-purple-400"
+                                  >
                                     {userInfo.avatar_url ? (
-                                      <img 
-                                        src={userInfo.avatar_url} 
-                                        alt={userInfo.name} 
+                                      <img
+                                        src={userInfo.avatar_url}
+                                        alt={userInfo.name}
                                         className="h-3.5 w-3.5 rounded-full object-cover"
                                       />
                                     ) : (
@@ -412,8 +442,12 @@ export function TimeLogsModernTable({
                             {entry.tags && entry.tags.length > 0 && (
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <Tag className="h-3 w-3 text-muted-foreground" />
-                                {entry.tags.map(tag => (
-                                  <Badge key={tag} variant="secondary" className="text-xs py-0 h-5">
+                                {entry.tags.map((tag) => (
+                                  <Badge
+                                    key={tag}
+                                    variant="secondary"
+                                    className="text-xs py-0 h-5"
+                                  >
                                     {tag}
                                   </Badge>
                                 ))}
@@ -430,26 +464,37 @@ export function TimeLogsModernTable({
 
                           {/* Duration & Value */}
                           <div className="flex flex-col items-end gap-2">
-                            <div className={cn(
-                              "text-3xl font-mono font-bold tracking-tight",
-                              isRunning ? "text-green-500" : "text-foreground"
-                            )}>
+                            <div
+                              className={cn(
+                                "text-3xl font-mono font-bold tracking-tight",
+                                isRunning
+                                  ? "text-green-500"
+                                  : "text-foreground",
+                              )}
+                            >
                               {formatDuration(entry.duration_minutes)}
                             </div>
                             {entry.hourly_rate && entry.is_billable && (
                               <div className="flex items-center gap-1 text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-1 rounded-md font-medium">
-                                <TrendingUp className="h-3 w-3" />
-                                ₪{((entry.duration_minutes || 0) / 60 * entry.hourly_rate).toFixed(0)}
+                                <TrendingUp className="h-3 w-3" />₪
+                                {(
+                                  ((entry.duration_minutes || 0) / 60) *
+                                  entry.hourly_rate
+                                ).toFixed(0)}
                               </div>
                             )}
                           </div>
 
                           {/* Actions */}
-                          <div className={cn(
-                            "transition-all",
-                            isHovered || isSelected ? "opacity-100" : "opacity-0",
-                            isHovered ? "scale-100" : "scale-95"
-                          )}>
+                          <div
+                            className={cn(
+                              "transition-all",
+                              isHovered || isSelected
+                                ? "opacity-100"
+                                : "opacity-0",
+                              isHovered ? "scale-100" : "scale-95",
+                            )}
+                          >
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -466,7 +511,9 @@ export function TimeLogsModernTable({
                                   ערוך רישום
                                 </DropdownMenuItem>
                                 {onDuplicate && (
-                                  <DropdownMenuItem onClick={() => onDuplicate(entry)}>
+                                  <DropdownMenuItem
+                                    onClick={() => onDuplicate(entry)}
+                                  >
                                     <Copy className="h-4 w-4 ml-2" />
                                     שכפל רישום
                                   </DropdownMenuItem>
@@ -474,7 +521,10 @@ export function TimeLogsModernTable({
                                 {canDelete && (
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      console.log('🗑️ [TimeLogsModernTable] Delete clicked', { entryId: entry.id, canDelete });
+                                      console.log(
+                                        "🗑️ [TimeLogsModernTable] Delete clicked",
+                                        { entryId: entry.id, canDelete },
+                                      );
                                       onDelete(entry.id);
                                     }}
                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"

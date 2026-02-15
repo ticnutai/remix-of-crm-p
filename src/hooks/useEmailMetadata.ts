@@ -1,11 +1,11 @@
 // Hook for managing email metadata (client links, labels, etc.)
 // Uses localStorage for storage until database table is available
-import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from './useAuth';
-import { useToast } from './use-toast';
+import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "./useAuth";
+import { useToast } from "./use-toast";
 
 // Storage key for localStorage
-const STORAGE_KEY = 'email_metadata';
+const STORAGE_KEY = "email_metadata";
 
 interface EmailMetadata {
   id: string;
@@ -15,6 +15,8 @@ interface EmailMetadata {
   is_flagged: boolean;
   is_pinned: boolean;
   notes: string | null;
+  priority: string | null;
+  reminder: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,20 +31,30 @@ interface UseEmailMetadataReturn {
   metadata: Map<string, EmailMetadata>;
   loading: boolean;
   getMetadata: (emailId: string) => EmailMetadata | undefined;
-  linkClient: (emailId: string, clientId: string | null, emailDetails?: EmailDetails) => Promise<void>;
+  linkClient: (
+    emailId: string,
+    clientId: string | null,
+    emailDetails?: EmailDetails,
+  ) => Promise<void>;
   addLabel: (emailId: string, label: string) => Promise<void>;
   removeLabel: (emailId: string, label: string) => Promise<void>;
   setFlag: (emailId: string, flagged: boolean) => Promise<void>;
   setPin: (emailId: string, pinned: boolean) => Promise<void>;
   setNotes: (emailId: string, notes: string | null) => Promise<void>;
+  setPriority: (emailId: string, priority: string | null) => Promise<void>;
+  setReminder: (emailId: string, reminder: string | null) => Promise<void>;
+  getAllLabels: () => Record<string, string[]>;
+  getAllPriorities: () => Record<string, string>;
+  getAllNotes: () => Record<string, string>;
+  getAllReminders: () => Record<string, string>;
   refreshMetadata: () => Promise<void>;
 }
 
 // Helper to generate UUID
 function generateId(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -61,37 +73,42 @@ function loadFromStorage(userId: string): Map<string, EmailMetadata> {
       return new Map(Object.entries(parsed));
     }
   } catch (error) {
-    console.error('Error loading email metadata from storage:', error);
+    console.error("Error loading email metadata from storage:", error);
   }
   return new Map();
 }
 
 // Helper to save metadata to localStorage
-function saveToStorage(userId: string, metadata: Map<string, EmailMetadata>): void {
+function saveToStorage(
+  userId: string,
+  metadata: Map<string, EmailMetadata>,
+): void {
   try {
     const obj = Object.fromEntries(metadata);
     localStorage.setItem(getStorageKey(userId), JSON.stringify(obj));
   } catch (error) {
-    console.error('Error saving email metadata to storage:', error);
+    console.error("Error saving email metadata to storage:", error);
   }
 }
 
 export function useEmailMetadata(): UseEmailMetadataReturn {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [metadata, setMetadata] = useState<Map<string, EmailMetadata>>(new Map());
+  const [metadata, setMetadata] = useState<Map<string, EmailMetadata>>(
+    new Map(),
+  );
   const [loading, setLoading] = useState(false);
 
   // Load metadata from localStorage
   const refreshMetadata = useCallback(async () => {
     if (!user?.id) return;
-    
+
     setLoading(true);
     try {
       const loaded = loadFromStorage(user.id);
       setMetadata(loaded);
     } catch (error) {
-      console.error('Error loading email metadata:', error);
+      console.error("Error loading email metadata:", error);
     } finally {
       setLoading(false);
     }
@@ -103,95 +120,183 @@ export function useEmailMetadata(): UseEmailMetadataReturn {
   }, [refreshMetadata]);
 
   // Get metadata for a specific email
-  const getMetadata = useCallback((emailId: string): EmailMetadata | undefined => {
-    return metadata.get(emailId);
-  }, [metadata]);
+  const getMetadata = useCallback(
+    (emailId: string): EmailMetadata | undefined => {
+      return metadata.get(emailId);
+    },
+    [metadata],
+  );
 
   // Create or update metadata entry
-  const updateMetadata = useCallback((
-    emailId: string, 
-    updates: Partial<EmailMetadata>
-  ) => {
-    if (!user?.id) return;
+  const updateMetadata = useCallback(
+    (emailId: string, updates: Partial<EmailMetadata>) => {
+      if (!user?.id) return;
 
-    setMetadata(prev => {
-      const newMap = new Map(prev);
-      const existing = newMap.get(emailId);
-      const now = new Date().toISOString();
-      
-      const updated: EmailMetadata = {
-        id: existing?.id || generateId(),
-        email_id: emailId,
-        linked_client_id: updates.linked_client_id ?? existing?.linked_client_id ?? null,
-        labels: updates.labels ?? existing?.labels ?? [],
-        is_flagged: updates.is_flagged ?? existing?.is_flagged ?? false,
-        is_pinned: updates.is_pinned ?? existing?.is_pinned ?? false,
-        notes: updates.notes ?? existing?.notes ?? null,
-        created_at: existing?.created_at ?? now,
-        updated_at: now,
-      };
-      
-      newMap.set(emailId, updated);
-      saveToStorage(user.id, newMap);
-      return newMap;
-    });
-  }, [user?.id]);
+      setMetadata((prev) => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(emailId);
+        const now = new Date().toISOString();
+
+        const updated: EmailMetadata = {
+          id: existing?.id || generateId(),
+          email_id: emailId,
+          linked_client_id:
+            updates.linked_client_id ?? existing?.linked_client_id ?? null,
+          labels: updates.labels ?? existing?.labels ?? [],
+          is_flagged: updates.is_flagged ?? existing?.is_flagged ?? false,
+          is_pinned: updates.is_pinned ?? existing?.is_pinned ?? false,
+          notes: updates.notes ?? existing?.notes ?? null,
+          priority:
+            updates.priority !== undefined
+              ? updates.priority
+              : (existing?.priority ?? null),
+          reminder:
+            updates.reminder !== undefined
+              ? updates.reminder
+              : (existing?.reminder ?? null),
+          created_at: existing?.created_at ?? now,
+          updated_at: now,
+        };
+
+        newMap.set(emailId, updated);
+        saveToStorage(user.id, newMap);
+        return newMap;
+      });
+    },
+    [user?.id],
+  );
 
   // Link a client to an email
-  const linkClient = useCallback(async (
-    emailId: string, 
-    clientId: string | null,
-    _emailDetails?: EmailDetails
-  ) => {
-    if (!user?.id) return;
+  const linkClient = useCallback(
+    async (
+      emailId: string,
+      clientId: string | null,
+      _emailDetails?: EmailDetails,
+    ) => {
+      if (!user?.id) return;
 
-    updateMetadata(emailId, { linked_client_id: clientId });
+      updateMetadata(emailId, { linked_client_id: clientId });
 
-    toast({
-      title: clientId ? 'לקוח קושר לאימייל' : 'קישור לקוח הוסר',
-      description: clientId ? 'הלקוח קושר בהצלחה לאימייל' : 'קישור הלקוח הוסר מהאימייל',
-    });
-  }, [user?.id, updateMetadata, toast]);
+      toast({
+        title: clientId ? "לקוח קושר לאימייל" : "קישור לקוח הוסר",
+        description: clientId
+          ? "הלקוח קושר בהצלחה לאימייל"
+          : "קישור הלקוח הוסר מהאימייל",
+      });
+    },
+    [user?.id, updateMetadata, toast],
+  );
 
   // Add a label to an email
-  const addLabel = useCallback(async (emailId: string, label: string) => {
-    if (!user?.id) return;
+  const addLabel = useCallback(
+    async (emailId: string, label: string) => {
+      if (!user?.id) return;
 
-    const existing = metadata.get(emailId);
-    const currentLabels = existing?.labels || [];
-    
-    if (currentLabels.includes(label)) return;
-    
-    updateMetadata(emailId, { labels: [...currentLabels, label] });
-  }, [user?.id, metadata, updateMetadata]);
+      const existing = metadata.get(emailId);
+      const currentLabels = existing?.labels || [];
+
+      if (currentLabels.includes(label)) return;
+
+      updateMetadata(emailId, { labels: [...currentLabels, label] });
+    },
+    [user?.id, metadata, updateMetadata],
+  );
 
   // Remove a label from an email
-  const removeLabel = useCallback(async (emailId: string, label: string) => {
-    if (!user?.id) return;
+  const removeLabel = useCallback(
+    async (emailId: string, label: string) => {
+      if (!user?.id) return;
 
-    const existing = metadata.get(emailId);
-    if (!existing) return;
-    
-    updateMetadata(emailId, { labels: existing.labels.filter(l => l !== label) });
-  }, [user?.id, metadata, updateMetadata]);
+      const existing = metadata.get(emailId);
+      if (!existing) return;
+
+      updateMetadata(emailId, {
+        labels: existing.labels.filter((l) => l !== label),
+      });
+    },
+    [user?.id, metadata, updateMetadata],
+  );
 
   // Set flag status
-  const setFlag = useCallback(async (emailId: string, flagged: boolean) => {
-    if (!user?.id) return;
-    updateMetadata(emailId, { is_flagged: flagged });
-  }, [user?.id, updateMetadata]);
+  const setFlag = useCallback(
+    async (emailId: string, flagged: boolean) => {
+      if (!user?.id) return;
+      updateMetadata(emailId, { is_flagged: flagged });
+    },
+    [user?.id, updateMetadata],
+  );
 
   // Set pin status
-  const setPin = useCallback(async (emailId: string, pinned: boolean) => {
-    if (!user?.id) return;
-    updateMetadata(emailId, { is_pinned: pinned });
-  }, [user?.id, updateMetadata]);
+  const setPin = useCallback(
+    async (emailId: string, pinned: boolean) => {
+      if (!user?.id) return;
+      updateMetadata(emailId, { is_pinned: pinned });
+    },
+    [user?.id, updateMetadata],
+  );
 
   // Set notes
-  const setNotes = useCallback(async (emailId: string, notes: string | null) => {
-    if (!user?.id) return;
-    updateMetadata(emailId, { notes });
-  }, [user?.id, updateMetadata]);
+  const setNotes = useCallback(
+    async (emailId: string, notes: string | null) => {
+      if (!user?.id) return;
+      updateMetadata(emailId, { notes });
+    },
+    [user?.id, updateMetadata],
+  );
+
+  // Set priority
+  const setPriority = useCallback(
+    async (emailId: string, priority: string | null) => {
+      if (!user?.id) return;
+      updateMetadata(emailId, { priority });
+    },
+    [user?.id, updateMetadata],
+  );
+
+  // Set reminder
+  const setReminder = useCallback(
+    async (emailId: string, reminder: string | null) => {
+      if (!user?.id) return;
+      updateMetadata(emailId, { reminder });
+    },
+    [user?.id, updateMetadata],
+  );
+
+  // Get all labels as a Record
+  const getAllLabels = useCallback((): Record<string, string[]> => {
+    const result: Record<string, string[]> = {};
+    metadata.forEach((m, emailId) => {
+      if (m.labels.length > 0) result[emailId] = m.labels;
+    });
+    return result;
+  }, [metadata]);
+
+  // Get all priorities as a Record
+  const getAllPriorities = useCallback((): Record<string, string> => {
+    const result: Record<string, string> = {};
+    metadata.forEach((m, emailId) => {
+      if (m.priority) result[emailId] = m.priority;
+    });
+    return result;
+  }, [metadata]);
+
+  // Get all notes as a Record
+  const getAllNotes = useCallback((): Record<string, string> => {
+    const result: Record<string, string> = {};
+    metadata.forEach((m, emailId) => {
+      if (m.notes) result[emailId] = m.notes;
+    });
+    return result;
+  }, [metadata]);
+
+  // Get all reminders as a Record
+  const getAllReminders = useCallback((): Record<string, string> => {
+    const result: Record<string, string> = {};
+    metadata.forEach((m, emailId) => {
+      if (m.reminder) result[emailId] = m.reminder;
+    });
+    return result;
+  }, [metadata]);
 
   return {
     metadata,
@@ -203,6 +308,12 @@ export function useEmailMetadata(): UseEmailMetadataReturn {
     setFlag,
     setPin,
     setNotes,
+    setPriority,
+    setReminder,
+    getAllLabels,
+    getAllPriorities,
+    getAllNotes,
+    getAllReminders,
     refreshMetadata,
   };
 }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -22,44 +22,53 @@ import {
   TestTube,
   Bot,
   Palette,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useCustomTables } from '@/hooks/useCustomTables';
-import { cn } from '@/lib/utils';
-import { SidebarTasksMeetings } from './sidebar-tasks';
-import { SidebarSettingsDialog, SidebarTheme, defaultSidebarTheme } from './SidebarSettingsDialog';
-import { supabase } from '@/integrations/supabase/client';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useCustomTables } from "@/hooks/useCustomTables";
+import { cn } from "@/lib/utils";
+import { SidebarTasksMeetings } from "./sidebar-tasks";
+import {
+  SidebarSettingsDialog,
+  SidebarTheme,
+  defaultSidebarTheme,
+} from "./SidebarSettingsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
-  { title: 'לוח בקרה', url: '/', icon: LayoutDashboard },
-  { title: 'היום שלי', url: '/my-day', icon: Calendar },
-  { title: 'לקוחות', url: '/clients', icon: Users },
-  { title: 'טבלת לקוחות', url: '/datatable-pro', icon: Table },
-  { title: 'עובדים', url: '/employees', icon: UserCog },
-  { title: 'לוגי זמן', url: '/time-logs', icon: Clock },
-  { title: 'ניתוח זמנים', url: '/time-analytics', icon: Clock },
-  { title: 'משימות ופגישות', url: '/tasks-meetings', icon: Calendar },
-  { title: 'תזכורות', url: '/reminders', icon: Bell },
-  { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
-  { title: 'כספים', url: '/finance', icon: Wallet },
-  { title: 'תשלומים', url: '/payments', icon: Wallet },
-  { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
-  { title: 'לוח שנה', url: '/calendar', icon: Calendar },
-  { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: 'קבצים', url: '/files', icon: HardDrive },
-  { title: 'כלים חכמים', url: '/smart-tools', icon: Bot },
+  { title: "לוח בקרה", url: "/", icon: LayoutDashboard },
+  { title: "היום שלי", url: "/my-day", icon: Calendar },
+  { title: "לקוחות", url: "/clients", icon: Users },
+  { title: "טבלת לקוחות", url: "/datatable-pro", icon: Table },
+  { title: "עובדים", url: "/employees", icon: UserCog },
+  { title: "לוגי זמן", url: "/time-logs", icon: Clock },
+  { title: "ניתוח זמנים", url: "/time-analytics", icon: Clock },
+  { title: "משימות ופגישות", url: "/tasks-meetings", icon: Calendar },
+  { title: "תזכורות", url: "/reminders", icon: Bell },
+  { title: "הצעות מחיר", url: "/quotes", icon: FileSpreadsheet },
+  { title: "כספים", url: "/finance", icon: Wallet, adminOnly: true },
+  { title: "תשלומים", url: "/payments", icon: Wallet },
+  { title: "דוחות", url: "/reports", icon: FileSpreadsheet },
+  { title: "לוח שנה", url: "/calendar", icon: Calendar },
+  { title: "Gmail", url: "/gmail", icon: Mail },
+  { title: "קבצים", url: "/files", icon: HardDrive },
+  { title: "כלים חכמים", url: "/smart-tools", icon: Bot },
 ];
 
 const systemNavItems = [
-  { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
-  { title: 'היסטוריה', url: '/history', icon: History },
-  { title: 'הגדרות', url: '/settings', icon: Settings },
-  { title: 'בדיקות', url: '/tests', icon: TestTube },
+  { title: "גיבויים וייבוא", url: "/backups", icon: Database },
+  { title: "היסטוריה", url: "/history", icon: History },
+  { title: "הגדרות", url: "/settings", icon: Settings, adminOnly: true },
+  { title: "בדיקות", url: "/tests", icon: TestTube, adminOnly: true },
 ];
 
 interface OverlaySidebarProps {
@@ -70,15 +79,22 @@ interface OverlaySidebarProps {
   onVisibilityChange?: (isVisible: boolean) => void;
 }
 
-export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, onVisibilityChange }: OverlaySidebarProps) {
+export function OverlaySidebar({
+  isPinned,
+  onPinChange,
+  width,
+  onWidthChange,
+  onVisibilityChange,
+}: OverlaySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const { isAdmin } = useAuth();
 
   // Sidebar theme
   const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(() => {
-    const saved = localStorage.getItem('sidebar-theme');
+    const saved = localStorage.getItem("sidebar-theme");
     return saved ? JSON.parse(saved) : defaultSidebarTheme;
   });
   const themeLoadedFromCloud = useRef(false);
@@ -87,21 +103,23 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
   useEffect(() => {
     const loadCloudTheme = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
         const { data } = await supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', user.id)
+          .from("user_preferences")
+          .select("*")
+          .eq("user_id", user.id)
           .single();
         const theme = (data as any)?.sidebar_theme;
         if (theme) {
           setSidebarTheme(theme as SidebarTheme);
-          localStorage.setItem('sidebar-theme', JSON.stringify(theme));
+          localStorage.setItem("sidebar-theme", JSON.stringify(theme));
           themeLoadedFromCloud.current = true;
         }
       } catch (err) {
-        console.error('Error loading sidebar theme from cloud:', err);
+        console.error("Error loading sidebar theme from cloud:", err);
         // Silently fall back to localStorage
       }
     };
@@ -110,7 +128,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
   // Save theme to localStorage + Supabase
   useEffect(() => {
-    localStorage.setItem('sidebar-theme', JSON.stringify(sidebarTheme));
+    localStorage.setItem("sidebar-theme", JSON.stringify(sidebarTheme));
     // Don't save on initial cloud load
     if (themeLoadedFromCloud.current) {
       themeLoadedFromCloud.current = false;
@@ -119,20 +137,26 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
     // Debounce cloud save to avoid rapid writes when adjusting sliders
     const timer = setTimeout(async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) return;
-        const { error } = await supabase
-          .from('user_preferences')
-          .upsert({
+        const { error } = await supabase.from("user_preferences").upsert(
+          {
             user_id: user.id,
             sidebar_theme: sidebarTheme as unknown as Record<string, unknown>,
             updated_at: new Date().toISOString(),
-          } as any, { onConflict: 'user_id' });
+          } as any,
+          { onConflict: "user_id" },
+        );
         if (error) {
-          console.error('Failed to save sidebar theme to cloud:', error.message);
+          console.error(
+            "Failed to save sidebar theme to cloud:",
+            error.message,
+          );
         }
       } catch (err) {
-        console.error('Error saving sidebar theme to cloud:', err);
+        console.error("Error saving sidebar theme to cloud:", err);
       }
     }, 800);
     return () => clearTimeout(timer);
@@ -140,8 +164,8 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
   // Detect light theme for contrast adjustments
   const isLightTheme = useMemo(() => {
-    const bg = sidebarTheme.backgroundColor || '';
-    const hex = bg.replace('#', '');
+    const bg = sidebarTheme.backgroundColor || "";
+    const hex = bg.replace("#", "");
     if (/^[0-9a-fA-F]{6}$/.test(hex)) {
       const r = Number.parseInt(hex.substring(0, 2), 16);
       const g = Number.parseInt(hex.substring(2, 4), 16);
@@ -154,13 +178,13 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
   }, [sidebarTheme.backgroundColor]);
 
   // Dynamic colors from theme
-  const themeBg = sidebarTheme.backgroundColor || '#1e293b';
-  const themeText = sidebarTheme.textColor || '#FFFFFF';
-  const themeAccent = sidebarTheme.activeItemColor || '#ffd700';
-  const themeIcon = sidebarTheme.iconColor || '#ffd700';
-  const themeBorder = sidebarTheme.borderColor || '#ffd700';
-  const activeBgAlpha = isLightTheme ? '35' : '20';
-  const hoverBg = isLightTheme ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)';
+  const themeBg = sidebarTheme.backgroundColor || "#1e293b";
+  const themeText = sidebarTheme.textColor || "#FFFFFF";
+  const themeAccent = sidebarTheme.activeItemColor || "#ffd700";
+  const themeIcon = sidebarTheme.iconColor || "#ffd700";
+  const themeBorder = sidebarTheme.borderColor || "#ffd700";
+  const activeBgAlpha = isLightTheme ? "35" : "20";
+  const hoverBg = isLightTheme ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)";
   const subtleTextColor = isLightTheme ? `${themeText}99` : `${themeText}BB`;
 
   // Notify parent about visibility changes
@@ -180,7 +204,7 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
     const handleMouseMove = (e: MouseEvent) => {
       const edgeThreshold = 10; // pixels from edge
       const screenWidth = window.innerWidth;
-      
+
       // Check if mouse is near right edge
       if (screenWidth - e.clientX <= edgeThreshold) {
         setIsOpen(true);
@@ -190,8 +214,8 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
       }
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [isPinned, width]);
 
   // CRITICAL: shouldShow determines visibility
@@ -202,8 +226,8 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
     if (!isResizing) return;
 
     // Prevent text selection during resize
-    document.body.style.userSelect = 'none';
-    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "ew-resize";
 
     const handleMouseMove = (e: MouseEvent) => {
       e.preventDefault();
@@ -216,18 +240,18 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = '';
-      document.body.style.cursor = '';
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
     };
   }, [isResizing, onWidthChange]);
 
@@ -240,10 +264,10 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
   const handlePinToggle = () => {
     const newPinned = !isPinned;
-    console.log('📌 PIN TOGGLE:', { from: isPinned, to: newPinned });
+    console.log("📌 PIN TOGGLE:", { from: isPinned, to: newPinned });
     onPinChange(newPinned);
     if (newPinned) {
-      console.log('📌 Setting isOpen to TRUE because pinned');
+      console.log("📌 Setting isOpen to TRUE because pinned");
       setIsOpen(true);
     }
   };
@@ -257,14 +281,14 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
         className="fixed top-0 right-0 h-full shadow-2xl"
         style={{
           width: `${width}px`,
-          transform: shouldShow ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 300ms ease-out',
+          transform: shouldShow ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 300ms ease-out",
           zIndex: 50,
           backgroundColor: themeBg,
           borderLeft: `3px solid ${themeBorder}`,
           borderRadius: `${sidebarTheme.borderRadius || 12}px 0 0 ${sidebarTheme.borderRadius || 12}px`,
-          overflow: 'hidden',
-          fontFamily: sidebarTheme.fontFamily || 'Heebo',
+          overflow: "hidden",
+          fontFamily: sidebarTheme.fontFamily || "Heebo",
           fontSize: `${sidebarTheme.fontSize || 14}px`,
           color: themeText,
         }}
@@ -277,7 +301,9 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
             <div
               className="absolute left-0 top-0 h-full w-2 cursor-ew-resize hover:bg-primary/30 transition-colors group flex items-center justify-center"
               style={{
-                backgroundColor: isResizing ? 'hsl(var(--primary) / 0.5)' : 'transparent',
+                backgroundColor: isResizing
+                  ? "hsl(var(--primary) / 0.5)"
+                  : "transparent",
               }}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -296,17 +322,32 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
             <p className="text-xs">גרור לשינוי רוחב הסיידבר</p>
           </TooltipContent>
         </Tooltip>
-        
+
         <div className="flex flex-col h-full" dir="rtl">
           {/* Header with Logo & Pin */}
-          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: `${themeBorder}40`, backgroundColor: themeBg, borderRadius: `${sidebarTheme.borderRadius || 12}px 0 0 0` }}>
+          <div
+            className="flex items-center justify-between p-4 border-b"
+            style={{
+              borderColor: `${themeBorder}40`,
+              backgroundColor: themeBg,
+              borderRadius: `${sidebarTheme.borderRadius || 12}px 0 0 0`,
+            }}
+          >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg shadow-md" style={{ backgroundColor: themeAccent, color: themeBg }}>
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-lg shadow-md"
+                style={{ backgroundColor: themeAccent, color: themeBg }}
+              >
                 <Building2 className="h-5 w-5" />
               </div>
               <div className="flex flex-col">
-                <span className="font-bold text-lg"><span style={{ color: themeAccent }}>ten</span><span style={{ color: themeText }}>arch</span></span>
-                <span className="text-xs" style={{ color: themeAccent }}>CRM Pro Max</span>
+                <span className="font-bold text-lg">
+                  <span style={{ color: themeAccent }}>ten</span>
+                  <span style={{ color: themeText }}>arch</span>
+                </span>
+                <span className="text-xs" style={{ color: themeAccent }}>
+                  CRM Pro Max
+                </span>
               </div>
             </div>
             <Tooltip>
@@ -317,17 +358,30 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                   onClick={handlePinToggle}
                   className={cn(
                     "transition-colors",
-                    isPinned ? "hover:bg-yellow-500/30" : "text-gray-400 hover:text-white hover:bg-blue-800"
+                    isPinned
+                      ? "hover:bg-yellow-500/30"
+                      : "text-gray-400 hover:text-white hover:bg-blue-800",
                   )}
-                  style={isPinned ? { color: themeAccent, backgroundColor: `${themeAccent}33` } : { color: subtleTextColor }}
+                  style={
+                    isPinned
+                      ? {
+                          color: themeAccent,
+                          backgroundColor: `${themeAccent}33`,
+                        }
+                      : { color: subtleTextColor }
+                  }
                 >
-                  {isPinned ? <Pin className="h-5 w-5" /> : <PinOff className="h-5 w-5" />}
+                  {isPinned ? (
+                    <Pin className="h-5 w-5" />
+                  ) : (
+                    <PinOff className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left">
                 <p className="text-xs">
-                  {isPinned 
-                    ? "בטל נעיצה - הסרגל יסתתר אוטומטית" 
+                  {isPinned
+                    ? "בטל נעיצה - הסרגל יסתתר אוטומטית"
                     : "נעץ - הסרגל יישאר פתוח והתוכן יזוז"}
                 </p>
               </TooltipContent>
@@ -335,45 +389,57 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
           </div>
 
           {/* Navigation */}
-          <ScrollArea className="flex-1 p-3" style={{ overflow: 'hidden' }}>
+          <ScrollArea className="flex-1 p-3" style={{ overflow: "hidden" }}>
             <style>{`
               .scrollarea-viewport { scrollbar-width: none; }
               .scrollarea-viewport::-webkit-scrollbar { display: none; }
             `}</style>
             {/* Main Nav */}
             <div className="space-y-1 mb-4">
-              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: themeAccent }}>
+              <p
+                className="text-xs font-semibold px-3 py-2 uppercase tracking-wider"
+                style={{ color: themeAccent }}
+              >
                 ניווט ראשי
               </p>
-              {mainNavItems.map((item) => (
-                <Link
-                  key={item.url}
-                  to={item.url}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
-                    isActive(item.url)
-                      ? "font-medium shadow-lg"
-                      : "hover:text-current"
-                  )}
-                  style={{
-                    color: isActive(item.url) ? themeBg : themeText,
-                    backgroundColor: isActive(item.url) ? themeAccent : 'transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive(item.url)) {
-                      e.currentTarget.style.backgroundColor = hoverBg;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive(item.url)) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" style={{ color: isActive(item.url) ? themeBg : themeIcon }} />
-                  <span className="flex-1 text-right">{item.title}</span>
-                </Link>
-              ))}
+              {mainNavItems
+                .filter((item) => !item.adminOnly || isAdmin)
+                .map((item) => (
+                  <Link
+                    key={item.url}
+                    to={item.url}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
+                      isActive(item.url)
+                        ? "font-medium shadow-lg"
+                        : "hover:text-current",
+                    )}
+                    style={{
+                      color: isActive(item.url) ? themeBg : themeText,
+                      backgroundColor: isActive(item.url)
+                        ? themeAccent
+                        : "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive(item.url)) {
+                        e.currentTarget.style.backgroundColor = hoverBg;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive(item.url)) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
+                  >
+                    <item.icon
+                      className="h-5 w-5 shrink-0"
+                      style={{
+                        color: isActive(item.url) ? themeBg : themeIcon,
+                      }}
+                    />
+                    <span className="flex-1 text-right">{item.title}</span>
+                  </Link>
+                ))}
             </div>
 
             {/* Tasks & Meetings Widget */}
@@ -389,14 +455,30 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                 <div className="space-y-1 mb-4">
                   <div className="flex items-center gap-2 px-3 py-2">
                     <Table className="h-4 w-4" style={{ color: themeAccent }} />
-                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: themeAccent }}>
+                    <p
+                      className="text-xs font-semibold uppercase tracking-wider"
+                      style={{ color: themeAccent }}
+                    >
                       טבלאות מותאמות
                     </p>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 h-4 border-0" style={{ backgroundColor: `${themeAccent}33`, color: themeAccent }}>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1.5 h-4 border-0"
+                      style={{
+                        backgroundColor: `${themeAccent}33`,
+                        color: themeAccent,
+                      }}
+                    >
                       {tables.length}
                     </Badge>
                   </div>
-                  <div className="border rounded-lg p-1" style={{ borderColor: `${themeBorder}40`, backgroundColor: `${themeAccent}0D` }}>
+                  <div
+                    className="border rounded-lg p-1"
+                    style={{
+                      borderColor: `${themeBorder}40`,
+                      backgroundColor: `${themeAccent}0D`,
+                    }}
+                  >
                     {tables.map((table) => (
                       <Link
                         key={table.id}
@@ -405,25 +487,46 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
                           "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
                           location.pathname === `/custom-table/${table.id}`
                             ? "font-medium shadow-lg"
-                            : "hover:text-current"
+                            : "hover:text-current",
                         )}
                         style={{
-                          color: location.pathname === `/custom-table/${table.id}` ? themeBg : themeAccent,
-                          backgroundColor: location.pathname === `/custom-table/${table.id}` ? themeAccent : 'transparent',
+                          color:
+                            location.pathname === `/custom-table/${table.id}`
+                              ? themeBg
+                              : themeAccent,
+                          backgroundColor:
+                            location.pathname === `/custom-table/${table.id}`
+                              ? themeAccent
+                              : "transparent",
                         }}
                         onMouseEnter={(e) => {
-                          if (location.pathname !== `/custom-table/${table.id}`) {
+                          if (
+                            location.pathname !== `/custom-table/${table.id}`
+                          ) {
                             e.currentTarget.style.backgroundColor = `${themeAccent}33`;
                           }
                         }}
                         onMouseLeave={(e) => {
-                          if (location.pathname !== `/custom-table/${table.id}`) {
-                            e.currentTarget.style.backgroundColor = 'transparent';
+                          if (
+                            location.pathname !== `/custom-table/${table.id}`
+                          ) {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
                           }
                         }}
                       >
-                        <Table className="h-5 w-5 shrink-0" style={{ color: location.pathname === `/custom-table/${table.id}` ? themeBg : themeAccent }} />
-                        <span className="flex-1 text-right">{table.display_name}</span>
+                        <Table
+                          className="h-5 w-5 shrink-0"
+                          style={{
+                            color:
+                              location.pathname === `/custom-table/${table.id}`
+                                ? themeBg
+                                : themeAccent,
+                          }}
+                        />
+                        <span className="flex-1 text-right">
+                          {table.display_name}
+                        </span>
                       </Link>
                     ))}
                   </div>
@@ -434,38 +537,50 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
 
             {/* System Nav */}
             <div className="space-y-1">
-              <p className="text-xs font-semibold px-3 py-2 uppercase tracking-wider" style={{ color: themeAccent }}>
+              <p
+                className="text-xs font-semibold px-3 py-2 uppercase tracking-wider"
+                style={{ color: themeAccent }}
+              >
                 מערכת
               </p>
-              {systemNavItems.map((item) => (
-                <Link
-                  key={item.url}
-                  to={item.url}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
-                    isActive(item.url)
-                      ? "font-medium shadow-lg"
-                      : "hover:text-current"
-                  )}
-                  style={{
-                    color: isActive(item.url) ? themeBg : themeText,
-                    backgroundColor: isActive(item.url) ? themeAccent : 'transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive(item.url)) {
-                      e.currentTarget.style.backgroundColor = hoverBg;
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive(item.url)) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  <item.icon className="h-5 w-5 shrink-0" style={{ color: isActive(item.url) ? themeBg : themeIcon }} />
-                  <span className="flex-1 text-right">{item.title}</span>
-                </Link>
-              ))}
+              {systemNavItems
+                .filter((item) => !item.adminOnly || isAdmin)
+                .map((item) => (
+                  <Link
+                    key={item.url}
+                    to={item.url}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
+                      isActive(item.url)
+                        ? "font-medium shadow-lg"
+                        : "hover:text-current",
+                    )}
+                    style={{
+                      color: isActive(item.url) ? themeBg : themeText,
+                      backgroundColor: isActive(item.url)
+                        ? themeAccent
+                        : "transparent",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive(item.url)) {
+                        e.currentTarget.style.backgroundColor = hoverBg;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive(item.url)) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
+                  >
+                    <item.icon
+                      className="h-5 w-5 shrink-0"
+                      style={{
+                        color: isActive(item.url) ? themeBg : themeIcon,
+                      }}
+                    />
+                    <span className="flex-1 text-right">{item.title}</span>
+                  </Link>
+                ))}
             </div>
           </ScrollArea>
 
@@ -475,9 +590,9 @@ export function OverlaySidebar({ isPinned, onPinChange, width, onWidthChange, on
             style={{
               borderColor: `${themeBorder}40`,
               opacity: isHovering ? 1 : 0,
-              maxHeight: isHovering ? '80px' : '0px',
-              padding: isHovering ? '12px' : '0px 12px',
-              overflow: 'hidden',
+              maxHeight: isHovering ? "80px" : "0px",
+              padding: isHovering ? "12px" : "0px 12px",
+              overflow: "hidden",
             }}
           >
             <button

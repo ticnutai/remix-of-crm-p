@@ -99,13 +99,18 @@ interface Employee {
   hourly_rate: number | null;
   is_active: boolean;
   created_at: string;
-  role: "admin" | "manager" | "employee";
+  role: "admin" | "super_manager" | "manager" | "employee";
   custom_data?: Record<string, any> | null;
 }
 
 const roleConfig = {
   admin: {
-    label: "מנהל ראשי",
+    label: "אדמין",
+    icon: Crown,
+    color: "bg-red-600 text-white",
+  },
+  super_manager: {
+    label: "מנהל על",
     icon: Crown,
     color: "bg-destructive text-destructive-foreground",
   },
@@ -144,7 +149,7 @@ export default function Employees() {
     position: "",
     hourly_rate: "",
     is_active: true,
-    role: "employee" as "admin" | "manager" | "employee",
+    role: "employee" as "admin" | "super_manager" | "manager" | "employee",
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -157,7 +162,7 @@ export default function Employees() {
     department: "",
     position: "",
     hourly_rate: "",
-    role: "employee" as "admin" | "manager" | "employee",
+    role: "employee" as "admin" | "super_manager" | "manager" | "employee",
   });
   const [isAdding, setIsAdding] = useState(false);
 
@@ -1659,40 +1664,48 @@ export default function Employees() {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="add_role">הרשאה</Label>
-              <Select
-                value={addForm.role}
-                onValueChange={(value: "admin" | "manager" | "employee") =>
-                  setAddForm((f) => ({ ...f, role: value }))
-                }
-              >
-                <SelectTrigger className="bg-background">
-                  <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  <SelectItem value="admin">
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-destructive" />
-                      מנהל ראשי
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="manager">
-                    <div className="flex items-center gap-2">
-                      <UserCog className="h-4 w-4 text-secondary" />
-                      מנהל
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="employee">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      עובד
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {isAdmin && (
+              <div className="grid gap-2">
+                <Label htmlFor="add_role">הרשאה</Label>
+                <Select
+                  value={addForm.role}
+                  onValueChange={(
+                    value: "admin" | "super_manager" | "manager" | "employee",
+                  ) => setAddForm((f) => ({ ...f, role: value }))}
+                >
+                  <SelectTrigger className="bg-background">
+                    <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="admin">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-red-600" />
+                        אדמין
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="super_manager">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-destructive" />
+                        מנהל על
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="manager">
+                      <div className="flex items-center gap-2">
+                        <UserCog className="h-4 w-4 text-secondary" />
+                        מנהל
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="employee">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        עובד
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
@@ -1818,9 +1831,9 @@ export default function Employees() {
                 <Label htmlFor="role">הרשאה</Label>
                 <Select
                   value={editForm.role}
-                  onValueChange={(value: "admin" | "manager" | "employee") =>
-                    setEditForm((f) => ({ ...f, role: value }))
-                  }
+                  onValueChange={(
+                    value: "admin" | "super_manager" | "manager" | "employee",
+                  ) => setEditForm((f) => ({ ...f, role: value }))}
                 >
                   <SelectTrigger className="bg-background">
                     <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
@@ -1829,8 +1842,14 @@ export default function Employees() {
                   <SelectContent className="bg-popover">
                     <SelectItem value="admin">
                       <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-red-600" />
+                        אדמין
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="super_manager">
+                      <div className="flex items-center gap-2">
                         <Crown className="h-4 w-4 text-destructive" />
-                        מנהל ראשי
+                        מנהל על
                       </div>
                     </SelectItem>
                     <SelectItem value="manager">

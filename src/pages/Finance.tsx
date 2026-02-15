@@ -71,6 +71,7 @@ import {
   Grid3X3,
   Grid2X2,
   CloudUpload,
+  Shield,
 } from "lucide-react";
 import { ShareDialog } from "@/components/shared/ShareDialog";
 import {
@@ -1597,6 +1598,24 @@ export default function Finance() {
 
   if (!user) {
     return null;
+  }
+
+  // Only admin can access finance
+  if (!isAdmin) {
+    return (
+      <AppLayout>
+        <div
+          className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+          dir="rtl"
+        >
+          <Shield className="h-16 w-16 text-muted-foreground opacity-50 mb-4" />
+          <h2 className="text-2xl font-bold mb-2">אין הרשאת גישה</h2>
+          <p className="text-muted-foreground">
+            רק אדמין יכול לגשת לעמוד הכספים
+          </p>
+        </div>
+      </AppLayout>
+    );
   }
 
   return (

@@ -1316,8 +1316,8 @@ export default function TimeLogs() {
         {timeEntries.some((e) => e.is_running) && (
           <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between flex-row-reverse">
-                <div className="flex items-center gap-3 flex-row-reverse">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
                   <div className="p-2 rounded-full bg-yellow-500/20 animate-pulse">
                     <Timer className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                   </div>
@@ -1343,8 +1343,8 @@ export default function TimeLogs() {
         )}
 
         {/* Compact Stats Row */}
-        <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-card border border-border rounded-lg flex-row-reverse">
-          <div className="flex items-center gap-2 flex-row-reverse">
+        <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-card border border-border rounded-lg">
+          <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
             <span className="font-bold">
               {formatDurationShort(totalStats.minutes)}
@@ -1352,13 +1352,13 @@ export default function TimeLogs() {
             <span className="text-xs text-muted-foreground">שעות</span>
           </div>
           <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-2 flex-row-reverse">
+          <div className="flex items-center gap-2">
             <Timer className="h-4 w-4 text-secondary" />
             <span className="font-bold">{totalStats.entries}</span>
             <span className="text-xs text-muted-foreground">רישומים</span>
           </div>
           <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-2 flex-row-reverse">
+          <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-green-500" />
             <span className="font-bold">
               {formatDurationShort(totalStats.billable)}
@@ -1366,7 +1366,7 @@ export default function TimeLogs() {
             <span className="text-xs text-muted-foreground">לחיוב</span>
           </div>
           <Separator orientation="vertical" className="h-5" />
-          <div className="flex items-center gap-2 flex-row-reverse">
+          <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-blue-500" />
             <span className="font-bold">{clientSummaries.length}</span>
             <span className="text-xs text-muted-foreground">לקוחות</span>
@@ -1380,9 +1380,9 @@ export default function TimeLogs() {
           className="w-full flex-1 flex flex-col"
         >
           {/* Single Unified Bar: Title + Tabs + Filters + Actions */}
-          <div className="flex flex-nowrap items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 mb-2 flex-row-reverse overflow-x-auto whitespace-nowrap no-scrollbar">
+          <div className="flex flex-nowrap items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 mb-2 overflow-x-auto whitespace-nowrap no-scrollbar">
             {/* Title */}
-            <div className="flex items-center gap-1.5 flex-row-reverse">
+            <div className="flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-[hsl(45,80%,55%)]" />
               <h2 className="text-sm font-bold">זמן</h2>
               <Badge className="bg-[hsl(45,80%,55%)]/20 text-[hsl(45,80%,55%)] text-xs px-1.5 py-0">
