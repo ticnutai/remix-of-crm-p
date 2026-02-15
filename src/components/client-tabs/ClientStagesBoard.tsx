@@ -1594,30 +1594,51 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     setAddStageDialog(false);
   };
   const handleBulkAddStages = async () => {
-    if (!bulkStagesText.trim()) return;
+    console.log('[BULK-ADD] === START handleBulkAddStages ===' );
+    console.log('[BULK-ADD] bulkStagesText:', JSON.stringify(bulkStagesText));
+    console.log('[BULK-ADD] bulkStagesText.trim():', JSON.stringify(bulkStagesText.trim()));
+    
+    if (!bulkStagesText.trim()) {
+      console.log('[BULK-ADD] ABORT: empty text');
+      return;
+    }
     const names = bulkStagesText
       .split("\n")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
-    if (names.length === 0) return;
+    console.log('[BULK-ADD] Parsed names:', names);
+    console.log('[BULK-ADD] Names count:', names.length);
     
-    // Close dialog first and save values
+    if (names.length === 0) {
+      console.log('[BULK-ADD] ABORT: no valid names after parsing');
+      return;
+    }
+    
+    // Save values before closing dialog
     const icon = newStageIcon;
     const folderId = selectedFolderId;
+    console.log('[BULK-ADD] Icon:', icon, 'FolderId:', folderId);
+    
+    // Close dialog
     setBulkStagesText("");
     setNewStageIcon("Phone");
     setAddStageDialog(false);
     
-    // Add stages one by one using the working single-add function
-    for (const name of names) {
-      const newStage = await addStage(name, icon);
-      if (newStage && folderId) {
-        await assignStageToFolder(newStage.stage_id, folderId);
+    // Use addBulkStages which does a single Supabase insert
+    console.log('[BULK-ADD] Calling addBulkStages with', names.length, 'names');
+    const result = await addBulkStages(names, icon);
+    console.log('[BULK-ADD] addBulkStages result:', result);
+    
+    if (result && folderId) {
+      console.log('[BULK-ADD] Assigning stages to folder:', folderId);
+      for (const stage of result) {
+        console.log('[BULK-ADD] Assigning stage', stage.stage_id, 'to folder', folderId);
+        await assignStageToFolder(stage.stage_id, folderId);
       }
-    }
-    if (folderId) {
       refresh();
     }
+    
+    console.log('[BULK-ADD] === END handleBulkAddStages ===');
   };
   const handleDeleteStage = async (stageId: string) => {
     if (confirm("האם אתה בטוח שברצונך למחוק שלב זה וכל המשימות שבו?")) {
