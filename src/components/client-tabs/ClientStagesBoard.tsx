@@ -1586,7 +1586,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     const newStage = await addStage(newStageName, newStageIcon);
     // If a folder is selected, assign the new stage to it
     if (newStage && selectedFolderId) {
-      await assignStageToFolder(newStage.id, selectedFolderId);
+      await assignStageToFolder(newStage.stage_id, selectedFolderId);
       refresh();
     }
     setNewStageName("");
@@ -1599,17 +1599,24 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
       .split("\n")
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
-    if (names.length > 0) {
-      const newStages = await addBulkStages(names, newStageIcon);
-      if (newStages && selectedFolderId) {
-        for (const stage of newStages) {
-          await assignStageToFolder(stage.id, selectedFolderId);
-        }
-        refresh();
+    if (names.length === 0) return;
+    
+    // Close dialog first and save values
+    const icon = newStageIcon;
+    const folderId = selectedFolderId;
+    setBulkStagesText("");
+    setNewStageIcon("Phone");
+    setAddStageDialog(false);
+    
+    // Add stages one by one using the working single-add function
+    for (const name of names) {
+      const newStage = await addStage(name, icon);
+      if (newStage && folderId) {
+        await assignStageToFolder(newStage.stage_id, folderId);
       }
-      setBulkStagesText("");
-      setNewStageIcon("Phone");
-      setAddStageDialog(false);
+    }
+    if (folderId) {
+      refresh();
     }
   };
   const handleDeleteStage = async (stageId: string) => {

@@ -696,7 +696,6 @@ export function useClientStages(clientId: string) {
         .select();
 
       if (error) throw error;
-
       if (data) {
         setStages(prev => [...prev, ...data]);
       }
