@@ -1380,6 +1380,25 @@ export default function Clients() {
           {/* Hover Actions */}
           {showActions && (
             <div className="absolute bottom-2 left-2 flex gap-1">
+              {isValidPhoneForDisplay(client.phone) && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    import("@/utils/whatsapp").then(
+                      ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                        openWhatsApp(
+                          client.phone!,
+                          WHATSAPP_TEMPLATES.greeting(client.name),
+                        );
+                      },
+                    );
+                  }}
+                  className="w-6 h-6 rounded-full bg-green-600 flex items-center justify-center hover:bg-green-700"
+                  title="WhatsApp"
+                >
+                  <MessageCircle className="w-3 h-3 text-white" />
+                </button>
+              )}
               <button
                 onClick={(e) => handleEditClient(e, client.id)}
                 className="w-6 h-6 rounded-full bg-slate-800 border border-amber-500 flex items-center justify-center hover:bg-amber-500"
@@ -1556,6 +1575,25 @@ export default function Clients() {
           {/* Hover Actions */}
           {showActions && (
             <div className="absolute bottom-3 left-3 flex gap-2">
+              {isValidPhoneForDisplay(client.phone) && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    import("@/utils/whatsapp").then(
+                      ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                        openWhatsApp(
+                          client.phone!,
+                          WHATSAPP_TEMPLATES.greeting(client.name),
+                        );
+                      },
+                    );
+                  }}
+                  className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center hover:bg-green-700"
+                  title="WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4 text-white" />
+                </button>
+              )}
               <button
                 onClick={(e) => handleEditClient(e, client.id)}
                 className="w-8 h-8 rounded-full bg-slate-800 border-2 border-amber-500 flex items-center justify-center hover:bg-amber-500"
@@ -3608,236 +3646,244 @@ export default function Clients() {
               />
             </div>
 
-            {isVisible('email') && (
-            <div className="space-y-2">
-              <Label htmlFor="client-email" className="text-right">
-                אימייל
-              </Label>
-              <Input
-                id="client-email"
-                type="email"
-                value={newClientForm.email}
-                onChange={(e) =>
-                  setNewClientForm((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
-                placeholder="example@email.com"
-                className="text-left"
-                dir="ltr"
-              />
-            </div>
+            {isVisible("email") && (
+              <div className="space-y-2">
+                <Label htmlFor="client-email" className="text-right">
+                  אימייל
+                </Label>
+                <Input
+                  id="client-email"
+                  type="email"
+                  value={newClientForm.email}
+                  onChange={(e) =>
+                    setNewClientForm((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                  placeholder="example@email.com"
+                  className="text-left"
+                  dir="ltr"
+                />
+              </div>
             )}
 
-            {isVisible('phone') && (
-            <div className="space-y-2">
-              <Label htmlFor="client-phone" className="text-right">
-                טלפון
-              </Label>
-              <Input
-                id="client-phone"
-                type="tel"
-                value={newClientForm.phone}
-                onChange={(e) =>
-                  setNewClientForm((prev) => ({
-                    ...prev,
-                    phone: e.target.value,
-                  }))
-                }
-                placeholder="050-000-0000"
-                className="text-left"
-                dir="ltr"
-              />
-            </div>
+            {isVisible("phone") && (
+              <div className="space-y-2">
+                <Label htmlFor="client-phone" className="text-right">
+                  טלפון
+                </Label>
+                <Input
+                  id="client-phone"
+                  type="tel"
+                  value={newClientForm.phone}
+                  onChange={(e) =>
+                    setNewClientForm((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
+                  placeholder="050-000-0000"
+                  className="text-left"
+                  dir="ltr"
+                />
+              </div>
             )}
 
             {/* כתובת ומיקום */}
-            {(isVisible('street') || isVisible('moshav')) && (
-            <div className="border-t pt-4 mt-2">
-              <Label className="text-sm font-medium text-muted-foreground mb-3 block">
-                כתובת ומיקום
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {isVisible('street') && (
-                <SmartComboField
-                  label="רחוב"
-                  value={newClientForm.street}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, street: v }))
-                  }
-                  placeholder="שם הרחוב"
-                  fieldColumn="street"
-                />
-                )}
-                {isVisible('moshav') && (
-                <SmartComboField
-                  label="מושב / ישוב"
-                  value={newClientForm.moshav}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, moshav: v }))
-                  }
-                  placeholder="שם המושב"
-                  fieldColumn="moshav"
-                />
-                )}
+            {(isVisible("street") || isVisible("moshav")) && (
+              <div className="border-t pt-4 mt-2">
+                <Label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  כתובת ומיקום
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {isVisible("street") && (
+                    <SmartComboField
+                      label="רחוב"
+                      value={newClientForm.street}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, street: v }))
+                      }
+                      placeholder="שם הרחוב"
+                      fieldColumn="street"
+                    />
+                  )}
+                  {isVisible("moshav") && (
+                    <SmartComboField
+                      label="מושב / ישוב"
+                      value={newClientForm.moshav}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, moshav: v }))
+                      }
+                      placeholder="שם המושב"
+                      fieldColumn="moshav"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
             )}
 
             {/* שדות נדל"ן */}
-            {(isVisible('idNumber') || isVisible('taba') || isVisible('gush') || isVisible('helka') || isVisible('migrash')) && (
-            <div className="border-t pt-4 mt-2">
-              <Label className="text-sm font-medium text-muted-foreground mb-3 block">
-                פרטי נדל"ן (אופציונלי)
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {isVisible('idNumber') && (
-                <div className="space-y-1">
-                  <Label
-                    htmlFor="client-id-number"
-                    className="text-right text-xs"
-                  >
-                    ת.ז / ח.פ
-                  </Label>
-                  <Input
-                    id="client-id-number"
-                    value={newClientForm.idNumber}
-                    onChange={(e) =>
-                      setNewClientForm((prev) => ({
-                        ...prev,
-                        idNumber: e.target.value,
-                      }))
-                    }
-                    placeholder="תעודת זהות"
-                    className="text-right"
-                  />
+            {(isVisible("idNumber") ||
+              isVisible("taba") ||
+              isVisible("gush") ||
+              isVisible("helka") ||
+              isVisible("migrash")) && (
+              <div className="border-t pt-4 mt-2">
+                <Label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  פרטי נדל"ן (אופציונלי)
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {isVisible("idNumber") && (
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="client-id-number"
+                        className="text-right text-xs"
+                      >
+                        ת.ז / ח.פ
+                      </Label>
+                      <Input
+                        id="client-id-number"
+                        value={newClientForm.idNumber}
+                        onChange={(e) =>
+                          setNewClientForm((prev) => ({
+                            ...prev,
+                            idNumber: e.target.value,
+                          }))
+                        }
+                        placeholder="תעודת זהות"
+                        className="text-right"
+                      />
+                    </div>
+                  )}
+                  {isVisible("taba") && (
+                    <SmartComboField
+                      label='תב"ע'
+                      value={newClientForm.taba}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, taba: v }))
+                      }
+                      placeholder="תב''ע"
+                      fieldColumn="taba"
+                    />
+                  )}
                 </div>
-                )}
-                {isVisible('taba') && (
-                <SmartComboField
-                  label='תב"ע'
-                  value={newClientForm.taba}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, taba: v }))
-                  }
-                  placeholder="תב''ע"
-                  fieldColumn="taba"
-                />
-                )}
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  {isVisible("gush") && (
+                    <SmartComboField
+                      label="גוש"
+                      value={newClientForm.gush}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, gush: v }))
+                      }
+                      placeholder="גוש"
+                      fieldColumn="gush"
+                    />
+                  )}
+                  {isVisible("helka") && (
+                    <SmartComboField
+                      label="חלקה"
+                      value={newClientForm.helka}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, helka: v }))
+                      }
+                      placeholder="חלקה"
+                      fieldColumn="helka"
+                    />
+                  )}
+                  {isVisible("migrash") && (
+                    <SmartComboField
+                      label="מגרש"
+                      value={newClientForm.migrash}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, migrash: v }))
+                      }
+                      placeholder="מגרש"
+                      fieldColumn="migrash"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-3 mt-3">
-                {isVisible('gush') && (
-                <SmartComboField
-                  label="גוש"
-                  value={newClientForm.gush}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, gush: v }))
-                  }
-                  placeholder="גוש"
-                  fieldColumn="gush"
-                />
-                )}
-                {isVisible('helka') && (
-                <SmartComboField
-                  label="חלקה"
-                  value={newClientForm.helka}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, helka: v }))
-                  }
-                  placeholder="חלקה"
-                  fieldColumn="helka"
-                />
-                )}
-                {isVisible('migrash') && (
-                <SmartComboField
-                  label="מגרש"
-                  value={newClientForm.migrash}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, migrash: v }))
-                  }
-                  placeholder="מגרש"
-                  fieldColumn="migrash"
-                />
-                )}
-              </div>
-            </div>
             )}
 
             {/* ועד האגודה */}
-            {(isVisible('agudaAddress') || isVisible('agudaEmail')) && (
-            <div className="border-t pt-4 mt-2">
-              <Label className="text-sm font-medium text-muted-foreground mb-3 block">
-                ועד האגודה
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {isVisible('agudaAddress') && (
-                <SmartComboField
-                  label="כתובת ועד האגודה"
-                  value={newClientForm.agudaAddress}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, agudaAddress: v }))
-                  }
-                  placeholder="כתובת"
-                  fieldColumn="aguda_address"
-                />
-                )}
-                {isVisible('agudaEmail') && (
-                <SmartComboField
-                  label="מייל ועד האגודה"
-                  value={newClientForm.agudaEmail}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({ ...prev, agudaEmail: v }))
-                  }
-                  placeholder="email@example.com"
-                  fieldColumn="aguda_email"
-                  dir="ltr"
-                  type="email"
-                />
-                )}
+            {(isVisible("agudaAddress") || isVisible("agudaEmail")) && (
+              <div className="border-t pt-4 mt-2">
+                <Label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  ועד האגודה
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {isVisible("agudaAddress") && (
+                    <SmartComboField
+                      label="כתובת ועד האגודה"
+                      value={newClientForm.agudaAddress}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({
+                          ...prev,
+                          agudaAddress: v,
+                        }))
+                      }
+                      placeholder="כתובת"
+                      fieldColumn="aguda_address"
+                    />
+                  )}
+                  {isVisible("agudaEmail") && (
+                    <SmartComboField
+                      label="מייל ועד האגודה"
+                      value={newClientForm.agudaEmail}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({ ...prev, agudaEmail: v }))
+                      }
+                      placeholder="email@example.com"
+                      fieldColumn="aguda_email"
+                      dir="ltr"
+                      type="email"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
             )}
 
             {/* ועד המושב */}
-            {(isVisible('vaadMoshavAddress') || isVisible('vaadMoshavEmail')) && (
-            <div className="border-t pt-4 mt-2">
-              <Label className="text-sm font-medium text-muted-foreground mb-3 block">
-                ועד המושב
-              </Label>
-              <div className="grid grid-cols-2 gap-3">
-                {isVisible('vaadMoshavAddress') && (
-                <SmartComboField
-                  label="כתובת ועד המושב"
-                  value={newClientForm.vaadMoshavAddress}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({
-                      ...prev,
-                      vaadMoshavAddress: v,
-                    }))
-                  }
-                  placeholder="כתובת"
-                  fieldColumn="vaad_moshav_address"
-                />
-                )}
-                {isVisible('vaadMoshavEmail') && (
-                <SmartComboField
-                  label="מייל ועד המושב"
-                  value={newClientForm.vaadMoshavEmail}
-                  onChange={(v) =>
-                    setNewClientForm((prev) => ({
-                      ...prev,
-                      vaadMoshavEmail: v,
-                    }))
-                  }
-                  placeholder="email@example.com"
-                  fieldColumn="vaad_moshav_email"
-                  dir="ltr"
-                  type="email"
-                />
-                )}
+            {(isVisible("vaadMoshavAddress") ||
+              isVisible("vaadMoshavEmail")) && (
+              <div className="border-t pt-4 mt-2">
+                <Label className="text-sm font-medium text-muted-foreground mb-3 block">
+                  ועד המושב
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {isVisible("vaadMoshavAddress") && (
+                    <SmartComboField
+                      label="כתובת ועד המושב"
+                      value={newClientForm.vaadMoshavAddress}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({
+                          ...prev,
+                          vaadMoshavAddress: v,
+                        }))
+                      }
+                      placeholder="כתובת"
+                      fieldColumn="vaad_moshav_address"
+                    />
+                  )}
+                  {isVisible("vaadMoshavEmail") && (
+                    <SmartComboField
+                      label="מייל ועד המושב"
+                      value={newClientForm.vaadMoshavEmail}
+                      onChange={(v) =>
+                        setNewClientForm((prev) => ({
+                          ...prev,
+                          vaadMoshavEmail: v,
+                        }))
+                      }
+                      placeholder="email@example.com"
+                      fieldColumn="vaad_moshav_email"
+                      dir="ltr"
+                      type="email"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
             )}
 
             {/* שדות מותאמים אישית */}

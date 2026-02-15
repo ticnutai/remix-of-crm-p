@@ -49,24 +49,164 @@ export interface CustomSection {
 // Default built-in fields with their sections
 const DEFAULT_FIELDS: BuiltInField[] = [
   // פרטים בסיסיים
-  { key: "name", label: "שם לקוח", section: "basic", sectionLabel: "פרטים בסיסיים", type: "text", required: true, visible: true, order: 0, protected: true },
-  { key: "email", label: "אימייל", section: "basic", sectionLabel: "פרטים בסיסיים", type: "email", required: false, visible: true, order: 1, protected: false },
-  { key: "phone", label: "טלפון", section: "basic", sectionLabel: "פרטים בסיסיים", type: "tel", required: false, visible: true, order: 2, protected: false },
+  {
+    key: "name",
+    label: "שם לקוח",
+    section: "basic",
+    sectionLabel: "פרטים בסיסיים",
+    type: "text",
+    required: true,
+    visible: true,
+    order: 0,
+    protected: true,
+  },
+  {
+    key: "email",
+    label: "אימייל",
+    section: "basic",
+    sectionLabel: "פרטים בסיסיים",
+    type: "email",
+    required: false,
+    visible: true,
+    order: 1,
+    protected: false,
+  },
+  {
+    key: "phone",
+    label: "טלפון",
+    section: "basic",
+    sectionLabel: "פרטים בסיסיים",
+    type: "tel",
+    required: false,
+    visible: true,
+    order: 2,
+    protected: false,
+  },
   // כתובת ומיקום
-  { key: "street", label: "רחוב", section: "address", sectionLabel: "כתובת ומיקום", type: "text", required: false, visible: true, order: 10, protected: false },
-  { key: "moshav", label: "מושב / ישוב", section: "address", sectionLabel: "כתובת ומיקום", type: "text", required: false, visible: true, order: 11, protected: false },
+  {
+    key: "street",
+    label: "רחוב",
+    section: "address",
+    sectionLabel: "כתובת ומיקום",
+    type: "text",
+    required: false,
+    visible: true,
+    order: 10,
+    protected: false,
+  },
+  {
+    key: "moshav",
+    label: "מושב / ישוב",
+    section: "address",
+    sectionLabel: "כתובת ומיקום",
+    type: "text",
+    required: false,
+    visible: true,
+    order: 11,
+    protected: false,
+  },
   // שדות נדל"ן
-  { key: "idNumber", label: "ת.ז / ח.פ", section: "realestate", sectionLabel: 'פרטי נדל"ן', type: "text", required: false, visible: true, order: 20, protected: false },
-  { key: "taba", label: 'תב"ע', section: "realestate", sectionLabel: 'פרטי נדל"ן', type: "text", required: false, visible: true, order: 21, protected: false },
-  { key: "gush", label: "גוש", section: "realestate", sectionLabel: 'פרטי נדל"ן', type: "text", required: false, visible: true, order: 22, protected: false },
-  { key: "helka", label: "חלקה", section: "realestate", sectionLabel: 'פרטי נדל"ן', type: "text", required: false, visible: true, order: 23, protected: false },
-  { key: "migrash", label: "מגרש", section: "realestate", sectionLabel: 'פרטי נדל"ן', type: "text", required: false, visible: true, order: 24, protected: false },
+  {
+    key: "idNumber",
+    label: "ת.ז / ח.פ",
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 20,
+    protected: false,
+  },
+  {
+    key: "taba",
+    label: 'תב"ע',
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 21,
+    protected: false,
+  },
+  {
+    key: "gush",
+    label: "גוש",
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 22,
+    protected: false,
+  },
+  {
+    key: "helka",
+    label: "חלקה",
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 23,
+    protected: false,
+  },
+  {
+    key: "migrash",
+    label: "מגרש",
+    section: "realestate",
+    sectionLabel: 'פרטי נדל"ן',
+    type: "text",
+    required: false,
+    visible: true,
+    order: 24,
+    protected: false,
+  },
   // ועד האגודה
-  { key: "agudaAddress", label: "כתובת ועד האגודה", section: "aguda", sectionLabel: "ועד האגודה", type: "text", required: false, visible: true, order: 30, protected: false },
-  { key: "agudaEmail", label: "מייל ועד האגודה", section: "aguda", sectionLabel: "ועד האגודה", type: "email", required: false, visible: true, order: 31, protected: false },
+  {
+    key: "agudaAddress",
+    label: "כתובת ועד האגודה",
+    section: "aguda",
+    sectionLabel: "ועד האגודה",
+    type: "text",
+    required: false,
+    visible: true,
+    order: 30,
+    protected: false,
+  },
+  {
+    key: "agudaEmail",
+    label: "מייל ועד האגודה",
+    section: "aguda",
+    sectionLabel: "ועד האגודה",
+    type: "email",
+    required: false,
+    visible: true,
+    order: 31,
+    protected: false,
+  },
   // ועד המושב
-  { key: "vaadMoshavAddress", label: "כתובת ועד המושב", section: "moshav", sectionLabel: "ועד המושב", type: "text", required: false, visible: true, order: 40, protected: false },
-  { key: "vaadMoshavEmail", label: "מייל ועד המושב", section: "moshav", sectionLabel: "ועד המושב", type: "email", required: false, visible: true, order: 41, protected: false },
+  {
+    key: "vaadMoshavAddress",
+    label: "כתובת ועד המושב",
+    section: "moshav",
+    sectionLabel: "ועד המושב",
+    type: "text",
+    required: false,
+    visible: true,
+    order: 40,
+    protected: false,
+  },
+  {
+    key: "vaadMoshavEmail",
+    label: "מייל ועד המושב",
+    section: "moshav",
+    sectionLabel: "ועד המושב",
+    type: "email",
+    required: false,
+    visible: true,
+    order: 41,
+    protected: false,
+  },
 ];
 
 export type FieldVisibilityMap = Record<string, boolean>;
@@ -88,7 +228,10 @@ const BUILT_IN_PROFILES: FieldProfile[] = [
     icon: "✨",
     description: "שם, אימייל וטלפון בלבד",
     visibilityMap: Object.fromEntries(
-      DEFAULT_FIELDS.map((f) => [f.key, ["name", "email", "phone"].includes(f.key)]),
+      DEFAULT_FIELDS.map((f) => [
+        f.key,
+        ["name", "email", "phone"].includes(f.key),
+      ]),
     ),
     isBuiltIn: true,
   },
@@ -98,7 +241,10 @@ const BUILT_IN_PROFILES: FieldProfile[] = [
     icon: "🏠",
     description: 'פרטים בסיסיים + כתובת + שדות נדל"ן',
     visibilityMap: Object.fromEntries(
-      DEFAULT_FIELDS.map((f) => [f.key, ["basic", "address", "realestate"].includes(f.section)]),
+      DEFAULT_FIELDS.map((f) => [
+        f.key,
+        ["basic", "address", "realestate"].includes(f.section),
+      ]),
     ),
     isBuiltIn: true,
   },
@@ -108,7 +254,10 @@ const BUILT_IN_PROFILES: FieldProfile[] = [
     icon: "🏘️",
     description: "פרטים בסיסיים + כתובת + ועדים",
     visibilityMap: Object.fromEntries(
-      DEFAULT_FIELDS.map((f) => [f.key, ["basic", "address", "aguda", "moshav"].includes(f.section)]),
+      DEFAULT_FIELDS.map((f) => [
+        f.key,
+        ["basic", "address", "aguda", "moshav"].includes(f.section),
+      ]),
     ),
     isBuiltIn: true,
   },
@@ -118,7 +267,10 @@ const BUILT_IN_PROFILES: FieldProfile[] = [
     icon: "👤",
     description: "רק פרטי התקשרות וכתובת",
     visibilityMap: Object.fromEntries(
-      DEFAULT_FIELDS.map((f) => [f.key, ["basic", "address"].includes(f.section)]),
+      DEFAULT_FIELDS.map((f) => [
+        f.key,
+        ["basic", "address"].includes(f.section),
+      ]),
     ),
     isBuiltIn: true,
   },
@@ -187,11 +339,16 @@ function saveCustomSections(sections: CustomSection[]) {
 
 // ============ Main Hook ============
 export function useClientFieldConfig() {
-  const [visibilityOverrides, setVisibilityOverrides] = useState<FieldVisibilityMap>(loadConfig);
-  const [fieldOrderOverrides, setFieldOrderOverrides] = useState<FieldOrderMap>(loadFieldOrder);
-  const [customProfiles, setCustomProfiles] = useState<FieldProfile[]>(loadProfiles);
-  const [conditions, setConditions] = useState<FieldCondition[]>(loadConditions);
-  const [customSections, setCustomSections] = useState<CustomSection[]>(loadCustomSections);
+  const [visibilityOverrides, setVisibilityOverrides] =
+    useState<FieldVisibilityMap>(loadConfig);
+  const [fieldOrderOverrides, setFieldOrderOverrides] =
+    useState<FieldOrderMap>(loadFieldOrder);
+  const [customProfiles, setCustomProfiles] =
+    useState<FieldProfile[]>(loadProfiles);
+  const [conditions, setConditions] =
+    useState<FieldCondition[]>(loadConditions);
+  const [customSections, setCustomSections] =
+    useState<CustomSection[]>(loadCustomSections);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
 
   // All profiles (built-in + custom)
@@ -211,13 +368,31 @@ export function useClientFieldConfig() {
 
   // Get grouped fields by section (including custom sections)
   const sections = useMemo(() => {
-    const sectionMap = new Map<string, { label: string; fields: BuiltInField[]; order: number }>();
+    const sectionMap = new Map<
+      string,
+      { label: string; fields: BuiltInField[]; order: number }
+    >();
 
     // Add built-in sections from fields
     for (const f of fields) {
       if (!sectionMap.has(f.section)) {
-        const sectionOrder = f.section === "basic" ? 0 : f.section === "address" ? 1 : f.section === "realestate" ? 2 : f.section === "aguda" ? 3 : f.section === "moshav" ? 4 : 50;
-        sectionMap.set(f.section, { label: f.sectionLabel, fields: [], order: sectionOrder });
+        const sectionOrder =
+          f.section === "basic"
+            ? 0
+            : f.section === "address"
+              ? 1
+              : f.section === "realestate"
+                ? 2
+                : f.section === "aguda"
+                  ? 3
+                  : f.section === "moshav"
+                    ? 4
+                    : 50;
+        sectionMap.set(f.section, {
+          label: f.sectionLabel,
+          fields: [],
+          order: sectionOrder,
+        });
       }
       sectionMap.get(f.section)!.fields.push(f);
     }
@@ -225,7 +400,11 @@ export function useClientFieldConfig() {
     // Add custom sections (even if empty)
     for (const cs of customSections) {
       if (!sectionMap.has(cs.key)) {
-        sectionMap.set(cs.key, { label: cs.label, fields: [], order: cs.order });
+        sectionMap.set(cs.key, {
+          label: cs.label,
+          fields: [],
+          order: cs.order,
+        });
       }
     }
 
@@ -292,49 +471,63 @@ export function useClientFieldConfig() {
 
   // ============ Profile actions ============
   const applyProfile = useCallback((profileId: string) => {
-    const profile = [...BUILT_IN_PROFILES, ...loadProfiles()].find((p) => p.id === profileId);
+    const profile = [...BUILT_IN_PROFILES, ...loadProfiles()].find(
+      (p) => p.id === profileId,
+    );
     if (!profile) return;
     saveConfig(profile.visibilityMap);
     setVisibilityOverrides(profile.visibilityMap);
     setActiveProfileId(profileId);
   }, []);
 
-  const saveCurrentAsProfile = useCallback((name: string, icon: string, description: string) => {
-    const newProfile: FieldProfile = {
-      id: `custom_${Date.now()}`,
-      name,
-      icon,
-      description,
-      visibilityMap: { ...visibilityOverrides },
-      isBuiltIn: false,
-    };
-    setCustomProfiles((prev) => {
-      const next = [...prev, newProfile];
-      saveProfiles(next);
-      return next;
-    });
-    setActiveProfileId(newProfile.id);
-    return newProfile;
-  }, [visibilityOverrides]);
+  const saveCurrentAsProfile = useCallback(
+    (name: string, icon: string, description: string) => {
+      const newProfile: FieldProfile = {
+        id: `custom_${Date.now()}`,
+        name,
+        icon,
+        description,
+        visibilityMap: { ...visibilityOverrides },
+        isBuiltIn: false,
+      };
+      setCustomProfiles((prev) => {
+        const next = [...prev, newProfile];
+        saveProfiles(next);
+        return next;
+      });
+      setActiveProfileId(newProfile.id);
+      return newProfile;
+    },
+    [visibilityOverrides],
+  );
 
-  const deleteProfile = useCallback((profileId: string) => {
-    setCustomProfiles((prev) => {
-      const next = prev.filter((p) => p.id !== profileId);
-      saveProfiles(next);
-      return next;
-    });
-    if (activeProfileId === profileId) setActiveProfileId(null);
-  }, [activeProfileId]);
+  const deleteProfile = useCallback(
+    (profileId: string) => {
+      setCustomProfiles((prev) => {
+        const next = prev.filter((p) => p.id !== profileId);
+        saveProfiles(next);
+        return next;
+      });
+      if (activeProfileId === profileId) setActiveProfileId(null);
+    },
+    [activeProfileId],
+  );
 
-  const updateProfile = useCallback((profileId: string, updates: Partial<Pick<FieldProfile, "name" | "icon" | "description">>) => {
-    setCustomProfiles((prev) => {
-      const next = prev.map((p) =>
-        p.id === profileId ? { ...p, ...updates } : p,
-      );
-      saveProfiles(next);
-      return next;
-    });
-  }, []);
+  const updateProfile = useCallback(
+    (
+      profileId: string,
+      updates: Partial<Pick<FieldProfile, "name" | "icon" | "description">>,
+    ) => {
+      setCustomProfiles((prev) => {
+        const next = prev.map((p) =>
+          p.id === profileId ? { ...p, ...updates } : p,
+        );
+        saveProfiles(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   // ============ Field ordering actions ============
   const reorderField = useCallback((fieldKey: string, newOrder: number) => {
@@ -345,23 +538,31 @@ export function useClientFieldConfig() {
     });
   }, []);
 
-  const reorderFieldsInSection = useCallback((sectionKey: string, orderedKeys: string[]) => {
-    setFieldOrderOverrides((prev) => {
-      const next = { ...prev };
-      // Get the base order for this section
-      const sectionFields = DEFAULT_FIELDS.filter((f) => f.section === sectionKey);
-      const baseOrder = Math.min(...sectionFields.map((f) => f.order));
-      orderedKeys.forEach((key, index) => {
-        next[key] = baseOrder + index;
+  const reorderFieldsInSection = useCallback(
+    (sectionKey: string, orderedKeys: string[]) => {
+      setFieldOrderOverrides((prev) => {
+        const next = { ...prev };
+        // Get the base order for this section
+        const sectionFields = DEFAULT_FIELDS.filter(
+          (f) => f.section === sectionKey,
+        );
+        const baseOrder = Math.min(...sectionFields.map((f) => f.order));
+        orderedKeys.forEach((key, index) => {
+          next[key] = baseOrder + index;
+        });
+        saveFieldOrder(next);
+        return next;
       });
-      saveFieldOrder(next);
-      return next;
-    });
-  }, []);
+    },
+    [],
+  );
 
   // ============ Conditional fields actions ============
   const addCondition = useCallback((condition: Omit<FieldCondition, "id">) => {
-    const newCondition: FieldCondition = { ...condition, id: `cond_${Date.now()}` };
+    const newCondition: FieldCondition = {
+      ...condition,
+      id: `cond_${Date.now()}`,
+    };
     setConditions((prev) => {
       const next = [...prev, newCondition];
       saveConditions(next);
@@ -378,20 +579,25 @@ export function useClientFieldConfig() {
     });
   }, []);
 
-  const updateCondition = useCallback((conditionId: string, updates: Partial<FieldCondition>) => {
-    setConditions((prev) => {
-      const next = prev.map((c) =>
-        c.id === conditionId ? { ...c, ...updates } : c,
-      );
-      saveConditions(next);
-      return next;
-    });
-  }, []);
+  const updateCondition = useCallback(
+    (conditionId: string, updates: Partial<FieldCondition>) => {
+      setConditions((prev) => {
+        const next = prev.map((c) =>
+          c.id === conditionId ? { ...c, ...updates } : c,
+        );
+        saveConditions(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   // Check if a field is conditionally visible based on form values
   const isConditionallyVisible = useCallback(
     (fieldKey: string, formValues: Record<string, string>): boolean => {
-      const fieldConditions = conditions.filter((c) => c.targetField === fieldKey);
+      const fieldConditions = conditions.filter(
+        (c) => c.targetField === fieldKey,
+      );
       if (fieldConditions.length === 0) return true; // No conditions = always visible
 
       // ALL conditions must be met
@@ -413,17 +619,20 @@ export function useClientFieldConfig() {
   );
 
   // ============ Custom sections actions ============
-  const addCustomSection = useCallback((label: string) => {
-    const key = `custom_${Date.now()}`;
-    const maxOrder = Math.max(50, ...customSections.map((s) => s.order));
-    const newSection: CustomSection = { key, label, order: maxOrder + 1 };
-    setCustomSections((prev) => {
-      const next = [...prev, newSection];
-      saveCustomSections(next);
-      return next;
-    });
-    return newSection;
-  }, [customSections]);
+  const addCustomSection = useCallback(
+    (label: string) => {
+      const key = `custom_${Date.now()}`;
+      const maxOrder = Math.max(50, ...customSections.map((s) => s.order));
+      const newSection: CustomSection = { key, label, order: maxOrder + 1 };
+      setCustomSections((prev) => {
+        const next = [...prev, newSection];
+        saveCustomSections(next);
+        return next;
+      });
+      return newSection;
+    },
+    [customSections],
+  );
 
   const removeCustomSection = useCallback((sectionKey: string) => {
     setCustomSections((prev) => {
@@ -433,15 +642,18 @@ export function useClientFieldConfig() {
     });
   }, []);
 
-  const renameCustomSection = useCallback((sectionKey: string, newLabel: string) => {
-    setCustomSections((prev) => {
-      const next = prev.map((s) =>
-        s.key === sectionKey ? { ...s, label: newLabel } : s,
-      );
-      saveCustomSections(next);
-      return next;
-    });
-  }, []);
+  const renameCustomSection = useCallback(
+    (sectionKey: string, newLabel: string) => {
+      setCustomSections((prev) => {
+        const next = prev.map((s) =>
+          s.key === sectionKey ? { ...s, label: newLabel } : s,
+        );
+        saveCustomSections(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   // ============ Export/Import for cloud sync ============
   const exportConfig = useCallback(() => {
@@ -455,7 +667,14 @@ export function useClientFieldConfig() {
       activeProfileId,
       exportedAt: new Date().toISOString(),
     });
-  }, [visibilityOverrides, fieldOrderOverrides, customProfiles, conditions, customSections, activeProfileId]);
+  }, [
+    visibilityOverrides,
+    fieldOrderOverrides,
+    customProfiles,
+    conditions,
+    customSections,
+    activeProfileId,
+  ]);
 
   const importConfig = useCallback((jsonString: string): boolean => {
     try {

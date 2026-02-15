@@ -72,6 +72,7 @@ import {
   BellRing,
   Zap,
   FormInput,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ActivityLogTab } from "@/components/settings/ActivityLogTab";
@@ -89,6 +90,8 @@ import { EdgeFunctionsManager } from "@/components/settings/EdgeFunctionsManager
 import { EmailTemplateManager } from "@/components/settings/EmailTemplateManager";
 import { RateLimitMonitor } from "@/components/settings/RateLimitMonitor";
 import { EmailSignatureManager } from "@/components/settings/EmailSignatureManager";
+import { AutoRemindersSettings } from "@/components/settings/AutoRemindersSettings";
+import { SmartTaggingSettings } from "@/components/settings/SmartTaggingSettings";
 import { usePushNotifications } from "@/lib/push-notifications";
 import {
   SignaturePad,
@@ -718,6 +721,15 @@ export default function Settings() {
               )}
               {isAdmin && (
                 <TabsTrigger
+                  value="smart-tags"
+                  className="flex items-center gap-2 text-purple-600 dark:text-purple-400"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className="hidden sm:inline">תיוג חכם</span>
+                </TabsTrigger>
+              )}
+              {isAdmin && (
+                <TabsTrigger
                   value="developer"
                   className="flex items-center gap-2 text-green-600 dark:text-green-400"
                 >
@@ -1101,6 +1113,9 @@ export default function Settings() {
 
               {/* Push Notifications Card */}
               <PushNotificationsSettings />
+
+              {/* Auto Reminders */}
+              <AutoRemindersSettings />
             </TabsContent>
 
             {/* Calendar Integration Tab */}
@@ -1523,6 +1538,13 @@ export default function Settings() {
             {isAdmin && (
               <TabsContent value="client-fields" className="space-y-6">
                 <ClientFieldManager />
+              </TabsContent>
+            )}
+
+            {/* Smart Tagging Tab (Admin Only) */}
+            {isAdmin && (
+              <TabsContent value="smart-tags" className="space-y-6">
+                <SmartTaggingSettings />
               </TabsContent>
             )}
 

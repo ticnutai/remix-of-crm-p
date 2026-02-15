@@ -715,6 +715,57 @@ export default function ClientProfile() {
           </div>
 
           <div className="flex items-center gap-2">
+            {isValidPhone(client?.phone) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  import("@/utils/whatsapp").then(
+                    ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                      openWhatsApp(
+                        client!.phone!,
+                        WHATSAPP_TEMPLATES.greeting(client!.name),
+                      );
+                    },
+                  );
+                }}
+                className="border-green-500/50 text-green-600 hover:bg-green-500/10 hover:border-green-500"
+                title="WhatsApp"
+              >
+                <MessageCircle className="h-4 w-4 ml-2" />
+                WhatsApp
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const { exportClientProfileToPdf } =
+                    await import("@/utils/exportClientProfileToPdf");
+                  await exportClientProfileToPdf(
+                    client!,
+                    stats,
+                    projects,
+                    tasks,
+                    meetings,
+                    invoices,
+                  );
+                  toast({
+                    title: "PDF נוצר בהצלחה",
+                    description: `הקובץ הורד`,
+                  });
+                } catch (err) {
+                  console.error("PDF export error:", err);
+                  toast({ title: "שגיאה ביצוא PDF", variant: "destructive" });
+                }
+              }}
+              className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
+              title="ייצוא PDF"
+            >
+              <FileText className="h-4 w-4 ml-2" />
+              PDF
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -778,15 +829,35 @@ export default function ClientProfile() {
                   </a>
                 )}
                 {isValidPhone(client.phone) && (
-                  <a
-                    href={`tel:${client.phone}`}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
-                  >
-                    <span dir="ltr" className="font-mono">
-                      {formatPhoneDisplay(client.phone)}
-                    </span>
-                    <Phone className="h-4 w-4" />
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
+                    >
+                      <span dir="ltr" className="font-mono">
+                        {formatPhoneDisplay(client.phone)}
+                      </span>
+                      <Phone className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        import("@/utils/whatsapp").then(
+                          ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                            openWhatsApp(
+                              client.phone!,
+                              WHATSAPP_TEMPLATES.greeting(client.name),
+                            );
+                          },
+                        );
+                      }}
+                      className="p-1.5 rounded-full bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700 transition-all"
+                      title="שלח הודעת WhatsApp"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
                 {client.website && (
                   <a
@@ -2110,38 +2181,39 @@ export default function ClientProfile() {
                   }
                 />
               </div>
-              {(fieldConfig.isVisible('email') || fieldConfig.isVisible('phone')) && (
-              <div className="grid grid-cols-2 gap-4">
-                {fieldConfig.isVisible('email') && (
-                <div className="space-y-2">
-                  <Label>אימייל</Label>
-                  <Input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        email: e.target.value,
-                      }))
-                    }
-                  />
+              {(fieldConfig.isVisible("email") ||
+                fieldConfig.isVisible("phone")) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {fieldConfig.isVisible("email") && (
+                    <div className="space-y-2">
+                      <Label>אימייל</Label>
+                      <Input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+                  {fieldConfig.isVisible("phone") && (
+                    <div className="space-y-2">
+                      <Label>טלפון</Label>
+                      <Input
+                        value={editForm.phone}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
-                )}
-                {fieldConfig.isVisible('phone') && (
-                <div className="space-y-2">
-                  <Label>טלפון</Label>
-                  <Input
-                    value={editForm.phone}
-                    onChange={(e) =>
-                      setEditForm((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                )}
-              </div>
               )}
               <div className="space-y-2">
                 <Label>חברה</Label>
@@ -2155,107 +2227,112 @@ export default function ClientProfile() {
                   }
                 />
               </div>
-              {(fieldConfig.isVisible('street') || fieldConfig.isVisible('moshav')) && (
-              <div className="space-y-2">
-                <Label>כתובת</Label>
-                <Input
-                  value={editForm.address}
-                  onChange={(e) =>
-                    setEditForm((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+              {(fieldConfig.isVisible("street") ||
+                fieldConfig.isVisible("moshav")) && (
+                <div className="space-y-2">
+                  <Label>כתובת</Label>
+                  <Input
+                    value={editForm.address}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
               )}
 
               {/* שדות נדל"ן */}
-              {(fieldConfig.isVisible('idNumber') || fieldConfig.isVisible('taba') || fieldConfig.isVisible('gush') || fieldConfig.isVisible('helka') || fieldConfig.isVisible('migrash')) && (
-              <div className="border-t pt-4 mt-4">
-                <Label className="text-sm font-semibold mb-3 block">
-                  פרטי נדל"ן
-                </Label>
-                <div className="grid grid-cols-2 gap-4">
-                  {fieldConfig.isVisible('idNumber') && (
-                  <div className="space-y-2">
-                    <Label>ת.ז.</Label>
-                    <Input
-                      value={editForm.id_number}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          id_number: e.target.value,
-                        }))
-                      }
-                      placeholder="תעודת זהות"
-                    />
+              {(fieldConfig.isVisible("idNumber") ||
+                fieldConfig.isVisible("taba") ||
+                fieldConfig.isVisible("gush") ||
+                fieldConfig.isVisible("helka") ||
+                fieldConfig.isVisible("migrash")) && (
+                <div className="border-t pt-4 mt-4">
+                  <Label className="text-sm font-semibold mb-3 block">
+                    פרטי נדל"ן
+                  </Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {fieldConfig.isVisible("idNumber") && (
+                      <div className="space-y-2">
+                        <Label>ת.ז.</Label>
+                        <Input
+                          value={editForm.id_number}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              id_number: e.target.value,
+                            }))
+                          }
+                          placeholder="תעודת זהות"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("taba") && (
+                      <div className="space-y-2">
+                        <Label>תב"ע</Label>
+                        <Input
+                          value={editForm.taba}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              taba: e.target.value,
+                            }))
+                          }
+                          placeholder="תב''ע"
+                        />
+                      </div>
+                    )}
                   </div>
-                  )}
-                  {fieldConfig.isVisible('taba') && (
-                  <div className="space-y-2">
-                    <Label>תב"ע</Label>
-                    <Input
-                      value={editForm.taba}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          taba: e.target.value,
-                        }))
-                      }
-                      placeholder="תב''ע"
-                    />
+                  <div className="grid grid-cols-3 gap-4 mt-3">
+                    {fieldConfig.isVisible("gush") && (
+                      <div className="space-y-2">
+                        <Label>גוש</Label>
+                        <Input
+                          value={editForm.gush}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              gush: e.target.value,
+                            }))
+                          }
+                          placeholder="גוש"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("helka") && (
+                      <div className="space-y-2">
+                        <Label>חלקה</Label>
+                        <Input
+                          value={editForm.helka}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              helka: e.target.value,
+                            }))
+                          }
+                          placeholder="חלקה"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("migrash") && (
+                      <div className="space-y-2">
+                        <Label>מגרש</Label>
+                        <Input
+                          value={editForm.migrash}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              migrash: e.target.value,
+                            }))
+                          }
+                          placeholder="מגרש"
+                        />
+                      </div>
+                    )}
                   </div>
-                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-4 mt-3">
-                  {fieldConfig.isVisible('gush') && (
-                  <div className="space-y-2">
-                    <Label>גוש</Label>
-                    <Input
-                      value={editForm.gush}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          gush: e.target.value,
-                        }))
-                      }
-                      placeholder="גוש"
-                    />
-                  </div>
-                  )}
-                  {fieldConfig.isVisible('helka') && (
-                  <div className="space-y-2">
-                    <Label>חלקה</Label>
-                    <Input
-                      value={editForm.helka}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          helka: e.target.value,
-                        }))
-                      }
-                      placeholder="חלקה"
-                    />
-                  </div>
-                  )}
-                  {fieldConfig.isVisible('migrash') && (
-                  <div className="space-y-2">
-                    <Label>מגרש</Label>
-                    <Input
-                      value={editForm.migrash}
-                      onChange={(e) =>
-                        setEditForm((prev) => ({
-                          ...prev,
-                          migrash: e.target.value,
-                        }))
-                      }
-                      placeholder="מגרש"
-                    />
-                  </div>
-                  )}
-                </div>
-              </div>
               )}
 
               {/* שדות מותאמים אישית */}
