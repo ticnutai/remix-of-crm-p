@@ -103,11 +103,11 @@ export function CalendarWeekView({
   };
 
   return (
-    <Card className="border-2 border-border overflow-hidden">
+    <Card className="border-2 border-border overflow-hidden" dir="rtl">
       <CardContent className="p-0">
         {/* Header */}
         <div className="grid grid-cols-8 border-b bg-muted/30">
-          <div className="p-3 text-center text-sm font-medium text-muted-foreground border-l">
+          <div className="p-3 text-center text-sm font-medium text-muted-foreground border-e">
             שעה
           </div>
           {days.map((day, idx) => (
@@ -115,7 +115,7 @@ export function CalendarWeekView({
               key={day.toString()}
               onClick={() => onDayClick(day)}
               className={cn(
-                "p-3 text-center cursor-pointer hover:bg-accent/50 transition-colors border-l last:border-l-0",
+                "p-3 text-center cursor-pointer hover:bg-accent/50 transition-colors border-e last:border-e-0",
                 isToday(day) && "bg-[hsl(var(--navy))]/10"
               )}
             >
@@ -134,7 +134,7 @@ export function CalendarWeekView({
         <ScrollArea className="h-[600px]">
           <div className="grid grid-cols-8">
             {/* Time column */}
-            <div className="border-l">
+            <div className="border-e">
               {hours.map((hour) => (
                 <div
                   key={hour}
@@ -155,7 +155,7 @@ export function CalendarWeekView({
                 <div
                   key={day.toString()}
                   className={cn(
-                    "border-l last:border-l-0 relative",
+                    "border-e last:border-e-0 relative",
                     isToday(day) && "bg-[hsl(var(--gold))]/5"
                   )}
                   onClick={() => onDayClick(day)}
@@ -169,7 +169,7 @@ export function CalendarWeekView({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-1"
+                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity absolute end-1"
                         onClick={(e) => { e.stopPropagation(); onAddClick(day); }}
                       >
                         <Plus className="h-3 w-3" />
@@ -183,7 +183,7 @@ export function CalendarWeekView({
                     return (
                       <div
                         key={meeting.id}
-                        className="absolute left-1 right-1 bg-[hsl(var(--navy))] text-white rounded-md px-2 py-1 text-xs overflow-hidden shadow-md z-10 cursor-pointer hover:opacity-90"
+                        className="absolute inset-x-1 bg-[hsl(var(--navy))] text-white rounded-md px-2 py-1 text-xs overflow-hidden shadow-md z-10 cursor-pointer hover:opacity-90"
                         style={style}
                       >
                         <div className="flex items-center gap-1">
@@ -199,7 +199,7 @@ export function CalendarWeekView({
 
                   {/* All day events (tasks/reminders) at top */}
                   {(dayTasks.length > 0 || dayReminders.length > 0) && (
-                    <div className="absolute top-0 left-1 right-1 space-y-1 z-20">
+                    <div className="absolute top-0 inset-x-1 space-y-1 z-20">
                       {dayTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}

@@ -201,7 +201,7 @@ export function CalendarView() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4" dir="rtl">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -402,7 +402,7 @@ export function CalendarView() {
                   key={index}
                   onClick={() => handleDayClick(date)}
                   className={`
-                    min-h-[100px] p-2 border-b border-l cursor-pointer hover:bg-muted/50 transition-colors
+                    min-h-[100px] p-2 border-b border-e cursor-pointer hover:bg-muted/50 transition-colors
                     ${!isCurrentMonth ? "bg-muted/30 text-muted-foreground" : ""}
                     ${isToday(date) ? "bg-primary/10" : ""}
                     ${isSelected ? "ring-2 ring-primary ring-inset" : ""}

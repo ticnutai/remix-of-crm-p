@@ -97,7 +97,7 @@ export function CalendarScheduleView({
   });
 
   return (
-    <Card className="border-2 border-border overflow-hidden">
+    <Card className="border-2 border-border overflow-hidden" dir="rtl">
       <CardHeader className="pb-3 bg-muted/30">
         <CardTitle className="flex items-center gap-2 text-lg">
           <TableIcon className="h-5 w-5 text-[hsl(var(--gold))]" />

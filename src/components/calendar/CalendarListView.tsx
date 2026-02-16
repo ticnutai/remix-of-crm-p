@@ -123,7 +123,7 @@ export function CalendarListView({
   };
 
   return (
-    <Card className="border-2 border-border">
+    <Card className="border-2 border-border" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calendar className="h-5 w-5 text-[hsl(var(--gold))]" />
@@ -131,7 +131,7 @@ export function CalendarListView({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[600px] pr-4">
+        <ScrollArea className="h-[600px] pl-4" dir="rtl">
           {daysWithEvents.length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
               <Calendar className="h-16 w-16 mx-auto mb-4 opacity-30" />

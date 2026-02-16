@@ -170,7 +170,7 @@ export function CalendarAgendaView({
   };
 
   return (
-    <Card className="border-2 border-border">
+    <Card className="border-2 border-border" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <LayoutGrid className="h-5 w-5 text-[hsl(var(--gold))]" />
@@ -178,7 +178,7 @@ export function CalendarAgendaView({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[600px] pr-4">
+        <ScrollArea className="h-[600px] pl-4" dir="rtl">
           {Object.keys(eventsByDate).length === 0 ? (
             <div className="text-center text-muted-foreground py-12">
               <LayoutGrid className="h-16 w-16 mx-auto mb-4 opacity-30" />
@@ -187,6 +187,7 @@ export function CalendarAgendaView({
           ) : (
             <div className="relative">
               {/* Timeline line */}
+              {/* Timeline line - positioned on the right for RTL */}
               <div className="absolute right-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[hsl(var(--gold))] via-border to-transparent" />
 
               {Object.entries(eventsByDate).map(([dateKey, events]) => {
