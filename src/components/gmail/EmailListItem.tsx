@@ -145,7 +145,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
 
   const handleMouseEnter = useCallback(() => {
     hoverTimerRef.current = setTimeout(() => {
-      console.log("📧 [HoverPreview] Timer fired for:", message.id, message.subject);
+      console.log(
+        "📧 [HoverPreview] Timer fired for:",
+        message.id,
+        message.subject,
+      );
       onHoverPreview?.(message.id);
     }, 1000);
   }, [message.id, onHoverPreview]);
@@ -342,7 +346,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                   <MessageSquare className="h-4 w-4 ml-2" />
                   פתח כשיחה (שרשור)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onOpenSenderChat?.(message.from, message.fromName)}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    onOpenSenderChat?.(message.from, message.fromName)
+                  }
+                >
                   <Contact className="h-4 w-4 ml-2" />
                   צ'אט לפי שולח
                 </DropdownMenuItem>
@@ -579,7 +587,6 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           )}
         </div>
       </div>
-
     </>
   );
 });

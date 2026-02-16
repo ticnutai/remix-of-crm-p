@@ -353,12 +353,18 @@ export default function Gmail() {
   const [hoverPreviewHtml, setHoverPreviewHtml] = useState<string | null>(null);
   const [hoverPreviewLoading, setHoverPreviewLoading] = useState(false);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
-  const [previewMessage, setPreviewMessage] = useState<GmailMessage | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<GmailMessage | null>(
+    null,
+  );
 
   const handleHoverPreview = useCallback(
     async (messageId: string) => {
-      console.log("📧 [HoverPreview] handleHoverPreview called for:", messageId);
+      console.log(
+        "📧 [HoverPreview] handleHoverPreview called for:",
+        messageId,
+      );
       setHoverPreviewId(messageId);
+      setHoverPreviewHtml(null); // Clear previous content immediately
       // Find the message and open the preview dialog
       const msg = messages.find((m) => m.id === messageId);
       if (msg) {
@@ -377,16 +383,27 @@ export default function Gmail() {
       try {
         console.log("📧 [HoverPreview] Fetching full message:", messageId);
         const fullMsg = await getFullMessage(messageId);
-        console.log("📧 [HoverPreview] Got full message:", !!fullMsg, "payload:", !!fullMsg?.payload);
+        console.log(
+          "📧 [HoverPreview] Got full message:",
+          !!fullMsg,
+          "payload:",
+          !!fullMsg?.payload,
+        );
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          console.log("📧 [HoverPreview] Extracted HTML length:", rawHtml?.length || 0);
+          console.log(
+            "📧 [HoverPreview] Extracted HTML length:",
+            rawHtml?.length || 0,
+          );
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
-          console.log("📧 [HoverPreview] Resolved HTML length:", html?.length || 0);
+          console.log(
+            "📧 [HoverPreview] Resolved HTML length:",
+            html?.length || 0,
+          );
           setHoverPreviewHtml(html);
           if (html) {
             gmailCache.cacheBody(messageId, html);
@@ -401,7 +418,7 @@ export default function Gmail() {
       }
       setHoverPreviewLoading(false);
     },
-    [getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages],
+    [getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages, messages],
   );
 
   // Muted threads
@@ -2578,7 +2595,8 @@ export default function Gmail() {
             className="max-w-[700px] w-[90vw] max-h-[80vh] p-0"
             style={{
               border: "3px solid #d4a843",
-              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
+              boxShadow:
+                "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
             }}
             dir="rtl"
           >
@@ -2640,7 +2658,9 @@ export default function Gmail() {
                   if (previewMessage) {
                     setSelectedEmail(previewMessage);
                     if (!previewMessage.isRead) {
-                      markAsRead(previewMessage.id, true).then(() => handleRefresh());
+                      markAsRead(previewMessage.id, true).then(() =>
+                        handleRefresh(),
+                      );
                     }
                   }
                 }}
@@ -2654,7 +2674,9 @@ export default function Gmail() {
                 onClick={() => {
                   setShowPreviewDialog(false);
                   if (previewMessage) {
-                    const replySubject = previewMessage.subject?.startsWith("Re:")
+                    const replySubject = previewMessage.subject?.startsWith(
+                      "Re:",
+                    )
                       ? previewMessage.subject
                       : `Re: ${previewMessage.subject}`;
                     setDraftData({
@@ -2675,7 +2697,9 @@ export default function Gmail() {
                 onClick={() => {
                   setShowPreviewDialog(false);
                   if (previewMessage) {
-                    const fwdSubject = previewMessage.subject?.startsWith("Fwd:")
+                    const fwdSubject = previewMessage.subject?.startsWith(
+                      "Fwd:",
+                    )
                       ? previewMessage.subject
                       : `Fwd: ${previewMessage.subject}`;
                     setDraftData({
