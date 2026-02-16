@@ -272,6 +272,71 @@ export default function Gmail() {
   const [emailHtmlBody, setEmailHtmlBody] = useState<string>("");
   const [loadingBody, setLoadingBody] = useState(false);
 
+  // Resolve inline cid: images in HTML body
+  const resolveInlineImages = useCallback(
+    async (html: string, messageId: string, payload: any): Promise<string> => {
+      if (!html || !payload) return html;
+      // Find all cid: references in the HTML
+      const cidMatches = html.match(/src=["']cid:([^"']+)["']/gi);
+      if (!cidMatches || cidMatches.length === 0) return html;
+
+      // Extract Content-ID to attachmentId mapping from MIME parts
+      const cidMap: Record<
+        string,
+        { attachmentId: string; mimeType: string; data?: string }
+      > = {};
+      const scanParts = (parts: any[]) => {
+        for (const part of parts) {
+          const headers = part.headers || [];
+          const contentId = headers.find(
+            (h: any) => h.name.toLowerCase() === "content-id",
+          )?.value;
+          if (contentId && part.body) {
+            // Remove angle brackets from Content-ID: <image001.png@...>
+            const cleanCid = contentId.replace(/^<|>$/g, "");
+            if (part.body.attachmentId) {
+              cidMap[cleanCid] = {
+                attachmentId: part.body.attachmentId,
+                mimeType: part.mimeType || "image/png",
+              };
+            } else if (part.body.data) {
+              // Inline data already present
+              const base64 = part.body.data
+                .replace(/-/g, "+")
+                .replace(/_/g, "/");
+              cidMap[cleanCid] = {
+                attachmentId: "",
+                mimeType: part.mimeType || "image/png",
+                data: base64,
+              };
+            }
+          }
+          if (part.parts) scanParts(part.parts);
+        }
+      };
+      if (payload.parts) scanParts(payload.parts);
+
+      // Replace cid: references with data: URIs
+      let resolvedHtml = html;
+      for (const [cid, info] of Object.entries(cidMap)) {
+        let base64Data = info.data;
+        if (!base64Data && info.attachmentId) {
+          base64Data = (await getAttachment(messageId, info.attachmentId)) ?? undefined;
+        }
+        if (base64Data) {
+          const dataUri = `data:${info.mimeType};base64,${base64Data}`;
+          // Replace both cid:xxx and cid:xxx with possible URL encoding
+          resolvedHtml = resolvedHtml.replace(
+            new RegExp(`cid:${cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "gi"),
+            dataUri,
+          );
+        }
+      }
+      return resolvedHtml;
+    },
+    [getAttachment],
+  );
+
   // Hover preview state (3-second hover to show email body)
   const [hoverPreviewId, setHoverPreviewId] = useState<string | null>(null);
   const [hoverPreviewHtml, setHoverPreviewHtml] = useState<string | null>(null);
@@ -290,7 +355,8 @@ export default function Gmail() {
       try {
         const fullMsg = await getFullMessage(messageId);
         if (fullMsg?.payload) {
-          const html = extractHtmlBody(fullMsg.payload);
+          const rawHtml = extractHtmlBody(fullMsg.payload);
+          const html = await resolveInlineImages(rawHtml, messageId, fullMsg.payload);
           setHoverPreviewHtml(html);
           if (html) {
             gmailCache.cacheBody(messageId, html);
@@ -301,7 +367,7 @@ export default function Gmail() {
       }
       setHoverPreviewLoading(false);
     },
-    [getFullMessage, extractHtmlBody, gmailCache],
+    [getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages],
   );
 
   // Muted threads
@@ -591,8 +657,9 @@ export default function Gmail() {
         if (fullMsg.payload.parts) extractParts(fullMsg.payload.parts);
         setEmailAttachments(attachments);
 
-        // Extract HTML body and cache it
-        const html = extractHtmlBody(fullMsg.payload);
+        // Extract HTML body, resolve inline images, and cache it
+        const rawHtml = extractHtmlBody(fullMsg.payload);
+        const html = await resolveInlineImages(rawHtml, selectedEmail.id, fullMsg.payload);
         setEmailHtmlBody(html);
         if (html) {
           gmailCache.cacheBody(selectedEmail.id, html);
@@ -604,7 +671,7 @@ export default function Gmail() {
       setLoadingBody(false);
     };
     loadEmailData();
-  }, [selectedEmail?.id, getFullMessage, extractHtmlBody, gmailCache]);
+  }, [selectedEmail?.id, getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages]);
 
   // Scheduled send dispatcher - check every 30 seconds
   useEffect(() => {

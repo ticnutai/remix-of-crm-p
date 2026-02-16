@@ -1,5 +1,6 @@
 // EmailListItem - Single email row in the email list
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -629,7 +630,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             ) : hoverPreviewHtml ? (
               <div
                 className="prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: hoverPreviewHtml }}
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                    ALLOW_UNKNOWN_PROTOCOLS: true,
+                  }),
+                }}
               />
             ) : (
               <p className="text-muted-foreground whitespace-pre-wrap">
