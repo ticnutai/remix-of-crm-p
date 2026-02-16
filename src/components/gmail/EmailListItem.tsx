@@ -439,7 +439,9 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                           style={{ color: folder.color }}
                         />
                         {folder.name}
-                        <span className="text-[10px] text-muted-foreground mr-auto">תיוג</span>
+                        <span className="text-[10px] text-muted-foreground mr-auto">
+                          תיוג
+                        </span>
                       </DropdownMenuItem>
                     ))}
                   </>

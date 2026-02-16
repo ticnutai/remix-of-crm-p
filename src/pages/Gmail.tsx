@@ -2691,13 +2691,35 @@ export default function Gmail() {
                                         mutedThreads={mutedThreads}
                                         folders={emailFolders.folders}
                                         activeFolderId={selectedFolderId}
-                                        activeFolderName={emailFolders.folders.find((f: any) => f.id === selectedFolderId)?.name}
-                                        onRemoveFromFolder={async (folderId, emailId) => {
-                                          await emailFolders.removeEmailFromFolder(folderId, emailId);
+                                        activeFolderName={
+                                          emailFolders.folders.find(
+                                            (f: any) =>
+                                              f.id === selectedFolderId,
+                                          )?.name
+                                        }
+                                        onRemoveFromFolder={async (
+                                          folderId,
+                                          emailId,
+                                        ) => {
+                                          await emailFolders.removeEmailFromFolder(
+                                            folderId,
+                                            emailId,
+                                          );
                                           // Refresh folder view
-                                          const items = await emailFolders.getEmailsInFolder(folderId);
-                                          setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-                                          toast({ title: "המייל הוסר מהתיקייה" });
+                                          const items =
+                                            await emailFolders.getEmailsInFolder(
+                                              folderId,
+                                            );
+                                          setFolderEmailIds(
+                                            new Set(
+                                              items.map(
+                                                (item: any) => item.email_id,
+                                              ),
+                                            ),
+                                          );
+                                          toast({
+                                            title: "המייל הוסר מהתיקייה",
+                                          });
                                         }}
                                         onSelect={() => {
                                           setSelectedEmail(message);
@@ -2771,8 +2793,13 @@ export default function Gmail() {
                                               ),
                                             );
                                           }
-                                          const folderName = emailFolders.folders.find((f: any) => f.id === folderId)?.name || "תיקייה";
-                                          toast({ title: `תויג בתיקייה "${folderName}"` });
+                                          const folderName =
+                                            emailFolders.folders.find(
+                                              (f: any) => f.id === folderId,
+                                            )?.name || "תיקייה";
+                                          toast({
+                                            title: `תויג בתיקייה "${folderName}"`,
+                                          });
                                         }}
                                         onArchive={archiveEmail}
                                         onDelete={deleteEmail}

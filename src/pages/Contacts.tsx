@@ -188,7 +188,7 @@ export default function Contacts() {
     if (!isGoogleConnected) return;
     setIsLoadingSenders(true);
     try {
-      const token = await connectGoogle(['gmail']);
+      const token = await connectGoogle(["gmail"]);
       if (!token) {
         setIsLoadingSenders(false);
         return;
@@ -196,21 +196,21 @@ export default function Contacts() {
       // Fetch up to 100 messages to extract senders
       const listResp = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       if (!listResp.ok) {
         const errData = await listResp.json().catch(() => ({}));
         toast({
-          title: 'שגיאה בטעינת הודעות Gmail',
+          title: "שגיאה בטעינת הודעות Gmail",
           description: errData?.error?.message || `HTTP ${listResp.status}`,
-          variant: 'destructive',
+          variant: "destructive",
         });
         setIsLoadingSenders(false);
         return;
       }
       const listData = await listResp.json();
       if (!listData.messages || listData.messages.length === 0) {
-        toast({ title: 'לא נמצאו הודעות ב-Gmail' });
+        toast({ title: "לא נמצאו הודעות ב-Gmail" });
         setIsLoadingSenders(false);
         return;
       }
@@ -223,45 +223,48 @@ export default function Contacts() {
           batch.map(async (m: any) => {
             const r = await fetch(
               `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
-              { headers: { Authorization: `Bearer ${token}` } }
+              { headers: { Authorization: `Bearer ${token}` } },
             );
             return r.json();
-          })
+          }),
         );
         allMsgs.push(...results);
         if (i + BATCH_SIZE < listData.messages.length) {
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise((r) => setTimeout(r, 100));
         }
       }
       const formatted: GmailMessage[] = allMsgs.map((msg: any) => {
         const headers = msg.payload?.headers || [];
-        const getH = (n: string) => headers.find((h: any) => h.name === n)?.value || '';
-        const fromH = getH('From');
+        const getH = (n: string) =>
+          headers.find((h: any) => h.name === n)?.value || "";
+        const fromH = getH("From");
         const fromM = fromH.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
         return {
           id: msg.id,
           threadId: msg.threadId,
-          subject: getH('Subject'),
+          subject: getH("Subject"),
           from: fromM?.[2] || fromH,
           fromName: fromM?.[1] || fromM?.[2] || fromH,
-          to: getH('To').split(',').map((t: string) => t.trim()),
-          date: getH('Date'),
-          snippet: msg.snippet || '',
-          isRead: !msg.labelIds?.includes('UNREAD'),
-          isStarred: msg.labelIds?.includes('STARRED'),
+          to: getH("To")
+            .split(",")
+            .map((t: string) => t.trim()),
+          date: getH("Date"),
+          snippet: msg.snippet || "",
+          isRead: !msg.labelIds?.includes("UNREAD"),
+          isStarred: msg.labelIds?.includes("STARRED"),
           labels: msg.labelIds || [],
         };
       });
       setDirectMessages(formatted);
       // Also cache them for later
-      gmailCache.cacheMessages(formatted, 'inbox');
+      gmailCache.cacheMessages(formatted, "inbox");
       toast({ title: `נטענו ${formatted.length} הודעות מ-Gmail` });
     } catch (err: any) {
-      console.error('Error fetching Gmail messages:', err);
+      console.error("Error fetching Gmail messages:", err);
       toast({
-        title: 'שגיאה בטעינת Gmail',
+        title: "שגיאה בטעינת Gmail",
         description: err.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } finally {
       setIsLoadingSenders(false);
@@ -296,10 +299,7 @@ export default function Contacts() {
   );
 
   // Extract unique email senders from all messages
-  const senders = useMemo(
-    () => extractSenders(allMessages),
-    [allMessages],
-  );
+  const senders = useMemo(() => extractSenders(allMessages), [allMessages]);
 
   const linkedSenders = useMemo(() => {
     return senders.map((sender) => {
@@ -365,7 +365,7 @@ export default function Contacts() {
   }, [fetchContacts]);
 
   const handleConnectGoogle = useCallback(async () => {
-    const token = await connectGoogle(['contacts', 'gmail']);
+    const token = await connectGoogle(["contacts", "gmail"]);
     if (token) {
       // Auto-fetch contacts after connecting
       fetchContacts(500).then(() => setGoogleFetched(true));
@@ -409,14 +409,12 @@ export default function Contacts() {
           setIsLinking(false);
           return;
         }
-        const { error } = await supabase
-          .from("clients")
-          .insert({
-            name: sender.name,
-            email: sender.email,
-            source: "gmail_sender",
-            status: "active",
-          });
+        const { error } = await supabase.from("clients").insert({
+          name: sender.name,
+          email: sender.email,
+          source: "gmail_sender",
+          status: "active",
+        });
         if (error) throw error;
         toast({ title: "איש קשר נוסף כלקוח", description: sender.name });
         refetchClients();
@@ -447,14 +445,12 @@ export default function Contacts() {
           .eq("email", sender.email)
           .single();
         if (!existing) {
-          const { error } = await supabase
-            .from("clients")
-            .insert({
-              name: sender.name,
-              email: sender.email,
-              source: "gmail_sender",
-              status: "active",
-            });
+          const { error } = await supabase.from("clients").insert({
+            name: sender.name,
+            email: sender.email,
+            source: "gmail_sender",
+            status: "active",
+          });
           if (!error) addedCount++;
         }
       } catch {
@@ -949,8 +945,12 @@ export default function Contacts() {
                   {!isGoogleConnected && !isLoadingGoogle ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <WifiOff className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                      <p className="mb-3 font-medium text-foreground">לא מחובר ל-Google</p>
-                      <p className="text-xs mb-4">יש להתחבר לחשבון Google כדי לטעון אנשי קשר</p>
+                      <p className="mb-3 font-medium text-foreground">
+                        לא מחובר ל-Google
+                      </p>
+                      <p className="text-xs mb-4">
+                        יש להתחבר לחשבון Google כדי לטעון אנשי קשר
+                      </p>
                       <Button
                         onClick={handleConnectGoogle}
                         disabled={isGoogleConnecting}
