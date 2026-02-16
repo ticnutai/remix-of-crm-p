@@ -22,6 +22,7 @@ import {
   Send,
   Bell,
   FileText,
+  Archive,
   Trash2,
   PenSquare,
   Settings,
@@ -200,6 +201,17 @@ export function GmailSidebar({
             >
               <Trash2 className="h-4 w-4 ml-2 text-red-500" />
               אשפה
+            </Button>
+            <Button
+              variant={activeTab === "archive" ? "secondary" : "ghost"}
+              className="w-full justify-start text-right"
+              onClick={() => {
+                onSetActiveTab("archive");
+                onSetFilterByLabel(null);
+              }}
+            >
+              <Archive className="h-4 w-4 ml-2 text-blue-500" />
+              ארכיון
             </Button>
           </nav>
 

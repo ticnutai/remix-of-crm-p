@@ -423,8 +423,20 @@ export default function Gmail() {
         if (!dragRef.current) return;
         const dx = ev.clientX - dragRef.current.startX;
         const dy = ev.clientY - dragRef.current.startY;
-        const newX = Math.max(4, Math.min(dragRef.current.origX + dx, window.innerWidth - previewRect.w - 4));
-        const newY = Math.max(56, Math.min(dragRef.current.origY + dy, window.innerHeight - previewRect.h - 4));
+        const newX = Math.max(
+          4,
+          Math.min(
+            dragRef.current.origX + dx,
+            window.innerWidth - previewRect.w - 4,
+          ),
+        );
+        const newY = Math.max(
+          56,
+          Math.min(
+            dragRef.current.origY + dy,
+            window.innerHeight - previewRect.h - 4,
+          ),
+        );
         const newRect = {
           ...previewRect,
           x: newX,
@@ -468,10 +480,20 @@ export default function Gmail() {
         const dy = ev.clientY - r.startY;
         let { x, y, w, h } = { x: r.origX, y: r.origY, w: r.origW, h: r.origH };
 
-        if (r.dir.includes('r')) { w = Math.max(300, r.origW + dx); }
-        if (r.dir.includes('l')) { w = Math.max(300, r.origW - dx); x = r.origX + (r.origW - Math.max(300, r.origW - dx)); }
-        if (r.dir.includes('b')) { h = Math.max(250, r.origH + dy); }
-        if (r.dir.includes('t')) { h = Math.max(250, r.origH - dy); y = r.origY + (r.origH - Math.max(250, r.origH - dy)); }
+        if (r.dir.includes("r")) {
+          w = Math.max(300, r.origW + dx);
+        }
+        if (r.dir.includes("l")) {
+          w = Math.max(300, r.origW - dx);
+          x = r.origX + (r.origW - Math.max(300, r.origW - dx));
+        }
+        if (r.dir.includes("b")) {
+          h = Math.max(250, r.origH + dy);
+        }
+        if (r.dir.includes("t")) {
+          h = Math.max(250, r.origH - dy);
+          y = r.origY + (r.origH - Math.max(250, r.origH - dy));
+        }
 
         w = Math.min(w, window.innerWidth - 40);
         h = Math.min(h, window.innerHeight - 56);
@@ -1017,6 +1039,14 @@ export default function Gmail() {
       result = result.filter((msg) => msg.labels?.includes("SPAM"));
     } else if (activeTab === "trash") {
       result = result.filter((msg) => msg.labels?.includes("TRASH"));
+    } else if (activeTab === "archive") {
+      result = result.filter(
+        (msg) =>
+          !msg.labels?.includes("INBOX") &&
+          !msg.labels?.includes("TRASH") &&
+          !msg.labels?.includes("SPAM") &&
+          !msg.labels?.includes("DRAFT"),
+      );
     }
 
     // Filter by folder
@@ -2860,8 +2890,14 @@ export default function Gmail() {
           <div
             className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
             style={{
-              top: Math.max(56, Math.min(previewRect.y, window.innerHeight - previewRect.h - 4)),
-              left: Math.max(4, Math.min(previewRect.x, window.innerWidth - previewRect.w - 4)),
+              top: Math.max(
+                56,
+                Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
+              ),
+              left: Math.max(
+                4,
+                Math.min(previewRect.x, window.innerWidth - previewRect.w - 4),
+              ),
               width: Math.min(previewRect.w, window.innerWidth - 8),
               height: Math.min(previewRect.h, window.innerHeight - 56),
               border: "3px solid #d4a843",
@@ -2990,15 +3026,59 @@ export default function Gmail() {
 
             {/* Resize handles - all edges and corners */}
             {/* Edges */}
-            <div className="absolute top-0 left-3 right-3 h-[5px] cursor-n-resize" onMouseDown={(e) => onEdgeResizeStart(e, 't')} />
-            <div className="absolute bottom-0 left-3 right-3 h-[5px] cursor-s-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'b')} />
-            <div className="absolute left-0 top-3 bottom-3 w-[5px] cursor-w-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'l')} />
-            <div className="absolute right-0 top-3 bottom-3 w-[5px] cursor-e-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'r')} />
+            <div
+              className="absolute top-0 left-3 right-3 h-[5px] cursor-n-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "t")}
+            />
+            <div
+              className="absolute bottom-0 left-3 right-3 h-[5px] cursor-s-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "b")}
+            />
+            <div
+              className="absolute left-0 top-3 bottom-3 w-[5px] cursor-w-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "l")}
+            />
+            <div
+              className="absolute right-0 top-3 bottom-3 w-[5px] cursor-e-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "r")}
+            />
             {/* Corners */}
-            <div className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'tl')} style={{ borderLeft: '3px solid #d4a843', borderTop: '3px solid #d4a843', borderTopLeftRadius: '6px' }} />
-            <div className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'tr')} style={{ borderRight: '3px solid #d4a843', borderTop: '3px solid #d4a843', borderTopRightRadius: '6px' }} />
-            <div className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'bl')} style={{ borderLeft: '3px solid #d4a843', borderBottom: '3px solid #d4a843', borderBottomLeftRadius: '6px' }} />
-            <div className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'br')} style={{ borderRight: '3px solid #d4a843', borderBottom: '3px solid #d4a843', borderBottomRightRadius: '6px' }} />
+            <div
+              className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
+              style={{
+                borderLeft: "3px solid #d4a843",
+                borderTop: "3px solid #d4a843",
+                borderTopLeftRadius: "6px",
+              }}
+            />
+            <div
+              className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
+              style={{
+                borderRight: "3px solid #d4a843",
+                borderTop: "3px solid #d4a843",
+                borderTopRightRadius: "6px",
+              }}
+            />
+            <div
+              className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
+              style={{
+                borderLeft: "3px solid #d4a843",
+                borderBottom: "3px solid #d4a843",
+                borderBottomLeftRadius: "6px",
+              }}
+            />
+            <div
+              className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize"
+              onMouseDown={(e) => onEdgeResizeStart(e, "br")}
+              style={{
+                borderRight: "3px solid #d4a843",
+                borderBottom: "3px solid #d4a843",
+                borderBottomRightRadius: "6px",
+              }}
+            />
           </div>
         )}
 
