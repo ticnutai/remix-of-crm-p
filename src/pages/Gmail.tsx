@@ -514,6 +514,7 @@ export default function Gmail() {
 
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
+      console.warn('📧 ⬛ [HOVER PREVIEW TRIGGERED] messageId:', messageId, 'y:', y);
       setHoverPreviewId(messageId);
       // Position: use stored rect position (y), but set initial y near the hovered subject
       const stored = getStoredPreviewRect();
@@ -2931,23 +2932,26 @@ export default function Gmail() {
             ref={(el) => {
               if (el) {
                 const body = el.querySelector('[data-preview-body]') as HTMLElement;
-                const content = body?.firstElementChild as HTMLElement;
-                console.log('📧 [Preview DEBUG] Panel:', {
-                  panelH: el.offsetHeight,
-                  bodyH: body?.offsetHeight,
-                  bodyScrollH: body?.scrollHeight,
-                  bodyClientH: body?.clientHeight,
-                  contentH: content?.offsetHeight,
-                  hasHtml: !!hoverPreviewHtml,
-                  htmlLen: hoverPreviewHtml?.length,
-                  loading: hoverPreviewLoading,
-                  computedBodyOverflow: body ? getComputedStyle(body).overflowY : 'N/A',
-                  computedBodyH: body ? getComputedStyle(body).height : 'N/A',
-                });
+                if (body) {
+                  console.warn('📧 ⬛ [PREVIEW PANEL RENDERED]', {
+                    panelH: el.offsetHeight,
+                    bodyH: body.offsetHeight,
+                    bodyScrollH: body.scrollHeight,
+                    bodyClientH: body.clientHeight,
+                    canScroll: body.scrollHeight > body.clientHeight,
+                    hasHtml: !!hoverPreviewHtml,
+                    htmlLen: hoverPreviewHtml?.length || 0,
+                    loading: hoverPreviewLoading,
+                    overflowY: getComputedStyle(body).overflowY,
+                    bodyComputedH: getComputedStyle(body).height,
+                  });
+                }
               }
             }}
-            className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
+            className="fixed z-[401] rounded-lg bg-background shadow-2xl"
             style={{
+              display: "flex",
+              flexDirection: "column",
               top: Math.max(
                 56,
                 Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
@@ -2960,17 +2964,16 @@ export default function Gmail() {
               height: Math.min(previewRect.h, window.innerHeight - 56),
               border: "3px solid #d4a843",
               boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)",
+              overflow: "hidden",
             }}
             dir="rtl"
             onMouseEnter={() => {
-              // Cancel any pending close
               if (previewLeaveTimerRef.current) {
                 clearTimeout(previewLeaveTimerRef.current);
                 previewLeaveTimerRef.current = null;
               }
             }}
             onMouseLeave={() => {
-              // Delay close so scrollbar interaction doesn't kill the panel
               if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
               previewLeaveTimerRef.current = setTimeout(() => {
                 setShowPreviewDialog(false);
@@ -2980,8 +2983,7 @@ export default function Gmail() {
           >
             {/* Draggable Header */}
             <div
-              className="p-3 flex-shrink-0 cursor-move select-none"
-              style={{ borderBottom: "2px solid #d4a843" }}
+              style={{ flexShrink: 0, borderBottom: "2px solid #d4a843", padding: "12px", cursor: "move", userSelect: "none" }}
               onMouseDown={onDragStart}
             >
               <div className="flex items-start justify-between">
@@ -3012,9 +3014,14 @@ export default function Gmail() {
             {/* Body - scrollable content area */}
             <div
               data-preview-body
-              className="flex-1 min-h-0 p-4"
               dir="rtl"
-              style={{ overflowY: "scroll", overflowX: "hidden" }}
+              style={{
+                flex: "1 1 0%",
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                padding: "16px",
+              }}
             >
               {hoverPreviewLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -3039,9 +3046,9 @@ export default function Gmail() {
 
             {/* Footer actions */}
             <div
-              className="flex items-center gap-2 p-2 flex-shrink-0"
+              className="flex items-center gap-2 p-2"
               dir="rtl"
-              style={{ borderTop: "2px solid #d4a843" }}
+              style={{ flexShrink: 0, borderTop: "2px solid #d4a843" }}
             >
               <Button
                 size="sm"
