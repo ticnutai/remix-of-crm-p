@@ -397,7 +397,6 @@ export default function Gmail() {
     origH: number;
     dir: string;
   } | null>(null);
-  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Save preview position/size to localStorage
   const savePreviewRect = useCallback((rect: typeof previewRect) => {
@@ -514,7 +513,6 @@ export default function Gmail() {
 
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
-      console.warn('📧 ⬛ [HOVER PREVIEW TRIGGERED] messageId:', messageId, 'y:', y);
       setHoverPreviewId(messageId);
       // Position: use stored rect position (y), but set initial y near the hovered subject
       const stored = getStoredPreviewRect();
@@ -538,7 +536,6 @@ export default function Gmail() {
       // Check persistent cache first (IndexedDB + memory)
       const cachedBody = await emailBodyCache.getCachedBody(messageId);
       if (cachedBody) {
-        console.log('📧 [Preview DEBUG] Got cached body, length:', cachedBody.length, 'first100:', cachedBody.substring(0, 100));
         setHoverPreviewHtml(cachedBody);
         return;
       }
@@ -546,22 +543,18 @@ export default function Gmail() {
       setHoverPreviewLoading(true);
       try {
         const fullMsg = await getFullMessage(messageId);
-        console.log('📧 [Preview DEBUG] fullMsg received:', !!fullMsg, 'has payload:', !!fullMsg?.payload);
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          console.log('📧 [Preview DEBUG] rawHtml length:', rawHtml?.length, 'first100:', rawHtml?.substring(0, 100));
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
-          console.log('📧 [Preview DEBUG] resolved html length:', html?.length);
           setHoverPreviewHtml(html);
           if (html) {
             await emailBodyCache.cacheBody(messageId, html);
           }
         } else {
-          console.log('📧 [Preview DEBUG] No payload in fullMsg');
           setHoverPreviewHtml(null);
         }
       } catch (e) {
@@ -2929,10 +2922,8 @@ export default function Gmail() {
         {/* Hover Preview Panel - draggable, resizable, closes on mouse leave */}
         {showPreviewDialog && previewMessage && (
           <div
-            className="fixed z-[401] rounded-lg bg-background shadow-2xl"
+            className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
             style={{
-              display: "flex",
-              flexDirection: "column",
               top: Math.max(
                 56,
                 Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
@@ -2948,23 +2939,12 @@ export default function Gmail() {
               overflow: "hidden",
             }}
             dir="rtl"
-            onMouseEnter={() => {
-              if (previewLeaveTimerRef.current) {
-                clearTimeout(previewLeaveTimerRef.current);
-                previewLeaveTimerRef.current = null;
-              }
-            }}
-            onMouseLeave={() => {
-              if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
-              previewLeaveTimerRef.current = setTimeout(() => {
-                setShowPreviewDialog(false);
-                previewLeaveTimerRef.current = null;
-              }, 400);
-            }}
+            onMouseLeave={() => setShowPreviewDialog(false)}
           >
             {/* Draggable Header */}
             <div
-              style={{ flexShrink: 0, borderBottom: "2px solid #d4a843", padding: "12px", cursor: "move", userSelect: "none" }}
+              className="p-3 flex-shrink-0 cursor-move select-none"
+              style={{ borderBottom: "2px solid #d4a843" }}
               onMouseDown={onDragStart}
             >
               <div className="flex items-start justify-between">
@@ -2992,43 +2972,39 @@ export default function Gmail() {
               </div>
             </div>
 
-            {/* Body - scrollable content area using ScrollArea */}
-            <ScrollArea
-              data-preview-body
+            {/* Body - vertical scroll only */}
+            <div
+              className="flex-1 p-4"
               dir="rtl"
-              className="flex-1 min-h-0"
-              style={{ direction: "rtl" }}
+              style={{ overflowY: "auto", overflowX: "hidden" }}
             >
-              <div className="p-4">
-                {hoverPreviewLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
-                  </div>
-                ) : hoverPreviewHtml ? (
-                  <div
-                    className="prose prose-sm max-w-none dark:prose-invert"
-                    style={{ overflowX: "hidden", wordBreak: "break-word" }}
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                        ALLOW_UNKNOWN_PROTOCOLS: true,
-                      }),
-                    }}
-                  />
-                ) : (
-                  <p className="whitespace-pre-wrap text-muted-foreground">
-                    {previewMessage.snippet}
-                  </p>
-                )}
-              </div>
-            </ScrollArea>
+              {hoverPreviewLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : hoverPreviewHtml ? (
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  style={{ overflowX: "hidden", wordBreak: "break-word" }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                      ALLOW_UNKNOWN_PROTOCOLS: true,
+                    }),
+                  }}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap text-muted-foreground">
+                  {previewMessage.snippet}
+                </p>
+              )}
+            </div>
 
             {/* Footer actions */}
             <div
-              className="flex items-center gap-2 p-2"
+              className="flex items-center gap-2 p-2 flex-shrink-0"
               dir="rtl"
-              style={{ flexShrink: 0, borderTop: "2px solid #d4a843" }}
+              style={{ borderTop: "2px solid #d4a843" }}
             >
-              <span className="text-[9px] text-muted-foreground opacity-40 ml-auto">v7</span>
               <Button
                 size="sm"
                 variant="outline"

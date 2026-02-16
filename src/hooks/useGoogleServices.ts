@@ -306,18 +306,9 @@ export function useGoogleServices() {
               // Save token to localStorage (with email for future silent re-auth)
               const expiresIn = response.expires_in || 3600; // Default 1 hour
               const grantedScopes = response.scope || "";
-              console.log(
-                "[GoogleServices] OAuth granted scopes:",
-                grantedScopes,
-              );
-              console.log(
-                "[GoogleServices] Has contacts.readonly:",
-                grantedScopes.includes("contacts.readonly"),
-              );
-              console.log(
-                "[GoogleServices] Has gmail.readonly:",
-                grantedScopes.includes("gmail.readonly"),
-              );
+              console.log('[GoogleServices] OAuth granted scopes:', grantedScopes);
+              console.log('[GoogleServices] Has contacts.readonly:', grantedScopes.includes('contacts.readonly'));
+              console.log('[GoogleServices] Has gmail.readonly:', grantedScopes.includes('gmail.readonly'));
               saveTokenToStorage(
                 response.access_token,
                 expiresIn,
