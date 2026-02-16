@@ -45,6 +45,7 @@ const TimeAnalytics = lazy(() => import("./pages/TimeAnalytics"));
 const Quotes = lazy(() => import("./pages/Quotes"));
 // Contracts moved into Quotes page as a tab
 const Gmail = lazy(() => import("./pages/Gmail"));
+const Contacts = lazy(() => import("./pages/Contacts"));
 const Files = lazy(() => import("./pages/Files"));
 const AdvancedFiles = lazy(() => import("./pages/AdvancedFiles"));
 const EmailAnalytics = lazy(() => import("./pages/EmailAnalytics"));
@@ -134,6 +135,7 @@ const App = () => {
                           <Route path="/quotes" element={<Quotes />} />
                           {/* Contracts integrated into Quotes page */}
                           <Route path="/gmail" element={<Gmail />} />
+                          <Route path="/contacts" element={<Contacts />} />
                           <Route path="/files" element={<Files />} />
                           {/* Redirect old advanced-files to unified files page */}
                           <Route path="/advanced-files" element={<Files />} />

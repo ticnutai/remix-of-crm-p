@@ -227,7 +227,10 @@ export function GmailSidebar({
           <Separator className="my-4" />
 
           {/* Labels Section */}
-          <Collapsible open={isLabelsExpanded} onOpenChange={setIsLabelsExpanded}>
+          <Collapsible
+            open={isLabelsExpanded}
+            onOpenChange={setIsLabelsExpanded}
+          >
             <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Tag className="h-3.5 w-3.5" />
@@ -286,11 +289,12 @@ export function GmailSidebar({
           <Separator className="my-4" />
 
           {/* Priority Filter */}
-          <Collapsible open={isPriorityExpanded} onOpenChange={setIsPriorityExpanded}>
+          <Collapsible
+            open={isPriorityExpanded}
+            onOpenChange={setIsPriorityExpanded}
+          >
             <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
-              <span className="flex items-center gap-2">
-                סינון לפי עדיפות
-              </span>
+              <span className="flex items-center gap-2">סינון לפי עדיפות</span>
               {isPriorityExpanded ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
@@ -299,32 +303,32 @@ export function GmailSidebar({
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1 mt-1">
               {Object.entries(PRIORITY_CONFIG)
-              .filter(([key]) => key !== "none")
-              .map(([key, config]) => {
-                const count = Object.values(emailPriority).filter(
-                  (p) => p === key,
-                ).length;
-                return (
-                  <Button
-                    key={key}
-                    variant={filterByPriority === key ? "secondary" : "ghost"}
-                    className="w-full justify-start text-right h-8"
-                    onClick={() =>
-                      onSetFilterByPriority(
-                        filterByPriority === key ? null : (key as Priority),
-                      )
-                    }
-                  >
-                    {config.icon}
-                    <span className="mr-2">{config.label}</span>
-                    {count > 0 && (
-                      <span className="mr-auto text-xs text-muted-foreground">
-                        {count}
-                      </span>
-                    )}
-                  </Button>
-                );
-              })}
+                .filter(([key]) => key !== "none")
+                .map(([key, config]) => {
+                  const count = Object.values(emailPriority).filter(
+                    (p) => p === key,
+                  ).length;
+                  return (
+                    <Button
+                      key={key}
+                      variant={filterByPriority === key ? "secondary" : "ghost"}
+                      className="w-full justify-start text-right h-8"
+                      onClick={() =>
+                        onSetFilterByPriority(
+                          filterByPriority === key ? null : (key as Priority),
+                        )
+                      }
+                    >
+                      {config.icon}
+                      <span className="mr-2">{config.label}</span>
+                      {count > 0 && (
+                        <span className="mr-auto text-xs text-muted-foreground">
+                          {count}
+                        </span>
+                      )}
+                    </Button>
+                  );
+                })}
             </CollapsibleContent>
           </Collapsible>
 
@@ -332,7 +336,10 @@ export function GmailSidebar({
           {clients.length > 0 && (
             <>
               <Separator className="my-4" />
-              <Collapsible open={isClientsExpanded} onOpenChange={setIsClientsExpanded}>
+              <Collapsible
+                open={isClientsExpanded}
+                onOpenChange={setIsClientsExpanded}
+              >
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
                   <span className="flex items-center gap-2">
                     <Building2 className="h-3.5 w-3.5" />
@@ -373,56 +380,56 @@ export function GmailSidebar({
                   </div>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 mt-1">
-                <ScrollArea className="h-32">
-                  {clients.slice(0, 10).map((client) => {
-                    const count = messages.filter((msg) => {
-                      const c = getClientForMessage(msg);
-                      return c && c.id === client.id;
-                    }).length;
-                    return (
-                      <Button
-                        key={client.id}
-                        variant={
-                          filterByClient === client.id ? "secondary" : "ghost"
-                        }
-                        className="w-full justify-start text-right h-8"
-                        onClick={() =>
-                          onSetFilterByClient(
-                            filterByClient === client.id ? null : client.id,
-                          )
-                        }
-                      >
-                        <Building2 className="h-4 w-4 text-blue-500" />
-                        <span className="mr-2 truncate">{client.name}</span>
-                        {count > 0 && (
-                          <span className="mr-auto text-xs text-muted-foreground">
-                            {count}
-                          </span>
-                        )}
-                      </Button>
-                    );
-                  })}
-                </ScrollArea>
+                  <ScrollArea className="h-32">
+                    {clients.slice(0, 10).map((client) => {
+                      const count = messages.filter((msg) => {
+                        const c = getClientForMessage(msg);
+                        return c && c.id === client.id;
+                      }).length;
+                      return (
+                        <Button
+                          key={client.id}
+                          variant={
+                            filterByClient === client.id ? "secondary" : "ghost"
+                          }
+                          className="w-full justify-start text-right h-8"
+                          onClick={() =>
+                            onSetFilterByClient(
+                              filterByClient === client.id ? null : client.id,
+                            )
+                          }
+                        >
+                          <Building2 className="h-4 w-4 text-blue-500" />
+                          <span className="mr-2 truncate">{client.name}</span>
+                          {count > 0 && (
+                            <span className="mr-auto text-xs text-muted-foreground">
+                              {count}
+                            </span>
+                          )}
+                        </Button>
+                      );
+                    })}
+                  </ScrollArea>
 
-                {/* Button to open client emails dialog */}
-                <Button
-                  variant="outline"
-                  className="w-full mt-2 text-sm"
-                  onClick={onOpenClientEmails}
-                >
-                  <Users className="h-4 w-4 ml-2" />
-                  זיהוי מיילים לפי לקוחות
-                </Button>
+                  {/* Button to open client emails dialog */}
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2 text-sm"
+                    onClick={onOpenClientEmails}
+                  >
+                    <Users className="h-4 w-4 ml-2" />
+                    זיהוי מיילים לפי לקוחות
+                  </Button>
 
-                {/* Auto-classify button */}
-                <Button
-                  variant="outline"
-                  className="w-full mt-1 text-sm"
-                  onClick={onBatchAutoClassify}
-                >
-                  <Sparkles className="h-4 w-4 ml-2" />
-                  סיווג אוטומטי לתיקיות
-                </Button>
+                  {/* Auto-classify button */}
+                  <Button
+                    variant="outline"
+                    className="w-full mt-1 text-sm"
+                    onClick={onBatchAutoClassify}
+                  >
+                    <Sparkles className="h-4 w-4 ml-2" />
+                    סיווג אוטומטי לתיקיות
+                  </Button>
                 </CollapsibleContent>
               </Collapsible>
             </>

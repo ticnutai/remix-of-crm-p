@@ -60,6 +60,7 @@ const mainNavItems = [
   { title: "דוחות", url: "/reports", icon: FileSpreadsheet },
   { title: "לוח שנה", url: "/calendar", icon: Calendar },
   { title: "Gmail", url: "/gmail", icon: Mail },
+  { title: "אנשי קשר", url: "/contacts", icon: Users },
   { title: "קבצים", url: "/files", icon: HardDrive },
   { title: "כלים חכמים", url: "/smart-tools", icon: Bot },
 ];
