@@ -42,8 +42,13 @@ import {
   Check,
   Sparkles,
   Filter,
+  LogIn,
+  LogOut,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useGoogleContacts, GoogleContact } from "@/hooks/useGoogleContacts";
+import { useGoogleServices } from "@/hooks/useGoogleServices";
 import { useClients, Client } from "@/hooks/useClients";
 import type { GmailMessage } from "@/hooks/useGmailIntegration";
 import { useGmailCache } from "@/hooks/useGmailCache";
@@ -157,6 +162,12 @@ export default function Contacts() {
     searchContacts,
   } = useGoogleContacts();
   const {
+    isConnected: isGoogleConnected,
+    isLoading: isGoogleConnecting,
+    getAccessToken: connectGoogle,
+    disconnect: disconnectGoogle,
+  } = useGoogleServices();
+  const {
     clients,
     loading: isLoadingClients,
     refetch: refetchClients,
@@ -258,6 +269,10 @@ export default function Contacts() {
     await fetchContacts(500);
     setGoogleFetched(true);
   }, [fetchContacts]);
+
+  const handleConnectGoogle = useCallback(async () => {
+    await connectGoogle(['contacts', 'gmail']);
+  }, [connectGoogle]);
 
   const handleImportSelected = useCallback(async () => {
     const toImport = googleContacts.filter((c) =>
@@ -489,6 +504,39 @@ export default function Contacts() {
                 ייבוא, קישור וניהול אנשי קשר מ-Gmail, Google ולקוחות קיימים
               </p>
             </div>
+          </div>
+          {/* Google Connection Status */}
+          <div className="flex items-center gap-2">
+            {isGoogleConnected ? (
+              <>
+                <Badge className="bg-green-100 text-green-700 border-green-300 gap-1">
+                  <Wifi className="h-3 w-3" />
+                  מחובר ל-Google
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={disconnectGoogle}
+                  className="text-xs gap-1"
+                >
+                  <LogOut className="h-3 w-3" />
+                  נתק
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={handleConnectGoogle}
+                disabled={isGoogleConnecting}
+                className="bg-blue-600 hover:bg-blue-700 gap-2"
+              >
+                {isGoogleConnecting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogIn className="h-4 w-4" />
+                )}
+                התחבר ל-Google
+              </Button>
+            )}
           </div>
         </div>
 
@@ -781,7 +829,25 @@ export default function Contacts() {
                   )}
                 </div>
                 <div className="px-6 pb-4 space-y-1">
-                  {!googleFetched && !isLoadingGoogle ? (
+                  {!isGoogleConnected && !isLoadingGoogle ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <WifiOff className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                      <p className="mb-3 font-medium text-foreground">לא מחובר ל-Google</p>
+                      <p className="text-xs mb-4">יש להתחבר לחשבון Google כדי לטעון אנשי קשר</p>
+                      <Button
+                        onClick={handleConnectGoogle}
+                        disabled={isGoogleConnecting}
+                        className="bg-blue-600 hover:bg-blue-700 gap-2"
+                      >
+                        {isGoogleConnecting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <LogIn className="h-4 w-4" />
+                        )}
+                        התחבר ל-Google
+                      </Button>
+                    </div>
+                  ) : !googleFetched && !isLoadingGoogle ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Globe className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p className="mb-2">לחץ כדי לטעון אנשי קשר מ-Google</p>
