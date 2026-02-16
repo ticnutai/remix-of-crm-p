@@ -92,7 +92,7 @@ interface EmailListItemProps {
   formatDate: (dateStr: string) => string;
 }
 
-export function EmailListItem({
+export const EmailListItem = React.memo(function EmailListItemInner({
   message,
   index,
   isSelected,
@@ -514,4 +514,4 @@ export function EmailListItem({
       </div>
     </div>
   );
-}
+});
