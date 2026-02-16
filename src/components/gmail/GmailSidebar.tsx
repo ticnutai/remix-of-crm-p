@@ -192,6 +192,15 @@ export function GmailSidebar({
             </Button>
           </nav>
 
+          {/* Email Folders Panel - RIGHT AFTER NAVIGATION */}
+          <Separator className="my-4" />
+          <EmailFoldersPanel
+            selectedFolderId={selectedFolderId}
+            onSelectFolder={onSelectFolder}
+            currentEmail={selectedEmail}
+            onAddEmailToFolder={onAddEmailToFolder}
+          />
+
           <Separator className="my-4" />
 
           {/* Labels Section */}
@@ -360,15 +369,6 @@ export function GmailSidebar({
               </div>
             </>
           )}
-
-          {/* Email Folders Panel */}
-          <Separator className="my-4" />
-          <EmailFoldersPanel
-            selectedFolderId={selectedFolderId}
-            onSelectFolder={onSelectFolder}
-            currentEmail={selectedEmail}
-            onAddEmailToFolder={onAddEmailToFolder}
-          />
         </CardContent>
       </ScrollArea>
     </Card>
