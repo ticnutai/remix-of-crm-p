@@ -1,17 +1,9 @@
 // EmailListItem - Single email row in the email list
-import React, { useRef, useState, useEffect, useCallback } from "react";
-import DOMPurify from "dompurify";
+import React, { useRef, useEffect, useCallback } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,8 +96,6 @@ interface EmailListItemProps {
   formatDate: (dateStr: string) => string;
   // Hover preview
   onHoverPreview?: (messageId: string) => void;
-  hoverPreviewHtml?: string | null;
-  hoverPreviewLoading?: boolean;
 }
 
 export const EmailListItem = React.memo(function EmailListItemInner({
@@ -144,23 +134,18 @@ export const EmailListItem = React.memo(function EmailListItemInner({
   onRefresh,
   formatDate,
   onHoverPreview,
-  hoverPreviewHtml,
-  hoverPreviewLoading,
 }: EmailListItemProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: message.id,
     data: { message },
   });
 
-  // Hover preview timer (1-second hover)
+  // Hover preview timer (1-second hover) - triggers callback in Gmail.tsx which shows the Dialog
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showPreviewPopup, setShowPreviewPopup] = useState(false);
-  const popupRef = useRef<HTMLDivElement>(null);
 
   const handleMouseEnter = useCallback(() => {
     hoverTimerRef.current = setTimeout(() => {
       console.log("📧 [HoverPreview] Timer fired for:", message.id, message.subject);
-      setShowPreviewPopup(true);
       onHoverPreview?.(message.id);
     }, 1000);
   }, [message.id, onHoverPreview]);
@@ -170,7 +155,6 @@ export const EmailListItem = React.memo(function EmailListItemInner({
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
-    // Don't close the popup on mouse leave - Dialog handles its own closing
   }, []);
 
   // Cleanup on unmount
@@ -596,103 +580,6 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         </div>
       </div>
 
-      {/* Hover Preview Dialog - proper modal */}
-      <Dialog open={showPreviewPopup} onOpenChange={setShowPreviewPopup}>
-        <DialogContent
-          className="max-w-[700px] w-[90vw] max-h-[70vh] p-0 overflow-hidden"
-          style={{
-            border: "3px solid #d4a843",
-            boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
-          }}
-          dir="rtl"
-        >
-          <DialogHeader
-            className="p-4"
-            style={{ borderBottom: "2px solid #d4a843" }}
-          >
-            <DialogTitle className="font-bold text-lg truncate text-right">
-              {message.subject || "(ללא נושא)"}
-            </DialogTitle>
-            <DialogDescription className="text-right">
-              <span className="text-sm">
-                {message.fromName} &lt;{message.from}&gt;
-              </span>
-              <span className="text-xs block">
-                {formatDate(message.date)}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Body */}
-          <div
-            className="overflow-y-auto p-4"
-            dir="rtl"
-            style={{ maxHeight: "calc(70vh - 160px)" }}
-          >
-            {hoverPreviewLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-              </div>
-            ) : hoverPreviewHtml ? (
-              <div
-                className="prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                    ALLOW_UNKNOWN_PROTOCOLS: true,
-                  }),
-                }}
-              />
-            ) : (
-              <p className="whitespace-pre-wrap text-muted-foreground">
-                {message.snippet}
-              </p>
-            )}
-          </div>
-
-          {/* Footer actions */}
-          <div
-            className="flex items-center gap-2 p-3"
-            dir="rtl"
-            style={{ borderTop: "2px solid #d4a843" }}
-          >
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              onClick={() => {
-                setShowPreviewPopup(false);
-                onSelect();
-              }}
-            >
-              פתח מייל מלא
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              onClick={() => {
-                setShowPreviewPopup(false);
-                onReply(message);
-              }}
-            >
-              <Reply className="h-3.5 w-3.5 ml-1" />
-              השב
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              onClick={() => {
-                setShowPreviewPopup(false);
-                onForward(message);
-              }}
-            >
-              <Forward className="h-3.5 w-3.5 ml-1" />
-              העבר
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 });

@@ -348,15 +348,24 @@ export default function Gmail() {
     [getAttachment],
   );
 
-  // Hover preview state (3-second hover to show email body)
+  // Hover preview state
   const [hoverPreviewId, setHoverPreviewId] = useState<string | null>(null);
   const [hoverPreviewHtml, setHoverPreviewHtml] = useState<string | null>(null);
   const [hoverPreviewLoading, setHoverPreviewLoading] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState<GmailMessage | null>(null);
 
   const handleHoverPreview = useCallback(
     async (messageId: string) => {
       console.log("📧 [HoverPreview] handleHoverPreview called for:", messageId);
       setHoverPreviewId(messageId);
+      // Find the message and open the preview dialog
+      const msg = messages.find((m) => m.id === messageId);
+      if (msg) {
+        setPreviewMessage(msg);
+        setShowPreviewDialog(true);
+        console.log("📧 [HoverPreview] Opening dialog for:", msg.subject);
+      }
       // Check cache first
       const cachedBody = gmailCache.getCachedBody(messageId);
       if (cachedBody) {
@@ -2453,15 +2462,6 @@ export default function Gmail() {
                                         onRefresh={handleRefresh}
                                         formatDate={formatDate}
                                         onHoverPreview={handleHoverPreview}
-                                        hoverPreviewHtml={
-                                          hoverPreviewId === message.id
-                                            ? hoverPreviewHtml
-                                            : null
-                                        }
-                                        hoverPreviewLoading={
-                                          hoverPreviewId === message.id &&
-                                          hoverPreviewLoading
-                                        }
                                       />
                                     </div>
                                   );
@@ -2571,6 +2571,127 @@ export default function Gmail() {
             onCancel={cancelUndoSend}
           />
         )}
+
+        {/* Hover Preview Dialog - page level so it won't be affected by virtualizer */}
+        <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+          <DialogContent
+            className="max-w-[700px] w-[90vw] max-h-[80vh] p-0"
+            style={{
+              border: "3px solid #d4a843",
+              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
+            }}
+            dir="rtl"
+          >
+            <DialogHeader
+              className="p-4"
+              style={{ borderBottom: "2px solid #d4a843" }}
+            >
+              <DialogTitle className="font-bold text-lg truncate text-right">
+                {previewMessage?.subject || "(ללא נושא)"}
+              </DialogTitle>
+              <DialogDescription className="text-right">
+                <span className="text-sm">
+                  {previewMessage?.fromName} &lt;{previewMessage?.from}&gt;
+                </span>
+                <span className="text-xs block">
+                  {previewMessage ? formatDate(previewMessage.date) : ""}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Body - scrollable */}
+            <div
+              className="overflow-y-auto p-4"
+              dir="rtl"
+              style={{ maxHeight: "calc(80vh - 180px)" }}
+            >
+              {hoverPreviewLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : hoverPreviewHtml ? (
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                      ALLOW_UNKNOWN_PROTOCOLS: true,
+                    }),
+                  }}
+                />
+              ) : (
+                <p className="whitespace-pre-wrap text-muted-foreground">
+                  {previewMessage?.snippet}
+                </p>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div
+              className="flex items-center gap-2 p-3"
+              dir="rtl"
+              style={{ borderTop: "2px solid #d4a843" }}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#d4a843] hover:bg-[#f8f3e6]"
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  if (previewMessage) {
+                    setSelectedEmail(previewMessage);
+                    if (!previewMessage.isRead) {
+                      markAsRead(previewMessage.id, true).then(() => handleRefresh());
+                    }
+                  }
+                }}
+              >
+                פתח מייל מלא
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#d4a843] hover:bg-[#f8f3e6]"
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  if (previewMessage) {
+                    const replySubject = previewMessage.subject?.startsWith("Re:")
+                      ? previewMessage.subject
+                      : `Re: ${previewMessage.subject}`;
+                    setDraftData({
+                      to: previewMessage.from,
+                      subject: replySubject,
+                    });
+                    setIsComposeOpen(true);
+                  }
+                }}
+              >
+                <Reply className="h-3.5 w-3.5 ml-1" />
+                השב
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#d4a843] hover:bg-[#f8f3e6]"
+                onClick={() => {
+                  setShowPreviewDialog(false);
+                  if (previewMessage) {
+                    const fwdSubject = previewMessage.subject?.startsWith("Fwd:")
+                      ? previewMessage.subject
+                      : `Fwd: ${previewMessage.subject}`;
+                    setDraftData({
+                      to: "",
+                      subject: fwdSubject,
+                    });
+                    setIsComposeOpen(true);
+                  }
+                }}
+              >
+                <Forward className="h-3.5 w-3.5 ml-1" />
+                העבר
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Keyboard Shortcuts Help */}
         <KeyboardShortcutsDialog
