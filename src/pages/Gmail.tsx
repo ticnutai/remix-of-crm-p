@@ -2050,7 +2050,8 @@ export default function Gmail() {
 
                                   return (
                                     <div
-                                      key={message.id}
+                                      key={virtualRow.key}
+                                      data-index={virtualRow.index}
                                       style={{
                                         position: "absolute",
                                         top: 0,
@@ -2058,7 +2059,7 @@ export default function Gmail() {
                                         width: "100%",
                                         transform: `translateY(${virtualRow.start}px)`,
                                       }}
-                                      ref={virtualRow.measureRef}
+                                      ref={rowVirtualizer.measureElement}
                                     >
                                       {showDateSeparator && (
                                         <DateSeparator date={message.date} />

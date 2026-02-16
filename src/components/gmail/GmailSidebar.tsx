@@ -1,10 +1,15 @@
 // Gmail Sidebar - Navigation, labels, priority filters, client filters, folders
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +30,8 @@ import {
   Users,
   Sparkles,
   ShieldAlert,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
@@ -88,6 +95,10 @@ export function GmailSidebar({
   onAddEmailToFolder,
   getClientForMessage,
 }: GmailSidebarProps) {
+  const [isLabelsExpanded, setIsLabelsExpanded] = useState(true);
+  const [isPriorityExpanded, setIsPriorityExpanded] = useState(true);
+  const [isClientsExpanded, setIsClientsExpanded] = useState(true);
+
   return (
     <Card
       className="lg:col-span-3 overflow-hidden"
@@ -204,57 +215,78 @@ export function GmailSidebar({
           <Separator className="my-4" />
 
           {/* Labels Section */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                תוויות
-              </h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={onShowLabelManager}
-              >
-                <Settings className="h-3 w-3" />
-              </Button>
-            </div>
-            {customLabels.map((label) => {
-              const count = Object.values(emailLabels).filter((labels) =>
-                labels.includes(label.id),
-              ).length;
-              return (
+          <Collapsible open={isLabelsExpanded} onOpenChange={setIsLabelsExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5" />
+                תוויות ({customLabels.length})
+              </span>
+              <div className="flex items-center gap-1">
                 <Button
-                  key={label.id}
-                  variant={filterByLabel === label.id ? "secondary" : "ghost"}
-                  className="w-full justify-start text-right h-8"
-                  onClick={() =>
-                    onSetFilterByLabel(
-                      filterByLabel === label.id ? null : label.id,
-                    )
-                  }
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShowLabelManager();
+                  }}
                 >
-                  <div
-                    className={cn("h-3 w-3 rounded-full ml-2", label.color)}
-                  />
-                  {label.name}
-                  {count > 0 && (
-                    <span className="mr-auto text-xs text-muted-foreground">
-                      {count}
-                    </span>
-                  )}
+                  <Settings className="h-3 w-3" />
                 </Button>
-              );
-            })}
-          </div>
+                {isLabelsExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {customLabels.map((label) => {
+                const count = Object.values(emailLabels).filter((labels) =>
+                  labels.includes(label.id),
+                ).length;
+                return (
+                  <Button
+                    key={label.id}
+                    variant={filterByLabel === label.id ? "secondary" : "ghost"}
+                    className="w-full justify-start text-right h-8"
+                    onClick={() =>
+                      onSetFilterByLabel(
+                        filterByLabel === label.id ? null : label.id,
+                      )
+                    }
+                  >
+                    <div
+                      className={cn("h-3 w-3 rounded-full ml-2", label.color)}
+                    />
+                    {label.name}
+                    {count > 0 && (
+                      <span className="mr-auto text-xs text-muted-foreground">
+                        {count}
+                      </span>
+                    )}
+                  </Button>
+                );
+              })}
+            </CollapsibleContent>
+          </Collapsible>
 
           <Separator className="my-4" />
 
           {/* Priority Filter */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              סינון לפי עדיפות
-            </h3>
-            {Object.entries(PRIORITY_CONFIG)
+          <Collapsible open={isPriorityExpanded} onOpenChange={setIsPriorityExpanded}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
+              <span className="flex items-center gap-2">
+                סינון לפי עדיפות
+              </span>
+              {isPriorityExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-1 mt-1">
+              {Object.entries(PRIORITY_CONFIG)
               .filter(([key]) => key !== "none")
               .map(([key, config]) => {
                 const count = Object.values(emailPriority).filter(
@@ -281,41 +313,54 @@ export function GmailSidebar({
                   </Button>
                 );
               })}
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Clients Filter */}
           {clients.length > 0 && (
             <>
               <Separator className="my-4" />
-              <div className="space-y-2">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-muted-foreground">
+              <Collapsible open={isClientsExpanded} onOpenChange={setIsClientsExpanded}>
+                <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
+                  <span className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5" />
                     סינון לפי לקוח
-                  </h3>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => onSetAutoTagEnabled(!autoTagEnabled)}
-                        >
-                          {autoTagEnabled ? (
-                            <Tag className="h-3.5 w-3.5 text-green-500" />
-                          ) : (
-                            <Tag className="h-3.5 w-3.5 text-gray-400" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">
-                        {autoTagEnabled
-                          ? "תיוג אוטומטי פעיל"
-                          : "תיוג אוטומטי כבוי"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSetAutoTagEnabled(!autoTagEnabled);
+                            }}
+                          >
+                            {autoTagEnabled ? (
+                              <Tag className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <Tag className="h-3.5 w-3.5 text-gray-400" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {autoTagEnabled
+                            ? "תיוג אוטומטי פעיל"
+                            : "תיוג אוטומטי כבוי"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {isClientsExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 mt-1">
                 <ScrollArea className="h-32">
                   {clients.slice(0, 10).map((client) => {
                     const count = messages.filter((msg) => {
@@ -366,7 +411,8 @@ export function GmailSidebar({
                   <Sparkles className="h-4 w-4 ml-2" />
                   סיווג אוטומטי לתיקיות
                 </Button>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </>
           )}
         </CardContent>

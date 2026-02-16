@@ -196,10 +196,10 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           }
         }}
       >
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 overflow-hidden flex-nowrap">
           <span
             className={cn(
-              "font-medium truncate",
+              "font-medium truncate flex-shrink min-w-0",
               !message.isRead && "font-bold",
             )}
           >
@@ -210,7 +210,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           {threadCount > 1 && (
             <Badge
               variant="outline"
-              className="h-5 gap-1 text-xs cursor-pointer hover:bg-primary/10"
+              className="h-5 gap-1 text-xs cursor-pointer hover:bg-primary/10 flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenChat(message);
@@ -225,7 +225,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           {client && (
             <Badge
               variant="secondary"
-              className="h-5 gap-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              className="h-5 gap-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 flex-shrink-0"
             >
               <Building2 className="h-3 w-3" />
               {client.name}
@@ -277,7 +277,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             <Paperclip className="h-3 w-3 text-muted-foreground" />
           )}
 
-          <span className="text-xs text-muted-foreground mr-auto flex-shrink-0">
+          <span className="text-xs text-muted-foreground ms-auto flex-shrink-0">
             {formatDate(message.date)}
           </span>
         </div>
