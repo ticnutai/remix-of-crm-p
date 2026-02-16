@@ -1,5 +1,6 @@
 // EmailListItem - Single email row in the email list
 import React from "react";
+import { useDraggable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -127,13 +128,22 @@ export const EmailListItem = React.memo(function EmailListItemInner({
   onRefresh,
   formatDate,
 }: EmailListItemProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: message.id,
+    data: { message },
+  });
+
   return (
     <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
       data-message-id={message.id}
       className={cn(
         "flex items-start gap-3 hover:bg-muted/50 transition-colors cursor-pointer group",
         !message.isRead && "bg-primary/5",
         isSelected && "bg-primary/10",
+        isDragging && "opacity-50",
         displayDensity === "compact" && "p-2",
         displayDensity === "comfortable" && "p-3",
         displayDensity === "spacious" && "p-4",

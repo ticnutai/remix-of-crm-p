@@ -60,6 +60,8 @@ export { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 export { UndoSendBar } from "./UndoSendBar";
 export { BulkActionsBar } from "./BulkActionsBar";
 export { EmailListItem } from "./EmailListItem";
+export { EmailDetailView } from "./EmailDetailView";
+export { AdvancedSearchPanel } from "./AdvancedSearchPanel";
 
 // Export shared types and constants
 export {

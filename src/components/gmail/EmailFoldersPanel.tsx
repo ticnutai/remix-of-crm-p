@@ -1,5 +1,6 @@
 // Email Folders Panel - Manage folders and auto-classification rules
 import React, { useState } from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -110,6 +111,31 @@ interface EmailFoldersPanelProps {
   onAddEmailToFolder?: (email: GmailMessage, folderId: string) => void;
   currentEmail?: GmailMessage | null;
   className?: string;
+}
+
+// Droppable wrapper for folder items (drag & drop)
+function DroppableFolderWrapper({
+  folderId,
+  children,
+}: {
+  folderId: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `folder-${folderId}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "transition-all duration-150",
+        isOver && "ring-2 ring-primary/50 bg-primary/10 rounded-md scale-[1.02]",
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function EmailFoldersPanel({
@@ -635,8 +661,8 @@ export function EmailFoldersPanel({
             customFolders.map((folder) => {
               const IconComp = getIconComponent(folder.icon);
               return (
+                <DroppableFolderWrapper key={folder.id} folderId={folder.id}>
                 <div
-                  key={folder.id}
                   className={cn(
                     "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
                     selectedFolderId === folder.id
@@ -710,6 +736,7 @@ export function EmailFoldersPanel({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+                </DroppableFolderWrapper>
               );
             })
           )}
@@ -736,8 +763,8 @@ export function EmailFoldersPanel({
             </p>
           ) : (
             clientFolders.map((folder) => (
+              <DroppableFolderWrapper key={folder.id} folderId={folder.id}>
               <div
-                key={folder.id}
                 className={cn(
                   "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
                   selectedFolderId === folder.id
@@ -772,6 +799,7 @@ export function EmailFoldersPanel({
                   </Button>
                 )}
               </div>
+              </DroppableFolderWrapper>
             ))
           )}
         </CollapsibleContent>

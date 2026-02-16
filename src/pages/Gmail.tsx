@@ -120,7 +120,9 @@ import {
   EmailAttachment,
 } from "@/hooks/useGmailIntegration";
 import { useGoogleServices } from "@/hooks/useGoogleServices";
-import { useEmailActions } from "@/hooks/useEmailActions";
+import { useEmailActionsOptimistic } from "@/hooks/useEmailActionsOptimistic";
+import { useGmailCache } from "@/hooks/useGmailCache";
+import { useGmailNotifications } from "@/hooks/useGmailNotifications";
 import { format, isToday, isYesterday, isThisWeek, isSameDay } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -153,12 +155,15 @@ import {
   UndoSendBar,
   BulkActionsBar,
   EmailListItem,
+  EmailDetailView,
+  AdvancedSearchPanel,
   DEFAULT_LABELS as IMPORTED_DEFAULT_LABELS,
   PRIORITY_CONFIG as IMPORTED_PRIORITY_CONFIG,
   type Client,
   type EmailLabel,
   type Priority,
 } from "@/components/gmail";
+import { EmailDndProvider } from "@/components/gmail/EmailDndProvider";
 import { useEmailFolders } from "@/hooks/useEmailFolders";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -194,7 +199,15 @@ export default function Gmail() {
   const emailFolders = useEmailFolders();
   const { toast } = useToast();
   const { archiveEmail, deleteEmail, toggleStar, markAsRead } =
-    useEmailActions();
+    useEmailActionsOptimistic();
+  const gmailCache = useGmailCache();
+  const gmailNotifications = useGmailNotifications({
+    enabled: hasLoaded,
+    pollIntervalMs: 60000,
+    onNewEmails: (count) => {
+      if (count > 0) handleRefresh();
+    },
+  });
   const [hasLoaded, setHasLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [serverSearchActive, setServerSearchActive] = useState(false);
@@ -463,12 +476,29 @@ export default function Gmail() {
     [clientEmailMap],
   );
 
-  // Auto-load emails if already connected
+  // Auto-load emails if already connected (with cache)
   useEffect(() => {
     if (isConnected && !hasLoaded && !isLoading) {
-      fetchEmails(50).then(() => setHasLoaded(true));
+      // Check cache first for instant display
+      const cached = gmailCache.getCachedMessages();
+      if (cached && cached.length > 0) {
+        // We have cached data, show it immediately and refresh in background
+        setHasLoaded(true);
+        fetchEmails(50).then((freshMsgs) => {
+          if (freshMsgs && freshMsgs.length > 0) {
+            gmailCache.cacheMessages(freshMsgs);
+          }
+        });
+      } else {
+        fetchEmails(50).then((msgs) => {
+          if (msgs && msgs.length > 0) {
+            gmailCache.cacheMessages(msgs);
+          }
+          setHasLoaded(true);
+        });
+      }
     }
-  }, [isConnected, hasLoaded, isLoading, fetchEmails]);
+  }, [isConnected, hasLoaded, isLoading, fetchEmails, gmailCache]);
 
   // Load folder emails when folder selected
   useEffect(() => {
@@ -481,7 +511,7 @@ export default function Gmail() {
     });
   }, [selectedFolderId]);
 
-  // Load attachments + body in a single API call when an email is selected
+  // Load attachments + body in a single API call when an email is selected (with body cache)
   useEffect(() => {
     if (!selectedEmail) {
       setEmailAttachments([]);
@@ -489,8 +519,15 @@ export default function Gmail() {
       return;
     }
     const loadEmailData = async () => {
+      // Check body cache first
+      const cachedBody = gmailCache.getCachedBody(selectedEmail.id);
+      if (cachedBody) {
+        setEmailHtmlBody(cachedBody);
+        setLoadingBody(false);
+      } else {
+        setLoadingBody(true);
+      }
       setLoadingAttachments(true);
-      setLoadingBody(true);
       try {
         const fullMsg = await getFullMessage(selectedEmail.id);
         if (!fullMsg?.payload) {
@@ -522,9 +559,12 @@ export default function Gmail() {
         if (fullMsg.payload.parts) extractParts(fullMsg.payload.parts);
         setEmailAttachments(attachments);
 
-        // Extract HTML body
+        // Extract HTML body and cache it
         const html = extractHtmlBody(fullMsg.payload);
         setEmailHtmlBody(html);
+        if (html) {
+          gmailCache.cacheBody(selectedEmail.id, html);
+        }
       } catch (e) {
         console.error("Error loading email data:", e);
       }
@@ -532,7 +572,7 @@ export default function Gmail() {
       setLoadingBody(false);
     };
     loadEmailData();
-  }, [selectedEmail?.id, getFullMessage, extractHtmlBody]);
+  }, [selectedEmail?.id, getFullMessage, extractHtmlBody, gmailCache]);
 
   // Scheduled send dispatcher - check every 30 seconds
   useEffect(() => {
@@ -1052,8 +1092,11 @@ export default function Gmail() {
 
   const handleRefresh = useCallback(async () => {
     setSelectedDateFilter(null);
-    await fetchEmails(50);
-  }, [fetchEmails]);
+    const freshMsgs = await fetchEmails(50);
+    if (freshMsgs && freshMsgs.length > 0) {
+      gmailCache.cacheMessages(freshMsgs);
+    }
+  }, [fetchEmails, gmailCache]);
 
   // Handle date filter selection
   const handleDateFilterSelect = useCallback(
@@ -1334,9 +1377,30 @@ export default function Gmail() {
   const rowVirtualizer = useVirtualizer({
     count: filteredMessages.length,
     getScrollElement: () => virtualListRef.current,
-    estimateSize: () => displayDensity === "compact" ? 52 : displayDensity === "comfortable" ? 72 : 96,
+    estimateSize: () =>
+      displayDensity === "compact"
+        ? 52
+        : displayDensity === "comfortable"
+          ? 72
+          : 96,
     overscan: 8,
   });
+
+  // Handle drag & drop email to folder
+  const handleDndMoveToFolder = useCallback(
+    async (message: GmailMessage, folderId: string) => {
+      await emailFolders.addEmailToFolder(folderId, message);
+      // Refresh folder if viewing it
+      if (selectedFolderId) {
+        const items = await emailFolders.getEmailsInFolder(selectedFolderId);
+        setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
+      }
+      toast({
+        title: "המייל הועבר לתיקייה",
+      });
+    },
+    [emailFolders, selectedFolderId, toast],
+  );
 
   console.log("🔍 [Gmail] Component render COMPLETE - about to return JSX");
   return (
@@ -1500,1165 +1564,608 @@ export default function Gmail() {
         )}
 
         {hasLoaded && viewMode === "list" && (
+          <EmailDndProvider
+            messages={messages}
+            onMoveToFolder={handleDndMoveToFolder}
+          >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Sidebar */}
-            <ErrorBoundary fallback={<Card className="lg:col-span-3 p-4 text-center text-muted-foreground">שגיאה בטעינת הסייד-בר</Card>}>
-            <GmailSidebar
-              activeTab={activeTab}
-              onSetActiveTab={setActiveTab}
-              filterByLabel={filterByLabel}
-              onSetFilterByLabel={setFilterByLabel}
-              filterByPriority={filterByPriority}
-              onSetFilterByPriority={setFilterByPriority}
-              filterByClient={filterByClient}
-              onSetFilterByClient={setFilterByClient}
-              customLabels={customLabels}
-              emailLabels={emailLabels}
-              emailPriority={emailPriority}
-              remindersForToday={remindersForToday}
-              unreadCount={messages.filter((m) => !m.isRead).length}
-              clients={clients}
-              messages={messages}
-              autoTagEnabled={autoTagEnabled}
-              onSetAutoTagEnabled={setAutoTagEnabled}
-              onShowLabelManager={() => setShowLabelManager(true)}
-              onCompose={() => setIsComposeOpen(true)}
-              onOpenClientEmails={() => setIsClientEmailsDialogOpen(true)}
-              onBatchAutoClassify={async () => {
-                const count = await emailFolders.batchAutoClassify(messages);
-                toast({
-                  title: `סיווג אוטומטי הושלם`,
-                  description: `${count || 0} מיילים סווגו לתיקיות`,
-                });
-              }}
-              selectedFolderId={selectedFolderId}
-              onSelectFolder={(folderId) => {
-                setSelectedFolderId(
-                  folderId === selectedFolderId ? null : folderId,
-                );
-                setActiveTab("inbox");
-              }}
-              selectedEmail={selectedEmail}
-              onAddEmailToFolder={async (email, folderId) => {
-                if (email && folderId) {
-                  await emailFolders.addEmailToFolder(folderId, email);
-                }
-              }}
-              getClientForMessage={getClientForMessage}
-            />
+            <ErrorBoundary
+              fallback={
+                <Card className="lg:col-span-3 p-4 text-center text-muted-foreground">
+                  שגיאה בטעינת הסייד-בר
+                </Card>
+              }
+            >
+              <GmailSidebar
+                activeTab={activeTab}
+                onSetActiveTab={setActiveTab}
+                filterByLabel={filterByLabel}
+                onSetFilterByLabel={setFilterByLabel}
+                filterByPriority={filterByPriority}
+                onSetFilterByPriority={setFilterByPriority}
+                filterByClient={filterByClient}
+                onSetFilterByClient={setFilterByClient}
+                customLabels={customLabels}
+                emailLabels={emailLabels}
+                emailPriority={emailPriority}
+                remindersForToday={remindersForToday}
+                unreadCount={messages.filter((m) => !m.isRead).length}
+                clients={clients}
+                messages={messages}
+                autoTagEnabled={autoTagEnabled}
+                onSetAutoTagEnabled={setAutoTagEnabled}
+                onShowLabelManager={() => setShowLabelManager(true)}
+                onCompose={() => setIsComposeOpen(true)}
+                onOpenClientEmails={() => setIsClientEmailsDialogOpen(true)}
+                onBatchAutoClassify={async () => {
+                  const count = await emailFolders.batchAutoClassify(messages);
+                  toast({
+                    title: `סיווג אוטומטי הושלם`,
+                    description: `${count || 0} מיילים סווגו לתיקיות`,
+                  });
+                }}
+                selectedFolderId={selectedFolderId}
+                onSelectFolder={(folderId) => {
+                  setSelectedFolderId(
+                    folderId === selectedFolderId ? null : folderId,
+                  );
+                  setActiveTab("inbox");
+                }}
+                selectedEmail={selectedEmail}
+                onAddEmailToFolder={async (email, folderId) => {
+                  if (email && folderId) {
+                    await emailFolders.addEmailToFolder(folderId, email);
+                  }
+                }}
+                getClientForMessage={getClientForMessage}
+              />
             </ErrorBoundary>
 
             {/* Email List & Content */}
-            <ErrorBoundary fallback={<Card className="lg:col-span-9 p-8 text-center text-muted-foreground">שגיאה בטעינת המיילים. נסה לרענן את הדף.</Card>}>
-            <Card className="lg:col-span-9">
-              <CardHeader className="pb-2">
-                <div className="flex flex-col gap-3">
-                  {/* Search and Filters Row */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="חיפוש במיילים... (Enter לחיפוש בשרת)"
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          if (!e.target.value) {
-                            setServerSearchActive(false);
-                          }
-                        }}
-                        onKeyDown={async (e) => {
-                          if (
-                            e.key === "Enter" &&
-                            searchQuery.trim().length >= 2
-                          ) {
-                            e.preventDefault();
-                            setServerSearchActive(true);
-                            await fetchEmails(
-                              50,
-                              undefined,
-                              searchQuery.trim(),
-                            );
-                          }
-                        }}
-                        className="pr-9 text-right"
-                        dir="rtl"
-                      />
-                      {serverSearchActive && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                          onClick={() => {
-                            setSearchQuery("");
-                            setServerSearchActive(false);
-                            handleRefresh();
-                          }}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Date Navigator */}
-                    <EmailDateNavigator
-                      selectedDate={selectedDateFilter}
-                      onDateSelect={handleDateFilterSelect}
-                      onClearDateFilter={handleClearDateFilter}
-                      isLoading={isLoading}
-                    />
-
-                    {/* Sort Dropdown */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <Filter className="h-4 w-4" />
-                          מיון
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rtl">
-                        <DropdownMenuCheckboxItem
-                          checked={sortBy === "date"}
-                          onCheckedChange={() => setSortBy("date")}
-                        >
-                          לפי תאריך
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={sortBy === "priority"}
-                          onCheckedChange={() => setSortBy("priority")}
-                        >
-                          לפי עדיפות
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={sortBy === "sender"}
-                          onCheckedChange={() => setSortBy("sender")}
-                        >
-                          לפי שולח
-                        </DropdownMenuCheckboxItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* View Mode Dropdown */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2">
-                          <LayoutList className="h-4 w-4" />
-                          תצוגה
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56 rtl">
-                        <div className="px-2 py-1.5 text-sm font-medium border-b mb-1">
-                          סגנון תצוגה
-                        </div>
-                        <DropdownMenuCheckboxItem
-                          checked={displayDensity === "compact"}
-                          onCheckedChange={() => setDisplayDensity("compact")}
-                          className="gap-2"
-                        >
-                          <Rows3 className="h-4 w-4" />
-                          צפוף - יותר הודעות
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={displayDensity === "comfortable"}
-                          onCheckedChange={() =>
-                            setDisplayDensity("comfortable")
-                          }
-                          className="gap-2"
-                        >
-                          <LayoutList className="h-4 w-4" />
-                          נוח - מאוזן
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem
-                          checked={displayDensity === "spacious"}
-                          onCheckedChange={() => setDisplayDensity("spacious")}
-                          className="gap-2"
-                        >
-                          <Maximize2 className="h-4 w-4" />
-                          מרווח - קריאות מקסימלית
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuSeparator />
-                        <div className="px-2 py-1.5 text-sm font-medium">
-                          אפשרויות נוספות
-                        </div>
-                        <DropdownMenuCheckboxItem
-                          checked={showPreview}
-                          onCheckedChange={(checked) => setShowPreview(checked)}
-                          className="gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          הצג תצוגה מקדימה
-                        </DropdownMenuCheckboxItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Email count */}
-                  <div className="text-xs text-muted-foreground px-2 py-1">
-                    {serverSearchActive
-                      ? `${filteredMessages.length} תוצאות חיפוש`
-                      : `מציג ${filteredMessages.length} מתוך ${messages.length} הודעות`}
-                  </div>
-
-                  {/* Bulk Actions (when messages are selected) */}
-                  {selectedMessages.size > 0 && (
-                    <BulkActionsBar
-                      selectedCount={selectedMessages.size}
-                      totalCount={filteredMessages.length}
-                      onSelectAll={selectAllMessages}
-                      onClearSelection={() => setSelectedMessages(new Set())}
-                      customLabels={customLabels}
-                      onBulkAddLabel={bulkAddLabel}
-                      onBulkSetPriority={bulkSetPriority}
-                      folders={emailFolders.folders}
-                      onBulkMoveToFolder={bulkMoveToFolder}
-                      onBulkArchive={async () => {
-                        const ids = [...selectedMessages];
-                        const success = await batchModify(ids, [], ["INBOX"]);
-                        if (success) {
-                          setSelectedMessages(new Set());
-                          handleRefresh();
-                          toast({
-                            title: `${ids.length} מיילים הועברו לארכיון`,
-                          });
-                        }
-                      }}
-                      onBulkMarkRead={async () => {
-                        const ids = [...selectedMessages];
-                        const success = await batchModify(ids, [], ["UNREAD"]);
-                        if (success) {
-                          setSelectedMessages(new Set());
-                          handleRefresh();
-                          toast({
-                            title: `${ids.length} מיילים סומנו כנקראו`,
-                          });
-                        }
-                      }}
-                      onBulkSpam={async () => {
-                        const ids = [...selectedMessages];
-                        const success = await batchModify(
-                          ids,
-                          ["SPAM"],
-                          ["INBOX"],
-                        );
-                        if (success) {
-                          setSelectedMessages(new Set());
-                          handleRefresh();
-                          toast({
-                            title: `${ids.length} מיילים דווחו כספאם`,
-                          });
-                        }
-                      }}
-                    />
-                  )}
-
-                  {/* Active Filters Display */}
-                  {(filterByLabel || filterByPriority) && (
+            <ErrorBoundary
+              fallback={
+                <Card className="lg:col-span-9 p-8 text-center text-muted-foreground">
+                  שגיאה בטעינת המיילים. נסה לרענן את הדף.
+                </Card>
+              }
+            >
+              <Card className="lg:col-span-9">
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col gap-3">
+                    {/* Search and Filters Row */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-muted-foreground">
-                        מסננים פעילים:
-                      </span>
-                      {filterByLabel && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 cursor-pointer"
-                          onClick={() => setFilterByLabel(null)}
-                        >
-                          <div
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              customLabels.find((l) => l.id === filterByLabel)
-                                ?.color,
-                            )}
-                          />
-                          {
-                            customLabels.find((l) => l.id === filterByLabel)
-                              ?.name
-                          }
-                          <X className="h-3 w-3 mr-1" />
-                        </Badge>
-                      )}
-                      {filterByPriority && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 cursor-pointer"
-                          onClick={() => setFilterByPriority(null)}
-                        >
-                          {PRIORITY_CONFIG[filterByPriority].icon}
-                          {PRIORITY_CONFIG[filterByPriority].label}
-                          <X className="h-3 w-3 mr-1" />
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-0">
-                {selectedEmail ? (
-                  /* Email Detail View */
-                  <div className="p-4" dir="rtl">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          onClick={() => setSelectedEmail(null)}
-                        >
-                          <ChevronLeft className="h-4 w-4 ml-2" />
-                          חזרה לרשימה
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openChatView(selectedEmail)}
-                          className="gap-2"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                          תצוגת שיחה
-                        </Button>
-                      </div>
-
-                      {/* Email Actions */}
-                      <div className="flex items-center gap-1">
-                        {/* Labels */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Tag className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rtl">
-                            <div className="px-2 py-1.5 text-sm font-medium">
-                              תוויות
-                            </div>
-                            {customLabels.map((label) => (
-                              <DropdownMenuCheckboxItem
-                                key={label.id}
-                                checked={emailLabels[
-                                  selectedEmail.id
-                                ]?.includes(label.id)}
-                                onCheckedChange={() =>
-                                  toggleEmailLabel(selectedEmail.id, label.id)
-                                }
-                              >
-                                <div
-                                  className={cn(
-                                    "h-3 w-3 rounded-full ml-2",
-                                    label.color,
-                                  )}
-                                />
-                                {label.name}
-                              </DropdownMenuCheckboxItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Priority */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              {
-                                PRIORITY_CONFIG[
-                                  emailPriority[selectedEmail.id] || "none"
-                                ].icon
-                              }
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rtl">
-                            <div className="px-2 py-1.5 text-sm font-medium">
-                              עדיפות
-                            </div>
-                            {Object.entries(PRIORITY_CONFIG).map(
-                              ([key, config]) => (
-                                <DropdownMenuCheckboxItem
-                                  key={key}
-                                  checked={
-                                    emailPriority[selectedEmail.id] === key
-                                  }
-                                  onCheckedChange={() =>
-                                    setEmailPriorityLevel(
-                                      selectedEmail.id,
-                                      key as Priority,
-                                    )
-                                  }
-                                >
-                                  {config.icon}
-                                  <span className="mr-2">{config.label}</span>
-                                </DropdownMenuCheckboxItem>
-                              ),
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Reminder */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={
-                                  emailReminders[selectedEmail.id]
-                                    ? "text-orange-500"
-                                    : ""
-                                }
-                                onClick={() => {
-                                  setSelectedEmailForAction(selectedEmail);
-                                  setIsReminderDialogOpen(true);
-                                }}
-                              >
-                                <Bell className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {emailReminders[selectedEmail.id]
-                                ? `תזכורת: ${format(new Date(emailReminders[selectedEmail.id]), "dd/MM/yyyy HH:mm")}`
-                                : "הוסף תזכורת"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Note */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={
-                                  emailNotes[selectedEmail.id]
-                                    ? "text-blue-500"
-                                    : ""
-                                }
-                                onClick={() => {
-                                  setSelectedEmailForAction(selectedEmail);
-                                  setIsNoteDialogOpen(true);
-                                }}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {emailNotes[selectedEmail.id]
-                                ? "ערוך הערה"
-                                : "הוסף הערה"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const replySubject =
-                                    selectedEmail.subject?.startsWith("Re:")
-                                      ? selectedEmail.subject
-                                      : `Re: ${selectedEmail.subject || ""}`;
-                                  setComposeData({
-                                    to: selectedEmail.from,
-                                    subject: replySubject,
-                                    quotedBody: buildQuotedBody(
-                                      selectedEmail,
-                                      "reply",
-                                    ),
-                                    mode: "reply",
-                                    originalFrom: selectedEmail.from,
-                                    originalDate: formatDate(
-                                      selectedEmail.date,
-                                    ),
-                                  });
-                                  setIsComposeOpen(true);
-                                }}
-                              >
-                                <Reply className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>השב</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const fwdSubject =
-                                    selectedEmail.subject?.startsWith("Fwd:")
-                                      ? selectedEmail.subject
-                                      : `Fwd: ${selectedEmail.subject || ""}`;
-                                  setComposeData({
-                                    to: "",
-                                    subject: fwdSubject,
-                                    quotedBody: buildQuotedBody(
-                                      selectedEmail,
-                                      "forward",
-                                    ),
-                                    mode: "forward",
-                                    originalFrom: selectedEmail.from,
-                                    originalDate: formatDate(
-                                      selectedEmail.date,
-                                    ),
-                                  });
-                                  setIsComposeOpen(true);
-                                }}
-                              >
-                                <Forward className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>העבר</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Reply All */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  const replySubject =
-                                    selectedEmail.subject?.startsWith("Re:")
-                                      ? selectedEmail.subject
-                                      : `Re: ${selectedEmail.subject || ""}`;
-                                  const allRecipients = [
-                                    selectedEmail.from,
-                                    ...(selectedEmail.to || []),
-                                  ]
-                                    .filter((e) => e !== user?.email)
-                                    .join(", ");
-                                  setComposeData({
-                                    to: allRecipients,
-                                    subject: replySubject,
-                                    quotedBody: buildQuotedBody(
-                                      selectedEmail,
-                                      "replyAll",
-                                    ),
-                                    mode: "replyAll",
-                                    originalFrom: selectedEmail.from,
-                                    originalDate: formatDate(
-                                      selectedEmail.date,
-                                    ),
-                                  });
-                                  setIsComposeOpen(true);
-                                }}
-                              >
-                                <ReplyAll className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>השב לכולם</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Mark Unread */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={async () => {
-                                  await markAsRead(selectedEmail.id, false);
-                                  await handleRefresh();
-                                }}
-                              >
-                                <MailPlus className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>סמן כלא נקרא</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Pin */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={
-                                  emailMetadata.getMetadata(selectedEmail.id)
-                                    ?.is_pinned
-                                    ? "text-green-500"
-                                    : ""
-                                }
-                                onClick={() => {
-                                  const isPinned =
-                                    emailMetadata.getMetadata(selectedEmail.id)
-                                      ?.is_pinned || false;
-                                  emailMetadata.setPin(
-                                    selectedEmail.id,
-                                    !isPinned,
-                                  );
-                                }}
-                              >
-                                <Bookmark
-                                  className={cn(
-                                    "h-4 w-4",
-                                    emailMetadata.getMetadata(selectedEmail.id)
-                                      ?.is_pinned && "fill-green-500",
-                                  )}
-                                />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {emailMetadata.getMetadata(selectedEmail.id)
-                                ?.is_pinned
-                                ? "הסר הצמדה"
-                                : "הצמד"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Archive */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={!!actionLoading}
-                                onClick={async () => {
-                                  setActionLoading("archive");
-                                  await archiveEmail(selectedEmail.id);
-                                  setActionLoading(null);
-                                  setSelectedEmail(null);
-                                  handleRefresh();
-                                }}
-                              >
-                                {actionLoading === "archive" ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Archive className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>ארכיון</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Delete */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-500"
-                                disabled={!!actionLoading}
-                                onClick={async () => {
-                                  setActionLoading("delete");
-                                  await deleteEmail(selectedEmail.id);
-                                  setActionLoading(null);
-                                  setSelectedEmail(null);
-                                  handleRefresh();
-                                }}
-                              >
-                                {actionLoading === "delete" ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>מחק</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        <Separator orientation="vertical" className="h-5" />
-
-                        {/* Spam */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={async () => {
-                                  await reportSpam(selectedEmail.id);
-                                  setSelectedEmail(null);
-                                  handleRefresh();
-                                }}
-                              >
-                                <ShieldAlert className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>דווח כספאם</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Snooze */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <Timer className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" dir="rtl">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      const d = new Date();
-                                      d.setHours(d.getHours() + 1);
-                                      handleSnooze(selectedEmail.id, d);
-                                    }}
-                                  >
-                                    בעוד שעה
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      const d = new Date();
-                                      d.setHours(d.getHours() + 3);
-                                      handleSnooze(selectedEmail.id, d);
-                                    }}
-                                  >
-                                    בעוד 3 שעות
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      const d = new Date();
-                                      d.setDate(d.getDate() + 1);
-                                      d.setHours(9, 0, 0, 0);
-                                      handleSnooze(selectedEmail.id, d);
-                                    }}
-                                  >
-                                    מחר בבוקר
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      const d = new Date();
-                                      d.setDate(d.getDate() + 7);
-                                      d.setHours(9, 0, 0, 0);
-                                      handleSnooze(selectedEmail.id, d);
-                                    }}
-                                  >
-                                    בעוד שבוע
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TooltipTrigger>
-                            <TooltipContent>נדניק (Snooze)</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Mute */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() =>
-                                  handleMuteThread(selectedEmail.threadId)
-                                }
-                              >
-                                {mutedThreads.has(selectedEmail.threadId) ? (
-                                  <Volume2 className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <VolumeX className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {mutedThreads.has(selectedEmail.threadId)
-                                ? "הפעל שרשור"
-                                : "השתק שרשור"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Print */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handlePrintEmail}
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>הדפס</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </div>
-
-                    {/* Labels Display */}
-                    {emailLabels[selectedEmail.id]?.length > 0 && (
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
-                        {emailLabels[selectedEmail.id].map((labelId) => {
-                          const label = customLabels.find(
-                            (l) => l.id === labelId,
-                          );
-                          return (
-                            label && (
-                              <Badge
-                                key={labelId}
-                                variant="secondary"
-                                className="gap-1"
-                              >
-                                <div
-                                  className={cn(
-                                    "h-2 w-2 rounded-full",
-                                    label.color,
-                                  )}
-                                />
-                                {label.name}
-                              </Badge>
-                            )
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Note Display */}
-                    {emailNotes[selectedEmail.id] && (
-                      <Card className="mb-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200">
-                        <CardContent className="py-2 px-3 text-sm">
-                          <div className="flex items-start gap-2">
-                            <FileText className="h-4 w-4 text-blue-600 mt-0.5" />
-                            <p className="text-blue-800 dark:text-blue-200">
-                              {emailNotes[selectedEmail.id]}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <div className="space-y-4 text-right">
-                      <div>
-                        <h2 className="text-xl font-semibold">
-                          {selectedEmail.subject || "(ללא נושא)"}
-                        </h2>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                          <User className="h-4 w-4" />
-                          <span className="font-medium">
-                            {selectedEmail.fromName}
-                          </span>
-                          <span className="text-xs" dir="ltr">
-                            &lt;{selectedEmail.from}&gt;
-                          </span>
-
-                          {/* Client Badge in detail view */}
-                          {(() => {
-                            const client = getClientForMessage(selectedEmail);
-                            if (client) {
-                              return (
-                                <Badge
-                                  variant="secondary"
-                                  className="h-6 gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                >
-                                  <Building2 className="h-3 w-3" />
-                                  לקוח: {client.name}
-                                </Badge>
+                      <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="חיפוש במיילים... (Enter לחיפוש בשרת)"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            if (!e.target.value) {
+                              setServerSearchActive(false);
+                            }
+                          }}
+                          onKeyDown={async (e) => {
+                            if (
+                              e.key === "Enter" &&
+                              searchQuery.trim().length >= 2
+                            ) {
+                              e.preventDefault();
+                              setServerSearchActive(true);
+                              await fetchEmails(
+                                50,
+                                undefined,
+                                searchQuery.trim(),
                               );
                             }
-                            return null;
-                          })()}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatDate(selectedEmail.date)}</span>
-                        </div>
+                          }}
+                          className="pr-9 text-right"
+                          dir="rtl"
+                        />
+                        {serverSearchActive && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-6"
+                            onClick={() => {
+                              setSearchQuery("");
+                              setServerSearchActive(false);
+                              handleRefresh();
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
 
-                      {/* Email Quick Actions */}
-                      <EmailQuickActions
-                        email={selectedEmail}
-                        clients={clients}
-                        linkedClientId={
-                          emailMetadata.getMetadata(selectedEmail.id)
-                            ?.linked_client_id || null
-                        }
-                        autoDetectedClient={getClientForMessage(selectedEmail)}
-                        onCreateTask={handleCreateTaskFromEmail}
-                        onCreateMeeting={handleCreateMeetingFromEmail}
-                        onCreateReminder={handleCreateReminderFromEmail}
-                        onLinkClient={handleLinkClient}
+                      {/* Date Navigator */}
+                      <EmailDateNavigator
+                        selectedDate={selectedDateFilter}
+                        onDateSelect={handleDateFilterSelect}
+                        onClearDateFilter={handleClearDateFilter}
+                        isLoading={isLoading}
                       />
 
-                      {/* Smart Suggestions */}
-                      <EmailSmartSuggestions
-                        email={selectedEmail}
-                        clients={clients}
-                        onCreateTask={handleCreateTaskFromEmail}
-                        onCreateMeeting={handleCreateMeetingFromEmail}
-                        onLinkClient={handleLinkClient}
+                      {/* Advanced Search */}
+                      <AdvancedSearchPanel
+                        onSearch={async (query) => {
+                          setServerSearchActive(true);
+                          await fetchEmails(50, undefined, query);
+                        }}
+                        onClear={() => {
+                          setServerSearchActive(false);
+                          handleRefresh();
+                        }}
+                        isSearching={isLoading}
                       />
 
-                      <Separator />
+                      {/* Notifications Toggle */}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant={gmailNotifications.notificationsEnabled ? "default" : "outline"}
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={gmailNotifications.toggleNotifications}
+                            >
+                              {gmailNotifications.notificationsEnabled ? (
+                                <BellRing className="h-4 w-4" />
+                              ) : (
+                                <BellOff className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {gmailNotifications.notificationsEnabled
+                              ? "התראות דסקטופ פעילות"
+                              : "הפעל התראות דסקטופ"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
 
-                      <div className="prose dark:prose-invert max-w-none text-sm">
-                        {/* Recipients info */}
-                        {selectedEmail.to && selectedEmail.to.length > 0 && (
-                          <div className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
-                            <span className="font-medium">אל:</span>
-                            <span dir="ltr">{selectedEmail.to.join(", ")}</span>
+                      {/* Sort Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Filter className="h-4 w-4" />
+                            מיון
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rtl">
+                          <DropdownMenuCheckboxItem
+                            checked={sortBy === "date"}
+                            onCheckedChange={() => setSortBy("date")}
+                          >
+                            לפי תאריך
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={sortBy === "priority"}
+                            onCheckedChange={() => setSortBy("priority")}
+                          >
+                            לפי עדיפות
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={sortBy === "sender"}
+                            onCheckedChange={() => setSortBy("sender")}
+                          >
+                            לפי שולח
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* View Mode Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <LayoutList className="h-4 w-4" />
+                            תצוגה
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rtl">
+                          <div className="px-2 py-1.5 text-sm font-medium border-b mb-1">
+                            סגנון תצוגה
                           </div>
+                          <DropdownMenuCheckboxItem
+                            checked={displayDensity === "compact"}
+                            onCheckedChange={() => setDisplayDensity("compact")}
+                            className="gap-2"
+                          >
+                            <Rows3 className="h-4 w-4" />
+                            צפוף - יותר הודעות
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={displayDensity === "comfortable"}
+                            onCheckedChange={() =>
+                              setDisplayDensity("comfortable")
+                            }
+                            className="gap-2"
+                          >
+                            <LayoutList className="h-4 w-4" />
+                            נוח - מאוזן
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={displayDensity === "spacious"}
+                            onCheckedChange={() =>
+                              setDisplayDensity("spacious")
+                            }
+                            className="gap-2"
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                            מרווח - קריאות מקסימלית
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuSeparator />
+                          <div className="px-2 py-1.5 text-sm font-medium">
+                            אפשרויות נוספות
+                          </div>
+                          <DropdownMenuCheckboxItem
+                            checked={showPreview}
+                            onCheckedChange={(checked) =>
+                              setShowPreview(checked)
+                            }
+                            className="gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            הצג תצוגה מקדימה
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Email count */}
+                    <div className="text-xs text-muted-foreground px-2 py-1">
+                      {serverSearchActive
+                        ? `${filteredMessages.length} תוצאות חיפוש`
+                        : `מציג ${filteredMessages.length} מתוך ${messages.length} הודעות`}
+                    </div>
+
+                    {/* Bulk Actions (when messages are selected) */}
+                    {selectedMessages.size > 0 && (
+                      <BulkActionsBar
+                        selectedCount={selectedMessages.size}
+                        totalCount={filteredMessages.length}
+                        onSelectAll={selectAllMessages}
+                        onClearSelection={() => setSelectedMessages(new Set())}
+                        customLabels={customLabels}
+                        onBulkAddLabel={bulkAddLabel}
+                        onBulkSetPriority={bulkSetPriority}
+                        folders={emailFolders.folders}
+                        onBulkMoveToFolder={bulkMoveToFolder}
+                        onBulkArchive={async () => {
+                          const ids = [...selectedMessages];
+                          const success = await batchModify(ids, [], ["INBOX"]);
+                          if (success) {
+                            setSelectedMessages(new Set());
+                            handleRefresh();
+                            toast({
+                              title: `${ids.length} מיילים הועברו לארכיון`,
+                            });
+                          }
+                        }}
+                        onBulkMarkRead={async () => {
+                          const ids = [...selectedMessages];
+                          const success = await batchModify(
+                            ids,
+                            [],
+                            ["UNREAD"],
+                          );
+                          if (success) {
+                            setSelectedMessages(new Set());
+                            handleRefresh();
+                            toast({
+                              title: `${ids.length} מיילים סומנו כנקראו`,
+                            });
+                          }
+                        }}
+                        onBulkSpam={async () => {
+                          const ids = [...selectedMessages];
+                          const success = await batchModify(
+                            ids,
+                            ["SPAM"],
+                            ["INBOX"],
+                          );
+                          if (success) {
+                            setSelectedMessages(new Set());
+                            handleRefresh();
+                            toast({
+                              title: `${ids.length} מיילים דווחו כספאם`,
+                            });
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* Active Filters Display */}
+                    {(filterByLabel || filterByPriority) && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-muted-foreground">
+                          מסננים פעילים:
+                        </span>
+                        {filterByLabel && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 cursor-pointer"
+                            onClick={() => setFilterByLabel(null)}
+                          >
+                            <div
+                              className={cn(
+                                "h-2 w-2 rounded-full",
+                                customLabels.find((l) => l.id === filterByLabel)
+                                  ?.color,
+                              )}
+                            />
+                            {
+                              customLabels.find((l) => l.id === filterByLabel)
+                                ?.name
+                            }
+                            <X className="h-3 w-3 mr-1" />
+                          </Badge>
                         )}
+                        {filterByPriority && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 cursor-pointer"
+                            onClick={() => setFilterByPriority(null)}
+                          >
+                            {PRIORITY_CONFIG[filterByPriority].icon}
+                            {PRIORITY_CONFIG[filterByPriority].label}
+                            <X className="h-3 w-3 mr-1" />
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
 
-                        {/* Email body with full HTML rendering */}
-                        {loadingBody ? (
-                          <div className="border rounded-lg p-4 bg-card">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>טוען תוכן ההודעה...</span>
-                            </div>
+                <CardContent className="p-0">
+                  {selectedEmail ? (
+                    /* Email Detail View */
+                    <EmailDetailView
+                      selectedEmail={selectedEmail}
+                      emailHtmlBody={emailHtmlBody}
+                      loadingBody={loadingBody}
+                      emailAttachments={emailAttachments}
+                      loadingAttachments={loadingAttachments}
+                      downloadingAtt={downloadingAtt}
+                      emailPriority={emailPriority}
+                      emailLabels={emailLabels}
+                      emailReminders={emailReminders}
+                      emailNotes={emailNotes}
+                      customLabels={customLabels}
+                      mutedThreads={mutedThreads}
+                      clients={clients}
+                      user={user}
+                      getMetadata={(id) => emailMetadata.getMetadata(id)}
+                      setPin={(id, val) => emailMetadata.setPin(id, val)}
+                      getLinkedClientId={(id) =>
+                        emailMetadata.getMetadata(id)?.linked_client_id || null
+                      }
+                      actionLoading={actionLoading}
+                      onBack={() => setSelectedEmail(null)}
+                      onOpenChatView={openChatView}
+                      onCompose={(data) => {
+                        setComposeData(data);
+                        setIsComposeOpen(true);
+                      }}
+                      onMarkAsRead={markAsRead}
+                      onArchive={archiveEmail}
+                      onDelete={deleteEmail}
+                      onReportSpam={reportSpam}
+                      onRefresh={handleRefresh}
+                      onSnooze={handleSnooze}
+                      onMuteThread={handleMuteThread}
+                      onPrint={handlePrintEmail}
+                      onDownloadAttachment={handleDownloadAttachment}
+                      setActionLoading={setActionLoading}
+                      setSelectedEmailForAction={setSelectedEmailForAction}
+                      setIsReminderDialogOpen={setIsReminderDialogOpen}
+                      setIsNoteDialogOpen={setIsNoteDialogOpen}
+                      toggleEmailLabel={toggleEmailLabel}
+                      setEmailPriorityLevel={setEmailPriorityLevel}
+                      buildQuotedBody={buildQuotedBody}
+                      formatDate={formatDate}
+                      getClientForMessage={getClientForMessage}
+                      onCreateTask={handleCreateTaskFromEmail}
+                      onCreateMeeting={handleCreateMeetingFromEmail}
+                      onCreateReminder={handleCreateReminderFromEmail}
+                      onLinkClient={handleLinkClient}
+                    />
+                  ) : (
+                    /* Email List View */
+                    <div className="relative">
+                      {/* Floating Date Indicator */}
+                      <FloatingDateIndicator
+                        currentDate={scrollCurrentDate}
+                        isVisible={isScrolling}
+                      />
+
+                      <div
+                        className="h-[600px] overflow-auto"
+                        ref={(el) => {
+                          virtualListRef.current = el;
+                          (scrollContainerRef as any).current = el;
+                        }}
+                      >
+                        {filteredMessages.length === 0 ? (
+                          <div className="text-center py-16 text-muted-foreground">
+                            <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>לא נמצאו הודעות</p>
+                            {selectedDateFilter && (
+                              <Button
+                                variant="link"
+                                onClick={handleClearDateFilter}
+                                className="mt-2"
+                              >
+                                נקה סינון תאריך
+                              </Button>
+                            )}
                           </div>
-                        ) : emailHtmlBody ? (
-                          <div
-                            className="border rounded-lg p-4 bg-card overflow-auto max-h-[500px] text-sm"
-                            dir="auto"
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(emailHtmlBody, {
-                                ALLOW_UNKNOWN_PROTOCOLS: true,
-                              }),
-                            }}
-                          />
                         ) : (
-                          <div className="whitespace-pre-wrap break-words leading-relaxed border rounded-lg p-4 bg-card">
-                            {selectedEmail.snippet}
-                          </div>
-                        )}
+                          <div
+                            className="divide-y relative"
+                            dir="rtl"
+                            style={{
+                              height: `${rowVirtualizer.getTotalSize()}px`,
+                            }}
+                          >
+                            {rowVirtualizer
+                              .getVirtualItems()
+                              .map((virtualRow) => {
+                                const index = virtualRow.index;
+                                const message = filteredMessages[index];
+                                const prevMessage =
+                                  index > 0
+                                    ? filteredMessages[index - 1]
+                                    : null;
+                                const showDateSeparator =
+                                  !prevMessage ||
+                                  !isSameDay(
+                                    new Date(message.date),
+                                    new Date(prevMessage.date),
+                                  );
 
-                        {/* Attachments - real download */}
-                        {loadingAttachments ? (
-                          <div className="mt-3 p-3 border rounded-lg bg-muted/50">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>טוען קבצים מצורפים...</span>
-                            </div>
-                          </div>
-                        ) : emailAttachments.length > 0 ? (
-                          <div className="mt-3 p-3 border rounded-lg bg-muted/50 space-y-2">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <Paperclip className="h-4 w-4" />
-                              <span>
-                                קבצים מצורפים ({emailAttachments.length})
-                              </span>
-                            </div>
-                            <div className="space-y-1">
-                              {emailAttachments.map((att, i) => {
-                                const icon = att.type.startsWith("image/") ? (
-                                  <ImageIcon className="h-4 w-4 text-green-500" />
-                                ) : att.type.startsWith("video/") ? (
-                                  <Film className="h-4 w-4 text-purple-500" />
-                                ) : att.type.startsWith("audio/") ? (
-                                  <Volume2 className="h-4 w-4 text-blue-500" />
-                                ) : att.type.includes("pdf") ? (
-                                  <FileText className="h-4 w-4 text-red-500" />
-                                ) : att.type.includes("sheet") ||
-                                  att.type.includes("excel") ? (
-                                  <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                                ) : (
-                                  <File className="h-4 w-4 text-gray-500" />
-                                );
                                 return (
                                   <div
-                                    key={i}
-                                    className="flex items-center gap-2 bg-background rounded px-3 py-2"
+                                    key={message.id}
+                                    style={{
+                                      position: "absolute",
+                                      top: 0,
+                                      left: 0,
+                                      width: "100%",
+                                      transform: `translateY(${virtualRow.start}px)`,
+                                    }}
+                                    ref={virtualRow.measureRef}
                                   >
-                                    {icon}
-                                    <span className="text-sm flex-1 truncate">
-                                      {att.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {att.size < 1024
-                                        ? `${att.size} B`
-                                        : att.size < 1024 * 1024
-                                          ? `${(att.size / 1024).toFixed(1)} KB`
-                                          : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
-                                    </span>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7"
-                                      onClick={() =>
-                                        handleDownloadAttachment(
-                                          selectedEmail!.id,
-                                          att.attachmentId,
-                                          att.name,
-                                          att.type,
-                                        )
-                                      }
-                                      disabled={
-                                        downloadingAtt === att.attachmentId
-                                      }
-                                    >
-                                      {downloadingAtt === att.attachmentId ? (
-                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                      ) : (
-                                        <>
-                                          <Download className="h-3.5 w-3.5 ml-1" />
-                                          הורד
-                                        </>
+                                    {showDateSeparator && (
+                                      <DateSeparator date={message.date} />
+                                    )}
+                                    <EmailListItem
+                                      message={message}
+                                      index={index}
+                                      isSelected={selectedMessages.has(
+                                        message.id,
                                       )}
-                                    </Button>
+                                      displayDensity={displayDensity}
+                                      showPreview={showPreview}
+                                      threadCount={
+                                        threadCounts[message.threadId] || 0
+                                      }
+                                      emailPriority={emailPriority[message.id]}
+                                      emailLabels={emailLabels[message.id]}
+                                      hasReminder={!!emailReminders[message.id]}
+                                      hasNote={!!emailNotes[message.id]}
+                                      isPinned={
+                                        emailMetadata.getMetadata(message.id)
+                                          ?.is_pinned || false
+                                      }
+                                      client={getClientForMessage(message)}
+                                      customLabels={customLabels}
+                                      mutedThreads={mutedThreads}
+                                      folders={emailFolders.folders}
+                                      onSelect={() => {
+                                        setSelectedEmail(message);
+                                        if (!message.isRead) {
+                                          markAsRead(message.id, true).then(
+                                            () => handleRefresh(),
+                                          );
+                                        }
+                                      }}
+                                      onToggleSelection={toggleMessageSelection}
+                                      onToggleStar={toggleStar}
+                                      onOpenChat={openChatView}
+                                      onSetReminder={(msg) => {
+                                        setSelectedEmailForAction(msg);
+                                        setIsReminderDialogOpen(true);
+                                      }}
+                                      onSetNote={(msg) => {
+                                        setSelectedEmailForAction(msg);
+                                        setIsNoteDialogOpen(true);
+                                      }}
+                                      onMarkAsRead={markAsRead}
+                                      onTogglePin={(messageId, isPinned) => {
+                                        emailMetadata.setPin(
+                                          messageId,
+                                          !isPinned,
+                                        );
+                                      }}
+                                      onReply={(msg) => {
+                                        const replySubject =
+                                          msg.subject?.startsWith("Re:")
+                                            ? msg.subject
+                                            : `Re: ${msg.subject || ""}`;
+                                        setComposeData({
+                                          to: msg.from,
+                                          subject: replySubject,
+                                        });
+                                        setIsComposeOpen(true);
+                                      }}
+                                      onForward={(msg) => {
+                                        const fwdSubject =
+                                          msg.subject?.startsWith("Fwd:")
+                                            ? msg.subject
+                                            : `Fwd: ${msg.subject || ""}`;
+                                        setComposeData({
+                                          to: "",
+                                          subject: fwdSubject,
+                                        });
+                                        setIsComposeOpen(true);
+                                      }}
+                                      onMoveToFolder={async (folderId, msg) => {
+                                        await emailFolders.addEmailToFolder(
+                                          folderId,
+                                          msg,
+                                        );
+                                        if (selectedFolderId) {
+                                          const items =
+                                            await emailFolders.getEmailsInFolder(
+                                              selectedFolderId,
+                                            );
+                                          setFolderEmailIds(
+                                            new Set(
+                                              items.map(
+                                                (item: any) => item.email_id,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                      onArchive={archiveEmail}
+                                      onDelete={deleteEmail}
+                                      onReportSpam={reportSpam}
+                                      onMuteThread={handleMuteThread}
+                                      onSnooze={handleSnooze}
+                                      onRefresh={handleRefresh}
+                                      formatDate={formatDate}
+                                    />
                                   </div>
                                 );
                               })}
+
+                            {/* Load More Trigger */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                bottom: 0,
+                                width: "100%",
+                              }}
+                            >
+                              <LoadMoreTrigger
+                                onLoadMore={loadMoreEmails}
+                                isLoading={isLoadingMore}
+                                hasMore={hasMore && !selectedDateFilter}
+                              />
                             </div>
                           </div>
-                        ) : null}
+                        )}
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  /* Email List View */
-                  <div className="relative">
-                    {/* Floating Date Indicator */}
-                    <FloatingDateIndicator
-                      currentDate={scrollCurrentDate}
-                      isVisible={isScrolling}
-                    />
-
-                    <div
-                      className="h-[600px] overflow-auto"
-                      ref={(el) => {
-                        virtualListRef.current = el;
-                        (scrollContainerRef as any).current = el;
-                      }}
-                    >
-                      {filteredMessages.length === 0 ? (
-                        <div className="text-center py-16 text-muted-foreground">
-                          <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>לא נמצאו הודעות</p>
-                          {selectedDateFilter && (
-                            <Button
-                              variant="link"
-                              onClick={handleClearDateFilter}
-                              className="mt-2"
-                            >
-                              נקה סינון תאריך
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          className="divide-y relative"
-                          dir="rtl"
-                          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-                        >
-                          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                            const index = virtualRow.index;
-                            const message = filteredMessages[index];
-                            const prevMessage =
-                              index > 0 ? filteredMessages[index - 1] : null;
-                            const showDateSeparator =
-                              !prevMessage ||
-                              !isSameDay(
-                                new Date(message.date),
-                                new Date(prevMessage.date),
-                              );
-
-                            return (
-                              <div
-                                key={message.id}
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  width: "100%",
-                                  transform: `translateY(${virtualRow.start}px)`,
-                                }}
-                                ref={virtualRow.measureRef}
-                              >
-                                {showDateSeparator && (
-                                  <DateSeparator date={message.date} />
-                                )}
-                                <EmailListItem
-                                  message={message}
-                                  index={index}
-                                  isSelected={selectedMessages.has(message.id)}
-                                  displayDensity={displayDensity}
-                                  showPreview={showPreview}
-                                  threadCount={threadCounts[message.threadId] || 0}
-                                  emailPriority={emailPriority[message.id]}
-                                  emailLabels={emailLabels[message.id]}
-                                  hasReminder={!!emailReminders[message.id]}
-                                  hasNote={!!emailNotes[message.id]}
-                                  isPinned={emailMetadata.getMetadata(message.id)?.is_pinned || false}
-                                  client={getClientForMessage(message)}
-                                  customLabels={customLabels}
-                                  mutedThreads={mutedThreads}
-                                  folders={emailFolders.folders}
-                                  onSelect={() => {
-                                    setSelectedEmail(message);
-                                    if (!message.isRead) {
-                                      markAsRead(message.id, true).then(() => handleRefresh());
-                                    }
-                                  }}
-                                  onToggleSelection={toggleMessageSelection}
-                                  onToggleStar={toggleStar}
-                                  onOpenChat={openChatView}
-                                  onSetReminder={(msg) => {
-                                    setSelectedEmailForAction(msg);
-                                    setIsReminderDialogOpen(true);
-                                  }}
-                                  onSetNote={(msg) => {
-                                    setSelectedEmailForAction(msg);
-                                    setIsNoteDialogOpen(true);
-                                  }}
-                                  onMarkAsRead={markAsRead}
-                                  onTogglePin={(messageId, isPinned) => {
-                                    emailMetadata.setPin(messageId, !isPinned);
-                                  }}
-                                  onReply={(msg) => {
-                                    const replySubject = msg.subject?.startsWith("Re:")
-                                      ? msg.subject
-                                      : `Re: ${msg.subject || ""}`;
-                                    setComposeData({ to: msg.from, subject: replySubject });
-                                    setIsComposeOpen(true);
-                                  }}
-                                  onForward={(msg) => {
-                                    const fwdSubject = msg.subject?.startsWith("Fwd:")
-                                      ? msg.subject
-                                      : `Fwd: ${msg.subject || ""}`;
-                                    setComposeData({ to: "", subject: fwdSubject });
-                                    setIsComposeOpen(true);
-                                  }}
-                                  onMoveToFolder={async (folderId, msg) => {
-                                    await emailFolders.addEmailToFolder(folderId, msg);
-                                    if (selectedFolderId) {
-                                      const items = await emailFolders.getEmailsInFolder(selectedFolderId);
-                                      setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-                                    }
-                                  }}
-                                  onArchive={archiveEmail}
-                                  onDelete={deleteEmail}
-                                  onReportSpam={reportSpam}
-                                  onMuteThread={handleMuteThread}
-                                  onSnooze={handleSnooze}
-                                  onRefresh={handleRefresh}
-                                  formatDate={formatDate}
-                                />
-                              </div>
-                            );
-                          })}
-
-                          {/* Load More Trigger */}
-                          <div style={{ position: "absolute", bottom: 0, width: "100%" }}>
-                            <LoadMoreTrigger
-                              onLoadMore={loadMoreEmails}
-                              isLoading={isLoadingMore}
-                              hasMore={hasMore && !selectedDateFilter}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
             </ErrorBoundary>
           </div>
+          </EmailDndProvider>
         )}
 
         {/* Compose Dialog */}
