@@ -46,6 +46,9 @@ import {
   LogOut,
   Wifi,
   WifiOff,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import { useGoogleContacts, GoogleContact } from "@/hooks/useGoogleContacts";
 import { useGoogleServices } from "@/hooks/useGoogleServices";
@@ -296,6 +299,21 @@ export default function Contacts() {
   );
   const [filterType, setFilterType] = useState<"all" | "unlinked" | "linked">(
     "all",
+  );
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [expandedSenderEmail, setExpandedSenderEmail] = useState<string | null>(null);
+
+  // Get messages for a specific email address
+  const getMessagesForEmail = useCallback(
+    (email: string) => {
+      if (!email) return [];
+      const lowerEmail = email.toLowerCase();
+      return allMessages.filter(
+        (msg) => msg.from.toLowerCase().includes(lowerEmail) ||
+          msg.to.some((t) => t.toLowerCase().includes(lowerEmail)),
+      );
+    },
+    [allMessages],
   );
 
   // Extract unique email senders from all messages
@@ -802,8 +820,8 @@ export default function Contacts() {
                     </div>
                   ) : (
                     filteredSenders.map((sender) => (
+                      <div key={sender.email} className="space-y-0">
                       <div
-                        key={sender.email}
                         className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
                       >
                         {!sender.linkedClientId && (
@@ -819,9 +837,20 @@ export default function Contacts() {
                             </span>
                             <Badge
                               variant="secondary"
-                              className="text-[10px] px-1.5"
+                              className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedSenderEmail(
+                                  expandedSenderEmail === sender.email ? null : sender.email,
+                                );
+                              }}
                             >
                               {sender.count} הודעות
+                              {expandedSenderEmail === sender.email ? (
+                                <ChevronUp className="h-2.5 w-2.5 mr-1" />
+                              ) : (
+                                <ChevronDown className="h-2.5 w-2.5 mr-1" />
+                              )}
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground truncate">
@@ -870,6 +899,66 @@ export default function Contacts() {
                             </TooltipProvider>
                           </div>
                         )}
+                      </div>
+                      {/* Expanded sender messages panel */}
+                      {expandedSenderEmail === sender.email && (
+                        <div className="mr-8 space-y-1 border-t pt-2 pb-1 px-2">
+                          {(() => {
+                            const senderMsgs = getMessagesForEmail(sender.email);
+                            if (senderMsgs.length === 0) {
+                              return (
+                                <p className="text-xs text-muted-foreground py-2 text-center">
+                                  לא נמצאו הודעות
+                                </p>
+                              );
+                            }
+                            return senderMsgs.slice(0, 20).map((msg) => {
+                              const msgDate = new Date(msg.date);
+                              const dateStr = msgDate.toLocaleDateString("he-IL", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "2-digit",
+                              });
+                              return (
+                                <div
+                                  key={msg.id}
+                                  className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
+                                  onClick={() => {
+                                    window.open(
+                                      `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+                                      "_blank",
+                                    );
+                                  }}
+                                >
+                                  <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span
+                                        className={`truncate font-medium ${
+                                          !msg.isRead ? "text-foreground" : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {msg.subject || "(ללא נושא)"}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground shrink-0">
+                                        {dateStr}
+                                      </span>
+                                    </div>
+                                    <p className="text-muted-foreground truncate mt-0.5">
+                                      {msg.snippet}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                          {getMessagesForEmail(sender.email).length > 20 && (
+                            <p className="text-[10px] text-muted-foreground text-center py-1">
+                              מציג 20 מתוך {getMessagesForEmail(sender.email).length} הודעות
+                            </p>
+                          )}
+                        </div>
+                      )}
                       </div>
                     ))
                   )}
@@ -1107,8 +1196,8 @@ export default function Contacts() {
                           s.email.toLowerCase() === client.email.toLowerCase(),
                       );
                       return (
+                        <div key={client.id} className="space-y-0">
                         <div
-                          key={client.id}
                           className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
                         >
                           <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -1152,9 +1241,22 @@ export default function Contacts() {
                             </div>
                           </div>
                           {senderData ? (
-                            <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
+                            <Badge
+                              className="bg-blue-100 text-blue-700 border-blue-300 text-xs cursor-pointer hover:bg-blue-200 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedClientId(
+                                  expandedClientId === client.id ? null : client.id,
+                                );
+                              }}
+                            >
                               <Mail className="h-3 w-3 ml-1" />
                               {senderData.count} הודעות
+                              {expandedClientId === client.id ? (
+                                <ChevronUp className="h-3 w-3 mr-1" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3 mr-1" />
+                              )}
                             </Badge>
                           ) : (
                             <Badge
@@ -1164,6 +1266,76 @@ export default function Contacts() {
                               ללא מיילים
                             </Badge>
                           )}
+                        </div>
+                        {/* Expanded messages panel */}
+                        {expandedClientId === client.id && client.email && (
+                          <div className="mt-2 mr-11 space-y-1 border-t pt-2">
+                            {(() => {
+                              const clientMsgs = getMessagesForEmail(client.email!);
+                              if (clientMsgs.length === 0) {
+                                return (
+                                  <p className="text-xs text-muted-foreground py-2 text-center">
+                                    לא נמצאו הודעות
+                                  </p>
+                                );
+                              }
+                              return clientMsgs.slice(0, 20).map((msg) => {
+                                const isSent = !msg.from
+                                  .toLowerCase()
+                                  .includes(client.email!.toLowerCase());
+                                const msgDate = new Date(msg.date);
+                                const dateStr = msgDate.toLocaleDateString("he-IL", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "2-digit",
+                                });
+                                return (
+                                  <div
+                                    key={msg.id}
+                                    className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
+                                    onClick={() => {
+                                      window.open(
+                                        `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+                                        "_blank",
+                                      );
+                                    }}
+                                  >
+                                    <Mail
+                                      className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+                                        isSent
+                                          ? "text-green-500"
+                                          : "text-blue-500"
+                                      }`}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span
+                                          className={`truncate font-medium ${
+                                            !msg.isRead ? "text-foreground" : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {msg.subject || "(ללא נושא)"}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground shrink-0">
+                                          {dateStr}
+                                        </span>
+                                      </div>
+                                      <p className="text-muted-foreground truncate mt-0.5">
+                                        {msg.snippet}
+                                      </p>
+                                    </div>
+                                    <ExternalLink className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                                  </div>
+                                );
+                              });
+                            })()}
+                            {getMessagesForEmail(client.email!).length > 20 && (
+                              <p className="text-[10px] text-muted-foreground text-center py-1">
+                                מציג 20 מתוך {getMessagesForEmail(client.email!).length} הודעות
+                              </p>
+                            )}
+                          </div>
+                        )}
                         </div>
                       );
                     })
