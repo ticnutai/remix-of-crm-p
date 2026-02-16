@@ -424,7 +424,7 @@ export default function Gmail() {
         const dx = ev.clientX - dragRef.current.startX;
         const dy = ev.clientY - dragRef.current.startY;
         const newX = Math.max(4, Math.min(dragRef.current.origX + dx, window.innerWidth - previewRect.w - 4));
-        const newY = Math.max(4, Math.min(dragRef.current.origY + dy, window.innerHeight - previewRect.h - 4));
+        const newY = Math.max(56, Math.min(dragRef.current.origY + dy, window.innerHeight - previewRect.h - 4));
         const newRect = {
           ...previewRect,
           x: newX,
@@ -474,7 +474,8 @@ export default function Gmail() {
         if (r.dir.includes('t')) { h = Math.max(250, r.origH - dy); y = r.origY + (r.origH - Math.max(250, r.origH - dy)); }
 
         w = Math.min(w, window.innerWidth - 40);
-        h = Math.min(h, window.innerHeight - 40);
+        h = Math.min(h, window.innerHeight - 56);
+        y = Math.max(56, y);
         setPreviewRect({ x, y, w, h });
       };
       const onUp = () => {
@@ -2859,10 +2860,10 @@ export default function Gmail() {
           <div
             className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
             style={{
-              top: Math.max(4, Math.min(previewRect.y, window.innerHeight - previewRect.h - 4)),
+              top: Math.max(56, Math.min(previewRect.y, window.innerHeight - previewRect.h - 4)),
               left: Math.max(4, Math.min(previewRect.x, window.innerWidth - previewRect.w - 4)),
               width: Math.min(previewRect.w, window.innerWidth - 8),
-              height: Math.min(previewRect.h, window.innerHeight - 8),
+              height: Math.min(previewRect.h, window.innerHeight - 56),
               border: "3px solid #d4a843",
               boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)",
               overflow: "hidden",
