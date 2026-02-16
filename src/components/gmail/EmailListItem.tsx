@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -589,74 +596,38 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         </div>
       </div>
 
-      {/* Hover Preview Popup - shows after 1 second hover */}
-      {showPreviewPopup && (
-        <div
-          ref={popupRef}
-          className="fixed z-50 rounded-xl shadow-2xl"
-          onMouseEnter={() => {
-            // Keep popup open while mouse is over it
-            if (hoverTimerRef.current) {
-              clearTimeout(hoverTimerRef.current);
-              hoverTimerRef.current = null;
-            }
-          }}
-          onMouseLeave={() => setShowPreviewPopup(false)}
+      {/* Hover Preview Dialog - proper modal */}
+      <Dialog open={showPreviewPopup} onOpenChange={setShowPreviewPopup}>
+        <DialogContent
+          className="max-w-[700px] w-[90vw] max-h-[70vh] p-0 overflow-hidden"
           style={{
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "min(700px, 90vw)",
-            maxHeight: "70vh",
-            backgroundColor: "#ffffff",
             border: "3px solid #d4a843",
             boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
-            color: "#1a2744",
           }}
-          onClick={(e) => e.stopPropagation()}
+          dir="rtl"
         >
-          {/* Header */}
-          <div
-            className="flex items-center justify-between p-4"
-            dir="rtl"
-            style={{ borderBottom: "2px solid #d4a843", color: "#1a2744" }}
+          <DialogHeader
+            className="p-4"
+            style={{ borderBottom: "2px solid #d4a843" }}
           >
-            <div className="flex-1 min-w-0">
-              <h3
-                className="font-bold text-lg truncate"
-                style={{ color: "#1a2744" }}
-              >
-                {message.subject || "(ללא נושא)"}
-              </h3>
-              <p className="text-sm" style={{ color: "#3d5a8a" }}>
+            <DialogTitle className="font-bold text-lg truncate text-right">
+              {message.subject || "(ללא נושא)"}
+            </DialogTitle>
+            <DialogDescription className="text-right">
+              <span className="text-sm">
                 {message.fromName} &lt;{message.from}&gt;
-              </p>
-              <p className="text-xs" style={{ color: "#6b82a8" }}>
+              </span>
+              <span className="text-xs block">
                 {formatDate(message.date)}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 flex-shrink-0 hover:bg-gray-100"
-              style={{ color: "#1a2744" }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPreviewPopup(false);
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
           {/* Body */}
           <div
             className="overflow-y-auto p-4"
             dir="rtl"
-            style={{
-              maxHeight: "calc(70vh - 100px)",
-              backgroundColor: "#ffffff",
-              color: "#1a2744",
-            }}
+            style={{ maxHeight: "calc(70vh - 160px)" }}
           >
             {hoverPreviewLoading ? (
               <div className="flex items-center justify-center py-10">
@@ -672,27 +643,23 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                 }}
               />
             ) : (
-              <p className="whitespace-pre-wrap" style={{ color: "#3d5a8a" }}>
+              <p className="whitespace-pre-wrap text-muted-foreground">
                 {message.snippet}
               </p>
             )}
           </div>
+
           {/* Footer actions */}
           <div
             className="flex items-center gap-2 p-3"
             dir="rtl"
-            style={{
-              borderTop: "2px solid #d4a843",
-              backgroundColor: "#ffffff",
-            }}
+            style={{ borderTop: "2px solid #d4a843" }}
           >
             <Button
               size="sm"
               variant="outline"
               className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              style={{ color: "#1a2744" }}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 setShowPreviewPopup(false);
                 onSelect();
               }}
@@ -703,9 +670,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
               size="sm"
               variant="outline"
               className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              style={{ color: "#1a2744" }}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 setShowPreviewPopup(false);
                 onReply(message);
               }}
@@ -717,9 +682,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
               size="sm"
               variant="outline"
               className="border-[#d4a843] hover:bg-[#f8f3e6]"
-              style={{ color: "#1a2744" }}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 setShowPreviewPopup(false);
                 onForward(message);
               }}
@@ -728,15 +691,8 @@ export const EmailListItem = React.memo(function EmailListItemInner({
               העבר
             </Button>
           </div>
-        </div>
-      )}
-      {/* Backdrop for preview popup */}
-      {showPreviewPopup && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30"
-          onClick={() => setShowPreviewPopup(false)}
-        />
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 });
