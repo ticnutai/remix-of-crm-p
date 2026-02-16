@@ -42,12 +42,18 @@ const DEFAULT_CLIENT_ID =
 const TOKEN_STORAGE_KEY = "google_services_token";
 const TOKEN_EXPIRY_KEY = "google_services_token_expiry";
 const EMAIL_STORAGE_KEY = "google_services_email";
+const SCOPES_STORAGE_KEY = "google_services_scopes";
+
+// Global lock to prevent multiple instances from doing silent re-auth simultaneously
+let silentReauthInProgress = false;
+let silentReauthPromise: Promise<string | null> | null = null;
 
 // Token storage utilities
 const saveTokenToStorage = (
   token: string,
   expiresIn: number,
   email?: string,
+  scopes?: string,
 ) => {
   localStorage.setItem(TOKEN_STORAGE_KEY, token);
   // Save expiry time (current time + expires_in seconds - 5 minute buffer)
@@ -56,6 +62,10 @@ const saveTokenToStorage = (
   // Save email for future silent re-auth
   if (email) {
     localStorage.setItem(EMAIL_STORAGE_KEY, email);
+  }
+  // Save granted scopes
+  if (scopes) {
+    localStorage.setItem(SCOPES_STORAGE_KEY, scopes);
   }
 };
 
@@ -80,9 +90,22 @@ const loadSavedEmail = (): string | null => {
   return localStorage.getItem(EMAIL_STORAGE_KEY);
 };
 
+const loadSavedScopes = (): string[] => {
+  const scopes = localStorage.getItem(SCOPES_STORAGE_KEY);
+  return scopes ? scopes.split(' ') : [];
+};
+
+const hasRequiredScopes = (services: GoogleService[]): boolean => {
+  const savedScopes = loadSavedScopes();
+  if (savedScopes.length === 0) return false;
+  const required = services.flatMap(s => SCOPES_MAP[s]);
+  return required.every(scope => savedScopes.includes(scope));
+};
+
 const clearTokenFromStorage = () => {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  localStorage.removeItem(SCOPES_STORAGE_KEY);
   // Keep email for next silent re-auth
 };
 
@@ -127,49 +150,68 @@ export function useGoogleServices() {
       setIsConnected(false);
 
       // If we have a saved email, try silent re-auth on mount
+      // Use global lock to prevent multiple instances from doing this simultaneously
       const savedEmail = loadSavedEmail();
-      if (savedEmail && user) {
-        // Auto-reconnect silently in the background
-        (async () => {
-          try {
-            await loadGisScript();
-            const tokenClient = window.google.accounts.oauth2.initTokenClient({
-              client_id: DEFAULT_CLIENT_ID,
-              scope: [
-                "https://www.googleapis.com/auth/userinfo.email",
-                "https://www.googleapis.com/auth/userinfo.profile",
-                ...SCOPES_MAP.gmail,
-              ].join(" "),
-              callback: async (response: any) => {
-                if (response.error) {
-                  console.log(
-                    "[GoogleServices] Silent re-auth failed, user will need to click connect",
+      if (savedEmail && user && !silentReauthInProgress) {
+        silentReauthInProgress = true;
+        silentReauthPromise = new Promise<string | null>((resolveReauth) => {
+          (async () => {
+            try {
+              await loadGisScript();
+              const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: DEFAULT_CLIENT_ID,
+                scope: [
+                  "https://www.googleapis.com/auth/userinfo.email",
+                  "https://www.googleapis.com/auth/userinfo.profile",
+                  ...SCOPES_MAP.gmail,
+                  ...SCOPES_MAP.contacts,
+                ].join(" "),
+                callback: async (response: any) => {
+                  silentReauthInProgress = false;
+                  if (response.error) {
+                    console.log(
+                      "[GoogleServices] Silent re-auth failed, user will need to click connect",
+                    );
+                    resolveReauth(null);
+                    return;
+                  }
+                  const expiresIn = response.expires_in || 3600;
+                  const grantedScopes = response.scope || '';
+                  saveTokenToStorage(
+                    response.access_token,
+                    expiresIn,
+                    savedEmail,
+                    grantedScopes,
                   );
-                  return;
-                }
-                const expiresIn = response.expires_in || 3600;
-                saveTokenToStorage(
-                  response.access_token,
-                  expiresIn,
-                  savedEmail,
-                );
-                setAccessToken(response.access_token);
-                setIsConnected(true);
-                console.log(
-                  "[GoogleServices] Silent re-auth successful for",
-                  savedEmail,
-                );
-              },
-            });
-            // Try silent auth with login_hint
-            tokenClient.requestAccessToken({
-              prompt: "",
-              login_hint: savedEmail,
-            });
-          } catch (e) {
-            console.log("[GoogleServices] Silent re-auth setup failed:", e);
+                  setAccessToken(response.access_token);
+                  setIsConnected(true);
+                  console.log(
+                    "[GoogleServices] Silent re-auth successful for",
+                    savedEmail,
+                  );
+                  resolveReauth(response.access_token);
+                },
+              });
+              // Try silent auth with login_hint
+              tokenClient.requestAccessToken({
+                prompt: "",
+                login_hint: savedEmail,
+              });
+            } catch (e) {
+              console.log("[GoogleServices] Silent re-auth setup failed:", e);
+              silentReauthInProgress = false;
+              resolveReauth(null);
+            }
+          })();
+        });
+      } else if (savedEmail && user && silentReauthInProgress && silentReauthPromise) {
+        // Another instance is already doing silent re-auth, wait for it
+        silentReauthPromise.then((token) => {
+          if (token) {
+            setAccessToken(token);
+            setIsConnected(true);
           }
-        })();
+        });
       }
     }
   }, [user]);
@@ -189,12 +231,17 @@ export function useGoogleServices() {
       }
 
       // Try to use saved token first (unless force refresh)
+      // Also check that saved token has the required scopes
       if (!forceRefresh) {
         const savedToken = loadTokenFromStorage();
-        if (savedToken) {
+        if (savedToken && hasRequiredScopes(services)) {
           setAccessToken(savedToken);
           setIsConnected(true);
           return savedToken;
+        }
+        // Token exists but missing scopes — need re-auth with broader scopes
+        if (savedToken && !hasRequiredScopes(services)) {
+          console.log('[GoogleServices] Token exists but missing scopes for:', services);
         }
       }
 
@@ -248,7 +295,8 @@ export function useGoogleServices() {
 
               // Save token to localStorage (with email for future silent re-auth)
               const expiresIn = response.expires_in || 3600; // Default 1 hour
-              saveTokenToStorage(response.access_token, expiresIn, userEmail);
+              const grantedScopes = response.scope || '';
+              saveTokenToStorage(response.access_token, expiresIn, userEmail, grantedScopes);
 
               setAccessToken(response.access_token);
               setIsConnected(true);
