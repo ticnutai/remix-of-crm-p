@@ -1,16 +1,25 @@
-import React from 'react';
-import { Task } from '@/hooks/useTasksOptimized';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Pencil, Trash2, Calendar, User, 
-  ArrowUp, ArrowRight, ArrowDown, Clock, CheckCircle2, Circle
-} from 'lucide-react';
-import { format, parseISO, isPast, isToday } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Task } from "@/hooks/useTasksOptimized";
+import { cleanTitle } from "@/utils/cleanDisplayText";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Pencil,
+  Trash2,
+  Calendar,
+  User,
+  ArrowUp,
+  ArrowRight,
+  ArrowDown,
+  Clock,
+  CheckCircle2,
+  Circle,
+} from "lucide-react";
+import { format, parseISO, isPast, isToday } from "date-fns";
+import { he } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import {
   DndContext,
   DragEndEvent,
@@ -20,19 +29,37 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-} from '@dnd-kit/core';
-import { useDraggable } from '@dnd-kit/core';
+} from "@dnd-kit/core";
+import { useDraggable } from "@dnd-kit/core";
 
 const priorities = [
-  { value: 'low', icon: ArrowDown, color: 'text-green-600' },
-  { value: 'medium', icon: ArrowRight, color: 'text-amber-500' },
-  { value: 'high', icon: ArrowUp, color: 'text-red-500' },
+  { value: "low", icon: ArrowDown, color: "text-green-600" },
+  { value: "medium", icon: ArrowRight, color: "text-amber-500" },
+  { value: "high", icon: ArrowUp, color: "text-red-500" },
 ];
 
 const columns = [
-  { id: 'pending', title: 'ממתין', icon: Circle, color: 'text-slate-500', bg: 'bg-slate-50' },
-  { id: 'in_progress', title: 'בביצוע', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50' },
-  { id: 'completed', title: 'הושלם', icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-50' },
+  {
+    id: "pending",
+    title: "ממתין",
+    icon: Circle,
+    color: "text-slate-500",
+    bg: "bg-slate-50",
+  },
+  {
+    id: "in_progress",
+    title: "בביצוע",
+    icon: Clock,
+    color: "text-blue-500",
+    bg: "bg-blue-50",
+  },
+  {
+    id: "completed",
+    title: "הושלם",
+    icon: CheckCircle2,
+    color: "text-green-500",
+    bg: "bg-green-50",
+  },
 ];
 
 interface TasksKanbanViewProps {
@@ -49,18 +76,25 @@ interface DraggableTaskCardProps {
 }
 
 function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: task.id,
-    data: { task },
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: task.id,
+      data: { task },
+    });
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
 
-  const priorityInfo = priorities.find(p => p.value === task.priority) || priorities[1];
+  const priorityInfo =
+    priorities.find((p) => p.value === task.priority) || priorities[1];
   const PriorityIcon = priorityInfo.icon;
-  const isOverdue = task.due_date && isPast(parseISO(task.due_date)) && task.status !== 'completed';
+  const isOverdue =
+    task.due_date &&
+    isPast(parseISO(task.due_date)) &&
+    task.status !== "completed";
 
   return (
     <Card
@@ -71,37 +105,60 @@ function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
       className={cn(
         "cursor-grab active:cursor-grabbing group hover:shadow-md transition-shadow",
         isDragging && "opacity-50",
-        isOverdue && "ring-1 ring-red-300"
+        isOverdue && "ring-1 ring-red-300",
       )}
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(task);
+              }}
+            >
               <Pencil className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+            >
               <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
           </div>
-          <h4 className={cn(
-            "text-sm font-medium text-right flex-1 line-clamp-2",
-            task.status === 'completed' && "line-through text-muted-foreground"
-          )}>
-            {task.title}
+          <h4
+            className={cn(
+              "text-sm font-medium text-right flex-1 line-clamp-2",
+              task.status === "completed" &&
+                "line-through text-muted-foreground",
+            )}
+          >
+            {cleanTitle(task.title)}
           </h4>
         </div>
 
         <div className="flex items-center gap-2 justify-end flex-wrap">
           <PriorityIcon className={cn("h-3 w-3", priorityInfo.color)} />
           {task.due_date && (
-            <span className={cn(
-              "text-xs flex items-center gap-1",
-              isOverdue && "text-red-600",
-              isToday(parseISO(task.due_date)) && !isOverdue && "text-amber-600"
-            )}>
+            <span
+              className={cn(
+                "text-xs flex items-center gap-1",
+                isOverdue && "text-red-600",
+                isToday(parseISO(task.due_date)) &&
+                  !isOverdue &&
+                  "text-amber-600",
+              )}
+            >
               <Calendar className="h-3 w-3" />
-              {format(parseISO(task.due_date), 'dd/MM', { locale: he })}
+              {format(parseISO(task.due_date), "dd/MM", { locale: he })}
             </span>
           )}
         </div>
@@ -127,13 +184,18 @@ function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
 }
 
 interface DroppableColumnProps {
-  column: typeof columns[0];
+  column: (typeof columns)[0];
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
 }
 
-function DroppableColumn({ column, tasks, onEdit, onDelete }: DroppableColumnProps) {
+function DroppableColumn({
+  column,
+  tasks,
+  onEdit,
+  onDelete,
+}: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -160,7 +222,7 @@ function DroppableColumn({ column, tasks, onEdit, onDelete }: DroppableColumnPro
               ref={setNodeRef}
               className={cn(
                 "space-y-2 min-h-[100px] p-1 rounded-lg transition-colors",
-                isOver && "bg-primary/10"
+                isOver && "bg-primary/10",
               )}
             >
               {tasks.map((task) => (
@@ -184,13 +246,18 @@ function DroppableColumn({ column, tasks, onEdit, onDelete }: DroppableColumnPro
   );
 }
 
-export function TasksKanbanView({ tasks, onEdit, onDelete, onStatusChange }: TasksKanbanViewProps) {
+export function TasksKanbanView({
+  tasks,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}: TasksKanbanViewProps) {
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
-    })
+    }),
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -205,14 +272,18 @@ export function TasksKanbanView({ tasks, onEdit, onDelete, onStatusChange }: Tas
 
     const taskId = active.id as string;
     const newStatus = over.id as string;
-    const task = tasks.find(t => t.id === taskId);
+    const task = tasks.find((t) => t.id === taskId);
 
-    if (task && task.status !== newStatus && columns.some(c => c.id === newStatus)) {
+    if (
+      task &&
+      task.status !== newStatus &&
+      columns.some((c) => c.id === newStatus)
+    ) {
       onStatusChange(taskId, newStatus);
     }
   };
 
-  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+  const activeTask = activeId ? tasks.find((t) => t.id === activeId) : null;
 
   return (
     <DndContext
@@ -225,7 +296,7 @@ export function TasksKanbanView({ tasks, onEdit, onDelete, onStatusChange }: Tas
           <DroppableColumn
             key={column.id}
             column={column}
-            tasks={tasks.filter(t => t.status === column.id)}
+            tasks={tasks.filter((t) => t.status === column.id)}
             onEdit={onEdit}
             onDelete={onDelete}
           />
@@ -236,7 +307,9 @@ export function TasksKanbanView({ tasks, onEdit, onDelete, onStatusChange }: Tas
         {activeTask && (
           <Card className="shadow-xl">
             <CardContent className="p-3">
-              <h4 className="text-sm font-medium">{activeTask.title}</h4>
+              <h4 className="text-sm font-medium">
+                {cleanTitle(activeTask.title)}
+              </h4>
             </CardContent>
           </Card>
         )}

@@ -78,6 +78,7 @@ import {
   MailOpen,
   MailPlus,
   FolderOpen,
+  Folder,
   Building2,
   Calendar,
   Clock4,
@@ -1288,6 +1289,20 @@ export default function Gmail() {
     setSelectedMessages(new Set());
   };
 
+  // Bulk move to folder
+  const bulkMoveToFolder = async (folderId: string) => {
+    const selectedEmails = messages.filter((m) => selectedMessages.has(m.id));
+    if (selectedEmails.length > 0) {
+      await emailFolders.batchAddEmailsToFolder(folderId, selectedEmails);
+      // Refresh folder email list if we're viewing a folder
+      if (selectedFolderId) {
+        const items = await emailFolders.getEmailsInFolder(selectedFolderId);
+        setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
+      }
+      setSelectedMessages(new Set());
+    }
+  };
+
   // Create task from email
   const handleCreateTaskFromEmail = (
     email: GmailMessage,
@@ -2041,6 +2056,38 @@ export default function Gmail() {
                                 <span className="mr-2">{config.label}</span>
                               </DropdownMenuItem>
                             ),
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {/* Move to folder */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <FolderOpen className="h-4 w-4 ml-2" />
+                            העבר לתיקייה
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="rtl">
+                          {emailFolders.folders.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              אין תיקיות - צור תיקייה חדשה בפאנל השמאלי
+                            </div>
+                          ) : (
+                            emailFolders.folders.map((folder) => (
+                              <DropdownMenuItem
+                                key={folder.id}
+                                onClick={() => bulkMoveToFolder(folder.id)}
+                              >
+                                <Folder className="h-4 w-4 ml-2" style={{ color: folder.color }} />
+                                {folder.name}
+                                {folder.email_count > 0 && (
+                                  <span className="mr-auto text-xs text-muted-foreground">
+                                    {folder.email_count}
+                                  </span>
+                                )}
+                              </DropdownMenuItem>
+                            ))
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -3254,6 +3301,30 @@ export default function Gmail() {
                                         העבר
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
+                                      {/* Move to folder sub-menu */}
+                                      {emailFolders.folders.length > 0 && (
+                                        <>
+                                          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                                            סווג לתיקייה
+                                          </div>
+                                          {emailFolders.folders.map((folder) => (
+                                            <DropdownMenuItem
+                                              key={folder.id}
+                                              onClick={async () => {
+                                                await emailFolders.addEmailToFolder(folder.id, message);
+                                                if (selectedFolderId) {
+                                                  const items = await emailFolders.getEmailsInFolder(selectedFolderId);
+                                                  setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
+                                                }
+                                              }}
+                                            >
+                                              <Folder className="h-4 w-4 ml-2" style={{ color: folder.color }} />
+                                              {folder.name}
+                                            </DropdownMenuItem>
+                                          ))}
+                                          <DropdownMenuSeparator />
+                                        </>
+                                      )}
                                       <DropdownMenuItem
                                         onClick={async () => {
                                           const success = await archiveEmail(

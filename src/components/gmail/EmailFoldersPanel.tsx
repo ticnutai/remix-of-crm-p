@@ -384,19 +384,20 @@ export function EmailFoldersPanel({
                   <div>
                     <Label>צבע</Label>
                     <div className="flex gap-2 mt-1">
-                      {FOLDER_COLORS.map((color) => (
+                      {FOLDER_COLORS.map((c) => (
                         <button
-                          key={color}
+                          key={c.value}
                           className={cn(
                             "w-7 h-7 rounded-full border-2 transition-transform",
-                            editingFolder.color === color
+                            editingFolder.color === c.value
                               ? "border-primary scale-110"
                               : "border-transparent",
                           )}
-                          style={{ backgroundColor: color }}
+                          style={{ backgroundColor: c.value }}
                           onClick={() =>
-                            setEditingFolder({ ...editingFolder, color })
+                            setEditingFolder({ ...editingFolder, color: c.value })
                           }
+                          title={c.label}
                         />
                       ))}
                     </div>
@@ -434,7 +435,8 @@ export function EmailFoldersPanel({
                 <Button
                   onClick={async () => {
                     if (editingFolder) {
-                      await updateFolder(editingFolder.id, editingFolder.name, {
+                      await updateFolder(editingFolder.id, {
+                        name: editingFolder.name,
                         color: editingFolder.color,
                         icon: editingFolder.icon,
                       });

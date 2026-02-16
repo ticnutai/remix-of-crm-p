@@ -304,6 +304,51 @@ export function useEmailFolders() {
     }
   }, [user?.id, toast, loadFolders]);
 
+  // Batch add multiple emails to a folder
+  const batchAddEmailsToFolder = useCallback(async (
+    folderId: string,
+    emails: GmailMessage[]
+  ) => {
+    if (!user?.id || emails.length === 0) return 0;
+    
+    try {
+      const items = emails.map(email => ({
+        user_id: user.id,
+        folder_id: folderId,
+        email_id: email.id,
+        email_subject: email.subject,
+        email_from: email.from,
+        email_date: email.date,
+        email_snippet: email.snippet,
+        client_id: null as string | null,
+        notes: null as string | null,
+      }));
+      
+      const { error } = await supabase
+        .from('email_folder_items')
+        .upsert(items, { onConflict: 'folder_id,email_id' });
+      
+      if (error) throw error;
+      
+      const folder = folders.find(f => f.id === folderId);
+      toast({
+        title: '✅ מיילים סווגו',
+        description: `${emails.length} מיילים נוספו לתיקייה "${folder?.name || ''}"`,
+      });
+      
+      await loadFolders();
+      return emails.length;
+    } catch (error) {
+      console.error('Error batch adding emails to folder:', error);
+      toast({
+        title: 'שגיאה',
+        description: 'לא ניתן לסווג את המיילים',
+        variant: 'destructive',
+      });
+      return 0;
+    }
+  }, [user?.id, folders, toast, loadFolders]);
+
   // Remove email from folder
   const removeEmailFromFolder = useCallback(async (folderId: string, emailId: string) => {
     if (!user?.id) return false;
@@ -545,6 +590,7 @@ export function useEmailFolders() {
     
     // Email in folder operations
     addEmailToFolder,
+    batchAddEmailsToFolder,
     removeEmailFromFolder,
     getEmailsInFolder,
     
