@@ -180,6 +180,100 @@ export default function Contacts() {
     [gmailCache],
   );
 
+  // Direct Gmail message fetch for senders tab (when cache is empty)
+  const [directMessages, setDirectMessages] = useState<GmailMessage[]>([]);
+  const [isLoadingSenders, setIsLoadingSenders] = useState(false);
+
+  const fetchSendersFromGmail = useCallback(async () => {
+    if (!isGoogleConnected) return;
+    setIsLoadingSenders(true);
+    try {
+      const token = await connectGoogle(['gmail']);
+      if (!token) {
+        setIsLoadingSenders(false);
+        return;
+      }
+      // Fetch up to 100 messages to extract senders
+      const listResp = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!listResp.ok) {
+        const errData = await listResp.json().catch(() => ({}));
+        toast({
+          title: 'שגיאה בטעינת הודעות Gmail',
+          description: errData?.error?.message || `HTTP ${listResp.status}`,
+          variant: 'destructive',
+        });
+        setIsLoadingSenders(false);
+        return;
+      }
+      const listData = await listResp.json();
+      if (!listData.messages || listData.messages.length === 0) {
+        toast({ title: 'לא נמצאו הודעות ב-Gmail' });
+        setIsLoadingSenders(false);
+        return;
+      }
+      // Batch fetch message metadata
+      const BATCH_SIZE = 8;
+      const allMsgs: any[] = [];
+      for (let i = 0; i < listData.messages.length; i += BATCH_SIZE) {
+        const batch = listData.messages.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map(async (m: any) => {
+            const r = await fetch(
+              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            return r.json();
+          })
+        );
+        allMsgs.push(...results);
+        if (i + BATCH_SIZE < listData.messages.length) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+      const formatted: GmailMessage[] = allMsgs.map((msg: any) => {
+        const headers = msg.payload?.headers || [];
+        const getH = (n: string) => headers.find((h: any) => h.name === n)?.value || '';
+        const fromH = getH('From');
+        const fromM = fromH.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
+        return {
+          id: msg.id,
+          threadId: msg.threadId,
+          subject: getH('Subject'),
+          from: fromM?.[2] || fromH,
+          fromName: fromM?.[1] || fromM?.[2] || fromH,
+          to: getH('To').split(',').map((t: string) => t.trim()),
+          date: getH('Date'),
+          snippet: msg.snippet || '',
+          isRead: !msg.labelIds?.includes('UNREAD'),
+          isStarred: msg.labelIds?.includes('STARRED'),
+          labels: msg.labelIds || [],
+        };
+      });
+      setDirectMessages(formatted);
+      // Also cache them for later
+      gmailCache.cacheMessages(formatted, 'inbox');
+      toast({ title: `נטענו ${formatted.length} הודעות מ-Gmail` });
+    } catch (err: any) {
+      console.error('Error fetching Gmail messages:', err);
+      toast({
+        title: 'שגיאה בטעינת Gmail',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingSenders(false);
+    }
+  }, [isGoogleConnected, connectGoogle, gmailCache, toast]);
+
+  // Combine cached + directly fetched messages
+  const allMessages = useMemo(() => {
+    if (cachedMessages.length > 0) return cachedMessages;
+    return directMessages;
+  }, [cachedMessages, directMessages]);
+
   // State
   const [activeTab, setActiveTab] = useState("senders");
   const [searchQuery, setSearchQuery] = useState("");
@@ -201,10 +295,10 @@ export default function Contacts() {
     "all",
   );
 
-  // Extract unique email senders from cached messages
+  // Extract unique email senders from all messages
   const senders = useMemo(
-    () => extractSenders(cachedMessages),
-    [cachedMessages],
+    () => extractSenders(allMessages),
+    [allMessages],
   );
 
   const linkedSenders = useMemo(() => {
@@ -271,8 +365,14 @@ export default function Contacts() {
   }, [fetchContacts]);
 
   const handleConnectGoogle = useCallback(async () => {
-    await connectGoogle(['contacts', 'gmail']);
-  }, [connectGoogle]);
+    const token = await connectGoogle(['contacts', 'gmail']);
+    if (token) {
+      // Auto-fetch contacts after connecting
+      fetchContacts(500).then(() => setGoogleFetched(true));
+      // Auto-fetch senders too
+      fetchSendersFromGmail();
+    }
+  }, [connectGoogle, fetchContacts, fetchSendersFromGmail]);
 
   const handleImportSelected = useCallback(async () => {
     const toImport = googleContacts.filter((c) =>
@@ -683,9 +783,26 @@ export default function Contacts() {
                     <div className="text-center py-12 text-muted-foreground">
                       <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p>לא נמצאו שולחים</p>
-                      <p className="text-xs mt-1">
-                        נדרש חיבור ל-Gmail כדי לטעון שולחים
-                      </p>
+                      {isGoogleConnected ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          disabled={isLoadingSenders}
+                          onClick={fetchSendersFromGmail}
+                        >
+                          {isLoadingSenders ? (
+                            <Loader2 className="h-3 w-3 ml-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3 ml-1" />
+                          )}
+                          טען שולחים מ-Gmail
+                        </Button>
+                      ) : (
+                        <p className="text-xs mt-1">
+                          נדרש חיבור ל-Gmail כדי לטעון שולחים
+                        </p>
+                      )}
                     </div>
                   ) : (
                     filteredSenders.map((sender) => (

@@ -39,6 +39,23 @@ export function useGoogleContacts() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData?.error?.message || `HTTP ${response.status}`;
+        console.error('Google Contacts API error:', errorData);
+        toast({
+          title: 'שגיאה בטעינת אנשי קשר',
+          description: response.status === 403
+            ? 'אין הרשאת גישה לאנשי קשר. נסה להתחבר מחדש.'
+            : response.status === 404
+              ? 'People API לא מופעל בפרויקט Google. בדוק את הגדרות GCP Console.'
+              : errorMsg,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return [];
+      }
+
       const data = await response.json();
 
       const formattedContacts: GoogleContact[] = (data.connections || []).map((person: any) => ({
@@ -52,6 +69,18 @@ export function useGoogleContacts() {
 
       setContacts(formattedContacts);
       setIsLoading(false);
+
+      if (formattedContacts.length === 0) {
+        toast({
+          title: 'לא נמצאו אנשי קשר',
+          description: 'חשבון Google זה לא מכיל אנשי קשר, או שהם לא שותפו.',
+        });
+      } else {
+        toast({
+          title: `נטענו ${formattedContacts.length} אנשי קשר`,
+        });
+      }
+
       return formattedContacts;
     } catch (error: any) {
       console.error('Error fetching contacts:', error);
