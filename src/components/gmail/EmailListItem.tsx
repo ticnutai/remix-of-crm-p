@@ -428,10 +428,14 @@ export function EmailListItem({
                   onTogglePin(message.id, isPinned);
                 }}
               >
-                <Bookmark className={cn("h-3.5 w-3.5", isPinned && "fill-green-500")} />
+                <Bookmark
+                  className={cn("h-3.5 w-3.5", isPinned && "fill-green-500")}
+                />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">{isPinned ? "הסר הצמדה" : "הצמד"}</TooltipContent>
+            <TooltipContent side="top">
+              {isPinned ? "הסר הצמדה" : "הצמד"}
+            </TooltipContent>
           </Tooltip>
 
           {/* More actions dropdown */}
@@ -489,7 +493,9 @@ export function EmailListItem({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onMuteThread(message.threadId)}>
                 <VolumeX className="h-4 w-4 ml-2" />
-                {mutedThreads.has(message.threadId) ? "הפעל שרשור" : "השתק שרשור"}
+                {mutedThreads.has(message.threadId)
+                  ? "הפעל שרשור"
+                  : "השתק שרשור"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {

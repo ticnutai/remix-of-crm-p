@@ -89,7 +89,10 @@ export function GmailSidebar({
   getClientForMessage,
 }: GmailSidebarProps) {
   return (
-    <Card className="lg:col-span-3 overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+    <Card
+      className="lg:col-span-3 overflow-hidden"
+      style={{ maxHeight: "calc(100vh - 160px)" }}
+    >
       <ScrollArea className="h-[calc(100vh-180px)]">
         <CardContent className="p-4 text-right">
           <Button onClick={onCompose} className="w-full mb-4" size="lg">

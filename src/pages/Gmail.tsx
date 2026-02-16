@@ -2761,212 +2761,245 @@ export default function Gmail() {
                                       )}
                                   </div>
 
-                                  {/* Quick Actions */}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 opacity-0 group-hover:opacity-100"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent
-                                      align="end"
-                                      className="rtl"
-                                    >
-                                      <DropdownMenuItem
-                                        onClick={() => openChatView(message)}
-                                      >
-                                        <MessageSquare className="h-4 w-4 ml-2" />
-                                        פתח כשיחה
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setSelectedEmailForAction(message);
-                                          setIsReminderDialogOpen(true);
-                                        }}
-                                      >
-                                        <Bell className="h-4 w-4 ml-2" />
-                                        הוסף תזכורת
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setSelectedEmailForAction(message);
-                                          setIsNoteDialogOpen(true);
-                                        }}
-                                      >
-                                        <FileText className="h-4 w-4 ml-2" />
-                                        הוסף הערה
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={async () => {
-                                          await markAsRead(
-                                            message.id,
-                                            !message.isRead,
-                                          );
-                                          await handleRefresh();
-                                        }}
-                                      >
-                                        <MailOpen className="h-4 w-4 ml-2" />
-                                        {message.isRead
-                                          ? "סמן כלא נקרא"
-                                          : "סמן כנקרא"}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          const isPinned =
-                                            emailMetadata.getMetadata(
-                                              message.id,
-                                            )?.is_pinned || false;
-                                          emailMetadata.setPin(
-                                            message.id,
-                                            !isPinned,
-                                          );
-                                        }}
-                                      >
-                                        <Bookmark className="h-4 w-4 ml-2" />
-                                        {emailMetadata.getMetadata(message.id)
-                                          ?.is_pinned
-                                          ? "הסר הצמדה"
-                                          : "הצמד"}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          const replySubject =
-                                            message.subject?.startsWith("Re:")
-                                              ? message.subject
-                                              : `Re: ${message.subject || ""}`;
-                                          setComposeData({
-                                            to: message.from,
-                                            subject: replySubject,
-                                          });
-                                          setIsComposeOpen(true);
-                                        }}
-                                      >
-                                        <Reply className="h-4 w-4 ml-2" />
-                                        השב
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          const fwdSubject =
-                                            message.subject?.startsWith("Fwd:")
-                                              ? message.subject
-                                              : `Fwd: ${message.subject || ""}`;
-                                          setComposeData({
-                                            to: "",
-                                            subject: fwdSubject,
-                                          });
-                                          setIsComposeOpen(true);
-                                        }}
-                                      >
-                                        <Forward className="h-4 w-4 ml-2" />
-                                        העבר
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      {/* Move to folder sub-menu */}
-                                      {emailFolders.folders.length > 0 && (
-                                        <>
-                                          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                            סווג לתיקייה
-                                          </div>
-                                          {emailFolders.folders.map(
-                                            (folder) => (
-                                              <DropdownMenuItem
-                                                key={folder.id}
-                                                onClick={async () => {
-                                                  await emailFolders.addEmailToFolder(
-                                                    folder.id,
-                                                    message,
-                                                  );
-                                                  if (selectedFolderId) {
-                                                    const items =
-                                                      await emailFolders.getEmailsInFolder(
-                                                        selectedFolderId,
-                                                      );
-                                                    setFolderEmailIds(
-                                                      new Set(
-                                                        items.map(
-                                                          (item: any) =>
-                                                            item.email_id,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                }}
-                                              >
-                                                <Folder
-                                                  className="h-4 w-4 ml-2"
-                                                  style={{
-                                                    color: folder.color,
+                                  {/* Hover Quick Action Icons */}
+                                  <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <TooltipProvider delayDuration={200}>
+                                      {/* Reply */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const replySubject =
+                                                message.subject?.startsWith("Re:")
+                                                  ? message.subject
+                                                  : `Re: ${message.subject || ""}`;
+                                              setComposeData({
+                                                to: message.from,
+                                                subject: replySubject,
+                                              });
+                                              setIsComposeOpen(true);
+                                            }}
+                                          >
+                                            <Reply className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">השב</TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Forward */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const fwdSubject =
+                                                message.subject?.startsWith("Fwd:")
+                                                  ? message.subject
+                                                  : `Fwd: ${message.subject || ""}`;
+                                              setComposeData({
+                                                to: "",
+                                                subject: fwdSubject,
+                                              });
+                                              setIsComposeOpen(true);
+                                            }}
+                                          >
+                                            <Forward className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">העבר</TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Archive */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              const success = await archiveEmail(message.id);
+                                              if (success) handleRefresh();
+                                            }}
+                                          >
+                                            <Archive className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">ארכיון</TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Delete */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-red-500"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              const success = await deleteEmail(message.id);
+                                              if (success) handleRefresh();
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">מחק</TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Reminder */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className={cn("h-7 w-7", emailReminders[message.id] && "text-orange-500")}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedEmailForAction(message);
+                                              setIsReminderDialogOpen(true);
+                                            }}
+                                          >
+                                            <Bell className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">תזכורת</TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Mark read/unread */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              await markAsRead(message.id, !message.isRead);
+                                              await handleRefresh();
+                                            }}
+                                          >
+                                            {message.isRead ? (
+                                              <MailPlus className="h-3.5 w-3.5" />
+                                            ) : (
+                                              <MailOpen className="h-3.5 w-3.5" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          {message.isRead ? "סמן כלא נקרא" : "סמן כנקרא"}
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Pin */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className={cn("h-7 w-7", emailMetadata.getMetadata(message.id)?.is_pinned && "text-green-500")}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const isPinned =
+                                                emailMetadata.getMetadata(message.id)?.is_pinned || false;
+                                              emailMetadata.setPin(message.id, !isPinned);
+                                            }}
+                                          >
+                                            <Bookmark className={cn("h-3.5 w-3.5", emailMetadata.getMetadata(message.id)?.is_pinned && "fill-green-500")} />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          {emailMetadata.getMetadata(message.id)?.is_pinned ? "הסר הצמדה" : "הצמד"}
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* More actions dropdown */}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <MoreVertical className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="rtl">
+                                          <DropdownMenuItem onClick={() => openChatView(message)}>
+                                            <MessageSquare className="h-4 w-4 ml-2" />
+                                            פתח כשיחה
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              setSelectedEmailForAction(message);
+                                              setIsNoteDialogOpen(true);
+                                            }}
+                                          >
+                                            <FileText className="h-4 w-4 ml-2" />
+                                            הוסף הערה
+                                          </DropdownMenuItem>
+                                          {/* Move to folder */}
+                                          {emailFolders.folders.length > 0 && (
+                                            <>
+                                              <DropdownMenuSeparator />
+                                              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                                                סווג לתיקייה
+                                              </div>
+                                              {emailFolders.folders.map((folder) => (
+                                                <DropdownMenuItem
+                                                  key={folder.id}
+                                                  onClick={async () => {
+                                                    await emailFolders.addEmailToFolder(folder.id, message);
+                                                    if (selectedFolderId) {
+                                                      const items = await emailFolders.getEmailsInFolder(selectedFolderId);
+                                                      setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
+                                                    }
                                                   }}
-                                                />
-                                                {folder.name}
-                                              </DropdownMenuItem>
-                                            ),
+                                                >
+                                                  <Folder className="h-4 w-4 ml-2" style={{ color: folder.color }} />
+                                                  {folder.name}
+                                                </DropdownMenuItem>
+                                              ))}
+                                            </>
                                           )}
                                           <DropdownMenuSeparator />
-                                        </>
-                                      )}
-                                      <DropdownMenuItem
-                                        onClick={async () => {
-                                          const success = await archiveEmail(
-                                            message.id,
-                                          );
-                                          if (success) handleRefresh();
-                                        }}
-                                      >
-                                        <Archive className="h-4 w-4 ml-2" />
-                                        העבר לארכיון
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-red-600"
-                                        onClick={async () => {
-                                          const success = await deleteEmail(
-                                            message.id,
-                                          );
-                                          if (success) handleRefresh();
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4 ml-2" />
-                                        מחק
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        onClick={async () => {
-                                          await reportSpam(message.id);
-                                          handleRefresh();
-                                        }}
-                                      >
-                                        <ShieldAlert className="h-4 w-4 ml-2" />
-                                        דווח כספאם
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          handleMuteThread(message.threadId)
-                                        }
-                                      >
-                                        <VolumeX className="h-4 w-4 ml-2" />
-                                        {mutedThreads.has(message.threadId)
-                                          ? "הפעל שרשור"
-                                          : "השתק שרשור"}
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          const d = new Date();
-                                          d.setDate(d.getDate() + 1);
-                                          d.setHours(9, 0, 0, 0);
-                                          handleSnooze(message.id, d);
-                                        }}
-                                      >
-                                        <Timer className="h-4 w-4 ml-2" />
-                                        נדניק למחר
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
+                                          <DropdownMenuItem
+                                            onClick={async () => {
+                                              await reportSpam(message.id);
+                                              handleRefresh();
+                                            }}
+                                          >
+                                            <ShieldAlert className="h-4 w-4 ml-2" />
+                                            דווח כספאם
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleMuteThread(message.threadId)}>
+                                            <VolumeX className="h-4 w-4 ml-2" />
+                                            {mutedThreads.has(message.threadId) ? "הפעל שרשור" : "השתק שרשור"}
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => {
+                                              const d = new Date();
+                                              d.setDate(d.getDate() + 1);
+                                              d.setHours(9, 0, 0, 0);
+                                              handleSnooze(message.id, d);
+                                            }}
+                                          >
+                                            <Timer className="h-4 w-4 ml-2" />
+                                            נדניק למחר
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TooltipProvider>
+                                  </div>
                                 </div>
                               </React.Fragment>
                             );
