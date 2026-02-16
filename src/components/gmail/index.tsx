@@ -65,6 +65,7 @@ export { BulkActionsBar } from "./BulkActionsBar";
 export { EmailListItem } from "./EmailListItem";
 export { EmailDetailView } from "./EmailDetailView";
 export { AdvancedSearchPanel } from "./AdvancedSearchPanel";
+export { GmailContactsPanel } from "./GmailContactsPanel";
 
 // Export shared types and constants
 export {

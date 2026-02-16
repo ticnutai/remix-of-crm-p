@@ -163,6 +163,7 @@ import {
   EmailDetailView,
   AdvancedSearchPanel,
   EmailSenderChatView,
+  GmailContactsPanel,
   DEFAULT_LABELS as IMPORTED_DEFAULT_LABELS,
   PRIORITY_CONFIG as IMPORTED_PRIORITY_CONFIG,
   type Client,
@@ -276,6 +277,9 @@ export default function Gmail() {
     timeoutId: ReturnType<typeof setTimeout>;
     countdown: number;
   } | null>(null);
+
+  // Contacts panel state
+  const [isContactsPanelOpen, setIsContactsPanelOpen] = useState(false);
 
   // Snooze state
   const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
@@ -1787,6 +1791,15 @@ export default function Gmail() {
                   כתיבת הודעה
                 </Button>
 
+                {/* Contacts Panel */}
+                <Button
+                  variant="outline"
+                  onClick={() => setIsContactsPanelOpen(true)}
+                >
+                  <Users className="h-4 w-4 ml-2" />
+                  אנשי קשר
+                </Button>
+
                 {/* View Mode Toggle */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -2881,6 +2894,13 @@ export default function Gmail() {
         <KeyboardShortcutsDialog
           open={showShortcutsHelp}
           onOpenChange={setShowShortcutsHelp}
+        />
+
+        {/* Contacts Management Panel */}
+        <GmailContactsPanel
+          open={isContactsPanelOpen}
+          onOpenChange={setIsContactsPanelOpen}
+          messages={messages}
         />
       </div>
     </AppLayout>
