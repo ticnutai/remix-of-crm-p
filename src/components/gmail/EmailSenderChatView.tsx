@@ -23,6 +23,33 @@ import { format, isToday, isYesterday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
+// Decode HTML entities and clean up messy email snippets
+function cleanSnippet(raw: string): string {
+  if (!raw) return "";
+  // 1. Decode HTML entities
+  let text = raw
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+
+  // 2. Remove raw email addresses in angle brackets: <user@domain.com>
+  text = text.replace(/<[^@\s>]+@[^>\s]+>/g, "");
+
+  // 3. Remove forwarded/reply header lines (From:, Sent:, To:, Date:, Cc:, Subject:)
+  text = text.replace(/\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi, "");
+
+  // 4. Remove "---------- Forwarded message ----------" style lines
+  text = text.replace(/-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi, "");
+
+  // 5. Clean up multiple spaces and newlines
+  text = text.replace(/\s{2,}/g, " ").trim();
+
+  return text;
+}
+
 interface EmailSenderChatViewProps {
   senderEmail: string;
   senderName: string;
@@ -450,7 +477,7 @@ export function EmailSenderChatView({
                                     : "text-foreground",
                                 )}
                               >
-                                {msg.snippet}
+                                {cleanSnippet(msg.snippet)}
                               </p>
                             )}
 
@@ -490,7 +517,7 @@ export function EmailSenderChatView({
                                         : "text-foreground",
                                     )}
                                   >
-                                    {msg.snippet}
+                                    {cleanSnippet(msg.snippet)}
                                   </p>
                                 )}
                               </div>

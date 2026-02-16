@@ -42,6 +42,21 @@ import {
   Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Decode HTML entities and clean snippets
+function cleanSnippet(raw: string): string {
+  if (!raw) return "";
+  let text = raw
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+  text = text.replace(/<[^@\s>]+@[^>\s]+>/g, "");
+  text = text.replace(/\s{2,}/g, " ").trim();
+  return text;
+}
 import { GmailMessage } from "@/hooks/useGmailIntegration";
 import { Client, EmailLabel, Priority, PRIORITY_CONFIG } from "./gmail-types";
 
@@ -581,7 +596,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                   : "text-xs line-clamp-1",
               )}
             >
-              {message.snippet}
+              {cleanSnippet(message.snippet)}
             </p>
           )}
         </div>

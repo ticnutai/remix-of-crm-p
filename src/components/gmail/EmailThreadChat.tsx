@@ -53,6 +53,23 @@ import { EmojiPicker } from "./EmojiPicker";
 import { format, isToday, isYesterday } from "date-fns";
 import { he } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+// Decode HTML entities and clean up messy email snippets
+function cleanSnippet(raw: string): string {
+  if (!raw) return "";
+  let text = raw
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+  text = text.replace(/<[^@\s>]+@[^>\s]+>/g, "");
+  text = text.replace(/\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi, "");
+  text = text.replace(/-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi, "");
+  text = text.replace(/\s{2,}/g, " ").trim();
+  return text;
+}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -507,7 +524,7 @@ export const EmailThreadChat = ({
 
                             {/* Message Content */}
                             {(() => {
-                              const content = msg.body || msg.snippet || "";
+                              const content = cleanSnippet(msg.body || msg.snippet || "");
                               const { main, quoted } = splitQuotedText(content);
                               const isQuoteExpanded = expandedQuotes.has(
                                 msg.id,
