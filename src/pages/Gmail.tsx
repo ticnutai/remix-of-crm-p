@@ -1880,7 +1880,7 @@ export default function Gmail() {
                   </Card>
                 }
               >
-                <Card className="lg:col-span-9">
+                <Card className="lg:col-span-9 overflow-hidden">
                   <CardHeader className="pb-2">
                     <div className="flex flex-col gap-3">
                       {/* Search and Filters Row */}
@@ -2189,10 +2189,11 @@ export default function Gmail() {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="p-0">
+                  <CardContent className="p-0 relative overflow-hidden">
                     {selectedEmail ? (
-                      /* Email Detail View */
-                      <EmailDetailView
+                      /* Email Detail View - full overlay so no list bleeds through */
+                      <div className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto">
+                        <EmailDetailView
                         selectedEmail={selectedEmail}
                         emailHtmlBody={emailHtmlBody}
                         loadingBody={loadingBody}
@@ -2243,6 +2244,7 @@ export default function Gmail() {
                         onCreateReminder={handleCreateReminderFromEmail}
                         onLinkClient={handleLinkClient}
                       />
+                      </div>
                     ) : (
                       /* Email List View */
                       <div className="relative">
