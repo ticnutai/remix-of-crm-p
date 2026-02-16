@@ -2929,25 +2929,6 @@ export default function Gmail() {
         {/* Hover Preview Panel - draggable, resizable, closes on mouse leave */}
         {showPreviewDialog && previewMessage && (
           <div
-            ref={(el) => {
-              if (el) {
-                const body = el.querySelector('[data-preview-body]') as HTMLElement;
-                if (body) {
-                  console.warn('📧 ⬛ [PREVIEW PANEL RENDERED]', {
-                    panelH: el.offsetHeight,
-                    bodyH: body.offsetHeight,
-                    bodyScrollH: body.scrollHeight,
-                    bodyClientH: body.clientHeight,
-                    canScroll: body.scrollHeight > body.clientHeight,
-                    hasHtml: !!hoverPreviewHtml,
-                    htmlLen: hoverPreviewHtml?.length || 0,
-                    loading: hoverPreviewLoading,
-                    overflowY: getComputedStyle(body).overflowY,
-                    bodyComputedH: getComputedStyle(body).height,
-                  });
-                }
-              }
-            }}
             className="fixed z-[401] rounded-lg bg-background shadow-2xl"
             style={{
               display: "flex",
@@ -3011,38 +2992,35 @@ export default function Gmail() {
               </div>
             </div>
 
-            {/* Body - scrollable content area */}
-            <div
+            {/* Body - scrollable content area using ScrollArea */}
+            <ScrollArea
               data-preview-body
               dir="rtl"
-              style={{
-                flex: "1 1 0%",
-                minHeight: 0,
-                overflowY: "auto",
-                overflowX: "hidden",
-                padding: "16px",
-              }}
+              className="flex-1 min-h-0"
+              style={{ direction: "rtl" }}
             >
-              {hoverPreviewLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : hoverPreviewHtml ? (
-                <div
-                  className="prose prose-sm max-w-none dark:prose-invert"
-                  style={{ overflowX: "hidden", wordBreak: "break-word" }}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                      ALLOW_UNKNOWN_PROTOCOLS: true,
-                    }),
-                  }}
-                />
-              ) : (
-                <p className="whitespace-pre-wrap text-muted-foreground">
-                  {previewMessage.snippet}
-                </p>
-              )}
-            </div>
+              <div className="p-4">
+                {hoverPreviewLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
+                  </div>
+                ) : hoverPreviewHtml ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert"
+                    style={{ overflowX: "hidden", wordBreak: "break-word" }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                        ALLOW_UNKNOWN_PROTOCOLS: true,
+                      }),
+                    }}
+                  />
+                ) : (
+                  <p className="whitespace-pre-wrap text-muted-foreground">
+                    {previewMessage.snippet}
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
 
             {/* Footer actions */}
             <div
@@ -3050,6 +3028,7 @@ export default function Gmail() {
               dir="rtl"
               style={{ flexShrink: 0, borderTop: "2px solid #d4a843" }}
             >
+              <span className="text-[9px] text-muted-foreground opacity-40 ml-auto">v7</span>
               <Button
                 size="sm"
                 variant="outline"
