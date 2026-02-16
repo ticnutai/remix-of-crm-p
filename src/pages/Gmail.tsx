@@ -249,7 +249,9 @@ export default function Gmail() {
   const [activeTab, setActiveTab] = useState("inbox");
 
   // Chat view state
-  const [viewMode, setViewMode] = useState<"list" | "chat" | "sender-chat">("list");
+  const [viewMode, setViewMode] = useState<"list" | "chat" | "sender-chat">(
+    "list",
+  );
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [threadMessages, setThreadMessages] = useState<GmailMessage[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
@@ -1266,71 +1268,80 @@ export default function Gmail() {
   };
 
   // Fetch emails for a specific sender (independent of main email list state)
-  const fetchEmailsForSender = useCallback(async (
-    email: string,
-    pageToken?: string,
-  ): Promise<{ messages: GmailMessage[]; nextPageToken: string | null }> => {
-    try {
-      const token = await getAccessToken(["gmail"]);
-      if (!token) return { messages: [], nextPageToken: null };
+  const fetchEmailsForSender = useCallback(
+    async (
+      email: string,
+      pageToken?: string,
+    ): Promise<{ messages: GmailMessage[]; nextPageToken: string | null }> => {
+      try {
+        const token = await getAccessToken(["gmail"]);
+        if (!token) return { messages: [], nextPageToken: null };
 
-      const query = `from:${email} OR to:${email}`;
-      let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`;
-      if (pageToken) {
-        url += `&pageToken=${pageToken}`;
-      }
+        const query = `from:${email} OR to:${email}`;
+        let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`;
+        if (pageToken) {
+          url += `&pageToken=${pageToken}`;
+        }
 
-      const listResponse = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const listData = await listResponse.json();
+        const listResponse = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const listData = await listResponse.json();
 
-      if (!listData.messages) {
-        return { messages: [], nextPageToken: null };
-      }
+        if (!listData.messages) {
+          return { messages: [], nextPageToken: null };
+        }
 
-      // Fetch metadata for each message
-      const messagePromises = listData.messages.map(async (msg: any) => {
-        const msgResponse = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
-          { headers: { Authorization: `Bearer ${token}` } },
+        // Fetch metadata for each message
+        const messagePromises = listData.messages.map(async (msg: any) => {
+          const msgResponse = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          return msgResponse.json();
+        });
+
+        const messagesData = await Promise.all(messagePromises);
+
+        const formattedMessages: GmailMessage[] = messagesData.map(
+          (msg: any) => {
+            const headers = msg.payload?.headers || [];
+            const getHeader = (name: string) =>
+              headers.find((h: any) => h.name === name)?.value || "";
+            const fromHeader = getHeader("From");
+            const fromMatch = fromHeader.match(
+              /^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/,
+            );
+
+            return {
+              id: msg.id,
+              threadId: msg.threadId,
+              subject: getHeader("Subject"),
+              from: fromMatch?.[2] || fromHeader,
+              fromName: fromMatch?.[1] || fromMatch?.[2] || fromHeader,
+              to: getHeader("To")
+                .split(",")
+                .map((t: string) => t.trim()),
+              date: getHeader("Date"),
+              snippet: msg.snippet || "",
+              isRead: !msg.labelIds?.includes("UNREAD"),
+              isStarred: msg.labelIds?.includes("STARRED"),
+              labels: msg.labelIds || [],
+            };
+          },
         );
-        return msgResponse.json();
-      });
-
-      const messagesData = await Promise.all(messagePromises);
-
-      const formattedMessages: GmailMessage[] = messagesData.map((msg: any) => {
-        const headers = msg.payload?.headers || [];
-        const getHeader = (name: string) =>
-          headers.find((h: any) => h.name === name)?.value || "";
-        const fromHeader = getHeader("From");
-        const fromMatch = fromHeader.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
 
         return {
-          id: msg.id,
-          threadId: msg.threadId,
-          subject: getHeader("Subject"),
-          from: fromMatch?.[2] || fromHeader,
-          fromName: fromMatch?.[1] || fromMatch?.[2] || fromHeader,
-          to: getHeader("To").split(",").map((t: string) => t.trim()),
-          date: getHeader("Date"),
-          snippet: msg.snippet || "",
-          isRead: !msg.labelIds?.includes("UNREAD"),
-          isStarred: msg.labelIds?.includes("STARRED"),
-          labels: msg.labelIds || [],
+          messages: formattedMessages,
+          nextPageToken: listData.nextPageToken || null,
         };
-      });
-
-      return {
-        messages: formattedMessages,
-        nextPageToken: listData.nextPageToken || null,
-      };
-    } catch (error) {
-      console.error("Error fetching sender emails:", error);
-      return { messages: [], nextPageToken: null };
-    }
-  }, [getAccessToken]);
+      } catch (error) {
+        console.error("Error fetching sender emails:", error);
+        return { messages: [], nextPageToken: null };
+      }
+    },
+    [getAccessToken],
+  );
 
   // Open sender chat view
   const openSenderChat = useCallback((email: string, name: string) => {
@@ -1776,8 +1787,7 @@ export default function Gmail() {
                 setSenderChatName("");
               }}
               onReply={(msg) => {
-                const replyTo =
-                  msg.from === user?.email ? msg.to[0] : msg.from;
+                const replyTo = msg.from === user?.email ? msg.to[0] : msg.from;
                 setComposeData({
                   to: replyTo,
                   subject: msg.subject?.startsWith("Re:")
@@ -2194,56 +2204,56 @@ export default function Gmail() {
                       /* Email Detail View - full overlay so no list bleeds through */
                       <div className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto">
                         <EmailDetailView
-                        selectedEmail={selectedEmail}
-                        emailHtmlBody={emailHtmlBody}
-                        loadingBody={loadingBody}
-                        emailAttachments={emailAttachments}
-                        loadingAttachments={loadingAttachments}
-                        downloadingAtt={downloadingAtt}
-                        emailPriority={emailPriority}
-                        emailLabels={emailLabels}
-                        emailReminders={emailReminders}
-                        emailNotes={emailNotes}
-                        customLabels={customLabels}
-                        mutedThreads={mutedThreads}
-                        clients={clients}
-                        user={user}
-                        getMetadata={(id) => emailMetadata.getMetadata(id)}
-                        setPin={(id, val) => emailMetadata.setPin(id, val)}
-                        getLinkedClientId={(id) =>
-                          emailMetadata.getMetadata(id)?.linked_client_id ||
-                          null
-                        }
-                        actionLoading={actionLoading}
-                        onBack={() => setSelectedEmail(null)}
-                        onOpenChatView={openChatView}
-                        onCompose={(data) => {
-                          setComposeData(data);
-                          setIsComposeOpen(true);
-                        }}
-                        onMarkAsRead={markAsRead}
-                        onArchive={archiveEmail}
-                        onDelete={deleteEmail}
-                        onReportSpam={reportSpam}
-                        onRefresh={handleRefresh}
-                        onSnooze={handleSnooze}
-                        onMuteThread={handleMuteThread}
-                        onPrint={handlePrintEmail}
-                        onDownloadAttachment={handleDownloadAttachment}
-                        setActionLoading={setActionLoading}
-                        setSelectedEmailForAction={setSelectedEmailForAction}
-                        setIsReminderDialogOpen={setIsReminderDialogOpen}
-                        setIsNoteDialogOpen={setIsNoteDialogOpen}
-                        toggleEmailLabel={toggleEmailLabel}
-                        setEmailPriorityLevel={setEmailPriorityLevel}
-                        buildQuotedBody={buildQuotedBody}
-                        formatDate={formatDate}
-                        getClientForMessage={getClientForMessage}
-                        onCreateTask={handleCreateTaskFromEmail}
-                        onCreateMeeting={handleCreateMeetingFromEmail}
-                        onCreateReminder={handleCreateReminderFromEmail}
-                        onLinkClient={handleLinkClient}
-                      />
+                          selectedEmail={selectedEmail}
+                          emailHtmlBody={emailHtmlBody}
+                          loadingBody={loadingBody}
+                          emailAttachments={emailAttachments}
+                          loadingAttachments={loadingAttachments}
+                          downloadingAtt={downloadingAtt}
+                          emailPriority={emailPriority}
+                          emailLabels={emailLabels}
+                          emailReminders={emailReminders}
+                          emailNotes={emailNotes}
+                          customLabels={customLabels}
+                          mutedThreads={mutedThreads}
+                          clients={clients}
+                          user={user}
+                          getMetadata={(id) => emailMetadata.getMetadata(id)}
+                          setPin={(id, val) => emailMetadata.setPin(id, val)}
+                          getLinkedClientId={(id) =>
+                            emailMetadata.getMetadata(id)?.linked_client_id ||
+                            null
+                          }
+                          actionLoading={actionLoading}
+                          onBack={() => setSelectedEmail(null)}
+                          onOpenChatView={openChatView}
+                          onCompose={(data) => {
+                            setComposeData(data);
+                            setIsComposeOpen(true);
+                          }}
+                          onMarkAsRead={markAsRead}
+                          onArchive={archiveEmail}
+                          onDelete={deleteEmail}
+                          onReportSpam={reportSpam}
+                          onRefresh={handleRefresh}
+                          onSnooze={handleSnooze}
+                          onMuteThread={handleMuteThread}
+                          onPrint={handlePrintEmail}
+                          onDownloadAttachment={handleDownloadAttachment}
+                          setActionLoading={setActionLoading}
+                          setSelectedEmailForAction={setSelectedEmailForAction}
+                          setIsReminderDialogOpen={setIsReminderDialogOpen}
+                          setIsNoteDialogOpen={setIsNoteDialogOpen}
+                          toggleEmailLabel={toggleEmailLabel}
+                          setEmailPriorityLevel={setEmailPriorityLevel}
+                          buildQuotedBody={buildQuotedBody}
+                          formatDate={formatDate}
+                          getClientForMessage={getClientForMessage}
+                          onCreateTask={handleCreateTaskFromEmail}
+                          onCreateMeeting={handleCreateMeetingFromEmail}
+                          onCreateReminder={handleCreateReminderFromEmail}
+                          onLinkClient={handleLinkClient}
+                        />
                       </div>
                     ) : (
                       /* Email List View */

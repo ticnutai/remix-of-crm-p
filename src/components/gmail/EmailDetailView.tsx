@@ -231,7 +231,10 @@ export const EmailDetailView = memo(function EmailDetailView({
   const autoDetectedClient = getClientForMessage(selectedEmail);
 
   return (
-    <div className="p-4 bg-background relative z-10 min-h-[600px] overflow-y-auto max-h-[calc(100vh-250px)]" dir="rtl">
+    <div
+      className="p-4 bg-background relative z-10 min-h-[600px] overflow-y-auto max-h-[calc(100vh-250px)]"
+      dir="rtl"
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={onBack}>

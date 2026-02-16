@@ -145,7 +145,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
     data: { message },
   });
 
-  // Hover preview timer (3-second hover)
+  // Hover preview timer (1-second hover)
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showPreviewPopup, setShowPreviewPopup] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -154,7 +154,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
     hoverTimerRef.current = setTimeout(() => {
       setShowPreviewPopup(true);
       onHoverPreview?.(message.id);
-    }, 3000);
+    }, 1000);
   }, [message.id, onHoverPreview]);
 
   const handleMouseLeave = useCallback(() => {
@@ -162,6 +162,8 @@ export const EmailListItem = React.memo(function EmailListItemInner({
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
+    // Close the popup when mouse leaves the email item
+    setShowPreviewPopup(false);
   }, []);
 
   // Cleanup on unmount
@@ -587,11 +589,19 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         </div>
       </div>
 
-      {/* Hover Preview Popup - shows after 3 seconds hover */}
+      {/* Hover Preview Popup - shows after 1 second hover */}
       {showPreviewPopup && (
         <div
           ref={popupRef}
           className="fixed z-50 rounded-xl shadow-2xl"
+          onMouseEnter={() => {
+            // Keep popup open while mouse is over it
+            if (hoverTimerRef.current) {
+              clearTimeout(hoverTimerRef.current);
+              hoverTimerRef.current = null;
+            }
+          }}
+          onMouseLeave={() => setShowPreviewPopup(false)}
           style={{
             top: "50%",
             left: "50%",
