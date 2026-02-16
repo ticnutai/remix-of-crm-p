@@ -151,7 +151,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         message.subject,
       );
       onHoverPreview?.(message.id);
-    }, 1000);
+    }, 300);
   }, [message.id, onHoverPreview]);
 
   const handleMouseLeave = useCallback(() => {
