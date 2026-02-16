@@ -2079,7 +2079,10 @@ export default function Gmail() {
                                 key={folder.id}
                                 onClick={() => bulkMoveToFolder(folder.id)}
                               >
-                                <Folder className="h-4 w-4 ml-2" style={{ color: folder.color }} />
+                                <Folder
+                                  className="h-4 w-4 ml-2"
+                                  style={{ color: folder.color }}
+                                />
                                 {folder.name}
                                 {folder.email_count > 0 && (
                                   <span className="mr-auto text-xs text-muted-foreground">
@@ -3307,21 +3310,41 @@ export default function Gmail() {
                                           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
                                             סווג לתיקייה
                                           </div>
-                                          {emailFolders.folders.map((folder) => (
-                                            <DropdownMenuItem
-                                              key={folder.id}
-                                              onClick={async () => {
-                                                await emailFolders.addEmailToFolder(folder.id, message);
-                                                if (selectedFolderId) {
-                                                  const items = await emailFolders.getEmailsInFolder(selectedFolderId);
-                                                  setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-                                                }
-                                              }}
-                                            >
-                                              <Folder className="h-4 w-4 ml-2" style={{ color: folder.color }} />
-                                              {folder.name}
-                                            </DropdownMenuItem>
-                                          ))}
+                                          {emailFolders.folders.map(
+                                            (folder) => (
+                                              <DropdownMenuItem
+                                                key={folder.id}
+                                                onClick={async () => {
+                                                  await emailFolders.addEmailToFolder(
+                                                    folder.id,
+                                                    message,
+                                                  );
+                                                  if (selectedFolderId) {
+                                                    const items =
+                                                      await emailFolders.getEmailsInFolder(
+                                                        selectedFolderId,
+                                                      );
+                                                    setFolderEmailIds(
+                                                      new Set(
+                                                        items.map(
+                                                          (item: any) =>
+                                                            item.email_id,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                }}
+                                              >
+                                                <Folder
+                                                  className="h-4 w-4 ml-2"
+                                                  style={{
+                                                    color: folder.color,
+                                                  }}
+                                                />
+                                                {folder.name}
+                                              </DropdownMenuItem>
+                                            ),
+                                          )}
                                           <DropdownMenuSeparator />
                                         </>
                                       )}

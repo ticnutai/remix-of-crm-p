@@ -395,7 +395,10 @@ export function EmailFoldersPanel({
                           )}
                           style={{ backgroundColor: c.value }}
                           onClick={() =>
-                            setEditingFolder({ ...editingFolder, color: c.value })
+                            setEditingFolder({
+                              ...editingFolder,
+                              color: c.value,
+                            })
                           }
                           title={c.label}
                         />
