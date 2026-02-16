@@ -1,5 +1,5 @@
 // Hook for Google Contacts integration
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,78 @@ export function useGoogleContacts() {
   const [contacts, setContacts] = useState<GoogleContact[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const loadedFromCloud = useRef(false);
+
+  // ── Load cached contacts from Supabase on mount ──────────────
+  useEffect(() => {
+    if (!user || loadedFromCloud.current) return;
+    loadedFromCloud.current = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("google_contacts_cache")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("display_name");
+
+        if (error) {
+          console.warn("[GoogleContacts] Cloud cache load error:", error.message);
+          return;
+        }
+        if (data && data.length > 0) {
+          const cached: GoogleContact[] = data.map((row: any) => ({
+            resourceName: row.google_resource_name,
+            name: row.display_name,
+            email: row.email || undefined,
+            phone: row.phone || undefined,
+            company: row.company || undefined,
+            photoUrl: row.photo_url || undefined,
+          }));
+          setContacts(cached);
+          console.log(`[GoogleContacts] Loaded ${cached.length} contacts from cloud cache`);
+        }
+      } catch (err) {
+        console.warn("[GoogleContacts] Cloud cache load failed:", err);
+      }
+    })();
+  }, [user]);
+
+  // ── Save contacts to Supabase cloud cache ────────────────────
+  const saveContactsToCloud = useCallback(
+    async (contactsList: GoogleContact[]) => {
+      if (!user || contactsList.length === 0) return;
+      try {
+        const rows = contactsList.map((c) => ({
+          user_id: user.id,
+          google_resource_name: c.resourceName,
+          display_name: c.name,
+          email: c.email || null,
+          phone: c.phone || null,
+          company: c.company || null,
+          photo_url: c.photoUrl || null,
+          fetched_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+
+        // Upsert in batches of 50
+        const BATCH = 50;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const batch = rows.slice(i, i + BATCH);
+          const { error } = await supabase
+            .from("google_contacts_cache")
+            .upsert(batch, { onConflict: "user_id,google_resource_name" });
+          if (error) {
+            console.error("[GoogleContacts] Cloud save batch error:", error.message);
+          }
+        }
+        console.log(`[GoogleContacts] Saved ${rows.length} contacts to cloud`);
+      } catch (err) {
+        console.error("[GoogleContacts] Cloud save failed:", err);
+      }
+    },
+    [user],
+  );
 
   // Fetch contacts
   const fetchContacts = useCallback(
@@ -106,6 +178,9 @@ export function useGoogleContacts() {
         setContacts(formattedContacts);
         setIsLoading(false);
 
+        // Save to cloud cache (fire-and-forget)
+        saveContactsToCloud(formattedContacts);
+
         if (formattedContacts.length === 0) {
           toast({
             title: "לא נמצאו אנשי קשר",
@@ -129,7 +204,7 @@ export function useGoogleContacts() {
         return [];
       }
     },
-    [user, getAccessToken, toast],
+    [user, getAccessToken, toast, saveContactsToCloud],
   );
 
   // Import contact as client

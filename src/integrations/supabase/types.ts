@@ -3802,6 +3802,98 @@ export type Database = {
           },
         ]
       }
+      google_contacts_cache: {
+        Row: {
+          id: string
+          user_id: string
+          google_resource_name: string
+          display_name: string
+          email: string | null
+          phone: string | null
+          company: string | null
+          photo_url: string | null
+          raw_data: Json | null
+          fetched_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          google_resource_name: string
+          display_name?: string
+          email?: string | null
+          phone?: string | null
+          company?: string | null
+          photo_url?: string | null
+          raw_data?: Json | null
+          fetched_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          google_resource_name?: string
+          display_name?: string
+          email?: string | null
+          phone?: string | null
+          company?: string | null
+          photo_url?: string | null
+          raw_data?: Json | null
+          fetched_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gmail_senders_cache: {
+        Row: {
+          id: string
+          user_id: string
+          sender_email: string
+          sender_name: string
+          message_count: number
+          last_message_date: string | null
+          linked_client_id: string | null
+          fetched_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          sender_email: string
+          sender_name?: string
+          message_count?: number
+          last_message_date?: string | null
+          linked_client_id?: string | null
+          fetched_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          sender_email?: string
+          sender_name?: string
+          message_count?: number
+          last_message_date?: string | null
+          linked_client_id?: string | null
+          fetched_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gmail_senders_cache_linked_client_id_fkey"
+            columns: ["linked_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       google_contacts_sync: {
         Row: {
           client_id: string | null
