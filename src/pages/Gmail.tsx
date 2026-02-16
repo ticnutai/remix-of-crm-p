@@ -201,6 +201,7 @@ export default function Gmail() {
   const { archiveEmail, deleteEmail, toggleStar, markAsRead } =
     useEmailActionsOptimistic();
   const gmailCache = useGmailCache();
+  const [hasLoaded, setHasLoaded] = useState(false);
   const gmailNotifications = useGmailNotifications({
     enabled: hasLoaded,
     pollIntervalMs: 60000,
@@ -208,7 +209,6 @@ export default function Gmail() {
       if (count > 0) handleRefresh();
     },
   });
-  const [hasLoaded, setHasLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [serverSearchActive, setServerSearchActive] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<GmailMessage | null>(null);
