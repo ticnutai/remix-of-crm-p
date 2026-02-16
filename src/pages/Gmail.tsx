@@ -2974,7 +2974,7 @@ export default function Gmail() {
 
             {/* Body - vertical scroll only */}
             <div
-              className="flex-1 p-4"
+              className="flex-1 min-h-0 p-4"
               dir="rtl"
               style={{ overflowY: "auto", overflowX: "hidden" }}
             >

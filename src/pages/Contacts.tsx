@@ -1,6 +1,12 @@
 // Contacts Page - Full standalone contacts management
 // Smart import from Google, Gmail senders, client linking, smart matching
-import React, { useState, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,6 +61,7 @@ import { useGoogleServices } from "@/hooks/useGoogleServices";
 import { useClients, Client } from "@/hooks/useClients";
 import type { GmailMessage } from "@/hooks/useGmailIntegration";
 import { useGmailCache } from "@/hooks/useGmailCache";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -155,6 +162,7 @@ function findSmartMatches(
 // ── Main Page ──────────────────────────────────────────────────
 export default function Contacts() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const {
     contacts: googleContacts,
     isLoading: isLoadingGoogle,
@@ -186,6 +194,135 @@ export default function Contacts() {
   // Direct Gmail message fetch for senders tab (when cache is empty)
   const [directMessages, setDirectMessages] = useState<GmailMessage[]>([]);
   const [isLoadingSenders, setIsLoadingSenders] = useState(false);
+  const cloudLoadedRef = useRef(false);
+
+  // ── Load cached Gmail messages + senders from Supabase on mount ──
+  useEffect(() => {
+    if (!user || cloudLoadedRef.current) return;
+    cloudLoadedRef.current = true;
+
+    (async () => {
+      try {
+        // Load cached email_messages from Supabase
+        const { data: emailRows, error: emailErr } = await supabase
+          .from("email_messages")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("received_at", { ascending: false })
+          .limit(200);
+
+        if (!emailErr && emailRows && emailRows.length > 0) {
+          const msgs: GmailMessage[] = emailRows.map((row: any) => ({
+            id: row.gmail_message_id,
+            threadId: row.thread_id || "",
+            subject: row.subject || "",
+            from: row.from_email || "",
+            fromName: row.from_name || row.from_email || "",
+            to: row.to_emails || [],
+            date: row.received_at || "",
+            snippet: row.body_preview || "",
+            isRead: row.is_read ?? true,
+            isStarred: row.is_starred ?? false,
+            labels: row.labels || [],
+          }));
+          setDirectMessages(msgs);
+          gmailCache.cacheMessages(msgs, "inbox");
+          console.log(
+            `[Contacts] Loaded ${msgs.length} messages from cloud cache`,
+          );
+        }
+      } catch (err) {
+        console.warn("[Contacts] Cloud cache load failed:", err);
+      }
+    })();
+  }, [user, gmailCache]);
+
+  // ── Save Gmail messages to email_messages table ──────────────
+  const saveMessagesToCloud = useCallback(
+    async (messages: GmailMessage[]) => {
+      if (!user || messages.length === 0) return;
+      try {
+        const rows = messages.map((msg) => ({
+          user_id: user.id,
+          gmail_message_id: msg.id,
+          thread_id: msg.threadId || null,
+          subject: msg.subject || null,
+          from_email: msg.from || null,
+          from_name: msg.fromName || null,
+          to_emails: msg.to || [],
+          body_preview: msg.snippet || null,
+          received_at: msg.date ? new Date(msg.date).toISOString() : null,
+          is_read: msg.isRead ?? true,
+          is_starred: msg.isStarred ?? false,
+          labels: msg.labels || [],
+        }));
+
+        // Upsert in batches of 25
+        const BATCH = 25;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const batch = rows.slice(i, i + BATCH);
+          const { error } = await supabase
+            .from("email_messages")
+            .upsert(batch, { onConflict: "user_id,gmail_message_id" });
+          if (error) {
+            console.error(
+              "[Contacts] email_messages save error:",
+              error.message,
+            );
+          }
+        }
+        console.log(`[Contacts] Saved ${rows.length} messages to cloud`);
+      } catch (err) {
+        console.error("[Contacts] Messages cloud save failed:", err);
+      }
+    },
+    [user],
+  );
+
+  // ── Save senders to gmail_senders_cache ──────────────────────
+  const saveSendersToCloud = useCallback(
+    async (
+      sendersList: {
+        email: string;
+        name: string;
+        count: number;
+        lastDate: string;
+      }[],
+    ) => {
+      if (!user || sendersList.length === 0) return;
+      try {
+        const rows = sendersList.map((s) => ({
+          user_id: user.id,
+          sender_email: s.email,
+          sender_name: s.name,
+          message_count: s.count,
+          last_message_date: s.lastDate
+            ? new Date(s.lastDate).toISOString()
+            : null,
+          fetched_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+
+        const BATCH = 50;
+        for (let i = 0; i < rows.length; i += BATCH) {
+          const batch = rows.slice(i, i + BATCH);
+          const { error } = await supabase
+            .from("gmail_senders_cache")
+            .upsert(batch, { onConflict: "user_id,sender_email" });
+          if (error) {
+            console.error(
+              "[Contacts] senders cache save error:",
+              error.message,
+            );
+          }
+        }
+        console.log(`[Contacts] Saved ${rows.length} senders to cloud`);
+      } catch (err) {
+        console.error("[Contacts] Senders cloud save failed:", err);
+      }
+    },
+    [user],
+  );
 
   const fetchSendersFromGmail = useCallback(async () => {
     if (!isGoogleConnected) return;
@@ -261,6 +398,11 @@ export default function Contacts() {
       setDirectMessages(formatted);
       // Also cache them for later
       gmailCache.cacheMessages(formatted, "inbox");
+      // Save to cloud (fire-and-forget)
+      saveMessagesToCloud(formatted);
+      // Extract and save senders to cloud
+      const extractedSenders = extractSenders(formatted);
+      saveSendersToCloud(extractedSenders);
       toast({ title: `נטענו ${formatted.length} הודעות מ-Gmail` });
     } catch (err: any) {
       console.error("Error fetching Gmail messages:", err);
@@ -272,7 +414,14 @@ export default function Contacts() {
     } finally {
       setIsLoadingSenders(false);
     }
-  }, [isGoogleConnected, connectGoogle, gmailCache, toast]);
+  }, [
+    isGoogleConnected,
+    connectGoogle,
+    gmailCache,
+    toast,
+    saveMessagesToCloud,
+    saveSendersToCloud,
+  ]);
 
   // Combine cached + directly fetched messages
   const allMessages = useMemo(() => {
@@ -301,7 +450,9 @@ export default function Contacts() {
     "all",
   );
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
-  const [expandedSenderEmail, setExpandedSenderEmail] = useState<string | null>(null);
+  const [expandedSenderEmail, setExpandedSenderEmail] = useState<string | null>(
+    null,
+  );
 
   // Get messages for a specific email address
   const getMessagesForEmail = useCallback(
@@ -309,7 +460,8 @@ export default function Contacts() {
       if (!email) return [];
       const lowerEmail = email.toLowerCase();
       return allMessages.filter(
-        (msg) => msg.from.toLowerCase().includes(lowerEmail) ||
+        (msg) =>
+          msg.from.toLowerCase().includes(lowerEmail) ||
           msg.to.some((t) => t.toLowerCase().includes(lowerEmail)),
       );
     },
@@ -821,144 +973,161 @@ export default function Contacts() {
                   ) : (
                     filteredSenders.map((sender) => (
                       <div key={sender.email} className="space-y-0">
-                      <div
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
-                      >
-                        {!sender.linkedClientId && (
-                          <Checkbox
-                            checked={selectedSenders.has(sender.email)}
-                            onCheckedChange={() => toggleSender(sender.email)}
-                          />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">
-                              {sender.name}
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedSenderEmail(
-                                  expandedSenderEmail === sender.email ? null : sender.email,
-                                );
-                              }}
-                            >
-                              {sender.count} הודעות
-                              {expandedSenderEmail === sender.email ? (
-                                <ChevronUp className="h-2.5 w-2.5 mr-1" />
-                              ) : (
-                                <ChevronDown className="h-2.5 w-2.5 mr-1" />
-                              )}
+                        <div
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                        >
+                          {!sender.linkedClientId && (
+                            <Checkbox
+                              checked={selectedSenders.has(sender.email)}
+                              onCheckedChange={() => toggleSender(sender.email)}
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm truncate">
+                                {sender.name}
+                              </span>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 cursor-pointer hover:bg-secondary/80"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedSenderEmail(
+                                    expandedSenderEmail === sender.email
+                                      ? null
+                                      : sender.email,
+                                  );
+                                }}
+                              >
+                                {sender.count} הודעות
+                                {expandedSenderEmail === sender.email ? (
+                                  <ChevronUp className="h-2.5 w-2.5 mr-1" />
+                                ) : (
+                                  <ChevronDown className="h-2.5 w-2.5 mr-1" />
+                                )}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {sender.email}
+                            </div>
+                          </div>
+                          {sender.linkedClientId ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+                              <Link2 className="h-3 w-3 ml-1" />
+                              {sender.linkedClientName}
                             </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {sender.email}
-                          </div>
-                        </div>
-                        {sender.linkedClientId ? (
-                          <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
-                            <Link2 className="h-3 w-3 ml-1" />
-                            {sender.linkedClientName}
-                          </Badge>
-                        ) : (
-                          <div className="flex gap-1">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() =>
-                                      handleAddSenderAsClient(sender)
-                                    }
-                                    disabled={isLinking}
-                                  >
-                                    <UserPlus className="h-3.5 w-3.5 text-blue-600" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>הוסף כלקוח חדש</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    onClick={() => setLinkDialogSender(sender)}
-                                  >
-                                    <Link2 className="h-3.5 w-3.5 text-purple-600" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>קשר ללקוח קיים</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                        )}
-                      </div>
-                      {/* Expanded sender messages panel */}
-                      {expandedSenderEmail === sender.email && (
-                        <div className="mr-8 space-y-1 border-t pt-2 pb-1 px-2">
-                          {(() => {
-                            const senderMsgs = getMessagesForEmail(sender.email);
-                            if (senderMsgs.length === 0) {
-                              return (
-                                <p className="text-xs text-muted-foreground py-2 text-center">
-                                  לא נמצאו הודעות
-                                </p>
-                              );
-                            }
-                            return senderMsgs.slice(0, 20).map((msg) => {
-                              const msgDate = new Date(msg.date);
-                              const dateStr = msgDate.toLocaleDateString("he-IL", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "2-digit",
-                              });
-                              return (
-                                <div
-                                  key={msg.id}
-                                  className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
-                                  onClick={() => {
-                                    window.open(
-                                      `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
-                                      "_blank",
-                                    );
-                                  }}
-                                >
-                                  <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span
-                                        className={`truncate font-medium ${
-                                          !msg.isRead ? "text-foreground" : "text-muted-foreground"
-                                        }`}
-                                      >
-                                        {msg.subject || "(ללא נושא)"}
-                                      </span>
-                                      <span className="text-[10px] text-muted-foreground shrink-0">
-                                        {dateStr}
-                                      </span>
-                                    </div>
-                                    <p className="text-muted-foreground truncate mt-0.5">
-                                      {msg.snippet}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            });
-                          })()}
-                          {getMessagesForEmail(sender.email).length > 20 && (
-                            <p className="text-[10px] text-muted-foreground text-center py-1">
-                              מציג 20 מתוך {getMessagesForEmail(sender.email).length} הודעות
-                            </p>
+                          ) : (
+                            <div className="flex gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() =>
+                                        handleAddSenderAsClient(sender)
+                                      }
+                                      disabled={isLinking}
+                                    >
+                                      <UserPlus className="h-3.5 w-3.5 text-blue-600" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    הוסף כלקוח חדש
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() =>
+                                        setLinkDialogSender(sender)
+                                      }
+                                    >
+                                      <Link2 className="h-3.5 w-3.5 text-purple-600" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    קשר ללקוח קיים
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
                           )}
                         </div>
-                      )}
+                        {/* Expanded sender messages panel */}
+                        {expandedSenderEmail === sender.email && (
+                          <div className="mr-8 space-y-1 border-t pt-2 pb-1 px-2">
+                            {(() => {
+                              const senderMsgs = getMessagesForEmail(
+                                sender.email,
+                              );
+                              if (senderMsgs.length === 0) {
+                                return (
+                                  <p className="text-xs text-muted-foreground py-2 text-center">
+                                    לא נמצאו הודעות
+                                  </p>
+                                );
+                              }
+                              return senderMsgs.slice(0, 20).map((msg) => {
+                                const msgDate = new Date(msg.date);
+                                const dateStr = msgDate.toLocaleDateString(
+                                  "he-IL",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "2-digit",
+                                  },
+                                );
+                                return (
+                                  <div
+                                    key={msg.id}
+                                    className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
+                                    onClick={() => {
+                                      window.open(
+                                        `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+                                        "_blank",
+                                      );
+                                    }}
+                                  >
+                                    <Mail className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-500" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span
+                                          className={`truncate font-medium ${
+                                            !msg.isRead
+                                              ? "text-foreground"
+                                              : "text-muted-foreground"
+                                          }`}
+                                        >
+                                          {msg.subject || "(ללא נושא)"}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground shrink-0">
+                                          {dateStr}
+                                        </span>
+                                      </div>
+                                      <p className="text-muted-foreground truncate mt-0.5">
+                                        {msg.snippet}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                            {getMessagesForEmail(sender.email).length > 20 && (
+                              <p className="text-[10px] text-muted-foreground text-center py-1">
+                                מציג 20 מתוך{" "}
+                                {getMessagesForEmail(sender.email).length}{" "}
+                                הודעות
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -1197,145 +1366,157 @@ export default function Contacts() {
                       );
                       return (
                         <div key={client.id} className="space-y-0">
-                        <div
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
-                        >
-                          <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-xs font-medium text-indigo-700">
-                              {client.name?.charAt(0) || "?"}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm truncate">
-                                {client.name}
+                          <div
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
+                          >
+                            <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <span className="text-xs font-medium text-indigo-700">
+                                {client.name?.charAt(0) || "?"}
                               </span>
-                              {client.status && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] px-1.5"
-                                >
-                                  {client.status}
-                                </Badge>
-                              )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {client.email && (
-                                <span className="flex items-center gap-1 truncate">
-                                  <Mail className="h-3 w-3" />
-                                  {client.email}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm truncate">
+                                  {client.name}
                                 </span>
-                              )}
-                              {client.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="h-3 w-3" />
-                                  {client.phone}
-                                </span>
-                              )}
-                              {client.company && (
-                                <span className="flex items-center gap-1">
-                                  <Building2 className="h-3 w-3" />
-                                  {client.company}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {senderData ? (
-                            <Badge
-                              className="bg-blue-100 text-blue-700 border-blue-300 text-xs cursor-pointer hover:bg-blue-200 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedClientId(
-                                  expandedClientId === client.id ? null : client.id,
-                                );
-                              }}
-                            >
-                              <Mail className="h-3 w-3 ml-1" />
-                              {senderData.count} הודעות
-                              {expandedClientId === client.id ? (
-                                <ChevronUp className="h-3 w-3 mr-1" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3 mr-1" />
-                              )}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-muted-foreground"
-                            >
-                              ללא מיילים
-                            </Badge>
-                          )}
-                        </div>
-                        {/* Expanded messages panel */}
-                        {expandedClientId === client.id && client.email && (
-                          <div className="mt-2 mr-11 space-y-1 border-t pt-2">
-                            {(() => {
-                              const clientMsgs = getMessagesForEmail(client.email!);
-                              if (clientMsgs.length === 0) {
-                                return (
-                                  <p className="text-xs text-muted-foreground py-2 text-center">
-                                    לא נמצאו הודעות
-                                  </p>
-                                );
-                              }
-                              return clientMsgs.slice(0, 20).map((msg) => {
-                                const isSent = !msg.from
-                                  .toLowerCase()
-                                  .includes(client.email!.toLowerCase());
-                                const msgDate = new Date(msg.date);
-                                const dateStr = msgDate.toLocaleDateString("he-IL", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "2-digit",
-                                });
-                                return (
-                                  <div
-                                    key={msg.id}
-                                    className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
-                                    onClick={() => {
-                                      window.open(
-                                        `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
-                                        "_blank",
-                                      );
-                                    }}
+                                {client.status && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5"
                                   >
-                                    <Mail
-                                      className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
-                                        isSent
-                                          ? "text-green-500"
-                                          : "text-blue-500"
-                                      }`}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span
-                                          className={`truncate font-medium ${
-                                            !msg.isRead ? "text-foreground" : "text-muted-foreground"
-                                          }`}
-                                        >
-                                          {msg.subject || "(ללא נושא)"}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground shrink-0">
-                                          {dateStr}
-                                        </span>
-                                      </div>
-                                      <p className="text-muted-foreground truncate mt-0.5">
-                                        {msg.snippet}
-                                      </p>
-                                    </div>
-                                    <ExternalLink className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100" />
-                                  </div>
-                                );
-                              });
-                            })()}
-                            {getMessagesForEmail(client.email!).length > 20 && (
-                              <p className="text-[10px] text-muted-foreground text-center py-1">
-                                מציג 20 מתוך {getMessagesForEmail(client.email!).length} הודעות
-                              </p>
+                                    {client.status}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                {client.email && (
+                                  <span className="flex items-center gap-1 truncate">
+                                    <Mail className="h-3 w-3" />
+                                    {client.email}
+                                  </span>
+                                )}
+                                {client.phone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    {client.phone}
+                                  </span>
+                                )}
+                                {client.company && (
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {client.company}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {senderData ? (
+                              <Badge
+                                className="bg-blue-100 text-blue-700 border-blue-300 text-xs cursor-pointer hover:bg-blue-200 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedClientId(
+                                    expandedClientId === client.id
+                                      ? null
+                                      : client.id,
+                                  );
+                                }}
+                              >
+                                <Mail className="h-3 w-3 ml-1" />
+                                {senderData.count} הודעות
+                                {expandedClientId === client.id ? (
+                                  <ChevronUp className="h-3 w-3 mr-1" />
+                                ) : (
+                                  <ChevronDown className="h-3 w-3 mr-1" />
+                                )}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-xs text-muted-foreground"
+                              >
+                                ללא מיילים
+                              </Badge>
                             )}
                           </div>
-                        )}
+                          {/* Expanded messages panel */}
+                          {expandedClientId === client.id && client.email && (
+                            <div className="mt-2 mr-11 space-y-1 border-t pt-2">
+                              {(() => {
+                                const clientMsgs = getMessagesForEmail(
+                                  client.email!,
+                                );
+                                if (clientMsgs.length === 0) {
+                                  return (
+                                    <p className="text-xs text-muted-foreground py-2 text-center">
+                                      לא נמצאו הודעות
+                                    </p>
+                                  );
+                                }
+                                return clientMsgs.slice(0, 20).map((msg) => {
+                                  const isSent = !msg.from
+                                    .toLowerCase()
+                                    .includes(client.email!.toLowerCase());
+                                  const msgDate = new Date(msg.date);
+                                  const dateStr = msgDate.toLocaleDateString(
+                                    "he-IL",
+                                    {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "2-digit",
+                                    },
+                                  );
+                                  return (
+                                    <div
+                                      key={msg.id}
+                                      className="flex items-start gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors text-xs"
+                                      onClick={() => {
+                                        window.open(
+                                          `https://mail.google.com/mail/u/0/#inbox/${msg.id}`,
+                                          "_blank",
+                                        );
+                                      }}
+                                    >
+                                      <Mail
+                                        className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+                                          isSent
+                                            ? "text-green-500"
+                                            : "text-blue-500"
+                                        }`}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span
+                                            className={`truncate font-medium ${
+                                              !msg.isRead
+                                                ? "text-foreground"
+                                                : "text-muted-foreground"
+                                            }`}
+                                          >
+                                            {msg.subject || "(ללא נושא)"}
+                                          </span>
+                                          <span className="text-[10px] text-muted-foreground shrink-0">
+                                            {dateStr}
+                                          </span>
+                                        </div>
+                                        <p className="text-muted-foreground truncate mt-0.5">
+                                          {msg.snippet}
+                                        </p>
+                                      </div>
+                                      <ExternalLink className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                                    </div>
+                                  );
+                                });
+                              })()}
+                              {getMessagesForEmail(client.email!).length >
+                                20 && (
+                                <p className="text-[10px] text-muted-foreground text-center py-1">
+                                  מציג 20 מתוך{" "}
+                                  {getMessagesForEmail(client.email!).length}{" "}
+                                  הודעות
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })
