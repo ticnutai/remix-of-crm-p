@@ -397,6 +397,7 @@ export default function Gmail() {
     origH: number;
     dir: string;
   } | null>(null);
+  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Save preview position/size to localStorage
   const savePreviewRect = useCallback((rect: typeof previewRect) => {
@@ -2933,18 +2934,14 @@ export default function Gmail() {
                 const content = body?.firstElementChild as HTMLElement;
                 console.log('📧 [Preview DEBUG] Panel:', {
                   panelH: el.offsetHeight,
-                  panelStyleH: el.style.height,
                   bodyH: body?.offsetHeight,
                   bodyScrollH: body?.scrollHeight,
                   bodyClientH: body?.clientHeight,
                   contentH: content?.offsetHeight,
-                  contentScrollH: content?.scrollHeight,
                   hasHtml: !!hoverPreviewHtml,
                   htmlLen: hoverPreviewHtml?.length,
                   loading: hoverPreviewLoading,
-                  previewRect,
                   computedBodyOverflow: body ? getComputedStyle(body).overflowY : 'N/A',
-                  computedBodyMinH: body ? getComputedStyle(body).minHeight : 'N/A',
                   computedBodyH: body ? getComputedStyle(body).height : 'N/A',
                 });
               }
@@ -2963,10 +2960,23 @@ export default function Gmail() {
               height: Math.min(previewRect.h, window.innerHeight - 56),
               border: "3px solid #d4a843",
               boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)",
-              overflow: "hidden",
             }}
             dir="rtl"
-            onMouseLeave={() => setShowPreviewDialog(false)}
+            onMouseEnter={() => {
+              // Cancel any pending close
+              if (previewLeaveTimerRef.current) {
+                clearTimeout(previewLeaveTimerRef.current);
+                previewLeaveTimerRef.current = null;
+              }
+            }}
+            onMouseLeave={() => {
+              // Delay close so scrollbar interaction doesn't kill the panel
+              if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
+              previewLeaveTimerRef.current = setTimeout(() => {
+                setShowPreviewDialog(false);
+                previewLeaveTimerRef.current = null;
+              }, 400);
+            }}
           >
             {/* Draggable Header */}
             <div
@@ -2999,12 +3009,12 @@ export default function Gmail() {
               </div>
             </div>
 
-            {/* Body - vertical scroll only */}
+            {/* Body - scrollable content area */}
             <div
               data-preview-body
               className="flex-1 min-h-0 p-4"
               dir="rtl"
-              style={{ overflowY: "auto", overflowX: "hidden" }}
+              style={{ overflowY: "scroll", overflowX: "hidden" }}
             >
               {hoverPreviewLoading ? (
                 <div className="flex items-center justify-center py-8">
