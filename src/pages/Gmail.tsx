@@ -122,6 +122,7 @@ import {
 import { useGoogleServices } from "@/hooks/useGoogleServices";
 import { useEmailActionsOptimistic } from "@/hooks/useEmailActionsOptimistic";
 import { useGmailCache } from "@/hooks/useGmailCache";
+import { useEmailBodyCache } from "@/hooks/useEmailBodyCache";
 import { useGmailNotifications } from "@/hooks/useGmailNotifications";
 import { format, isToday, isYesterday, isThisWeek, isSameDay } from "date-fns";
 import { he } from "date-fns/locale";
@@ -202,6 +203,7 @@ export default function Gmail() {
   const { archiveEmail, deleteEmail, toggleStar, markAsRead } =
     useEmailActionsOptimistic();
   const gmailCache = useGmailCache();
+  const emailBodyCache = useEmailBodyCache();
   const [hasLoaded, setHasLoaded] = useState(false);
   const gmailNotifications = useGmailNotifications({
     enabled: hasLoaded,
@@ -364,61 +366,44 @@ export default function Gmail() {
         messageId,
       );
       setHoverPreviewId(messageId);
-      setHoverPreviewHtml(null); // Clear previous content immediately
       // Find the message and open the preview dialog
       const msg = messages.find((m) => m.id === messageId);
       if (msg) {
         setPreviewMessage(msg);
         setShowPreviewDialog(true);
-        console.log("📧 [HoverPreview] Opening dialog for:", msg.subject);
       }
-      // Check cache first
-      const cachedBody = gmailCache.getCachedBody(messageId);
+      // Check persistent cache first (IndexedDB + memory)
+      const cachedBody = await emailBodyCache.getCachedBody(messageId);
       if (cachedBody) {
-        console.log("📧 [HoverPreview] Using cached body for:", messageId);
+        console.log("📧 [HoverPreview] Instant from cache:", messageId);
         setHoverPreviewHtml(cachedBody);
         return;
       }
+      setHoverPreviewHtml(null);
       setHoverPreviewLoading(true);
       try {
-        console.log("📧 [HoverPreview] Fetching full message:", messageId);
         const fullMsg = await getFullMessage(messageId);
-        console.log(
-          "📧 [HoverPreview] Got full message:",
-          !!fullMsg,
-          "payload:",
-          !!fullMsg?.payload,
-        );
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          console.log(
-            "📧 [HoverPreview] Extracted HTML length:",
-            rawHtml?.length || 0,
-          );
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
-          console.log(
-            "📧 [HoverPreview] Resolved HTML length:",
-            html?.length || 0,
-          );
           setHoverPreviewHtml(html);
           if (html) {
-            gmailCache.cacheBody(messageId, html);
+            await emailBodyCache.cacheBody(messageId, html);
           }
         } else {
-          console.warn("📧 [HoverPreview] No payload in full message!");
           setHoverPreviewHtml(null);
         }
       } catch (e) {
-        console.error("📧 [HoverPreview] Error loading hover preview:", e);
+        console.error("📧 [HoverPreview] Error:", e);
         setHoverPreviewHtml(null);
       }
       setHoverPreviewLoading(false);
     },
-    [getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages, messages],
+    [getFullMessage, extractHtmlBody, emailBodyCache, resolveInlineImages, messages],
   );
 
   // Muted threads
@@ -648,6 +633,35 @@ export default function Gmail() {
       }
     }
   }, [isConnected, hasLoaded, isLoading, fetchEmails, gmailCache]);
+
+  // Background pre-fetch email bodies after list loads
+  useEffect(() => {
+    if (!hasLoaded || messages.length === 0) return;
+
+    // Fetch body for a single message (for prefetch)
+    const fetchSingleBody = async (messageId: string): Promise<string | null> => {
+      try {
+        const fullMsg = await getFullMessage(messageId);
+        if (fullMsg?.payload) {
+          const rawHtml = extractHtmlBody(fullMsg.payload);
+          const html = await resolveInlineImages(rawHtml, messageId, fullMsg.payload);
+          return html;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Pre-fetch the first 20 visible email bodies
+    const idsToFetch = messages.slice(0, 20).map((m) => m.id);
+    console.log("📧 [Prefetch] Starting background pre-fetch for", idsToFetch.length, "emails");
+    emailBodyCache.prefetchBodies(idsToFetch, fetchSingleBody);
+
+    return () => {
+      emailBodyCache.stopPrefetch();
+    };
+  }, [hasLoaded, messages, getFullMessage, extractHtmlBody, resolveInlineImages, emailBodyCache]);
 
   // Load folder emails when folder selected
   useEffect(() => {
