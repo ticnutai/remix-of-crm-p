@@ -838,10 +838,15 @@ export class AutoBackupScheduler {
     if (!user) return;
 
     try {
+      const backupData = backup.data || backup;
+      const dataStr = JSON.stringify(backupData);
       const { error } = await supabase.from("backups").insert({
+        backup_id: `auto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name: backupName,
-        data: backup.data || backup,
-        created_by: user.id,
+        data: backupData,
+        size: dataStr.length,
+        version: "1.0.0",
+        user_id: user.id,
       });
 
       if (error) {
