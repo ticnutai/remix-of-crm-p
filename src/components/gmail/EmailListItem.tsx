@@ -582,38 +582,46 @@ export const EmailListItem = React.memo(function EmailListItemInner({
       {showPreviewPopup && (
         <div
           ref={popupRef}
-          className="fixed z-50 bg-background border rounded-xl shadow-2xl"
+          className="fixed z-50 rounded-xl shadow-2xl"
           style={{
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: "min(700px, 90vw)",
             maxHeight: "70vh",
+            backgroundColor: "#ffffff",
+            border: "3px solid #d4a843",
+            boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.25)",
+            color: "#1a2744",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b" dir="rtl">
+          <div
+            className="flex items-center justify-between p-4"
+            dir="rtl"
+            style={{ borderBottom: "2px solid #d4a843", color: "#1a2744" }}
+          >
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-lg truncate">
+              <h3 className="font-bold text-lg truncate" style={{ color: "#1a2744" }}>
                 {message.subject || "(ללא נושא)"}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm" style={{ color: "#3d5a8a" }}>
                 {message.fromName} &lt;{message.from}&gt;
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs" style={{ color: "#6b82a8" }}>
                 {formatDate(message.date)}
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 flex-shrink-0"
+              className="h-8 w-8 flex-shrink-0 hover:bg-gray-100"
+              style={{ color: "#1a2744" }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreviewPopup(false);
-              }}
-            >
+              }}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -621,7 +629,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           <div
             className="overflow-y-auto p-4"
             dir="rtl"
-            style={{ maxHeight: "calc(70vh - 100px)" }}
+            style={{ maxHeight: "calc(70vh - 100px)", backgroundColor: "#ffffff", color: "#1a2744" }}
           >
             {hoverPreviewLoading ? (
               <div className="flex items-center justify-center py-10">
@@ -637,16 +645,22 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                 }}
               />
             ) : (
-              <p className="text-muted-foreground whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap" style={{ color: "#3d5a8a" }}>
                 {message.snippet}
               </p>
             )}
           </div>
           {/* Footer actions */}
-          <div className="flex items-center gap-2 p-3 border-t" dir="rtl">
+          <div
+            className="flex items-center gap-2 p-3"
+            dir="rtl"
+            style={{ borderTop: "2px solid #d4a843", backgroundColor: "#ffffff" }}
+          >
             <Button
               size="sm"
               variant="outline"
+              className="border-[#d4a843] hover:bg-[#f8f3e6]"
+              style={{ color: "#1a2744" }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreviewPopup(false);
@@ -658,6 +672,8 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             <Button
               size="sm"
               variant="outline"
+              className="border-[#d4a843] hover:bg-[#f8f3e6]"
+              style={{ color: "#1a2744" }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreviewPopup(false);
@@ -670,6 +686,8 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             <Button
               size="sm"
               variant="outline"
+              className="border-[#d4a843] hover:bg-[#f8f3e6]"
+              style={{ color: "#1a2744" }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreviewPopup(false);
@@ -685,7 +703,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
       {/* Backdrop for preview popup */}
       {showPreviewPopup && (
         <div
-          className="fixed inset-0 z-40 bg-black/20"
+          className="fixed inset-0 z-40 bg-black/30"
           onClick={() => setShowPreviewPopup(false)}
         />
       )}
