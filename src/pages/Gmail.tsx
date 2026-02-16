@@ -536,6 +536,7 @@ export default function Gmail() {
       // Check persistent cache first (IndexedDB + memory)
       const cachedBody = await emailBodyCache.getCachedBody(messageId);
       if (cachedBody) {
+        console.log('📧 [Preview DEBUG] Got cached body, length:', cachedBody.length, 'first100:', cachedBody.substring(0, 100));
         setHoverPreviewHtml(cachedBody);
         return;
       }
@@ -543,18 +544,22 @@ export default function Gmail() {
       setHoverPreviewLoading(true);
       try {
         const fullMsg = await getFullMessage(messageId);
+        console.log('📧 [Preview DEBUG] fullMsg received:', !!fullMsg, 'has payload:', !!fullMsg?.payload);
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
+          console.log('📧 [Preview DEBUG] rawHtml length:', rawHtml?.length, 'first100:', rawHtml?.substring(0, 100));
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
+          console.log('📧 [Preview DEBUG] resolved html length:', html?.length);
           setHoverPreviewHtml(html);
           if (html) {
             await emailBodyCache.cacheBody(messageId, html);
           }
         } else {
+          console.log('📧 [Preview DEBUG] No payload in fullMsg');
           setHoverPreviewHtml(null);
         }
       } catch (e) {
@@ -2922,6 +2927,28 @@ export default function Gmail() {
         {/* Hover Preview Panel - draggable, resizable, closes on mouse leave */}
         {showPreviewDialog && previewMessage && (
           <div
+            ref={(el) => {
+              if (el) {
+                const body = el.querySelector('[data-preview-body]') as HTMLElement;
+                const content = body?.firstElementChild as HTMLElement;
+                console.log('📧 [Preview DEBUG] Panel:', {
+                  panelH: el.offsetHeight,
+                  panelStyleH: el.style.height,
+                  bodyH: body?.offsetHeight,
+                  bodyScrollH: body?.scrollHeight,
+                  bodyClientH: body?.clientHeight,
+                  contentH: content?.offsetHeight,
+                  contentScrollH: content?.scrollHeight,
+                  hasHtml: !!hoverPreviewHtml,
+                  htmlLen: hoverPreviewHtml?.length,
+                  loading: hoverPreviewLoading,
+                  previewRect,
+                  computedBodyOverflow: body ? getComputedStyle(body).overflowY : 'N/A',
+                  computedBodyMinH: body ? getComputedStyle(body).minHeight : 'N/A',
+                  computedBodyH: body ? getComputedStyle(body).height : 'N/A',
+                });
+              }
+            }}
             className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
             style={{
               top: Math.max(
@@ -2974,6 +3001,7 @@ export default function Gmail() {
 
             {/* Body - vertical scroll only */}
             <div
+              data-preview-body
               className="flex-1 min-h-0 p-4"
               dir="rtl"
               style={{ overflowY: "auto", overflowX: "hidden" }}
