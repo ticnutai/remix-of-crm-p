@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -530,7 +529,7 @@ export function GmailContactsPanel({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0"
+        className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
         dir="rtl"
       >
         <DialogHeader className="px-6 pt-6 pb-3">
@@ -685,7 +684,7 @@ export function GmailContactsPanel({
                 </Button>
               )}
             </div>
-            <ScrollArea className="flex-1 px-6">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-1 pb-4">
                 {filteredSenders.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
@@ -770,7 +769,7 @@ export function GmailContactsPanel({
                   ))
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* ─── Tab: Google Contacts ───────────────────────── */}
@@ -841,7 +840,7 @@ export function GmailContactsPanel({
                 </Button>
               )}
             </div>
-            <ScrollArea className="flex-1 px-6">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-1 pb-4">
                 {!googleFetched && !isLoadingGoogle ? (
                   <div className="text-center py-12 text-muted-foreground">
@@ -949,7 +948,7 @@ export function GmailContactsPanel({
                   })
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* ─── Tab: Existing Clients ──────────────────────── */}
@@ -974,7 +973,7 @@ export function GmailContactsPanel({
                 רענון
               </Button>
             </div>
-            <ScrollArea className="flex-1 px-6">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-1 pb-4">
                 {isLoadingClients ? (
                   <div className="text-center py-12">
@@ -1071,7 +1070,7 @@ export function GmailContactsPanel({
                   })
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
 
           {/* ─── Tab: Smart Matching ────────────────────────── */}
@@ -1111,7 +1110,7 @@ export function GmailContactsPanel({
                 </Button>
               )}
             </div>
-            <ScrollArea className="flex-1 px-6">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-2 pb-4">
                 {smartMatches.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
@@ -1179,7 +1178,7 @@ export function GmailContactsPanel({
                   })
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
 
@@ -1211,7 +1210,7 @@ export function GmailContactsPanel({
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <ScrollArea className="flex-1 px-6">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-1 pb-4">
                 {filteredClients
                   .filter((c) => !c.email || c.email !== linkDialogSender.email)
@@ -1241,7 +1240,7 @@ export function GmailContactsPanel({
                     </div>
                   ))}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </DialogContent>
