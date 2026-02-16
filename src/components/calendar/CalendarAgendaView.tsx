@@ -1,9 +1,16 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Users, CheckSquare, Bell, LayoutGrid, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Clock,
+  Users,
+  CheckSquare,
+  Bell,
+  LayoutGrid,
+  ArrowLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   format,
   startOfMonth,
@@ -13,8 +20,8 @@ import {
   isToday,
   parseISO,
   differenceInMinutes,
-} from 'date-fns';
-import { he } from 'date-fns/locale';
+} from "date-fns";
+import { he } from "date-fns/locale";
 
 interface TimeEntry {
   id: string;
@@ -60,7 +67,7 @@ interface CalendarAgendaViewProps {
 
 type EventItem = {
   id: string;
-  type: 'meeting' | 'task' | 'reminder' | 'time';
+  type: "meeting" | "task" | "reminder" | "time";
   time: Date;
   endTime?: Date;
   title: string;
@@ -83,7 +90,7 @@ export function CalendarAgendaView({
     meetings.forEach((m) => {
       events.push({
         id: m.id,
-        type: 'meeting',
+        type: "meeting",
         time: parseISO(m.start_time),
         endTime: parseISO(m.end_time),
         title: m.title,
@@ -95,7 +102,7 @@ export function CalendarAgendaView({
       if (t.due_date) {
         events.push({
           id: t.id,
-          type: 'task',
+          type: "task",
           time: parseISO(t.due_date),
           title: t.title,
           priority: t.priority,
@@ -106,7 +113,7 @@ export function CalendarAgendaView({
     reminders.forEach((r) => {
       events.push({
         id: r.id,
-        type: 'reminder',
+        type: "reminder",
         time: parseISO(r.remind_at),
         title: r.title,
       });
@@ -115,10 +122,10 @@ export function CalendarAgendaView({
     timeEntries.forEach((e) => {
       events.push({
         id: e.id,
-        type: 'time',
+        type: "time",
         time: parseISO(e.start_time),
         endTime: e.end_time ? parseISO(e.end_time) : undefined,
-        title: e.description || e.project?.name || 'עבודה',
+        title: e.description || e.project?.name || "עבודה",
         subtitle: e.client?.name,
       });
     });
@@ -129,44 +136,56 @@ export function CalendarAgendaView({
   const allEvents = getAllEvents();
 
   // Group events by date
-  const eventsByDate = allEvents.reduce((acc, event) => {
-    const dateKey = format(event.time, 'yyyy-MM-dd');
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(event);
-    return acc;
-  }, {} as Record<string, EventItem[]>);
+  const eventsByDate = allEvents.reduce(
+    (acc, event) => {
+      const dateKey = format(event.time, "yyyy-MM-dd");
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(event);
+      return acc;
+    },
+    {} as Record<string, EventItem[]>,
+  );
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case 'meeting': return Users;
-      case 'task': return CheckSquare;
-      case 'reminder': return Bell;
-      case 'time': return Clock;
-      default: return Clock;
+      case "meeting":
+        return Users;
+      case "task":
+        return CheckSquare;
+      case "reminder":
+        return Bell;
+      case "time":
+        return Clock;
+      default:
+        return Clock;
     }
   };
 
   const getEventColor = (type: string, priority?: string) => {
     switch (type) {
-      case 'meeting': return 'bg-[hsl(var(--navy))] text-white';
-      case 'task':
-        if (priority === 'high') return 'bg-red-500 text-white';
-        if (priority === 'low') return 'bg-green-500 text-white';
-        return 'bg-primary text-primary-foreground';
-      case 'reminder': return 'bg-warning text-warning-foreground';
-      case 'time': return 'bg-muted text-muted-foreground';
-      default: return 'bg-muted';
+      case "meeting":
+        return "bg-[hsl(var(--navy))] text-white";
+      case "task":
+        if (priority === "high") return "bg-red-500 text-white";
+        if (priority === "low") return "bg-green-500 text-white";
+        return "bg-primary text-primary-foreground";
+      case "reminder":
+        return "bg-warning text-warning-foreground";
+      case "time":
+        return "bg-muted text-muted-foreground";
+      default:
+        return "bg-muted";
     }
   };
 
   const formatDuration = (start: Date, end?: Date) => {
-    if (!end) return '';
+    if (!end) return "";
     const mins = differenceInMinutes(end, start);
     const hrs = Math.floor(mins / 60);
     const minutes = mins % 60;
     if (hrs === 0) return `${minutes} דקות`;
     if (minutes === 0) return `${hrs} שעות`;
-    return `${hrs}:${minutes.toString().padStart(2, '0')}`;
+    return `${hrs}:${minutes.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -174,7 +193,7 @@ export function CalendarAgendaView({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <LayoutGrid className="h-5 w-5 text-[hsl(var(--gold))]" />
-          אג׳נדה - {format(currentMonth, 'MMMM yyyy', { locale: he })}
+          אג׳נדה - {format(currentMonth, "MMMM yyyy", { locale: he })}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -200,20 +219,30 @@ export function CalendarAgendaView({
                     <div
                       className={cn(
                         "sticky top-0 z-10 flex items-center gap-3 py-2 cursor-pointer",
-                        "bg-gradient-to-l from-background via-background to-transparent"
+                        "bg-gradient-to-l from-background via-background to-transparent",
                       )}
                       onClick={() => onDayClick(date)}
                     >
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex flex-col items-center justify-center shadow-md",
-                        dayIsToday ? "bg-[hsl(var(--gold))] text-white" : "bg-card border-2 border-border"
-                      )}>
-                        <span className="text-lg font-bold">{format(date, 'd')}</span>
-                        <span className="text-[10px]">{format(date, 'EEE', { locale: he })}</span>
+                      <div
+                        className={cn(
+                          "w-12 h-12 rounded-xl flex flex-col items-center justify-center shadow-md",
+                          dayIsToday
+                            ? "bg-[hsl(var(--gold))] text-white"
+                            : "bg-card border-2 border-border",
+                        )}
+                      >
+                        <span className="text-lg font-bold">
+                          {format(date, "d")}
+                        </span>
+                        <span className="text-[10px]">
+                          {format(date, "EEE", { locale: he })}
+                        </span>
                       </div>
                       <div>
                         <p className="font-semibold">
-                          {dayIsToday ? 'היום' : format(date, 'EEEE', { locale: he })}
+                          {dayIsToday
+                            ? "היום"
+                            : format(date, "EEEE", { locale: he })}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {events.length} אירועים
@@ -230,17 +259,21 @@ export function CalendarAgendaView({
                             key={`${event.type}-${event.id}`}
                             className="flex items-start gap-3 p-4 rounded-xl bg-card border border-border hover:shadow-lg transition-all cursor-pointer group"
                           >
-                            <div className={cn(
-                              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                              getEventColor(event.type, event.priority)
-                            )}>
+                            <div
+                              className={cn(
+                                "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                getEventColor(event.type, event.priority),
+                              )}
+                            >
                               <Icon className="h-5 w-5" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
-                                <h4 className="font-medium truncate">{event.title}</h4>
+                                <h4 className="font-medium truncate">
+                                  {event.title}
+                                </h4>
                                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                  {format(event.time, 'HH:mm')}
+                                  {format(event.time, "HH:mm")}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
@@ -250,18 +283,26 @@ export function CalendarAgendaView({
                                   </Badge>
                                 )}
                                 {event.subtitle && (
-                                  <span className="truncate">{event.subtitle}</span>
+                                  <span className="truncate">
+                                    {event.subtitle}
+                                  </span>
                                 )}
                                 {event.priority && (
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className={cn(
                                       "text-xs",
-                                      event.priority === 'high' && "border-red-500 text-red-500",
-                                      event.priority === 'low' && "border-green-500 text-green-500"
+                                      event.priority === "high" &&
+                                        "border-red-500 text-red-500",
+                                      event.priority === "low" &&
+                                        "border-green-500 text-green-500",
                                     )}
                                   >
-                                    {event.priority === 'high' ? 'גבוהה' : event.priority === 'low' ? 'נמוכה' : 'בינונית'}
+                                    {event.priority === "high"
+                                      ? "גבוהה"
+                                      : event.priority === "low"
+                                        ? "נמוכה"
+                                        : "בינונית"}
                                   </Badge>
                                 )}
                               </div>

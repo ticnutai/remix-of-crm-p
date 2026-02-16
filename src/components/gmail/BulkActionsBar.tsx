@@ -21,12 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
-import {
-  Client,
-  EmailLabel,
-  Priority,
-  PRIORITY_CONFIG,
-} from "./gmail-types";
+import { Client, EmailLabel, Priority, PRIORITY_CONFIG } from "./gmail-types";
 
 interface EmailFolder {
   id: string;
@@ -70,9 +65,7 @@ export function BulkActionsBar({
         checked={selectedCount === totalCount}
         onCheckedChange={onSelectAll}
       />
-      <span className="text-sm font-medium mr-2">
-        {selectedCount} נבחרו
-      </span>
+      <span className="text-sm font-medium mr-2">{selectedCount} נבחרו</span>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -87,12 +80,7 @@ export function BulkActionsBar({
               key={label.id}
               onClick={() => onBulkAddLabel(label.id)}
             >
-              <div
-                className={cn(
-                  "h-3 w-3 rounded-full ml-2",
-                  label.color,
-                )}
-              />
+              <div className={cn("h-3 w-3 rounded-full ml-2", label.color)} />
               {label.name}
             </DropdownMenuItem>
           ))}
@@ -107,17 +95,15 @@ export function BulkActionsBar({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="rtl">
-          {Object.entries(PRIORITY_CONFIG).map(
-            ([key, config]) => (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => onBulkSetPriority(key as Priority)}
-              >
-                {config.icon}
-                <span className="mr-2">{config.label}</span>
-              </DropdownMenuItem>
-            ),
-          )}
+          {Object.entries(PRIORITY_CONFIG).map(([key, config]) => (
+            <DropdownMenuItem
+              key={key}
+              onClick={() => onBulkSetPriority(key as Priority)}
+            >
+              {config.icon}
+              <span className="mr-2">{config.label}</span>
+            </DropdownMenuItem>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -156,30 +142,18 @@ export function BulkActionsBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onClearSelection}
-      >
+      <Button variant="ghost" size="sm" onClick={onClearSelection}>
         <X className="h-4 w-4" />
       </Button>
 
       <Separator orientation="vertical" className="h-5" />
 
       {/* Batch API actions */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onBulkArchive}
-      >
+      <Button variant="outline" size="sm" onClick={onBulkArchive}>
         <Archive className="h-4 w-4 ml-1" />
         ארכיון
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onBulkMarkRead}
-      >
+      <Button variant="outline" size="sm" onClick={onBulkMarkRead}>
         <MailOpen className="h-4 w-4 ml-1" />
         סמן נקרא
       </Button>

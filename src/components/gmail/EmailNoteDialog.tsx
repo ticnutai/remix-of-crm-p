@@ -40,9 +40,7 @@ export function EmailNoteDialog({
             placeholder="כתוב הערה..."
             rows={5}
             defaultValue={
-              selectedEmail
-                ? emailNotes[selectedEmail.id] || ""
-                : ""
+              selectedEmail ? emailNotes[selectedEmail.id] || "" : ""
             }
             onChange={(e) => {
               if (selectedEmail) {
@@ -52,10 +50,7 @@ export function EmailNoteDialog({
           />
           <div className="flex gap-2">
             <Button onClick={() => onOpenChange(false)}>שמור</Button>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               סגור
             </Button>
           </div>

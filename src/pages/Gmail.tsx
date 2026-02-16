@@ -1534,7 +1534,6 @@ export default function Gmail() {
               getClientForMessage={getClientForMessage}
             />
 
-
             {/* Email List & Content */}
             <Card className="lg:col-span-9">
               <CardHeader className="pb-2">
@@ -1720,7 +1719,11 @@ export default function Gmail() {
                       }}
                       onBulkSpam={async () => {
                         const ids = [...selectedMessages];
-                        const success = await batchModify(ids, ["SPAM"], ["INBOX"]);
+                        const success = await batchModify(
+                          ids,
+                          ["SPAM"],
+                          ["INBOX"],
+                        );
                         if (success) {
                           setSelectedMessages(new Set());
                           handleRefresh();

@@ -29,12 +29,7 @@ import {
 import { cn } from "@/lib/utils";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
 import { EmailFoldersPanel } from "./EmailFoldersPanel";
-import {
-  Client,
-  EmailLabel,
-  Priority,
-  PRIORITY_CONFIG,
-} from "./gmail-types";
+import { Client, EmailLabel, Priority, PRIORITY_CONFIG } from "./gmail-types";
 
 interface GmailSidebarProps {
   activeTab: string;
@@ -94,14 +89,10 @@ export function GmailSidebar({
   getClientForMessage,
 }: GmailSidebarProps) {
   return (
-    <Card className="lg:col-span-3 h-fit max-h-[calc(100vh-180px)] overflow-hidden">
-      <ScrollArea className="h-full">
+    <Card className="lg:col-span-3 overflow-hidden" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+      <ScrollArea className="h-[calc(100vh-180px)]">
         <CardContent className="p-4 text-right">
-          <Button
-            onClick={onCompose}
-            className="w-full mb-4"
-            size="lg"
-          >
+          <Button onClick={onCompose} className="w-full mb-4" size="lg">
             <PenSquare className="h-4 w-4 ml-2" />
             כתיבת הודעה
           </Button>
@@ -216,15 +207,13 @@ export function GmailSidebar({
               </Button>
             </div>
             {customLabels.map((label) => {
-              const count = Object.values(emailLabels).filter(
-                (labels) => labels.includes(label.id),
+              const count = Object.values(emailLabels).filter((labels) =>
+                labels.includes(label.id),
               ).length;
               return (
                 <Button
                   key={label.id}
-                  variant={
-                    filterByLabel === label.id ? "secondary" : "ghost"
-                  }
+                  variant={filterByLabel === label.id ? "secondary" : "ghost"}
                   className="w-full justify-start text-right h-8"
                   onClick={() =>
                     onSetFilterByLabel(
@@ -233,10 +222,7 @@ export function GmailSidebar({
                   }
                 >
                   <div
-                    className={cn(
-                      "h-3 w-3 rounded-full ml-2",
-                      label.color,
-                    )}
+                    className={cn("h-3 w-3 rounded-full ml-2", label.color)}
                   />
                   {label.name}
                   {count > 0 && (
@@ -265,15 +251,11 @@ export function GmailSidebar({
                 return (
                   <Button
                     key={key}
-                    variant={
-                      filterByPriority === key ? "secondary" : "ghost"
-                    }
+                    variant={filterByPriority === key ? "secondary" : "ghost"}
                     className="w-full justify-start text-right h-8"
                     onClick={() =>
                       onSetFilterByPriority(
-                        filterByPriority === key
-                          ? null
-                          : (key as Priority),
+                        filterByPriority === key ? null : (key as Priority),
                       )
                     }
                   >
@@ -305,9 +287,7 @@ export function GmailSidebar({
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() =>
-                            onSetAutoTagEnabled(!autoTagEnabled)
-                          }
+                          onClick={() => onSetAutoTagEnabled(!autoTagEnabled)}
                         >
                           {autoTagEnabled ? (
                             <Tag className="h-3.5 w-3.5 text-green-500" />
@@ -334,23 +314,17 @@ export function GmailSidebar({
                       <Button
                         key={client.id}
                         variant={
-                          filterByClient === client.id
-                            ? "secondary"
-                            : "ghost"
+                          filterByClient === client.id ? "secondary" : "ghost"
                         }
                         className="w-full justify-start text-right h-8"
                         onClick={() =>
                           onSetFilterByClient(
-                            filterByClient === client.id
-                              ? null
-                              : client.id,
+                            filterByClient === client.id ? null : client.id,
                           )
                         }
                       >
                         <Building2 className="h-4 w-4 text-blue-500" />
-                        <span className="mr-2 truncate">
-                          {client.name}
-                        </span>
+                        <span className="mr-2 truncate">{client.name}</span>
                         {count > 0 && (
                           <span className="mr-auto text-xs text-muted-foreground">
                             {count}

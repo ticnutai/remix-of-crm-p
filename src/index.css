@@ -1,23 +1,23 @@
 /* e-control CRM Pro - Navy Executive Theme */
 /* Design System with Hebrew/RTL Support */
 
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap");
 
 /* Timer digit fonts - Monospace and Display fonts */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -39,19 +39,19 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
-  
+
   html {
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
   }
-  
+
   body {
     overscroll-behavior-y: none;
     overflow-x: hidden; /* Changed from auto to hidden to prevent horizontal scroll */
     width: 100%;
     max-width: none; /* Remove max-width limit */
   }
-  
+
   :root {
     /* Navy Executive Color Palette */
     --background: 220 20% 97%;
@@ -86,7 +86,7 @@
     --border: 222 30% 85%;
     --border-gold: 45 70% 50%;
     --border-navy: 222 47% 30%;
-    
+
     --input: 222 30% 90%;
     --ring: 45 70% 50%;
 
@@ -207,7 +207,8 @@
   :root {
     --custom-radius: 0.5rem;
     --custom-border-width: 2px;
-    --custom-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --custom-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --custom-animation-speed: 200ms;
   }
 
@@ -225,7 +226,7 @@
   /* Elegant Card with thin border */
   .card-elegant {
     @apply bg-card rounded-lg border border-border shadow-sm;
-    box-shadow: 
+    box-shadow:
       0 1px 3px 0 hsl(var(--foreground) / 0.04),
       0 1px 2px 0 hsl(var(--foreground) / 0.02);
   }
@@ -234,105 +235,105 @@
   .touch-action-none {
     touch-action: none;
   }
-  
+
   .touch-action-pan-y {
     touch-action: pan-y;
   }
-  
+
   .touch-action-pan-x {
     touch-action: pan-x;
   }
-  
+
   /* Responsive text utilities */
   .text-responsive-xs {
     @apply text-[10px] sm:text-xs;
   }
-  
+
   .text-responsive-sm {
     @apply text-xs sm:text-sm;
   }
-  
+
   .text-responsive-base {
     @apply text-sm sm:text-base;
   }
-  
+
   .text-responsive-lg {
     @apply text-base sm:text-lg;
   }
-  
+
   .text-responsive-xl {
     @apply text-lg sm:text-xl;
   }
-  
+
   /* Responsive spacing utilities */
   .p-responsive {
     @apply p-2 sm:p-3 md:p-4 lg:p-6;
   }
-  
+
   .px-responsive {
     @apply px-2 sm:px-3 md:px-4 lg:px-6;
   }
-  
+
   .py-responsive {
     @apply py-2 sm:py-3 md:py-4 lg:py-6;
   }
-  
+
   /* Mobile-friendly card */
   .card-mobile {
     @apply rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow;
   }
-  
+
   /* Mobile-friendly button */
   .btn-mobile {
     @apply h-9 sm:h-10 px-3 sm:px-4 text-sm sm:text-base;
   }
-  
+
   /* Scrollable container with better mobile UX */
   .scroll-container {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
-  
+
   .scroll-container::-webkit-scrollbar {
     width: 4px;
     height: 4px;
   }
-  
+
   .scroll-container::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scroll-container::-webkit-scrollbar-thumb {
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 2px;
   }
-  
+
   .scroll-container::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground) / 0.5);
   }
-  
+
   /* Hide scrollbar on mobile but keep functionality */
   @media (max-width: 768px) {
     .scroll-container-mobile-hidden {
       scrollbar-width: none;
     }
-    
+
     .scroll-container-mobile-hidden::-webkit-scrollbar {
       display: none;
     }
   }
-  
+
   /* Active/pressed state for mobile */
   .active-scale {
     @apply active:scale-[0.98] transition-transform;
   }
-  
+
   /* Mobile-friendly table */
   .table-mobile-scroll {
     @apply overflow-x-auto scroll-container;
     max-width: 100vw;
   }
-  
+
   @media (max-width: 768px) {
     .table-mobile-scroll table {
       min-width: 600px;
@@ -380,7 +381,7 @@
     /* Force scroll to start at right in RTL */
     scroll-snap-align: end;
   }
-  
+
   /* Modern CSS scroll optimization */
   .overflow-x-auto[dir="rtl"] {
     /* CSS Containment for better performance */
@@ -391,13 +392,12 @@
     /* Smooth but instant for RTL positioning */
     scroll-behavior: auto;
   }
-  
+
   /* Prevent layout shifts during load */
   .overflow-x-auto {
     content-visibility: auto;
     contain-intrinsic-size: auto 500px;
   }
-
 
   /* Card Style Variants */
   [data-card-style="flat"] .card,
@@ -500,7 +500,11 @@
   /* Sidebar Style Variants */
   [data-sidebar-style="gradient"] [data-sidebar],
   [data-sidebar-style="gradient"] .sidebar {
-    background: linear-gradient(180deg, hsl(var(--sidebar-background)), hsl(var(--primary) / 0.8)) !important;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--sidebar-background)),
+      hsl(var(--primary) / 0.8)
+    ) !important;
   }
 
   [data-sidebar-style="transparent"] [data-sidebar],
@@ -511,7 +515,11 @@
 
   /* Header Style Variants */
   [data-header-style="gradient"] header {
-    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--secondary))) !important;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)),
+      hsl(var(--secondary))
+    ) !important;
     color: hsl(var(--primary-foreground)) !important;
   }
 
@@ -575,8 +583,12 @@
   }
 
   @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 
   /* Focus ring for accessibility */
@@ -663,8 +675,14 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .animate-slide-in {
@@ -672,8 +690,14 @@
   }
 
   @keyframes slideIn {
-    from { opacity: 0; transform: translateX(10px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
   }
 
   /* Gold glow effect */
@@ -683,11 +707,11 @@
 
   /* Hide scrollbar but keep scroll functionality */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none; /* Chrome, Safari and Opera */
   }
 
   /* RTL Slider styles */
@@ -705,7 +729,12 @@
     --paragraph-scale: 1;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-size: calc(var(--heading-scale) * 1em);
   }
 

@@ -82,9 +82,7 @@ export function LabelManagerDialog({
                   key={label.id}
                   className="flex items-center gap-3 p-2 border rounded-lg"
                 >
-                  <div
-                    className={cn("h-4 w-4 rounded-full", label.color)}
-                  />
+                  <div className={cn("h-4 w-4 rounded-full", label.color)} />
                   <span className="flex-1">{label.name}</span>
                   <Badge variant="secondary">
                     {

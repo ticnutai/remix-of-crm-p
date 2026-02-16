@@ -11,12 +11,19 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Star,
   StarOff,
   MoreVertical,
   Bell,
   FileText,
   MailOpen,
+  MailPlus,
   Bookmark,
   Reply,
   Forward,
@@ -27,6 +34,7 @@ import {
   VolumeX,
   Timer,
   Folder,
+  FolderOpen,
   MessageSquare,
   Building2,
 } from "lucide-react";
@@ -61,7 +69,11 @@ interface EmailListItemProps {
   folders: EmailFolder[];
   // Callbacks
   onSelect: () => void;
-  onToggleSelection: (messageId: string, index: number, shiftKey?: boolean) => void;
+  onToggleSelection: (
+    messageId: string,
+    index: number,
+    shiftKey?: boolean,
+  ) => void;
   onToggleStar: (messageId: string, isStarred: boolean) => Promise<void>;
   onOpenChat: (message: GmailMessage) => void;
   onSetReminder: (message: GmailMessage) => void;
@@ -220,30 +232,26 @@ export function EmailListItem({
                 label && (
                   <div
                     key={labelId}
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      label.color,
-                    )}
+                    className={cn("h-2 w-2 rounded-full", label.color)}
                     title={label.name}
                   />
                 )
               );
             })}
-          {(msgLabels?.filter((l) => !l.startsWith("client_")).length || 0) > 2 && (
+          {(msgLabels?.filter((l) => !l.startsWith("client_")).length || 0) >
+            2 && (
             <span className="text-xs text-muted-foreground">
-              +{(msgLabels?.filter((l) => !l.startsWith("client_")).length || 0) - 2}
+              +
+              {(msgLabels?.filter((l) => !l.startsWith("client_")).length ||
+                0) - 2}
             </span>
           )}
 
           {/* Reminder indicator */}
-          {hasReminder && (
-            <Bell className="h-3 w-3 text-orange-500" />
-          )}
+          {hasReminder && <Bell className="h-3 w-3 text-orange-500" />}
 
           {/* Note indicator */}
-          {hasNote && (
-            <FileText className="h-3 w-3 text-blue-500" />
-          )}
+          {hasNote && <FileText className="h-3 w-3 text-blue-500" />}
 
           {/* Pin indicator */}
           {isPinned && (
@@ -288,127 +296,216 @@ export function EmailListItem({
         )}
       </div>
 
-      {/* Quick Actions */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 opacity-0 group-hover:opacity-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="rtl">
-          <DropdownMenuItem onClick={() => onOpenChat(message)}>
-            <MessageSquare className="h-4 w-4 ml-2" />
-            פתח כשיחה
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => onSetReminder(message)}>
-            <Bell className="h-4 w-4 ml-2" />
-            הוסף תזכורת
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onSetNote(message)}>
-            <FileText className="h-4 w-4 ml-2" />
-            הוסף הערה
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={async () => {
-              await onMarkAsRead(message.id, !message.isRead);
-              onRefresh();
-            }}
-          >
-            <MailOpen className="h-4 w-4 ml-2" />
-            {message.isRead ? "סמן כלא נקרא" : "סמן כנקרא"}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => onTogglePin(message.id, isPinned)}
-          >
-            <Bookmark className="h-4 w-4 ml-2" />
-            {isPinned ? "הסר הצמדה" : "הצמד"}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onReply(message)}>
-            <Reply className="h-4 w-4 ml-2" />
-            השב
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onForward(message)}>
-            <Forward className="h-4 w-4 ml-2" />
-            העבר
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {/* Move to folder sub-menu */}
-          {folders.length > 0 && (
-            <>
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                סווג לתיקייה
-              </div>
-              {folders.map((folder) => (
-                <DropdownMenuItem
-                  key={folder.id}
-                  onClick={() => onMoveToFolder(folder.id, message)}
-                >
-                  <Folder
-                    className="h-4 w-4 ml-2"
-                    style={{ color: folder.color }}
-                  />
-                  {folder.name}
-                </DropdownMenuItem>
-              ))}
+      {/* Hover Quick Action Icons */}
+      <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <TooltipProvider delayDuration={200}>
+          {/* Reply */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReply(message);
+                }}
+              >
+                <Reply className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">השב</TooltipContent>
+          </Tooltip>
+
+          {/* Forward */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onForward(message);
+                }}
+              >
+                <Forward className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">העבר</TooltipContent>
+          </Tooltip>
+
+          {/* Archive */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const success = await onArchive(message.id);
+                  if (success) onRefresh();
+                }}
+              >
+                <Archive className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">ארכיון</TooltipContent>
+          </Tooltip>
+
+          {/* Delete */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-red-500"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const success = await onDelete(message.id);
+                  if (success) onRefresh();
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">מחק</TooltipContent>
+          </Tooltip>
+
+          {/* Reminder */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7", hasReminder && "text-orange-500")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetReminder(message);
+                }}
+              >
+                <Bell className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">תזכורת</TooltipContent>
+          </Tooltip>
+
+          {/* Mark read/unread */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await onMarkAsRead(message.id, !message.isRead);
+                  onRefresh();
+                }}
+              >
+                {message.isRead ? (
+                  <MailPlus className="h-3.5 w-3.5" />
+                ) : (
+                  <MailOpen className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {message.isRead ? "סמן כלא נקרא" : "סמן כנקרא"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Pin */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn("h-7 w-7", isPinned && "text-green-500")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTogglePin(message.id, isPinned);
+                }}
+              >
+                <Bookmark className={cn("h-3.5 w-3.5", isPinned && "fill-green-500")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{isPinned ? "הסר הצמדה" : "הצמד"}</TooltipContent>
+          </Tooltip>
+
+          {/* More actions dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rtl">
+              <DropdownMenuItem onClick={() => onOpenChat(message)}>
+                <MessageSquare className="h-4 w-4 ml-2" />
+                פתח כשיחה
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-            </>
-          )}
-          <DropdownMenuItem
-            onClick={async () => {
-              const success = await onArchive(message.id);
-              if (success) onRefresh();
-            }}
-          >
-            <Archive className="h-4 w-4 ml-2" />
-            העבר לארכיון
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-red-600"
-            onClick={async () => {
-              const success = await onDelete(message.id);
-              if (success) onRefresh();
-            }}
-          >
-            <Trash2 className="h-4 w-4 ml-2" />
-            מחק
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={async () => {
-              await onReportSpam(message.id);
-              onRefresh();
-            }}
-          >
-            <ShieldAlert className="h-4 w-4 ml-2" />
-            דווח כספאם
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => onMuteThread(message.threadId)}
-          >
-            <VolumeX className="h-4 w-4 ml-2" />
-            {mutedThreads.has(message.threadId)
-              ? "הפעל שרשור"
-              : "השתק שרשור"}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              const d = new Date();
-              d.setDate(d.getDate() + 1);
-              d.setHours(9, 0, 0, 0);
-              onSnooze(message.id, d);
-            }}
-          >
-            <Timer className="h-4 w-4 ml-2" />
-            נדניק למחר
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+              <DropdownMenuItem onClick={() => onSetNote(message)}>
+                <FileText className="h-4 w-4 ml-2" />
+                הוסף הערה
+              </DropdownMenuItem>
+              {/* Move to folder sub-menu */}
+              {folders.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    סווג לתיקייה
+                  </div>
+                  {folders.map((folder) => (
+                    <DropdownMenuItem
+                      key={folder.id}
+                      onClick={() => onMoveToFolder(folder.id, message)}
+                    >
+                      <Folder
+                        className="h-4 w-4 ml-2"
+                        style={{ color: folder.color }}
+                      />
+                      {folder.name}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  await onReportSpam(message.id);
+                  onRefresh();
+                }}
+              >
+                <ShieldAlert className="h-4 w-4 ml-2" />
+                דווח כספאם
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onMuteThread(message.threadId)}>
+                <VolumeX className="h-4 w-4 ml-2" />
+                {mutedThreads.has(message.threadId) ? "הפעל שרשור" : "השתק שרשור"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 1);
+                  d.setHours(9, 0, 0, 0);
+                  onSnooze(message.id, d);
+                }}
+              >
+                <Timer className="h-4 w-4 ml-2" />
+                נדניק למחר
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipProvider>
+      </div>
     </div>
   );
 }

@@ -107,31 +107,27 @@ export function EmailReminderDialog({
               dir="ltr"
               onChange={(e) => {
                 if (selectedEmail && e.target.value) {
-                  onSetReminder(
-                    selectedEmail.id,
-                    new Date(e.target.value),
-                  );
+                  onSetReminder(selectedEmail.id, new Date(e.target.value));
                   onOpenChange(false);
                 }
               }}
             />
           </div>
-          {selectedEmail &&
-            emailReminders[selectedEmail.id] && (
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={() => {
-                  if (selectedEmail) {
-                    onSetReminder(selectedEmail.id, null);
-                  }
-                  onOpenChange(false);
-                }}
-              >
-                <BellOff className="h-4 w-4 ml-2" />
-                הסר תזכורת
-              </Button>
-            )}
+          {selectedEmail && emailReminders[selectedEmail.id] && (
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => {
+                if (selectedEmail) {
+                  onSetReminder(selectedEmail.id, null);
+                }
+                onOpenChange(false);
+              }}
+            >
+              <BellOff className="h-4 w-4 ml-2" />
+              הסר תזכורת
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

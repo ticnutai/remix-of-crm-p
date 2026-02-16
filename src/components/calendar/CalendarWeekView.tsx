@@ -1,10 +1,10 @@
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Users, CheckSquare, Bell, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Clock, Users, CheckSquare, Bell, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   format,
   startOfWeek,
@@ -16,8 +16,8 @@ import {
   parseISO,
   setHours,
   startOfDay,
-} from 'date-fns';
-import { he } from 'date-fns/locale';
+} from "date-fns";
+import { he } from "date-fns/locale";
 
 interface TimeEntry {
   id: string;
@@ -62,7 +62,7 @@ interface CalendarWeekViewProps {
   onAddClick: (date: Date) => void;
 }
 
-const hebrewDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const hebrewDays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
 
 export function CalendarWeekView({
@@ -83,7 +83,9 @@ export function CalendarWeekView({
   };
 
   const getTasksForDate = (date: Date) => {
-    return tasks.filter((t) => t.due_date && isSameDay(parseISO(t.due_date), date));
+    return tasks.filter(
+      (t) => t.due_date && isSameDay(parseISO(t.due_date), date),
+    );
   };
 
   const getRemindersForDate = (date: Date) => {
@@ -95,10 +97,13 @@ export function CalendarWeekView({
     const endHour = parseISO(meeting.end_time).getHours();
     const startMin = parseISO(meeting.start_time).getMinutes();
     const endMin = parseISO(meeting.end_time).getMinutes();
-    
-    const top = ((startHour - 7) * 60 + startMin) / 60 * 48; // 48px per hour
-    const height = Math.max(((endHour - startHour) * 60 + (endMin - startMin)) / 60 * 48, 24);
-    
+
+    const top = (((startHour - 7) * 60 + startMin) / 60) * 48; // 48px per hour
+    const height = Math.max(
+      (((endHour - startHour) * 60 + (endMin - startMin)) / 60) * 48,
+      24,
+    );
+
     return { top: `${top}px`, height: `${height}px` };
   };
 
@@ -116,15 +121,20 @@ export function CalendarWeekView({
               onClick={() => onDayClick(day)}
               className={cn(
                 "p-3 text-center cursor-pointer hover:bg-accent/50 transition-colors border-e last:border-e-0",
-                isToday(day) && "bg-[hsl(var(--navy))]/10"
+                isToday(day) && "bg-[hsl(var(--navy))]/10",
               )}
             >
-              <div className="text-xs text-muted-foreground">{hebrewDays[idx]}</div>
-              <div className={cn(
-                "text-lg font-bold mt-1",
-                isToday(day) && "bg-[hsl(var(--navy))] text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto"
-              )}>
-                {format(day, 'd')}
+              <div className="text-xs text-muted-foreground">
+                {hebrewDays[idx]}
+              </div>
+              <div
+                className={cn(
+                  "text-lg font-bold mt-1",
+                  isToday(day) &&
+                    "bg-[hsl(var(--navy))] text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto",
+                )}
+              >
+                {format(day, "d")}
               </div>
             </div>
           ))}
@@ -140,7 +150,7 @@ export function CalendarWeekView({
                   key={hour}
                   className="h-12 border-b text-xs text-muted-foreground text-center py-1 bg-muted/20"
                 >
-                  {hour.toString().padStart(2, '0')}:00
+                  {hour.toString().padStart(2, "0")}:00
                 </div>
               ))}
             </div>
@@ -150,13 +160,13 @@ export function CalendarWeekView({
               const dayMeetings = getMeetingsForDate(day);
               const dayTasks = getTasksForDate(day);
               const dayReminders = getRemindersForDate(day);
-              
+
               return (
                 <div
                   key={day.toString()}
                   className={cn(
                     "border-e last:border-e-0 relative",
-                    isToday(day) && "bg-[hsl(var(--gold))]/5"
+                    isToday(day) && "bg-[hsl(var(--gold))]/5",
                   )}
                   onClick={() => onDayClick(day)}
                 >
@@ -170,7 +180,10 @@ export function CalendarWeekView({
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity absolute end-1"
-                        onClick={(e) => { e.stopPropagation(); onAddClick(day); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddClick(day);
+                        }}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -188,10 +201,12 @@ export function CalendarWeekView({
                       >
                         <div className="flex items-center gap-1">
                           <Users className="h-3 w-3 shrink-0" />
-                          <span className="truncate font-medium">{meeting.title}</span>
+                          <span className="truncate font-medium">
+                            {meeting.title}
+                          </span>
                         </div>
                         <div className="text-[10px] opacity-75">
-                          {format(parseISO(meeting.start_time), 'HH:mm')}
+                          {format(parseISO(meeting.start_time), "HH:mm")}
                         </div>
                       </div>
                     );

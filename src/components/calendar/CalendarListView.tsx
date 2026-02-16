@@ -1,11 +1,19 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Clock, Users, CheckSquare, Bell, Briefcase, Calendar, ChevronLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Clock,
+  Users,
+  CheckSquare,
+  Bell,
+  Briefcase,
+  Calendar,
+  ChevronLeft,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   format,
   startOfMonth,
@@ -16,8 +24,8 @@ import {
   isTomorrow,
   isPast,
   parseISO,
-} from 'date-fns';
-import { he } from 'date-fns/locale';
+} from "date-fns";
+import { he } from "date-fns/locale";
 
 interface TimeEntry {
   id: string;
@@ -78,7 +86,9 @@ export function CalendarListView({
   };
 
   const getTasksForDate = (date: Date) => {
-    return tasks.filter((t) => t.due_date && isSameDay(parseISO(t.due_date), date));
+    return tasks.filter(
+      (t) => t.due_date && isSameDay(parseISO(t.due_date), date),
+    );
   };
 
   const getRemindersForDate = (date: Date) => {
@@ -92,7 +102,7 @@ export function CalendarListView({
   const formatMinutes = (minutes: number) => {
     const hrs = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hrs}:${mins.toString().padStart(2, '0')}`;
+    return `${hrs}:${mins.toString().padStart(2, "0")}`;
   };
 
   // Filter days that have events
@@ -107,19 +117,19 @@ export function CalendarListView({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-500/10 text-red-600 border-red-500/30';
-      case 'low':
-        return 'bg-green-500/10 text-green-600 border-green-500/30';
+      case "high":
+        return "bg-red-500/10 text-red-600 border-red-500/30";
+      case "low":
+        return "bg-green-500/10 text-green-600 border-green-500/30";
       default:
-        return 'bg-amber-500/10 text-amber-600 border-amber-500/30';
+        return "bg-amber-500/10 text-amber-600 border-amber-500/30";
     }
   };
 
   const getDateLabel = (date: Date) => {
-    if (isToday(date)) return 'היום';
-    if (isTomorrow(date)) return 'מחר';
-    return format(date, 'EEEE', { locale: he });
+    if (isToday(date)) return "היום";
+    if (isTomorrow(date)) return "מחר";
+    return format(date, "EEEE", { locale: he });
   };
 
   return (
@@ -127,7 +137,7 @@ export function CalendarListView({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Calendar className="h-5 w-5 text-[hsl(var(--gold))]" />
-          רשימת אירועים - {format(currentMonth, 'MMMM yyyy', { locale: he })}
+          רשימת אירועים - {format(currentMonth, "MMMM yyyy", { locale: he })}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -152,35 +162,54 @@ export function CalendarListView({
                     key={day.toString()}
                     className={cn(
                       "rounded-xl overflow-hidden transition-all cursor-pointer hover:shadow-lg",
-                      dayIsToday && "ring-2 ring-[hsl(var(--gold))] bg-[hsl(var(--gold))]/5",
-                      dayIsPast && "opacity-60"
+                      dayIsToday &&
+                        "ring-2 ring-[hsl(var(--gold))] bg-[hsl(var(--gold))]/5",
+                      dayIsPast && "opacity-60",
                     )}
                     onClick={() => onDayClick(day)}
                   >
                     {/* Date Header */}
-                    <div className={cn(
-                      "flex items-center justify-between px-4 py-3",
-                      dayIsToday ? "bg-[hsl(var(--navy))] text-white" : "bg-muted/50"
-                    )}>
+                    <div
+                      className={cn(
+                        "flex items-center justify-between px-4 py-3",
+                        dayIsToday
+                          ? "bg-[hsl(var(--navy))] text-white"
+                          : "bg-muted/50",
+                      )}
+                    >
                       <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
-                          dayIsToday ? "bg-white/20" : "bg-background"
-                        )}>
-                          <span className="text-xl font-bold">{format(day, 'd')}</span>
+                        <div
+                          className={cn(
+                            "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
+                            dayIsToday ? "bg-white/20" : "bg-background",
+                          )}
+                        >
+                          <span className="text-xl font-bold">
+                            {format(day, "d")}
+                          </span>
                         </div>
                         <div>
                           <p className="font-semibold">{getDateLabel(day)}</p>
-                          <p className={cn(
-                            "text-sm",
-                            dayIsToday ? "text-white/70" : "text-muted-foreground"
-                          )}>
-                            {format(day, 'd בMMMM', { locale: he })}
+                          <p
+                            className={cn(
+                              "text-sm",
+                              dayIsToday
+                                ? "text-white/70"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {format(day, "d בMMMM", { locale: he })}
                           </p>
                         </div>
                       </div>
-                      <Badge variant={dayIsToday ? "secondary" : "outline"} className="text-xs">
-                        {dayMeetings.length + dayTasks.length + dayReminders.length} אירועים
+                      <Badge
+                        variant={dayIsToday ? "secondary" : "outline"}
+                        className="text-xs"
+                      >
+                        {dayMeetings.length +
+                          dayTasks.length +
+                          dayReminders.length}{" "}
+                        אירועים
                       </Badge>
                     </div>
 
@@ -198,7 +227,8 @@ export function CalendarListView({
                           <div className="flex-1">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(meeting.start_time), 'HH:mm')} - {format(parseISO(meeting.end_time), 'HH:mm')}
+                              {format(parseISO(meeting.start_time), "HH:mm")} -{" "}
+                              {format(parseISO(meeting.end_time), "HH:mm")}
                             </p>
                           </div>
                           <ChevronLeft className="h-5 w-5 text-muted-foreground" />
@@ -216,8 +246,18 @@ export function CalendarListView({
                           </div>
                           <div className="flex-1">
                             <p className="font-medium">{task.title}</p>
-                            <Badge variant="outline" className={cn("text-xs", getPriorityColor(task.priority))}>
-                              {task.priority === 'high' ? 'עדיפות גבוהה' : task.priority === 'low' ? 'עדיפות נמוכה' : 'עדיפות בינונית'}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                getPriorityColor(task.priority),
+                              )}
+                            >
+                              {task.priority === "high"
+                                ? "עדיפות גבוהה"
+                                : task.priority === "low"
+                                  ? "עדיפות נמוכה"
+                                  : "עדיפות בינונית"}
                             </Badge>
                           </div>
                           <ChevronLeft className="h-5 w-5 text-muted-foreground" />
@@ -236,7 +276,7 @@ export function CalendarListView({
                           <div className="flex-1">
                             <p className="font-medium">{reminder.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(reminder.remind_at), 'HH:mm')}
+                              {format(parseISO(reminder.remind_at), "HH:mm")}
                             </p>
                           </div>
                           <ChevronLeft className="h-5 w-5 text-muted-foreground" />
@@ -253,14 +293,21 @@ export function CalendarListView({
                             <Clock className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium">{entry.description || entry.project?.name || 'עבודה'}</p>
+                            <p className="font-medium">
+                              {entry.description ||
+                                entry.project?.name ||
+                                "עבודה"}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(entry.start_time), 'HH:mm')}
-                              {entry.end_time && ` - ${format(parseISO(entry.end_time), 'HH:mm')}`}
+                              {format(parseISO(entry.start_time), "HH:mm")}
+                              {entry.end_time &&
+                                ` - ${format(parseISO(entry.end_time), "HH:mm")}`}
                             </p>
                           </div>
                           {entry.duration_minutes && (
-                            <Badge variant="outline">{formatMinutes(entry.duration_minutes)}</Badge>
+                            <Badge variant="outline">
+                              {formatMinutes(entry.duration_minutes)}
+                            </Badge>
                           )}
                         </div>
                       ))}
