@@ -37,7 +37,10 @@ export function useGoogleContacts() {
           .order("display_name");
 
         if (error) {
-          console.warn("[GoogleContacts] Cloud cache load error:", error.message);
+          console.warn(
+            "[GoogleContacts] Cloud cache load error:",
+            error.message,
+          );
           return;
         }
         if (data && data.length > 0) {
@@ -50,7 +53,9 @@ export function useGoogleContacts() {
             photoUrl: row.photo_url || undefined,
           }));
           setContacts(cached);
-          console.log(`[GoogleContacts] Loaded ${cached.length} contacts from cloud cache`);
+          console.log(
+            `[GoogleContacts] Loaded ${cached.length} contacts from cloud cache`,
+          );
         }
       } catch (err) {
         console.warn("[GoogleContacts] Cloud cache load failed:", err);
@@ -83,7 +88,10 @@ export function useGoogleContacts() {
             .from("google_contacts_cache")
             .upsert(batch, { onConflict: "user_id,google_resource_name" });
           if (error) {
-            console.error("[GoogleContacts] Cloud save batch error:", error.message);
+            console.error(
+              "[GoogleContacts] Cloud save batch error:",
+              error.message,
+            );
           }
         }
         console.log(`[GoogleContacts] Saved ${rows.length} contacts to cloud`);
@@ -103,59 +111,81 @@ export function useGoogleContacts() {
       try {
         const token = await getAccessToken(["contacts"]);
         if (!token) {
-          console.warn('[GoogleContacts] No token returned from getAccessToken');
+          console.warn(
+            "[GoogleContacts] No token returned from getAccessToken",
+          );
           setIsLoading(false);
           return [];
         }
 
         // Debug: log token info and scopes
-        const savedScopes = localStorage.getItem('google_services_scopes') || '';
-        console.log('[GoogleContacts] Token obtained. Saved scopes:', savedScopes);
-        console.log('[GoogleContacts] Has contacts.readonly:', savedScopes.includes('contacts.readonly'));
+        const savedScopes =
+          localStorage.getItem("google_services_scopes") || "";
+        console.log(
+          "[GoogleContacts] Token obtained. Saved scopes:",
+          savedScopes,
+        );
+        console.log(
+          "[GoogleContacts] Has contacts.readonly:",
+          savedScopes.includes("contacts.readonly"),
+        );
 
         // Debug: validate token with tokeninfo endpoint
         try {
-          const tokenInfoResp = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+          const tokenInfoResp = await fetch(
+            `https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`,
+          );
           const tokenInfo = await tokenInfoResp.json();
-          console.log('[GoogleContacts] Token info:', tokenInfo);
-          console.log('[GoogleContacts] Token scopes:', tokenInfo.scope);
-          if (tokenInfo.scope && !tokenInfo.scope.includes('contacts.readonly')) {
-            console.warn('[GoogleContacts] ⚠️ Token does NOT have contacts.readonly scope!');
+          console.log("[GoogleContacts] Token info:", tokenInfo);
+          console.log("[GoogleContacts] Token scopes:", tokenInfo.scope);
+          if (
+            tokenInfo.scope &&
+            !tokenInfo.scope.includes("contacts.readonly")
+          ) {
+            console.warn(
+              "[GoogleContacts] ⚠️ Token does NOT have contacts.readonly scope!",
+            );
           }
         } catch (e) {
-          console.log('[GoogleContacts] Could not validate token:', e);
+          console.log("[GoogleContacts] Could not validate token:", e);
         }
 
-        console.log('[GoogleContacts] Fetching People API...');
+        console.log("[GoogleContacts] Fetching People API...");
         const response = await fetch(
           `https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers,organizations,photos&pageSize=${pageSize}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
 
-        console.log('[GoogleContacts] People API response status:', response.status);
+        console.log(
+          "[GoogleContacts] People API response status:",
+          response.status,
+        );
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           const errorMsg =
             errorData?.error?.message || `HTTP ${response.status}`;
           const errorDetails = errorData?.error?.details || [];
-          console.error("[GoogleContacts] People API error FULL response:", JSON.stringify(errorData, null, 2));
+          console.error(
+            "[GoogleContacts] People API error FULL response:",
+            JSON.stringify(errorData, null, 2),
+          );
           console.error("[GoogleContacts] Error details:", errorDetails);
 
           // Check if it's a "API not enabled" error
-          const isApiNotEnabled = errorMsg.includes('not been used') || 
-            errorMsg.includes('has not been enabled') ||
-            errorMsg.includes('PERMISSION_DENIED') ||
-            errorData?.error?.status === 'PERMISSION_DENIED';
+          const isApiNotEnabled =
+            errorMsg.includes("not been used") ||
+            errorMsg.includes("has not been enabled") ||
+            errorMsg.includes("PERMISSION_DENIED") ||
+            errorData?.error?.status === "PERMISSION_DENIED";
 
           toast({
             title: "שגיאה בטעינת אנשי קשר",
-            description:
-              isApiNotEnabled
-                ? "People API לא מופעל! יש להפעיל אותו ב-Google Cloud Console → APIs & Services → Enable APIs → חפש People API → Enable"
-                : response.status === 403
-                  ? `אין הרשאה: ${errorMsg}`
-                  : errorMsg,
+            description: isApiNotEnabled
+              ? "People API לא מופעל! יש להפעיל אותו ב-Google Cloud Console → APIs & Services → Enable APIs → חפש People API → Enable"
+              : response.status === 403
+                ? `אין הרשאה: ${errorMsg}`
+                : errorMsg,
             variant: "destructive",
           });
           setIsLoading(false);
