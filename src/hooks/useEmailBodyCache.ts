@@ -1,7 +1,7 @@
 /**
  * useEmailBodyCache - IndexedDB persistent cache for email bodies
  * Pre-fetches email bodies in the background so hover preview is instant.
- * 
+ *
  * Strategy:
  * 1. IndexedDB stores email HTML bodies persistently (survives refresh)
  * 2. After email list loads, background-fetch bodies using requestIdleCallback
@@ -36,7 +36,9 @@ function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "messageId" });
+        const store = db.createObjectStore(STORE_NAME, {
+          keyPath: "messageId",
+        });
         store.createIndex("accessedAt", "accessedAt");
       }
     };
@@ -82,7 +84,7 @@ async function putInDB(messageId: string, html: string): Promise<void> {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);
-    
+
     const entry: CachedBody = {
       messageId,
       html,
@@ -136,25 +138,28 @@ export function useEmailBodyCache() {
   const abortRef = useRef(false);
 
   // Get cached body - checks memory first, then IndexedDB
-  const getCachedBody = useCallback(async (messageId: string): Promise<string | null> => {
-    // 1. Memory cache (instant)
-    const mem = memCache.current.get(messageId);
-    if (mem) return mem;
+  const getCachedBody = useCallback(
+    async (messageId: string): Promise<string | null> => {
+      // 1. Memory cache (instant)
+      const mem = memCache.current.get(messageId);
+      if (mem) return mem;
 
-    // 2. IndexedDB (fast, ~1-5ms)
-    const idb = await getFromDB(messageId);
-    if (idb) {
-      memCache.current.set(messageId, idb);
-      // Keep memory cache bounded
-      if (memCache.current.size > 200) {
-        const firstKey = memCache.current.keys().next().value;
-        if (firstKey) memCache.current.delete(firstKey);
+      // 2. IndexedDB (fast, ~1-5ms)
+      const idb = await getFromDB(messageId);
+      if (idb) {
+        memCache.current.set(messageId, idb);
+        // Keep memory cache bounded
+        if (memCache.current.size > 200) {
+          const firstKey = memCache.current.keys().next().value;
+          if (firstKey) memCache.current.delete(firstKey);
+        }
+        return idb;
       }
-      return idb;
-    }
 
-    return null;
-  }, []);
+      return null;
+    },
+    [],
+  );
 
   // Store body in both memory and IndexedDB
   const cacheBody = useCallback(async (messageId: string, html: string) => {

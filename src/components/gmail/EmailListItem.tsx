@@ -549,8 +549,6 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         {/* Row 2: Subject - full width, hover triggers preview */}
         <div
           className="mt-1"
-          onMouseEnter={handleSubjectMouseEnter}
-          onMouseLeave={handleSubjectMouseLeave}
           onClick={async () => {
             onSelect();
             if (!message.isRead) {
@@ -560,8 +558,10 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           }}
         >
           <p
+            onMouseEnter={handleSubjectMouseEnter}
+            onMouseLeave={handleSubjectMouseLeave}
             className={cn(
-              "text-sm",
+              "text-sm cursor-pointer hover:underline decoration-primary/40",
               !message.isRead && "font-semibold",
               displayDensity === "compact" && "text-xs truncate",
               displayDensity === "comfortable" && "line-clamp-1",

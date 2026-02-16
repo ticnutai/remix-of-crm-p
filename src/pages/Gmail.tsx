@@ -112,6 +112,7 @@ import {
   VolumeX,
   Undo2,
   Timer,
+  GripVertical,
   Keyboard,
 } from "lucide-react";
 import {
@@ -360,12 +361,88 @@ export default function Gmail() {
   );
   const [previewY, setPreviewY] = useState(200);
 
+  // Draggable + Resizable preview panel state (persisted in localStorage)
+  const PREVIEW_STORAGE_KEY = "gmail_preview_panel";
+  const getStoredPreviewRect = () => {
+    try {
+      const s = localStorage.getItem(PREVIEW_STORAGE_KEY);
+      if (s) return JSON.parse(s);
+    } catch {}
+    return null;
+  };
+  const [previewRect, setPreviewRect] = useState<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }>(() => {
+    const stored = getStoredPreviewRect();
+    return stored || { x: window.innerWidth * 0.05, y: 200, w: 600, h: 500 };
+  });
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+
+  // Save preview position/size to localStorage
+  const savePreviewRect = useCallback((rect: typeof previewRect) => {
+    try {
+      localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(rect));
+    } catch {}
+  }, []);
+
+  // Drag handlers
+  const onDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: previewRect.x, origY: previewRect.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      const newRect = { ...previewRect, x: dragRef.current.origX + dx, y: dragRef.current.origY + dy };
+      setPreviewRect(newRect);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setPreviewRect(prev => { savePreviewRect(prev); return prev; });
+      dragRef.current = null;
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [previewRect, savePreviewRect]);
+
+  // Resize handlers
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, origW: previewRect.w, origH: previewRect.h };
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const dx = resizeRef.current.startX - ev.clientX; // RTL: moving left = wider
+      const dy = ev.clientY - resizeRef.current.startY;
+      const newW = Math.max(300, Math.min(resizeRef.current.origW + dx, window.innerWidth - 40));
+      const newH = Math.max(250, Math.min(resizeRef.current.origH + dy, window.innerHeight - 40));
+      const newRect = { ...previewRect, w: newW, h: newH };
+      setPreviewRect(newRect);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setPreviewRect(prev => { savePreviewRect(prev); return prev; });
+      resizeRef.current = null;
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [previewRect, savePreviewRect]);
+
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
       setHoverPreviewId(messageId);
-      // Position: clamp so the panel stays on screen
-      const clampedY = Math.max(40, Math.min(y - 60, window.innerHeight - 500));
-      setPreviewY(clampedY);
+      // Position: use stored rect position (y), but set initial y near the hovered subject
+      const stored = getStoredPreviewRect();
+      if (!stored) {
+        const clampedY = Math.max(40, Math.min(y - 60, window.innerHeight - 500));
+        setPreviewRect(prev => ({ ...prev, y: clampedY, x: window.innerWidth * 0.05 }));
+      }
       // Find the message and open the preview
       const msg = messages.find((m) => m.id === messageId);
       if (msg) {
@@ -2602,47 +2679,58 @@ export default function Gmail() {
           />
         )}
 
-        {/* Hover Preview Panel - positioned near the hovered subject, closes on mouse leave */}
+        {/* Hover Preview Panel - draggable, resizable, closes on mouse leave */}
         {showPreviewDialog && previewMessage && (
           <div
-            className="fixed z-[401] w-[90vw] max-w-[600px] max-h-[70vh] rounded-lg bg-background shadow-2xl flex flex-col animate-in fade-in-0 slide-in-from-right-2 duration-150"
+            className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
             style={{
-              top: previewY,
-              right: '5vw',
+              top: previewRect.y,
+              left: previewRect.x,
+              width: previewRect.w,
+              height: previewRect.h,
               border: '3px solid #d4a843',
               boxShadow: '0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)',
+              overflow: 'hidden',
             }}
             dir="rtl"
             onMouseLeave={() => setShowPreviewDialog(false)}
           >
-            {/* Header */}
-            <div className="p-3 flex-shrink-0" style={{ borderBottom: '2px solid #d4a843' }}>
+            {/* Draggable Header */}
+            <div
+              className="p-3 flex-shrink-0 cursor-move select-none"
+              style={{ borderBottom: '2px solid #d4a843' }}
+              onMouseDown={onDragStart}
+            >
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-base truncate text-right">
-                    {previewMessage.subject || '(ללא נושא)'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground text-right">
-                    {previewMessage.fromName} &lt;{previewMessage.from}&gt;
-                  </p>
-                  <p className="text-xs text-muted-foreground text-right">
-                    {formatDate(previewMessage.date)}
-                  </p>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 opacity-50" />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base truncate text-right">
+                      {previewMessage.subject || '(ללא נושא)'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground text-right truncate">
+                      {previewMessage.fromName} &lt;{previewMessage.from}&gt;
+                    </p>
+                    <p className="text-xs text-muted-foreground text-right">
+                      {formatDate(previewMessage.date)}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowPreviewDialog(false)}
                   className="rounded-sm opacity-70 hover:opacity-100 transition-opacity p-1 mr-2"
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* Body - scrollable */}
+            {/* Body - vertical scroll only */}
             <div
-              className="overflow-y-auto p-4 flex-1"
+              className="flex-1 p-4"
               dir="rtl"
-              style={{ maxHeight: 'calc(70vh - 160px)' }}
+              style={{ overflowY: 'auto', overflowX: 'hidden' }}
             >
               {hoverPreviewLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -2651,6 +2739,7 @@ export default function Gmail() {
               ) : hoverPreviewHtml ? (
                 <div
                   className="prose prose-sm max-w-none dark:prose-invert"
+                  style={{ overflowX: 'hidden', wordBreak: 'break-word' }}
                   dangerouslySetInnerHTML={{
                     __html: DOMPurify.sanitize(hoverPreviewHtml, {
                       ALLOW_UNKNOWN_PROTOCOLS: true,
@@ -2717,6 +2806,17 @@ export default function Gmail() {
                 העבר
               </Button>
             </div>
+
+            {/* Resize handle - bottom-left corner */}
+            <div
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-nwse-resize"
+              style={{
+                borderLeft: '3px solid #d4a843',
+                borderBottom: '3px solid #d4a843',
+                borderBottomLeftRadius: '6px',
+              }}
+              onMouseDown={onResizeStart}
+            />
           </div>
         )}
 
