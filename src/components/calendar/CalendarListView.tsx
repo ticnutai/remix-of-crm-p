@@ -133,7 +133,7 @@ export function CalendarListView({
       <CardContent>
         <ScrollArea className="h-[600px] pl-4" dir="rtl">
           {daysWithEvents.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12">
+            <div className="text-center text-muted-foreground py-12" dir="rtl">
               <Calendar className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg">אין אירועים החודש</p>
             </div>

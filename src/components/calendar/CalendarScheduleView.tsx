@@ -106,7 +106,7 @@ export function CalendarScheduleView({
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="h-[600px]">
-          <Table>
+          <Table dir="rtl">
             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
               <TableRow>
                 <TableHead className="text-right w-[140px]">תאריך</TableHead>

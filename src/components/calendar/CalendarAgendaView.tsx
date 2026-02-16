@@ -180,7 +180,7 @@ export function CalendarAgendaView({
       <CardContent>
         <ScrollArea className="h-[600px] pl-4" dir="rtl">
           {Object.keys(eventsByDate).length === 0 ? (
-            <div className="text-center text-muted-foreground py-12">
+            <div className="text-center text-muted-foreground py-12" dir="rtl">
               <LayoutGrid className="h-16 w-16 mx-auto mb-4 opacity-30" />
               <p className="text-lg">אין אירועים להצגה</p>
             </div>

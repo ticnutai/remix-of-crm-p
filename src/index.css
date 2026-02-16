@@ -613,6 +613,16 @@
     flex-direction: row-reverse;
   }
 
+  /* Fix Radix ScrollArea viewport direction - it resets to LTR */
+  [data-radix-scroll-area-viewport] {
+    direction: rtl !important;
+  }
+
+  /* Ensure tables inherit RTL direction */
+  table {
+    direction: rtl;
+  }
+
   /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;

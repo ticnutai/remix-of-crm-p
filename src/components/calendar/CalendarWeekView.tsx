@@ -131,8 +131,8 @@ export function CalendarWeekView({
         </div>
 
         {/* Grid */}
-        <ScrollArea className="h-[600px]">
-          <div className="grid grid-cols-8">
+        <ScrollArea className="h-[600px]" dir="rtl">
+          <div className="grid grid-cols-8" dir="rtl">
             {/* Time column */}
             <div className="border-e">
               {hours.map((hour) => (
