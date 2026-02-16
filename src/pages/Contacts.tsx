@@ -399,7 +399,7 @@ export default function Contacts() {
           .from("clients")
           .select("id")
           .eq("email", sender.email)
-          .single();
+          .maybeSingle();
         if (existing) {
           toast({
             title: "לקוח קיים",
@@ -443,7 +443,7 @@ export default function Contacts() {
           .from("clients")
           .select("id")
           .eq("email", sender.email)
-          .single();
+          .maybeSingle();
         if (!existing) {
           const { error } = await supabase.from("clients").insert({
             name: sender.name,

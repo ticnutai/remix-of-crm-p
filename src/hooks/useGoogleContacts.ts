@@ -145,7 +145,7 @@ export function useGoogleContacts() {
             .from("clients")
             .select("id")
             .eq("email", contact.email)
-            .single();
+            .maybeSingle();
 
           if (existing) {
             toast({

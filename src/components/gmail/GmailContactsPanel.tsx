@@ -318,7 +318,7 @@ export function GmailContactsPanel({
           .from("clients")
           .select("id")
           .eq("email", sender.email)
-          .single();
+          .maybeSingle();
 
         if (existing) {
           toast({
@@ -371,7 +371,7 @@ export function GmailContactsPanel({
           .from("clients")
           .select("id")
           .eq("email", sender.email)
-          .single();
+          .maybeSingle();
 
         if (!existing) {
           const { error } = await supabase.from("clients").insert({
