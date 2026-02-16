@@ -272,6 +272,38 @@ export default function Gmail() {
   const [emailHtmlBody, setEmailHtmlBody] = useState<string>("");
   const [loadingBody, setLoadingBody] = useState(false);
 
+  // Hover preview state (3-second hover to show email body)
+  const [hoverPreviewId, setHoverPreviewId] = useState<string | null>(null);
+  const [hoverPreviewHtml, setHoverPreviewHtml] = useState<string | null>(null);
+  const [hoverPreviewLoading, setHoverPreviewLoading] = useState(false);
+
+  const handleHoverPreview = useCallback(
+    async (messageId: string) => {
+      setHoverPreviewId(messageId);
+      // Check cache first
+      const cachedBody = gmailCache.getCachedBody(messageId);
+      if (cachedBody) {
+        setHoverPreviewHtml(cachedBody);
+        return;
+      }
+      setHoverPreviewLoading(true);
+      try {
+        const fullMsg = await getFullMessage(messageId);
+        if (fullMsg?.payload) {
+          const html = extractHtmlBody(fullMsg.payload);
+          setHoverPreviewHtml(html);
+          if (html) {
+            gmailCache.cacheBody(messageId, html);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading hover preview:", e);
+      }
+      setHoverPreviewLoading(false);
+    },
+    [getFullMessage, extractHtmlBody, gmailCache],
+  );
+
   // Muted threads
   const [mutedThreads, setMutedThreads] = useState<Set<string>>(() => {
     try {
@@ -2170,6 +2202,16 @@ export default function Gmail() {
                                         onSnooze={handleSnooze}
                                         onRefresh={handleRefresh}
                                         formatDate={formatDate}
+                                        onHoverPreview={handleHoverPreview}
+                                        hoverPreviewHtml={
+                                          hoverPreviewId === message.id
+                                            ? hoverPreviewHtml
+                                            : null
+                                        }
+                                        hoverPreviewLoading={
+                                          hoverPreviewId === message.id &&
+                                          hoverPreviewLoading
+                                        }
                                       />
                                     </div>
                                   );
