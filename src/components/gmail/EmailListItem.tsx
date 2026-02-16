@@ -95,7 +95,7 @@ interface EmailListItemProps {
   onRefresh: () => void;
   formatDate: (dateStr: string) => string;
   // Hover preview
-  onHoverPreview?: (messageId: string) => void;
+  onHoverPreview?: (messageId: string, y: number) => void;
 }
 
 export const EmailListItem = React.memo(function EmailListItemInner({
@@ -140,21 +140,20 @@ export const EmailListItem = React.memo(function EmailListItemInner({
     data: { message },
   });
 
-  // Hover preview timer (1-second hover) - triggers callback in Gmail.tsx which shows the Dialog
+  // Hover preview timer - triggers on subject hover only
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverYRef = useRef<number>(0);
 
-  const handleMouseEnter = useCallback(() => {
+  const handleSubjectMouseEnter = useCallback((e: React.MouseEvent) => {
+    // Store the Y position of the subject element
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    hoverYRef.current = rect.top;
     hoverTimerRef.current = setTimeout(() => {
-      console.log(
-        "📧 [HoverPreview] Timer fired for:",
-        message.id,
-        message.subject,
-      );
-      onHoverPreview?.(message.id);
+      onHoverPreview?.(message.id, hoverYRef.current);
     }, 300);
   }, [message.id, onHoverPreview]);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleSubjectMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
@@ -175,8 +174,6 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         {...attributes}
         {...listeners}
         data-message-id={message.id}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
         className={cn(
           "relative hover:bg-muted/50 transition-colors cursor-pointer group border-b",
           !message.isRead && "bg-primary/5",
@@ -549,9 +546,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           </span>
         </div>
 
-        {/* Row 2: Subject - full width */}
+        {/* Row 2: Subject - full width, hover triggers preview */}
         <div
           className="mt-1"
+          onMouseEnter={handleSubjectMouseEnter}
+          onMouseLeave={handleSubjectMouseLeave}
           onClick={async () => {
             onSelect();
             if (!message.isRead) {
