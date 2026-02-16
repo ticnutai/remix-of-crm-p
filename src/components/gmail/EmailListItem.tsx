@@ -36,6 +36,9 @@ import {
   Timer,
   Folder,
   FolderOpen,
+  FolderX,
+  FolderInput,
+  Tag,
   MessageSquare,
   Building2,
   X,
@@ -85,6 +88,10 @@ interface EmailListItemProps {
   // State
   mutedThreads: Set<string>;
   folders: EmailFolder[];
+  // Active folder context (when viewing a specific folder)
+  activeFolderId?: string | null;
+  activeFolderName?: string;
+  onRemoveFromFolder?: (folderId: string, emailId: string) => Promise<void>;
   // Callbacks
   onSelect: () => void;
   onToggleSelection: (
@@ -129,6 +136,9 @@ export const EmailListItem = React.memo(function EmailListItemInner({
   customLabels,
   mutedThreads,
   folders,
+  activeFolderId,
+  activeFolderName,
+  onRemoveFromFolder,
   onSelect,
   onToggleSelection,
   onToggleStar,
@@ -159,14 +169,17 @@ export const EmailListItem = React.memo(function EmailListItemInner({
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverYRef = useRef<number>(0);
 
-  const handleSubjectMouseEnter = useCallback((e: React.MouseEvent) => {
-    // Store the Y position of the subject element
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    hoverYRef.current = rect.top;
-    hoverTimerRef.current = setTimeout(() => {
-      onHoverPreview?.(message.id, hoverYRef.current);
-    }, 300);
-  }, [message.id, onHoverPreview]);
+  const handleSubjectMouseEnter = useCallback(
+    (e: React.MouseEvent) => {
+      // Store the Y position of the subject element
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      hoverYRef.current = rect.top;
+      hoverTimerRef.current = setTimeout(() => {
+        onHoverPreview?.(message.id, hoverYRef.current);
+      }, 300);
+    },
+    [message.id, onHoverPreview],
+  );
 
   const handleSubjectMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) {
@@ -202,6 +215,27 @@ export const EmailListItem = React.memo(function EmailListItemInner({
         {/* Hover Quick Action Icons - floating above content */}
         <div className="absolute top-1 left-2 z-10 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-background/95 backdrop-blur-sm rounded-md shadow-sm border px-1 py-0.5">
           <TooltipProvider delayDuration={200}>
+            {/* Remove from folder (only when viewing a folder) */}
+            {activeFolderId && onRemoveFromFolder && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-orange-500"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await onRemoveFromFolder(activeFolderId, message.id);
+                      onRefresh();
+                    }}
+                  >
+                    <FolderX className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">הסר מתיקייה</TooltipContent>
+              </Tooltip>
+            )}
+
             {/* Reply */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -371,23 +405,41 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                   <FileText className="h-4 w-4 ml-2" />
                   הוסף הערה
                 </DropdownMenuItem>
-                {/* Move to folder sub-menu */}
+                {/* Remove from current folder */}
+                {activeFolderId && onRemoveFromFolder && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        await onRemoveFromFolder(activeFolderId, message.id);
+                        onRefresh();
+                      }}
+                      className="text-orange-600"
+                    >
+                      <FolderX className="h-4 w-4 ml-2" />
+                      הסר מתיקייה "{activeFolderName}"
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {/* Tag / Move to folder sub-menu */}
                 {folders.length > 0 && (
                   <>
                     <DropdownMenuSeparator />
                     <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                      סווג לתיקייה
+                      <Tag className="h-3 w-3 inline ml-1" />
+                      תייג / סווג לתיקייה
                     </div>
                     {folders.map((folder) => (
                       <DropdownMenuItem
                         key={folder.id}
                         onClick={() => onMoveToFolder(folder.id, message)}
                       >
-                        <Folder
+                        <Tag
                           className="h-4 w-4 ml-2"
                           style={{ color: folder.color }}
                         />
                         {folder.name}
+                        <span className="text-[10px] text-muted-foreground mr-auto">תיוג</span>
                       </DropdownMenuItem>
                     ))}
                   </>

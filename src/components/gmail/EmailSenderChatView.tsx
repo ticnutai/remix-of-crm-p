@@ -39,10 +39,16 @@ function cleanSnippet(raw: string): string {
   text = text.replace(/<[^@\s>]+@[^>\s]+>/g, "");
 
   // 3. Remove forwarded/reply header lines (From:, Sent:, To:, Date:, Cc:, Subject:)
-  text = text.replace(/\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi, "");
+  text = text.replace(
+    /\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi,
+    "",
+  );
 
   // 4. Remove "---------- Forwarded message ----------" style lines
-  text = text.replace(/-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi, "");
+  text = text.replace(
+    /-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi,
+    "",
+  );
 
   // 5. Clean up multiple spaces and newlines
   text = text.replace(/\s{2,}/g, " ").trim();
@@ -178,9 +184,7 @@ export function EmailSenderChatView({
   const loadMessageBody = useCallback(
     async (messageId: string) => {
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === messageId ? { ...m, bodyLoading: true } : m,
-        ),
+        prev.map((m) => (m.id === messageId ? { ...m, bodyLoading: true } : m)),
       );
       try {
         const fullMsg = await getFullMessage(messageId);
@@ -500,12 +504,9 @@ export function EmailSenderChatView({
                                         : "dark:prose-invert",
                                     )}
                                     dangerouslySetInnerHTML={{
-                                      __html: DOMPurify.sanitize(
-                                        msg.htmlBody,
-                                        {
-                                          ALLOW_UNKNOWN_PROTOCOLS: true,
-                                        },
-                                      ),
+                                      __html: DOMPurify.sanitize(msg.htmlBody, {
+                                        ALLOW_UNKNOWN_PROTOCOLS: true,
+                                      }),
                                     }}
                                   />
                                 ) : (

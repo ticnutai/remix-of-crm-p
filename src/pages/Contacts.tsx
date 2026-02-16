@@ -103,14 +103,27 @@ function findSmartMatches(
         client.email &&
         sender.email.toLowerCase() === client.email.toLowerCase()
       ) {
-        matches.push({ sender, client, matchType: "exact-email", confidence: 100 });
+        matches.push({
+          sender,
+          client,
+          matchType: "exact-email",
+          confidence: 100,
+        });
         continue;
       }
       if (client.email) {
         const [sLocal, sDomain] = sender.email.split("@");
         const [cLocal, cDomain] = client.email.toLowerCase().split("@");
-        if (sDomain === cDomain && (sLocal.includes(cLocal) || cLocal.includes(sLocal))) {
-          matches.push({ sender, client, matchType: "similar-email", confidence: 60 });
+        if (
+          sDomain === cDomain &&
+          (sLocal.includes(cLocal) || cLocal.includes(sLocal))
+        ) {
+          matches.push({
+            sender,
+            client,
+            matchType: "similar-email",
+            confidence: 60,
+          });
           continue;
         }
       }
@@ -118,7 +131,12 @@ function findSmartMatches(
         const sName = sender.name.toLowerCase().trim();
         const cName = client.name.toLowerCase().trim();
         if (sName === cName || sName.includes(cName) || cName.includes(sName)) {
-          matches.push({ sender, client, matchType: "name-match", confidence: 50 });
+          matches.push({
+            sender,
+            client,
+            matchType: "name-match",
+            confidence: 50,
+          });
         }
       }
     }
@@ -138,25 +156,45 @@ export default function Contacts() {
     importMultipleContacts,
     searchContacts,
   } = useGoogleContacts();
-  const { clients, loading: isLoadingClients, refetch: refetchClients } = useClients();
+  const {
+    clients,
+    loading: isLoadingClients,
+    refetch: refetchClients,
+  } = useClients();
 
   // Get cached Gmail messages for senders extraction
   const gmailCache = useGmailCache();
-  const cachedMessages = useMemo(() => gmailCache.getCachedMessages("inbox") || [], [gmailCache]);
+  const cachedMessages = useMemo(
+    () => gmailCache.getCachedMessages("inbox") || [],
+    [gmailCache],
+  );
 
   // State
   const [activeTab, setActiveTab] = useState("senders");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<Set<string>>(new Set());
-  const [selectedSenders, setSelectedSenders] = useState<Set<string>>(new Set());
-  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
+  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<
+    Set<string>
+  >(new Set());
+  const [selectedSenders, setSelectedSenders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(
+    new Set(),
+  );
   const [googleFetched, setGoogleFetched] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
-  const [linkDialogSender, setLinkDialogSender] = useState<EmailSender | null>(null);
-  const [filterType, setFilterType] = useState<"all" | "unlinked" | "linked">("all");
+  const [linkDialogSender, setLinkDialogSender] = useState<EmailSender | null>(
+    null,
+  );
+  const [filterType, setFilterType] = useState<"all" | "unlinked" | "linked">(
+    "all",
+  );
 
   // Extract unique email senders from cached messages
-  const senders = useMemo(() => extractSenders(cachedMessages), [cachedMessages]);
+  const senders = useMemo(
+    () => extractSenders(cachedMessages),
+    [cachedMessages],
+  );
 
   const linkedSenders = useMemo(() => {
     return senders.map((sender) => {
@@ -172,14 +210,20 @@ export default function Contacts() {
   }, [senders, clients]);
 
   const smartMatches = useMemo(
-    () => findSmartMatches(linkedSenders.filter((s) => !s.linkedClientId), clients),
+    () =>
+      findSmartMatches(
+        linkedSenders.filter((s) => !s.linkedClientId),
+        clients,
+      ),
     [linkedSenders, clients],
   );
 
   const filteredSenders = useMemo(() => {
     let result = linkedSenders;
-    if (filterType === "unlinked") result = result.filter((s) => !s.linkedClientId);
-    else if (filterType === "linked") result = result.filter((s) => s.linkedClientId);
+    if (filterType === "unlinked")
+      result = result.filter((s) => !s.linkedClientId);
+    else if (filterType === "linked")
+      result = result.filter((s) => s.linkedClientId);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -216,80 +260,153 @@ export default function Contacts() {
   }, [fetchContacts]);
 
   const handleImportSelected = useCallback(async () => {
-    const toImport = googleContacts.filter((c) => selectedGoogleContacts.has(c.resourceName));
+    const toImport = googleContacts.filter((c) =>
+      selectedGoogleContacts.has(c.resourceName),
+    );
     if (toImport.length === 0) return;
     const count = await importMultipleContacts(toImport);
-    if (count > 0) { setSelectedGoogleContacts(new Set()); refetchClients(); }
-  }, [googleContacts, selectedGoogleContacts, importMultipleContacts, refetchClients]);
-
-  const handleAddSenderAsClient = useCallback(async (sender: EmailSender) => {
-    setIsLinking(true);
-    try {
-      const { data: existing } = await supabase.from("clients").select("id").eq("email", sender.email).single();
-      if (existing) {
-        toast({ title: "לקוח קיים", description: `${sender.email} כבר קיים כלקוח`, variant: "destructive" });
-        setIsLinking(false);
-        return;
-      }
-      const { error } = await supabase.from("clients").insert({ name: sender.name, email: sender.email, source: "gmail_sender", status: "active" });
-      if (error) throw error;
-      toast({ title: "איש קשר נוסף כלקוח", description: sender.name });
+    if (count > 0) {
+      setSelectedGoogleContacts(new Set());
       refetchClients();
-    } catch (err: any) {
-      toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     }
-    setIsLinking(false);
-  }, [refetchClients, toast]);
+  }, [
+    googleContacts,
+    selectedGoogleContacts,
+    importMultipleContacts,
+    refetchClients,
+  ]);
+
+  const handleAddSenderAsClient = useCallback(
+    async (sender: EmailSender) => {
+      setIsLinking(true);
+      try {
+        const { data: existing } = await supabase
+          .from("clients")
+          .select("id")
+          .eq("email", sender.email)
+          .single();
+        if (existing) {
+          toast({
+            title: "לקוח קיים",
+            description: `${sender.email} כבר קיים כלקוח`,
+            variant: "destructive",
+          });
+          setIsLinking(false);
+          return;
+        }
+        const { error } = await supabase
+          .from("clients")
+          .insert({
+            name: sender.name,
+            email: sender.email,
+            source: "gmail_sender",
+            status: "active",
+          });
+        if (error) throw error;
+        toast({ title: "איש קשר נוסף כלקוח", description: sender.name });
+        refetchClients();
+      } catch (err: any) {
+        toast({
+          title: "שגיאה",
+          description: err.message,
+          variant: "destructive",
+        });
+      }
+      setIsLinking(false);
+    },
+    [refetchClients, toast],
+  );
 
   const handleAddMultipleSendersAsClients = useCallback(async () => {
-    const toAdd = linkedSenders.filter((s) => selectedSenders.has(s.email) && !s.linkedClientId);
+    const toAdd = linkedSenders.filter(
+      (s) => selectedSenders.has(s.email) && !s.linkedClientId,
+    );
     if (toAdd.length === 0) return;
     setIsLinking(true);
     let addedCount = 0;
     for (const sender of toAdd) {
       try {
-        const { data: existing } = await supabase.from("clients").select("id").eq("email", sender.email).single();
+        const { data: existing } = await supabase
+          .from("clients")
+          .select("id")
+          .eq("email", sender.email)
+          .single();
         if (!existing) {
-          const { error } = await supabase.from("clients").insert({ name: sender.name, email: sender.email, source: "gmail_sender", status: "active" });
+          const { error } = await supabase
+            .from("clients")
+            .insert({
+              name: sender.name,
+              email: sender.email,
+              source: "gmail_sender",
+              status: "active",
+            });
           if (!error) addedCount++;
         }
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
     if (addedCount > 0) {
-      toast({ title: "ייבוא הושלם", description: `${addedCount} שולחים נוספו כלקוחות` });
+      toast({
+        title: "ייבוא הושלם",
+        description: `${addedCount} שולחים נוספו כלקוחות`,
+      });
       refetchClients();
       setSelectedSenders(new Set());
     }
     setIsLinking(false);
   }, [linkedSenders, selectedSenders, refetchClients, toast]);
 
-  const handleLinkSenderToClient = useCallback(async (sender: EmailSender, clientId: string) => {
-    setIsLinking(true);
-    try {
-      const { error } = await supabase.from("clients").update({ email: sender.email }).eq("id", clientId);
-      if (error) throw error;
-      toast({ title: "קישור בוצע", description: `${sender.name} קושר ל${clients.find((c) => c.id === clientId)?.name}` });
-      refetchClients();
-      setLinkDialogSender(null);
-    } catch (err: any) {
-      toast({ title: "שגיאה בקישור", description: err.message, variant: "destructive" });
-    }
-    setIsLinking(false);
-  }, [clients, refetchClients, toast]);
+  const handleLinkSenderToClient = useCallback(
+    async (sender: EmailSender, clientId: string) => {
+      setIsLinking(true);
+      try {
+        const { error } = await supabase
+          .from("clients")
+          .update({ email: sender.email })
+          .eq("id", clientId);
+        if (error) throw error;
+        toast({
+          title: "קישור בוצע",
+          description: `${sender.name} קושר ל${clients.find((c) => c.id === clientId)?.name}`,
+        });
+        refetchClients();
+        setLinkDialogSender(null);
+      } catch (err: any) {
+        toast({
+          title: "שגיאה בקישור",
+          description: err.message,
+          variant: "destructive",
+        });
+      }
+      setIsLinking(false);
+    },
+    [clients, refetchClients, toast],
+  );
 
   const handleApplySmartMatches = useCallback(async () => {
-    const toLink = smartMatches.filter((m) => selectedMatches.has(`${m.sender.email}::${m.client.id}`));
+    const toLink = smartMatches.filter((m) =>
+      selectedMatches.has(`${m.sender.email}::${m.client.id}`),
+    );
     if (toLink.length === 0) return;
     setIsLinking(true);
     let linked = 0;
     for (const match of toLink) {
       try {
-        const { error } = await supabase.from("clients").update({ email: match.sender.email }).eq("id", match.client.id);
+        const { error } = await supabase
+          .from("clients")
+          .update({ email: match.sender.email })
+          .eq("id", match.client.id);
         if (!error) linked++;
-      } catch { /* skip */ }
+      } catch {
+        /* skip */
+      }
     }
     if (linked > 0) {
-      toast({ title: "קישור חכם הושלם", description: `${linked} קישורים בוצעו` });
+      toast({
+        title: "קישור חכם הושלם",
+        description: `${linked} קישורים בוצעו`,
+      });
       refetchClients();
       setSelectedMatches(new Set());
     }
@@ -298,36 +415,68 @@ export default function Contacts() {
 
   // Toggle helpers
   const toggleGoogleContact = (resourceName: string) => {
-    setSelectedGoogleContacts((prev) => { const n = new Set(prev); n.has(resourceName) ? n.delete(resourceName) : n.add(resourceName); return n; });
+    setSelectedGoogleContacts((prev) => {
+      const n = new Set(prev);
+      n.has(resourceName) ? n.delete(resourceName) : n.add(resourceName);
+      return n;
+    });
   };
   const toggleSender = (email: string) => {
-    setSelectedSenders((prev) => { const n = new Set(prev); n.has(email) ? n.delete(email) : n.add(email); return n; });
+    setSelectedSenders((prev) => {
+      const n = new Set(prev);
+      n.has(email) ? n.delete(email) : n.add(email);
+      return n;
+    });
   };
   const toggleMatch = (key: string) => {
-    setSelectedMatches((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+    setSelectedMatches((prev) => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
   };
   const selectAllGoogleContacts = () => {
-    setSelectedGoogleContacts((prev) => prev.size === filteredGoogleContacts.length ? new Set() : new Set(filteredGoogleContacts.map((c) => c.resourceName)));
+    setSelectedGoogleContacts((prev) =>
+      prev.size === filteredGoogleContacts.length
+        ? new Set()
+        : new Set(filteredGoogleContacts.map((c) => c.resourceName)),
+    );
   };
   const selectAllSenders = () => {
     const unlinked = filteredSenders.filter((s) => !s.linkedClientId);
-    setSelectedSenders((prev) => prev.size === unlinked.length ? new Set() : new Set(unlinked.map((s) => s.email)));
+    setSelectedSenders((prev) =>
+      prev.size === unlinked.length
+        ? new Set()
+        : new Set(unlinked.map((s) => s.email)),
+    );
   };
   const selectAllMatches = () => {
-    setSelectedMatches((prev) => prev.size === smartMatches.length ? new Set() : new Set(smartMatches.map((m) => `${m.sender.email}::${m.client.id}`)));
+    setSelectedMatches((prev) =>
+      prev.size === smartMatches.length
+        ? new Set()
+        : new Set(smartMatches.map((m) => `${m.sender.email}::${m.client.id}`)),
+    );
   };
 
   // Stats
   const stats = useMemo(() => {
     const total = senders.length;
     const linked = linkedSenders.filter((s) => s.linkedClientId).length;
-    return { total, linked, unlinked: total - linked, matchSuggestions: smartMatches.length };
+    return {
+      total,
+      linked,
+      unlinked: total - linked,
+      matchSuggestions: smartMatches.length,
+    };
   }, [senders, linkedSenders, smartMatches]);
 
   // ── Render ──────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl" dir="rtl">
+      <div
+        className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl"
+        dir="rtl"
+      >
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -349,16 +498,26 @@ export default function Contacts() {
             <Mail className="h-3 w-3 ml-1" />
             {stats.total} שולחים
           </Badge>
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-green-50 text-green-700 border-green-200">
+          <Badge
+            variant="outline"
+            className="text-sm px-3 py-1 bg-green-50 text-green-700 border-green-200"
+          >
             <Link2 className="h-3 w-3 ml-1" />
             {stats.linked} מקושרים
           </Badge>
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-orange-50 text-orange-700 border-orange-200">
+          <Badge
+            variant="outline"
+            className="text-sm px-3 py-1 bg-orange-50 text-orange-700 border-orange-200"
+          >
             <Unlink className="h-3 w-3 ml-1" />
             {stats.unlinked} לא מקושרים
           </Badge>
           {stats.matchSuggestions > 0 && (
-            <Badge variant="outline" className="text-sm px-3 py-1 bg-purple-50 text-purple-700 border-purple-200 cursor-pointer" onClick={() => setActiveTab("smart")}>
+            <Badge
+              variant="outline"
+              className="text-sm px-3 py-1 bg-purple-50 text-purple-700 border-purple-200 cursor-pointer"
+              onClick={() => setActiveTab("smart")}
+            >
               <Sparkles className="h-3 w-3 ml-1" />
               {stats.matchSuggestions} התאמות חכמות
             </Badge>
@@ -383,7 +542,12 @@ export default function Contacts() {
                   className="pr-10"
                 />
                 {searchQuery && (
-                  <Button variant="ghost" size="icon" className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setSearchQuery("")}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                    onClick={() => setSearchQuery("")}
+                  >
                     <X className="h-3 w-3" />
                   </Button>
                 )}
@@ -422,25 +586,46 @@ export default function Contacts() {
               <TabsContent value="senders" className="mt-0">
                 <div className="px-6 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Select value={filterType} onValueChange={(v) => setFilterType(v as any)}>
+                    <Select
+                      value={filterType}
+                      onValueChange={(v) => setFilterType(v as any)}
+                    >
                       <SelectTrigger className="w-[140px] h-8 text-xs">
                         <Filter className="h-3 w-3 ml-1" />
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">הכל ({stats.total})</SelectItem>
-                        <SelectItem value="unlinked">לא מקושרים ({stats.unlinked})</SelectItem>
-                        <SelectItem value="linked">מקושרים ({stats.linked})</SelectItem>
+                        <SelectItem value="unlinked">
+                          לא מקושרים ({stats.unlinked})
+                        </SelectItem>
+                        <SelectItem value="linked">
+                          מקושרים ({stats.linked})
+                        </SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="sm" onClick={selectAllSenders} className="text-xs h-8">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllSenders}
+                      className="text-xs h-8"
+                    >
                       <Check className="h-3 w-3 ml-1" />
                       {selectedSenders.size > 0 ? "נקה בחירה" : "בחר הכל"}
                     </Button>
                   </div>
                   {selectedSenders.size > 0 && (
-                    <Button size="sm" onClick={handleAddMultipleSendersAsClients} disabled={isLinking} className="text-xs h-8 bg-blue-600 hover:bg-blue-700">
-                      {isLinking ? <Loader2 className="h-3 w-3 ml-1 animate-spin" /> : <UserPlus className="h-3 w-3 ml-1" />}
+                    <Button
+                      size="sm"
+                      onClick={handleAddMultipleSendersAsClients}
+                      disabled={isLinking}
+                      className="text-xs h-8 bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isLinking ? (
+                        <Loader2 className="h-3 w-3 ml-1 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-3 w-3 ml-1" />
+                      )}
                       הוסף {selectedSenders.size} כלקוחות
                     </Button>
                   )}
@@ -450,20 +635,37 @@ export default function Contacts() {
                     <div className="text-center py-12 text-muted-foreground">
                       <Mail className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p>לא נמצאו שולחים</p>
-                      <p className="text-xs mt-1">נדרש חיבור ל-Gmail כדי לטעון שולחים</p>
+                      <p className="text-xs mt-1">
+                        נדרש חיבור ל-Gmail כדי לטעון שולחים
+                      </p>
                     </div>
                   ) : (
                     filteredSenders.map((sender) => (
-                      <div key={sender.email} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}>
+                      <div
+                        key={sender.email}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${sender.linkedClientId ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                      >
                         {!sender.linkedClientId && (
-                          <Checkbox checked={selectedSenders.has(sender.email)} onCheckedChange={() => toggleSender(sender.email)} />
+                          <Checkbox
+                            checked={selectedSenders.has(sender.email)}
+                            onCheckedChange={() => toggleSender(sender.email)}
+                          />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">{sender.name}</span>
-                            <Badge variant="secondary" className="text-[10px] px-1.5">{sender.count} הודעות</Badge>
+                            <span className="font-medium text-sm truncate">
+                              {sender.name}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] px-1.5"
+                            >
+                              {sender.count} הודעות
+                            </Badge>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">{sender.email}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {sender.email}
+                          </div>
                         </div>
                         {sender.linkedClientId ? (
                           <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
@@ -472,16 +674,39 @@ export default function Contacts() {
                           </Badge>
                         ) : (
                           <div className="flex gap-1">
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleAddSenderAsClient(sender)} disabled={isLinking}>
-                                <UserPlus className="h-3.5 w-3.5 text-blue-600" />
-                              </Button>
-                            </TooltipTrigger><TooltipContent>הוסף כלקוח חדש</TooltipContent></Tooltip></TooltipProvider>
-                            <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setLinkDialogSender(sender)}>
-                                <Link2 className="h-3.5 w-3.5 text-purple-600" />
-                              </Button>
-                            </TooltipTrigger><TooltipContent>קשר ללקוח קיים</TooltipContent></Tooltip></TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() =>
+                                      handleAddSenderAsClient(sender)
+                                    }
+                                    disabled={isLinking}
+                                  >
+                                    <UserPlus className="h-3.5 w-3.5 text-blue-600" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>הוסף כלקוח חדש</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => setLinkDialogSender(sender)}
+                                  >
+                                    <Link2 className="h-3.5 w-3.5 text-purple-600" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>קשר ללקוח קיים</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         )}
                       </div>
@@ -495,27 +720,62 @@ export default function Contacts() {
                 <div className="px-6 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {!googleFetched ? (
-                      <Button size="sm" onClick={handleFetchGoogle} disabled={isLoadingGoogle} className="text-xs h-8 bg-blue-600 hover:bg-blue-700">
-                        {isLoadingGoogle ? <Loader2 className="h-3 w-3 ml-1 animate-spin" /> : <Download className="h-3 w-3 ml-1" />}
+                      <Button
+                        size="sm"
+                        onClick={handleFetchGoogle}
+                        disabled={isLoadingGoogle}
+                        className="text-xs h-8 bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isLoadingGoogle ? (
+                          <Loader2 className="h-3 w-3 ml-1 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3 ml-1" />
+                        )}
                         טען אנשי קשר מ-Google
                       </Button>
                     ) : (
                       <>
-                        <Button variant="ghost" size="sm" onClick={handleFetchGoogle} disabled={isLoadingGoogle} className="text-xs h-8">
-                          <RefreshCw className={`h-3 w-3 ml-1 ${isLoadingGoogle ? "animate-spin" : ""}`} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleFetchGoogle}
+                          disabled={isLoadingGoogle}
+                          className="text-xs h-8"
+                        >
+                          <RefreshCw
+                            className={`h-3 w-3 ml-1 ${isLoadingGoogle ? "animate-spin" : ""}`}
+                          />
                           רענון
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={selectAllGoogleContacts} className="text-xs h-8">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={selectAllGoogleContacts}
+                          className="text-xs h-8"
+                        >
                           <Check className="h-3 w-3 ml-1" />
-                          {selectedGoogleContacts.size > 0 ? "נקה בחירה" : "בחר הכל"}
+                          {selectedGoogleContacts.size > 0
+                            ? "נקה בחירה"
+                            : "בחר הכל"}
                         </Button>
-                        <Badge variant="secondary" className="text-xs">{filteredGoogleContacts.length} אנשי קשר</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {filteredGoogleContacts.length} אנשי קשר
+                        </Badge>
                       </>
                     )}
                   </div>
                   {selectedGoogleContacts.size > 0 && (
-                    <Button size="sm" onClick={handleImportSelected} disabled={isImporting} className="text-xs h-8 bg-green-600 hover:bg-green-700">
-                      {isImporting ? <Loader2 className="h-3 w-3 ml-1 animate-spin" /> : <UserPlus className="h-3 w-3 ml-1" />}
+                    <Button
+                      size="sm"
+                      onClick={handleImportSelected}
+                      disabled={isImporting}
+                      className="text-xs h-8 bg-green-600 hover:bg-green-700"
+                    >
+                      {isImporting ? (
+                        <Loader2 className="h-3 w-3 ml-1 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-3 w-3 ml-1" />
+                      )}
                       ייבא {selectedGoogleContacts.size} כלקוחות
                     </Button>
                   )}
@@ -530,7 +790,9 @@ export default function Contacts() {
                   ) : isLoadingGoogle ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-blue-500" />
-                      <p className="text-sm text-muted-foreground">טוען אנשי קשר...</p>
+                      <p className="text-sm text-muted-foreground">
+                        טוען אנשי קשר...
+                      </p>
                     </div>
                   ) : filteredGoogleContacts.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
@@ -540,33 +802,79 @@ export default function Contacts() {
                   ) : (
                     filteredGoogleContacts.map((contact) => {
                       const isAlreadyClient = clients.some(
-                        (c) => c.email && contact.email && c.email.toLowerCase() === contact.email.toLowerCase(),
+                        (c) =>
+                          c.email &&
+                          contact.email &&
+                          c.email.toLowerCase() === contact.email.toLowerCase(),
                       );
                       return (
-                        <div key={contact.resourceName} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}>
+                        <div
+                          key={contact.resourceName}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${isAlreadyClient ? "bg-green-50/50 border-green-200" : "hover:bg-muted/50 border-transparent"}`}
+                        >
                           {!isAlreadyClient && (
-                            <Checkbox checked={selectedGoogleContacts.has(contact.resourceName)} onCheckedChange={() => toggleGoogleContact(contact.resourceName)} />
+                            <Checkbox
+                              checked={selectedGoogleContacts.has(
+                                contact.resourceName,
+                              )}
+                              onCheckedChange={() =>
+                                toggleGoogleContact(contact.resourceName)
+                              }
+                            />
                           )}
                           {contact.photoUrl ? (
-                            <img src={contact.photoUrl} alt={contact.name} className="h-8 w-8 rounded-full object-cover" />
+                            <img
+                              src={contact.photoUrl}
+                              alt={contact.name}
+                              className="h-8 w-8 rounded-full object-cover"
+                            />
                           ) : (
                             <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                              <span className="text-xs font-medium text-blue-700">{contact.name.charAt(0)}</span>
+                              <span className="text-xs font-medium text-blue-700">
+                                {contact.name.charAt(0)}
+                              </span>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">{contact.name}</div>
+                            <div className="font-medium text-sm truncate">
+                              {contact.name}
+                            </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {contact.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3" />{contact.email}</span>}
-                              {contact.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{contact.phone}</span>}
-                              {contact.company && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{contact.company}</span>}
+                              {contact.email && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <Mail className="h-3 w-3" />
+                                  {contact.email}
+                                </span>
+                              )}
+                              {contact.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {contact.phone}
+                                </span>
+                              )}
+                              {contact.company && (
+                                <span className="flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" />
+                                  {contact.company}
+                                </span>
+                              )}
                             </div>
                           </div>
                           {isAlreadyClient ? (
-                            <Badge className="bg-green-100 text-green-700 border-green-300 text-xs"><CheckCircle2 className="h-3 w-3 ml-1" />לקוח קיים</Badge>
+                            <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+                              <CheckCircle2 className="h-3 w-3 ml-1" />
+                              לקוח קיים
+                            </Badge>
                           ) : (
-                            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => importContactAsClient(contact)} disabled={isImporting}>
-                              <UserPlus className="h-3 w-3 ml-1" />ייבא
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs h-7"
+                              onClick={() => importContactAsClient(contact)}
+                              disabled={isImporting}
+                            >
+                              <UserPlus className="h-3 w-3 ml-1" />
+                              ייבא
                             </Button>
                           )}
                         </div>
@@ -579,9 +887,19 @@ export default function Contacts() {
               {/* ─── Tab: Existing Clients ──────────────────────── */}
               <TabsContent value="clients" className="mt-0">
                 <div className="px-6 py-2 flex items-center justify-between">
-                  <Badge variant="secondary" className="text-xs">{filteredClients.length} לקוחות</Badge>
-                  <Button variant="ghost" size="sm" onClick={() => refetchClients()} disabled={isLoadingClients} className="text-xs h-8">
-                    <RefreshCw className={`h-3 w-3 ml-1 ${isLoadingClients ? "animate-spin" : ""}`} />
+                  <Badge variant="secondary" className="text-xs">
+                    {filteredClients.length} לקוחות
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => refetchClients()}
+                    disabled={isLoadingClients}
+                    className="text-xs h-8"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 ml-1 ${isLoadingClients ? "animate-spin" : ""}`}
+                    />
                     רענון
                   </Button>
                 </div>
@@ -589,7 +907,9 @@ export default function Contacts() {
                   {isLoadingClients ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-blue-500" />
-                      <p className="text-sm text-muted-foreground">טוען לקוחות...</p>
+                      <p className="text-sm text-muted-foreground">
+                        טוען לקוחות...
+                      </p>
                     </div>
                   ) : filteredClients.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
@@ -598,27 +918,68 @@ export default function Contacts() {
                     </div>
                   ) : (
                     filteredClients.map((client) => {
-                      const senderData = senders.find((s) => client.email && s.email.toLowerCase() === client.email.toLowerCase());
+                      const senderData = senders.find(
+                        (s) =>
+                          client.email &&
+                          s.email.toLowerCase() === client.email.toLowerCase(),
+                      );
                       return (
-                        <div key={client.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}>
+                        <div
+                          key={client.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${senderData ? "bg-blue-50/50 border-blue-200" : "hover:bg-muted/50 border-transparent"}`}
+                        >
                           <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <span className="text-xs font-medium text-indigo-700">{client.name?.charAt(0) || "?"}</span>
+                            <span className="text-xs font-medium text-indigo-700">
+                              {client.name?.charAt(0) || "?"}
+                            </span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm truncate">{client.name}</span>
-                              {client.status && <Badge variant="outline" className="text-[10px] px-1.5">{client.status}</Badge>}
+                              <span className="font-medium text-sm truncate">
+                                {client.name}
+                              </span>
+                              {client.status && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5"
+                                >
+                                  {client.status}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {client.email && <span className="flex items-center gap-1 truncate"><Mail className="h-3 w-3" />{client.email}</span>}
-                              {client.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{client.phone}</span>}
-                              {client.company && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{client.company}</span>}
+                              {client.email && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <Mail className="h-3 w-3" />
+                                  {client.email}
+                                </span>
+                              )}
+                              {client.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />
+                                  {client.phone}
+                                </span>
+                              )}
+                              {client.company && (
+                                <span className="flex items-center gap-1">
+                                  <Building2 className="h-3 w-3" />
+                                  {client.company}
+                                </span>
+                              )}
                             </div>
                           </div>
                           {senderData ? (
-                            <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs"><Mail className="h-3 w-3 ml-1" />{senderData.count} הודעות</Badge>
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs">
+                              <Mail className="h-3 w-3 ml-1" />
+                              {senderData.count} הודעות
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">ללא מיילים</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-muted-foreground"
+                            >
+                              ללא מיילים
+                            </Badge>
                           )}
                         </div>
                       );
@@ -631,15 +992,32 @@ export default function Contacts() {
               <TabsContent value="smart" className="mt-0">
                 <div className="px-6 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={selectAllMatches} className="text-xs h-8" disabled={smartMatches.length === 0}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllMatches}
+                      className="text-xs h-8"
+                      disabled={smartMatches.length === 0}
+                    >
                       <Check className="h-3 w-3 ml-1" />
                       {selectedMatches.size > 0 ? "נקה בחירה" : "בחר הכל"}
                     </Button>
-                    <Badge variant="secondary" className="text-xs">{smartMatches.length} הצעות</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {smartMatches.length} הצעות
+                    </Badge>
                   </div>
                   {selectedMatches.size > 0 && (
-                    <Button size="sm" onClick={handleApplySmartMatches} disabled={isLinking} className="text-xs h-8 bg-purple-600 hover:bg-purple-700">
-                      {isLinking ? <Loader2 className="h-3 w-3 ml-1 animate-spin" /> : <Link2 className="h-3 w-3 ml-1" />}
+                    <Button
+                      size="sm"
+                      onClick={handleApplySmartMatches}
+                      disabled={isLinking}
+                      className="text-xs h-8 bg-purple-600 hover:bg-purple-700"
+                    >
+                      {isLinking ? (
+                        <Loader2 className="h-3 w-3 ml-1 animate-spin" />
+                      ) : (
+                        <Link2 className="h-3 w-3 ml-1" />
+                      )}
                       קשר {selectedMatches.size} נבחרים
                     </Button>
                   )}
@@ -649,30 +1027,53 @@ export default function Contacts() {
                     <div className="text-center py-12 text-muted-foreground">
                       <Sparkles className="h-10 w-10 mx-auto mb-3 opacity-50" />
                       <p className="mb-2">לא נמצאו התאמות חכמות</p>
-                      <p className="text-xs">כל השולחים מקושרים, או שאין התאמות מתאימות</p>
+                      <p className="text-xs">
+                        כל השולחים מקושרים, או שאין התאמות מתאימות
+                      </p>
                     </div>
                   ) : (
                     smartMatches.map((match) => {
                       const key = `${match.sender.email}::${match.client.id}`;
                       return (
-                        <div key={key} className="flex items-center gap-3 p-3 rounded-lg border border-purple-100 hover:bg-purple-50/50 transition-colors">
-                          <Checkbox checked={selectedMatches.has(key)} onCheckedChange={() => toggleMatch(key)} />
+                        <div
+                          key={key}
+                          className="flex items-center gap-3 p-3 rounded-lg border border-purple-100 hover:bg-purple-50/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={selectedMatches.has(key)}
+                            onCheckedChange={() => toggleMatch(key)}
+                          />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{match.sender.name}</div>
-                            <div className="text-xs text-muted-foreground truncate">{match.sender.email}</div>
+                            <div className="text-sm font-medium truncate">
+                              {match.sender.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {match.sender.email}
+                            </div>
                           </div>
                           <div className="flex flex-col items-center gap-0.5">
                             <ArrowRightLeft className="h-4 w-4 text-purple-500" />
-                            <Badge variant="outline" className={`text-[10px] px-1.5 ${match.confidence >= 80 ? "bg-green-50 text-green-700 border-green-300" : match.confidence >= 50 ? "bg-yellow-50 text-yellow-700 border-yellow-300" : "bg-orange-50 text-orange-700 border-orange-300"}`}>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 ${match.confidence >= 80 ? "bg-green-50 text-green-700 border-green-300" : match.confidence >= 50 ? "bg-yellow-50 text-yellow-700 border-yellow-300" : "bg-orange-50 text-orange-700 border-orange-300"}`}
+                            >
                               {match.confidence}%
                             </Badge>
                             <span className="text-[9px] text-muted-foreground">
-                              {match.matchType === "exact-email" ? "מייל זהה" : match.matchType === "similar-email" ? "מייל דומה" : "שם דומה"}
+                              {match.matchType === "exact-email"
+                                ? "מייל זהה"
+                                : match.matchType === "similar-email"
+                                  ? "מייל דומה"
+                                  : "שם דומה"}
                             </span>
                           </div>
                           <div className="flex-1 min-w-0 text-left">
-                            <div className="text-sm font-medium truncate">{match.client.name}</div>
-                            <div className="text-xs text-muted-foreground truncate">{match.client.email || "ללא מייל"}</div>
+                            <div className="text-sm font-medium truncate">
+                              {match.client.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {match.client.email || "ללא מייל"}
+                            </div>
                           </div>
                         </div>
                       );
@@ -691,28 +1092,55 @@ export default function Contacts() {
                       <Link2 className="h-5 w-5 text-purple-600" />
                       קישור {linkDialogSender.name} ללקוח
                     </h3>
-                    <Button variant="ghost" size="icon" onClick={() => setLinkDialogSender(null)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setLinkDialogSender(null)}
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">בחר לקוח לקישור עם {linkDialogSender.email}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    בחר לקוח לקישור עם {linkDialogSender.email}
+                  </p>
                 </div>
                 <div className="px-6 py-2">
-                  <Input placeholder="חפש לקוח..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <Input
+                    placeholder="חפש לקוח..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
                 <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-1">
-                  {filteredClients.filter((c) => !c.email || c.email !== linkDialogSender.email).map((client) => (
-                    <div key={client.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors" onClick={() => handleLinkSenderToClient(linkDialogSender, client.id)}>
-                      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <span className="text-xs font-medium text-indigo-700">{client.name?.charAt(0) || "?"}</span>
+                  {filteredClients
+                    .filter(
+                      (c) => !c.email || c.email !== linkDialogSender.email,
+                    )
+                    .map((client) => (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-purple-50/50 cursor-pointer transition-colors"
+                        onClick={() =>
+                          handleLinkSenderToClient(linkDialogSender, client.id)
+                        }
+                      >
+                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                          <span className="text-xs font-medium text-indigo-700">
+                            {client.name?.charAt(0) || "?"}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">
+                            {client.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {client.email || "ללא מייל"}{" "}
+                            {client.company && `• ${client.company}`}
+                          </div>
+                        </div>
+                        <Link2 className="h-4 w-4 text-purple-500" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{client.name}</div>
-                        <div className="text-xs text-muted-foreground">{client.email || "ללא מייל"} {client.company && `• ${client.company}`}</div>
-                      </div>
-                      <Link2 className="h-4 w-4 text-purple-500" />
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             )}

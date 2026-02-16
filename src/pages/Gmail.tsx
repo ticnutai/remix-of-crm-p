@@ -1902,7 +1902,7 @@ export default function Gmail() {
                 {/* Contacts Link */}
                 <Button
                   variant="outline"
-                  onClick={() => window.location.href = "/contacts"}
+                  onClick={() => (window.location.href = "/contacts")}
                 >
                   <Users className="h-4 w-4 ml-2" />
                   אנשי קשר
@@ -2690,6 +2690,15 @@ export default function Gmail() {
                                         customLabels={customLabels}
                                         mutedThreads={mutedThreads}
                                         folders={emailFolders.folders}
+                                        activeFolderId={selectedFolderId}
+                                        activeFolderName={emailFolders.folders.find((f: any) => f.id === selectedFolderId)?.name}
+                                        onRemoveFromFolder={async (folderId, emailId) => {
+                                          await emailFolders.removeEmailFromFolder(folderId, emailId);
+                                          // Refresh folder view
+                                          const items = await emailFolders.getEmailsInFolder(folderId);
+                                          setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
+                                          toast({ title: "המייל הוסר מהתיקייה" });
+                                        }}
                                         onSelect={() => {
                                           setSelectedEmail(message);
                                           if (!message.isRead) {
@@ -2762,6 +2771,8 @@ export default function Gmail() {
                                               ),
                                             );
                                           }
+                                          const folderName = emailFolders.folders.find((f: any) => f.id === folderId)?.name || "תיקייה";
+                                          toast({ title: `תויג בתיקייה "${folderName}"` });
                                         }}
                                         onArchive={archiveEmail}
                                         onDelete={deleteEmail}
@@ -3083,8 +3094,6 @@ export default function Gmail() {
           open={showShortcutsHelp}
           onOpenChange={setShowShortcutsHelp}
         />
-
-
       </div>
     </AppLayout>
   );

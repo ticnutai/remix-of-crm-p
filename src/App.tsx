@@ -13,10 +13,13 @@ import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { DataSyncInitializer } from "@/components/DataSyncInitializer";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
 import { FullPageLoader } from "@/components/ui/loading";
-import { PWAInstallBanner, PWAUpdatePrompt, OfflineIndicator } from "@/components/pwa";
+import {
+  PWAInstallBanner,
+  PWAUpdatePrompt,
+  OfflineIndicator,
+} from "@/components/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AutoPreload } from "@/components/AutoPreload";
-
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -72,14 +75,14 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh
       gcTime: 30 * 60 * 1000, // 30 minutes - cache time
       refetchOnWindowFocus: false, // Don't refetch on tab switch
-      refetchOnReconnect: 'always', // Refetch when connection restored
+      refetchOnReconnect: "always", // Refetch when connection restored
       retry: 2, // Retry twice on failure
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      networkMode: 'offlineFirst', // Use cache first when offline
+      networkMode: "offlineFirst", // Use cache first when offline
     },
     mutations: {
       retry: 1,
-      networkMode: 'offlineFirst',
+      networkMode: "offlineFirst",
     },
   },
 });
@@ -98,83 +101,137 @@ const App = () => {
                     <BackupProvider>
                       <Toaster />
                       <Sonner />
-                    <BrowserRouter
-                      future={{
-                        v7_startTransition: true,
-                        v7_relativeSplatPath: true,
-                      }}
-                    >
-                      <Suspense fallback={<FullPageLoader />}>
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/auth" element={<Auth />} />
-                          <Route path="/clients" element={<Clients />} />
-                          <Route path="/clients/:clientId" element={<ClientProfile />} />
-                          <Route path="/employees" element={<Employees />} />
-                          <Route path="/calendar" element={<Calendar />} />
-                          <Route path="/reports" element={<Reports />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="/backups" element={<Backups />} />
-                          <Route path="/time-logs" element={<TimeLogs />} />
-                          <Route path="/datatable-pro" element={<DataTablePro />} />
-                          <Route path="/client-portal" element={<ClientPortal />} />
-                          <Route path="/client-portal/messages" element={<ClientMessages />} />
-                          <Route path="/client-portal/files" element={<ClientFiles />} />
-                          <Route path="/client-portal/projects" element={<ClientProjects />} />
-                          <Route path="/tasks-meetings" element={<TasksAndMeetings />} />
-                          <Route path="/meetings" element={<TasksAndMeetings />} />
-                          <Route path="/tasks" element={<TasksAndMeetings />} />
-                          <Route path="/reminders" element={<Reminders />} />
-                          <Route path="/custom-table/:tableId" element={<CustomTableView />} />
-                          <Route path="/client-profile/:clientId" element={<ClientProfile />} />
-                          <Route path="/finance" element={<Finance />} />
-                          <Route path="/payments" element={<Payments />} />
-                          <Route path="/history" element={<History />} />
-                          <Route path="/my-day" element={<MyDay />} />
-                          <Route path="/time-analytics" element={<TimeAnalytics />} />
-                          <Route path="/quotes" element={<Quotes />} />
-                          {/* Contracts integrated into Quotes page */}
-                          <Route path="/gmail" element={<Gmail />} />
-                          <Route path="/contacts" element={<Contacts />} />
-                          <Route path="/files" element={<Files />} />
-                          {/* Redirect old advanced-files to unified files page */}
-                          <Route path="/advanced-files" element={<Files />} />
-                          <Route path="/email-analytics" element={<EmailAnalytics />} />
-                          <Route path="/analytics" element={<Analytics />} />
-                          <Route path="/audit-log" element={<AuditLogPage />} />
-                          <Route path="/quote-templates" element={<QuoteTemplates />} />
-                          {/* V2 Advanced Features */}
-                          <Route path="/kanban" element={<TasksKanban />} />
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/workflows" element={<Workflows />} />
-                          <Route path="/tests" element={<Tests />} />
-                          <Route path="/custom-reports" element={<CustomReports />} />
-                          <Route path="/documents" element={<Documents />} />
-                          <Route path="/calls" element={<Calls />} />
-                          <Route path="/smart-tools" element={<SmartTools />} />
-                          <Route path="/document-editor" element={<DocumentEditorPage />} />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </Suspense>
-                      
-                      <UnifiedDevTools />
-                      
-                      {/* Auto Preload - Background data prefetching */}
-                      <AutoPreload />
-                      
-                      {/* PWA Components */}
-                      <PWAInstallBanner />
-                      <PWAUpdatePrompt />
-                      <OfflineIndicator />
-                    </BrowserRouter>
-                  </BackupProvider>
-                </UndoRedoProvider>
-              </TimerProvider>
-            </CloudSyncProvider>
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+                      <BrowserRouter
+                        future={{
+                          v7_startTransition: true,
+                          v7_relativeSplatPath: true,
+                        }}
+                      >
+                        <Suspense fallback={<FullPageLoader />}>
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/auth" element={<Auth />} />
+                            <Route path="/clients" element={<Clients />} />
+                            <Route
+                              path="/clients/:clientId"
+                              element={<ClientProfile />}
+                            />
+                            <Route path="/employees" element={<Employees />} />
+                            <Route path="/calendar" element={<Calendar />} />
+                            <Route path="/reports" element={<Reports />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/backups" element={<Backups />} />
+                            <Route path="/time-logs" element={<TimeLogs />} />
+                            <Route
+                              path="/datatable-pro"
+                              element={<DataTablePro />}
+                            />
+                            <Route
+                              path="/client-portal"
+                              element={<ClientPortal />}
+                            />
+                            <Route
+                              path="/client-portal/messages"
+                              element={<ClientMessages />}
+                            />
+                            <Route
+                              path="/client-portal/files"
+                              element={<ClientFiles />}
+                            />
+                            <Route
+                              path="/client-portal/projects"
+                              element={<ClientProjects />}
+                            />
+                            <Route
+                              path="/tasks-meetings"
+                              element={<TasksAndMeetings />}
+                            />
+                            <Route
+                              path="/meetings"
+                              element={<TasksAndMeetings />}
+                            />
+                            <Route
+                              path="/tasks"
+                              element={<TasksAndMeetings />}
+                            />
+                            <Route path="/reminders" element={<Reminders />} />
+                            <Route
+                              path="/custom-table/:tableId"
+                              element={<CustomTableView />}
+                            />
+                            <Route
+                              path="/client-profile/:clientId"
+                              element={<ClientProfile />}
+                            />
+                            <Route path="/finance" element={<Finance />} />
+                            <Route path="/payments" element={<Payments />} />
+                            <Route path="/history" element={<History />} />
+                            <Route path="/my-day" element={<MyDay />} />
+                            <Route
+                              path="/time-analytics"
+                              element={<TimeAnalytics />}
+                            />
+                            <Route path="/quotes" element={<Quotes />} />
+                            {/* Contracts integrated into Quotes page */}
+                            <Route path="/gmail" element={<Gmail />} />
+                            <Route path="/contacts" element={<Contacts />} />
+                            <Route path="/files" element={<Files />} />
+                            {/* Redirect old advanced-files to unified files page */}
+                            <Route path="/advanced-files" element={<Files />} />
+                            <Route
+                              path="/email-analytics"
+                              element={<EmailAnalytics />}
+                            />
+                            <Route path="/analytics" element={<Analytics />} />
+                            <Route
+                              path="/audit-log"
+                              element={<AuditLogPage />}
+                            />
+                            <Route
+                              path="/quote-templates"
+                              element={<QuoteTemplates />}
+                            />
+                            {/* V2 Advanced Features */}
+                            <Route path="/kanban" element={<TasksKanban />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
+                            <Route path="/workflows" element={<Workflows />} />
+                            <Route path="/tests" element={<Tests />} />
+                            <Route
+                              path="/custom-reports"
+                              element={<CustomReports />}
+                            />
+                            <Route path="/documents" element={<Documents />} />
+                            <Route path="/calls" element={<Calls />} />
+                            <Route
+                              path="/smart-tools"
+                              element={<SmartTools />}
+                            />
+                            <Route
+                              path="/document-editor"
+                              element={<DocumentEditorPage />}
+                            />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </Suspense>
+
+                        <UnifiedDevTools />
+
+                        {/* Auto Preload - Background data prefetching */}
+                        <AutoPreload />
+
+                        {/* PWA Components */}
+                        <PWAInstallBanner />
+                        <PWAUpdatePrompt />
+                        <OfflineIndicator />
+                      </BrowserRouter>
+                    </BackupProvider>
+                  </UndoRedoProvider>
+                </TimerProvider>
+              </CloudSyncProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };

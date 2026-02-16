@@ -65,8 +65,14 @@ function cleanSnippet(raw: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&nbsp;/g, " ");
   text = text.replace(/<[^@\s>]+@[^>\s]+>/g, "");
-  text = text.replace(/\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi, "");
-  text = text.replace(/-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi, "");
+  text = text.replace(
+    /\b(From|Sent|To|Date|Cc|Subject|מאת|אל|נשלח|תאריך|נושא|עותק)\s*:\s*[^\n]*/gi,
+    "",
+  );
+  text = text.replace(
+    /-{3,}\s*(Forwarded message|הודעה שהועברה|Original Message|הודעה מקורית)\s*-{3,}/gi,
+    "",
+  );
   text = text.replace(/\s{2,}/g, " ").trim();
   return text;
 }
@@ -524,7 +530,9 @@ export const EmailThreadChat = ({
 
                             {/* Message Content */}
                             {(() => {
-                              const content = cleanSnippet(msg.body || msg.snippet || "");
+                              const content = cleanSnippet(
+                                msg.body || msg.snippet || "",
+                              );
                               const { main, quoted } = splitQuotedText(content);
                               const isQuoteExpanded = expandedQuotes.has(
                                 msg.id,
