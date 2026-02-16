@@ -355,30 +355,40 @@ export default function Gmail() {
 
   const handleHoverPreview = useCallback(
     async (messageId: string) => {
+      console.log("📧 [HoverPreview] handleHoverPreview called for:", messageId);
       setHoverPreviewId(messageId);
       // Check cache first
       const cachedBody = gmailCache.getCachedBody(messageId);
       if (cachedBody) {
+        console.log("📧 [HoverPreview] Using cached body for:", messageId);
         setHoverPreviewHtml(cachedBody);
         return;
       }
       setHoverPreviewLoading(true);
       try {
+        console.log("📧 [HoverPreview] Fetching full message:", messageId);
         const fullMsg = await getFullMessage(messageId);
+        console.log("📧 [HoverPreview] Got full message:", !!fullMsg, "payload:", !!fullMsg?.payload);
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
+          console.log("📧 [HoverPreview] Extracted HTML length:", rawHtml?.length || 0);
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
+          console.log("📧 [HoverPreview] Resolved HTML length:", html?.length || 0);
           setHoverPreviewHtml(html);
           if (html) {
             gmailCache.cacheBody(messageId, html);
           }
+        } else {
+          console.warn("📧 [HoverPreview] No payload in full message!");
+          setHoverPreviewHtml(null);
         }
       } catch (e) {
-        console.error("Error loading hover preview:", e);
+        console.error("📧 [HoverPreview] Error loading hover preview:", e);
+        setHoverPreviewHtml(null);
       }
       setHoverPreviewLoading(false);
     },
@@ -1292,16 +1302,26 @@ export default function Gmail() {
           return { messages: [], nextPageToken: null };
         }
 
-        // Fetch metadata for each message
-        const messagePromises = listData.messages.map(async (msg: any) => {
-          const msgResponse = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-          return msgResponse.json();
-        });
+        // Fetch metadata for each message (batched to avoid 429)
+        const allMsgIds = listData.messages;
+        const BATCH_SIZE = 8;
+        const messagesData: any[] = [];
 
-        const messagesData = await Promise.all(messagePromises);
+        for (let i = 0; i < allMsgIds.length; i += BATCH_SIZE) {
+          const batch = allMsgIds.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (msg: any) => {
+            const msgResponse = await fetch(
+              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            return msgResponse.json();
+          });
+          const batchResults = await Promise.all(batchPromises);
+          messagesData.push(...batchResults);
+          if (i + BATCH_SIZE < allMsgIds.length) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        }
 
         const formattedMessages: GmailMessage[] = messagesData.map(
           (msg: any) => {

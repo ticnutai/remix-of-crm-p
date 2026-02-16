@@ -93,18 +93,27 @@ export function useGmailIntegration() {
           return [];
         }
 
-        // Get full message details
-        const messagePromises = listData.messages
-          .slice(0, maxResults)
-          .map(async (msg: any) => {
+        // Get full message details (batched to avoid 429 rate limits)
+        const allMsgIds = listData.messages.slice(0, maxResults);
+        const BATCH_SIZE = 8;
+        const messagesData: any[] = [];
+
+        for (let i = 0; i < allMsgIds.length; i += BATCH_SIZE) {
+          const batch = allMsgIds.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map(async (msg: any) => {
             const msgResponse = await fetch(
               `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
               { headers: { Authorization: `Bearer ${token}` } },
             );
             return msgResponse.json();
           });
-
-        const messagesData = await Promise.all(messagePromises);
+          const batchResults = await Promise.all(batchPromises);
+          messagesData.push(...batchResults);
+          // Small delay between batches to avoid rate limits
+          if (i + BATCH_SIZE < allMsgIds.length) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        }
 
         const formattedMessages: GmailMessage[] = messagesData.map(
           (msg: any) => {

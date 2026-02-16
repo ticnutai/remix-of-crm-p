@@ -159,6 +159,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
 
   const handleMouseEnter = useCallback(() => {
     hoverTimerRef.current = setTimeout(() => {
+      console.log("📧 [HoverPreview] Timer fired for:", message.id, message.subject);
       setShowPreviewPopup(true);
       onHoverPreview?.(message.id);
     }, 1000);
@@ -169,8 +170,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
-    // Close the popup when mouse leaves the email item
-    setShowPreviewPopup(false);
+    // Don't close the popup on mouse leave - Dialog handles its own closing
   }, []);
 
   // Cleanup on unmount
