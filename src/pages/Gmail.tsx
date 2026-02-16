@@ -145,64 +145,25 @@ import {
   useScrollDateTracker,
   EmailFoldersPanel,
   QuickClassifyButton,
+  GmailSidebar,
+  LabelManagerDialog,
+  EmailReminderDialog,
+  EmailNoteDialog,
+  KeyboardShortcutsDialog,
+  UndoSendBar,
+  BulkActionsBar,
+  EmailListItem,
+  DEFAULT_LABELS as IMPORTED_DEFAULT_LABELS,
+  PRIORITY_CONFIG as IMPORTED_PRIORITY_CONFIG,
+  type Client,
+  type EmailLabel,
+  type Priority,
 } from "@/components/gmail";
 import { useEmailFolders } from "@/hooks/useEmailFolders";
 
-// Client interface for auto-tagging
-interface Client {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-}
-
-// Email Labels/Tags Configuration
-interface EmailLabel {
-  id: string;
-  name: string;
-  color: string;
-  icon?: React.ReactNode;
-}
-
-const DEFAULT_LABELS: EmailLabel[] = [
-  { id: "client", name: "לקוח", color: "bg-blue-500" },
-  { id: "project", name: "פרויקט", color: "bg-green-500" },
-  { id: "urgent", name: "דחוף", color: "bg-red-500" },
-  { id: "followup", name: "מעקב", color: "bg-orange-500" },
-  { id: "invoice", name: "חשבונית", color: "bg-purple-500" },
-  { id: "meeting", name: "פגישה", color: "bg-pink-500" },
-  { id: "task", name: "משימה", color: "bg-yellow-500" },
-  { id: "info", name: "מידע", color: "bg-gray-500" },
-];
-
-// Priority levels
-type Priority = "high" | "medium" | "low" | "none";
-
-const PRIORITY_CONFIG: Record<
-  Priority,
-  { label: string; color: string; icon: React.ReactNode }
-> = {
-  high: {
-    label: "גבוהה",
-    color: "text-red-600",
-    icon: <Flag className="h-4 w-4 text-red-500 fill-red-500" />,
-  },
-  medium: {
-    label: "בינונית",
-    color: "text-orange-600",
-    icon: <Flag className="h-4 w-4 text-orange-500 fill-orange-500" />,
-  },
-  low: {
-    label: "נמוכה",
-    color: "text-blue-600",
-    icon: <Flag className="h-4 w-4 text-blue-500" />,
-  },
-  none: {
-    label: "ללא",
-    color: "text-gray-400",
-    icon: <Flag className="h-4 w-4 text-gray-300" />,
-  },
-};
+// Use shared types from gmail-types
+const DEFAULT_LABELS = IMPORTED_DEFAULT_LABELS;
+const PRIORITY_CONFIG = IMPORTED_PRIORITY_CONFIG;
 
 export default function Gmail() {
   console.log("🔍 [Gmail] Component render START");
@@ -338,8 +299,6 @@ export default function Gmail() {
   );
   const [actionLoading, setActionLoading] = useState<string | null>(null); // 'archive' | 'delete' | 'spam' | 'star' | null
   const [showLabelManager, setShowLabelManager] = useState(false);
-  const [newLabelName, setNewLabelName] = useState("");
-  const [newLabelColor, setNewLabelColor] = useState("bg-gray-500");
   const [customLabels, setCustomLabels] =
     useState<EmailLabel[]>(DEFAULT_LABELS);
   const [filterByLabel, setFilterByLabel] = useState<string | null>(null);
@@ -1531,325 +1490,50 @@ export default function Gmail() {
         {hasLoaded && viewMode === "list" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Sidebar */}
-            <Card className="lg:col-span-3 h-fit max-h-[calc(100vh-180px)] overflow-hidden">
-              <ScrollArea className="h-full">
-                <CardContent className="p-4 text-right">
-                  <Button
-                    onClick={() => setIsComposeOpen(true)}
-                    className="w-full mb-4"
-                    size="lg"
-                  >
-                    <PenSquare className="h-4 w-4 ml-2" />
-                    כתיבת הודעה
-                  </Button>
+            <GmailSidebar
+              activeTab={activeTab}
+              onSetActiveTab={setActiveTab}
+              filterByLabel={filterByLabel}
+              onSetFilterByLabel={setFilterByLabel}
+              filterByPriority={filterByPriority}
+              onSetFilterByPriority={setFilterByPriority}
+              filterByClient={filterByClient}
+              onSetFilterByClient={setFilterByClient}
+              customLabels={customLabels}
+              emailLabels={emailLabels}
+              emailPriority={emailPriority}
+              remindersForToday={remindersForToday}
+              unreadCount={messages.filter((m) => !m.isRead).length}
+              clients={clients}
+              messages={messages}
+              autoTagEnabled={autoTagEnabled}
+              onSetAutoTagEnabled={setAutoTagEnabled}
+              onShowLabelManager={() => setShowLabelManager(true)}
+              onCompose={() => setIsComposeOpen(true)}
+              onOpenClientEmails={() => setIsClientEmailsDialogOpen(true)}
+              onBatchAutoClassify={async () => {
+                const count = await emailFolders.batchAutoClassify(messages);
+                toast({
+                  title: `סיווג אוטומטי הושלם`,
+                  description: `${count || 0} מיילים סווגו לתיקיות`,
+                });
+              }}
+              selectedFolderId={selectedFolderId}
+              onSelectFolder={(folderId) => {
+                setSelectedFolderId(
+                  folderId === selectedFolderId ? null : folderId,
+                );
+                setActiveTab("inbox");
+              }}
+              selectedEmail={selectedEmail}
+              onAddEmailToFolder={async (email, folderId) => {
+                if (email && folderId) {
+                  await emailFolders.addEmailToFolder(folderId, email);
+                }
+              }}
+              getClientForMessage={getClientForMessage}
+            />
 
-                  <nav className="space-y-1">
-                    <Button
-                      variant={activeTab === "inbox" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("inbox");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <Inbox className="h-4 w-4 ml-2" />
-                      דואר נכנס
-                      {messages.filter((m) => !m.isRead).length > 0 && (
-                        <Badge variant="secondary" className="mr-auto">
-                          {messages.filter((m) => !m.isRead).length}
-                        </Badge>
-                      )}
-                    </Button>
-                    <Button
-                      variant={activeTab === "starred" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("starred");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <Star className="h-4 w-4 ml-2" />
-                      מסומנים בכוכב
-                    </Button>
-                    <Button
-                      variant={activeTab === "sent" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("sent");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <Send className="h-4 w-4 ml-2" />
-                      נשלחו
-                    </Button>
-
-                    {/* Reminders */}
-                    <Button
-                      variant={
-                        activeTab === "reminders" ? "secondary" : "ghost"
-                      }
-                      className="w-full justify-start text-right"
-                      onClick={() => setActiveTab("reminders")}
-                    >
-                      <Bell className="h-4 w-4 ml-2 text-orange-500" />
-                      תזכורות
-                      {remindersForToday > 0 && (
-                        <Badge variant="destructive" className="mr-auto">
-                          {remindersForToday}
-                        </Badge>
-                      )}
-                    </Button>
-
-                    <Separator className="my-2" />
-
-                    <Button
-                      variant={activeTab === "drafts" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("drafts");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <FileText className="h-4 w-4 ml-2 text-muted-foreground" />
-                      טיוטות
-                    </Button>
-                    <Button
-                      variant={activeTab === "spam" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("spam");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <ShieldAlert className="h-4 w-4 ml-2 text-yellow-600" />
-                      ספאם
-                    </Button>
-                    <Button
-                      variant={activeTab === "trash" ? "secondary" : "ghost"}
-                      className="w-full justify-start text-right"
-                      onClick={() => {
-                        setActiveTab("trash");
-                        setFilterByLabel(null);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 ml-2 text-red-500" />
-                      אשפה
-                    </Button>
-                  </nav>
-
-                  <Separator className="my-4" />
-
-                  {/* Labels Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium text-muted-foreground">
-                        תוויות
-                      </h3>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => setShowLabelManager(true)}
-                      >
-                        <Settings className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    {customLabels.map((label) => {
-                      const count = Object.values(emailLabels).filter(
-                        (labels) => labels.includes(label.id),
-                      ).length;
-                      return (
-                        <Button
-                          key={label.id}
-                          variant={
-                            filterByLabel === label.id ? "secondary" : "ghost"
-                          }
-                          className="w-full justify-start text-right h-8"
-                          onClick={() =>
-                            setFilterByLabel(
-                              filterByLabel === label.id ? null : label.id,
-                            )
-                          }
-                        >
-                          <div
-                            className={cn(
-                              "h-3 w-3 rounded-full ml-2",
-                              label.color,
-                            )}
-                          />
-                          {label.name}
-                          {count > 0 && (
-                            <span className="mr-auto text-xs text-muted-foreground">
-                              {count}
-                            </span>
-                          )}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  {/* Priority Filter */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                      סינון לפי עדיפות
-                    </h3>
-                    {Object.entries(PRIORITY_CONFIG)
-                      .filter(([key]) => key !== "none")
-                      .map(([key, config]) => {
-                        const count = Object.values(emailPriority).filter(
-                          (p) => p === key,
-                        ).length;
-                        return (
-                          <Button
-                            key={key}
-                            variant={
-                              filterByPriority === key ? "secondary" : "ghost"
-                            }
-                            className="w-full justify-start text-right h-8"
-                            onClick={() =>
-                              setFilterByPriority(
-                                filterByPriority === key
-                                  ? null
-                                  : (key as Priority),
-                              )
-                            }
-                          >
-                            {config.icon}
-                            <span className="mr-2">{config.label}</span>
-                            {count > 0 && (
-                              <span className="mr-auto text-xs text-muted-foreground">
-                                {count}
-                              </span>
-                            )}
-                          </Button>
-                        );
-                      })}
-                  </div>
-
-                  {/* Clients Filter */}
-                  {clients.length > 0 && (
-                    <>
-                      <Separator className="my-4" />
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-sm font-medium text-muted-foreground">
-                            סינון לפי לקוח
-                          </h3>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    setAutoTagEnabled(!autoTagEnabled)
-                                  }
-                                >
-                                  {autoTagEnabled ? (
-                                    <Tag className="h-3.5 w-3.5 text-green-500" />
-                                  ) : (
-                                    <Tag className="h-3.5 w-3.5 text-gray-400" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent side="left">
-                                {autoTagEnabled
-                                  ? "תיוג אוטומטי פעיל"
-                                  : "תיוג אוטומטי כבוי"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <ScrollArea className="h-32">
-                          {clients.slice(0, 10).map((client) => {
-                            const count = messages.filter((msg) => {
-                              const c = getClientForMessage(msg);
-                              return c && c.id === client.id;
-                            }).length;
-                            return (
-                              <Button
-                                key={client.id}
-                                variant={
-                                  filterByClient === client.id
-                                    ? "secondary"
-                                    : "ghost"
-                                }
-                                className="w-full justify-start text-right h-8"
-                                onClick={() =>
-                                  setFilterByClient(
-                                    filterByClient === client.id
-                                      ? null
-                                      : client.id,
-                                  )
-                                }
-                              >
-                                <Building2 className="h-4 w-4 text-blue-500" />
-                                <span className="mr-2 truncate">
-                                  {client.name}
-                                </span>
-                                {count > 0 && (
-                                  <span className="mr-auto text-xs text-muted-foreground">
-                                    {count}
-                                  </span>
-                                )}
-                              </Button>
-                            );
-                          })}
-                        </ScrollArea>
-
-                        {/* Button to open client emails dialog */}
-                        <Button
-                          variant="outline"
-                          className="w-full mt-2 text-sm"
-                          onClick={() => setIsClientEmailsDialogOpen(true)}
-                        >
-                          <Users className="h-4 w-4 ml-2" />
-                          זיהוי מיילים לפי לקוחות
-                        </Button>
-
-                        {/* Auto-classify button */}
-                        <Button
-                          variant="outline"
-                          className="w-full mt-1 text-sm"
-                          onClick={async () => {
-                            const count =
-                              await emailFolders.batchAutoClassify(messages);
-                            toast({
-                              title: `סיווג אוטומטי הושלם`,
-                              description: `${count || 0} מיילים סווגו לתיקיות`,
-                            });
-                          }}
-                        >
-                          <Sparkles className="h-4 w-4 ml-2" />
-                          סיווג אוטומטי לתיקיות
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Email Folders Panel */}
-                  <Separator className="my-4" />
-                  <EmailFoldersPanel
-                    selectedFolderId={selectedFolderId}
-                    onSelectFolder={(folderId) => {
-                      setSelectedFolderId(
-                        folderId === selectedFolderId ? null : folderId,
-                      );
-                      setActiveTab("inbox");
-                    }}
-                    currentEmail={selectedEmail}
-                    onAddEmailToFolder={async (email, folderId) => {
-                      if (email && folderId) {
-                        await emailFolders.addEmailToFolder(folderId, email);
-                      }
-                    }}
-                  />
-                </CardContent>
-              </ScrollArea>
-            </Card>
 
             {/* Email List & Content */}
             <Card className="lg:col-span-9">
@@ -2002,174 +1686,50 @@ export default function Gmail() {
 
                   {/* Bulk Actions (when messages are selected) */}
                   {selectedMessages.size > 0 && (
-                    <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                      <Checkbox
-                        checked={
-                          selectedMessages.size === filteredMessages.length
+                    <BulkActionsBar
+                      selectedCount={selectedMessages.size}
+                      totalCount={filteredMessages.length}
+                      onSelectAll={selectAllMessages}
+                      onClearSelection={() => setSelectedMessages(new Set())}
+                      customLabels={customLabels}
+                      onBulkAddLabel={bulkAddLabel}
+                      onBulkSetPriority={bulkSetPriority}
+                      folders={emailFolders.folders}
+                      onBulkMoveToFolder={bulkMoveToFolder}
+                      onBulkArchive={async () => {
+                        const ids = [...selectedMessages];
+                        const success = await batchModify(ids, [], ["INBOX"]);
+                        if (success) {
+                          setSelectedMessages(new Set());
+                          handleRefresh();
+                          toast({
+                            title: `${ids.length} מיילים הועברו לארכיון`,
+                          });
                         }
-                        onCheckedChange={selectAllMessages}
-                      />
-                      <span className="text-sm font-medium mr-2">
-                        {selectedMessages.size} נבחרו
-                      </span>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Tag className="h-4 w-4 ml-2" />
-                            הוסף תווית
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="rtl">
-                          {customLabels.map((label) => (
-                            <DropdownMenuItem
-                              key={label.id}
-                              onClick={() => bulkAddLabel(label.id)}
-                            >
-                              <div
-                                className={cn(
-                                  "h-3 w-3 rounded-full ml-2",
-                                  label.color,
-                                )}
-                              />
-                              {label.name}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Flag className="h-4 w-4 ml-2" />
-                            קבע עדיפות
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="rtl">
-                          {Object.entries(PRIORITY_CONFIG).map(
-                            ([key, config]) => (
-                              <DropdownMenuItem
-                                key={key}
-                                onClick={() => bulkSetPriority(key as Priority)}
-                              >
-                                {config.icon}
-                                <span className="mr-2">{config.label}</span>
-                              </DropdownMenuItem>
-                            ),
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Move to folder */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <FolderOpen className="h-4 w-4 ml-2" />
-                            העבר לתיקייה
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="rtl">
-                          {emailFolders.folders.length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              אין תיקיות - צור תיקייה חדשה בפאנל השמאלי
-                            </div>
-                          ) : (
-                            emailFolders.folders.map((folder) => (
-                              <DropdownMenuItem
-                                key={folder.id}
-                                onClick={() => bulkMoveToFolder(folder.id)}
-                              >
-                                <Folder
-                                  className="h-4 w-4 ml-2"
-                                  style={{ color: folder.color }}
-                                />
-                                {folder.name}
-                                {folder.email_count > 0 && (
-                                  <span className="mr-auto text-xs text-muted-foreground">
-                                    {folder.email_count}
-                                  </span>
-                                )}
-                              </DropdownMenuItem>
-                            ))
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedMessages(new Set())}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-
-                      <Separator orientation="vertical" className="h-5" />
-
-                      {/* Batch API actions */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          const ids = [...selectedMessages];
-                          const success = await batchModify(ids, [], ["INBOX"]);
-                          if (success) {
-                            setSelectedMessages(new Set());
-                            handleRefresh();
-                            toast({
-                              title: `${ids.length} מיילים הועברו לארכיון`,
-                            });
-                          }
-                        }}
-                      >
-                        <Archive className="h-4 w-4 ml-1" />
-                        ארכיון
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          const ids = [...selectedMessages];
-                          const success = await batchModify(
-                            ids,
-                            [],
-                            ["UNREAD"],
-                          );
-                          if (success) {
-                            setSelectedMessages(new Set());
-                            handleRefresh();
-                            toast({
-                              title: `${ids.length} מיילים סומנו כנקראו`,
-                            });
-                          }
-                        }}
-                      >
-                        <MailOpen className="h-4 w-4 ml-1" />
-                        סמן נקרא
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-500"
-                        onClick={async () => {
-                          const ids = [...selectedMessages];
-                          const success = await batchModify(
-                            ids,
-                            ["SPAM"],
-                            ["INBOX"],
-                          );
-                          if (success) {
-                            setSelectedMessages(new Set());
-                            handleRefresh();
-                            toast({
-                              title: `${ids.length} מיילים דווחו כספאם`,
-                            });
-                          }
-                        }}
-                      >
-                        <ShieldAlert className="h-4 w-4 ml-1" />
-                        ספאם
-                      </Button>
-                    </div>
+                      }}
+                      onBulkMarkRead={async () => {
+                        const ids = [...selectedMessages];
+                        const success = await batchModify(ids, [], ["UNREAD"]);
+                        if (success) {
+                          setSelectedMessages(new Set());
+                          handleRefresh();
+                          toast({
+                            title: `${ids.length} מיילים סומנו כנקראו`,
+                          });
+                        }
+                      }}
+                      onBulkSpam={async () => {
+                        const ids = [...selectedMessages];
+                        const success = await batchModify(ids, ["SPAM"], ["INBOX"]);
+                        if (success) {
+                          setSelectedMessages(new Set());
+                          handleRefresh();
+                          toast({
+                            title: `${ids.length} מיילים דווחו כספאם`,
+                          });
+                        }
+                      }}
+                    />
                   )}
 
                   {/* Active Filters Display */}
@@ -3452,151 +3012,22 @@ export default function Gmail() {
         />
 
         {/* Reminder Dialog */}
-        <Dialog
+        <EmailReminderDialog
           open={isReminderDialogOpen}
           onOpenChange={setIsReminderDialogOpen}
-        >
-          <DialogContent className="max-w-md" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>הגדרת תזכורת</DialogTitle>
-              <DialogDescription>
-                {selectedEmailForAction?.subject || "ללא נושא"}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setHours(date.getHours() + 1);
-                    if (selectedEmailForAction) {
-                      setEmailReminder(selectedEmailForAction.id, date);
-                    }
-                    setIsReminderDialogOpen(false);
-                  }}
-                >
-                  <Clock4 className="h-4 w-4 ml-2" />
-                  בעוד שעה
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setHours(date.getHours() + 3);
-                    if (selectedEmailForAction) {
-                      setEmailReminder(selectedEmailForAction.id, date);
-                    }
-                    setIsReminderDialogOpen(false);
-                  }}
-                >
-                  <Clock4 className="h-4 w-4 ml-2" />
-                  בעוד 3 שעות
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 1);
-                    date.setHours(9, 0, 0, 0);
-                    if (selectedEmailForAction) {
-                      setEmailReminder(selectedEmailForAction.id, date);
-                    }
-                    setIsReminderDialogOpen(false);
-                  }}
-                >
-                  <Calendar className="h-4 w-4 ml-2" />
-                  מחר בבוקר
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setDate(date.getDate() + 7);
-                    date.setHours(9, 0, 0, 0);
-                    if (selectedEmailForAction) {
-                      setEmailReminder(selectedEmailForAction.id, date);
-                    }
-                    setIsReminderDialogOpen(false);
-                  }}
-                >
-                  <Calendar className="h-4 w-4 ml-2" />
-                  בעוד שבוע
-                </Button>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <Label>תאריך ושעה מותאמים אישית</Label>
-                <Input
-                  type="datetime-local"
-                  dir="ltr"
-                  onChange={(e) => {
-                    if (selectedEmailForAction && e.target.value) {
-                      setEmailReminder(
-                        selectedEmailForAction.id,
-                        new Date(e.target.value),
-                      );
-                      setIsReminderDialogOpen(false);
-                    }
-                  }}
-                />
-              </div>
-              {selectedEmailForAction &&
-                emailReminders[selectedEmailForAction.id] && (
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={() => {
-                      if (selectedEmailForAction) {
-                        setEmailReminder(selectedEmailForAction.id, null);
-                      }
-                      setIsReminderDialogOpen(false);
-                    }}
-                  >
-                    <BellOff className="h-4 w-4 ml-2" />
-                    הסר תזכורת
-                  </Button>
-                )}
-            </div>
-          </DialogContent>
-        </Dialog>
+          selectedEmail={selectedEmailForAction}
+          emailReminders={emailReminders}
+          onSetReminder={setEmailReminder}
+        />
 
         {/* Note Dialog */}
-        <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
-          <DialogContent className="max-w-md" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>הוספת הערה</DialogTitle>
-              <DialogDescription>
-                {selectedEmailForAction?.subject || "ללא נושא"}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <Textarea
-                placeholder="כתוב הערה..."
-                rows={5}
-                defaultValue={
-                  selectedEmailForAction
-                    ? emailNotes[selectedEmailForAction.id] || ""
-                    : ""
-                }
-                onChange={(e) => {
-                  if (selectedEmailForAction) {
-                    saveEmailNote(selectedEmailForAction.id, e.target.value);
-                  }
-                }}
-              />
-              <div className="flex gap-2">
-                <Button onClick={() => setIsNoteDialogOpen(false)}>שמור</Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsNoteDialogOpen(false)}
-                >
-                  סגור
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <EmailNoteDialog
+          open={isNoteDialogOpen}
+          onOpenChange={setIsNoteDialogOpen}
+          selectedEmail={selectedEmailForAction}
+          emailNotes={emailNotes}
+          onSaveNote={saveEmailNote}
+        />
 
         {/* Quick Add Task Dialog */}
         <QuickAddTask
@@ -3617,211 +3048,27 @@ export default function Gmail() {
         />
 
         {/* Label Manager Dialog */}
-        <Dialog open={showLabelManager} onOpenChange={setShowLabelManager}>
-          <DialogContent className="max-w-md" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>ניהול תוויות</DialogTitle>
-              <DialogDescription>
-                צור ונהל תוויות לסיווג המיילים שלך
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-2">
-                  {customLabels.map((label) => (
-                    <div
-                      key={label.id}
-                      className="flex items-center gap-3 p-2 border rounded-lg"
-                    >
-                      <div
-                        className={cn("h-4 w-4 rounded-full", label.color)}
-                      />
-                      <span className="flex-1">{label.name}</span>
-                      <Badge variant="secondary">
-                        {
-                          Object.values(emailLabels).filter((labels) =>
-                            labels.includes(label.id),
-                          ).length
-                        }
-                      </Badge>
-                      {!DEFAULT_LABELS.find((dl) => dl.id === label.id) &&
-                        !label.id.startsWith("client_") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-red-500"
-                            onClick={() => {
-                              setCustomLabels((prev) =>
-                                prev.filter((l) => l.id !== label.id),
-                              );
-                              // Save custom labels to localStorage
-                              const userCustom = customLabels.filter(
-                                (l) =>
-                                  !DEFAULT_LABELS.find(
-                                    (dl) => dl.id === l.id,
-                                  ) &&
-                                  !l.id.startsWith("client_") &&
-                                  l.id !== label.id,
-                              );
-                              localStorage.setItem(
-                                "gmail_custom_labels",
-                                JSON.stringify(userCustom),
-                              );
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        )}
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              <Separator />
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="שם תווית חדשה..."
-                    className="flex-1"
-                    value={newLabelName}
-                    onChange={(e) => setNewLabelName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newLabelName.trim()) {
-                        const newLabel: EmailLabel = {
-                          id: `custom_${Date.now()}`,
-                          name: newLabelName.trim(),
-                          color: newLabelColor,
-                        };
-                        setCustomLabels((prev) => [...prev, newLabel]);
-                        const allCustom = [
-                          ...customLabels.filter(
-                            (l) =>
-                              !DEFAULT_LABELS.find((dl) => dl.id === l.id) &&
-                              !l.id.startsWith("client_"),
-                          ),
-                          newLabel,
-                        ];
-                        localStorage.setItem(
-                          "gmail_custom_labels",
-                          JSON.stringify(allCustom),
-                        );
-                        setNewLabelName("");
-                      }
-                    }}
-                  />
-                  <Button
-                    size="icon"
-                    disabled={!newLabelName.trim()}
-                    onClick={() => {
-                      if (!newLabelName.trim()) return;
-                      const newLabel: EmailLabel = {
-                        id: `custom_${Date.now()}`,
-                        name: newLabelName.trim(),
-                        color: newLabelColor,
-                      };
-                      setCustomLabels((prev) => [...prev, newLabel]);
-                      const allCustom = [
-                        ...customLabels.filter(
-                          (l) =>
-                            !DEFAULT_LABELS.find((dl) => dl.id === l.id) &&
-                            !l.id.startsWith("client_"),
-                        ),
-                        newLabel,
-                      ];
-                      localStorage.setItem(
-                        "gmail_custom_labels",
-                        JSON.stringify(allCustom),
-                      );
-                      setNewLabelName("");
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex gap-1 flex-wrap">
-                  {[
-                    "bg-red-500",
-                    "bg-orange-500",
-                    "bg-yellow-500",
-                    "bg-green-500",
-                    "bg-blue-500",
-                    "bg-purple-500",
-                    "bg-pink-500",
-                    "bg-gray-500",
-                  ].map((color) => (
-                    <button
-                      key={color}
-                      className={cn(
-                        "h-6 w-6 rounded-full border-2 transition-all",
-                        color,
-                        newLabelColor === color
-                          ? "border-foreground scale-110"
-                          : "border-transparent",
-                      )}
-                      onClick={() => setNewLabelColor(color)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <LabelManagerDialog
+          open={showLabelManager}
+          onOpenChange={setShowLabelManager}
+          customLabels={customLabels}
+          onSetCustomLabels={setCustomLabels}
+          emailLabels={emailLabels}
+        />
 
         {/* Undo Send Bar */}
         {undoSendState && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background rounded-lg px-6 py-3 shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom">
-            <span className="text-sm font-medium">
-              ההודעה תישלח בעוד {undoSendState.countdown} שניות...
-            </span>
-            <Button variant="secondary" size="sm" onClick={cancelUndoSend}>
-              <Undo2 className="h-4 w-4 ml-1" />
-              ביטול שליחה
-            </Button>
-          </div>
+          <UndoSendBar
+            countdown={undoSendState.countdown}
+            onCancel={cancelUndoSend}
+          />
         )}
 
         {/* Keyboard Shortcuts Help */}
-        <Dialog open={showShortcutsHelp} onOpenChange={setShowShortcutsHelp}>
-          <DialogContent className="max-w-md" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Keyboard className="h-5 w-5" />
-                קיצורי מקשים
-              </DialogTitle>
-              <DialogDescription>קיצורים זמינים בתצוגת Gmail</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-2 gap-1">
-                {[
-                  ["c", "כתיבת הודעה חדשה"],
-                  ["r", "השב"],
-                  ["a", "השב לכולם"],
-                  ["f", "העבר"],
-                  ["e", "ארכיון"],
-                  ["#", "מחק"],
-                  ["s", "כוכב"],
-                  ["p", "הדפס"],
-                  ["j", "מייל הבא"],
-                  ["k", "מייל הקודם"],
-                  ["o", "פתח שיחה"],
-                  ["Esc", "חזור לרשימה"],
-                  ["?", "קיצורי מקשים"],
-                  ["Shift+Click", "בחירת טווח"],
-                  ["Enter", "חיפוש בשרת"],
-                ].map(([key, desc]) => (
-                  <div
-                    key={key}
-                    className="flex items-center gap-2 p-1.5 rounded hover:bg-muted"
-                  >
-                    <kbd className="px-2 py-0.5 bg-muted rounded border text-xs font-mono min-w-[28px] text-center">
-                      {key}
-                    </kbd>
-                    <span>{desc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <KeyboardShortcutsDialog
+          open={showShortcutsHelp}
+          onOpenChange={setShowShortcutsHelp}
+        />
       </div>
     </AppLayout>
   );

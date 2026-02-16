@@ -45,14 +45,29 @@ export {
   useScrollDateTracker 
 } from './EmailDateNavigator';
 
-// Props interfaces
-interface Client {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-}
+// Export Gmail page sub-components
+export { GmailSidebar } from './GmailSidebar';
+export { LabelManagerDialog } from './LabelManagerDialog';
+export { EmailReminderDialog } from './EmailReminderDialog';
+export { EmailNoteDialog } from './EmailNoteDialog';
+export { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+export { UndoSendBar } from './UndoSendBar';
+export { BulkActionsBar } from './BulkActionsBar';
+export { EmailListItem } from './EmailListItem';
 
+// Export shared types and constants
+export { 
+  type Client, 
+  type EmailLabel, 
+  type Priority, 
+  DEFAULT_LABELS, 
+  PRIORITY_CONFIG 
+} from './gmail-types';
+
+// Import Client type for local use
+import { Client } from './gmail-types';
+
+// Props interfaces
 interface EmailQuickActionsProps {
   email: GmailMessage;
   clients: Client[];
