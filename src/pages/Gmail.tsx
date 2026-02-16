@@ -40,6 +40,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -1783,6 +1786,60 @@ export default function Gmail() {
                   <PenSquare className="h-4 w-4 ml-2" />
                   כתיבת הודעה
                 </Button>
+
+                {/* View Mode Toggle */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="default">
+                      {viewMode === 'list' && <><LayoutList className="h-4 w-4 ml-2" />רגיל</>}
+                      {viewMode === 'chat' && <><MessageSquare className="h-4 w-4 ml-2" />צ'אט</>}
+                      {viewMode === 'sender-chat' && <><Users className="h-4 w-4 ml-2" />צ'אט מתמשך</>}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rtl w-48">
+                    <DropdownMenuLabel>תצוגת מייל</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={viewMode} onValueChange={(v) => {
+                      if (v === 'list') {
+                        setViewMode('list');
+                        setSelectedEmail(null);
+                      } else if (v === 'chat') {
+                        // If we have a selected email, open its thread as chat
+                        if (selectedEmail) {
+                          openChatView(selectedEmail);
+                        } else if (filteredMessages.length > 0) {
+                          openChatView(filteredMessages[0]);
+                        } else {
+                          setViewMode('chat');
+                        }
+                      } else if (v === 'sender-chat') {
+                        // If we have a selected email, open sender-chat for that sender
+                        if (selectedEmail) {
+                          openSenderChat(selectedEmail.from, selectedEmail.fromName || selectedEmail.from);
+                        } else if (filteredMessages.length > 0) {
+                          const first = filteredMessages[0];
+                          openSenderChat(first.from, first.fromName || first.from);
+                        } else {
+                          setViewMode('sender-chat');
+                        }
+                      }
+                    }}>
+                      <DropdownMenuRadioItem value="list">
+                        <LayoutList className="h-4 w-4 ml-2" />
+                        רגיל
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="chat">
+                        <MessageSquare className="h-4 w-4 ml-2" />
+                        צ'אט
+                      </DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="sender-chat">
+                        <Users className="h-4 w-4 ml-2" />
+                        צ'אט מתמשך
+                      </DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
