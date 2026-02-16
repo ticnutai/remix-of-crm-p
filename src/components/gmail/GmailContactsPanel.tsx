@@ -1,39 +1,34 @@
 // Gmail Contacts Management Panel
 // Comprehensive contacts system: Google import, CSV import, email-to-contact,
 // client linking, smart matching, and bi-directional sync
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 import {
   Users,
   UserPlus,
@@ -60,12 +55,12 @@ import {
   Sparkles,
   Star,
   Filter,
-} from 'lucide-react';
-import { useGoogleContacts, GoogleContact } from '@/hooks/useGoogleContacts';
-import { useClients, Client } from '@/hooks/useClients';
-import { GmailMessage } from '@/hooks/useGmailIntegration';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+} from "lucide-react";
+import { useGoogleContacts, GoogleContact } from "@/hooks/useGoogleContacts";
+import { useClients, Client } from "@/hooks/useClients";
+import { GmailMessage } from "@/hooks/useGmailIntegration";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 // ── Types ──────────────────────────────────────────────────────
 interface EmailSender {
@@ -80,7 +75,7 @@ interface EmailSender {
 interface SmartMatch {
   sender: EmailSender;
   client: Client;
-  matchType: 'exact-email' | 'similar-email' | 'name-match';
+  matchType: "exact-email" | "similar-email" | "name-match";
   confidence: number; // 0-100
 }
 
@@ -135,7 +130,7 @@ function findSmartMatches(
         matches.push({
           sender,
           client,
-          matchType: 'exact-email',
+          matchType: "exact-email",
           confidence: 100,
         });
         continue;
@@ -143,8 +138,8 @@ function findSmartMatches(
 
       // Similar email (same domain + similar local part)
       if (client.email) {
-        const [sLocal, sDomain] = sender.email.split('@');
-        const [cLocal, cDomain] = client.email.toLowerCase().split('@');
+        const [sLocal, sDomain] = sender.email.split("@");
+        const [cLocal, cDomain] = client.email.toLowerCase().split("@");
         if (
           sDomain === cDomain &&
           (sLocal.includes(cLocal) || cLocal.includes(sLocal))
@@ -152,7 +147,7 @@ function findSmartMatches(
           matches.push({
             sender,
             client,
-            matchType: 'similar-email',
+            matchType: "similar-email",
             confidence: 60,
           });
           continue;
@@ -163,15 +158,11 @@ function findSmartMatches(
       if (client.name && sender.name) {
         const sName = sender.name.toLowerCase().trim();
         const cName = client.name.toLowerCase().trim();
-        if (
-          sName === cName ||
-          sName.includes(cName) ||
-          cName.includes(sName)
-        ) {
+        if (sName === cName || sName.includes(cName) || cName.includes(sName)) {
           matches.push({
             sender,
             client,
-            matchType: 'name-match',
+            matchType: "name-match",
             confidence: 50,
           });
         }
@@ -198,18 +189,32 @@ export function GmailContactsPanel({
     importMultipleContacts,
     searchContacts,
   } = useGoogleContacts();
-  const { clients, loading: isLoadingClients, refetch: refetchClients } = useClients();
+  const {
+    clients,
+    loading: isLoadingClients,
+    refetch: refetchClients,
+  } = useClients();
 
   // State
-  const [activeTab, setActiveTab] = useState('senders');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<Set<string>>(new Set());
-  const [selectedSenders, setSelectedSenders] = useState<Set<string>>(new Set());
-  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("senders");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<
+    Set<string>
+  >(new Set());
+  const [selectedSenders, setSelectedSenders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedMatches, setSelectedMatches] = useState<Set<string>>(
+    new Set(),
+  );
   const [googleFetched, setGoogleFetched] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
-  const [linkDialogSender, setLinkDialogSender] = useState<EmailSender | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'unlinked' | 'linked'>('all');
+  const [linkDialogSender, setLinkDialogSender] = useState<EmailSender | null>(
+    null,
+  );
+  const [filterType, setFilterType] = useState<"all" | "unlinked" | "linked">(
+    "all",
+  );
   const [showMatchPreview, setShowMatchPreview] = useState(false);
 
   // Extract unique email senders
@@ -231,7 +236,11 @@ export function GmailContactsPanel({
 
   // Smart matches
   const smartMatches = useMemo(
-    () => findSmartMatches(linkedSenders.filter((s) => !s.linkedClientId), clients),
+    () =>
+      findSmartMatches(
+        linkedSenders.filter((s) => !s.linkedClientId),
+        clients,
+      ),
     [linkedSenders, clients],
   );
 
@@ -239,9 +248,9 @@ export function GmailContactsPanel({
   const filteredSenders = useMemo(() => {
     let result = linkedSenders;
 
-    if (filterType === 'unlinked') {
+    if (filterType === "unlinked") {
       result = result.filter((s) => !s.linkedClientId);
-    } else if (filterType === 'linked') {
+    } else if (filterType === "linked") {
       result = result.filter((s) => s.linkedClientId);
     }
 
@@ -294,7 +303,12 @@ export function GmailContactsPanel({
       setSelectedGoogleContacts(new Set());
       refetchClients();
     }
-  }, [googleContacts, selectedGoogleContacts, importMultipleContacts, refetchClients]);
+  }, [
+    googleContacts,
+    selectedGoogleContacts,
+    importMultipleContacts,
+    refetchClients,
+  ]);
 
   const handleAddSenderAsClient = useCallback(
     async (sender: EmailSender) => {
@@ -302,40 +316,40 @@ export function GmailContactsPanel({
       try {
         // Check if already exists
         const { data: existing } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('email', sender.email)
+          .from("clients")
+          .select("id")
+          .eq("email", sender.email)
           .single();
 
         if (existing) {
           toast({
-            title: 'לקוח קיים',
+            title: "לקוח קיים",
             description: `${sender.email} כבר קיים כלקוח`,
-            variant: 'destructive',
+            variant: "destructive",
           });
           setIsLinking(false);
           return;
         }
 
-        const { error } = await supabase.from('clients').insert({
+        const { error } = await supabase.from("clients").insert({
           name: sender.name,
           email: sender.email,
-          source: 'gmail_sender',
-          status: 'active',
+          source: "gmail_sender",
+          status: "active",
         });
 
         if (error) throw error;
 
         toast({
-          title: 'איש קשר נוסף כלקוח',
+          title: "איש קשר נוסף כלקוח",
           description: sender.name,
         });
         refetchClients();
       } catch (err: any) {
         toast({
-          title: 'שגיאה',
+          title: "שגיאה",
           description: err.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       }
       setIsLinking(false);
@@ -355,17 +369,17 @@ export function GmailContactsPanel({
     for (const sender of toAdd) {
       try {
         const { data: existing } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('email', sender.email)
+          .from("clients")
+          .select("id")
+          .eq("email", sender.email)
           .single();
 
         if (!existing) {
-          const { error } = await supabase.from('clients').insert({
+          const { error } = await supabase.from("clients").insert({
             name: sender.name,
             email: sender.email,
-            source: 'gmail_sender',
-            status: 'active',
+            source: "gmail_sender",
+            status: "active",
           });
           if (!error) addedCount++;
         }
@@ -376,7 +390,7 @@ export function GmailContactsPanel({
 
     if (addedCount > 0) {
       toast({
-        title: 'ייבוא הושלם',
+        title: "ייבוא הושלם",
         description: `${addedCount} שולחים נוספו כלקוחות`,
       });
       refetchClients();
@@ -391,23 +405,23 @@ export function GmailContactsPanel({
       try {
         // Update client email to match sender
         const { error } = await supabase
-          .from('clients')
+          .from("clients")
           .update({ email: sender.email })
-          .eq('id', clientId);
+          .eq("id", clientId);
 
         if (error) throw error;
 
         toast({
-          title: 'קישור בוצע',
+          title: "קישור בוצע",
           description: `${sender.name} קושר ל${clients.find((c) => c.id === clientId)?.name}`,
         });
         refetchClients();
         setLinkDialogSender(null);
       } catch (err: any) {
         toast({
-          title: 'שגיאה בקישור',
+          title: "שגיאה בקישור",
           description: err.message,
-          variant: 'destructive',
+          variant: "destructive",
         });
       }
       setIsLinking(false);
@@ -427,9 +441,9 @@ export function GmailContactsPanel({
     for (const match of toLink) {
       try {
         const { error } = await supabase
-          .from('clients')
+          .from("clients")
           .update({ email: match.sender.email })
-          .eq('id', match.client.id);
+          .eq("id", match.client.id);
         if (!error) linked++;
       } catch {
         // skip
@@ -438,7 +452,7 @@ export function GmailContactsPanel({
 
     if (linked > 0) {
       toast({
-        title: 'קישור חכם הושלם',
+        title: "קישור חכם הושלם",
         description: `${linked} קישורים בוצעו`,
       });
       refetchClients();
@@ -553,7 +567,7 @@ export function GmailContactsPanel({
             <Badge
               variant="outline"
               className="text-sm px-3 py-1 bg-purple-50 text-purple-700 border-purple-200 cursor-pointer"
-              onClick={() => setActiveTab('smart')}
+              onClick={() => setActiveTab("smart")}
             >
               <Sparkles className="h-3 w-3 ml-1" />
               {stats.matchSuggestions} התאמות חכמות
@@ -582,7 +596,7 @@ export function GmailContactsPanel({
                 variant="ghost"
                 size="icon"
                 className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => setSearchQuery('')}
+                onClick={() => setSearchQuery("")}
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -621,7 +635,10 @@ export function GmailContactsPanel({
           </TabsList>
 
           {/* ─── Tab: Email Senders ─────────────────────────── */}
-          <TabsContent value="senders" className="flex-1 flex flex-col min-h-0 mt-0">
+          <TabsContent
+            value="senders"
+            className="flex-1 flex flex-col min-h-0 mt-0"
+          >
             <div className="px-6 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Select
@@ -649,7 +666,7 @@ export function GmailContactsPanel({
                   className="text-xs h-8"
                 >
                   <Check className="h-3 w-3 ml-1" />
-                  {selectedSenders.size > 0 ? 'נקה בחירה' : 'בחר הכל'}
+                  {selectedSenders.size > 0 ? "נקה בחירה" : "בחר הכל"}
                 </Button>
               </div>
               {selectedSenders.size > 0 && (
@@ -681,8 +698,8 @@ export function GmailContactsPanel({
                       key={sender.email}
                       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                         sender.linkedClientId
-                          ? 'bg-green-50/50 border-green-200'
-                          : 'hover:bg-muted/50 border-transparent'
+                          ? "bg-green-50/50 border-green-200"
+                          : "hover:bg-muted/50 border-transparent"
                       }`}
                     >
                       {!sender.linkedClientId && (
@@ -696,7 +713,10 @@ export function GmailContactsPanel({
                           <span className="font-medium text-sm truncate">
                             {sender.name}
                           </span>
-                          <Badge variant="secondary" className="text-[10px] px-1.5">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5"
+                          >
                             {sender.count} הודעות
                           </Badge>
                         </div>
@@ -718,7 +738,9 @@ export function GmailContactsPanel({
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  onClick={() => handleAddSenderAsClient(sender)}
+                                  onClick={() =>
+                                    handleAddSenderAsClient(sender)
+                                  }
                                   disabled={isLinking}
                                 >
                                   <UserPlus className="h-3.5 w-3.5 text-blue-600" />
@@ -752,7 +774,10 @@ export function GmailContactsPanel({
           </TabsContent>
 
           {/* ─── Tab: Google Contacts ───────────────────────── */}
-          <TabsContent value="google" className="flex-1 flex flex-col min-h-0 mt-0">
+          <TabsContent
+            value="google"
+            className="flex-1 flex flex-col min-h-0 mt-0"
+          >
             <div className="px-6 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {!googleFetched ? (
@@ -779,7 +804,7 @@ export function GmailContactsPanel({
                       className="text-xs h-8"
                     >
                       <RefreshCw
-                        className={`h-3 w-3 ml-1 ${isLoadingGoogle ? 'animate-spin' : ''}`}
+                        className={`h-3 w-3 ml-1 ${isLoadingGoogle ? "animate-spin" : ""}`}
                       />
                       רענון
                     </Button>
@@ -790,7 +815,9 @@ export function GmailContactsPanel({
                       className="text-xs h-8"
                     >
                       <Check className="h-3 w-3 ml-1" />
-                      {selectedGoogleContacts.size > 0 ? 'נקה בחירה' : 'בחר הכל'}
+                      {selectedGoogleContacts.size > 0
+                        ? "נקה בחירה"
+                        : "בחר הכל"}
                     </Button>
                     <Badge variant="secondary" className="text-xs">
                       {filteredGoogleContacts.length} אנשי קשר
@@ -820,9 +847,7 @@ export function GmailContactsPanel({
                   <div className="text-center py-12 text-muted-foreground">
                     <Globe className="h-10 w-10 mx-auto mb-3 opacity-50" />
                     <p className="mb-2">לחץ כדי לטעון אנשי קשר מ-Google</p>
-                    <p className="text-xs">
-                      נדרשת הרשאת גישה לאנשי הקשר שלך
-                    </p>
+                    <p className="text-xs">נדרשת הרשאת גישה לאנשי הקשר שלך</p>
                   </div>
                 ) : isLoadingGoogle ? (
                   <div className="text-center py-12">
@@ -850,8 +875,8 @@ export function GmailContactsPanel({
                         key={contact.resourceName}
                         className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                           isAlreadyClient
-                            ? 'bg-green-50/50 border-green-200'
-                            : 'hover:bg-muted/50 border-transparent'
+                            ? "bg-green-50/50 border-green-200"
+                            : "hover:bg-muted/50 border-transparent"
                         }`}
                       >
                         {!isAlreadyClient && (
@@ -928,7 +953,10 @@ export function GmailContactsPanel({
           </TabsContent>
 
           {/* ─── Tab: Existing Clients ──────────────────────── */}
-          <TabsContent value="clients" className="flex-1 flex flex-col min-h-0 mt-0">
+          <TabsContent
+            value="clients"
+            className="flex-1 flex flex-col min-h-0 mt-0"
+          >
             <div className="px-6 py-2 flex items-center justify-between">
               <Badge variant="secondary" className="text-xs">
                 {filteredClients.length} לקוחות
@@ -941,7 +969,7 @@ export function GmailContactsPanel({
                 className="text-xs h-8"
               >
                 <RefreshCw
-                  className={`h-3 w-3 ml-1 ${isLoadingClients ? 'animate-spin' : ''}`}
+                  className={`h-3 w-3 ml-1 ${isLoadingClients ? "animate-spin" : ""}`}
                 />
                 רענון
               </Button>
@@ -981,13 +1009,13 @@ export function GmailContactsPanel({
                         key={client.id}
                         className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                           hasSender
-                            ? 'bg-blue-50/50 border-blue-200'
-                            : 'hover:bg-muted/50 border-transparent'
+                            ? "bg-blue-50/50 border-blue-200"
+                            : "hover:bg-muted/50 border-transparent"
                         }`}
                       >
                         <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                           <span className="text-xs font-medium text-indigo-700">
-                            {client.name?.charAt(0) || '?'}
+                            {client.name?.charAt(0) || "?"}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1047,7 +1075,10 @@ export function GmailContactsPanel({
           </TabsContent>
 
           {/* ─── Tab: Smart Matching ────────────────────────── */}
-          <TabsContent value="smart" className="flex-1 flex flex-col min-h-0 mt-0">
+          <TabsContent
+            value="smart"
+            className="flex-1 flex flex-col min-h-0 mt-0"
+          >
             <div className="px-6 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button
@@ -1058,7 +1089,7 @@ export function GmailContactsPanel({
                   disabled={smartMatches.length === 0}
                 >
                   <Check className="h-3 w-3 ml-1" />
-                  {selectedMatches.size > 0 ? 'נקה בחירה' : 'בחר הכל'}
+                  {selectedMatches.size > 0 ? "נקה בחירה" : "בחר הכל"}
                 </Button>
                 <Badge variant="secondary" className="text-xs">
                   {smartMatches.length} הצעות
@@ -1118,20 +1149,20 @@ export function GmailContactsPanel({
                             variant="outline"
                             className={`text-[10px] px-1.5 ${
                               match.confidence >= 80
-                                ? 'bg-green-50 text-green-700 border-green-300'
+                                ? "bg-green-50 text-green-700 border-green-300"
                                 : match.confidence >= 50
-                                  ? 'bg-yellow-50 text-yellow-700 border-yellow-300'
-                                  : 'bg-orange-50 text-orange-700 border-orange-300'
+                                  ? "bg-yellow-50 text-yellow-700 border-yellow-300"
+                                  : "bg-orange-50 text-orange-700 border-orange-300"
                             }`}
                           >
                             {match.confidence}%
                           </Badge>
                           <span className="text-[9px] text-muted-foreground">
-                            {match.matchType === 'exact-email'
-                              ? 'מייל זהה'
-                              : match.matchType === 'similar-email'
-                                ? 'מייל דומה'
-                                : 'שם דומה'}
+                            {match.matchType === "exact-email"
+                              ? "מייל זהה"
+                              : match.matchType === "similar-email"
+                                ? "מייל דומה"
+                                : "שם דומה"}
                           </span>
                         </div>
                         {/* Client side */}
@@ -1140,7 +1171,7 @@ export function GmailContactsPanel({
                             {match.client.name}
                           </div>
                           <div className="text-xs text-muted-foreground truncate">
-                            {match.client.email || 'ללא מייל'}
+                            {match.client.email || "ללא מייל"}
                           </div>
                         </div>
                       </div>
@@ -1194,7 +1225,7 @@ export function GmailContactsPanel({
                     >
                       <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="text-xs font-medium text-indigo-700">
-                          {client.name?.charAt(0) || '?'}
+                          {client.name?.charAt(0) || "?"}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1202,7 +1233,7 @@ export function GmailContactsPanel({
                           {client.name}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {client.email || 'ללא מייל'}{' '}
+                          {client.email || "ללא מייל"}{" "}
                           {client.company && `• ${client.company}`}
                         </div>
                       </div>

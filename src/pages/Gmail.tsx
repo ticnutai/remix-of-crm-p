@@ -386,8 +386,21 @@ export default function Gmail() {
     const stored = getStoredPreviewRect();
     return stored || { x: window.innerWidth * 0.05, y: 200, w: 600, h: 500 };
   });
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+  const resizeRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    origW: number;
+    origH: number;
+    dir: string;
+  } | null>(null);
 
   // Save preview position/size to localStorage
   const savePreviewRect = useCallback((rect: typeof previewRect) => {
@@ -397,49 +410,85 @@ export default function Gmail() {
   }, []);
 
   // Drag handlers
-  const onDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: previewRect.x, origY: previewRect.y };
-    const onMove = (ev: MouseEvent) => {
-      if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
-      const newRect = { ...previewRect, x: dragRef.current.origX + dx, y: dragRef.current.origY + dy };
-      setPreviewRect(newRect);
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      setPreviewRect(prev => { savePreviewRect(prev); return prev; });
-      dragRef.current = null;
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [previewRect, savePreviewRect]);
+  const onDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: previewRect.x,
+        origY: previewRect.y,
+      };
+      const onMove = (ev: MouseEvent) => {
+        if (!dragRef.current) return;
+        const dx = ev.clientX - dragRef.current.startX;
+        const dy = ev.clientY - dragRef.current.startY;
+        const newRect = {
+          ...previewRect,
+          x: dragRef.current.origX + dx,
+          y: dragRef.current.origY + dy,
+        };
+        setPreviewRect(newRect);
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        setPreviewRect((prev) => {
+          savePreviewRect(prev);
+          return prev;
+        });
+        dragRef.current = null;
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [previewRect, savePreviewRect],
+  );
 
-  // Resize handlers
-  const onResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    resizeRef.current = { startX: e.clientX, startY: e.clientY, origW: previewRect.w, origH: previewRect.h };
-    const onMove = (ev: MouseEvent) => {
-      if (!resizeRef.current) return;
-      const dx = resizeRef.current.startX - ev.clientX; // RTL: moving left = wider
-      const dy = ev.clientY - resizeRef.current.startY;
-      const newW = Math.max(300, Math.min(resizeRef.current.origW + dx, window.innerWidth - 40));
-      const newH = Math.max(250, Math.min(resizeRef.current.origH + dy, window.innerHeight - 40));
-      const newRect = { ...previewRect, w: newW, h: newH };
-      setPreviewRect(newRect);
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      setPreviewRect(prev => { savePreviewRect(prev); return prev; });
-      resizeRef.current = null;
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  }, [previewRect, savePreviewRect]);
+  // Resize handlers - supports all edges and corners
+  const onEdgeResizeStart = useCallback(
+    (e: React.MouseEvent, dir: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: previewRect.x,
+        origY: previewRect.y,
+        origW: previewRect.w,
+        origH: previewRect.h,
+        dir,
+      };
+      const onMove = (ev: MouseEvent) => {
+        if (!resizeRef.current) return;
+        const r = resizeRef.current;
+        const dx = ev.clientX - r.startX;
+        const dy = ev.clientY - r.startY;
+        let { x, y, w, h } = { x: r.origX, y: r.origY, w: r.origW, h: r.origH };
+
+        if (r.dir.includes('r')) { w = Math.max(300, r.origW + dx); }
+        if (r.dir.includes('l')) { w = Math.max(300, r.origW - dx); x = r.origX + (r.origW - Math.max(300, r.origW - dx)); }
+        if (r.dir.includes('b')) { h = Math.max(250, r.origH + dy); }
+        if (r.dir.includes('t')) { h = Math.max(250, r.origH - dy); y = r.origY + (r.origH - Math.max(250, r.origH - dy)); }
+
+        w = Math.min(w, window.innerWidth - 40);
+        h = Math.min(h, window.innerHeight - 40);
+        setPreviewRect({ x, y, w, h });
+      };
+      const onUp = () => {
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        setPreviewRect((prev) => {
+          savePreviewRect(prev);
+          return prev;
+        });
+        resizeRef.current = null;
+      };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [previewRect, savePreviewRect],
+  );
 
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
@@ -447,8 +496,15 @@ export default function Gmail() {
       // Position: use stored rect position (y), but set initial y near the hovered subject
       const stored = getStoredPreviewRect();
       if (!stored) {
-        const clampedY = Math.max(40, Math.min(y - 60, window.innerHeight - 500));
-        setPreviewRect(prev => ({ ...prev, y: clampedY, x: window.innerWidth * 0.05 }));
+        const clampedY = Math.max(
+          40,
+          Math.min(y - 60, window.innerHeight - 500),
+        );
+        setPreviewRect((prev) => ({
+          ...prev,
+          y: clampedY,
+          x: window.innerWidth * 0.05,
+        }));
       }
       // Find the message and open the preview
       const msg = messages.find((m) => m.id === messageId);
@@ -486,7 +542,13 @@ export default function Gmail() {
       }
       setHoverPreviewLoading(false);
     },
-    [getFullMessage, extractHtmlBody, emailBodyCache, resolveInlineImages, messages],
+    [
+      getFullMessage,
+      extractHtmlBody,
+      emailBodyCache,
+      resolveInlineImages,
+      messages,
+    ],
   );
 
   // Muted threads
@@ -722,12 +784,18 @@ export default function Gmail() {
     if (!hasLoaded || messages.length === 0) return;
 
     // Fetch body for a single message (for prefetch)
-    const fetchSingleBody = async (messageId: string): Promise<string | null> => {
+    const fetchSingleBody = async (
+      messageId: string,
+    ): Promise<string | null> => {
       try {
         const fullMsg = await getFullMessage(messageId);
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          const html = await resolveInlineImages(rawHtml, messageId, fullMsg.payload);
+          const html = await resolveInlineImages(
+            rawHtml,
+            messageId,
+            fullMsg.payload,
+          );
           return html;
         }
         return null;
@@ -738,13 +806,24 @@ export default function Gmail() {
 
     // Pre-fetch the first 20 visible email bodies
     const idsToFetch = messages.slice(0, 20).map((m) => m.id);
-    console.log("📧 [Prefetch] Starting background pre-fetch for", idsToFetch.length, "emails");
+    console.log(
+      "📧 [Prefetch] Starting background pre-fetch for",
+      idsToFetch.length,
+      "emails",
+    );
     emailBodyCache.prefetchBodies(idsToFetch, fetchSingleBody);
 
     return () => {
       emailBodyCache.stopPrefetch();
     };
-  }, [hasLoaded, messages, getFullMessage, extractHtmlBody, resolveInlineImages, emailBodyCache]);
+  }, [
+    hasLoaded,
+    messages,
+    getFullMessage,
+    extractHtmlBody,
+    resolveInlineImages,
+    emailBodyCache,
+  ]);
 
   // Load folder emails when folder selected
   useEffect(() => {
@@ -1804,39 +1883,63 @@ export default function Gmail() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="default">
-                      {viewMode === 'list' && <><LayoutList className="h-4 w-4 ml-2" />רגיל</>}
-                      {viewMode === 'chat' && <><MessageSquare className="h-4 w-4 ml-2" />צ'אט</>}
-                      {viewMode === 'sender-chat' && <><Users className="h-4 w-4 ml-2" />צ'אט מתמשך</>}
+                      {viewMode === "list" && (
+                        <>
+                          <LayoutList className="h-4 w-4 ml-2" />
+                          רגיל
+                        </>
+                      )}
+                      {viewMode === "chat" && (
+                        <>
+                          <MessageSquare className="h-4 w-4 ml-2" />
+                          צ'אט
+                        </>
+                      )}
+                      {viewMode === "sender-chat" && (
+                        <>
+                          <Users className="h-4 w-4 ml-2" />
+                          צ'אט מתמשך
+                        </>
+                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rtl w-48">
                     <DropdownMenuLabel>תצוגת מייל</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={viewMode} onValueChange={(v) => {
-                      if (v === 'list') {
-                        setViewMode('list');
-                        setSelectedEmail(null);
-                      } else if (v === 'chat') {
-                        // If we have a selected email, open its thread as chat
-                        if (selectedEmail) {
-                          openChatView(selectedEmail);
-                        } else if (filteredMessages.length > 0) {
-                          openChatView(filteredMessages[0]);
-                        } else {
-                          setViewMode('chat');
+                    <DropdownMenuRadioGroup
+                      value={viewMode}
+                      onValueChange={(v) => {
+                        if (v === "list") {
+                          setViewMode("list");
+                          setSelectedEmail(null);
+                        } else if (v === "chat") {
+                          // If we have a selected email, open its thread as chat
+                          if (selectedEmail) {
+                            openChatView(selectedEmail);
+                          } else if (filteredMessages.length > 0) {
+                            openChatView(filteredMessages[0]);
+                          } else {
+                            setViewMode("chat");
+                          }
+                        } else if (v === "sender-chat") {
+                          // If we have a selected email, open sender-chat for that sender
+                          if (selectedEmail) {
+                            openSenderChat(
+                              selectedEmail.from,
+                              selectedEmail.fromName || selectedEmail.from,
+                            );
+                          } else if (filteredMessages.length > 0) {
+                            const first = filteredMessages[0];
+                            openSenderChat(
+                              first.from,
+                              first.fromName || first.from,
+                            );
+                          } else {
+                            setViewMode("sender-chat");
+                          }
                         }
-                      } else if (v === 'sender-chat') {
-                        // If we have a selected email, open sender-chat for that sender
-                        if (selectedEmail) {
-                          openSenderChat(selectedEmail.from, selectedEmail.fromName || selectedEmail.from);
-                        } else if (filteredMessages.length > 0) {
-                          const first = filteredMessages[0];
-                          openSenderChat(first.from, first.fromName || first.from);
-                        } else {
-                          setViewMode('sender-chat');
-                        }
-                      }
-                    }}>
+                      }}
+                    >
                       <DropdownMenuRadioItem value="list">
                         <LayoutList className="h-4 w-4 ml-2" />
                         רגיל
@@ -2758,9 +2861,9 @@ export default function Gmail() {
               left: previewRect.x,
               width: previewRect.w,
               height: previewRect.h,
-              border: '3px solid #d4a843',
-              boxShadow: '0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)',
-              overflow: 'hidden',
+              border: "3px solid #d4a843",
+              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)",
+              overflow: "hidden",
             }}
             dir="rtl"
             onMouseLeave={() => setShowPreviewDialog(false)}
@@ -2768,7 +2871,7 @@ export default function Gmail() {
             {/* Draggable Header */}
             <div
               className="p-3 flex-shrink-0 cursor-move select-none"
-              style={{ borderBottom: '2px solid #d4a843' }}
+              style={{ borderBottom: "2px solid #d4a843" }}
               onMouseDown={onDragStart}
             >
               <div className="flex items-start justify-between">
@@ -2776,7 +2879,7 @@ export default function Gmail() {
                   <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 opacity-50" />
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-base truncate text-right">
-                      {previewMessage.subject || '(ללא נושא)'}
+                      {previewMessage.subject || "(ללא נושא)"}
                     </h3>
                     <p className="text-sm text-muted-foreground text-right truncate">
                       {previewMessage.fromName} &lt;{previewMessage.from}&gt;
@@ -2800,7 +2903,7 @@ export default function Gmail() {
             <div
               className="flex-1 p-4"
               dir="rtl"
-              style={{ overflowY: 'auto', overflowX: 'hidden' }}
+              style={{ overflowY: "auto", overflowX: "hidden" }}
             >
               {hoverPreviewLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -2809,7 +2912,7 @@ export default function Gmail() {
               ) : hoverPreviewHtml ? (
                 <div
                   className="prose prose-sm max-w-none dark:prose-invert"
-                  style={{ overflowX: 'hidden', wordBreak: 'break-word' }}
+                  style={{ overflowX: "hidden", wordBreak: "break-word" }}
                   dangerouslySetInnerHTML={{
                     __html: DOMPurify.sanitize(hoverPreviewHtml, {
                       ALLOW_UNKNOWN_PROTOCOLS: true,
@@ -2827,7 +2930,7 @@ export default function Gmail() {
             <div
               className="flex items-center gap-2 p-2 flex-shrink-0"
               dir="rtl"
-              style={{ borderTop: '2px solid #d4a843' }}
+              style={{ borderTop: "2px solid #d4a843" }}
             >
               <Button
                 size="sm"
@@ -2837,7 +2940,9 @@ export default function Gmail() {
                   setShowPreviewDialog(false);
                   setSelectedEmail(previewMessage);
                   if (!previewMessage.isRead) {
-                    markAsRead(previewMessage.id, true).then(() => handleRefresh());
+                    markAsRead(previewMessage.id, true).then(() =>
+                      handleRefresh(),
+                    );
                   }
                 }}
               >
@@ -2849,10 +2954,13 @@ export default function Gmail() {
                 className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
                 onClick={() => {
                   setShowPreviewDialog(false);
-                  const replySubject = previewMessage.subject?.startsWith('Re:')
+                  const replySubject = previewMessage.subject?.startsWith("Re:")
                     ? previewMessage.subject
                     : `Re: ${previewMessage.subject}`;
-                  setDraftData({ to: previewMessage.from, subject: replySubject });
+                  setDraftData({
+                    to: previewMessage.from,
+                    subject: replySubject,
+                  });
                   setIsComposeOpen(true);
                 }}
               >
@@ -2865,10 +2973,10 @@ export default function Gmail() {
                 className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
                 onClick={() => {
                   setShowPreviewDialog(false);
-                  const fwdSubject = previewMessage.subject?.startsWith('Fwd:')
+                  const fwdSubject = previewMessage.subject?.startsWith("Fwd:")
                     ? previewMessage.subject
                     : `Fwd: ${previewMessage.subject}`;
-                  setDraftData({ to: '', subject: fwdSubject });
+                  setDraftData({ to: "", subject: fwdSubject });
                   setIsComposeOpen(true);
                 }}
               >
@@ -2877,16 +2985,17 @@ export default function Gmail() {
               </Button>
             </div>
 
-            {/* Resize handle - bottom-left corner */}
-            <div
-              className="absolute bottom-0 left-0 w-4 h-4 cursor-nwse-resize"
-              style={{
-                borderLeft: '3px solid #d4a843',
-                borderBottom: '3px solid #d4a843',
-                borderBottomLeftRadius: '6px',
-              }}
-              onMouseDown={onResizeStart}
-            />
+            {/* Resize handles - all edges and corners */}
+            {/* Edges */}
+            <div className="absolute top-0 left-3 right-3 h-[5px] cursor-n-resize" onMouseDown={(e) => onEdgeResizeStart(e, 't')} />
+            <div className="absolute bottom-0 left-3 right-3 h-[5px] cursor-s-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'b')} />
+            <div className="absolute left-0 top-3 bottom-3 w-[5px] cursor-w-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'l')} />
+            <div className="absolute right-0 top-3 bottom-3 w-[5px] cursor-e-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'r')} />
+            {/* Corners */}
+            <div className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'tl')} style={{ borderLeft: '3px solid #d4a843', borderTop: '3px solid #d4a843', borderTopLeftRadius: '6px' }} />
+            <div className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'tr')} style={{ borderRight: '3px solid #d4a843', borderTop: '3px solid #d4a843', borderTopRightRadius: '6px' }} />
+            <div className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'bl')} style={{ borderLeft: '3px solid #d4a843', borderBottom: '3px solid #d4a843', borderBottomLeftRadius: '6px' }} />
+            <div className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize" onMouseDown={(e) => onEdgeResizeStart(e, 'br')} style={{ borderRight: '3px solid #d4a843', borderBottom: '3px solid #d4a843', borderBottomRightRadius: '6px' }} />
           </div>
         )}
 
