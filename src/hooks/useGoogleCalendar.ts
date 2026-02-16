@@ -262,9 +262,15 @@ export function useGoogleCalendar() {
       log('Initializing Token Client with client_id:', config.clientId);
       log('Scopes:', SCOPES);
       
+      // Get saved email for login_hint
+      const savedEmail = loadSavedEmail() || 'office.tenarch@gmail.com';
+      log('Using login_hint in initTokenClient:', savedEmail);
+      
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: config.clientId,
         scope: SCOPES,
+        hint: savedEmail,
+        login_hint: savedEmail,
         error_callback: (error: any) => {
           logError('Token Client error_callback:', error);
           logError('Error type:', error?.type);
@@ -335,7 +341,7 @@ export function useGoogleCalendar() {
         }
       }
       
-      return true;
+      return client; // Return the token client for immediate use
     } catch (error) {
       logError('Failed to initialize Google API:', error);
       toast({
@@ -358,26 +364,44 @@ export function useGoogleCalendar() {
       if (savedToken || savedEmail) {
         setHasTriedAutoConnect(true);
         log('Auto-connecting with saved credentials...');
-        // Initialize and restore connection
-        initializeGoogleApi().then(() => {
+        // Initialize and restore connection - returns the tokenClient directly
+        initializeGoogleApi().then((client) => {
           // If we have a saved email but no valid token, try silent auth
-          if (!savedToken && savedEmail) {
-            log('No valid token but have email, attempting silent reconnect');
-            // Small delay to ensure token client is ready
-            setTimeout(() => {
-              if (tokenClient) {
-                tokenClient.requestAccessToken({ 
-                  prompt: '', 
-                  hint: savedEmail,
-                  login_hint: savedEmail 
-                });
-              }
-            }, 500);
+          if (!savedToken && savedEmail && client) {
+            log('No valid token but have email, attempting silent reconnect with:', savedEmail);
+            // Use the returned client directly (not the stale state)
+            try {
+              client.requestAccessToken({ 
+                prompt: '', 
+                login_hint: savedEmail 
+              });
+            } catch (e) {
+              log('Silent reconnect failed:', e);
+            }
           }
         });
       }
     }
-  }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi, tokenClient]);
+  }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi]);
+
+  // Also try silent reconnect when tokenClient becomes available with a saved email
+  useEffect(() => {
+    if (tokenClient && !isConnected && hasTriedAutoConnect) {
+      const savedEmail = loadSavedEmail();
+      const savedToken = loadTokenFromStorage();
+      if (savedEmail && !savedToken) {
+        log('tokenClient ready, retrying silent auth for:', savedEmail);
+        try {
+          tokenClient.requestAccessToken({ 
+            prompt: '', 
+            login_hint: savedEmail 
+          });
+        } catch (e) {
+          log('Retry silent auth failed:', e);
+        }
+      }
+    }
+  }, [tokenClient, isConnected, hasTriedAutoConnect]);
 
   // Connect to Google Calendar
   const connect = useCallback(async () => {
@@ -386,41 +410,37 @@ export function useGoogleCalendar() {
     
     if (!gapiInited || !gisInited) {
       log('Initializing Google API first...');
-      const initialized = await initializeGoogleApi();
-      if (!initialized) {
+      const client = await initializeGoogleApi();
+      if (!client) {
         logError('Failed to initialize Google API');
         return;
       }
     }
 
-    if (tokenClient) {
+    // Use tokenClient from state, or the one returned by initializeGoogleApi
+    const activeClient = tokenClient;
+    if (activeClient) {
       log('Requesting access token...');
       // Check if we have a valid token
       const existingToken = window.gapi.client.getToken();
       log('Existing token:', existingToken ? 'yes' : 'no');
       
-      // Get saved email for login hint
-      const savedEmail = loadSavedEmail();
-      log('Saved email for hint:', savedEmail || 'none');
+      // Get saved email for login hint - default to office email
+      const savedEmail = loadSavedEmail() || 'office.tenarch@gmail.com';
+      log('Using login hint:', savedEmail);
       
       try {
         if (existingToken === null) {
-          // Request access token - use hint if we have saved email
-          if (savedEmail) {
-            log('Requesting token with login hint:', savedEmail);
-            tokenClient.requestAccessToken({ 
-              prompt: '', 
-              hint: savedEmail,
-              login_hint: savedEmail 
-            });
-          } else {
-            log('Requesting new token with consent prompt');
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-          }
+          // Request access token with login_hint to skip account chooser
+          log('Requesting token with login hint:', savedEmail);
+          activeClient.requestAccessToken({ 
+            prompt: '', 
+            login_hint: savedEmail 
+          });
         } else {
           // Token exists, try without consent first
           log('Requesting token refresh (no prompt)');
-          tokenClient.requestAccessToken({ prompt: '' });
+          activeClient.requestAccessToken({ prompt: '' });
         }
       } catch (e) {
         logError('Error requesting access token:', e);
