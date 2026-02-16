@@ -40,6 +40,7 @@ import {
   MessageSquare,
   Building2,
   X,
+  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
@@ -79,6 +80,7 @@ interface EmailListItemProps {
   ) => void;
   onToggleStar: (messageId: string, isStarred: boolean) => Promise<void>;
   onOpenChat: (message: GmailMessage) => void;
+  onOpenSenderChat?: (email: string, name: string) => void;
   onSetReminder: (message: GmailMessage) => void;
   onSetNote: (message: GmailMessage) => void;
   onMarkAsRead: (messageId: string, isRead: boolean) => Promise<void>;
@@ -119,6 +121,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
   onToggleSelection,
   onToggleStar,
   onOpenChat,
+  onOpenSenderChat,
   onSetReminder,
   onSetNote,
   onMarkAsRead,
@@ -320,10 +323,7 @@ export const EmailListItem = React.memo(function EmailListItemInner({
                   }}
                 >
                   <Bookmark
-                    className={cn(
-                      "h-3.5 w-3.5",
-                      isPinned && "fill-green-500",
-                    )}
+                    className={cn("h-3.5 w-3.5", isPinned && "fill-green-500")}
                   />
                 </Button>
               </TooltipTrigger>
@@ -347,7 +347,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
               <DropdownMenuContent align="end" className="rtl">
                 <DropdownMenuItem onClick={() => onOpenChat(message)}>
                   <MessageSquare className="h-4 w-4 ml-2" />
-                  פתח כשיחה
+                  פתח כשיחה (שרשור)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onOpenSenderChat?.(message.from, message.fromName)}>
+                  <Contact className="h-4 w-4 ml-2" />
+                  צ'אט לפי שולח
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onSetNote(message)}>
@@ -449,9 +453,14 @@ export const EmailListItem = React.memo(function EmailListItemInner({
 
           <span
             className={cn(
-              "font-medium truncate flex-shrink min-w-0",
+              "font-medium truncate flex-shrink min-w-0 cursor-pointer hover:text-primary hover:underline transition-colors",
               !message.isRead && "font-bold",
             )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSenderChat?.(message.from, message.fromName);
+            }}
+            title={`צ'אט עם ${message.fromName}`}
           >
             {message.fromName}
           </span>
@@ -603,7 +612,10 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             style={{ borderBottom: "2px solid #d4a843", color: "#1a2744" }}
           >
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-lg truncate" style={{ color: "#1a2744" }}>
+              <h3
+                className="font-bold text-lg truncate"
+                style={{ color: "#1a2744" }}
+              >
                 {message.subject || "(ללא נושא)"}
               </h3>
               <p className="text-sm" style={{ color: "#3d5a8a" }}>
@@ -621,7 +633,8 @@ export const EmailListItem = React.memo(function EmailListItemInner({
               onClick={(e) => {
                 e.stopPropagation();
                 setShowPreviewPopup(false);
-              }}>
+              }}
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -629,7 +642,11 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           <div
             className="overflow-y-auto p-4"
             dir="rtl"
-            style={{ maxHeight: "calc(70vh - 100px)", backgroundColor: "#ffffff", color: "#1a2744" }}
+            style={{
+              maxHeight: "calc(70vh - 100px)",
+              backgroundColor: "#ffffff",
+              color: "#1a2744",
+            }}
           >
             {hoverPreviewLoading ? (
               <div className="flex items-center justify-center py-10">
@@ -654,7 +671,10 @@ export const EmailListItem = React.memo(function EmailListItemInner({
           <div
             className="flex items-center gap-2 p-3"
             dir="rtl"
-            style={{ borderTop: "2px solid #d4a843", backgroundColor: "#ffffff" }}
+            style={{
+              borderTop: "2px solid #d4a843",
+              backgroundColor: "#ffffff",
+            }}
           >
             <Button
               size="sm"

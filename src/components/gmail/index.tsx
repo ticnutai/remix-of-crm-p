@@ -36,6 +36,9 @@ export { ComposeEmailDialog } from "./ComposeEmailDialog";
 // Export EmailThreadChat
 export { EmailThreadChat } from "./EmailThreadChat";
 
+// Export EmailSenderChatView
+export { EmailSenderChatView } from "./EmailSenderChatView";
+
 // Export ClientEmailsDialog
 export { ClientEmailsDialog } from "./ClientEmailsDialog";
 

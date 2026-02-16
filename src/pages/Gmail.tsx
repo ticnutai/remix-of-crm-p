@@ -157,6 +157,7 @@ import {
   EmailListItem,
   EmailDetailView,
   AdvancedSearchPanel,
+  EmailSenderChatView,
   DEFAULT_LABELS as IMPORTED_DEFAULT_LABELS,
   PRIORITY_CONFIG as IMPORTED_PRIORITY_CONFIG,
   type Client,
@@ -191,7 +192,7 @@ export default function Gmail() {
     reportSpam,
     batchModify,
   } = useGmailIntegration();
-  const { isConnected } = useGoogleServices();
+  const { isConnected, getAccessToken } = useGoogleServices();
   const { user } = useAuth();
   const { createTask: createTaskOriginal } = useTasks();
   const { createMeeting: createMeetingOriginal } = useMeetings();
@@ -248,10 +249,14 @@ export default function Gmail() {
   const [activeTab, setActiveTab] = useState("inbox");
 
   // Chat view state
-  const [viewMode, setViewMode] = useState<"list" | "chat">("list");
+  const [viewMode, setViewMode] = useState<"list" | "chat" | "sender-chat">("list");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [threadMessages, setThreadMessages] = useState<GmailMessage[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+
+  // Sender chat state
+  const [senderChatEmail, setSenderChatEmail] = useState<string>("");
+  const [senderChatName, setSenderChatName] = useState<string>("");
 
   // Client emails dialog
   const [isClientEmailsDialogOpen, setIsClientEmailsDialogOpen] =
@@ -321,13 +326,17 @@ export default function Gmail() {
       for (const [cid, info] of Object.entries(cidMap)) {
         let base64Data = info.data;
         if (!base64Data && info.attachmentId) {
-          base64Data = (await getAttachment(messageId, info.attachmentId)) ?? undefined;
+          base64Data =
+            (await getAttachment(messageId, info.attachmentId)) ?? undefined;
         }
         if (base64Data) {
           const dataUri = `data:${info.mimeType};base64,${base64Data}`;
           // Replace both cid:xxx and cid:xxx with possible URL encoding
           resolvedHtml = resolvedHtml.replace(
-            new RegExp(`cid:${cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "gi"),
+            new RegExp(
+              `cid:${cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+              "gi",
+            ),
             dataUri,
           );
         }
@@ -356,7 +365,11 @@ export default function Gmail() {
         const fullMsg = await getFullMessage(messageId);
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          const html = await resolveInlineImages(rawHtml, messageId, fullMsg.payload);
+          const html = await resolveInlineImages(
+            rawHtml,
+            messageId,
+            fullMsg.payload,
+          );
           setHoverPreviewHtml(html);
           if (html) {
             gmailCache.cacheBody(messageId, html);
@@ -659,7 +672,11 @@ export default function Gmail() {
 
         // Extract HTML body, resolve inline images, and cache it
         const rawHtml = extractHtmlBody(fullMsg.payload);
-        const html = await resolveInlineImages(rawHtml, selectedEmail.id, fullMsg.payload);
+        const html = await resolveInlineImages(
+          rawHtml,
+          selectedEmail.id,
+          fullMsg.payload,
+        );
         setEmailHtmlBody(html);
         if (html) {
           gmailCache.cacheBody(selectedEmail.id, html);
@@ -671,7 +688,13 @@ export default function Gmail() {
       setLoadingBody(false);
     };
     loadEmailData();
-  }, [selectedEmail?.id, getFullMessage, extractHtmlBody, gmailCache, resolveInlineImages]);
+  }, [
+    selectedEmail?.id,
+    getFullMessage,
+    extractHtmlBody,
+    gmailCache,
+    resolveInlineImages,
+  ]);
 
   // Scheduled send dispatcher - check every 30 seconds
   useEffect(() => {
@@ -1242,6 +1265,80 @@ export default function Gmail() {
     await loadThreadMessages(email.threadId);
   };
 
+  // Fetch emails for a specific sender (independent of main email list state)
+  const fetchEmailsForSender = useCallback(async (
+    email: string,
+    pageToken?: string,
+  ): Promise<{ messages: GmailMessage[]; nextPageToken: string | null }> => {
+    try {
+      const token = await getAccessToken(["gmail"]);
+      if (!token) return { messages: [], nextPageToken: null };
+
+      const query = `from:${email} OR to:${email}`;
+      let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`;
+      if (pageToken) {
+        url += `&pageToken=${pageToken}`;
+      }
+
+      const listResponse = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const listData = await listResponse.json();
+
+      if (!listData.messages) {
+        return { messages: [], nextPageToken: null };
+      }
+
+      // Fetch metadata for each message
+      const messagePromises = listData.messages.map(async (msg: any) => {
+        const msgResponse = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        return msgResponse.json();
+      });
+
+      const messagesData = await Promise.all(messagePromises);
+
+      const formattedMessages: GmailMessage[] = messagesData.map((msg: any) => {
+        const headers = msg.payload?.headers || [];
+        const getHeader = (name: string) =>
+          headers.find((h: any) => h.name === name)?.value || "";
+        const fromHeader = getHeader("From");
+        const fromMatch = fromHeader.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
+
+        return {
+          id: msg.id,
+          threadId: msg.threadId,
+          subject: getHeader("Subject"),
+          from: fromMatch?.[2] || fromHeader,
+          fromName: fromMatch?.[1] || fromMatch?.[2] || fromHeader,
+          to: getHeader("To").split(",").map((t: string) => t.trim()),
+          date: getHeader("Date"),
+          snippet: msg.snippet || "",
+          isRead: !msg.labelIds?.includes("UNREAD"),
+          isStarred: msg.labelIds?.includes("STARRED"),
+          labels: msg.labelIds || [],
+        };
+      });
+
+      return {
+        messages: formattedMessages,
+        nextPageToken: listData.nextPageToken || null,
+      };
+    } catch (error) {
+      console.error("Error fetching sender emails:", error);
+      return { messages: [], nextPageToken: null };
+    }
+  }, [getAccessToken]);
+
+  // Open sender chat view
+  const openSenderChat = useCallback((email: string, name: string) => {
+    setSenderChatEmail(email);
+    setSenderChatName(name);
+    setViewMode("sender-chat");
+  }, []);
+
   // Handle send reply in chat view
   const handleSendReply = async (
     message: string,
@@ -1655,6 +1752,59 @@ export default function Gmail() {
                   subject: fwdSubject,
                   quotedBody: fwdBody,
                   mode: "forward",
+                });
+                setIsComposeOpen(true);
+              }}
+            />
+          </Card>
+        )}
+
+        {/* Sender Chat View */}
+        {hasLoaded && viewMode === "sender-chat" && senderChatEmail && (
+          <Card className="h-[calc(100vh-180px)]">
+            <EmailSenderChatView
+              senderEmail={senderChatEmail}
+              senderName={senderChatName}
+              currentUserEmail={user?.email || ""}
+              fetchEmailsForSender={fetchEmailsForSender}
+              getFullMessage={getFullMessage}
+              extractHtmlBody={extractHtmlBody}
+              resolveInlineImages={resolveInlineImages}
+              onBack={() => {
+                setViewMode("list");
+                setSenderChatEmail("");
+                setSenderChatName("");
+              }}
+              onReply={(msg) => {
+                const replyTo =
+                  msg.from === user?.email ? msg.to[0] : msg.from;
+                setComposeData({
+                  to: replyTo,
+                  subject: msg.subject?.startsWith("Re:")
+                    ? msg.subject
+                    : `Re: ${msg.subject}`,
+                  quotedBody: `<br/><br/><div style="color:#666;font-size:13px">ב-${msg.date}, ${msg.fromName || msg.from} כתב/ה:</div><blockquote style="border-right:2px solid #ccc;padding-right:10px;color:#666">${msg.snippet || ""}</blockquote>`,
+                  mode: "reply",
+                  originalFrom: msg.from,
+                  originalDate: msg.date,
+                });
+                setIsComposeOpen(true);
+              }}
+              onForward={(msg) => {
+                setComposeData({
+                  to: "",
+                  subject: msg.subject?.startsWith("Fwd:")
+                    ? msg.subject
+                    : `Fwd: ${msg.subject}`,
+                  quotedBody: `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${msg.fromName || msg.from}<br/>נושא: ${msg.subject || ""}</div><br/><div>${msg.snippet || ""}</div>`,
+                  mode: "forward",
+                });
+                setIsComposeOpen(true);
+              }}
+              onCompose={(to) => {
+                setComposeData({
+                  to,
+                  subject: "",
                 });
                 setIsComposeOpen(true);
               }}
@@ -2203,6 +2353,7 @@ export default function Gmail() {
                                         }
                                         onToggleStar={toggleStar}
                                         onOpenChat={openChatView}
+                                        onOpenSenderChat={openSenderChat}
                                         onSetReminder={(msg) => {
                                           setSelectedEmailForAction(msg);
                                           setIsReminderDialogOpen(true);
