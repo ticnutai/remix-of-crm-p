@@ -130,7 +130,8 @@ function DroppableFolderWrapper({
       ref={setNodeRef}
       className={cn(
         "transition-all duration-150",
-        isOver && "ring-2 ring-primary/50 bg-primary/10 rounded-md scale-[1.02]",
+        isOver &&
+          "ring-2 ring-primary/50 bg-primary/10 rounded-md scale-[1.02]",
       )}
     >
       {children}
@@ -662,80 +663,80 @@ export function EmailFoldersPanel({
               const IconComp = getIconComponent(folder.icon);
               return (
                 <DroppableFolderWrapper key={folder.id} folderId={folder.id}>
-                <div
-                  className={cn(
-                    "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
-                    selectedFolderId === folder.id
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-muted",
-                  )}
-                  onClick={() => onSelectFolder(folder.id)}
-                >
-                  <div className="flex items-center gap-2">
-                    <IconComp
-                      className="h-4 w-4"
-                      style={{ color: folder.color }}
-                    />
-                    <span className="text-sm truncate">{folder.name}</span>
-                    {folder.email_count > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="h-5 px-1.5 text-[10px]"
-                      >
-                        {folder.email_count}
-                      </Badge>
+                  <div
+                    className={cn(
+                      "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
+                      selectedFolderId === folder.id
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted",
                     )}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="h-3.5 w-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {currentEmail && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddCurrentEmailToFolder(folder.id);
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            הוסף מייל נוכחי
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
+                    onClick={() => onSelectFolder(folder.id)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <IconComp
+                        className="h-4 w-4"
+                        style={{ color: folder.color }}
+                      />
+                      <span className="text-sm truncate">{folder.name}</span>
+                      {folder.email_count > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 px-1.5 text-[10px]"
+                        >
+                          {folder.email_count}
+                        </Badge>
                       )}
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingFolder(folder);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        ערוך
-                      </DropdownMenuItem>
-                      {!folder.is_system && (
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {currentEmail && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddCurrentEmailToFolder(folder.id);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              הוסף מייל נוכחי
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
                         <DropdownMenuItem
-                          className="text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteFolder(folder.id);
+                            setEditingFolder(folder);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          מחק
+                          <Pencil className="h-4 w-4 mr-2" />
+                          ערוך
                         </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                        {!folder.is_system && (
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteFolder(folder.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            מחק
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </DroppableFolderWrapper>
               );
             })
@@ -764,41 +765,41 @@ export function EmailFoldersPanel({
           ) : (
             clientFolders.map((folder) => (
               <DroppableFolderWrapper key={folder.id} folderId={folder.id}>
-              <div
-                className={cn(
-                  "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
-                  selectedFolderId === folder.id
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-muted",
-                )}
-                onClick={() => onSelectFolder(folder.id)}
-              >
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm truncate">{folder.name}</span>
-                  {folder.email_count > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="h-5 px-1.5 text-[10px]"
+                <div
+                  className={cn(
+                    "flex items-center justify-between group rounded-md px-2 py-1.5 cursor-pointer transition-colors",
+                    selectedFolderId === folder.id
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted",
+                  )}
+                  onClick={() => onSelectFolder(folder.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm truncate">{folder.name}</span>
+                    {folder.email_count > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="h-5 px-1.5 text-[10px]"
+                      >
+                        {folder.email_count}
+                      </Badge>
+                    )}
+                  </div>
+                  {currentEmail && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddCurrentEmailToFolder(folder.id);
+                      }}
                     >
-                      {folder.email_count}
-                    </Badge>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
                   )}
                 </div>
-                {currentEmail && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddCurrentEmailToFolder(folder.id);
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
               </DroppableFolderWrapper>
             ))
           )}

@@ -50,10 +50,7 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
-import {
-  EmailQuickActions,
-  EmailSmartSuggestions,
-} from "@/components/gmail";
+import { EmailQuickActions, EmailSmartSuggestions } from "@/components/gmail";
 import {
   type Client,
   type EmailLabel,
@@ -272,10 +269,7 @@ export const EmailDetailView = memo(function EmailDetailView({
                   }
                 >
                   <div
-                    className={cn(
-                      "h-3 w-3 rounded-full ml-2",
-                      label.color,
-                    )}
+                    className={cn("h-3 w-3 rounded-full ml-2", label.color)}
                   />
                   {label.name}
                 </DropdownMenuCheckboxItem>
@@ -288,9 +282,8 @@ export const EmailDetailView = memo(function EmailDetailView({
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
                 {
-                  PRIORITY_CONFIG[
-                    emailPriority[selectedEmail.id] || "none"
-                  ].icon
+                  PRIORITY_CONFIG[emailPriority[selectedEmail.id] || "none"]
+                    .icon
                 }
               </Button>
             </DropdownMenuTrigger>
@@ -427,16 +420,11 @@ export const EmailDetailView = memo(function EmailDetailView({
                   onClick={() => setPin(selectedEmail.id, !isPinned)}
                 >
                   <Bookmark
-                    className={cn(
-                      "h-4 w-4",
-                      isPinned && "fill-green-500",
-                    )}
+                    className={cn("h-4 w-4", isPinned && "fill-green-500")}
                   />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                {isPinned ? "הסר הצמדה" : "הצמד"}
-              </TooltipContent>
+              <TooltipContent>{isPinned ? "הסר הצמדה" : "הצמד"}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -619,9 +607,7 @@ export const EmailDetailView = memo(function EmailDetailView({
             return (
               label && (
                 <Badge key={labelId} variant="secondary" className="gap-1">
-                  <div
-                    className={cn("h-2 w-2 rounded-full", label.color)}
-                  />
+                  <div className={cn("h-2 w-2 rounded-full", label.color)} />
                   {label.name}
                 </Badge>
               )

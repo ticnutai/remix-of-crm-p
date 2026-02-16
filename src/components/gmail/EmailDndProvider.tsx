@@ -91,7 +91,10 @@ export function EmailDndProvider({
       {/* Drag overlay - floating preview of the email being dragged */}
       <DragOverlay dropAnimation={null}>
         {activeDrag ? (
-          <div className="bg-card border rounded-lg shadow-lg px-4 py-3 max-w-xs opacity-90" dir="rtl">
+          <div
+            className="bg-card border rounded-lg shadow-lg px-4 py-3 max-w-xs opacity-90"
+            dir="rtl"
+          >
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-primary" />
               <div className="truncate text-sm font-medium">

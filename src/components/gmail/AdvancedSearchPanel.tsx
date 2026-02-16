@@ -76,9 +76,7 @@ export const AdvancedSearchPanel = memo(function AdvancedSearchPanel({
     if (f.hasAttachments) parts.push("has:attachment");
     if (f.dateAfter) {
       const d = new Date(f.dateAfter);
-      parts.push(
-        `after:${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`,
-      );
+      parts.push(`after:${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`);
     }
     if (f.dateBefore) {
       const d = new Date(f.dateBefore);
@@ -138,11 +136,7 @@ export const AdvancedSearchPanel = memo(function AdvancedSearchPanel({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 relative"
-        >
+        <Button variant="outline" size="sm" className="gap-2 relative">
           <Filter className="h-4 w-4" />
           חיפוש מתקדם
           {isOpen ? (
@@ -245,7 +239,10 @@ export const AdvancedSearchPanel = memo(function AdvancedSearchPanel({
                   updateFilter("hasAttachments", !!checked)
                 }
               />
-              <label htmlFor="has-attachments" className="text-sm flex items-center gap-1 cursor-pointer">
+              <label
+                htmlFor="has-attachments"
+                className="text-sm flex items-center gap-1 cursor-pointer"
+              >
                 <Paperclip className="h-3.5 w-3.5" />
                 עם קבצים מצורפים
               </label>

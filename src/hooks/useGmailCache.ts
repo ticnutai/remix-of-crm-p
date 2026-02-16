@@ -24,10 +24,7 @@ export function useGmailCache() {
   const getCachedMessages = useCallback(
     (queryKey?: string): GmailMessage[] | undefined => {
       const key = queryKey || "inbox";
-      return queryClient.getQueryData<GmailMessage[]>([
-        GMAIL_CACHE_KEY,
-        key,
-      ]);
+      return queryClient.getQueryData<GmailMessage[]>([GMAIL_CACHE_KEY, key]);
     },
     [queryClient],
   );
@@ -37,8 +34,7 @@ export function useGmailCache() {
     (newMessages: GmailMessage[], queryKey?: string) => {
       const key = queryKey || "inbox";
       const existing =
-        queryClient.getQueryData<GmailMessage[]>([GMAIL_CACHE_KEY, key]) ||
-        [];
+        queryClient.getQueryData<GmailMessage[]>([GMAIL_CACHE_KEY, key]) || [];
       const existingIds = new Set(existing.map((m) => m.id));
       const deduped = newMessages.filter((m) => !existingIds.has(m.id));
       queryClient.setQueryData(

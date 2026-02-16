@@ -111,10 +111,7 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
         if (profileRes.ok) {
           const profile = await profileRes.json();
           lastHistoryIdRef.current = profile.historyId;
-          localStorage.setItem(
-            "gmail_last_history_id",
-            profile.historyId,
-          );
+          localStorage.setItem("gmail_last_history_id", profile.historyId);
         }
         return;
       }
@@ -135,10 +132,7 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
           if (profileRes.ok) {
             const profile = await profileRes.json();
             lastHistoryIdRef.current = profile.historyId;
-            localStorage.setItem(
-              "gmail_last_history_id",
-              profile.historyId,
-            );
+            localStorage.setItem("gmail_last_history_id", profile.historyId);
           }
         }
         return;
@@ -149,10 +143,7 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
       // Update history ID
       if (historyData.historyId) {
         lastHistoryIdRef.current = historyData.historyId;
-        localStorage.setItem(
-          "gmail_last_history_id",
-          historyData.historyId,
-        );
+        localStorage.setItem("gmail_last_history_id", historyData.historyId);
       }
 
       // Count new messages added to inbox
@@ -201,8 +192,7 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
                 newCount === 1
                   ? `הודעה חדשה מ-${fromName}`
                   : `${newCount} הודעות חדשות`;
-              const body =
-                newCount === 1 ? subject : `כולל: ${subject}`;
+              const body = newCount === 1 ? subject : `כולל: ${subject}`;
 
               showNotification(title, body);
             }
@@ -249,7 +239,13 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
         }
       };
     }
-  }, [enabled, notificationsEnabled, permissionGranted, checkForNewEmails, pollIntervalMs]);
+  }, [
+    enabled,
+    notificationsEnabled,
+    permissionGranted,
+    checkForNewEmails,
+    pollIntervalMs,
+  ]);
 
   return {
     notificationsEnabled,
