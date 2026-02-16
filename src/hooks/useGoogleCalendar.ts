@@ -269,7 +269,6 @@ export function useGoogleCalendar() {
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: config.clientId,
         scope: SCOPES,
-        hint: savedEmail,
         login_hint: savedEmail,
         error_callback: (error: any) => {
           logError('Token Client error_callback:', error);
@@ -408,17 +407,18 @@ export function useGoogleCalendar() {
     log('connect() called');
     log('gapiInited:', gapiInited, 'gisInited:', gisInited);
     
+    let returnedClient: any = null;
     if (!gapiInited || !gisInited) {
       log('Initializing Google API first...');
-      const client = await initializeGoogleApi();
-      if (!client) {
+      returnedClient = await initializeGoogleApi();
+      if (!returnedClient) {
         logError('Failed to initialize Google API');
         return;
       }
     }
 
-    // Use tokenClient from state, or the one returned by initializeGoogleApi
-    const activeClient = tokenClient;
+    // Use returned client (fresh) or tokenClient from state
+    const activeClient = returnedClient || tokenClient;
     if (activeClient) {
       log('Requesting access token...');
       // Check if we have a valid token
