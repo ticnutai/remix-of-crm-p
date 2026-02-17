@@ -3020,7 +3020,7 @@ export default function Gmail() {
                 flexDirection: "column",
                 border: "3px solid #d4a843",
                 borderRadius: "12px",
-                background: "var(--background, #fff)",
+                background: "hsl(var(--background) / 1)",
                 opacity: 1,
                 isolation: "isolate",
                 boxShadow:
@@ -3163,7 +3163,7 @@ export default function Gmail() {
                   style={{
                     padding: "14px 16px",
                     direction: "rtl",
-                    background: "var(--background, #fff)",
+                    background: "hsl(var(--background) / 1)",
                     opacity: 1,
                   }}
                 >
