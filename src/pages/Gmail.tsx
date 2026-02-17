@@ -2983,11 +2983,11 @@ export default function Gmail() {
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && ReactDOM.createPortal(
           <>
-            {/* ── Light backdrop — click to close, but not blocking the view ── */}
+            {/* ── Solid backdrop — fully blocks background content ── */}
             <div
               className="fixed inset-0 z-[9998]"
               style={{
-                background: "rgba(0,0,0,0.35)",
+                background: "#0f172a",
               }}
               onClick={() => {
                 setShowPreviewDialog(false);
@@ -3021,6 +3021,8 @@ export default function Gmail() {
                 border: "3px solid #d4a843",
                 borderRadius: "12px",
                 background: "var(--background, #fff)",
+                opacity: 1,
+                isolation: "isolate",
                 boxShadow:
                   "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
               }}
@@ -3157,7 +3159,14 @@ export default function Gmail() {
                 }}
                 dir="rtl"
               >
-                <div style={{ padding: "14px 16px", direction: "rtl" }}>
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    direction: "rtl",
+                    background: "var(--background, #fff)",
+                    opacity: 1,
+                  }}
+                >
                   {hoverPreviewLoading ? (
                     <div
                       style={{
