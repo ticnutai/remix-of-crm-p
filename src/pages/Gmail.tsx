@@ -1555,25 +1555,59 @@ export default function Gmail() {
           return { messages: [], nextPageToken: null };
         }
 
-        // Fetch metadata for each message (batched to avoid 429)
+        // Use Gmail Batch API for fast fetch (single HTTP request for all messages)
         const allMsgIds = listData.messages;
-        const BATCH_SIZE = 8;
-        const messagesData: any[] = [];
+        const boundary = "batch_sender_" + Date.now();
+        let messagesData: any[] = [];
 
-        for (let i = 0; i < allMsgIds.length; i += BATCH_SIZE) {
-          const batch = allMsgIds.slice(i, i + BATCH_SIZE);
-          const batchPromises = batch.map(async (msg: any) => {
-            const msgResponse = await fetch(
+        try {
+          const batchBody =
+            allMsgIds
+              .map(
+                (msg: any, i: number) =>
+                  `--${boundary}\r\nContent-Type: application/http\r\nContent-ID: <item${i}>\r\n\r\nGET /gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date\r\n`,
+              )
+              .join("\r\n") + `\r\n--${boundary}--`;
+
+          const batchResponse = await fetch(
+            "https://www.googleapis.com/batch/gmail/v1",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": `multipart/mixed; boundary=${boundary}`,
+              },
+              body: batchBody,
+            },
+          );
+          const responseText = await batchResponse.text();
+          const responseBoundary = responseText
+            .split("\r\n")[0]
+            .trim()
+            .replace(/^--/, "");
+          const parts = responseText.split(`--${responseBoundary}`);
+          for (const part of parts) {
+            if (part.trim() === "" || part.trim() === "--") continue;
+            const jsonMatch = part.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              try {
+                const parsed = JSON.parse(jsonMatch[0]);
+                if (parsed.id) messagesData.push(parsed);
+              } catch {
+                /* skip */
+              }
+            }
+          }
+        } catch {
+          // Fallback to parallel individual fetches
+          const promises = allMsgIds.map(async (msg: any) => {
+            const r = await fetch(
               `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
               { headers: { Authorization: `Bearer ${token}` } },
             );
-            return msgResponse.json();
+            return r.json();
           });
-          const batchResults = await Promise.all(batchPromises);
-          messagesData.push(...batchResults);
-          if (i + BATCH_SIZE < allMsgIds.length) {
-            await new Promise((r) => setTimeout(r, 100));
-          }
+          messagesData = await Promise.all(promises);
         }
 
         const formattedMessages: GmailMessage[] = messagesData.map(
@@ -1863,7 +1897,7 @@ export default function Gmail() {
         : displayDensity === "comfortable"
           ? 72
           : 96,
-    overscan: 8,
+    overscan: 15,
   });
 
   // Handle drag & drop email to folder
@@ -2948,405 +2982,419 @@ export default function Gmail() {
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && (
           <>
-          {/* ── Backdrop overlay / mask ── */}
-          <div
-            className="fixed inset-0 z-[400] animate-in fade-in-0 duration-200"
-            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
-            onClick={() => {
-              setShowPreviewDialog(false);
-              setPreviewMessage(null);
-              setHoverPreviewId(null);
-              setHoverPreviewHtml(null);
-            }}
-          />
-          <div
-            className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
-            style={{
-              position: "fixed",
-              top: Math.max(
-                56,
-                Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
-              ),
-              left: Math.max(
-                4,
-                Math.min(previewRect.x, window.innerWidth - previewRect.w - 4),
-              ),
-              width: Math.min(previewRect.w, window.innerWidth - 8),
-              height: Math.min(previewRect.h, window.innerHeight - 56),
-              display: "flex",
-              flexDirection: "column",
-              border: "3px solid #d4a843",
-              borderRadius: "12px",
-              background: "var(--background, #fff)",
-              boxShadow:
-                "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
-            }}
-            dir="rtl"
-            onMouseEnter={cancelPreviewClose}
-            onMouseLeave={schedulePreviewClose}
-          >
-            {/* ── Draggable Header ────────────────────────────── */}
+            {/* ── Backdrop overlay / mask ── */}
             <div
+              className="fixed inset-0 z-[400] animate-in fade-in-0 duration-200"
               style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                padding: "10px 14px",
-                borderBottom: "2px solid #d4a843",
-                cursor: "move",
-                userSelect: "none",
-                flexShrink: 0,
-                background:
-                  "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
-                borderTopLeftRadius: "9px",
-                borderTopRightRadius: "9px",
+                background: "rgba(0,0,0,0.5)",
+                backdropFilter: "blur(2px)",
               }}
-              onMouseDown={onDragStart}
+              onClick={() => {
+                setShowPreviewDialog(false);
+                setPreviewMessage(null);
+                setHoverPreviewId(null);
+                setHoverPreviewHtml(null);
+              }}
+            />
+            <div
+              className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
+              style={{
+                position: "fixed",
+                top: Math.max(
+                  56,
+                  Math.min(
+                    previewRect.y,
+                    window.innerHeight - previewRect.h - 4,
+                  ),
+                ),
+                left: Math.max(
+                  4,
+                  Math.min(
+                    previewRect.x,
+                    window.innerWidth - previewRect.w - 4,
+                  ),
+                ),
+                width: Math.min(previewRect.w, window.innerWidth - 8),
+                height: Math.min(previewRect.h, window.innerHeight - 56),
+                display: "flex",
+                flexDirection: "column",
+                border: "3px solid #d4a843",
+                borderRadius: "12px",
+                background: "var(--background, #fff)",
+                boxShadow:
+                  "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
+              }}
+              dir="rtl"
+              onMouseEnter={cancelPreviewClose}
+              onMouseLeave={schedulePreviewClose}
             >
+              {/* ── Draggable Header ────────────────────────────── */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  borderBottom: "2px solid #d4a843",
+                  cursor: "move",
+                  userSelect: "none",
+                  flexShrink: 0,
+                  background:
+                    "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
+                  borderTopLeftRadius: "9px",
+                  borderTopRightRadius: "9px",
+                }}
+                onMouseDown={onDragStart}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <GripVertical
+                    className="h-4 w-4 text-muted-foreground flex-shrink-0"
+                    style={{ opacity: 0.4 }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.95rem",
+                        lineHeight: 1.3,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        textAlign: "right",
+                        margin: 0,
+                      }}
+                    >
+                      {previewMessage.subject || "(ללא נושא)"}
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: "0.82rem",
+                        color: "var(--muted-foreground, #888)",
+                        margin: "2px 0 0 0",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        textAlign: "right",
+                      }}
+                    >
+                      {previewMessage.fromName} &lt;{previewMessage.from}&gt;
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "0.72rem",
+                        color: "var(--muted-foreground, #888)",
+                        margin: "1px 0 0 0",
+                        textAlign: "right",
+                      }}
+                    >
+                      {formatDate(previewMessage.date)}
+                      {!previewMessage.isRead && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            backgroundColor: "#3b82f6",
+                            marginRight: 6,
+                            verticalAlign: "middle",
+                          }}
+                          title="לא נקרא"
+                        />
+                      )}
+                      {previewMessage.hasAttachments && (
+                        <span
+                          style={{ marginRight: 6, fontSize: "0.72rem" }}
+                          title="קבצים מצורפים"
+                        >
+                          📎
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closePreview();
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    padding: 4,
+                    borderRadius: 4,
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    opacity: 0.6,
+                    transition: "opacity 0.2s",
+                    marginRight: 4,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.opacity =
+                      "0.6";
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* ── Scrollable Body ─────────────────────────────── */}
+              <ScrollArea
+                style={{
+                  flex: 1,
+                  minHeight: 0,
+                }}
+                dir="rtl"
+              >
+                <div style={{ padding: "14px 16px", direction: "rtl" }}>
+                  {hoverPreviewLoading ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "32px 0",
+                        gap: 8,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          border: "3px solid #d4a843",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.7s linear infinite",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--muted-foreground, #888)",
+                        }}
+                      >
+                        טוען תוכן...
+                      </span>
+                    </div>
+                  ) : hoverPreviewHtml ? (
+                    <div
+                      className="prose prose-sm max-w-none dark:prose-invert"
+                      style={{
+                        overflowX: "hidden",
+                        wordBreak: "break-word",
+                        lineHeight: 1.6,
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                          ALLOW_UNKNOWN_PROTOCOLS: true,
+                        }),
+                      }}
+                    />
+                  ) : (
+                    <p
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        color: "var(--muted-foreground, #888)",
+                        fontSize: "0.88rem",
+                        lineHeight: 1.7,
+                        margin: 0,
+                      }}
+                    >
+                      {previewMessage.snippet || "אין תוכן לתצוגה"}
+                    </p>
+                  )}
+                </div>
+              </ScrollArea>
+
+              {/* ── Footer Actions ──────────────────────────────── */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
-                  flex: 1,
-                  minWidth: 0,
+                  gap: "6px",
+                  padding: "8px 12px",
+                  borderTop: "2px solid #d4a843",
+                  flexShrink: 0,
+                  background:
+                    "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
+                  borderBottomLeftRadius: "9px",
+                  borderBottomRightRadius: "9px",
                 }}
+                dir="rtl"
               >
-                <GripVertical
-                  className="h-4 w-4 text-muted-foreground flex-shrink-0"
-                  style={{ opacity: 0.4 }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "0.95rem",
-                      lineHeight: 1.3,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textAlign: "right",
-                      margin: 0,
-                    }}
-                  >
-                    {previewMessage.subject || "(ללא נושא)"}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "0.82rem",
-                      color: "var(--muted-foreground, #888)",
-                      margin: "2px 0 0 0",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      textAlign: "right",
-                    }}
-                  >
-                    {previewMessage.fromName} &lt;{previewMessage.from}&gt;
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "0.72rem",
-                      color: "var(--muted-foreground, #888)",
-                      margin: "1px 0 0 0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {formatDate(previewMessage.date)}
-                    {!previewMessage.isRead && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          width: 7,
-                          height: 7,
-                          borderRadius: "50%",
-                          backgroundColor: "#3b82f6",
-                          marginRight: 6,
-                          verticalAlign: "middle",
-                        }}
-                        title="לא נקרא"
-                      />
-                    )}
-                    {previewMessage.hasAttachments && (
-                      <span
-                        style={{ marginRight: 6, fontSize: "0.72rem" }}
-                        title="קבצים מצורפים"
-                      >
-                        📎
-                      </span>
-                    )}
-                  </p>
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
+                  onClick={() => {
+                    closePreview();
+                    setSelectedEmail(previewMessage);
+                    if (!previewMessage.isRead) {
+                      markAsRead(previewMessage.id, true).then(() =>
+                        handleRefresh(),
+                      );
+                    }
+                  }}
+                >
+                  פתח מייל מלא
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
+                  onClick={() => {
+                    closePreview();
+                    const replySubject = previewMessage.subject?.startsWith(
+                      "Re:",
+                    )
+                      ? previewMessage.subject
+                      : `Re: ${previewMessage.subject}`;
+                    setDraftData({
+                      to: previewMessage.from,
+                      subject: replySubject,
+                    });
+                    setIsComposeOpen(true);
+                  }}
+                >
+                  <Reply className="h-3 w-3 ml-1" />
+                  השב
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
+                  onClick={() => {
+                    closePreview();
+                    const fwdSubject = previewMessage.subject?.startsWith(
+                      "Fwd:",
+                    )
+                      ? previewMessage.subject
+                      : `Fwd: ${previewMessage.subject}`;
+                    setDraftData({ to: "", subject: fwdSubject });
+                    setIsComposeOpen(true);
+                  }}
+                >
+                  <Forward className="h-3 w-3 ml-1" />
+                  העבר
+                </Button>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closePreview();
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
+
+              {/* ── Resize Handles (8 directions) ───────────────── */}
+              {/* Edges */}
+              <div
                 style={{
-                  padding: 4,
-                  borderRadius: 4,
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  opacity: 0.6,
-                  transition: "opacity 0.2s",
-                  marginRight: 4,
+                  position: "absolute",
+                  top: 0,
+                  left: 12,
+                  right: 12,
+                  height: 5,
+                  cursor: "n-resize",
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                onMouseDown={(e) => onEdgeResizeStart(e, "t")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 12,
+                  right: 12,
+                  height: 5,
+                  cursor: "s-resize",
                 }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.6";
+                onMouseDown={(e) => onEdgeResizeStart(e, "b")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 12,
+                  bottom: 12,
+                  width: 5,
+                  cursor: "w-resize",
                 }}
-              >
-                <X className="h-4 w-4" />
-              </button>
+                onMouseDown={(e) => onEdgeResizeStart(e, "l")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 12,
+                  bottom: 12,
+                  width: 5,
+                  cursor: "e-resize",
+                }}
+                onMouseDown={(e) => onEdgeResizeStart(e, "r")}
+              />
+              {/* Corners */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: 14,
+                  height: 14,
+                  cursor: "nw-resize",
+                  borderLeft: "3px solid #d4a843",
+                  borderTop: "3px solid #d4a843",
+                  borderTopLeftRadius: 8,
+                }}
+                onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 14,
+                  height: 14,
+                  cursor: "ne-resize",
+                  borderRight: "3px solid #d4a843",
+                  borderTop: "3px solid #d4a843",
+                  borderTopRightRadius: 8,
+                }}
+                onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  width: 14,
+                  height: 14,
+                  cursor: "sw-resize",
+                  borderLeft: "3px solid #d4a843",
+                  borderBottom: "3px solid #d4a843",
+                  borderBottomLeftRadius: 8,
+                }}
+                onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: 0,
+                  width: 14,
+                  height: 14,
+                  cursor: "se-resize",
+                  borderRight: "3px solid #d4a843",
+                  borderBottom: "3px solid #d4a843",
+                  borderBottomRightRadius: 8,
+                }}
+                onMouseDown={(e) => onEdgeResizeStart(e, "br")}
+              />
             </div>
-
-            {/* ── Scrollable Body ─────────────────────────────── */}
-            <ScrollArea
-              style={{
-                flex: 1,
-                minHeight: 0,
-              }}
-              dir="rtl"
-            >
-              <div style={{ padding: "14px 16px", direction: "rtl" }}>
-                {hoverPreviewLoading ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "32px 0",
-                      gap: 8,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        border: "3px solid #d4a843",
-                        borderTopColor: "transparent",
-                        borderRadius: "50%",
-                        animation: "spin 0.7s linear infinite",
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "var(--muted-foreground, #888)",
-                      }}
-                    >
-                      טוען תוכן...
-                    </span>
-                  </div>
-                ) : hoverPreviewHtml ? (
-                  <div
-                    className="prose prose-sm max-w-none dark:prose-invert"
-                    style={{
-                      overflowX: "hidden",
-                      wordBreak: "break-word",
-                      lineHeight: 1.6,
-                    }}
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                        ALLOW_UNKNOWN_PROTOCOLS: true,
-                      }),
-                    }}
-                  />
-                ) : (
-                  <p
-                    style={{
-                      whiteSpace: "pre-wrap",
-                      color: "var(--muted-foreground, #888)",
-                      fontSize: "0.88rem",
-                      lineHeight: 1.7,
-                      margin: 0,
-                    }}
-                  >
-                    {previewMessage.snippet || "אין תוכן לתצוגה"}
-                  </p>
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* ── Footer Actions ──────────────────────────────── */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 12px",
-                borderTop: "2px solid #d4a843",
-                flexShrink: 0,
-                background:
-                  "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
-                borderBottomLeftRadius: "9px",
-                borderBottomRightRadius: "9px",
-              }}
-              dir="rtl"
-            >
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                onClick={() => {
-                  closePreview();
-                  setSelectedEmail(previewMessage);
-                  if (!previewMessage.isRead) {
-                    markAsRead(previewMessage.id, true).then(() =>
-                      handleRefresh(),
-                    );
-                  }
-                }}
-              >
-                פתח מייל מלא
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                onClick={() => {
-                  closePreview();
-                  const replySubject = previewMessage.subject?.startsWith("Re:")
-                    ? previewMessage.subject
-                    : `Re: ${previewMessage.subject}`;
-                  setDraftData({
-                    to: previewMessage.from,
-                    subject: replySubject,
-                  });
-                  setIsComposeOpen(true);
-                }}
-              >
-                <Reply className="h-3 w-3 ml-1" />
-                השב
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                onClick={() => {
-                  closePreview();
-                  const fwdSubject = previewMessage.subject?.startsWith("Fwd:")
-                    ? previewMessage.subject
-                    : `Fwd: ${previewMessage.subject}`;
-                  setDraftData({ to: "", subject: fwdSubject });
-                  setIsComposeOpen(true);
-                }}
-              >
-                <Forward className="h-3 w-3 ml-1" />
-                העבר
-              </Button>
-            </div>
-
-            {/* ── Resize Handles (8 directions) ───────────────── */}
-            {/* Edges */}
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 12,
-                right: 12,
-                height: 5,
-                cursor: "n-resize",
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "t")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 12,
-                right: 12,
-                height: 5,
-                cursor: "s-resize",
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "b")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 12,
-                bottom: 12,
-                width: 5,
-                cursor: "w-resize",
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "l")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                right: 0,
-                top: 12,
-                bottom: 12,
-                width: 5,
-                cursor: "e-resize",
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "r")}
-            />
-            {/* Corners */}
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: 14,
-                height: 14,
-                cursor: "nw-resize",
-                borderLeft: "3px solid #d4a843",
-                borderTop: "3px solid #d4a843",
-                borderTopLeftRadius: 8,
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 14,
-                height: 14,
-                cursor: "ne-resize",
-                borderRight: "3px solid #d4a843",
-                borderTop: "3px solid #d4a843",
-                borderTopRightRadius: 8,
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                width: 14,
-                height: 14,
-                cursor: "sw-resize",
-                borderLeft: "3px solid #d4a843",
-                borderBottom: "3px solid #d4a843",
-                borderBottomLeftRadius: 8,
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                width: 14,
-                height: 14,
-                cursor: "se-resize",
-                borderRight: "3px solid #d4a843",
-                borderBottom: "3px solid #d4a843",
-                borderBottomRightRadius: 8,
-              }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "br")}
-            />
-          </div>
           </>
         )}
 

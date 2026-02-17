@@ -366,7 +366,12 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
+          <PopoverContent
+            className="w-[300px] p-0 overflow-hidden"
+            dir="rtl"
+            align="end"
+            collisionPadding={16}
+          >
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -478,7 +483,12 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
+          <PopoverContent
+            className="w-[300px] p-0 overflow-hidden"
+            dir="rtl"
+            align="end"
+            collisionPadding={16}
+          >
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <FolderOpen className="h-5 w-5 text-primary" />
@@ -609,7 +619,12 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
+          <PopoverContent
+            className="w-[300px] p-0 overflow-hidden"
+            dir="rtl"
+            align="end"
+            collisionPadding={16}
+          >
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Tag className="h-5 w-5 text-primary" />
@@ -877,17 +892,26 @@ export function ClientsFilterStrip({
             </Badge>
           )}
           {filters.categories.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+            <Badge
+              variant="secondary"
+              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
+            >
               {filters.categories.length} קטגוריות
             </Badge>
           )}
           {filters.tags.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+            <Badge
+              variant="secondary"
+              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
+            >
               {filters.tags.length} תגיות
             </Badge>
           )}
           {filters.stages.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+            <Badge
+              variant="secondary"
+              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
+            >
               {filters.stages.length} שלבים
             </Badge>
           )}
@@ -908,12 +932,18 @@ export function ClientsFilterStrip({
             </Badge>
           )}
           {filters.hasTasks === true && (
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0"
+            >
               משימות
             </Badge>
           )}
           {filters.hasMeetings === true && (
-            <Badge variant="secondary" className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0">
+            <Badge
+              variant="secondary"
+              className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0"
+            >
               פגישות
             </Badge>
           )}
