@@ -2947,6 +2947,18 @@ export default function Gmail() {
             ScrollArea for reliable scroll, fade-in, all original buttons
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && (
+          <>
+          {/* ── Backdrop overlay / mask ── */}
+          <div
+            className="fixed inset-0 z-[400] animate-in fade-in-0 duration-200"
+            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
+            onClick={() => {
+              setShowPreviewDialog(false);
+              setPreviewMessage(null);
+              setHoverPreviewId(null);
+              setHoverPreviewHtml(null);
+            }}
+          />
           <div
             className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
             style={{
@@ -3335,6 +3347,7 @@ export default function Gmail() {
               onMouseDown={(e) => onEdgeResizeStart(e, "br")}
             />
           </div>
+          </>
         )}
 
         {/* Keyboard Shortcuts Help */}
