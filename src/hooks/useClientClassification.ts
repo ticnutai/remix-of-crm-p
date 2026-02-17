@@ -329,7 +329,9 @@ export function useClientClassification() {
       return clients || [];
     } catch (err) {
       console.error('Error filtering clients:', err);
-      return [];
+      // Return null on error so the caller knows the filter failed
+      // (as opposed to returning [] which looks like "no matches")
+      return null;
     }
   }, []);
 

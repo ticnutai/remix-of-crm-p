@@ -148,7 +148,7 @@ export function useDataTableSync() {
         supabase
           .from("clients")
           .select(
-            "id, name, email, phone, company, address, status, notes, created_at, custom_data",
+            "id, name, email, phone, company, address, status, notes, created_at, custom_data, category_id",
           )
           .order("name")
           .limit(5000), // Load all clients
@@ -167,6 +167,7 @@ export function useDataTableSync() {
           notes: c.notes || "",
           created_at: c.created_at,
           custom_data: c.custom_data || {},
+          category_id: c.category_id || null,
         }));
         setClients(clientsList);
 
@@ -625,6 +626,7 @@ export function useDataTableSync() {
           status: "active",
           notes: "",
           created_at: newClient.created_at,
+          category_id: newClient.category_id || null,
         };
 
         setClients((prev) => [syncedClient, ...prev]);

@@ -442,7 +442,9 @@ export default function DataTablePro() {
     icon: string;
   }
   const [categories, setCategories] = useState<ClientCategory[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIdsLocal] = useState<string[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIdsLocal] = useState<string[]>(
+    [],
+  );
   const [showCategories, setShowCategoriesLocal] = useState(false);
 
   // Cloud-persisted filter state (synced with Clients page)
@@ -3089,8 +3091,26 @@ export default function DataTablePro() {
   );
 
   // Combined client data filtering: filter panel + categories
+  // Always start from dbClients (which has proper category_id from the DB fetch),
+  // then apply classification filter as intersection (by ID), then category filter.
+  // This ensures category_id is always available for filtering, even when
+  // filteredClients comes from a separate query or is empty due to errors.
   const displayClients = useMemo(() => {
-    let clients = filteredClients ?? dbClients;
+    let clients = dbClients;
+
+    // Apply classification/advanced filter if active (intersection by ID)
+    if (filteredClients !== null && filteredClients.length > 0) {
+      const allowedIds = new Set(filteredClients.map((c) => c.id));
+      clients = clients.filter((c) => allowedIds.has(c.id));
+    } else if (filteredClients !== null && filteredClients.length === 0) {
+      // Classification filter is active but matched nothing — show empty
+      // only if there are no category filters (to avoid confusing UX)
+      if (selectedCategoryIds.length === 0) {
+        return [];
+      }
+      // If categories are selected, ignore empty classification filter and
+      // filter directly from dbClients by category instead
+    }
 
     // Apply category filter if any selected
     if (selectedCategoryIds.length > 0) {
@@ -3105,9 +3125,15 @@ export default function DataTablePro() {
   }, [filteredClients, dbClients, selectedCategoryIds]);
 
   // Calculate client count per category for sidebar
+  // Always use dbClients as base so category_id is present
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const sourceClients = filteredClients || dbClients;
+    let sourceClients = dbClients;
+    // If classification filter is active, restrict counts to filtered set
+    if (filteredClients !== null && filteredClients.length > 0) {
+      const allowedIds = new Set(filteredClients.map((c) => c.id));
+      sourceClients = dbClients.filter((c) => allowedIds.has(c.id));
+    }
     sourceClients.forEach((client) => {
       if (client.category_id) {
         counts[client.category_id] = (counts[client.category_id] || 0) + 1;
@@ -3592,7 +3618,10 @@ export default function DataTablePro() {
                         )
                       ) {
                         const filtered = await filterClients(filter);
-                        setFilteredClients(filtered as SyncedClient[]);
+                        // null means error — don't apply filter
+                        setFilteredClients(
+                          filtered ? (filtered as SyncedClient[]) : null,
+                        );
                       } else {
                         setFilteredClients(null);
                       }
