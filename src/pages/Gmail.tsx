@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import ReactDOM from "react-dom";
 import DOMPurify from "dompurify";
 import { AppLayout } from "@/components/layout";
 import {
@@ -2980,11 +2981,11 @@ export default function Gmail() {
             Features: draggable, resizable (8 handles), delayed close,
             ScrollArea for reliable scroll, fade-in, all original buttons
         ═══════════════════════════════════════════════════════════════ */}
-        {showPreviewDialog && previewMessage && (
+        {showPreviewDialog && previewMessage && ReactDOM.createPortal(
           <>
-            {/* ── Solid backdrop overlay — fully opaque, nothing visible behind ── */}
+            {/* ── Solid backdrop overlay — fully opaque via Portal to cover sidebar too ── */}
             <div
-              className="fixed inset-0 z-[400]"
+              className="fixed inset-0 z-[9998]"
               style={{
                 background: "#1a1a2e",
               }}
@@ -2996,7 +2997,7 @@ export default function Gmail() {
               }}
             />
             <div
-              className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
+              className="fixed z-[9999] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
               style={{
                 position: "fixed",
                 top: Math.max(
@@ -3394,7 +3395,8 @@ export default function Gmail() {
                 onMouseDown={(e) => onEdgeResizeStart(e, "br")}
               />
             </div>
-          </>
+          </>,
+          document.body
         )}
 
         {/* Keyboard Shortcuts Help */}
