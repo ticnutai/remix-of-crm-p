@@ -234,6 +234,7 @@ export default function Gmail() {
     null,
   );
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const detailScrollRef = React.useRef<HTMLDivElement>(null);
   const { currentDate: scrollCurrentDate, isScrolling } = useScrollDateTracker(
     scrollContainerRef as React.RefObject<HTMLElement>,
     messages,
@@ -897,6 +898,13 @@ export default function Gmail() {
       setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
     });
   }, [selectedFolderId]);
+
+  // Reset detail scroll position when switching emails
+  useEffect(() => {
+    if (detailScrollRef.current) {
+      detailScrollRef.current.scrollTop = 0;
+    }
+  }, [selectedEmail?.id]);
 
   // Load attachments + body in a single API call when an email is selected (with body cache)
   useEffect(() => {
@@ -2682,8 +2690,9 @@ export default function Gmail() {
                     {selectedEmail ? (
                       /* Email Detail View - full overlay so no list bleeds through */
                       <div
+                        ref={detailScrollRef}
                         className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
-                        style={{ overflowAnchor: "none" }}
+                        style={{ contain: "layout style", overflowAnchor: "none" }}
                       >
                         <EmailDetailView
                           selectedEmail={selectedEmail}

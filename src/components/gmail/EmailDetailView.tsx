@@ -1,5 +1,5 @@
 // EmailDetailView - Extracted from Gmail.tsx for better maintainability
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState, useEffect } from "react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -236,9 +236,19 @@ export const EmailDetailView = memo(function EmailDetailView({
     });
   }, [emailHtmlBody]);
 
+  // Lazy-load suggestions/quick-actions after body settles to prevent layout shift
+  const [showExtras, setShowExtras] = useState(false);
+  useEffect(() => {
+    setShowExtras(false);
+    if (!loadingBody && emailHtmlBody) {
+      const id = requestAnimationFrame(() => setShowExtras(true));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [selectedEmail.id, loadingBody, emailHtmlBody]);
+
   return (
     <div
-      className="p-4 bg-background relative z-10 min-h-[600px]"
+      className="p-4 bg-background relative z-10"
       dir="rtl"
     >
       <div className="flex items-center justify-between mb-4">
@@ -674,30 +684,7 @@ export const EmailDetailView = memo(function EmailDetailView({
           </div>
         </div>
 
-        {/* Email Quick Actions */}
-        <div style={{ overflowAnchor: "none" }}>
-          <EmailQuickActions
-            email={selectedEmail}
-            clients={clients}
-            linkedClientId={linkedClientId}
-            autoDetectedClient={autoDetectedClient}
-            onCreateTask={onCreateTask}
-            onCreateMeeting={onCreateMeeting}
-            onCreateReminder={onCreateReminder}
-            onLinkClient={onLinkClient}
-          />
-        </div>
-
-        {/* Smart Suggestions */}
-        <div style={{ overflowAnchor: "none" }}>
-          <EmailSmartSuggestions
-            email={selectedEmail}
-            clients={clients}
-            onCreateTask={onCreateTask}
-            onCreateMeeting={onCreateMeeting}
-            onLinkClient={onLinkClient}
-          />
-        </div>
+        {/* Email Quick Actions and Smart Suggestions moved below email body */}
 
         <Separator />
 
@@ -725,6 +712,7 @@ export const EmailDetailView = memo(function EmailDetailView({
             <div
               className="border rounded-lg p-4 bg-card overflow-x-auto text-sm"
               dir="auto"
+              style={{ contain: "layout style" }}
               dangerouslySetInnerHTML={{
                 __html: sanitizedEmailHtml,
               }}
@@ -811,6 +799,34 @@ export const EmailDetailView = memo(function EmailDetailView({
             </div>
           ) : null}
         </div>
+
+        {/* Quick Actions & Smart Suggestions - rendered after body to prevent layout shift */}
+        {showExtras && (
+          <>
+            <Separator className="my-4" />
+            <div style={{ overflowAnchor: "none" }}>
+              <EmailQuickActions
+                email={selectedEmail}
+                clients={clients}
+                linkedClientId={linkedClientId}
+                autoDetectedClient={autoDetectedClient}
+                onCreateTask={onCreateTask}
+                onCreateMeeting={onCreateMeeting}
+                onCreateReminder={onCreateReminder}
+                onLinkClient={onLinkClient}
+              />
+            </div>
+            <div style={{ overflowAnchor: "none" }}>
+              <EmailSmartSuggestions
+                email={selectedEmail}
+                clients={clients}
+                onCreateTask={onCreateTask}
+                onCreateMeeting={onCreateMeeting}
+                onLinkClient={onLinkClient}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
