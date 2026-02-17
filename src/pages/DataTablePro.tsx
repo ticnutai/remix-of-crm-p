@@ -46,6 +46,7 @@ import {
 } from "@/hooks/useClientClassification";
 import { useClientStagesTable } from "@/hooks/useClientStagesTable";
 import { useClientConsultantsTable } from "@/hooks/useClientConsultantsTable";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { CreateTableDialog } from "@/components/custom-tables/CreateTableDialog";
 import { CustomTableTab } from "@/components/custom-tables/CustomTableTab";
 import { ManageTablesDialog } from "@/components/custom-tables/ManageTablesDialog";
@@ -441,8 +442,78 @@ export default function DataTablePro() {
     icon: string;
   }
   const [categories, setCategories] = useState<ClientCategory[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [showCategories, setShowCategories] = useState(false);
+  const [selectedCategoryIds, setSelectedCategoryIdsLocal] = useState<string[]>([]);
+  const [showCategories, setShowCategoriesLocal] = useState(false);
+
+  // Cloud-persisted filter state (synced with Clients page)
+  const {
+    value: savedFullFilters,
+    setValue: saveFullFilters,
+    isLoading: fullFiltersLoading,
+  } = useUserSettings<{
+    stages?: string[];
+    dateFilter?: string;
+    hasReminders?: boolean | null;
+    hasTasks?: boolean | null;
+    hasMeetings?: boolean | null;
+    categories?: string[];
+    tags?: string[];
+    hiddenClassifications?: string[];
+    sortBy?: string;
+    showStagesView?: boolean;
+    showStatisticsView?: boolean;
+    showCategories?: boolean;
+    tableClassification?: string;
+  }>({
+    key: "clients_full_filters",
+    defaultValue: {},
+  });
+
+  // Sync category/classification selection from cloud on load
+  useEffect(() => {
+    if (fullFiltersLoading || !savedFullFilters) return;
+    if (savedFullFilters.categories && savedFullFilters.categories.length > 0) {
+      setSelectedCategoryIdsLocal(savedFullFilters.categories);
+    }
+    if (savedFullFilters.showCategories != null) {
+      setShowCategoriesLocal(savedFullFilters.showCategories);
+    }
+    if (savedFullFilters.tableClassification) {
+      const filter: ClientFilter = {
+        ...clientFilter,
+        classification: savedFullFilters.tableClassification,
+      };
+      setClientFilter(filter);
+      // Apply classification filter asynchronously
+      filterClients(filter).then((filtered) => {
+        if (filtered) setFilteredClients(filtered as SyncedClient[]);
+      });
+    }
+  }, [fullFiltersLoading]); // only on initial load
+
+  // Wrapper: persist selectedCategoryIds to cloud (synced with Clients page)
+  const setSelectedCategoryIds = useCallback(
+    (newIds: string[] | ((prev: string[]) => string[])) => {
+      setSelectedCategoryIdsLocal((prev) => {
+        const next = typeof newIds === "function" ? newIds(prev) : newIds;
+        saveFullFilters((old) => ({ ...old, categories: next }));
+        return next;
+      });
+    },
+    [saveFullFilters],
+  );
+
+  // Wrapper: persist showCategories to cloud
+  const setShowCategories = useCallback(
+    (val: boolean | ((prev: boolean) => boolean)) => {
+      setShowCategoriesLocal((prev) => {
+        const next = typeof val === "function" ? val(prev) : val;
+        saveFullFilters((old) => ({ ...old, showCategories: next }));
+        return next;
+      });
+    },
+    [saveFullFilters],
+  );
 
   // Load categories from Supabase
   useEffect(() => {
@@ -3510,6 +3581,11 @@ export default function DataTablePro() {
                     activeFilters={clientFilter}
                     onFilterChange={async (filter) => {
                       setClientFilter(filter);
+                      // Persist classification filter to cloud
+                      saveFullFilters((old) => ({
+                        ...old,
+                        tableClassification: filter.classification || "",
+                      }));
                       if (
                         Object.keys(filter).some(
                           (k) => filter[k as keyof ClientFilter],
@@ -3524,6 +3600,10 @@ export default function DataTablePro() {
                     onClear={() => {
                       setClientFilter({});
                       setFilteredClients(null);
+                      saveFullFilters((old) => ({
+                        ...old,
+                        tableClassification: "",
+                      }));
                     }}
                     totalClients={dbClients.length}
                     filteredCount={displayClients.length}

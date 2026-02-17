@@ -267,7 +267,12 @@ export default function Clients() {
     if (savedFullFilters.showStatisticsView != null) {
       setShowStatisticsViewLocal(savedFullFilters.showStatisticsView);
     }
-  }, [fullFiltersLoading, savedFullFilters, classFilterLoading, savedHiddenClassifications]);
+  }, [
+    fullFiltersLoading,
+    savedFullFilters,
+    classFilterLoading,
+    savedHiddenClassifications,
+  ]);
 
   // Wrapper functions to save to cloud (memoized)
   const setViewMode = useCallback(
