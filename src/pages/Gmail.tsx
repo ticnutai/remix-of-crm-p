@@ -364,9 +364,44 @@ export default function Gmail() {
     null,
   );
   const [previewY, setPreviewY] = useState(200);
+  const previewOverlayRef = useRef<HTMLDivElement | null>(null);
+  const previewPanelRef = useRef<HTMLDivElement | null>(null);
+  const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!showPreviewDialog) return;
+    const t = setTimeout(() => {
+      const overlay = previewOverlayRef.current;
+      const panel = previewPanelRef.current;
+      const scrollRoot = previewScrollRef.current;
+      const viewport = scrollRoot?.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+
+      if (!overlay || !panel) return;
+
+      const overlayStyles = getComputedStyle(overlay);
+      const panelStyles = getComputedStyle(panel);
+      const viewportStyles = viewport ? getComputedStyle(viewport) : null;
+
+      console.group("[Gmail Preview Debug] Layer diagnostics");
+      console.table({
+        overlayBackground: overlayStyles.backgroundColor,
+        overlayOpacity: overlayStyles.opacity,
+        panelBackground: panelStyles.backgroundColor,
+        panelOpacity: panelStyles.opacity,
+        panelIsolation: panelStyles.isolation,
+        viewportBackground: viewportStyles?.backgroundColor || "(missing)",
+        viewportOpacity: viewportStyles?.opacity || "(missing)",
+      });
+      console.groupEnd();
+    }, 60);
+
+    return () => clearTimeout(t);
+  }, [showPreviewDialog]);
 
   // Draggable + Resizable preview panel state (persisted in localStorage)
   const PREVIEW_STORAGE_KEY = "gmail_preview_panel";
@@ -2985,6 +3020,7 @@ export default function Gmail() {
           <>
             {/* ── Solid backdrop — fully blocks background content ── */}
             <div
+              ref={previewOverlayRef}
               className="fixed inset-0 z-[9998]"
               style={{
                 background: "#0f172a",
@@ -2997,6 +3033,7 @@ export default function Gmail() {
               }}
             />
             <div
+              ref={previewPanelRef}
               className="fixed z-[9999] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
               style={{
                 position: "fixed",
@@ -3020,7 +3057,7 @@ export default function Gmail() {
                 flexDirection: "column",
                 border: "3px solid #d4a843",
                 borderRadius: "12px",
-                background: "hsl(var(--background) / 1)",
+                background: "#ffffff",
                 opacity: 1,
                 isolation: "isolate",
                 boxShadow:
@@ -3041,8 +3078,7 @@ export default function Gmail() {
                   cursor: "move",
                   userSelect: "none",
                   flexShrink: 0,
-                  background:
-                    "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
+                  background: "#ffffff",
                   borderTopLeftRadius: "9px",
                   borderTopRightRadius: "9px",
                 }}
@@ -3153,9 +3189,11 @@ export default function Gmail() {
 
               {/* ── Scrollable Body ─────────────────────────────── */}
               <ScrollArea
+                ref={previewScrollRef}
                 style={{
                   flex: 1,
                   minHeight: 0,
+                  background: "#ffffff",
                 }}
                 dir="rtl"
               >
@@ -3163,8 +3201,9 @@ export default function Gmail() {
                   style={{
                     padding: "14px 16px",
                     direction: "rtl",
-                    background: "hsl(var(--background) / 1)",
+                    background: "#ffffff",
                     opacity: 1,
+                    minHeight: "100%",
                   }}
                 >
                   {hoverPreviewLoading ? (
