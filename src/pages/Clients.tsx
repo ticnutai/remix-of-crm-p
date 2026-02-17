@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useViewSettings } from "@/hooks/useUserSettings";
+import { useViewSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { useGoogleSheets } from "@/hooks/useGoogleSheets";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -155,6 +155,16 @@ export default function Clients() {
     isLoading: settingsLoading,
   } = useViewSettings("clients");
 
+  // Cloud-persisted classification filter
+  const {
+    value: savedHiddenClassifications,
+    setValue: saveHiddenClassifications,
+    isLoading: classFilterLoading,
+  } = useUserSettings<string[]>({
+    key: "clients_hidden_classifications",
+    defaultValue: [],
+  });
+
   const [viewMode, setViewModeLocal] = useState<
     "grid" | "list" | "compact" | "cards" | "minimal" | "portrait" | "luxury"
   >("grid");
@@ -174,6 +184,20 @@ export default function Clients() {
       setFilters((prev) => ({ ...prev, sortBy: savedSortBy as any }));
     }
   }, [settingsLoading, savedViewMode, savedColumns, savedSortBy]);
+
+  // Sync hidden classifications from cloud
+  useEffect(() => {
+    if (
+      !classFilterLoading &&
+      savedHiddenClassifications &&
+      savedHiddenClassifications.length > 0
+    ) {
+      setFilters((prev) => ({
+        ...prev,
+        hiddenClassifications: savedHiddenClassifications,
+      }));
+    }
+  }, [classFilterLoading, savedHiddenClassifications]);
 
   // Wrapper functions to save to cloud (memoized)
   const setViewMode = useCallback(
@@ -269,6 +293,7 @@ export default function Clients() {
     hasMeetings: null,
     categories: [],
     tags: [],
+    hiddenClassifications: [],
     sortBy: "date_desc",
   });
 
@@ -379,6 +404,17 @@ export default function Clients() {
         (client) =>
           client.tags && client.tags.some((tag) => filters.tags.includes(tag)),
       );
+    }
+
+    // Classification filter — hide clients whose classification is in hiddenClassifications
+    if (
+      filters.hiddenClassifications &&
+      filters.hiddenClassifications.length > 0
+    ) {
+      result = result.filter((client) => {
+        const cls = client.classification || "_none"; // null/undefined → '_none'
+        return !filters.hiddenClassifications.includes(cls);
+      });
     }
 
     // Apply sorting
@@ -3219,6 +3255,13 @@ export default function Clients() {
             setFilters(newFilters);
             if (newFilters.sortBy !== filters.sortBy) {
               saveSortBy(newFilters.sortBy);
+            }
+            // Persist hidden classifications to cloud
+            if (
+              JSON.stringify(newFilters.hiddenClassifications || []) !==
+              JSON.stringify(filters.hiddenClassifications || [])
+            ) {
+              saveHiddenClassifications(newFilters.hiddenClassifications || []);
             }
           }}
           clientsWithReminders={clientsWithReminders}

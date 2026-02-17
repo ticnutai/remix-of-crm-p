@@ -363,7 +363,9 @@ export default function Gmail() {
     null,
   );
   const [previewY, setPreviewY] = useState(200);
-  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Draggable + Resizable preview panel state (persisted in localStorage)
   const PREVIEW_STORAGE_KEY = "gmail_preview_panel";
@@ -417,7 +419,8 @@ export default function Gmail() {
 
   // Delayed close — cancels if mouse re-enters
   const schedulePreviewClose = useCallback(() => {
-    if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
+    if (previewLeaveTimerRef.current)
+      clearTimeout(previewLeaveTimerRef.current);
     previewLeaveTimerRef.current = setTimeout(() => {
       setShowPreviewDialog(false);
       previewLeaveTimerRef.current = null;
@@ -2948,8 +2951,14 @@ export default function Gmail() {
             className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
             style={{
               position: "fixed",
-              top: Math.max(56, Math.min(previewRect.y, window.innerHeight - previewRect.h - 4)),
-              left: Math.max(4, Math.min(previewRect.x, window.innerWidth - previewRect.w - 4)),
+              top: Math.max(
+                56,
+                Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
+              ),
+              left: Math.max(
+                4,
+                Math.min(previewRect.x, window.innerWidth - previewRect.w - 4),
+              ),
               width: Math.min(previewRect.w, window.innerWidth - 8),
               height: Math.min(previewRect.h, window.innerHeight - 56),
               display: "flex",
@@ -2957,7 +2966,8 @@ export default function Gmail() {
               border: "3px solid #d4a843",
               borderRadius: "12px",
               background: "var(--background, #fff)",
-              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
+              boxShadow:
+                "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
             }}
             dir="rtl"
             onMouseEnter={cancelPreviewClose}
@@ -2974,63 +2984,93 @@ export default function Gmail() {
                 cursor: "move",
                 userSelect: "none",
                 flexShrink: 0,
-                background: "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
+                background:
+                  "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
                 borderTopLeftRadius: "9px",
                 borderTopRightRadius: "9px",
               }}
               onMouseDown={onDragStart}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
-                <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" style={{ opacity: 0.4 }} />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                <GripVertical
+                  className="h-4 w-4 text-muted-foreground flex-shrink-0"
+                  style={{ opacity: 0.4 }}
+                />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{
-                    fontWeight: 700,
-                    fontSize: "0.95rem",
-                    lineHeight: 1.3,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    textAlign: "right",
-                    margin: 0,
-                  }}>
+                  <h3
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "0.95rem",
+                      lineHeight: 1.3,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      textAlign: "right",
+                      margin: 0,
+                    }}
+                  >
                     {previewMessage.subject || "(ללא נושא)"}
                   </h3>
-                  <p style={{
-                    fontSize: "0.82rem",
-                    color: "var(--muted-foreground, #888)",
-                    margin: "2px 0 0 0",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    textAlign: "right",
-                  }}>
+                  <p
+                    style={{
+                      fontSize: "0.82rem",
+                      color: "var(--muted-foreground, #888)",
+                      margin: "2px 0 0 0",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      textAlign: "right",
+                    }}
+                  >
                     {previewMessage.fromName} &lt;{previewMessage.from}&gt;
                   </p>
-                  <p style={{
-                    fontSize: "0.72rem",
-                    color: "var(--muted-foreground, #888)",
-                    margin: "1px 0 0 0",
-                    textAlign: "right",
-                  }}>
+                  <p
+                    style={{
+                      fontSize: "0.72rem",
+                      color: "var(--muted-foreground, #888)",
+                      margin: "1px 0 0 0",
+                      textAlign: "right",
+                    }}
+                  >
                     {formatDate(previewMessage.date)}
                     {!previewMessage.isRead && (
-                      <span style={{
-                        display: "inline-block",
-                        width: 7, height: 7,
-                        borderRadius: "50%",
-                        backgroundColor: "#3b82f6",
-                        marginRight: 6,
-                        verticalAlign: "middle",
-                      }} title="לא נקרא" />
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          backgroundColor: "#3b82f6",
+                          marginRight: 6,
+                          verticalAlign: "middle",
+                        }}
+                        title="לא נקרא"
+                      />
                     )}
                     {previewMessage.hasAttachments && (
-                      <span style={{ marginRight: 6, fontSize: "0.72rem" }} title="קבצים מצורפים">📎</span>
+                      <span
+                        style={{ marginRight: 6, fontSize: "0.72rem" }}
+                        title="קבצים מצורפים"
+                      >
+                        📎
+                      </span>
                     )}
                   </p>
                 </div>
               </div>
               <button
-                onClick={(e) => { e.stopPropagation(); closePreview(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closePreview();
+                }}
                 onMouseDown={(e) => e.stopPropagation()}
                 style={{
                   padding: 4,
@@ -3042,8 +3082,12 @@ export default function Gmail() {
                   transition: "opacity 0.2s",
                   marginRight: 4,
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.6";
+                }}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -3059,20 +3103,43 @@ export default function Gmail() {
             >
               <div style={{ padding: "14px 16px", direction: "rtl" }}>
                 {hoverPreviewLoading ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 0", gap: 8 }}>
-                    <div style={{
-                      width: 28, height: 28,
-                      border: "3px solid #d4a843",
-                      borderTopColor: "transparent",
-                      borderRadius: "50%",
-                      animation: "spin 0.7s linear infinite",
-                    }} />
-                    <span style={{ fontSize: "0.78rem", color: "var(--muted-foreground, #888)" }}>טוען תוכן...</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "32px 0",
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        border: "3px solid #d4a843",
+                        borderTopColor: "transparent",
+                        borderRadius: "50%",
+                        animation: "spin 0.7s linear infinite",
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "0.78rem",
+                        color: "var(--muted-foreground, #888)",
+                      }}
+                    >
+                      טוען תוכן...
+                    </span>
                   </div>
                 ) : hoverPreviewHtml ? (
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert"
-                    style={{ overflowX: "hidden", wordBreak: "break-word", lineHeight: 1.6 }}
+                    style={{
+                      overflowX: "hidden",
+                      wordBreak: "break-word",
+                      lineHeight: 1.6,
+                    }}
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(hoverPreviewHtml, {
                         ALLOW_UNKNOWN_PROTOCOLS: true,
@@ -3080,13 +3147,15 @@ export default function Gmail() {
                     }}
                   />
                 ) : (
-                  <p style={{
-                    whiteSpace: "pre-wrap",
-                    color: "var(--muted-foreground, #888)",
-                    fontSize: "0.88rem",
-                    lineHeight: 1.7,
-                    margin: 0,
-                  }}>
+                  <p
+                    style={{
+                      whiteSpace: "pre-wrap",
+                      color: "var(--muted-foreground, #888)",
+                      fontSize: "0.88rem",
+                      lineHeight: 1.7,
+                      margin: 0,
+                    }}
+                  >
                     {previewMessage.snippet || "אין תוכן לתצוגה"}
                   </p>
                 )}
@@ -3102,7 +3171,8 @@ export default function Gmail() {
                 padding: "8px 12px",
                 borderTop: "2px solid #d4a843",
                 flexShrink: 0,
-                background: "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
+                background:
+                  "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
                 borderBottomLeftRadius: "9px",
                 borderBottomRightRadius: "9px",
               }}
@@ -3116,7 +3186,9 @@ export default function Gmail() {
                   closePreview();
                   setSelectedEmail(previewMessage);
                   if (!previewMessage.isRead) {
-                    markAsRead(previewMessage.id, true).then(() => handleRefresh());
+                    markAsRead(previewMessage.id, true).then(() =>
+                      handleRefresh(),
+                    );
                   }
                 }}
               >
@@ -3131,7 +3203,10 @@ export default function Gmail() {
                   const replySubject = previewMessage.subject?.startsWith("Re:")
                     ? previewMessage.subject
                     : `Re: ${previewMessage.subject}`;
-                  setDraftData({ to: previewMessage.from, subject: replySubject });
+                  setDraftData({
+                    to: previewMessage.from,
+                    subject: replySubject,
+                  });
                   setIsComposeOpen(true);
                 }}
               >
@@ -3158,27 +3233,107 @@ export default function Gmail() {
 
             {/* ── Resize Handles (8 directions) ───────────────── */}
             {/* Edges */}
-            <div style={{ position: "absolute", top: 0, left: 12, right: 12, height: 5, cursor: "n-resize" }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "t")} />
-            <div style={{ position: "absolute", bottom: 0, left: 12, right: 12, height: 5, cursor: "s-resize" }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "b")} />
-            <div style={{ position: "absolute", left: 0, top: 12, bottom: 12, width: 5, cursor: "w-resize" }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "l")} />
-            <div style={{ position: "absolute", right: 0, top: 12, bottom: 12, width: 5, cursor: "e-resize" }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "r")} />
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 12,
+                right: 12,
+                height: 5,
+                cursor: "n-resize",
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "t")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 12,
+                right: 12,
+                height: 5,
+                cursor: "s-resize",
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "b")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 12,
+                bottom: 12,
+                width: 5,
+                cursor: "w-resize",
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "l")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: 12,
+                bottom: 12,
+                width: 5,
+                cursor: "e-resize",
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "r")}
+            />
             {/* Corners */}
-            <div style={{ position: "absolute", top: 0, left: 0, width: 14, height: 14, cursor: "nw-resize",
-              borderLeft: "3px solid #d4a843", borderTop: "3px solid #d4a843", borderTopLeftRadius: 8 }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "tl")} />
-            <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, cursor: "ne-resize",
-              borderRight: "3px solid #d4a843", borderTop: "3px solid #d4a843", borderTopRightRadius: 8 }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "tr")} />
-            <div style={{ position: "absolute", bottom: 0, left: 0, width: 14, height: 14, cursor: "sw-resize",
-              borderLeft: "3px solid #d4a843", borderBottom: "3px solid #d4a843", borderBottomLeftRadius: 8 }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "bl")} />
-            <div style={{ position: "absolute", bottom: 0, right: 0, width: 14, height: 14, cursor: "se-resize",
-              borderRight: "3px solid #d4a843", borderBottom: "3px solid #d4a843", borderBottomRightRadius: 8 }}
-              onMouseDown={(e) => onEdgeResizeStart(e, "br")} />
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 14,
+                height: 14,
+                cursor: "nw-resize",
+                borderLeft: "3px solid #d4a843",
+                borderTop: "3px solid #d4a843",
+                borderTopLeftRadius: 8,
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 14,
+                height: 14,
+                cursor: "ne-resize",
+                borderRight: "3px solid #d4a843",
+                borderTop: "3px solid #d4a843",
+                borderTopRightRadius: 8,
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                width: 14,
+                height: 14,
+                cursor: "sw-resize",
+                borderLeft: "3px solid #d4a843",
+                borderBottom: "3px solid #d4a843",
+                borderBottomLeftRadius: 8,
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                width: 14,
+                height: 14,
+                cursor: "se-resize",
+                borderRight: "3px solid #d4a843",
+                borderBottom: "3px solid #d4a843",
+                borderBottomRightRadius: 8,
+              }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "br")}
+            />
           </div>
         )}
 

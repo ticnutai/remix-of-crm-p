@@ -30,6 +30,9 @@ import {
   SortAsc,
   Pencil,
   Trash2,
+  ShieldCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +44,7 @@ export interface ClientFilterState {
   hasMeetings: boolean | null;
   categories: string[];
   tags: string[];
+  hiddenClassifications: string[]; // classifications to HIDE from list (empty = show all)
   sortBy:
     | "name_asc"
     | "name_desc"
@@ -98,6 +102,8 @@ export function ClientsFilterStrip({
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
+  const [classificationDialogOpen, setClassificationDialogOpen] =
+    useState(false);
 
   // Fetch unique stages from all clients
   useEffect(() => {
@@ -188,6 +194,34 @@ export function ClientsFilterStrip({
     onFiltersChange({ ...filters, tags: [] });
   };
 
+  // Classification filter helpers
+  const CLASSIFICATION_OPTIONS = [
+    { value: "vip", label: "VIP", color: "#eab308", icon: "⭐" },
+    { value: "regular", label: "רגיל", color: "#3b82f6", icon: "👤" },
+    { value: "potential", label: "פוטנציאלי", color: "#22c55e", icon: "🌱" },
+    { value: "inactive", label: "לא פעיל", color: "#6b7280", icon: "💤" },
+    { value: "_none", label: "ללא סיווג", color: "#9ca3af", icon: "❓" },
+  ];
+
+  const toggleClassificationVisibility = (classValue: string) => {
+    const hidden = filters.hiddenClassifications || [];
+    const newHidden = hidden.includes(classValue)
+      ? hidden.filter((c) => c !== classValue)
+      : [...hidden, classValue];
+    onFiltersChange({ ...filters, hiddenClassifications: newHidden });
+  };
+
+  const showAllClassifications = () => {
+    onFiltersChange({ ...filters, hiddenClassifications: [] });
+  };
+
+  const hideAllClassifications = () => {
+    onFiltersChange({
+      ...filters,
+      hiddenClassifications: CLASSIFICATION_OPTIONS.map((c) => c.value),
+    });
+  };
+
   const hasActiveFilters =
     filters.stages.length > 0 ||
     filters.dateFilter !== "all" ||
@@ -195,7 +229,8 @@ export function ClientsFilterStrip({
     filters.hasTasks !== null ||
     filters.hasMeetings !== null ||
     filters.categories.length > 0 ||
-    filters.tags.length > 0;
+    filters.tags.length > 0 ||
+    (filters.hiddenClassifications && filters.hiddenClassifications.length > 0);
 
   const clearAllFilters = () => {
     onFiltersChange({
@@ -206,6 +241,7 @@ export function ClientsFilterStrip({
       hasMeetings: null,
       categories: [],
       tags: [],
+      hiddenClassifications: [],
       sortBy: filters.sortBy, // Keep sort order when clearing
     });
   };
@@ -294,6 +330,120 @@ export function ClientsFilterStrip({
                   {label}
                 </Button>
               ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Classification Filter (סיווג לקוחות) */}
+        <Popover
+          open={classificationDialogOpen}
+          onOpenChange={setClassificationDialogOpen}
+        >
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                (filters.hiddenClassifications?.length || 0) > 0 &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              )}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              סיווג
+              {(filters.hiddenClassifications?.length || 0) > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="mr-1 bg-accent text-accent-foreground"
+                >
+                  {CLASSIFICATION_OPTIONS.length -
+                    (filters.hiddenClassifications?.length || 0)}
+                  /{CLASSIFICATION_OPTIONS.length}
+                </Badge>
+              )}
+              <ChevronDown className="h-3 w-3 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
+            <div className="p-4 border-b">
+              <div className="flex flex-row-reverse items-center gap-2 mb-3">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">סיווג לקוחות</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 ml-auto"
+                  onClick={() => setClassificationDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex flex-row-reverse gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={showAllClassifications}
+                >
+                  <Eye className="h-3 w-3 ml-1" />
+                  הצג הכל
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={hideAllClassifications}
+                >
+                  <EyeOff className="h-3 w-3 ml-1" />
+                  הסתר הכל
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 space-y-2">
+              {CLASSIFICATION_OPTIONS.map((cls) => {
+                const isVisible = !(
+                  filters.hiddenClassifications || []
+                ).includes(cls.value);
+                return (
+                  <div
+                    key={cls.value}
+                    className={cn(
+                      "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                      isVisible
+                        ? "bg-primary/10 border-primary"
+                        : "bg-muted/30 border-border opacity-60",
+                    )}
+                    onClick={() => toggleClassificationVisibility(cls.value)}
+                  >
+                    <Checkbox
+                      checked={isVisible}
+                      onCheckedChange={() =>
+                        toggleClassificationVisibility(cls.value)
+                      }
+                    />
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                      style={{
+                        backgroundColor: cls.color + "22",
+                        border: `2px solid ${cls.color}`,
+                      }}
+                    >
+                      {cls.icon}
+                    </div>
+                    <span
+                      className={cn(
+                        "font-medium flex-1 text-right",
+                        !isVisible && "line-through text-muted-foreground",
+                      )}
+                    >
+                      {cls.label}
+                    </span>
+                    {isVisible ? (
+                      <Eye className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>
@@ -715,6 +865,15 @@ export function ClientsFilterStrip({
       {/* Active Filters Summary */}
       {hasActiveFilters && (
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {(filters.hiddenClassifications?.length || 0) > 0 && (
+            <Badge
+              variant="secondary"
+              className="bg-yellow-100 text-yellow-800"
+            >
+              <ShieldCheck className="h-3 w-3 ml-1" />
+              {filters.hiddenClassifications!.length} סיווגים מוסתרים
+            </Badge>
+          )}
           {filters.categories.length > 0 && (
             <Badge variant="secondary" className="bg-primary/10 text-primary">
               {filters.categories.length} קטגוריות
