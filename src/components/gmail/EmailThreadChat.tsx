@@ -31,7 +31,11 @@ import {
   ChevronUp,
   Star,
   MoreVertical,
+  Bookmark,
+  Bell,
+  MailPlus,
   Reply,
+  ReplyAll,
   Forward,
   Trash2,
   Archive,
@@ -111,6 +115,9 @@ interface EmailThreadChatProps {
   onArchive?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
   onToggleStar?: (messageId: string, isStarred: boolean) => void;
+  onMarkUnread?: (messageId: string) => void;
+  onSetReminder?: (message: ThreadMessage) => void;
+  onReplyAll?: (message: ThreadMessage) => void;
   onForward?: (message: ThreadMessage) => void;
 }
 
@@ -155,6 +162,9 @@ export const EmailThreadChat = ({
   onArchive,
   onDelete,
   onToggleStar,
+  onMarkUnread,
+  onSetReminder,
+  onReplyAll,
   onForward,
 }: EmailThreadChatProps) => {
   const [replyText, setReplyText] = useState("");
@@ -347,6 +357,15 @@ export const EmailThreadChat = ({
     return format(date, "EEEE, dd בMMMM", { locale: he });
   };
 
+  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+
+  const focusReplyInput = () => {
+    textareaRef.current?.focus();
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  };
+
   return (
     <div className="flex flex-col h-full" dir="rtl">
       {/* Header */}
@@ -379,6 +398,91 @@ export const EmailThreadChat = ({
             תצוגת צ'אט
           </Badge>
         </div>
+
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-1 rounded-xl border bg-background px-2 py-1 w-fit">
+            <Button variant="ghost" size="icon" onClick={onBack} title="חזרה לכל המיילים">
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="פעולות נוספות">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="כוכב"
+              disabled={!latestMessage || !onToggleStar}
+              onClick={() => latestMessage && onToggleStar?.(latestMessage.id, latestMessage.isStarred)}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="סמן כלא נקרא"
+              disabled={!latestMessage || !onMarkUnread}
+              onClick={() => latestMessage && onMarkUnread?.(latestMessage.id)}
+            >
+              <MailPlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="תזכורת"
+              disabled={!latestMessage || !onSetReminder}
+              onClick={() => latestMessage && onSetReminder?.(latestMessage)}
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-500"
+              title="מחק"
+              disabled={!latestMessage || !onDelete}
+              onClick={() => latestMessage && onDelete?.(latestMessage.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="ארכיון"
+              disabled={!latestMessage || !onArchive}
+              onClick={() => latestMessage && onArchive?.(latestMessage.id)}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="השב" onClick={focusReplyInput}>
+              <Reply className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="השב לכולם"
+              disabled={!latestMessage}
+              onClick={() => {
+                if (latestMessage && onReplyAll) {
+                  onReplyAll(latestMessage);
+                } else {
+                  focusReplyInput();
+                }
+              }}
+            >
+              <ReplyAll className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="העבר"
+              disabled={!latestMessage || !onForward}
+              onClick={() => latestMessage && onForward?.(latestMessage)}
+            >
+              <Forward className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         {showSearch && (
           <div className="px-4 pb-3">
             <div className="relative">

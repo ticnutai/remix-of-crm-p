@@ -14,9 +14,16 @@ import {
   X,
   MessageSquare,
   Reply,
+  ReplyAll,
   Forward,
   Mail,
   ChevronDown,
+  MoreVertical,
+  Bookmark,
+  Bell,
+  Trash2,
+  Archive,
+  MailPlus,
 } from "lucide-react";
 import { GmailMessage } from "@/hooks/useGmailIntegration";
 import { format, isToday, isYesterday } from "date-fns";
@@ -74,8 +81,14 @@ interface EmailSenderChatViewProps {
   ) => Promise<string>;
   onBack: () => void;
   onReply: (message: GmailMessage) => void;
+  onReplyAll?: (message: GmailMessage) => void;
   onForward: (message: GmailMessage) => void;
   onCompose: (to: string) => void;
+  onArchive?: (messageId: string) => Promise<any>;
+  onDelete?: (messageId: string) => Promise<any>;
+  onToggleStar?: (messageId: string, isStarred: boolean) => Promise<any>;
+  onMarkUnread?: (messageId: string) => Promise<any>;
+  onSetReminder?: (message: GmailMessage) => void;
 }
 
 interface ChatMessage extends GmailMessage {
@@ -94,8 +107,14 @@ export function EmailSenderChatView({
   resolveInlineImages,
   onBack,
   onReply,
+  onReplyAll,
   onForward,
   onCompose,
+  onArchive,
+  onDelete,
+  onToggleStar,
+  onMarkUnread,
+  onSetReminder,
 }: EmailSenderChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -308,6 +327,12 @@ export function EmailSenderChatView({
     return groups;
   }, [messages, searchQuery]);
 
+  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+
+  const updateMessage = (messageId: string, updater: (msg: ChatMessage) => ChatMessage) => {
+    setMessages((prev) => prev.map((msg) => (msg.id === messageId ? updater(msg) : msg)));
+  };
+
   return (
     <div className="flex flex-col h-full" dir="rtl">
       {/* Header */}
@@ -350,6 +375,107 @@ export function EmailSenderChatView({
             צ'אט לפי שולח
           </Badge>
         </div>
+
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-1 rounded-xl border bg-background px-2 py-1 w-fit">
+            <Button variant="ghost" size="icon" onClick={onBack} title="חזרה לכל המיילים">
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="פעולות נוספות">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="כוכב"
+              disabled={!latestMessage || !onToggleStar}
+              onClick={async () => {
+                if (!latestMessage || !onToggleStar) return;
+                await onToggleStar(latestMessage.id, latestMessage.isStarred);
+                updateMessage(latestMessage.id, (msg) => ({ ...msg, isStarred: !msg.isStarred }));
+              }}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="סמן כלא נקרא"
+              disabled={!latestMessage || !onMarkUnread}
+              onClick={async () => {
+                if (!latestMessage || !onMarkUnread) return;
+                await onMarkUnread(latestMessage.id);
+                updateMessage(latestMessage.id, (msg) => ({ ...msg, isRead: false }));
+              }}
+            >
+              <MailPlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="תזכורת"
+              disabled={!latestMessage || !onSetReminder}
+              onClick={() => latestMessage && onSetReminder?.(latestMessage)}
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-red-500"
+              title="מחק"
+              disabled={!latestMessage || !onDelete}
+              onClick={async () => {
+                if (!latestMessage || !onDelete) return;
+                await onDelete(latestMessage.id);
+                setMessages((prev) => prev.filter((msg) => msg.id !== latestMessage.id));
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="ארכיון"
+              disabled={!latestMessage || !onArchive}
+              onClick={async () => {
+                if (!latestMessage || !onArchive) return;
+                await onArchive(latestMessage.id);
+                setMessages((prev) => prev.filter((msg) => msg.id !== latestMessage.id));
+              }}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="השב"
+              disabled={!latestMessage}
+              onClick={() => latestMessage && onReply(latestMessage)}
+            >
+              <Reply className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="השב לכולם"
+              disabled={!latestMessage}
+              onClick={() => latestMessage && (onReplyAll ? onReplyAll(latestMessage) : onReply(latestMessage))}
+            >
+              <ReplyAll className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="העבר"
+              disabled={!latestMessage}
+              onClick={() => latestMessage && onForward(latestMessage)}
+            >
+              <Forward className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         {showSearch && (
           <div className="px-4 pb-3">
             <div className="relative">

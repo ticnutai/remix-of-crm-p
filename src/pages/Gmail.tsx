@@ -2174,6 +2174,36 @@ export default function Gmail() {
                 await toggleStar(msgId, isStarred);
                 await loadThreadMessages(selectedThreadId);
               }}
+              onMarkUnread={async (msgId) => {
+                await markAsRead(msgId, false);
+                await loadThreadMessages(selectedThreadId);
+              }}
+              onSetReminder={(msg) => {
+                const target = threadMessages.find((m) => m.id === msg.id);
+                if (target) {
+                  setSelectedEmailForAction(target);
+                  setIsReminderDialogOpen(true);
+                }
+              }}
+              onReplyAll={(msg) => {
+                const target = threadMessages.find((m) => m.id === msg.id);
+                if (!target) return;
+                const replySubject = target.subject?.startsWith("Re:")
+                  ? target.subject
+                  : `Re: ${target.subject || ""}`;
+                const allRecipients = [target.from, ...(target.to || [])]
+                  .filter((e) => e && e !== user?.email)
+                  .join(", ");
+                setComposeData({
+                  to: allRecipients,
+                  subject: replySubject,
+                  quotedBody: buildQuotedBody(target, "replyAll"),
+                  mode: "replyAll",
+                  originalFrom: target.from,
+                  originalDate: formatDate(target.date),
+                });
+                setIsComposeOpen(true);
+              }}
               onForward={(msg) => {
                 const fwdSubject = msg.snippet
                   ? `Fwd: ${subject}`
@@ -2221,6 +2251,23 @@ export default function Gmail() {
                 });
                 setIsComposeOpen(true);
               }}
+              onReplyAll={(msg) => {
+                const replySubject = msg.subject?.startsWith("Re:")
+                  ? msg.subject
+                  : `Re: ${msg.subject || ""}`;
+                const allRecipients = [msg.from, ...(msg.to || [])]
+                  .filter((e) => e && e !== user?.email)
+                  .join(", ");
+                setComposeData({
+                  to: allRecipients,
+                  subject: replySubject,
+                  quotedBody: buildQuotedBody(msg, "replyAll"),
+                  mode: "replyAll",
+                  originalFrom: msg.from,
+                  originalDate: formatDate(msg.date),
+                });
+                setIsComposeOpen(true);
+              }}
               onForward={(msg) => {
                 setComposeData({
                   to: "",
@@ -2238,6 +2285,16 @@ export default function Gmail() {
                   subject: "",
                 });
                 setIsComposeOpen(true);
+              }}
+              onArchive={archiveEmail}
+              onDelete={deleteEmail}
+              onToggleStar={toggleStar}
+              onMarkUnread={async (msgId) => {
+                await markAsRead(msgId, false);
+              }}
+              onSetReminder={(msg) => {
+                setSelectedEmailForAction(msg);
+                setIsReminderDialogOpen(true);
               }}
             />
           </Card>
