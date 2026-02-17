@@ -232,7 +232,7 @@ export const EmailDetailView = memo(function EmailDetailView({
 
   return (
     <div
-      className="p-4 bg-background relative z-10 min-h-[600px] overflow-y-auto max-h-[calc(100vh-250px)]"
+      className="p-4 bg-background relative z-10 min-h-[600px]"
       dir="rtl"
     >
       <div className="flex items-center justify-between mb-4">
@@ -710,8 +710,7 @@ export const EmailDetailView = memo(function EmailDetailView({
             </div>
           ) : emailHtmlBody ? (
             <div
-              className="border rounded-lg p-4 bg-card overflow-auto text-sm"
-              style={{ maxHeight: "calc(100vh - 300px)" }}
+              className="border rounded-lg p-4 bg-card overflow-x-auto text-sm"
               dir="auto"
               dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(emailHtmlBody, {

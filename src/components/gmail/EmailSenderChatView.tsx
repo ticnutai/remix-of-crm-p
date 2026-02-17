@@ -327,10 +327,16 @@ export function EmailSenderChatView({
     return groups;
   }, [messages, searchQuery]);
 
-  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const latestMessage =
+    messages.length > 0 ? messages[messages.length - 1] : null;
 
-  const updateMessage = (messageId: string, updater: (msg: ChatMessage) => ChatMessage) => {
-    setMessages((prev) => prev.map((msg) => (msg.id === messageId ? updater(msg) : msg)));
+  const updateMessage = (
+    messageId: string,
+    updater: (msg: ChatMessage) => ChatMessage,
+  ) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? updater(msg) : msg)),
+    );
   };
 
   return (
@@ -378,7 +384,12 @@ export function EmailSenderChatView({
 
         <div className="px-4 pb-3">
           <div className="flex items-center gap-1 rounded-xl border bg-background px-2 py-1 w-fit">
-            <Button variant="ghost" size="icon" onClick={onBack} title="חזרה לכל המיילים">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              title="חזרה לכל המיילים"
+            >
               <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" title="פעולות נוספות">
@@ -392,7 +403,10 @@ export function EmailSenderChatView({
               onClick={async () => {
                 if (!latestMessage || !onToggleStar) return;
                 await onToggleStar(latestMessage.id, latestMessage.isStarred);
-                updateMessage(latestMessage.id, (msg) => ({ ...msg, isStarred: !msg.isStarred }));
+                updateMessage(latestMessage.id, (msg) => ({
+                  ...msg,
+                  isStarred: !msg.isStarred,
+                }));
               }}
             >
               <Bookmark className="h-4 w-4" />
@@ -405,7 +419,10 @@ export function EmailSenderChatView({
               onClick={async () => {
                 if (!latestMessage || !onMarkUnread) return;
                 await onMarkUnread(latestMessage.id);
-                updateMessage(latestMessage.id, (msg) => ({ ...msg, isRead: false }));
+                updateMessage(latestMessage.id, (msg) => ({
+                  ...msg,
+                  isRead: false,
+                }));
               }}
             >
               <MailPlus className="h-4 w-4" />
@@ -428,7 +445,9 @@ export function EmailSenderChatView({
               onClick={async () => {
                 if (!latestMessage || !onDelete) return;
                 await onDelete(latestMessage.id);
-                setMessages((prev) => prev.filter((msg) => msg.id !== latestMessage.id));
+                setMessages((prev) =>
+                  prev.filter((msg) => msg.id !== latestMessage.id),
+                );
               }}
             >
               <Trash2 className="h-4 w-4" />
@@ -441,7 +460,9 @@ export function EmailSenderChatView({
               onClick={async () => {
                 if (!latestMessage || !onArchive) return;
                 await onArchive(latestMessage.id);
-                setMessages((prev) => prev.filter((msg) => msg.id !== latestMessage.id));
+                setMessages((prev) =>
+                  prev.filter((msg) => msg.id !== latestMessage.id),
+                );
               }}
             >
               <Archive className="h-4 w-4" />
@@ -460,7 +481,12 @@ export function EmailSenderChatView({
               size="icon"
               title="השב לכולם"
               disabled={!latestMessage}
-              onClick={() => latestMessage && (onReplyAll ? onReplyAll(latestMessage) : onReply(latestMessage))}
+              onClick={() =>
+                latestMessage &&
+                (onReplyAll
+                  ? onReplyAll(latestMessage)
+                  : onReply(latestMessage))
+              }
             >
               <ReplyAll className="h-4 w-4" />
             </Button>

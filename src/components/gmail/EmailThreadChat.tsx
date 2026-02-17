@@ -357,7 +357,8 @@ export const EmailThreadChat = ({
     return format(date, "EEEE, dd בMMMM", { locale: he });
   };
 
-  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const latestMessage =
+    messages.length > 0 ? messages[messages.length - 1] : null;
 
   const focusReplyInput = () => {
     textareaRef.current?.focus();
@@ -401,7 +402,12 @@ export const EmailThreadChat = ({
 
         <div className="px-4 pb-3">
           <div className="flex items-center gap-1 rounded-xl border bg-background px-2 py-1 w-fit">
-            <Button variant="ghost" size="icon" onClick={onBack} title="חזרה לכל המיילים">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              title="חזרה לכל המיילים"
+            >
               <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" title="פעולות נוספות">
@@ -412,7 +418,10 @@ export const EmailThreadChat = ({
               size="icon"
               title="כוכב"
               disabled={!latestMessage || !onToggleStar}
-              onClick={() => latestMessage && onToggleStar?.(latestMessage.id, latestMessage.isStarred)}
+              onClick={() =>
+                latestMessage &&
+                onToggleStar?.(latestMessage.id, latestMessage.isStarred)
+              }
             >
               <Bookmark className="h-4 w-4" />
             </Button>
@@ -453,7 +462,12 @@ export const EmailThreadChat = ({
             >
               <Archive className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" title="השב" onClick={focusReplyInput}>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="השב"
+              onClick={focusReplyInput}
+            >
               <Reply className="h-4 w-4" />
             </Button>
             <Button
