@@ -669,29 +669,36 @@ export const EmailDetailView = memo(function EmailDetailView({
         </div>
 
         {/* Email Quick Actions */}
-        <EmailQuickActions
-          email={selectedEmail}
-          clients={clients}
-          linkedClientId={linkedClientId}
-          autoDetectedClient={autoDetectedClient}
-          onCreateTask={onCreateTask}
-          onCreateMeeting={onCreateMeeting}
-          onCreateReminder={onCreateReminder}
-          onLinkClient={onLinkClient}
-        />
+        <div style={{ overflowAnchor: "none" }}>
+          <EmailQuickActions
+            email={selectedEmail}
+            clients={clients}
+            linkedClientId={linkedClientId}
+            autoDetectedClient={autoDetectedClient}
+            onCreateTask={onCreateTask}
+            onCreateMeeting={onCreateMeeting}
+            onCreateReminder={onCreateReminder}
+            onLinkClient={onLinkClient}
+          />
+        </div>
 
         {/* Smart Suggestions */}
-        <EmailSmartSuggestions
-          email={selectedEmail}
-          clients={clients}
-          onCreateTask={onCreateTask}
-          onCreateMeeting={onCreateMeeting}
-          onLinkClient={onLinkClient}
-        />
+        <div style={{ overflowAnchor: "none" }}>
+          <EmailSmartSuggestions
+            email={selectedEmail}
+            clients={clients}
+            onCreateTask={onCreateTask}
+            onCreateMeeting={onCreateMeeting}
+            onLinkClient={onLinkClient}
+          />
+        </div>
 
         <Separator />
 
-        <div className="prose dark:prose-invert max-w-none text-sm">
+        <div
+          className="prose dark:prose-invert max-w-none text-sm"
+          style={{ overflowAnchor: "auto" }}
+        >
           {/* Recipients info */}
           {selectedEmail.to && selectedEmail.to.length > 0 && (
             <div className="text-xs text-muted-foreground mb-3 flex items-center gap-1">

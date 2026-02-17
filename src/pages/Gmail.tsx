@@ -2705,7 +2705,10 @@ export default function Gmail() {
                   <CardContent className="p-0 relative overflow-hidden">
                     {selectedEmail ? (
                       /* Email Detail View - full overlay so no list bleeds through */
-                      <div className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+                      <div
+                        className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
+                        style={{ overflowAnchor: "none" }}
+                      >
                         <EmailDetailView
                           selectedEmail={selectedEmail}
                           emailHtmlBody={emailHtmlBody}
