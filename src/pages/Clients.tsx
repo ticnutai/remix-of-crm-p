@@ -2994,6 +2994,7 @@ export default function Clients() {
           clientsWithMeetings={clientsWithMeetings}
           categories={categories}
           allTags={allTags}
+          onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
         />
 
         {/* Statistics View - When Enabled */}

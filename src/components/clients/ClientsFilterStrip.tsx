@@ -74,6 +74,7 @@ interface ClientsFilterStripProps {
   clientsWithMeetings: Set<string>;
   categories?: ClientCategory[];
   allTags?: string[];
+  onOpenCategoryManager?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -92,6 +93,7 @@ export function ClientsFilterStrip({
   clientsWithMeetings,
   categories = [],
   allTags = [],
+  onOpenCategoryManager,
 }: ClientsFilterStripProps) {
   const [stageDefinitions, setStageDefinitions] = useState<
     ClientStageDefinition[]
@@ -364,7 +366,7 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -476,7 +478,7 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <FolderOpen className="h-5 w-5 text-primary" />
@@ -487,8 +489,8 @@ export function ClientsFilterStrip({
                   className="h-7 w-7 mr-auto bg-primary/10 hover:bg-primary/20"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // TODO: Open add category dialog
-                    console.log("Add category");
+                    setCategoriesDialogOpen(false);
+                    onOpenCategoryManager?.();
                   }}
                   title="הוסף קטגוריה"
                 >
@@ -509,7 +511,7 @@ export function ClientsFilterStrip({
                 </Button>
               )}
             </div>
-            <ScrollArea className="h-[250px] p-4">
+            <ScrollArea className="max-h-[50vh] p-4">
               <div className="space-y-2">
                 {categories.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
@@ -553,8 +555,8 @@ export function ClientsFilterStrip({
                           className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Edit category
-                            console.log("Edit category:", category.id);
+                            setCategoriesDialogOpen(false);
+                            onOpenCategoryManager?.();
                           }}
                           title="ערוך קטגוריה"
                         >
@@ -566,8 +568,8 @@ export function ClientsFilterStrip({
                           className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
                           onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Delete category
-                            console.log("Delete category:", category.id);
+                            setCategoriesDialogOpen(false);
+                            onOpenCategoryManager?.();
                           }}
                           title="מחק קטגוריה"
                         >
@@ -607,7 +609,7 @@ export function ClientsFilterStrip({
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[300px] p-0 overflow-hidden" dir="rtl" align="end" collisionPadding={16}>
             <div className="p-4 border-b">
               <div className="flex flex-row-reverse items-center gap-2 mb-3">
                 <Tag className="h-5 w-5 text-primary" />
@@ -633,7 +635,7 @@ export function ClientsFilterStrip({
                 </Button>
               )}
             </div>
-            <ScrollArea className="h-[250px] p-4">
+            <ScrollArea className="max-h-[50vh] p-4">
               <div className="flex flex-wrap gap-2">
                 {filteredTags.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8 w-full">
