@@ -363,6 +363,7 @@ export default function Gmail() {
     null,
   );
   const [previewY, setPreviewY] = useState(200);
+  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Draggable + Resizable preview panel state (persisted in localStorage)
   const PREVIEW_STORAGE_KEY = "gmail_preview_panel";
@@ -380,7 +381,7 @@ export default function Gmail() {
     h: number;
   }>(() => {
     const stored = getStoredPreviewRect();
-    return stored || { x: window.innerWidth * 0.05, y: 200, w: 600, h: 500 };
+    return stored || { x: window.innerWidth * 0.05, y: 200, w: 620, h: 520 };
   });
   const dragRef = useRef<{
     startX: number;
@@ -405,10 +406,36 @@ export default function Gmail() {
     } catch {}
   }, []);
 
+  // Close preview with cleanup
+  const closePreview = useCallback(() => {
+    if (previewLeaveTimerRef.current) {
+      clearTimeout(previewLeaveTimerRef.current);
+      previewLeaveTimerRef.current = null;
+    }
+    setShowPreviewDialog(false);
+  }, []);
+
+  // Delayed close — cancels if mouse re-enters
+  const schedulePreviewClose = useCallback(() => {
+    if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
+    previewLeaveTimerRef.current = setTimeout(() => {
+      setShowPreviewDialog(false);
+      previewLeaveTimerRef.current = null;
+    }, 500);
+  }, []);
+
+  const cancelPreviewClose = useCallback(() => {
+    if (previewLeaveTimerRef.current) {
+      clearTimeout(previewLeaveTimerRef.current);
+      previewLeaveTimerRef.current = null;
+    }
+  }, []);
+
   // Drag handlers
   const onDragStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
+      cancelPreviewClose();
       dragRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -433,12 +460,7 @@ export default function Gmail() {
             window.innerHeight - previewRect.h - 4,
           ),
         );
-        const newRect = {
-          ...previewRect,
-          x: newX,
-          y: newY,
-        };
-        setPreviewRect(newRect);
+        setPreviewRect((prev) => ({ ...prev, x: newX, y: newY }));
       };
       const onUp = () => {
         document.removeEventListener("mousemove", onMove);
@@ -452,7 +474,7 @@ export default function Gmail() {
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
-    [previewRect, savePreviewRect],
+    [previewRect, savePreviewRect, cancelPreviewClose],
   );
 
   // Resize handlers - supports all edges and corners
@@ -460,6 +482,7 @@ export default function Gmail() {
     (e: React.MouseEvent, dir: string) => {
       e.preventDefault();
       e.stopPropagation();
+      cancelPreviewClose();
       resizeRef.current = {
         startX: e.clientX,
         startY: e.clientY,
@@ -476,16 +499,12 @@ export default function Gmail() {
         const dy = ev.clientY - r.startY;
         let { x, y, w, h } = { x: r.origX, y: r.origY, w: r.origW, h: r.origH };
 
-        if (r.dir.includes("r")) {
-          w = Math.max(300, r.origW + dx);
-        }
+        if (r.dir.includes("r")) w = Math.max(300, r.origW + dx);
         if (r.dir.includes("l")) {
           w = Math.max(300, r.origW - dx);
           x = r.origX + (r.origW - Math.max(300, r.origW - dx));
         }
-        if (r.dir.includes("b")) {
-          h = Math.max(250, r.origH + dy);
-        }
+        if (r.dir.includes("b")) h = Math.max(250, r.origH + dy);
         if (r.dir.includes("t")) {
           h = Math.max(250, r.origH - dy);
           y = r.origY + (r.origH - Math.max(250, r.origH - dy));
@@ -508,13 +527,13 @@ export default function Gmail() {
       document.addEventListener("mousemove", onMove);
       document.addEventListener("mouseup", onUp);
     },
-    [previewRect, savePreviewRect],
+    [previewRect, savePreviewRect, cancelPreviewClose],
   );
 
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
       setHoverPreviewId(messageId);
-      // Position: use stored rect position (y), but set initial y near the hovered subject
+      // Position: use stored rect position, or default near the hovered subject
       const stored = getStoredPreviewRect();
       if (!stored) {
         const clampedY = Math.max(
@@ -2919,103 +2938,185 @@ export default function Gmail() {
           />
         )}
 
-        {/* Hover Preview Panel - draggable, resizable, closes on mouse leave */}
+        {/* ═══════════════════════════════════════════════════════════════
+            PREVIEW PANEL v2 — Rebuilt from scratch
+            Features: draggable, resizable (8 handles), delayed close,
+            ScrollArea for reliable scroll, fade-in, all original buttons
+        ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && (
           <div
-            className="fixed z-[401] rounded-lg bg-background shadow-2xl flex flex-col"
+            className="fixed z-[401] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
             style={{
-              top: Math.max(
-                56,
-                Math.min(previewRect.y, window.innerHeight - previewRect.h - 4),
-              ),
-              left: Math.max(
-                4,
-                Math.min(previewRect.x, window.innerWidth - previewRect.w - 4),
-              ),
+              position: "fixed",
+              top: Math.max(56, Math.min(previewRect.y, window.innerHeight - previewRect.h - 4)),
+              left: Math.max(4, Math.min(previewRect.x, window.innerWidth - previewRect.w - 4)),
               width: Math.min(previewRect.w, window.innerWidth - 8),
               height: Math.min(previewRect.h, window.innerHeight - 56),
+              display: "flex",
+              flexDirection: "column",
               border: "3px solid #d4a843",
-              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.4)",
-              overflow: "hidden",
+              borderRadius: "12px",
+              background: "var(--background, #fff)",
+              boxShadow: "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
             }}
             dir="rtl"
-            onMouseLeave={() => setShowPreviewDialog(false)}
+            onMouseEnter={cancelPreviewClose}
+            onMouseLeave={schedulePreviewClose}
           >
-            {/* Draggable Header */}
+            {/* ── Draggable Header ────────────────────────────── */}
             <div
-              className="p-3 flex-shrink-0 cursor-move select-none"
-              style={{ borderBottom: "2px solid #d4a843" }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderBottom: "2px solid #d4a843",
+                cursor: "move",
+                userSelect: "none",
+                flexShrink: 0,
+                background: "linear-gradient(135deg, rgba(212,168,67,0.08), transparent)",
+                borderTopLeftRadius: "9px",
+                borderTopRightRadius: "9px",
+              }}
               onMouseDown={onDragStart}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0 opacity-50" />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-base truncate text-right">
-                      {previewMessage.subject || "(ללא נושא)"}
-                    </h3>
-                    <p className="text-sm text-muted-foreground text-right truncate">
-                      {previewMessage.fromName} &lt;{previewMessage.from}&gt;
-                    </p>
-                    <p className="text-xs text-muted-foreground text-right">
-                      {formatDate(previewMessage.date)}
-                    </p>
-                  </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+                <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" style={{ opacity: 0.4 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    lineHeight: 1.3,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    textAlign: "right",
+                    margin: 0,
+                  }}>
+                    {previewMessage.subject || "(ללא נושא)"}
+                  </h3>
+                  <p style={{
+                    fontSize: "0.82rem",
+                    color: "var(--muted-foreground, #888)",
+                    margin: "2px 0 0 0",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    textAlign: "right",
+                  }}>
+                    {previewMessage.fromName} &lt;{previewMessage.from}&gt;
+                  </p>
+                  <p style={{
+                    fontSize: "0.72rem",
+                    color: "var(--muted-foreground, #888)",
+                    margin: "1px 0 0 0",
+                    textAlign: "right",
+                  }}>
+                    {formatDate(previewMessage.date)}
+                    {!previewMessage.isRead && (
+                      <span style={{
+                        display: "inline-block",
+                        width: 7, height: 7,
+                        borderRadius: "50%",
+                        backgroundColor: "#3b82f6",
+                        marginRight: 6,
+                        verticalAlign: "middle",
+                      }} title="לא נקרא" />
+                    )}
+                    {previewMessage.hasAttachments && (
+                      <span style={{ marginRight: 6, fontSize: "0.72rem" }} title="קבצים מצורפים">📎</span>
+                    )}
+                  </p>
                 </div>
-                <button
-                  onClick={() => setShowPreviewDialog(false)}
-                  className="rounded-sm opacity-70 hover:opacity-100 transition-opacity p-1 mr-2"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); closePreview(); }}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{
+                  padding: 4,
+                  borderRadius: 4,
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  opacity: 0.6,
+                  transition: "opacity 0.2s",
+                  marginRight: 4,
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.6"; }}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Body - vertical scroll only */}
-            <div
-              className="flex-1 min-h-0 p-4"
+            {/* ── Scrollable Body ─────────────────────────────── */}
+            <ScrollArea
+              style={{
+                flex: 1,
+                minHeight: 0,
+              }}
               dir="rtl"
-              style={{ overflowY: "auto", overflowX: "hidden" }}
             >
-              {hoverPreviewLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full" />
-                </div>
-              ) : hoverPreviewHtml ? (
-                <div
-                  className="prose prose-sm max-w-none dark:prose-invert"
-                  style={{ overflowX: "hidden", wordBreak: "break-word" }}
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                      ALLOW_UNKNOWN_PROTOCOLS: true,
-                    }),
-                  }}
-                />
-              ) : (
-                <p className="whitespace-pre-wrap text-muted-foreground">
-                  {previewMessage.snippet}
-                </p>
-              )}
-            </div>
+              <div style={{ padding: "14px 16px", direction: "rtl" }}>
+                {hoverPreviewLoading ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 0", gap: 8 }}>
+                    <div style={{
+                      width: 28, height: 28,
+                      border: "3px solid #d4a843",
+                      borderTopColor: "transparent",
+                      borderRadius: "50%",
+                      animation: "spin 0.7s linear infinite",
+                    }} />
+                    <span style={{ fontSize: "0.78rem", color: "var(--muted-foreground, #888)" }}>טוען תוכן...</span>
+                  </div>
+                ) : hoverPreviewHtml ? (
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert"
+                    style={{ overflowX: "hidden", wordBreak: "break-word", lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(hoverPreviewHtml, {
+                        ALLOW_UNKNOWN_PROTOCOLS: true,
+                      }),
+                    }}
+                  />
+                ) : (
+                  <p style={{
+                    whiteSpace: "pre-wrap",
+                    color: "var(--muted-foreground, #888)",
+                    fontSize: "0.88rem",
+                    lineHeight: 1.7,
+                    margin: 0,
+                  }}>
+                    {previewMessage.snippet || "אין תוכן לתצוגה"}
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
 
-            {/* Footer actions */}
+            {/* ── Footer Actions ──────────────────────────────── */}
             <div
-              className="flex items-center gap-2 p-2 flex-shrink-0"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderTop: "2px solid #d4a843",
+                flexShrink: 0,
+                background: "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
+                borderBottomLeftRadius: "9px",
+                borderBottomRightRadius: "9px",
+              }}
               dir="rtl"
-              style={{ borderTop: "2px solid #d4a843" }}
             >
               <Button
                 size="sm"
                 variant="outline"
                 className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
                 onClick={() => {
-                  setShowPreviewDialog(false);
+                  closePreview();
                   setSelectedEmail(previewMessage);
                   if (!previewMessage.isRead) {
-                    markAsRead(previewMessage.id, true).then(() =>
-                      handleRefresh(),
-                    );
+                    markAsRead(previewMessage.id, true).then(() => handleRefresh());
                   }
                 }}
               >
@@ -3026,14 +3127,11 @@ export default function Gmail() {
                 variant="outline"
                 className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
                 onClick={() => {
-                  setShowPreviewDialog(false);
+                  closePreview();
                   const replySubject = previewMessage.subject?.startsWith("Re:")
                     ? previewMessage.subject
                     : `Re: ${previewMessage.subject}`;
-                  setDraftData({
-                    to: previewMessage.from,
-                    subject: replySubject,
-                  });
+                  setDraftData({ to: previewMessage.from, subject: replySubject });
                   setIsComposeOpen(true);
                 }}
               >
@@ -3045,7 +3143,7 @@ export default function Gmail() {
                 variant="outline"
                 className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
                 onClick={() => {
-                  setShowPreviewDialog(false);
+                  closePreview();
                   const fwdSubject = previewMessage.subject?.startsWith("Fwd:")
                     ? previewMessage.subject
                     : `Fwd: ${previewMessage.subject}`;
@@ -3058,61 +3156,29 @@ export default function Gmail() {
               </Button>
             </div>
 
-            {/* Resize handles - all edges and corners */}
+            {/* ── Resize Handles (8 directions) ───────────────── */}
             {/* Edges */}
-            <div
-              className="absolute top-0 left-3 right-3 h-[5px] cursor-n-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "t")}
-            />
-            <div
-              className="absolute bottom-0 left-3 right-3 h-[5px] cursor-s-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "b")}
-            />
-            <div
-              className="absolute left-0 top-3 bottom-3 w-[5px] cursor-w-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "l")}
-            />
-            <div
-              className="absolute right-0 top-3 bottom-3 w-[5px] cursor-e-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "r")}
-            />
+            <div style={{ position: "absolute", top: 0, left: 12, right: 12, height: 5, cursor: "n-resize" }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "t")} />
+            <div style={{ position: "absolute", bottom: 0, left: 12, right: 12, height: 5, cursor: "s-resize" }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "b")} />
+            <div style={{ position: "absolute", left: 0, top: 12, bottom: 12, width: 5, cursor: "w-resize" }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "l")} />
+            <div style={{ position: "absolute", right: 0, top: 12, bottom: 12, width: 5, cursor: "e-resize" }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "r")} />
             {/* Corners */}
-            <div
-              className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
-              style={{
-                borderLeft: "3px solid #d4a843",
-                borderTop: "3px solid #d4a843",
-                borderTopLeftRadius: "6px",
-              }}
-            />
-            <div
-              className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
-              style={{
-                borderRight: "3px solid #d4a843",
-                borderTop: "3px solid #d4a843",
-                borderTopRightRadius: "6px",
-              }}
-            />
-            <div
-              className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
-              style={{
-                borderLeft: "3px solid #d4a843",
-                borderBottom: "3px solid #d4a843",
-                borderBottomLeftRadius: "6px",
-              }}
-            />
-            <div
-              className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize"
-              onMouseDown={(e) => onEdgeResizeStart(e, "br")}
-              style={{
-                borderRight: "3px solid #d4a843",
-                borderBottom: "3px solid #d4a843",
-                borderBottomRightRadius: "6px",
-              }}
-            />
+            <div style={{ position: "absolute", top: 0, left: 0, width: 14, height: 14, cursor: "nw-resize",
+              borderLeft: "3px solid #d4a843", borderTop: "3px solid #d4a843", borderTopLeftRadius: 8 }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "tl")} />
+            <div style={{ position: "absolute", top: 0, right: 0, width: 14, height: 14, cursor: "ne-resize",
+              borderRight: "3px solid #d4a843", borderTop: "3px solid #d4a843", borderTopRightRadius: 8 }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "tr")} />
+            <div style={{ position: "absolute", bottom: 0, left: 0, width: 14, height: 14, cursor: "sw-resize",
+              borderLeft: "3px solid #d4a843", borderBottom: "3px solid #d4a843", borderBottomLeftRadius: 8 }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "bl")} />
+            <div style={{ position: "absolute", bottom: 0, right: 0, width: 14, height: 14, cursor: "se-resize",
+              borderRight: "3px solid #d4a843", borderBottom: "3px solid #d4a843", borderBottomRightRadius: 8 }}
+              onMouseDown={(e) => onEdgeResizeStart(e, "br")} />
           </div>
         )}
 
