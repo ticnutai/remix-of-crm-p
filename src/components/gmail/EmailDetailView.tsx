@@ -1,5 +1,5 @@
 // EmailDetailView - Extracted from Gmail.tsx for better maintainability
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -229,6 +229,12 @@ export const EmailDetailView = memo(function EmailDetailView({
   const isPinned = metadata?.is_pinned || false;
   const linkedClientId = getLinkedClientId(selectedEmail.id);
   const autoDetectedClient = getClientForMessage(selectedEmail);
+  const sanitizedEmailHtml = useMemo(() => {
+    if (!emailHtmlBody) return "";
+    return DOMPurify.sanitize(emailHtmlBody, {
+      ALLOW_UNKNOWN_PROTOCOLS: true,
+    });
+  }, [emailHtmlBody]);
 
   return (
     <div
@@ -720,9 +726,7 @@ export const EmailDetailView = memo(function EmailDetailView({
               className="border rounded-lg p-4 bg-card overflow-x-auto text-sm"
               dir="auto"
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(emailHtmlBody, {
-                  ALLOW_UNKNOWN_PROTOCOLS: true,
-                }),
+                __html: sanitizedEmailHtml,
               }}
             />
           ) : (
