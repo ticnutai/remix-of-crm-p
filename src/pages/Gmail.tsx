@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -374,10 +373,7 @@ export default function Gmail() {
     if (!showPreviewDialog) return;
     const t = setTimeout(() => {
       const panel = previewPanelRef.current;
-      const scrollRoot = previewScrollRef.current;
-      const viewport = scrollRoot?.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      ) as HTMLElement | null;
+      const viewport = previewScrollRef.current;
 
       if (!panel) return;
 
@@ -3169,14 +3165,21 @@ export default function Gmail() {
               </div>
 
               {/* ── Scrollable Body ─────────────────────────────── */}
-              <ScrollArea
+              <div
                 ref={previewScrollRef}
                 style={{
                   flex: 1,
                   minHeight: 0,
                   background: "#ffffff",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  overscrollBehavior: "contain",
+                  scrollBehavior: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  scrollbarGutter: "stable",
                 }}
                 dir="rtl"
+                onWheel={(e) => e.stopPropagation()}
               >
                 <div
                   style={{
@@ -3185,6 +3188,7 @@ export default function Gmail() {
                     background: "#ffffff",
                     opacity: 1,
                     minHeight: "100%",
+                    overflowAnchor: "none",
                   }}
                 >
                   {hoverPreviewLoading ? (
@@ -3245,7 +3249,7 @@ export default function Gmail() {
                     </p>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
 
               {/* ── Footer Actions ──────────────────────────────── */}
               <div
