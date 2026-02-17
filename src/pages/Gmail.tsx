@@ -2983,11 +2983,11 @@ export default function Gmail() {
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && ReactDOM.createPortal(
           <>
-            {/* ── Solid backdrop overlay — fully opaque via Portal to cover sidebar too ── */}
+            {/* ── Light backdrop — click to close, but not blocking the view ── */}
             <div
               className="fixed inset-0 z-[9998]"
               style={{
-                background: "#1a1a2e",
+                background: "rgba(0,0,0,0.35)",
               }}
               onClick={() => {
                 setShowPreviewDialog(false);
