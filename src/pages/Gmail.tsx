@@ -397,7 +397,9 @@ export default function Gmail() {
     origH: number;
     dir: string;
   } | null>(null);
-  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Save preview position/size to localStorage
   const savePreviewRect = useCallback((rect: typeof previewRect) => {
@@ -514,7 +516,12 @@ export default function Gmail() {
 
   const handleHoverPreview = useCallback(
     async (messageId: string, y: number) => {
-      console.warn('📧 ⬛ [HOVER PREVIEW TRIGGERED] messageId:', messageId, 'y:', y);
+      console.warn(
+        "📧 ⬛ [HOVER PREVIEW TRIGGERED] messageId:",
+        messageId,
+        "y:",
+        y,
+      );
       setHoverPreviewId(messageId);
       // Position: use stored rect position (y), but set initial y near the hovered subject
       const stored = getStoredPreviewRect();
@@ -538,7 +545,12 @@ export default function Gmail() {
       // Check persistent cache first (IndexedDB + memory)
       const cachedBody = await emailBodyCache.getCachedBody(messageId);
       if (cachedBody) {
-        console.log('📧 [Preview DEBUG] Got cached body, length:', cachedBody.length, 'first100:', cachedBody.substring(0, 100));
+        console.log(
+          "📧 [Preview DEBUG] Got cached body, length:",
+          cachedBody.length,
+          "first100:",
+          cachedBody.substring(0, 100),
+        );
         setHoverPreviewHtml(cachedBody);
         return;
       }
@@ -546,22 +558,32 @@ export default function Gmail() {
       setHoverPreviewLoading(true);
       try {
         const fullMsg = await getFullMessage(messageId);
-        console.log('📧 [Preview DEBUG] fullMsg received:', !!fullMsg, 'has payload:', !!fullMsg?.payload);
+        console.log(
+          "📧 [Preview DEBUG] fullMsg received:",
+          !!fullMsg,
+          "has payload:",
+          !!fullMsg?.payload,
+        );
         if (fullMsg?.payload) {
           const rawHtml = extractHtmlBody(fullMsg.payload);
-          console.log('📧 [Preview DEBUG] rawHtml length:', rawHtml?.length, 'first100:', rawHtml?.substring(0, 100));
+          console.log(
+            "📧 [Preview DEBUG] rawHtml length:",
+            rawHtml?.length,
+            "first100:",
+            rawHtml?.substring(0, 100),
+          );
           const html = await resolveInlineImages(
             rawHtml,
             messageId,
             fullMsg.payload,
           );
-          console.log('📧 [Preview DEBUG] resolved html length:', html?.length);
+          console.log("📧 [Preview DEBUG] resolved html length:", html?.length);
           setHoverPreviewHtml(html);
           if (html) {
             await emailBodyCache.cacheBody(messageId, html);
           }
         } else {
-          console.log('📧 [Preview DEBUG] No payload in fullMsg');
+          console.log("📧 [Preview DEBUG] No payload in fullMsg");
           setHoverPreviewHtml(null);
         }
       } catch (e) {
@@ -2955,7 +2977,8 @@ export default function Gmail() {
               }
             }}
             onMouseLeave={() => {
-              if (previewLeaveTimerRef.current) clearTimeout(previewLeaveTimerRef.current);
+              if (previewLeaveTimerRef.current)
+                clearTimeout(previewLeaveTimerRef.current);
               previewLeaveTimerRef.current = setTimeout(() => {
                 setShowPreviewDialog(false);
                 previewLeaveTimerRef.current = null;
@@ -2964,7 +2987,13 @@ export default function Gmail() {
           >
             {/* Draggable Header */}
             <div
-              style={{ flexShrink: 0, borderBottom: "2px solid #d4a843", padding: "12px", cursor: "move", userSelect: "none" }}
+              style={{
+                flexShrink: 0,
+                borderBottom: "2px solid #d4a843",
+                padding: "12px",
+                cursor: "move",
+                userSelect: "none",
+              }}
               onMouseDown={onDragStart}
             >
               <div className="flex items-start justify-between">
@@ -3028,7 +3057,9 @@ export default function Gmail() {
               dir="rtl"
               style={{ flexShrink: 0, borderTop: "2px solid #d4a843" }}
             >
-              <span className="text-[9px] text-muted-foreground opacity-40 ml-auto">v7</span>
+              <span className="text-[9px] text-muted-foreground opacity-40 ml-auto">
+                v7
+              </span>
               <Button
                 size="sm"
                 variant="outline"
