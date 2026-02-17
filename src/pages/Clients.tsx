@@ -155,7 +155,7 @@ export default function Clients() {
     isLoading: settingsLoading,
   } = useViewSettings("clients");
 
-  // Cloud-persisted classification filter
+  // Cloud-persisted classification filter (legacy - kept for backward compat)
   const {
     value: savedHiddenClassifications,
     setValue: saveHiddenClassifications,
@@ -165,12 +165,58 @@ export default function Clients() {
     defaultValue: [],
   });
 
+  // Cloud-persisted FULL filter + view state
+  const {
+    value: savedFullFilters,
+    setValue: saveFullFilters,
+    isLoading: fullFiltersLoading,
+  } = useUserSettings<{
+    stages?: string[];
+    dateFilter?: string;
+    hasReminders?: boolean | null;
+    hasTasks?: boolean | null;
+    hasMeetings?: boolean | null;
+    categories?: string[];
+    tags?: string[];
+    hiddenClassifications?: string[];
+    sortBy?: string;
+    showStagesView?: boolean;
+    showStatisticsView?: boolean;
+  }>({
+    key: "clients_full_filters",
+    defaultValue: {},
+  });
+
   const [viewMode, setViewModeLocal] = useState<
     "grid" | "list" | "compact" | "cards" | "minimal" | "portrait" | "luxury"
   >("grid");
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
-  const [showStagesView, setShowStagesView] = useState(false);
-  const [showStatisticsView, setShowStatisticsView] = useState(false);
+  const [showStagesView, setShowStagesViewLocal] = useState(false);
+  const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
+
+  // Wrapper: persist showStagesView to cloud
+  const setShowStagesView = useCallback(
+    (val: boolean | ((prev: boolean) => boolean)) => {
+      setShowStagesViewLocal((prev) => {
+        const next = typeof val === "function" ? val(prev) : val;
+        saveFullFilters((old) => ({ ...old, showStagesView: next }));
+        return next;
+      });
+    },
+    [saveFullFilters],
+  );
+
+  // Wrapper: persist showStatisticsView to cloud
+  const setShowStatisticsView = useCallback(
+    (val: boolean | ((prev: boolean) => boolean)) => {
+      setShowStatisticsViewLocal((prev) => {
+        const next = typeof val === "function" ? val(prev) : val;
+        saveFullFilters((old) => ({ ...old, showStatisticsView: next }));
+        return next;
+      });
+    },
+    [saveFullFilters],
+  );
 
   // Sync with cloud settings when loaded
   useEffect(() => {
@@ -185,19 +231,43 @@ export default function Clients() {
     }
   }, [settingsLoading, savedViewMode, savedColumns, savedSortBy]);
 
-  // Sync hidden classifications from cloud
+  // Sync full filter state from cloud (takes priority)
   useEffect(() => {
-    if (
-      !classFilterLoading &&
-      savedHiddenClassifications &&
-      savedHiddenClassifications.length > 0
-    ) {
-      setFilters((prev) => ({
-        ...prev,
-        hiddenClassifications: savedHiddenClassifications,
-      }));
+    if (fullFiltersLoading) return;
+    if (!savedFullFilters || Object.keys(savedFullFilters).length === 0) {
+      // Fallback: load legacy hidden classifications
+      if (
+        !classFilterLoading &&
+        savedHiddenClassifications &&
+        savedHiddenClassifications.length > 0
+      ) {
+        setFilters((prev) => ({
+          ...prev,
+          hiddenClassifications: savedHiddenClassifications,
+        }));
+      }
+      return;
     }
-  }, [classFilterLoading, savedHiddenClassifications]);
+    setFilters((prev) => ({
+      ...prev,
+      stages: savedFullFilters.stages ?? prev.stages,
+      dateFilter: (savedFullFilters.dateFilter as any) ?? prev.dateFilter,
+      hasReminders: savedFullFilters.hasReminders ?? prev.hasReminders,
+      hasTasks: savedFullFilters.hasTasks ?? prev.hasTasks,
+      hasMeetings: savedFullFilters.hasMeetings ?? prev.hasMeetings,
+      categories: savedFullFilters.categories ?? prev.categories,
+      tags: savedFullFilters.tags ?? prev.tags,
+      hiddenClassifications:
+        savedFullFilters.hiddenClassifications ?? prev.hiddenClassifications,
+      sortBy: (savedFullFilters.sortBy as any) ?? prev.sortBy,
+    }));
+    if (savedFullFilters.showStagesView != null) {
+      setShowStagesViewLocal(savedFullFilters.showStagesView);
+    }
+    if (savedFullFilters.showStatisticsView != null) {
+      setShowStatisticsViewLocal(savedFullFilters.showStatisticsView);
+    }
+  }, [fullFiltersLoading, savedFullFilters, classFilterLoading, savedHiddenClassifications]);
 
   // Wrapper functions to save to cloud (memoized)
   const setViewMode = useCallback(
@@ -3257,13 +3327,26 @@ export default function Clients() {
             if (newFilters.sortBy !== filters.sortBy) {
               saveSortBy(newFilters.sortBy);
             }
-            // Persist hidden classifications to cloud
+            // Persist hidden classifications to cloud (legacy)
             if (
               JSON.stringify(newFilters.hiddenClassifications || []) !==
               JSON.stringify(filters.hiddenClassifications || [])
             ) {
               saveHiddenClassifications(newFilters.hiddenClassifications || []);
             }
+            // Persist FULL filter state to cloud
+            saveFullFilters((old) => ({
+              ...old,
+              stages: newFilters.stages,
+              dateFilter: newFilters.dateFilter,
+              hasReminders: newFilters.hasReminders,
+              hasTasks: newFilters.hasTasks,
+              hasMeetings: newFilters.hasMeetings,
+              categories: newFilters.categories,
+              tags: newFilters.tags,
+              hiddenClassifications: newFilters.hiddenClassifications,
+              sortBy: newFilters.sortBy,
+            }));
           }}
           clientsWithReminders={clientsWithReminders}
           clientsWithTasks={clientsWithTasks}

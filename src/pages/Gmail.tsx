@@ -703,7 +703,6 @@ export default function Gmail() {
   );
   const [autoTagEnabled, setAutoTagEnabled] = useState(true);
 
-
   // Derived persistent data from useEmailMetadata
   const emailLabels = useMemo(
     () => emailMetadata.getAllLabels(),
@@ -721,7 +720,6 @@ export default function Gmail() {
     () => emailMetadata.getAllReminders(),
     [emailMetadata.metadata],
   );
-
 
   // Load clients for auto-tagging
   useEffect(() => {
@@ -1195,7 +1193,6 @@ export default function Gmail() {
     user?.email,
   ]);
 
-
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1348,7 +1345,6 @@ export default function Gmail() {
     return () => clearInterval(interval);
   }, [undoSendState?.params]);
 
-
   // Build quoted body for reply / forward
   const buildQuotedBody = useCallback(
     (email: typeof selectedEmail, mode: "reply" | "forward" | "replyAll") => {
@@ -1485,7 +1481,6 @@ export default function Gmail() {
     [getAttachment],
   );
 
-
   const handleConnect = useCallback(async () => {
     await fetchEmails(50);
     setHasLoaded(true);
@@ -1513,7 +1508,6 @@ export default function Gmail() {
     setSelectedDateFilter(null);
     await fetchEmails(50);
   };
-
 
   // Load thread messages for chat view (from API)
   const loadThreadMessages = async (threadId: string) => {
@@ -1874,7 +1868,6 @@ export default function Gmail() {
       date: selectedEmail?.date ? new Date(selectedEmail.date) : undefined,
     });
   };
-
 
   // Pre-compute thread counts to avoid O(n²) in render loop
   const threadCounts = useMemo(() => {
@@ -2692,7 +2685,10 @@ export default function Gmail() {
                       <div
                         ref={detailScrollRef}
                         className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
-                        style={{ contain: "layout style", overflowAnchor: "none" }}
+                        style={{
+                          contain: "layout style",
+                          overflowAnchor: "none",
+                        }}
                       >
                         <EmailDetailView
                           selectedEmail={selectedEmail}
