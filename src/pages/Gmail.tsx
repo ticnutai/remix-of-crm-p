@@ -364,7 +364,6 @@ export default function Gmail() {
     null,
   );
   const [previewY, setPreviewY] = useState(200);
-  const previewOverlayRef = useRef<HTMLDivElement | null>(null);
   const previewPanelRef = useRef<HTMLDivElement | null>(null);
   const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -374,23 +373,19 @@ export default function Gmail() {
   useEffect(() => {
     if (!showPreviewDialog) return;
     const t = setTimeout(() => {
-      const overlay = previewOverlayRef.current;
       const panel = previewPanelRef.current;
       const scrollRoot = previewScrollRef.current;
       const viewport = scrollRoot?.querySelector(
         "[data-radix-scroll-area-viewport]",
       ) as HTMLElement | null;
 
-      if (!overlay || !panel) return;
+      if (!panel) return;
 
-      const overlayStyles = getComputedStyle(overlay);
       const panelStyles = getComputedStyle(panel);
       const viewportStyles = viewport ? getComputedStyle(viewport) : null;
 
       console.group("[Gmail Preview Debug] Layer diagnostics");
       console.table({
-        overlayBackground: overlayStyles.backgroundColor,
-        overlayOpacity: overlayStyles.opacity,
         panelBackground: panelStyles.backgroundColor,
         panelOpacity: panelStyles.opacity,
         panelIsolation: panelStyles.isolation,
@@ -3018,20 +3013,6 @@ export default function Gmail() {
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && ReactDOM.createPortal(
           <>
-            {/* ── Solid backdrop — fully blocks background content ── */}
-            <div
-              ref={previewOverlayRef}
-              className="fixed inset-0 z-[9998]"
-              style={{
-                background: "#0f172a",
-              }}
-              onClick={() => {
-                setShowPreviewDialog(false);
-                setPreviewMessage(null);
-                setHoverPreviewId(null);
-                setHoverPreviewHtml(null);
-              }}
-            />
             <div
               ref={previewPanelRef}
               className="fixed z-[9999] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
