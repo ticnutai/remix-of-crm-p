@@ -2982,12 +2982,11 @@ export default function Gmail() {
         ═══════════════════════════════════════════════════════════════ */}
         {showPreviewDialog && previewMessage && (
           <>
-            {/* ── Backdrop overlay / mask ── */}
+            {/* ── Solid backdrop overlay — fully opaque, nothing visible behind ── */}
             <div
-              className="fixed inset-0 z-[400] animate-in fade-in-0 duration-200"
+              className="fixed inset-0 z-[400]"
               style={{
-                background: "rgba(0,0,0,0.5)",
-                backdropFilter: "blur(2px)",
+                background: "#1a1a2e",
               }}
               onClick={() => {
                 setShowPreviewDialog(false);
