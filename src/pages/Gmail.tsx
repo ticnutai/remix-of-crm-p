@@ -2467,6 +2467,31 @@ export default function Gmail() {
                           </Tooltip>
                         </TooltipProvider>
 
+                        {/* Preview Toggle */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant={showPreview ? "default" : "outline"}
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={() => setShowPreview((prev) => !prev)}
+                              >
+                                {showPreview ? (
+                                  <Eye className="h-4 w-4" />
+                                ) : (
+                                  <EyeOff className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {showPreview
+                                ? "תצוגה מקדימה פעילה"
+                                : "הצג תצוגה מקדימה"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
                         {/* Sort Dropdown */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
