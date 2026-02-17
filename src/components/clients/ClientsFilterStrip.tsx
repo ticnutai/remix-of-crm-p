@@ -269,13 +269,13 @@ export function ClientsFilterStrip({
   return (
     <div
       dir="rtl"
-      className="bg-white rounded-xl border-2 border-[#d4a843] p-3 mb-4"
+      className="bg-white rounded-lg border-2 border-[#d4a843] p-2 mb-2"
     >
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-wrap gap-1.5 items-center">
         {/* Filter Icon */}
-        <div className="flex items-center gap-2 ml-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-semibold text-foreground">סינון:</span>
+        <div className="flex items-center gap-1 ml-1">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-semibold text-foreground">סינון:</span>
         </div>
 
         {/* Sort By Filter */}
@@ -284,7 +284,7 @@ export function ClientsFilterStrip({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]"
+              className="gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs"
             >
               <ArrowUpDown className="h-4 w-4" />
               {sortByLabels[filters.sortBy]}
@@ -344,9 +344,9 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 (filters.hiddenClassifications?.length || 0) > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
               )}
             >
               <ShieldCheck className="h-4 w-4" />
@@ -458,9 +458,9 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.categories.length > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
               )}
             >
               <FolderOpen className="h-4 w-4" />
@@ -589,9 +589,9 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.tags.length > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
               )}
             >
               <Tag className="h-4 w-4" />
@@ -671,9 +671,9 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.stages.length > 0 &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
               )}
             >
               <Layers className="h-4 w-4" />
@@ -752,9 +752,9 @@ export function ClientsFilterStrip({
               variant="outline"
               size="sm"
               className={cn(
-                "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
                 filters.dateFilter !== "all" &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
               )}
             >
               <CalendarDays className="h-4 w-4" />
@@ -800,9 +800,9 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasReminders}
           className={cn(
-            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
             filters.hasReminders === true &&
-              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
           )}
         >
           <Bell className="h-4 w-4" />
@@ -818,9 +818,9 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasTasks}
           className={cn(
-            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
             filters.hasTasks === true &&
-              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
           )}
         >
           <CheckSquare className="h-4 w-4" />
@@ -836,9 +836,9 @@ export function ClientsFilterStrip({
           size="sm"
           onClick={toggleHasMeetings}
           className={cn(
-            "gap-2 h-9 bg-white text-[#1e293b] border-2 border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b]",
+            "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
             filters.hasMeetings === true &&
-              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
           )}
         >
           <Users className="h-4 w-4" />
@@ -854,9 +854,9 @@ export function ClientsFilterStrip({
             variant="ghost"
             size="sm"
             onClick={clearAllFilters}
-            className="gap-1 h-9 text-destructive hover:text-destructive hover:bg-destructive/10"
+            className="gap-1 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
             נקה פילטרים
           </Button>
         )}
@@ -864,35 +864,35 @@ export function ClientsFilterStrip({
 
       {/* Active Filters Summary */}
       {hasActiveFilters && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {(filters.hiddenClassifications?.length || 0) > 0 && (
             <Badge
               variant="secondary"
-              className="bg-yellow-100 text-yellow-800"
+              className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0"
             >
-              <ShieldCheck className="h-3 w-3 ml-1" />
-              {filters.hiddenClassifications!.length} סיווגים מוסתרים
+              <ShieldCheck className="h-2.5 w-2.5 ml-0.5" />
+              {filters.hiddenClassifications!.length} מוסתרים
             </Badge>
           )}
           {filters.categories.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
+            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
               {filters.categories.length} קטגוריות
             </Badge>
           )}
           {filters.tags.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
+            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
               {filters.tags.length} תגיות
             </Badge>
           )}
           {filters.stages.length > 0 && (
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {filters.stages.length} שלבים נבחרו
+            <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
+              {filters.stages.length} שלבים
             </Badge>
           )}
           {filters.dateFilter !== "all" && (
             <Badge
               variant="secondary"
-              className="bg-purple-100 text-purple-700"
+              className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0"
             >
               {dateFilterLabels[filters.dateFilter]}
             </Badge>
@@ -900,19 +900,19 @@ export function ClientsFilterStrip({
           {filters.hasReminders === true && (
             <Badge
               variant="secondary"
-              className="bg-orange-100 text-orange-700"
+              className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0"
             >
-              עם תזכורות
+              תזכורות
             </Badge>
           )}
           {filters.hasTasks === true && (
-            <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-              עם משימות
+            <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">
+              משימות
             </Badge>
           )}
           {filters.hasMeetings === true && (
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              עם פגישות
+            <Badge variant="secondary" className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0">
+              פגישות
             </Badge>
           )}
         </div>

@@ -2334,13 +2334,13 @@ export default function Clients() {
           overflow: "hidden",
         }}
       >
-        {/* Navy Header Bar */}
+        {/* ═══ Compact Header — Row 1: Title + Buttons + Search ═══ */}
         <div
           style={{
             backgroundColor: "#1e293b",
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "24px",
+            borderRadius: "10px",
+            padding: "8px 12px",
+            marginBottom: "6px",
             border: "1px solid #d4a843",
           }}
         >
@@ -2348,530 +2348,266 @@ export default function Clients() {
             style={{
               display: "flex",
               flexWrap: "wrap",
-              gap: "16px",
+              gap: "6px",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
-            {/* Title */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Users
-                style={{ width: "24px", height: "24px", color: "#fbbf24" }}
-              />
-              <h1
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "700",
-                  color: "#ffffff",
-                  margin: 0,
-                }}
-              >
-                גלריית לקוחות
+            {/* Right side: Title + Action Buttons */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+              <Users style={{ width: "20px", height: "20px", color: "#fbbf24", flexShrink: 0 }} />
+              <h1 style={{ fontSize: "16px", fontWeight: "700", color: "#fff", margin: 0, whiteSpace: "nowrap" }}>
+                לקוחות
               </h1>
-              <span style={{ color: "#94a3b8", fontSize: "14px" }}>
-                ({filteredClients.length} לקוחות)
+              <span style={{ color: "#94a3b8", fontSize: "12px", whiteSpace: "nowrap" }}>
+                ({filteredClients.length})
               </span>
 
-              {/* Add Client Button - Gold themed */}
+              {/* Action buttons — compact pill style */}
               <button
                 onClick={() => setIsAddClientDialogOpen(true)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 16px",
-                  backgroundColor: "transparent",
-                  border: "2px solid #d4a843",
-                  borderRadius: "8px",
-                  color: "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  fontSize: "14px",
-                  fontWeight: "600",
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px", backgroundColor: "transparent",
+                  border: "1.5px solid #d4a843", borderRadius: "6px",
+                  color: "#d4a843", cursor: "pointer", transition: "all 0.2s",
+                  fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#1e293b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#d4a843";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#1e293b"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; }}
                 title="הוסף לקוח חדש"
               >
-                <UserPlus style={{ width: "18px", height: "18px" }} />
+                <UserPlus style={{ width: "14px", height: "14px" }} />
                 הוסף לקוח
               </button>
 
-              {/* Navigation to DataTable Pro */}
               <button
                 onClick={() => navigate("/datatable-pro")}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 16px",
-                  backgroundColor: "transparent",
-                  border: "2px solid #d4a843",
-                  borderRadius: "8px",
-                  color: "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  fontSize: "14px",
-                  fontWeight: "600",
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px", backgroundColor: "transparent",
+                  border: "1.5px solid #d4a843", borderRadius: "6px",
+                  color: "#d4a843", cursor: "pointer", transition: "all 0.2s",
+                  fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#1e293b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#d4a843";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#1e293b"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; }}
                 title="עבור לטבלת לקוחות"
               >
-                <Rows3 style={{ width: "16px", height: "16px" }} />
+                <Rows3 style={{ width: "13px", height: "13px" }} />
                 טבלה
               </button>
 
-              {/* Multi-Select Mode Toggle Button */}
               <button
                 onClick={toggleSelectionMode}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 16px",
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px",
                   backgroundColor: selectionMode ? "#d4a843" : "transparent",
-                  border: "2px solid #d4a843",
-                  borderRadius: "8px",
+                  border: "1.5px solid #d4a843", borderRadius: "6px",
                   color: selectionMode ? "#1e293b" : "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  fontSize: "14px",
-                  fontWeight: "600",
+                  cursor: "pointer", transition: "all 0.2s",
+                  fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  if (!selectionMode) {
-                    e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!selectionMode) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "#d4a843";
-                  }
-                }}
+                onMouseEnter={(e) => { if (!selectionMode) { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#1e293b"; } }}
+                onMouseLeave={(e) => { if (!selectionMode) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; } }}
                 title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
               >
-                <CheckSquare style={{ width: "18px", height: "18px" }} />
+                <CheckSquare style={{ width: "14px", height: "14px" }} />
                 {selectionMode ? "בטל בחירה" : "בחירה מרובה"}
               </button>
 
-              {/* Stages View Toggle Button */}
               <button
-                onClick={() => {
-                  setShowStagesView(!showStagesView);
-                  if (!showStagesView) setShowStatisticsView(false);
-                }}
+                onClick={() => { setShowStagesView(!showStagesView); if (!showStagesView) setShowStatisticsView(false); }}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  backgroundColor: showStagesView ? "#d4a843" : "#ffffff",
-                  border: "2px solid #d4a843",
-                  borderRadius: "8px",
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px",
+                  backgroundColor: showStagesView ? "#d4a843" : "transparent",
+                  border: "1.5px solid #d4a843", borderRadius: "6px",
                   color: showStagesView ? "#1e293b" : "#d4a843",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(212, 168, 67, 0.2)",
+                  fontWeight: "600", fontSize: "12px",
+                  cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  if (!showStagesView) {
-                    e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showStagesView) {
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.color = "#d4a843";
-                  }
-                }}
+                onMouseEnter={(e) => { if (!showStagesView) { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#1e293b"; } }}
+                onMouseLeave={(e) => { if (!showStagesView) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; } }}
                 title="תצוגה לפי שלבים"
               >
-                <Layers style={{ width: "16px", height: "16px" }} />
-                לפי שלבים
+                <Layers style={{ width: "13px", height: "13px" }} />
+                שלבים
               </button>
 
-              {/* Statistics View Button */}
               <button
-                onClick={() => {
-                  setShowStatisticsView(!showStatisticsView);
-                  if (!showStatisticsView) setShowStagesView(false);
-                }}
+                onClick={() => { setShowStatisticsView(!showStatisticsView); if (!showStatisticsView) setShowStagesView(false); }}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 16px",
-                  backgroundColor: showStatisticsView ? "#d4a843" : "#ffffff",
-                  border: "2px solid #d4a843",
-                  borderRadius: "8px",
+                  display: "flex", alignItems: "center", gap: "4px",
+                  padding: "4px 10px",
+                  backgroundColor: showStatisticsView ? "#d4a843" : "transparent",
+                  border: "1.5px solid #d4a843", borderRadius: "6px",
                   color: showStatisticsView ? "#1e293b" : "#d4a843",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(212, 168, 67, 0.2)",
+                  fontWeight: "600", fontSize: "12px",
+                  cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) => {
-                  if (!showStatisticsView) {
-                    e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showStatisticsView) {
-                    e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.color = "#d4a843";
-                  }
-                }}
+                onMouseEnter={(e) => { if (!showStatisticsView) { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#1e293b"; } }}
+                onMouseLeave={(e) => { if (!showStatisticsView) { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; } }}
                 title="סטטיסטיקות לקוחות"
               >
-                <BarChart3 style={{ width: "16px", height: "16px" }} />
+                <BarChart3 style={{ width: "13px", height: "13px" }} />
                 סטטיסטיקות
               </button>
 
-              {/* Features Help Button - Gold */}
               <button
                 onClick={() => setShowFeaturesHelp(true)}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "32px",
-                  height: "32px",
-                  backgroundColor: "#ffffff",
-                  border: "2px solid #d4a843",
-                  borderRadius: "50%",
-                  color: "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(212, 168, 67, 0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "26px", height: "26px",
+                  backgroundColor: "transparent", border: "1.5px solid #d4a843",
+                  borderRadius: "50%", color: "#d4a843",
+                  cursor: "pointer", transition: "all 0.2s",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#ffffff";
-                  e.currentTarget.style.transform = "scale(1.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#ffffff";
-                  e.currentTarget.style.color = "#d4a843";
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#d4a843"; e.currentTarget.style.color = "#ffffff"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#d4a843"; }}
                 title="תכונות זמינות"
               >
-                <Sparkles style={{ width: "16px", height: "16px" }} />
+                <Sparkles style={{ width: "13px", height: "13px" }} />
               </button>
             </div>
 
-            {/* View Options & Search */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              {/* Selection Mode Controls */}
+            {/* Left side: Selection controls OR Search + View toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               {selectionMode ? (
                 <>
-                  {/* Selected Count & Select All */}
-                  <div
+                  <button
+                    onClick={selectAllClients}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      height: "30px", padding: "0 10px", borderRadius: "15px",
+                      backgroundColor: selectedClients.size === filteredClients.length ? "#3b82f6" : "transparent",
+                      border: "1.5px solid #3b82f6",
+                      display: "flex", alignItems: "center", gap: "4px",
+                      cursor: "pointer", transition: "all 0.2s", fontSize: "11px",
                     }}
+                    title={selectedClients.size === filteredClients.length ? "בטל בחירת הכל" : "בחר הכל"}
                   >
-                    <button
-                      onClick={selectAllClients}
-                      style={{
-                        height: "40px",
-                        padding: "0 16px",
-                        borderRadius: "20px",
-                        backgroundColor:
-                          selectedClients.size === filteredClients.length
-                            ? "#3b82f6"
-                            : "transparent",
-                        border: "2px solid #3b82f6",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      title={
-                        selectedClients.size === filteredClients.length
-                          ? "בטל בחירת הכל"
-                          : "בחר הכל"
-                      }
-                    >
-                      <CheckCheck
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          color:
-                            selectedClients.size === filteredClients.length
-                              ? "#ffffff"
-                              : "#3b82f6",
-                        }}
-                      />
-                      <span
-                        style={{
-                          color:
-                            selectedClients.size === filteredClients.length
-                              ? "#ffffff"
-                              : "#3b82f6",
-                          fontSize: "14px",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {selectedClients.size === filteredClients.length
-                          ? "בטל הכל"
-                          : "בחר הכל"}
-                      </span>
-                    </button>
-
-                    <span style={{ color: "#94a3b8", fontSize: "14px" }}>
-                      ({selectedClients.size} נבחרו)
+                    <CheckCheck style={{ width: "14px", height: "14px", color: selectedClients.size === filteredClients.length ? "#fff" : "#3b82f6" }} />
+                    <span style={{ color: selectedClients.size === filteredClients.length ? "#fff" : "#3b82f6", fontWeight: "500" }}>
+                      {selectedClients.size === filteredClients.length ? "בטל הכל" : "בחר הכל"}
                     </span>
-                  </div>
+                  </button>
+                  <span style={{ color: "#94a3b8", fontSize: "11px" }}>({selectedClients.size} נבחרו)</span>
 
-                  {/* Delete Selected Button */}
                   <button
                     onClick={handleBulkDelete}
                     disabled={selectedClients.size === 0 || isDeleting}
                     style={{
-                      height: "40px",
-                      padding: "0 16px",
-                      borderRadius: "20px",
-                      backgroundColor:
-                        selectedClients.size > 0 ? "#dc2626" : "transparent",
-                      border: "2px solid #dc2626",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor:
-                        selectedClients.size === 0 || isDeleting
-                          ? "not-allowed"
-                          : "pointer",
-                      transition: "all 0.2s",
-                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      height: "30px", padding: "0 10px", borderRadius: "15px",
+                      backgroundColor: selectedClients.size > 0 ? "#dc2626" : "transparent",
+                      border: "1.5px solid #dc2626",
+                      display: "flex", alignItems: "center", gap: "4px",
+                      cursor: selectedClients.size === 0 || isDeleting ? "not-allowed" : "pointer",
+                      transition: "all 0.2s", opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      fontSize: "11px",
                     }}
                     title="מחק נבחרים"
                   >
                     {isDeleting ? (
-                      <Loader2
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          color: "#ffffff",
-                          animation: "spin 1s linear infinite",
-                        }}
-                      />
+                      <Loader2 style={{ width: "14px", height: "14px", color: "#fff", animation: "spin 1s linear infinite" }} />
                     ) : (
-                      <Trash2
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          color:
-                            selectedClients.size > 0 ? "#ffffff" : "#dc2626",
-                        }}
-                      />
+                      <Trash2 style={{ width: "14px", height: "14px", color: selectedClients.size > 0 ? "#fff" : "#dc2626" }} />
                     )}
-                    <span
-                      style={{
-                        color: selectedClients.size > 0 ? "#ffffff" : "#dc2626",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <span style={{ color: selectedClients.size > 0 ? "#fff" : "#dc2626", fontWeight: "500" }}>
                       מחק ({selectedClients.size})
                     </span>
                   </button>
 
-                  {/* Bulk Classify Button */}
                   <button
                     onClick={() => setIsBulkClassifyOpen(true)}
                     disabled={selectedClients.size === 0}
                     style={{
-                      height: "40px",
-                      padding: "0 16px",
-                      borderRadius: "20px",
-                      backgroundColor:
-                        selectedClients.size > 0 ? "#8b5cf6" : "transparent",
-                      border: "2px solid #8b5cf6",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor:
-                        selectedClients.size === 0 ? "not-allowed" : "pointer",
-                      transition: "all 0.2s",
-                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      height: "30px", padding: "0 10px", borderRadius: "15px",
+                      backgroundColor: selectedClients.size > 0 ? "#8b5cf6" : "transparent",
+                      border: "1.5px solid #8b5cf6",
+                      display: "flex", alignItems: "center", gap: "4px",
+                      cursor: selectedClients.size === 0 ? "not-allowed" : "pointer",
+                      transition: "all 0.2s", opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      fontSize: "11px",
                     }}
                     title="סווג נבחרים"
                   >
-                    <Tag
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        color: selectedClients.size > 0 ? "#ffffff" : "#8b5cf6",
-                      }}
-                    />
-                    <span
-                      style={{
-                        color: selectedClients.size > 0 ? "#ffffff" : "#8b5cf6",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <Tag style={{ width: "14px", height: "14px", color: selectedClients.size > 0 ? "#fff" : "#8b5cf6" }} />
+                    <span style={{ color: selectedClients.size > 0 ? "#fff" : "#8b5cf6", fontWeight: "500" }}>
                       סווג ({selectedClients.size})
                     </span>
                   </button>
 
-                  {/* Bulk Stage Button */}
                   <button
                     onClick={() => setIsBulkStageOpen(true)}
                     disabled={selectedClients.size === 0}
                     style={{
-                      height: "40px",
-                      padding: "0 16px",
-                      borderRadius: "20px",
-                      backgroundColor:
-                        selectedClients.size > 0 ? "#8b5cf6" : "transparent",
-                      border: "2px solid #8b5cf6",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor:
-                        selectedClients.size === 0 ? "not-allowed" : "pointer",
-                      transition: "all 0.2s",
-                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      height: "30px", padding: "0 10px", borderRadius: "15px",
+                      backgroundColor: selectedClients.size > 0 ? "#8b5cf6" : "transparent",
+                      border: "1.5px solid #8b5cf6",
+                      display: "flex", alignItems: "center", gap: "4px",
+                      cursor: selectedClients.size === 0 ? "not-allowed" : "pointer",
+                      transition: "all 0.2s", opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      fontSize: "11px",
                     }}
                     title="הגדר שלב לנבחרים"
                   >
-                    <Layers
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        color: selectedClients.size > 0 ? "#ffffff" : "#8b5cf6",
-                      }}
-                    />
-                    <span
-                      style={{
-                        color: selectedClients.size > 0 ? "#ffffff" : "#8b5cf6",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <Layers style={{ width: "14px", height: "14px", color: selectedClients.size > 0 ? "#fff" : "#8b5cf6" }} />
+                    <span style={{ color: selectedClients.size > 0 ? "#fff" : "#8b5cf6", fontWeight: "500" }}>
                       שלב ({selectedClients.size})
                     </span>
                   </button>
 
-                  {/* Bulk Consultant Button */}
                   <button
                     onClick={() => setIsBulkConsultantOpen(true)}
                     disabled={selectedClients.size === 0}
                     style={{
-                      height: "40px",
-                      padding: "0 16px",
-                      borderRadius: "20px",
-                      backgroundColor:
-                        selectedClients.size > 0 ? "#3b82f6" : "transparent",
-                      border: "2px solid #3b82f6",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      cursor:
-                        selectedClients.size === 0 ? "not-allowed" : "pointer",
-                      transition: "all 0.2s",
-                      opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      height: "30px", padding: "0 10px", borderRadius: "15px",
+                      backgroundColor: selectedClients.size > 0 ? "#3b82f6" : "transparent",
+                      border: "1.5px solid #3b82f6",
+                      display: "flex", alignItems: "center", gap: "4px",
+                      cursor: selectedClients.size === 0 ? "not-allowed" : "pointer",
+                      transition: "all 0.2s", opacity: selectedClients.size === 0 ? 0.5 : 1,
+                      fontSize: "11px",
                     }}
                     title="הגדר יועץ לנבחרים"
                   >
-                    <Users
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        color: selectedClients.size > 0 ? "#ffffff" : "#3b82f6",
-                      }}
-                    />
-                    <span
-                      style={{
-                        color: selectedClients.size > 0 ? "#ffffff" : "#3b82f6",
-                        fontSize: "14px",
-                        fontWeight: "500",
-                      }}
-                    >
+                    <Users style={{ width: "14px", height: "14px", color: selectedClients.size > 0 ? "#fff" : "#3b82f6" }} />
+                    <span style={{ color: selectedClients.size > 0 ? "#fff" : "#3b82f6", fontWeight: "500" }}>
                       יועץ ({selectedClients.size})
                     </span>
                   </button>
 
-                  {/* Cancel Selection Button */}
                   <button
                     onClick={toggleSelectionMode}
                     style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      backgroundColor: "transparent",
-                      border: "2px solid #94a3b8",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
+                      width: "28px", height: "28px", borderRadius: "50%",
+                      backgroundColor: "transparent", border: "1.5px solid #94a3b8",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", transition: "all 0.2s",
                     }}
                     className="hover:bg-gray-500/20"
                     title="בטל בחירה"
                   >
-                    <X
-                      style={{
-                        width: "18px",
-                        height: "18px",
-                        color: "#94a3b8",
-                      }}
-                    />
+                    <X style={{ width: "14px", height: "14px", color: "#94a3b8" }} />
                   </button>
                 </>
               ) : (
                 <>
-                  {/* View Mode Toggle Button */}
+                  {/* View Mode Toggle */}
                   <div style={{ position: "relative" }}>
                     <button
                       onClick={() => setShowViewOptions(!showViewOptions)}
                       style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "50%",
-                        backgroundColor: "transparent",
-                        border: "2px solid #d4a843",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
+                        width: "30px", height: "30px", borderRadius: "50%",
+                        backgroundColor: "transparent", border: "1.5px solid #d4a843",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", transition: "all 0.2s",
                       }}
                       className="hover:bg-amber-500/20"
                       title="אפשרויות תצוגה"
                     >
-                      <Eye
-                        style={{
-                          width: "18px",
-                          height: "18px",
-                          color: "#d4a843",
-                        }}
-                      />
+                      <Eye style={{ width: "15px", height: "15px", color: "#d4a843" }} />
                     </button>
 
                     {/* View Options Dropdown - Enhanced */}
@@ -3211,22 +2947,12 @@ export default function Clients() {
                 </>
               )}
 
-              {/* Search - White with gold border */}
-              <div
-                style={{
-                  position: "relative",
-                  width: "320px",
-                  maxWidth: "100%",
-                }}
-              >
+              {/* Search - compact */}
+              <div style={{ position: "relative", width: "220px", maxWidth: "100%" }}>
                 <Search
                   style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: "16px",
-                    height: "16px",
+                    position: "absolute", right: "10px", top: "50%",
+                    transform: "translateY(-50%)", width: "14px", height: "14px",
                     color: "#d4a843",
                   }}
                 />
@@ -3236,10 +2962,9 @@ export default function Clients() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
-                    paddingRight: "40px",
-                    backgroundColor: "#ffffff",
-                    border: "2px solid #d4a843",
-                    color: "#d4a843",
+                    paddingRight: "32px", height: "30px", fontSize: "12px",
+                    backgroundColor: "#ffffff", border: "1.5px solid #d4a843",
+                    color: "#1e293b",
                   }}
                   className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
                 />
@@ -3248,7 +2973,7 @@ export default function Clients() {
           </div>
         </div>
 
-        {/* Filter Strip */}
+        {/* ═══ Compact Row 2: Filter Strip ═══ */}
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
@@ -3391,10 +3116,10 @@ export default function Clients() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "12px",
-                        padding: "10px 16px",
+                        marginBottom: "4px",
+                        padding: "4px 10px",
                         backgroundColor: "#f1f5f9",
-                        borderRadius: "10px",
+                        borderRadius: "6px",
                         direction: "rtl",
                         border: "1px solid #e2e8f0",
                       }}
@@ -3403,12 +3128,12 @@ export default function Clients() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "12px",
+                          gap: "8px",
                         }}
                       >
                         <span
                           style={{
-                            fontSize: "14px",
+                            fontSize: "11px",
                             color: "#475569",
                             fontWeight: "500",
                           }}
