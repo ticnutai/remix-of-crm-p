@@ -77,6 +77,10 @@ import {
   ClipboardPaste,
   Plus,
   X,
+  Edit,
+  Trash2,
+  FolderInput,
+  Table,
 } from 'lucide-react';
 import { useGoogleDrive, DriveFile, DriveFolder } from '@/hooks/useGoogleDrive';
 import { useGoogleServices } from '@/hooks/useGoogleServices';
@@ -190,6 +194,9 @@ export default function Files() {
     createFolder: createDriveFolder,
     searchFiles: searchDriveFiles,
     linkFileToClient,
+    deleteFile: deleteDriveFile,
+    renameFile: renameDriveFile,
+    moveFile: moveDriveFile,
   } = useGoogleDrive();
   const { isConnected, getAccessToken } = useGoogleServices();
   
@@ -200,7 +207,7 @@ export default function Files() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DriveFile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'table'>('list');
   const [sortBy, setSortBy] = useState('date-desc');
   const [filterCategory, setFilterCategory] = useState('all');
   const [starredFiles, setStarredFiles] = useState<Set<string>>(new Set());
@@ -241,6 +248,20 @@ export default function Files() {
 
   // Popular tags for quick selection
   const popularTags = ['חשוב', 'דחוף', 'חוזה', 'הצעת מחיר', 'חשבונית', 'דוח', 'לקוח', 'פרויקט', 'תמונה', 'מסמך'];
+
+  // Rename state
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renamingFile, setRenamingFile] = useState<{ id: string; name: string; type: 'drive' | 'local' } | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  // Move to folder state
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [movingFile, setMovingFile] = useState<{ id: string; name: string; type: 'drive' | 'local'; parentId?: string } | null>(null);
+  const [moveTargetFolder, setMoveTargetFolder] = useState('');
+
+  // Local folder creation dialog state
+  const [showLocalFolderDialog, setShowLocalFolderDialog] = useState(false);
+  const [localFolderName, setLocalFolderName] = useState('');
 
   // Load starred files from localStorage
   useEffect(() => {
@@ -538,6 +559,74 @@ export default function Files() {
     toast({ title: 'מוריד קובץ', description: `מוריד את ${file.name}` });
   };
 
+  // Delete Drive file
+  const handleDeleteDriveFile = async (file: DriveFile) => {
+    if (!confirm(`למחוק את "${file.name}" מ-Google Drive?`)) return;
+    const success = await deleteDriveFile(file.id);
+    if (success) await handleRefresh();
+  };
+
+  // Open rename dialog
+  const openRenameDialog = (file: { id: string; name: string }, type: 'drive' | 'local') => {
+    setRenamingFile({ id: file.id, name: file.name, type });
+    setRenameValue(file.name);
+    setShowRenameDialog(true);
+  };
+
+  // Handle rename
+  const handleRename = async () => {
+    if (!renamingFile || !renameValue.trim()) return;
+    if (renamingFile.type === 'drive') {
+      const success = await renameDriveFile(renamingFile.id, renameValue);
+      if (success) await handleRefresh();
+    } else {
+      try {
+        await advancedFiles.renameFile(renamingFile.id, renameValue);
+        await advancedFiles.loadFiles(advancedFiles.currentFolder);
+        toast({ title: 'השם עודכן בהצלחה' });
+      } catch {
+        toast({ title: 'שגיאה בשינוי השם', variant: 'destructive' });
+      }
+    }
+    setShowRenameDialog(false);
+    setRenamingFile(null);
+  };
+
+  // Open move dialog
+  const openMoveDialog = (file: { id: string; name: string; parents?: string[] }, type: 'drive' | 'local', folderId?: string) => {
+    setMovingFile({ id: file.id, name: file.name, type, parentId: (file as any).parents?.[0] || folderId });
+    setMoveTargetFolder('');
+    setShowMoveDialog(true);
+  };
+
+  // Handle move
+  const handleMoveFile = async () => {
+    if (!movingFile || !moveTargetFolder) return;
+    if (movingFile.type === 'drive') {
+      const success = await moveDriveFile(movingFile.id, moveTargetFolder, movingFile.parentId);
+      if (success) await handleRefresh();
+    } else {
+      try {
+        await advancedFiles.moveToFolder(movingFile.id, moveTargetFolder === '__root__' ? null : moveTargetFolder);
+        await advancedFiles.loadFiles(advancedFiles.currentFolder);
+        toast({ title: 'הקובץ הועבר בהצלחה' });
+      } catch {
+        toast({ title: 'שגיאה בהעברת הקובץ', variant: 'destructive' });
+      }
+    }
+    setShowMoveDialog(false);
+    setMovingFile(null);
+  };
+
+  // Create local folder with dialog
+  const handleCreateLocalFolder = async () => {
+    if (!localFolderName.trim()) return;
+    await advancedFiles.createFolder(localFolderName.trim());
+    setShowLocalFolderDialog(false);
+    setLocalFolderName('');
+    toast({ title: 'תיקייה נוצרה', description: `התיקייה "${localFolderName}" נוצרה בהצלחה` });
+  };
+
   // Filter and sort files
   const filterFiles = (files: DriveFile[]) => {
     let filtered = [...files];
@@ -831,18 +920,29 @@ export default function Files() {
                         <Button
                           variant={viewMode === 'list' ? 'secondary' : 'ghost'}
                           size="icon"
-                          className="rounded-r-md rounded-l-none"
+                          className="rounded-none first:rounded-s-md"
                           onClick={() => setViewMode('list')}
+                          title="תצוגת רשימה"
                         >
                           <List className="h-4 w-4" />
                         </Button>
                         <Button
                           variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                           size="icon"
-                          className="rounded-l-md rounded-r-none"
+                          className="rounded-none"
                           onClick={() => setViewMode('grid')}
+                          title="תצוגת רשת"
                         >
                           <Grid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          className="rounded-none last:rounded-e-md"
+                          onClick={() => setViewMode('table')}
+                          title="תצוגת טבלה"
+                        >
+                          <Table className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -884,7 +984,7 @@ export default function Files() {
                       </h3>
                       <div className={viewMode === 'grid' 
                         ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
-                        : "space-y-1"
+                        : viewMode === 'table' ? "space-y-1" : "space-y-1"
                       }>
                         {driveFolders.map((folder) => (
                           <Button
@@ -927,6 +1027,68 @@ export default function Files() {
                           <p>אין קבצים מסוג זה</p>
                         </div>
                       ) : (
+                        viewMode === 'table' ? (
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr>
+                                  <th className="text-right px-4 py-2 font-medium">שם</th>
+                                  <th className="text-right px-4 py-2 font-medium">סוג</th>
+                                  <th className="text-right px-4 py-2 font-medium">גודל</th>
+                                  <th className="text-right px-4 py-2 font-medium">עודכן</th>
+                                  <th className="text-right px-4 py-2 font-medium w-[120px]">פעולות</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {displayFiles.map((file) => {
+                                  const fileConfig = getFileTypeConfig(file.mimeType);
+                                  const FileIcon = fileConfig.icon;
+                                  const isStarred = starredFiles.has(file.id);
+                                  return (
+                                    <tr key={file.id} className="border-t hover:bg-muted/30 transition-colors">
+                                      <td className="px-4 py-2">
+                                        <div className="flex items-center gap-2">
+                                          <FileIcon className={cn("h-5 w-5 flex-shrink-0", fileConfig.color)} />
+                                          <span className="truncate max-w-[250px]">{file.name}</span>
+                                          {isStarred && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />}
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-2 text-muted-foreground">{fileConfig.label}</td>
+                                      <td className="px-4 py-2 text-muted-foreground">{formatFileSize(file.size)}</td>
+                                      <td className="px-4 py-2 text-muted-foreground text-xs">
+                                        {file.modifiedTime && formatDistanceToNow(new Date(file.modifiedTime), { addSuffix: true, locale: he })}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <div className="flex items-center gap-1">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(file.webViewLink, '_blank')}>
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                <MoreVertical className="h-3.5 w-3.5" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="start">
+                                              <DropdownMenuItem onClick={() => downloadFile(file)}><Download className="h-4 w-4 ml-2" />הורד</DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => copyShareLink(file)}><Copy className="h-4 w-4 ml-2" />העתק קישור</DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem onClick={() => openRenameDialog(file, 'drive')}><Edit className="h-4 w-4 ml-2" />שינוי שם</DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => openMoveDialog(file, 'drive')}><FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה</DropdownMenuItem>
+                                              <DropdownMenuItem onClick={() => { setLinkingFile(file); setShowLinkDialog(true); }}><Users className="h-4 w-4 ml-2" />קשר ללקוח</DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteDriveFile(file)}><Trash2 className="h-4 w-4 ml-2" />מחיקה</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
                         <div className={viewMode === 'grid' 
                           ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
                           : "space-y-1"
@@ -950,6 +1112,22 @@ export default function Files() {
                                     isStarred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground hover:text-yellow-400"
                                   )} />
                                 </button>
+                                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                      <DropdownMenuItem onClick={() => downloadFile(file)}><Download className="h-4 w-4 ml-2" />הורד</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openRenameDialog(file, 'drive')}><Edit className="h-4 w-4 ml-2" />שינוי שם</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openMoveDialog(file, 'drive')}><FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteDriveFile(file)}><Trash2 className="h-4 w-4 ml-2" />מחיקה</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
                                 
                                 <div className="flex flex-col items-center text-center">
                                   {file.thumbnailLink ? (
@@ -1023,8 +1201,18 @@ export default function Files() {
                                         <ClipboardCopy className="h-4 w-4 ml-2" />העתק קובץ
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => openRenameDialog(file, 'drive')}>
+                                        <Edit className="h-4 w-4 ml-2" />שינוי שם
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openMoveDialog(file, 'drive')}>
+                                        <FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setLinkingFile(file); setShowLinkDialog(true); }}>
                                         <Users className="h-4 w-4 ml-2" />קשר ללקוח
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteDriveFile(file)}>
+                                        <Trash2 className="h-4 w-4 ml-2" />מחיקה
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -1033,7 +1221,7 @@ export default function Files() {
                             );
                           })}
                         </div>
-                      )}
+                      ))}
                     </ScrollArea>
                   </div>
                 </CardContent>
@@ -1044,7 +1232,7 @@ export default function Files() {
             <TabsContent value="local">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2">
                         <HardDrive className="h-5 w-5" />
@@ -1052,14 +1240,14 @@ export default function Files() {
                       </CardTitle>
                       <CardDescription>קבצים מאוחסנים בשרת עם תכונות מתקדמות</CardDescription>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       {copiedFile && copiedFileType === 'local' && (
                         <Button variant="outline" onClick={handlePasteFile}>
                           <ClipboardPaste className="h-4 w-4 ml-2" />
                           הדבק
                         </Button>
                       )}
-                      <Button variant="outline" onClick={() => advancedFiles.createFolder(prompt('שם התיקייה:') || '')}>
+                      <Button variant="outline" onClick={() => setShowLocalFolderDialog(true)}>
                         <FolderPlus className="h-4 w-4 ml-2" />
                         תיקייה חדשה
                       </Button>
@@ -1067,6 +1255,35 @@ export default function Files() {
                         <Upload className="h-4 w-4 ml-2" />
                         העלאה
                       </Button>
+                      <div className="flex border rounded-md">
+                        <Button
+                          variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          className="rounded-none first:rounded-s-md"
+                          onClick={() => setViewMode('list')}
+                          title="תצוגת רשימה"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          className="rounded-none"
+                          onClick={() => setViewMode('grid')}
+                          title="תצוגת רשת"
+                        >
+                          <Grid className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                          size="icon"
+                          className="rounded-none last:rounded-e-md"
+                          onClick={() => setViewMode('table')}
+                          title="תצוגת טבלה"
+                        >
+                          <Table className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -1127,8 +1344,116 @@ export default function Files() {
                         </div>
                       )}
 
-                      {/* Files List */}
-                      {advancedFiles.files.map((file) => {
+                      {/* Files */}
+                      {viewMode === 'table' ? (
+                        <div className="border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                <th className="text-right px-4 py-2 font-medium">שם</th>
+                                <th className="text-right px-4 py-2 font-medium">גודל</th>
+                                <th className="text-right px-4 py-2 font-medium">הורדות</th>
+                                <th className="text-right px-4 py-2 font-medium">תגיות</th>
+                                <th className="text-right px-4 py-2 font-medium w-[120px]">פעולות</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {advancedFiles.files.map((file) => {
+                                const FileIcon = FILE_TYPE_CONFIG[file.type]?.icon || FILE_TYPE_CONFIG.default.icon;
+                                const fileColor = FILE_TYPE_CONFIG[file.type]?.color || FILE_TYPE_CONFIG.default.color;
+                                return (
+                                  <tr key={file.id} className="border-t hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => { setSelectedLocalFile(file); setShowFilePreview(true); }}>
+                                    <td className="px-4 py-2">
+                                      <div className="flex items-center gap-2">
+                                        <FileIcon className={cn("h-5 w-5 flex-shrink-0", fileColor)} />
+                                        <span className="truncate max-w-[250px]">{file.name}</span>
+                                        {file.isStarred && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 flex-shrink-0" />}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-2 text-muted-foreground">{formatFileSize(file.size)}</td>
+                                    <td className="px-4 py-2 text-muted-foreground">{file.downloadCount}</td>
+                                    <td className="px-4 py-2">
+                                      <div className="flex gap-1">{file.tags?.slice(0, 2).map((tag, i) => <Badge key={i} variant="outline" className="text-xs">{tag}</Badge>)}</div>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); advancedFiles.downloadFile(file); }}>
+                                          <Download className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                              <MoreVertical className="h-3.5 w-3.5" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => openRenameDialog(file, 'local')}><Edit className="h-4 w-4 ml-2" />שינוי שם</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => openMoveDialog(file, 'local', file.folderId)}><FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => openTagsDialog(file)}><Tags className="h-4 w-4 ml-2" />ניהול תגיות</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-red-600" onClick={() => { if (confirm(`למחוק את "${file.name}"?`)) advancedFiles.deleteFile(file); }}><Trash2 className="h-4 w-4 ml-2" />מחיקה</DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : viewMode === 'grid' ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                          {advancedFiles.files.map((file) => {
+                            const FileIcon = FILE_TYPE_CONFIG[file.type]?.icon || FILE_TYPE_CONFIG.default.icon;
+                            const fileColor = FILE_TYPE_CONFIG[file.type]?.color || FILE_TYPE_CONFIG.default.color;
+                            return (
+                              <div
+                                key={file.id}
+                                className="border rounded-lg p-4 hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group relative"
+                                onClick={() => { setSelectedLocalFile(file); setShowFilePreview(true); }}
+                              >
+                                <button
+                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                  onClick={(e) => { e.stopPropagation(); advancedFiles.toggleStar(file.id); }}
+                                >
+                                  <Star className={cn("h-5 w-5 transition-colors",
+                                    file.isStarred ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground hover:text-yellow-400"
+                                  )} />
+                                </button>
+                                <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => e.stopPropagation()}>
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => openRenameDialog(file, 'local')}><Edit className="h-4 w-4 ml-2" />שינוי שם</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openMoveDialog(file, 'local', file.folderId)}><FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openTagsDialog(file)}><Tags className="h-4 w-4 ml-2" />תגיות</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-red-600" onClick={() => { if (confirm(`למחוק את "${file.name}"?`)) advancedFiles.deleteFile(file); }}><Trash2 className="h-4 w-4 ml-2" />מחיקה</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                                <div className="flex flex-col items-center text-center">
+                                  {file.thumbnail ? (
+                                    <img src={file.thumbnail} alt="" className="h-16 w-16 object-cover rounded mb-2" />
+                                  ) : (
+                                    <FileIcon className={cn("h-12 w-12 mb-2", fileColor)} />
+                                  )}
+                                  <p className="text-sm font-medium truncate w-full">{file.name}</p>
+                                  <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                  {file.isStarred && <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mt-1" />}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                      /* List View */
+                      advancedFiles.files.map((file) => {
                         const FileIcon = FILE_TYPE_CONFIG[file.type]?.icon || FILE_TYPE_CONFIG.default.icon;
                         const fileColor = FILE_TYPE_CONFIG[file.type]?.color || FILE_TYPE_CONFIG.default.color;
                         
@@ -1203,6 +1528,12 @@ export default function Files() {
                                     <Share2 className="h-4 w-4 ml-2" />שיתוף
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => openRenameDialog(file, 'local')}>
+                                    <Edit className="h-4 w-4 ml-2" />שינוי שם
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openMoveDialog(file, 'local', file.folderId)}>
+                                    <FolderInput className="h-4 w-4 ml-2" />העבר לתיקייה
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => openTagsDialog(file)}>
                                     <Tags className="h-4 w-4 ml-2" />ניהול תגיות
                                   </DropdownMenuItem>
@@ -1224,7 +1555,8 @@ export default function Files() {
                             </div>
                           </div>
                         );
-                      })}
+                      })
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -1572,6 +1904,128 @@ export default function Files() {
               <Button onClick={saveTags}>
                 <Tag className="h-4 w-4 ml-2" />
                 שמור תגיות
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Rename Dialog */}
+        <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                שינוי שם
+              </DialogTitle>
+              <DialogDescription>הזן שם חדש עבור "{renamingFile?.name}"</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                placeholder="שם חדש"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowRenameDialog(false)}>ביטול</Button>
+              <Button onClick={handleRename} disabled={!renameValue.trim()}>
+                <Edit className="h-4 w-4 ml-2" />שמור
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Move to Folder Dialog */}
+        <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderInput className="h-5 w-5" />
+                העברה לתיקייה
+              </DialogTitle>
+              <DialogDescription>בחר תיקייה להעברת "{movingFile?.name}"</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-2">
+              {movingFile?.type === 'drive' ? (
+                <>
+                  <Button
+                    variant={moveTargetFolder === 'root' ? 'secondary' : 'outline'}
+                    className="w-full justify-start"
+                    onClick={() => setMoveTargetFolder('root')}
+                  >
+                    <Home className="h-4 w-4 ml-2" />
+                    תיקייה ראשית (Drive)
+                  </Button>
+                  {driveFolders.map(folder => (
+                    <Button
+                      key={folder.id}
+                      variant={moveTargetFolder === folder.id ? 'secondary' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => setMoveTargetFolder(folder.id)}
+                    >
+                      <Folder className="h-4 w-4 ml-2 text-yellow-500" />
+                      {folder.name}
+                    </Button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant={moveTargetFolder === '__root__' ? 'secondary' : 'outline'}
+                    className="w-full justify-start"
+                    onClick={() => setMoveTargetFolder('__root__')}
+                  >
+                    <Home className="h-4 w-4 ml-2" />
+                    תיקייה ראשית
+                  </Button>
+                  {advancedFiles.folders.map(folder => (
+                    <Button
+                      key={folder.id}
+                      variant={moveTargetFolder === folder.id ? 'secondary' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => setMoveTargetFolder(folder.id)}
+                    >
+                      <Folder className="h-4 w-4 ml-2 text-yellow-500" />
+                      {folder.name}
+                    </Button>
+                  ))}
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowMoveDialog(false)}>ביטול</Button>
+              <Button onClick={handleMoveFile} disabled={!moveTargetFolder}>
+                <FolderInput className="h-4 w-4 ml-2" />העבר
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Local Folder Creation Dialog */}
+        <Dialog open={showLocalFolderDialog} onOpenChange={setShowLocalFolderDialog}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderPlus className="h-5 w-5" />
+                יצירת תיקייה חדשה
+              </DialogTitle>
+              <DialogDescription>הזן שם לתיקייה המקומית החדשה</DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                placeholder="שם התיקייה"
+                value={localFolderName}
+                onChange={(e) => setLocalFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateLocalFolder()}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowLocalFolderDialog(false)}>ביטול</Button>
+              <Button onClick={handleCreateLocalFolder} disabled={!localFolderName.trim()}>
+                <FolderPlus className="h-4 w-4 ml-2" />צור תיקייה
               </Button>
             </DialogFooter>
           </DialogContent>

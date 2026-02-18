@@ -208,9 +208,7 @@ const ContactPickerPopover = memo(function ContactPickerPopover({
                 >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs ${
-                      c.type === "client"
-                        ? "bg-blue-500"
-                        : "bg-emerald-500"
+                      c.type === "client" ? "bg-blue-500" : "bg-emerald-500"
                     }`}
                   >
                     {c.type === "client" ? (
@@ -246,10 +244,16 @@ const ContactPickerPopover = memo(function ContactPickerPopover({
         </ScrollArea>
         <div className="p-2 border-t bg-muted/30">
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-blue-500/10 border-blue-300">
+            <Badge
+              variant="outline"
+              className="text-[9px] px-1 py-0 h-3.5 bg-blue-500/10 border-blue-300"
+            >
               <Building2 className="h-2.5 w-2.5 ml-0.5" /> לקוח
             </Badge>
-            <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 bg-emerald-500/10 border-emerald-300">
+            <Badge
+              variant="outline"
+              className="text-[9px] px-1 py-0 h-3.5 bg-emerald-500/10 border-emerald-300"
+            >
               <Users className="h-2.5 w-2.5 ml-0.5" /> איש קשר
             </Badge>
             <span className="mr-auto">{filtered.length} תוצאות</span>

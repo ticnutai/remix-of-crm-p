@@ -1055,19 +1055,17 @@ export default function Gmail() {
     // When server search is active, skip local text filtering (results already filtered by Gmail API)
     let result = serverSearchActive
       ? [...messages]
-      : messages.filter(
-          (msg) => {
-            if (!searchQuery) return true;
-            const q = searchQuery.toLowerCase();
-            return (
-              msg.subject?.toLowerCase().includes(q) ||
-              msg.fromName?.toLowerCase().includes(q) ||
-              msg.from?.toLowerCase().includes(q) ||
-              msg.to?.some((t) => t.toLowerCase().includes(q)) ||
-              msg.snippet?.toLowerCase().includes(q)
-            );
-          },
-        );
+      : messages.filter((msg) => {
+          if (!searchQuery) return true;
+          const q = searchQuery.toLowerCase();
+          return (
+            msg.subject?.toLowerCase().includes(q) ||
+            msg.fromName?.toLowerCase().includes(q) ||
+            msg.from?.toLowerCase().includes(q) ||
+            msg.to?.some((t) => t.toLowerCase().includes(q)) ||
+            msg.snippet?.toLowerCase().includes(q)
+          );
+        });
 
     // Filter by tab
     if (activeTab === "starred") {

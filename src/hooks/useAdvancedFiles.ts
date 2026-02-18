@@ -714,6 +714,30 @@ class AdvancedFileManager {
   }
 
   /**
+   * שינוי שם קובץ
+   */
+  async renameFile(fileId: string, newName: string): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('file_metadata')
+      .update({ name: newName.trim() })
+      .eq('id', fileId);
+    
+    if (error) throw error;
+  }
+
+  /**
+   * העברת קובץ לתיקייה
+   */
+  async moveToFolder(fileId: string, folderId: string | null): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('file_metadata')
+      .update({ folder_id: folderId })
+      .eq('id', fileId);
+    
+    if (error) throw error;
+  }
+
+  /**
    * שכפול קובץ
    */
   async duplicateFile(fileId: string): Promise<FileMetadata | null> {
@@ -947,6 +971,8 @@ export function useAdvancedFiles() {
     addTag: advancedFileManager.addTag.bind(advancedFileManager),
     search: advancedFileManager.search.bind(advancedFileManager),
     updateFileTags: advancedFileManager.updateFileTags.bind(advancedFileManager),
+    renameFile: advancedFileManager.renameFile.bind(advancedFileManager),
+    moveToFolder: advancedFileManager.moveToFolder.bind(advancedFileManager),
     duplicateFile: async (fileId: string) => {
       try {
         const newFile = await advancedFileManager.duplicateFile(fileId);

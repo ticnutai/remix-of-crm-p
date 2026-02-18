@@ -300,6 +300,115 @@ export function useGoogleDrive() {
     }
   }, [user, getAccessToken]);
 
+  // Delete file
+  const deleteFile = useCallback(async (fileId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const token = await getAccessToken(['drive']);
+      if (!token) return false;
+
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok && response.status !== 204) {
+        throw new Error('Failed to delete file');
+      }
+
+      toast({ title: 'הקובץ נמחק בהצלחה' });
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting file:', error);
+      toast({
+        title: 'שגיאה במחיקת הקובץ',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [user, getAccessToken, toast]);
+
+  // Rename file
+  const renameFile = useCallback(async (fileId: string, newName: string): Promise<boolean> => {
+    if (!user || !newName.trim()) return false;
+
+    try {
+      const token = await getAccessToken(['drive']);
+      if (!token) return false;
+
+      const response = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: newName.trim() }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to rename file');
+
+      toast({ title: 'השם עודכן בהצלחה' });
+      return true;
+    } catch (error: any) {
+      console.error('Error renaming file:', error);
+      toast({
+        title: 'שגיאה בשינוי השם',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [user, getAccessToken, toast]);
+
+  // Move file to folder
+  const moveFile = useCallback(async (
+    fileId: string,
+    newParentId: string,
+    oldParentId?: string
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const token = await getAccessToken(['drive']);
+      if (!token) return false;
+
+      let url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${newParentId}`;
+      if (oldParentId) {
+        url += `&removeParents=${oldParentId}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) throw new Error('Failed to move file');
+
+      toast({ title: 'הקובץ הועבר בהצלחה' });
+      return true;
+    } catch (error: any) {
+      console.error('Error moving file:', error);
+      toast({
+        title: 'שגיאה בהעברת הקובץ',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [user, getAccessToken, toast]);
+
   return {
     files,
     folders,
@@ -310,5 +419,8 @@ export function useGoogleDrive() {
     createFolder,
     linkFileToClient,
     searchFiles,
+    deleteFile,
+    renameFile,
+    moveFile,
   };
 }
