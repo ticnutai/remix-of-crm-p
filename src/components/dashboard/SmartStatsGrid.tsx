@@ -61,7 +61,7 @@ export function useSmartDashboardStats() {
         supabase
           .from("tasks")
           .select("id, status, due_date, created_at, client_id"),
-        supabase.from("meetings").select("id, date, client_id, created_at"),
+        supabase.from("meetings").select("id, start_time, client_id, created_at"),
         supabase.from("invoices").select("id, status, amount, created_at"),
       ]);
 
@@ -105,7 +105,7 @@ export function useSmartDashboardStats() {
 
       // Meetings this week
       const meetingsThisWeek = (meetings || []).filter((m) => {
-        const date = new Date(m.date);
+        const date = new Date(m.start_time);
         return date >= weekStart && date <= weekEnd;
       }).length;
 

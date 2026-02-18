@@ -54,7 +54,10 @@ async function fetchMeetings(): Promise<Meeting[]> {
     `)
     .order('start_time', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Meetings fetch error:', error);
+    return [];
+  }
   return data as Meeting[];
 }
 
@@ -73,7 +76,10 @@ async function fetchTodayMeetings(): Promise<Meeting[]> {
     .neq('status', 'cancelled')
     .order('start_time', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Today meetings fetch error:', error);
+    return [];
+  }
   return data as Meeting[];
 }
 
@@ -92,7 +98,10 @@ async function fetchWeekMeetings(): Promise<Meeting[]> {
     .neq('status', 'cancelled')
     .order('start_time', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Week meetings fetch error:', error);
+    return [];
+  }
   return data as Meeting[];
 }
 

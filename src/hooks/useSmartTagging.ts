@@ -177,7 +177,7 @@ export function useSmartTagging() {
         supabase.from("clients").select("id, name, status, created_at, tags"),
         supabase.from("time_entries").select("client_id, start_time"),
         supabase.from("tasks").select("client_id, status, created_at"),
-        supabase.from("meetings").select("client_id, date"),
+        supabase.from("meetings").select("client_id, start_time"),
         supabase.from("invoices").select("client_id, amount, status"),
       ]);
 
@@ -228,7 +228,7 @@ export function useSmartTagging() {
       // Recent meetings (last 30 days)
       for (const meeting of meetings || []) {
         if (meeting.client_id) {
-          const date = new Date(meeting.date);
+          const date = new Date(meeting.start_time);
           if (date >= thirtyDaysAgo) {
             clientRecentMeetings.set(
               meeting.client_id,
