@@ -1056,11 +1056,17 @@ export default function Gmail() {
     let result = serverSearchActive
       ? [...messages]
       : messages.filter(
-          (msg) =>
-            !searchQuery ||
-            msg.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            msg.fromName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            msg.from?.toLowerCase().includes(searchQuery.toLowerCase()),
+          (msg) => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            return (
+              msg.subject?.toLowerCase().includes(q) ||
+              msg.fromName?.toLowerCase().includes(q) ||
+              msg.from?.toLowerCase().includes(q) ||
+              msg.to?.some((t) => t.toLowerCase().includes(q)) ||
+              msg.snippet?.toLowerCase().includes(q)
+            );
+          },
         );
 
     // Filter by tab
