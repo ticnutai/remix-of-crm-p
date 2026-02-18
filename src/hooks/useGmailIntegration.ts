@@ -17,6 +17,7 @@ export interface GmailMessage {
   isRead: boolean;
   isStarred: boolean;
   labels: string[];
+  accountEmail?: string; // which Gmail account this message belongs to
 }
 
 export interface EmailAttachment {
@@ -641,6 +642,140 @@ export function useGmailIntegration() {
     [user, toast],
   );
 
+  // Fetch emails with a specific token (for multi-account)
+  const fetchEmailsWithToken = useCallback(
+    async (
+      token: string,
+      accountEmail: string,
+      maxResults: number = 50,
+      query?: string,
+    ): Promise<GmailMessage[]> => {
+      try {
+        let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}`;
+        if (query) {
+          url += `&q=${encodeURIComponent(query)}`;
+        }
+
+        const listResponse = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const listData = await listResponse.json();
+
+        if (!listData.messages) return [];
+
+        const allMsgIds = listData.messages.slice(0, maxResults);
+        const messagesData = await fetchMessagesBatch(token, allMsgIds);
+
+        return messagesData.map((msg: any) => {
+          const headers = msg.payload?.headers || [];
+          const getHeader = (name: string) =>
+            headers.find((h: any) => h.name === name)?.value || "";
+          const fromHeader = getHeader("From");
+          const fromMatch = fromHeader.match(
+            /^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/,
+          );
+
+          return {
+            id: msg.id,
+            threadId: msg.threadId,
+            subject: getHeader("Subject"),
+            from: fromMatch?.[2] || fromHeader,
+            fromName: fromMatch?.[1] || fromMatch?.[2] || fromHeader,
+            to: getHeader("To")
+              .split(",")
+              .map((t: string) => t.trim()),
+            date: getHeader("Date"),
+            snippet: msg.snippet || "",
+            isRead: !msg.labelIds?.includes("UNREAD"),
+            isStarred: msg.labelIds?.includes("STARRED"),
+            labels: msg.labelIds || [],
+            accountEmail,
+          };
+        });
+      } catch (error: any) {
+        console.error(`Error fetching emails for ${accountEmail}:`, error);
+        return [];
+      }
+    },
+    [fetchMessagesBatch],
+  );
+
+  // Send email with a specific token (for multi-account)
+  const sendEmailWithToken = useCallback(
+    async (token: string, params: SendEmailParams): Promise<boolean> => {
+      try {
+        const mimeMessage = buildMimeMessage(params);
+        const raw = utf8ToBase64url(mimeMessage);
+
+        const response = await fetch(
+          "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ raw }),
+          },
+        );
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error?.message || "Failed to send email");
+        }
+
+        toast({ title: "המייל נשלח בהצלחה" });
+        return true;
+      } catch (error: any) {
+        console.error("Error sending email:", error);
+        toast({
+          title: "שגיאה בשליחת המייל",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [buildMimeMessage, utf8ToBase64url, toast],
+  );
+
+  // Get full message with a specific token (for multi-account)
+  const getFullMessageWithToken = useCallback(
+    async (token: string, messageId: string) => {
+      try {
+        const response = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error("Failed to fetch message");
+        return response.json();
+      } catch (error) {
+        console.error("Error fetching full message:", error);
+        return null;
+      }
+    },
+    [],
+  );
+
+  // Get attachment with a specific token
+  const getAttachmentWithToken = useCallback(
+    async (token: string, messageId: string, attachmentId: string): Promise<string | null> => {
+      try {
+        const response = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (!response.ok) throw new Error("Failed to fetch attachment");
+        const data = await response.json();
+        return data.data?.replace(/-/g, "+").replace(/_/g, "/") || null;
+      } catch (error) {
+        console.error("Error fetching attachment:", error);
+        return null;
+      }
+    },
+    [],
+  );
+
   return {
     messages,
     isLoading: isLoading || isGettingToken,
@@ -658,5 +793,11 @@ export function useGmailIntegration() {
     extractHtmlBody,
     reportSpam,
     batchModify,
+    // Multi-account functions
+    fetchEmailsWithToken,
+    sendEmailWithToken,
+    getFullMessageWithToken,
+    getAttachmentWithToken,
+    setMessages,
   };
 }

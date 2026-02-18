@@ -558,6 +558,17 @@ export const EmailListItem = React.memo(function EmailListItemInner({
             </Badge>
           )}
 
+          {/* Account Badge (multi-account) */}
+          {message.accountEmail && (
+            <Badge
+              variant="outline"
+              className="h-5 text-[10px] text-muted-foreground flex-shrink-0 max-w-[100px] truncate"
+              title={message.accountEmail}
+            >
+              {message.accountEmail.split('@')[0]}
+            </Badge>
+          )}
+
           {/* Labels */}
           {msgLabels
             ?.filter((l) => !l.startsWith("client_"))
