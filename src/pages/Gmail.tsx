@@ -832,46 +832,58 @@ export default function Gmail() {
   );
 
   // Multi-account fetch helper: fetches from all active accounts and merges
-  const fetchFromAllAccounts = useCallback(async (maxResults = 50, query?: string): Promise<GmailMessage[]> => {
-    const activeAccs = gmailAccounts.getActiveAccounts();
-    if (activeAccs.length === 0) {
-      // Fallback to single-account fetch
-      const msgs = await fetchEmails(maxResults, query);
-      return msgs || [];
-    }
+  const fetchFromAllAccounts = useCallback(
+    async (maxResults = 50, query?: string): Promise<GmailMessage[]> => {
+      const activeAccs = gmailAccounts.getActiveAccounts();
+      if (activeAccs.length === 0) {
+        // Fallback to single-account fetch
+        const msgs = await fetchEmails(maxResults, query);
+        return msgs || [];
+      }
 
-    const allMessages: GmailMessage[] = [];
-    const perAccountLimit = Math.max(20, Math.ceil(maxResults / activeAccs.length));
+      const allMessages: GmailMessage[] = [];
+      const perAccountLimit = Math.max(
+        20,
+        Math.ceil(maxResults / activeAccs.length),
+      );
 
-    await Promise.all(
-      activeAccs.map(async (account) => {
-        try {
-          const token = await gmailAccounts.getValidToken(account);
-          if (!token) return;
-          const msgs = await fetchEmailsWithToken(token, account.email, perAccountLimit, query);
-          if (msgs) allMessages.push(...msgs);
-        } catch (err) {
-          console.error(`Failed to fetch from ${account.email}:`, err);
-        }
-      })
-    );
+      await Promise.all(
+        activeAccs.map(async (account) => {
+          try {
+            const token = await gmailAccounts.getValidToken(account);
+            if (!token) return;
+            const msgs = await fetchEmailsWithToken(
+              token,
+              account.email,
+              perAccountLimit,
+              query,
+            );
+            if (msgs) allMessages.push(...msgs);
+          } catch (err) {
+            console.error(`Failed to fetch from ${account.email}:`, err);
+          }
+        }),
+      );
 
-    // Sort by date descending
-    allMessages.sort((a, b) => {
-      const dateA = a.internalDate ? Number(a.internalDate) : 0;
-      const dateB = b.internalDate ? Number(b.internalDate) : 0;
-      return dateB - dateA;
-    });
+      // Sort by date descending
+      allMessages.sort((a, b) => {
+        const dateA = a.internalDate ? Number(a.internalDate) : 0;
+        const dateB = b.internalDate ? Number(b.internalDate) : 0;
+        return dateB - dateA;
+      });
 
-    // Update messages state with merged results
-    setMessages(allMessages);
-    return allMessages;
-  }, [gmailAccounts, fetchEmails, fetchEmailsWithToken, setMessages]);
+      // Update messages state with merged results
+      setMessages(allMessages);
+      return allMessages;
+    },
+    [gmailAccounts, fetchEmails, fetchEmailsWithToken, setMessages],
+  );
 
   // Auto-load emails if already connected (with cache)
   useEffect(() => {
     const hasMultiAccounts = gmailAccounts.accounts.length > 0;
-    const shouldLoad = (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading;
+    const shouldLoad =
+      (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading;
 
     if (shouldLoad) {
       // Check cache first for instant display
@@ -893,7 +905,9 @@ export default function Gmail() {
           });
         }
       } else {
-        const fetchFn = hasMultiAccounts ? fetchFromAllAccounts(50) : fetchEmails(50);
+        const fetchFn = hasMultiAccounts
+          ? fetchFromAllAccounts(50)
+          : fetchEmails(50);
         fetchFn.then((msgs) => {
           if (msgs && msgs.length > 0) {
             gmailCache.cacheMessages(msgs);
@@ -902,7 +916,15 @@ export default function Gmail() {
         });
       }
     }
-  }, [isConnected, hasLoaded, isLoading, fetchEmails, fetchFromAllAccounts, gmailCache, gmailAccounts.accounts.length]);
+  }, [
+    isConnected,
+    hasLoaded,
+    isLoading,
+    fetchEmails,
+    fetchFromAllAccounts,
+    gmailCache,
+    gmailAccounts.accounts.length,
+  ]);
 
   // Background pre-fetch email bodies after list loads
   useEffect(() => {
@@ -2044,10 +2066,11 @@ export default function Gmail() {
                       <Mail className="h-4 w-4 ml-1" />
                       {gmailAccounts.accounts.length > 0 ? (
                         <span className="max-w-[120px] truncate text-xs">
-                          {gmailAccounts.activeFilter === 'all' 
+                          {gmailAccounts.activeFilter === "all"
                             ? `כל החשבונות (${gmailAccounts.accounts.length})`
-                            : gmailAccounts.accounts.find(a => a.id === gmailAccounts.activeFilter)?.email || 'חשבון'
-                          }
+                            : gmailAccounts.accounts.find(
+                                (a) => a.id === gmailAccounts.activeFilter,
+                              )?.email || "חשבון"}
                         </span>
                       ) : (
                         <span className="text-xs">חשבון</span>
@@ -2057,7 +2080,7 @@ export default function Gmail() {
                   <DropdownMenuContent align="end" className="rtl w-72">
                     <DropdownMenuLabel>חשבונות Gmail</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    
+
                     {gmailAccounts.accounts.length > 0 && (
                       <>
                         <DropdownMenuRadioGroup
@@ -2071,23 +2094,26 @@ export default function Gmail() {
                           <DropdownMenuRadioItem value="all" className="gap-2">
                             <Inbox className="h-4 w-4" />
                             <span>כל החשבונות</span>
-                            <Badge variant="secondary" className="mr-auto text-xs">
+                            <Badge
+                              variant="secondary"
+                              className="mr-auto text-xs"
+                            >
                               {gmailAccounts.accounts.length}
                             </Badge>
                           </DropdownMenuRadioItem>
                           <DropdownMenuSeparator />
                           {gmailAccounts.accounts.map((account) => (
-                            <DropdownMenuRadioItem 
-                              key={account.id} 
+                            <DropdownMenuRadioItem
+                              key={account.id}
                               value={account.id}
                               className="gap-2"
                             >
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 {account.avatarUrl ? (
-                                  <img 
-                                    src={account.avatarUrl} 
-                                    alt="" 
-                                    className="h-5 w-5 rounded-full flex-shrink-0" 
+                                  <img
+                                    src={account.avatarUrl}
+                                    alt=""
+                                    className="h-5 w-5 rounded-full flex-shrink-0"
                                   />
                                 ) : (
                                   <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -2095,9 +2121,13 @@ export default function Gmail() {
                                   </div>
                                 )}
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-medium truncate">{account.displayName || account.email}</span>
+                                  <span className="text-xs font-medium truncate">
+                                    {account.displayName || account.email}
+                                  </span>
                                   {account.displayName && (
-                                    <span className="text-[10px] text-muted-foreground truncate">{account.email}</span>
+                                    <span className="text-[10px] text-muted-foreground truncate">
+                                      {account.email}
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -2109,7 +2139,7 @@ export default function Gmail() {
                     )}
 
                     {/* Add Account Button */}
-                    <DropdownMenuItem 
+                    <DropdownMenuItem
                       onClick={async () => {
                         await gmailAccounts.addAccount();
                         const freshMsgs = await fetchFromAllAccounts(50);
@@ -2133,7 +2163,9 @@ export default function Gmail() {
                     {gmailAccounts.accounts.length > 0 && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">הסרת חשבון</DropdownMenuLabel>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          הסרת חשבון
+                        </DropdownMenuLabel>
                         {gmailAccounts.accounts.map((account) => (
                           <DropdownMenuItem
                             key={`remove-${account.id}`}
@@ -2144,7 +2176,9 @@ export default function Gmail() {
                             className="gap-2 text-destructive focus:text-destructive"
                           >
                             <LogOut className="h-3 w-3" />
-                            <span className="text-xs truncate">{account.email}</span>
+                            <span className="text-xs truncate">
+                              {account.email}
+                            </span>
                           </DropdownMenuItem>
                         ))}
                       </>

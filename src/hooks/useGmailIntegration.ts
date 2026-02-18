@@ -671,9 +671,7 @@ export function useGmailIntegration() {
           const getHeader = (name: string) =>
             headers.find((h: any) => h.name === name)?.value || "";
           const fromHeader = getHeader("From");
-          const fromMatch = fromHeader.match(
-            /^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/,
-          );
+          const fromMatch = fromHeader.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
 
           return {
             id: msg.id,
@@ -759,7 +757,11 @@ export function useGmailIntegration() {
 
   // Get attachment with a specific token
   const getAttachmentWithToken = useCallback(
-    async (token: string, messageId: string, attachmentId: string): Promise<string | null> => {
+    async (
+      token: string,
+      messageId: string,
+      attachmentId: string,
+    ): Promise<string | null> => {
       try {
         const response = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`,

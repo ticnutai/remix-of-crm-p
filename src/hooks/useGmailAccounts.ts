@@ -4,9 +4,9 @@
  * or viewing all emails merged from all accounts
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export interface GmailAccount {
   id: string;
@@ -19,18 +19,19 @@ export interface GmailAccount {
   avatarUrl?: string;
 }
 
-const GMAIL_ACCOUNTS_KEY = 'gmail_accounts';
-const GMAIL_ACTIVE_FILTER_KEY = 'gmail_active_account_filter';
-const DEFAULT_CLIENT_ID = '203713636858-0bn66n8rd2gpkkvmhg233hs6ufeaml2s.apps.googleusercontent.com';
+const GMAIL_ACCOUNTS_KEY = "gmail_accounts";
+const GMAIL_ACTIVE_FILTER_KEY = "gmail_active_account_filter";
+const DEFAULT_CLIENT_ID =
+  "203713636858-0bn66n8rd2gpkkvmhg233hs6ufeaml2s.apps.googleusercontent.com";
 
 const GMAIL_SCOPES = [
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile',
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/gmail.modify',
-  'https://www.googleapis.com/auth/contacts.readonly',
-].join(' ');
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.send",
+  "https://www.googleapis.com/auth/gmail.modify",
+  "https://www.googleapis.com/auth/contacts.readonly",
+].join(" ");
 
 // Load GIS script
 const loadGisScript = (): Promise<void> => {
@@ -39,10 +40,11 @@ const loadGisScript = (): Promise<void> => {
       resolve();
       return;
     }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+    script.onerror = () =>
+      reject(new Error("Failed to load Google Identity Services"));
     document.head.appendChild(script);
   });
 };
@@ -51,7 +53,7 @@ export function useGmailAccounts() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [accounts, setAccounts] = useState<GmailAccount[]>([]);
-  const [activeFilter, setActiveFilter] = useState<'all' | string>('all');
+  const [activeFilter, setActiveFilter] = useState<"all" | string>("all");
   const [isAdding, setIsAdding] = useState(false);
 
   // Load accounts from localStorage on mount
@@ -61,9 +63,9 @@ export function useGmailAccounts() {
       if (stored) {
         const parsed: GmailAccount[] = JSON.parse(stored);
         // Clean expired tokens but keep accounts
-        const cleaned = parsed.map(acc => ({
+        const cleaned = parsed.map((acc) => ({
           ...acc,
-          token: Date.now() < acc.expiry ? acc.token : '',
+          token: Date.now() < acc.expiry ? acc.token : "",
         }));
         setAccounts(cleaned);
       }
@@ -72,7 +74,7 @@ export function useGmailAccounts() {
         setActiveFilter(storedFilter);
       }
     } catch (e) {
-      console.error('[GmailAccounts] Error loading accounts:', e);
+      console.error("[GmailAccounts] Error loading accounts:", e);
     }
   }, []);
 
@@ -83,7 +85,7 @@ export function useGmailAccounts() {
   }, []);
 
   // Persist active filter
-  const setActiveFilterAndSave = useCallback((filter: 'all' | string) => {
+  const setActiveFilterAndSave = useCallback((filter: "all" | string) => {
     setActiveFilter(filter);
     localStorage.setItem(GMAIL_ACTIVE_FILTER_KEY, filter);
   }, []);
@@ -97,45 +99,50 @@ export function useGmailAccounts() {
       await loadGisScript();
 
       return new Promise((resolve) => {
-        const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+        const tokenClient = (
+          window as any
+        ).google.accounts.oauth2.initTokenClient({
           client_id: DEFAULT_CLIENT_ID,
           scope: GMAIL_SCOPES,
           callback: async (response: any) => {
             setIsAdding(false);
             if (response.error) {
-              console.error('[GmailAccounts] OAuth error:', response);
+              console.error("[GmailAccounts] OAuth error:", response);
               toast({
-                title: 'שגיאה בהתחברות',
-                description: 'לא ניתן להתחבר לחשבון Google',
-                variant: 'destructive',
+                title: "שגיאה בהתחברות",
+                description: "לא ניתן להתחבר לחשבון Google",
+                variant: "destructive",
               });
               resolve(null);
               return;
             }
 
             // Get user info
-            let email = '';
-            let displayName = '';
-            let avatarUrl = '';
+            let email = "";
+            let displayName = "";
+            let avatarUrl = "";
             try {
-              const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                headers: { Authorization: `Bearer ${response.access_token}` },
-              });
+              const userInfoRes = await fetch(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                {
+                  headers: { Authorization: `Bearer ${response.access_token}` },
+                },
+              );
               if (userInfoRes.ok) {
                 const info = await userInfoRes.json();
-                email = info.email || '';
-                displayName = info.name || info.email || '';
-                avatarUrl = info.picture || '';
+                email = info.email || "";
+                displayName = info.name || info.email || "";
+                avatarUrl = info.picture || "";
               }
             } catch (e) {
-              console.error('[GmailAccounts] Error getting user info:', e);
+              console.error("[GmailAccounts] Error getting user info:", e);
             }
 
             if (!email) {
               toast({
-                title: 'שגיאה',
-                description: 'לא ניתן לקבל כתובת אימייל מהחשבון',
-                variant: 'destructive',
+                title: "שגיאה",
+                description: "לא ניתן לקבל כתובת אימייל מהחשבון",
+                variant: "destructive",
               });
               resolve(null);
               return;
@@ -145,31 +152,37 @@ export function useGmailAccounts() {
             const expiry = Date.now() + (expiresIn - 300) * 1000;
 
             const newAccount: GmailAccount = {
-              id: `gmail_${email.replace(/[@.]/g, '_')}`,
+              id: `gmail_${email.replace(/[@.]/g, "_")}`,
               email,
               displayName,
               token: response.access_token,
               expiry,
-              scopes: response.scope || '',
+              scopes: response.scope || "",
               addedAt: new Date().toISOString(),
               avatarUrl,
             };
 
             // Check if account already exists - update token
-            setAccounts(prev => {
-              const existing = prev.findIndex(a => a.email === email);
+            setAccounts((prev) => {
+              const existing = prev.findIndex((a) => a.email === email);
               let updated: GmailAccount[];
               if (existing >= 0) {
                 updated = [...prev];
-                updated[existing] = { ...updated[existing], token: response.access_token, expiry, scopes: response.scope || '', avatarUrl };
+                updated[existing] = {
+                  ...updated[existing],
+                  token: response.access_token,
+                  expiry,
+                  scopes: response.scope || "",
+                  avatarUrl,
+                };
                 toast({
-                  title: 'חשבון עודכן',
+                  title: "חשבון עודכן",
                   description: `${email} - הטוקן חודש בהצלחה`,
                 });
               } else {
                 updated = [...prev, newAccount];
                 toast({
-                  title: 'חשבון נוסף',
+                  title: "חשבון נוסף",
                   description: `${email} נוסף בהצלחה`,
                 });
               }
@@ -182,10 +195,19 @@ export function useGmailAccounts() {
             const stored = localStorage.getItem(GMAIL_ACCOUNTS_KEY);
             const existingAccounts = stored ? JSON.parse(stored) : [];
             if (existingAccounts.length === 0) {
-              localStorage.setItem('google_services_token', response.access_token);
-              localStorage.setItem('google_services_token_expiry', expiry.toString());
-              localStorage.setItem('google_services_email', email);
-              localStorage.setItem('google_services_scopes', response.scope || '');
+              localStorage.setItem(
+                "google_services_token",
+                response.access_token,
+              );
+              localStorage.setItem(
+                "google_services_token_expiry",
+                expiry.toString(),
+              );
+              localStorage.setItem("google_services_email", email);
+              localStorage.setItem(
+                "google_services_scopes",
+                response.scope || "",
+              );
             }
 
             resolve(newAccount);
@@ -193,99 +215,122 @@ export function useGmailAccounts() {
         });
 
         // Force account chooser so user can pick a different account
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        tokenClient.requestAccessToken({ prompt: "select_account" });
       });
     } catch (error: any) {
-      console.error('[GmailAccounts] Error adding account:', error);
+      console.error("[GmailAccounts] Error adding account:", error);
       setIsAdding(false);
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return null;
     }
   }, [user, toast]);
 
   // Remove an account
-  const removeAccount = useCallback((accountId: string) => {
-    setAccounts(prev => {
-      const updated = prev.filter(a => a.id !== accountId);
-      localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
-      return updated;
-    });
-    // If the removed account was active, switch to "all"
-    if (activeFilter === accountId) {
-      setActiveFilterAndSave('all');
-    }
-    toast({ title: 'חשבון הוסר' });
-  }, [activeFilter, setActiveFilterAndSave, toast]);
+  const removeAccount = useCallback(
+    (accountId: string) => {
+      setAccounts((prev) => {
+        const updated = prev.filter((a) => a.id !== accountId);
+        localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
+        return updated;
+      });
+      // If the removed account was active, switch to "all"
+      if (activeFilter === accountId) {
+        setActiveFilterAndSave("all");
+      }
+      toast({ title: "חשבון הוסר" });
+    },
+    [activeFilter, setActiveFilterAndSave, toast],
+  );
 
   // Refresh token for a specific account (silent re-auth)
-  const refreshAccountToken = useCallback(async (account: GmailAccount): Promise<string | null> => {
-    try {
-      await loadGisScript();
+  const refreshAccountToken = useCallback(
+    async (account: GmailAccount): Promise<string | null> => {
+      try {
+        await loadGisScript();
 
-      return new Promise((resolve) => {
-        const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-          client_id: DEFAULT_CLIENT_ID,
-          scope: GMAIL_SCOPES,
-          callback: async (response: any) => {
-            if (response.error) {
-              console.log(`[GmailAccounts] Silent re-auth failed for ${account.email}`);
-              resolve(null);
-              return;
-            }
+        return new Promise((resolve) => {
+          const tokenClient = (
+            window as any
+          ).google.accounts.oauth2.initTokenClient({
+            client_id: DEFAULT_CLIENT_ID,
+            scope: GMAIL_SCOPES,
+            callback: async (response: any) => {
+              if (response.error) {
+                console.log(
+                  `[GmailAccounts] Silent re-auth failed for ${account.email}`,
+                );
+                resolve(null);
+                return;
+              }
 
-            const expiresIn = response.expires_in || 3600;
-            const expiry = Date.now() + (expiresIn - 300) * 1000;
+              const expiresIn = response.expires_in || 3600;
+              const expiry = Date.now() + (expiresIn - 300) * 1000;
 
-            setAccounts(prev => {
-              const updated = prev.map(a =>
-                a.id === account.id
-                  ? { ...a, token: response.access_token, expiry, scopes: response.scope || '' }
-                  : a
-              );
-              localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
-              return updated;
-            });
+              setAccounts((prev) => {
+                const updated = prev.map((a) =>
+                  a.id === account.id
+                    ? {
+                        ...a,
+                        token: response.access_token,
+                        expiry,
+                        scopes: response.scope || "",
+                      }
+                    : a,
+                );
+                localStorage.setItem(
+                  GMAIL_ACCOUNTS_KEY,
+                  JSON.stringify(updated),
+                );
+                return updated;
+              });
 
-            resolve(response.access_token);
-          },
+              resolve(response.access_token);
+            },
+          });
+
+          // Silent re-auth with login hint
+          tokenClient.requestAccessToken({
+            prompt: "",
+            login_hint: account.email,
+          });
         });
-
-        // Silent re-auth with login hint
-        tokenClient.requestAccessToken({
-          prompt: '',
-          login_hint: account.email,
-        });
-      });
-    } catch {
-      return null;
-    }
-  }, []);
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
 
   // Get a valid token for an account (refresh if needed)
-  const getValidToken = useCallback(async (account: GmailAccount): Promise<string | null> => {
-    // Token still valid
-    if (account.token && Date.now() < account.expiry) {
-      return account.token;
-    }
-    // Try silent refresh
-    return refreshAccountToken(account);
-  }, [refreshAccountToken]);
+  const getValidToken = useCallback(
+    async (account: GmailAccount): Promise<string | null> => {
+      // Token still valid
+      if (account.token && Date.now() < account.expiry) {
+        return account.token;
+      }
+      // Try silent refresh
+      return refreshAccountToken(account);
+    },
+    [refreshAccountToken],
+  );
 
   // Get the accounts that should be active based on filter
   const getActiveAccounts = useCallback((): GmailAccount[] => {
-    if (activeFilter === 'all') {
+    if (activeFilter === "all") {
       return accounts;
     }
-    const acc = accounts.find(a => a.id === activeFilter);
+    const acc = accounts.find((a) => a.id === activeFilter);
     return acc ? [acc] : accounts;
   }, [accounts, activeFilter]);
 
   // Check if we have any accounts with valid tokens
-  const hasAnyConnected = accounts.some(a => a.token && Date.now() < a.expiry);
+  const hasAnyConnected = accounts.some(
+    (a) => a.token && Date.now() < a.expiry,
+  );
 
   return {
     accounts,
