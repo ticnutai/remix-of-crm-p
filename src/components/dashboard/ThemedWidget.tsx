@@ -93,6 +93,7 @@ export const ThemedWidget = memo(function ThemedWidget({
 
   return (
     <div 
+      dir="rtl"
       className={cn(
         "relative overflow-hidden transition-all duration-300 group flex flex-col min-h-0",
         "h-full",
@@ -242,6 +243,7 @@ export const ThemedStatCard = memo(function ThemedStatCard({
 
   return (
     <div
+      dir="rtl"
       className={cn(
         "relative p-5 overflow-hidden transition-all duration-300",
         "hover:scale-[1.02] hover:shadow-lg",

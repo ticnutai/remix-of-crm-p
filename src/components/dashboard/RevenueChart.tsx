@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { DisplayOptions, ViewType, TimeRange, ColorScheme, COLOR_SCHEMES } from '@/components/ui/display-options';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
 // Helper to get CSS variable value and convert to HSL color
 const getCssVar = (varName: string, fallback: string): string => {
@@ -23,9 +24,21 @@ interface RevenueChartProps {
 }
 
 export const RevenueChart = memo(function RevenueChart({ data, isLoading }: RevenueChartProps) {
-  const [viewType, setViewType] = useState<ViewType>('chart');
-  const [timeRange, setTimeRange] = useState<TimeRange>('month');
-  const [colorScheme, setColorScheme] = useState<ColorScheme>('sunset');
+  // Cloud-synced preferences
+  const { value: prefs, setValue: setPrefs } = useUserSettings<{
+    viewType: ViewType;
+    timeRange: TimeRange;
+    colorScheme: ColorScheme;
+  }>({
+    key: 'dashboard_revenue_chart_prefs',
+    defaultValue: { viewType: 'chart', timeRange: 'month', colorScheme: 'sunset' },
+  });
+  const viewType = prefs.viewType;
+  const timeRange = prefs.timeRange;
+  const colorScheme = prefs.colorScheme;
+  const setViewType = (v: ViewType) => setPrefs(p => ({ ...p, viewType: v }));
+  const setTimeRange = (v: TimeRange) => setPrefs(p => ({ ...p, timeRange: v }));
+  const setColorScheme = (v: ColorScheme) => setPrefs(p => ({ ...p, colorScheme: v }));
 
   // Dynamic colors based on theme
   const [chartColors, setChartColors] = useState({
@@ -60,7 +73,7 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
 
   if (isLoading) {
     return (
-      <Card className="frame-gold">
+      <Card className="frame-gold" dir="rtl">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-secondary" />
@@ -186,7 +199,7 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
   };
 
   return (
-    <Card className="frame-gold">
+    <Card className="frame-gold" dir="rtl">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">

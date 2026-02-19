@@ -9,6 +9,7 @@ import {
 import { FolderKanban } from 'lucide-react';
 import { DisplayOptions, ViewType, ColorScheme, COLOR_SCHEMES } from '@/components/ui/display-options';
 import { cn } from '@/lib/utils';
+import { useUserSettings } from '@/hooks/useUserSettings';
 
 // Helper to get CSS variable value and convert to HSL color
 const getCssVar = (varName: string, fallback: string): string => {
@@ -30,8 +31,18 @@ interface ProjectsStatusChartProps {
 }
 
 export const ProjectsStatusChart = memo(function ProjectsStatusChart({ data, isLoading }: ProjectsStatusChartProps) {
-  const [viewType, setViewType] = useState<ViewType>('pie');
-  const [colorScheme, setColorScheme] = useState<ColorScheme>('default');
+  // Cloud-synced preferences
+  const { value: prefs, setValue: setPrefs } = useUserSettings<{
+    viewType: ViewType;
+    colorScheme: ColorScheme;
+  }>({
+    key: 'dashboard_projects_chart_prefs',
+    defaultValue: { viewType: 'pie', colorScheme: 'default' },
+  });
+  const viewType = prefs.viewType;
+  const colorScheme = prefs.colorScheme;
+  const setViewType = (v: ViewType) => setPrefs(p => ({ ...p, viewType: v }));
+  const setColorScheme = (v: ColorScheme) => setPrefs(p => ({ ...p, colorScheme: v }));
 
   // Dynamic colors based on theme
   const [chartColors, setChartColors] = useState({
@@ -74,7 +85,7 @@ export const ProjectsStatusChart = memo(function ProjectsStatusChart({ data, isL
 
   if (isLoading) {
     return (
-      <Card className="frame-navy">
+      <Card className="frame-navy" dir="rtl">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <FolderKanban className="h-5 w-5 text-primary" />
@@ -382,7 +393,7 @@ export const ProjectsStatusChart = memo(function ProjectsStatusChart({ data, isL
   };
 
   return (
-    <Card className="frame-navy">
+    <Card className="frame-navy" dir="rtl">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">

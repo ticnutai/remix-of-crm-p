@@ -25,6 +25,7 @@ import {
 import { Clock, Users, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DisplayOptions, ViewType } from "@/components/ui/display-options";
+import { useUserSettings } from "@/hooks/useUserSettings";
 
 // Helper to get CSS variable value and convert to HSL color
 const getCssVar = (varName: string, fallback: string): string => {
@@ -72,8 +73,18 @@ export const WorkHoursChart = memo(function WorkHoursChart({
   byProject,
   isLoading,
 }: WorkHoursChartProps) {
-  const [dataViewMode, setDataViewMode] = useState<DataViewMode>("employee");
-  const [chartType, setChartType] = useState<ViewType>("bar");
+  // Cloud-synced preferences
+  const { value: prefs, setValue: setPrefs } = useUserSettings<{
+    dataViewMode: DataViewMode;
+    chartType: ViewType;
+  }>({
+    key: 'dashboard_workhours_chart_prefs',
+    defaultValue: { dataViewMode: 'employee', chartType: 'bar' },
+  });
+  const dataViewMode = prefs.dataViewMode;
+  const chartType = prefs.chartType;
+  const setDataViewMode = (v: DataViewMode) => setPrefs(p => ({ ...p, dataViewMode: v }));
+  const setChartType = (v: ViewType) => setPrefs(p => ({ ...p, chartType: v }));
 
   // Dynamic colors based on theme
   const [chartColors, setChartColors] = useState({
@@ -107,7 +118,7 @@ export const WorkHoursChart = memo(function WorkHoursChart({
 
   if (isLoading) {
     return (
-      <Card className="card-elegant">
+      <Card className="card-elegant" dir="rtl">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5 text-info" />
@@ -459,7 +470,7 @@ export const WorkHoursChart = memo(function WorkHoursChart({
   const isTableView = chartType === "table";
 
   return (
-    <Card className="card-elegant">
+    <Card className="card-elegant" dir="rtl">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
