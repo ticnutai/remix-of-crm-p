@@ -107,13 +107,19 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, name: string): P
 // Fetchers - פונקציות קטנות לכל קריאת API
 const fetchClients = async () => {
   const { data, error } = await supabase.from('clients').select('id, name, status, created_at');
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard clients fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 
 const fetchProjects = async () => {
   const { data, error } = await supabase.from('projects').select('id, name, status, created_at, budget');
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard projects fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 
@@ -123,13 +129,19 @@ const fetchTimeEntries = async () => {
     .from('time_entries')
     .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
     .gte('start_time', threeMonthsAgo.toISOString());
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard time entries fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 
 const fetchProfiles = async () => {
   const { data, error } = await supabase.from('profiles').select('id, full_name');
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard profiles fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 
@@ -139,7 +151,10 @@ const fetchInvoices = async () => {
     .from('invoices')
     .select('id, amount, paid_amount, status, issue_date, created_at')
     .gte('created_at', sixMonthsAgo.toISOString());
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard invoices fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 
@@ -149,7 +164,10 @@ const fetchQuotes = async () => {
     .from('quotes')
     .select('id, total_amount, paid_amount, status, issue_date, created_at')
     .gte('created_at', sixMonthsAgo.toISOString());
-  if (error) throw error;
+  if (error) {
+    console.error('Dashboard quotes fetch error:', error);
+    return [];
+  }
   return data || [];
 };
 

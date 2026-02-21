@@ -56,7 +56,10 @@ async function fetchTasks(): Promise<Task[]> {
     `)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Tasks fetch error:', error);
+    return [];
+  }
   return data as Task[];
 }
 
@@ -78,7 +81,10 @@ async function fetchTodayTasks(): Promise<Task[]> {
     .neq('status', 'completed')
     .order('priority', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Today tasks fetch error:', error);
+    return [];
+  }
   return data as Task[];
 }
 

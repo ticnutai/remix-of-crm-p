@@ -364,8 +364,8 @@ export async function exportClientProfileToPdf(
             .map(
               (m) => `
             <tr>
-              <td>${m.date ? format(new Date(m.date), "dd/MM/yyyy") : "-"}</td>
-              <td>${m.type || "-"}</td>
+              <td>${m.start_time ? format(new Date(m.start_time), "dd/MM/yyyy") : "-"}</td>
+              <td>${m.meeting_type || "-"}</td>
               <td>${(m.notes || "-").substring(0, 50)}</td>
             </tr>
           `,
