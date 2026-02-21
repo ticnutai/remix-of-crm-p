@@ -1,23 +1,24 @@
 /**
- * ChatMessenger - מערכת שיחות ווידוא מלאה
- * Real-time messaging - internal + client chats
+ * ChatMessenger - מרכז שיחות ווידוא מלא
+ * Real-time | All file formats | Google Drive | Gmail | Client linking
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useChat, ChatConversation, ChatMessage } from '@/hooks/useChat';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { ChatFilePicker, PickedFile } from './ChatFilePicker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -49,8 +50,6 @@ import {
   Reply,
   Smile,
   Paperclip,
-  Check,
-  CheckCheck,
   Circle,
   X,
   Phone,
@@ -59,25 +58,33 @@ import {
   Archive,
   Edit3,
   Loader2,
+  FileText,
+  FileAudio,
+  Download,
+  ExternalLink,
+  Tag,
+  Link2,
+  ChevronLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 
+
 // -----------------------------------------------------------
-// Emoji Picker (Inline simple version)
+// Emoji Picker
 // -----------------------------------------------------------
-const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '✅'];
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '✅', '🙏', '💯'];
 
 function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onClose: () => void }) {
   return (
-    <div className="absolute bottom-10 left-0 bg-background border rounded-xl shadow-lg p-2 z-50 flex gap-1">
+    <div className="absolute bottom-10 left-0 bg-background border rounded-xl shadow-xl p-2 z-50 flex flex-wrap gap-1 w-44">
       {QUICK_EMOJIS.map(emoji => (
         <button
           key={emoji}
           onClick={() => { onSelect(emoji); onClose(); }}
-          className="text-xl hover:scale-125 transition-transform p-1 rounded"
+          className="text-xl hover:scale-125 transition-transform p-1 rounded hover:bg-muted"
         >
           {emoji}
         </button>
@@ -87,18 +94,121 @@ function EmojiPicker({ onSelect, onClose }: { onSelect: (e: string) => void; onC
 }
 
 // -----------------------------------------------------------
+// Message media renderer
+// -----------------------------------------------------------
+function MessageMedia({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
+  const textColor = isOwn ? 'text-primary-foreground' : 'text-foreground';
+  const subColor = isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground';
+  const bgOverlay = isOwn ? 'bg-primary-foreground/10' : 'bg-muted';
+
+  // Image
+  if (msg.message_type === 'image' && msg.file_url) {
+    return (
+      <div className="mb-1.5 rounded-lg overflow-hidden max-w-[240px]">
+        <img
+          src={msg.file_url}
+          alt={msg.file_name || 'תמונה'}
+          className="w-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+          onClick={() => window.open(msg.file_url!, '_blank')}
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  // Video
+  if (msg.message_type === 'video' && msg.file_url) {
+    return (
+      <div className="mb-1.5 rounded-lg overflow-hidden max-w-[280px]">
+        <video src={msg.file_url} controls className="w-full rounded-lg" preload="metadata" style={{ maxHeight: '200px' }}>
+          <source src={msg.file_url} />
+        </video>
+        {msg.file_name && <p className={cn('text-[11px] mt-0.5 truncate', subColor)}>{msg.file_name}</p>}
+      </div>
+    );
+  }
+
+  // Audio
+  if (msg.message_type === 'audio' && msg.file_url) {
+    return (
+      <div className={cn('mb-1.5 rounded-xl p-2', bgOverlay)}>
+        <div className={cn('flex items-center gap-2 mb-1', textColor)}>
+          <FileAudio className="h-4 w-4 shrink-0" />
+          <span className="text-xs truncate">{msg.file_name || 'הקלטה'}</span>
+        </div>
+        <audio controls className="w-full h-8" preload="metadata">
+          <source src={msg.file_url} />
+        </audio>
+      </div>
+    );
+  }
+
+  // Google Drive
+  if ((msg.metadata as any)?.source === 'google_drive' && msg.file_url) {
+    return (
+      <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
+        className={cn('mb-1.5 flex items-center gap-2 rounded-xl px-3 py-2 hover:opacity-80 transition-opacity', bgOverlay)}>
+        <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+          <span className="text-blue-600 font-bold text-xs">G</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-xs font-medium truncate', textColor)}>{msg.file_name}</p>
+          <p className={cn('text-[10px]', subColor)}>Google Drive</p>
+        </div>
+        <ExternalLink className={cn('h-3.5 w-3.5 shrink-0', subColor)} />
+      </a>
+    );
+  }
+
+  // Gmail
+  if ((msg.metadata as any)?.source === 'gmail' && msg.file_url) {
+    return (
+      <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
+        className={cn('mb-1.5 flex items-center gap-2 rounded-xl px-3 py-2 hover:opacity-80 transition-opacity', bgOverlay)}>
+        <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+          <span className="text-red-600 font-bold text-xs">M</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-xs font-medium truncate', textColor)}>{msg.file_name}</p>
+          <p className={cn('text-[10px]', subColor)}>Gmail</p>
+        </div>
+        <ExternalLink className={cn('h-3.5 w-3.5 shrink-0', subColor)} />
+      </a>
+    );
+  }
+
+  // Generic file
+  if (msg.message_type === 'file' && msg.file_url) {
+    const isDoc = msg.file_type?.includes('pdf') || msg.file_type?.includes('word') || msg.file_type?.includes('document');
+    return (
+      <a href={msg.file_url} target="_blank" rel="noopener noreferrer" download={msg.file_name}
+        className={cn('mb-1.5 flex items-center gap-2 rounded-xl px-3 py-2 hover:opacity-80 transition-opacity', bgOverlay)}>
+        <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', isDoc ? 'bg-blue-100' : 'bg-muted-foreground/10')}>
+          {isDoc ? <FileText className="h-5 w-5 text-blue-600" /> : <Paperclip className={cn('h-5 w-5', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-xs font-medium truncate', textColor)}>{msg.file_name || 'קובץ'}</p>
+          {msg.file_size && (
+            <p className={cn('text-[10px]', subColor)}>
+              {msg.file_size < 1024 * 1024 ? `${(msg.file_size / 1024).toFixed(1)} KB` : `${(msg.file_size / (1024 * 1024)).toFixed(1)} MB`}
+            </p>
+          )}
+        </div>
+        <Download className={cn('h-3.5 w-3.5 shrink-0', subColor)} />
+      </a>
+    );
+  }
+
+  return null;
+}
+
+// -----------------------------------------------------------
 // Message Bubble
 // -----------------------------------------------------------
 function MessageBubble({
-  msg,
-  isOwn,
-  onReply,
-  onReact,
-  onDelete,
-  showName,
+  msg, isOwn, onReply, onReact, onDelete, showName,
 }: {
-  msg: ChatMessage;
-  isOwn: boolean;
+  msg: ChatMessage; isOwn: boolean;
   onReply: (m: ChatMessage) => void;
   onReact: (id: string, emoji: string) => void;
   onDelete: (id: string) => void;
@@ -115,130 +225,86 @@ function MessageBubble({
   };
 
   const totalReactions = Object.entries(msg.reactions || {}).map(([emoji, users]) => ({
-    emoji,
-    count: (users as string[]).length,
+    emoji, count: (users as string[]).length,
   }));
+
+  const hasText = msg.content && msg.content !== msg.file_name;
 
   return (
     <div
-      className={cn('flex gap-2 group mb-1', isOwn ? 'flex-row-reverse' : 'flex-row')}
+      className={cn('flex gap-2 group mb-0.5', isOwn ? 'flex-row-reverse' : 'flex-row')}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setShowEmoji(false); }}
     >
-      {/* Avatar */}
       {!isOwn && (
         <Avatar className="h-7 w-7 mt-1 shrink-0">
           {msg.sender_avatar && <AvatarImage src={msg.sender_avatar} />}
-          <AvatarFallback className="text-xs bg-primary/10">
-            {(msg.sender_name || 'U').slice(0, 2)}
-          </AvatarFallback>
+          <AvatarFallback className="text-xs bg-primary/10">{(msg.sender_name || 'U').slice(0, 2)}</AvatarFallback>
         </Avatar>
       )}
 
-      <div className={cn('flex flex-col max-w-[70%]', isOwn && 'items-end')}>
+      <div className={cn('flex flex-col max-w-[72%]', isOwn && 'items-end')}>
         {showName && !isOwn && (
-          <span className="text-xs text-muted-foreground mb-0.5 mr-1">
-            {msg.sender_name}
-          </span>
+          <span className="text-xs text-muted-foreground mb-0.5 mr-1 font-medium">{msg.sender_name}</span>
         )}
 
-        {/* Reply preview */}
-        {msg.reply_to && (
-          <div className="text-xs bg-muted/50 rounded px-2 py-1 mb-1 border-r-2 border-primary text-muted-foreground">
-            {(msg.reply_to as any)?.content?.slice(0, 60)}...
+        {msg.reply_to_id && (
+          <div className={cn(
+            'text-xs bg-muted/70 rounded-lg px-2 py-1 mb-1 border-r-2 border-primary text-muted-foreground max-w-full',
+            isOwn && 'border-primary-foreground/50 bg-primary/20 text-primary-foreground/70'
+          )}>
+            ↩ {(msg as any).reply_content?.slice(0, 50) || '...'}
           </div>
         )}
 
-        {/* Bubble */}
         <div className="relative">
-          <div
-            className={cn(
-              'px-3 py-2 rounded-2xl text-sm leading-relaxed break-words',
-              isOwn
-                ? 'bg-primary text-primary-foreground rounded-br-sm'
-                : 'bg-muted rounded-bl-sm'
-            )}
-          >
-            {/* File message */}
-            {msg.message_type === 'file' && msg.file_url && (
-              <a
-                href={msg.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm underline mb-1"
-              >
-                <Paperclip className="h-3 w-3" />
-                {msg.file_name || 'קובץ'}
-              </a>
-            )}
-
-            {/* Image message */}
-            {msg.message_type === 'image' && msg.file_url && (
-              <img
-                src={msg.file_url}
-                alt="תמונה"
-                className="rounded-lg max-w-[200px] mb-1 cursor-pointer"
-                onClick={() => window.open(msg.file_url!, '_blank')}
-              />
-            )}
-
-            {msg.content}
-
-            {msg.is_edited && (
-              <span className="text-[10px] opacity-60 mr-1">(נערך)</span>
+          <div className={cn(
+            'rounded-2xl text-sm leading-relaxed break-words',
+            isOwn ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm',
+            'px-3 py-2'
+          )}>
+            <MessageMedia msg={msg} isOwn={isOwn} />
+            {hasText && (
+              <span>
+                {msg.content}
+                {msg.is_edited && <span className="text-[10px] opacity-60 mr-1">(נערך)</span>}
+              </span>
             )}
           </div>
 
-          {/* Action buttons on hover */}
           {hovered && (
-            <div
-              className={cn(
-                'absolute top-0 flex gap-0.5 bg-background border rounded-lg shadow-md p-0.5',
-                isOwn ? 'right-full mr-1' : 'left-full ml-1'
-              )}
-            >
-              <TooltipProvider>
+            <div className={cn(
+              'absolute top-0 flex gap-0.5 bg-background border rounded-lg shadow-md p-0.5 z-10',
+              isOwn ? 'right-full mr-1' : 'left-full ml-1'
+            )}>
+              <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
-                      onClick={() => onReply(msg)}
-                      className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
-                    >
+                    <button onClick={() => onReply(msg)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
                       <Reply className="h-3 w-3" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent>השב</TooltipContent>
+                  <TooltipContent side="top">השב</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="relative">
-                      <button
-                        onClick={() => setShowEmoji(s => !s)}
-                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
-                      >
+                      <button onClick={() => setShowEmoji(s => !s)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground">
                         <Smile className="h-3 w-3" />
                       </button>
-                      {showEmoji && (
-                        <EmojiPicker
-                          onSelect={(e) => onReact(msg.id, e)}
-                          onClose={() => setShowEmoji(false)}
-                        />
-                      )}
+                      {showEmoji && <EmojiPicker onSelect={(e) => onReact(msg.id, e)} onClose={() => setShowEmoji(false)} />}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>תגובה</TooltipContent>
+                  <TooltipContent side="top">תגובה</TooltipContent>
                 </Tooltip>
                 {isOwn && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        onClick={() => onDelete(msg.id)}
-                        className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-destructive"
-                      >
+                      <button onClick={() => onDelete(msg.id)} className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>מחק</TooltipContent>
+                    <TooltipContent side="top">מחק</TooltipContent>
                   </Tooltip>
                 )}
               </TooltipProvider>
@@ -246,43 +312,35 @@ function MessageBubble({
           )}
         </div>
 
-        {/* Reactions */}
         {totalReactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-0.5">
+          <div className="flex flex-wrap gap-0.5 mt-0.5">
             {totalReactions.map(({ emoji, count }) => (
-              <button
-                key={emoji}
-                onClick={() => onReact(msg.id, emoji)}
-                className="text-xs bg-muted border rounded-full px-1.5 py-0.5 hover:bg-muted/80"
-              >
-                {emoji} {count}
+              <button key={emoji} onClick={() => onReact(msg.id, emoji)}
+                className="text-xs bg-muted border rounded-full px-1.5 py-0.5 hover:bg-muted/80 flex items-center gap-0.5">
+                {emoji} <span className="text-[10px] text-muted-foreground">{count}</span>
               </button>
             ))}
           </div>
         )}
 
-        {/* Time */}
-        <span className="text-[10px] text-muted-foreground mt-0.5 mx-1">
-          {formatTime(msg.created_at)}
-        </span>
+        <span className="text-[10px] text-muted-foreground mt-0.5 mx-1">{formatTime(msg.created_at)}</span>
       </div>
     </div>
   );
 }
 
 // -----------------------------------------------------------
-// Date divider
+// Date Divider
 // -----------------------------------------------------------
 function DateDivider({ date }: { date: string }) {
   const d = new Date(date);
-  let label = format(d, 'dd MMMM yyyy', { locale: he });
+  let label = format(d, 'EEEE, dd MMMM yyyy', { locale: he });
   if (isToday(d)) label = 'היום';
   else if (isYesterday(d)) label = 'אתמול';
-
   return (
-    <div className="flex items-center gap-2 my-2">
+    <div className="flex items-center gap-2 my-3">
       <div className="flex-1 h-px bg-border" />
-      <span className="text-xs text-muted-foreground bg-background px-2">{label}</span>
+      <span className="text-[11px] text-muted-foreground bg-muted px-3 py-0.5 rounded-full border">{label}</span>
       <div className="flex-1 h-px bg-border" />
     </div>
   );
@@ -291,14 +349,8 @@ function DateDivider({ date }: { date: string }) {
 // -----------------------------------------------------------
 // New Conversation Dialog
 // -----------------------------------------------------------
-function NewConversationDialog({
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onCreated: (conv: ChatConversation) => void;
+function NewConversationDialog({ open, onOpenChange, onCreated }: {
+  open: boolean; onOpenChange: (v: boolean) => void; onCreated: (conv: ChatConversation) => void;
 }) {
   const { createConversation } = useChat();
   const [type, setType] = useState<'internal' | 'client' | 'group'>('internal');
@@ -308,19 +360,21 @@ function NewConversationDialog({
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [employees, setEmployees] = useState<{ id: string; full_name: string; email: string }[]>([]);
   const [creating, setCreating] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
     if (!open) return;
-    // Fetch clients and employees
     Promise.all([
-      supabase.from('clients').select('id, name').order('name').limit(100),
+      supabase.from('clients').select('id, name').order('name').limit(200),
       supabase.from('profiles').select('id, full_name, email').order('full_name').limit(100),
     ]).then(([cRes, eRes]) => {
       setClients(cRes.data || []);
       setEmployees(eRes.data || []);
     });
   }, [open]);
+
+  const filteredClients = clients.filter(c => !clientSearch || c.name.toLowerCase().includes(clientSearch.toLowerCase()));
 
   const handleCreate = async () => {
     setCreating(true);
@@ -331,10 +385,10 @@ function NewConversationDialog({
         clientId: type === 'client' ? clientId : undefined,
       });
       if (conv) {
-        toast({ title: 'שיחה נוצרה בהצלחה!' });
+        toast({ title: '✅ שיחה נוצרה בהצלחה!' });
         onCreated(conv as ChatConversation);
         onOpenChange(false);
-        setTitle(''); setClientId(''); setSelectedUsers([]);
+        setTitle(''); setClientId(''); setSelectedUsers([]); setClientSearch('');
       }
     } finally {
       setCreating(false);
@@ -345,104 +399,103 @@ function NewConversationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <MessageCircle className="h-5 w-5 text-primary" />
             שיחה חדשה
           </DialogTitle>
         </DialogHeader>
-
         <div className="space-y-4">
-          <div className="space-y-1">
-            <Label>סוג שיחה</Label>
+          <div className="space-y-1.5">
+            <Label className="text-sm">סוג שיחה</Label>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { key: 'internal', icon: Users, label: 'פנימי' },
-                { key: 'client', icon: Building2, label: 'לקוח' },
-                { key: 'group', icon: MessageCircle, label: 'קבוצה' },
-              ] as const).map(({ key, icon: Icon, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setType(key)}
-                  className={cn(
-                    'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-sm',
-                    type === key
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-muted hover:border-muted-foreground/30'
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {label}
+                { key: 'internal', icon: Users, label: 'פנימי', desc: 'בין עובדים', color: 'text-green-600 bg-green-50' },
+                { key: 'client', icon: Building2, label: 'לקוח', desc: 'עם לקוח', color: 'text-blue-600 bg-blue-50' },
+                { key: 'group', icon: MessageCircle, label: 'קבוצה', desc: 'רב משתתפים', color: 'text-purple-600 bg-purple-50' },
+              ] as const).map(({ key, icon: Icon, label, desc, color }) => (
+                <button key={key} onClick={() => setType(key)} className={cn(
+                  'flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all',
+                  type === key ? 'border-primary bg-primary/5' : 'border-muted hover:border-primary/30 hover:bg-muted/50'
+                )}>
+                  <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center', color)}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs font-semibold">{label}</div>
+                    <div className="text-[10px] text-muted-foreground">{desc}</div>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label>שם השיחה (אופציונלי)</Label>
-            <Input
-              placeholder={type === 'client' ? 'שיחה עם לקוח...' : 'שם הקבוצה...'}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-            />
+            <Label className="text-sm">שם השיחה {type !== 'client' && '(אופציונלי)'}</Label>
+            <Input placeholder={type === 'client' ? 'שם השיחה עם הלקוח...' : 'שם הקבוצה...'} value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
           {type === 'client' && (
-            <div className="space-y-1">
-              <Label>בחר לקוח</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="חפש לקוח..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            <div className="space-y-1.5">
+              <Label className="text-sm">בחר לקוח *</Label>
+              <div className="relative mb-1">
+                <Search className="absolute right-2.5 top-2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="חפש לקוח..." value={clientSearch} onChange={e => setClientSearch(e.target.value)} className="pr-8 h-8" />
+              </div>
+              <ScrollArea className="h-32 border rounded-lg">
+                <div className="p-1 space-y-0.5">
+                  {filteredClients.map(c => (
+                    <button key={c.id} onClick={() => setClientId(c.id)} className={cn(
+                      'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
+                      clientId === c.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'
+                    )}>
+                      <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <Building2 className="h-3 w-3 text-blue-600" />
+                      </div>
+                      {c.name}
+                      {clientId === c.id && <span className="mr-auto">✓</span>}
+                    </button>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </ScrollArea>
+              {clientId && (
+                <div className="flex items-center gap-1.5 text-xs text-primary">
+                  <Tag className="h-3 w-3" />
+                  לקוח נבחר: <strong>{clients.find(c => c.id === clientId)?.name}</strong>
+                </div>
+              )}
             </div>
           )}
 
           {(type === 'internal' || type === 'group') && (
-            <div className="space-y-1">
-              <Label>הוסף משתתפים</Label>
-              <ScrollArea className="h-36 border rounded-lg p-2">
-                <div className="space-y-1">
+            <div className="space-y-1.5">
+              <Label className="text-sm">הוסף משתתפים {type === 'internal' && '*'}</Label>
+              <ScrollArea className="h-36 border rounded-lg">
+                <div className="p-1 space-y-0.5">
                   {employees.map(e => (
-                    <label key={e.id} className="flex items-center gap-2 p-1.5 hover:bg-muted rounded cursor-pointer">
-                      <Checkbox
-                        checked={selectedUsers.includes(e.id)}
-                        onCheckedChange={(v) => {
-                          setSelectedUsers(prev =>
-                            v ? [...prev, e.id] : prev.filter(x => x !== e.id)
-                          );
-                        }}
-                      />
+                    <label key={e.id} className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted rounded-md cursor-pointer">
+                      <Checkbox checked={selectedUsers.includes(e.id)}
+                        onCheckedChange={(v) => setSelectedUsers(prev => v ? [...prev, e.id] : prev.filter(x => x !== e.id))} />
                       <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">
-                          {e.full_name?.slice(0, 2) || '??'}
-                        </AvatarFallback>
+                        <AvatarFallback className="text-[10px] bg-primary/10">{e.full_name?.slice(0, 2) || '??'}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <div className="text-sm font-medium">{e.full_name}</div>
-                        <div className="text-xs text-muted-foreground">{e.email}</div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{e.full_name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{e.email}</div>
                       </div>
                     </label>
                   ))}
                 </div>
               </ScrollArea>
               {selectedUsers.length > 0 && (
-                <p className="text-xs text-muted-foreground">{selectedUsers.length} נבחרו</p>
+                <p className="text-xs text-primary font-medium">{selectedUsers.length} משתתפים נבחרו</p>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>ביטול</Button>
-          <Button
-            onClick={handleCreate}
-            disabled={creating || (type === 'internal' && selectedUsers.length === 0)}
-          >
+          <Button onClick={handleCreate} disabled={creating || (type === 'internal' && selectedUsers.length === 0) || (type === 'client' && !clientId)}>
             {creating ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : <Plus className="h-4 w-4 ml-1" />}
             צור שיחה
           </Button>
@@ -453,78 +506,137 @@ function NewConversationDialog({
 }
 
 // -----------------------------------------------------------
-// Main ChatMessenger Component
+// Assign Client Dialog
+// -----------------------------------------------------------
+function AssignClientDialog({ open, onOpenChange, conversationId, currentClientId, onAssigned }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  conversationId: string; currentClientId?: string | null;
+  onAssigned: (clientId: string | null, clientName: string | null) => void;
+}) {
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
+  const [search, setSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    supabase.from('clients').select('id, name').order('name').limit(200).then(({ data }) => setClients(data || []));
+  }, [open]);
+
+  const filtered = clients.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
+
+  const assign = async (clientId: string | null) => {
+    setSaving(true);
+    await supabase.from('chat_conversations')
+      .update({ client_id: clientId, type: clientId ? 'client' : 'internal' })
+      .eq('id', conversationId);
+    const name = clientId ? clients.find(c => c.id === clientId)?.name || null : null;
+    onAssigned(clientId, name);
+    toast({ title: clientId ? `שויך ללקוח: ${name}` : 'שיוך הוסר' });
+    onOpenChange(false);
+    setSaving(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary" />
+            שייך לקוח לשיחה
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute right-2.5 top-2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="חפש לקוח..." value={search} onChange={e => setSearch(e.target.value)} className="pr-8 h-8" autoFocus />
+          </div>
+          <ScrollArea className="h-52 border rounded-lg">
+            <div className="p-1 space-y-0.5">
+              {currentClientId && (
+                <button onClick={() => assign(null)} className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm hover:bg-destructive/10 text-destructive">
+                  <X className="h-4 w-4" />הסר שיוך לקוח
+                </button>
+              )}
+              {filtered.map(c => (
+                <button key={c.id} onClick={() => assign(c.id)} className={cn(
+                  'w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors',
+                  currentClientId === c.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                )}>
+                  <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 font-bold text-xs">
+                    {c.name.slice(0, 2)}
+                  </div>
+                  {c.name}
+                  {currentClientId === c.id && <span className="mr-auto text-xs">✓ נוכחי</span>}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// -----------------------------------------------------------
+// Main ChatMessenger
 // -----------------------------------------------------------
 export function ChatMessenger() {
   const {
-    conversations,
-    activeConversation,
-    messages,
-    loading,
-    sendingMessage,
-    onlineUsers,
-    totalUnread,
-    selectConversation,
-    sendMessage,
-    createConversation,
-    addReaction,
-    deleteMessage,
-    sendTyping,
+    conversations, activeConversation, messages, loading, sendingMessage,
+    onlineUsers, totalUnread, selectConversation, sendMessage, createConversation,
+    addReaction, deleteMessage, sendTyping, fetchConversations,
   } = useChat();
 
   const { user, profile } = useAuth();
   const { toast } = useToast();
+
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [newConvOpen, setNewConvOpen] = useState(false);
+  const [filePickerOpen, setFilePickerOpen] = useState(false);
+  const [assignClientOpen, setAssignClientOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [filterType, setFilterType] = useState<'all' | 'internal' | 'client' | 'group'>('all');
+  const [localConvs, setLocalConvs] = useState<ChatConversation[]>([]);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Responsive
+  useEffect(() => { setLocalConvs(conversations); }, [conversations]);
+
   useEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      setShowSidebar(!mobile || !activeConversation);
+      if (!mobile) setShowSidebar(true);
     };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
-  }, [activeConversation]);
+  }, []);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Group messages by date for dividers
   const groupedMessages = messages.reduce<{ date: string; msgs: ChatMessage[] }[]>((acc, msg) => {
     const date = format(new Date(msg.created_at), 'yyyy-MM-dd');
     const last = acc[acc.length - 1];
-    if (!last || last.date !== date) {
-      acc.push({ date, msgs: [msg] });
-    } else {
-      last.msgs.push(msg);
-    }
+    if (!last || last.date !== date) acc.push({ date, msgs: [msg] });
+    else last.msgs.push(msg);
     return acc;
   }, []);
 
-  // Filter conversations
-  const filteredConversations = conversations.filter(c => {
+  const filteredConversations = localConvs.filter(c => {
     const q = searchQuery.toLowerCase();
-    if (!q) return true;
-    return (
-      c.title?.toLowerCase().includes(q) ||
-      c.client_name?.toLowerCase().includes(q) ||
-      c.last_message?.toLowerCase().includes(q)
-    );
+    const matchSearch = !q || c.title?.toLowerCase().includes(q) || (c.client_name || '').toLowerCase().includes(q) || (c.last_message || '').toLowerCase().includes(q);
+    const matchType = filterType === 'all' || c.type === filterType;
+    return matchSearch && matchType;
   });
 
-  // Send handler
   const handleSend = async () => {
     if (!input.trim()) return;
     const text = input;
@@ -533,303 +645,243 @@ export function ChatMessenger() {
     await sendMessage(text, replyTo ? { replyToId: replyTo.id } : undefined);
   };
 
-  // File upload
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !activeConversation) return;
+  const handleFilePicked = async (picked: PickedFile) => {
+    if (!activeConversation || !user) return;
+    const isImage = picked.file_type?.startsWith('image/');
+    const msgType: 'text' | 'image' | 'file' | 'voice' = isImage ? 'image' : 'file';
 
-    const isImage = file.type.startsWith('image/');
-    const path = `chat/${activeConversation.id}/${Date.now()}-${file.name}`;
+    await sendMessage(picked.file_name, {
+      messageType: msgType,
+      fileUrl: picked.file_url,
+      fileName: picked.file_name,
+      fileSize: picked.file_size,
+      fileType: picked.file_type,
+    });
 
-    const { data, error } = await supabase.storage
-      .from('documents')
-      .upload(path, file);
-
-    if (error) {
-      toast({ title: 'שגיאה בהעלאת קובץ', variant: 'destructive' });
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path);
-
-    await sendMessage(file.name, {
-      messageType: isImage ? 'image' : 'file',
-      fileUrl: publicUrl,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
+    // Record in chat_files for client linking
+    await supabase.from('chat_files').insert({
+      conversation_id: activeConversation.id,
+      client_id: activeConversation.client_id || null,
+      uploaded_by: user.id,
+      file_name: picked.file_name,
+      file_url: picked.file_url,
+      file_type: picked.file_type || null,
+      file_size: picked.file_size || null,
+      source: picked.source,
+      drive_file_id: picked.drive_file_id || null,
+      gmail_message_id: picked.gmail_message_id || null,
+      thumbnail_url: picked.thumbnail_url || null,
+      duration_seconds: picked.duration_seconds || null,
     });
   };
 
-  // Conversation item
+  const handleClientAssigned = (clientId: string | null, clientName: string | null) => {
+    setLocalConvs(prev =>
+      prev.map(c => c.id === activeConversation?.id
+        ? { ...c, client_id: clientId, client_name: clientName || undefined, type: clientId ? 'client' as const : 'internal' as const }
+        : c)
+    );
+  };
+
   const ConvItem = ({ conv }: { conv: ChatConversation }) => {
     const isActive = activeConversation?.id === conv.id;
     const TypeIcon = conv.type === 'client' ? Building2 : conv.type === 'group' ? Users : MessageCircle;
-
-    const title = conv.title || conv.client_name ||
-      (conv.type === 'internal' ? 'שיחה פנימית' : 'שיחה');
-
-    const lastMsgTime = conv.last_message_at
-      ? formatDistanceToNow(new Date(conv.last_message_at), { locale: he, addSuffix: true })
-      : '';
+    const title = conv.title || conv.client_name || (conv.type === 'internal' ? 'שיחה פנימית' : 'שיחה');
+    const lastTime = conv.last_message_at
+      ? formatDistanceToNow(new Date(conv.last_message_at), { locale: he, addSuffix: true }) : '';
+    const typeColor = conv.type === 'client' ? 'bg-blue-100 text-blue-600' : conv.type === 'group' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600';
 
     return (
-      <button
-        onClick={() => {
-          selectConversation(conv);
-          if (isMobile) setShowSidebar(false);
-        }}
-        className={cn(
-          'w-full flex items-start gap-3 p-3 rounded-xl text-right transition-all hover:bg-muted/50',
-          isActive && 'bg-primary/10 border border-primary/20'
-        )}
-      >
-        <div className={cn(
-          'shrink-0 h-10 w-10 rounded-full flex items-center justify-center',
-          conv.type === 'client' ? 'bg-blue-100 text-blue-600' :
-          conv.type === 'group' ? 'bg-purple-100 text-purple-600' :
-          'bg-green-100 text-green-600'
-        )}>
-          <TypeIcon className="h-5 w-5" />
+      <button onClick={() => { selectConversation(conv); if (isMobile) setShowSidebar(false); }}
+        className={cn('w-full flex items-start gap-2.5 px-2.5 py-2 rounded-xl text-right transition-all hover:bg-muted/60',
+          isActive && 'bg-primary/10 border border-primary/15 shadow-sm')}>
+        <div className={cn('shrink-0 h-9 w-9 rounded-full flex items-center justify-center', typeColor)}>
+          <TypeIcon className="h-4 w-4" />
         </div>
-
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-0.5">
-            <span className={cn('font-medium text-sm truncate', isActive && 'text-primary')}>
-              {title}
-            </span>
-            <span className="text-[10px] text-muted-foreground shrink-0 mr-1">{lastMsgTime}</span>
+          <div className="flex items-center justify-between gap-1 mb-0.5">
+            <span className={cn('font-medium text-sm truncate', isActive && 'text-primary')}>{title}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">{lastTime}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground truncate">
-              {conv.last_message || 'אין הודעות'}
-            </p>
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-xs text-muted-foreground truncate flex-1">{conv.last_message || 'אין הודעות'}</p>
             {(conv.unread_count || 0) > 0 && (
-              <Badge className="bg-primary text-primary-foreground text-[10px] h-4 min-w-4 shrink-0 rounded-full">
+              <Badge className="bg-primary text-primary-foreground text-[10px] h-4 min-w-[1rem] shrink-0 rounded-full px-1">
                 {conv.unread_count}
               </Badge>
             )}
           </div>
+          {conv.client_name && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Building2 className="h-2.5 w-2.5 text-blue-500" />
+              <span className="text-[10px] text-blue-600 truncate">{conv.client_name}</span>
+            </div>
+          )}
         </div>
       </button>
     );
   };
 
-  // -----------------------------------------------------------
-  // Main render
-  // -----------------------------------------------------------
-  return (
-    <div className="flex h-[calc(100vh-220px)] min-h-[500px] bg-background border rounded-2xl overflow-hidden" dir="rtl">
+  const activeConvLocal = localConvs.find(c => c.id === activeConversation?.id) || activeConversation;
 
-      {/* ====== SIDEBAR ====== */}
+  return (
+    <div className="flex h-[calc(100vh-220px)] min-h-[520px] bg-background border rounded-2xl overflow-hidden shadow-sm" dir="rtl">
+
+      {/* SIDEBAR */}
       {(showSidebar || !isMobile) && (
-        <div className="w-full md:w-72 lg:w-80 flex flex-col border-l bg-muted/20 shrink-0">
-          {/* Header */}
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold flex items-center gap-2">
+        <div className="w-full md:w-72 lg:w-80 flex flex-col border-l bg-gradient-to-b from-muted/30 to-muted/10 shrink-0">
+          <div className="p-3 border-b bg-background/80 backdrop-blur-sm space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-base flex items-center gap-2">
                 <MessageCircle className="h-5 w-5 text-primary" />
                 שיחות
                 {totalUnread > 0 && (
-                  <Badge className="bg-primary text-primary-foreground text-xs rounded-full">
-                    {totalUnread}
-                  </Badge>
+                  <Badge className="bg-destructive text-destructive-foreground text-[10px] rounded-full">{totalUnread}</Badge>
                 )}
               </h2>
-              <Button
-                size="sm"
-                onClick={() => setNewConvOpen(true)}
-                className="h-8 gap-1 rounded-xl"
-              >
-                <Plus className="h-4 w-4" />
-                חדש
+              <Button size="sm" onClick={() => setNewConvOpen(true)} className="h-7 gap-1 rounded-lg text-xs">
+                <Plus className="h-3.5 w-3.5" />חדש
               </Button>
             </div>
-
-            {/* Search */}
             <div className="relative">
-              <Search className="absolute right-2.5 top-2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="חפש שיחה..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pr-8 h-8 bg-background text-sm rounded-xl"
-              />
+              <Search className="absolute right-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="חפש שיחה..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-8 h-7 text-xs bg-background rounded-lg" />
+            </div>
+            <div className="flex gap-1 overflow-x-auto pb-0.5">
+              {([{ key: 'all', label: 'הכל' }, { key: 'internal', label: 'פנימי' }, { key: 'client', label: 'לקוחות' }, { key: 'group', label: 'קבוצות' }] as const).map(({ key, label }) => (
+                <button key={key} onClick={() => setFilterType(key)} className={cn(
+                  'text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-all',
+                  filterType === key ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                )}>{label}</button>
+              ))}
             </div>
           </div>
 
-          {/* Conversations list */}
-          <ScrollArea className="flex-1 p-2">
-            {loading && conversations.length === 0 && (
-              <div className="flex items-center justify-center h-20">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            {!loading && filteredConversations.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-32 gap-2 text-center">
-                <MessageCircle className="h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">אין שיחות עדיין</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNewConvOpen(true)}
-                  className="rounded-xl"
-                >
-                  <Plus className="h-4 w-4 ml-1" />
-                  התחל שיחה
+          <ScrollArea className="flex-1 p-1.5">
+            {loading && localConvs.length === 0 ? (
+              <div className="flex items-center justify-center h-24"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-32 gap-2 text-center p-4">
+                <MessageCircle className="h-10 w-10 text-muted-foreground/20" />
+                <p className="text-sm text-muted-foreground">אין שיחות</p>
+                <Button variant="outline" size="sm" onClick={() => setNewConvOpen(true)} className="text-xs h-7 rounded-lg">
+                  <Plus className="h-3.5 w-3.5 ml-1" />התחל שיחה
                 </Button>
               </div>
+            ) : (
+              <div className="space-y-0.5">
+                {filteredConversations.map(conv => <ConvItem key={conv.id} conv={conv} />)}
+              </div>
             )}
-
-            <div className="space-y-0.5">
-              {filteredConversations.map(conv => (
-                <ConvItem key={conv.id} conv={conv} />
-              ))}
-            </div>
           </ScrollArea>
 
-          {/* User status */}
-          <div className="p-3 border-t bg-background/50">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Avatar className="h-7 w-7">
-                  <AvatarFallback className="text-xs bg-primary/20">
-                    {profile?.full_name?.slice(0, 2) || 'אנ'}
-                  </AvatarFallback>
-                </Avatar>
-                <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 absolute -bottom-0.5 -right-0.5" />
-              </div>
-              <div className="text-xs">
-                <div className="font-medium">{profile?.full_name}</div>
-                <div className="text-muted-foreground">מחובר</div>
-              </div>
+          <div className="p-2.5 border-t bg-background/50 flex items-center gap-2">
+            <div className="relative">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="text-[10px] bg-primary/20 font-bold">{profile?.full_name?.slice(0, 2) || 'אנ'}</AvatarFallback>
+              </Avatar>
+              <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 absolute -bottom-0.5 -right-0.5" />
+            </div>
+            <div className="text-xs flex-1 min-w-0">
+              <div className="font-medium truncate">{profile?.full_name || 'משתמש'}</div>
+              <div className="text-muted-foreground text-[10px]">מחובר • זמין</div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ====== CHAT AREA ====== */}
+      {/* CHAT AREA */}
       {(!isMobile || !showSidebar) && (
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 bg-background">
           {!activeConversation ? (
-            // Empty state
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
-              <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
-                <MessageCircle className="h-12 w-12 text-primary/50" />
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center p-8">
+              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <MessageCircle className="h-10 w-10 text-primary/60" />
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-1">ברוכים הבאים למרכז השיחות</h3>
-                <p className="text-muted-foreground text-sm">
-                  בחר שיחה מהרשימה או פתח שיחה חדשה
-                </p>
+                <h3 className="text-xl font-bold mb-1.5">מרכז השיחות</h3>
+                <p className="text-muted-foreground text-sm">שיחות פנימיות, עם לקוחות וקבוצות.</p>
+                <p className="text-muted-foreground text-xs mt-1">קבצים מכל פורמט, Google Drive, Gmail, וידאו ושמע.</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={() => setNewConvOpen(true)} className="gap-2 rounded-xl">
-                  <Users className="h-4 w-4" />
-                  שיחה פנימית
+                  <Users className="h-4 w-4" />שיחה פנימית
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => { setNewConvOpen(true); }}
-                  className="gap-2 rounded-xl"
-                >
-                  <Building2 className="h-4 w-4" />
-                  שיחה עם לקוח
+                <Button variant="outline" onClick={() => setNewConvOpen(true)} className="gap-2 rounded-xl">
+                  <Building2 className="h-4 w-4" />שיחה עם לקוח
                 </Button>
               </div>
             </div>
           ) : (
             <>
-              {/* Chat header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-sm">
-                <div className="flex items-center gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background/90 backdrop-blur-sm">
+                <div className="flex items-center gap-2.5">
                   {isMobile && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => setShowSidebar(true)}
-                    >
-                      <X className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowSidebar(true)}>
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
                   )}
-                  <div className={cn(
-                    'h-9 w-9 rounded-full flex items-center justify-center',
-                    activeConversation.type === 'client' ? 'bg-blue-100 text-blue-600' :
-                    activeConversation.type === 'group' ? 'bg-purple-100 text-purple-600' :
-                    'bg-green-100 text-green-600'
-                  )}>
-                    {activeConversation.type === 'client' ? <Building2 className="h-5 w-5" /> :
-                     activeConversation.type === 'group' ? <Users className="h-5 w-5" /> :
-                     <MessageCircle className="h-5 w-5" />}
+                  <div className={cn('h-9 w-9 rounded-full flex items-center justify-center shrink-0',
+                    activeConvLocal?.type === 'client' ? 'bg-blue-100 text-blue-600' : activeConvLocal?.type === 'group' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600')}>
+                    {activeConvLocal?.type === 'client' ? <Building2 className="h-4 w-4" /> : activeConvLocal?.type === 'group' ? <Users className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">
-                      {activeConversation.title || activeConversation.client_name || 'שיחה פנימית'}
+                    <h3 className="font-semibold text-sm leading-tight">
+                      {activeConvLocal?.title || activeConvLocal?.client_name || 'שיחה פנימית'}
                     </h3>
-                    <p className="text-xs text-muted-foreground">
-                      {activeConversation.type === 'client' && 'שיחה עם לקוח'}
-                      {activeConversation.type === 'group' && 'קבוצה'}
-                      {activeConversation.type === 'internal' && 'שיחה פנימית'}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {activeConvLocal?.client_name && (
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5 rounded-full">
+                          <Building2 className="h-2.5 w-2.5 ml-0.5" />{activeConvLocal.client_name}
+                        </Badge>
+                      )}
+                      <span className="text-[10px] text-muted-foreground">
+                        {activeConvLocal?.type === 'client' ? 'שיחת לקוח' : activeConvLocal?.type === 'group' ? 'קבוצה' : 'פנימי'}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
+                      <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><Phone className="h-4 w-4" /></Button></TooltipTrigger>
                       <TooltipContent>שיחת טלפון</TooltipContent>
                     </Tooltip>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Video className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>וידאו שיחה</TooltipContent>
+                      <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><Video className="h-4 w-4" /></Button></TooltipTrigger>
+                      <TooltipContent>שיחת וידאו</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem>
-                        <Pin className="h-4 w-4 ml-2" />
-                        הצמד שיחה
+                    <DropdownMenuContent align="start" dir="rtl">
+                      <DropdownMenuItem onClick={() => setAssignClientOpen(true)}>
+                        <Link2 className="h-4 w-4 ml-2" />
+                        {activeConvLocal?.client_id ? 'שנה לקוח משויך' : 'שייך ללקוח'}
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Archive className="h-4 w-4 ml-2" />
-                        העבר לארכיון
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Edit3 className="h-4 w-4 ml-2" />
-                        ערוך שם
-                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem><Pin className="h-4 w-4 ml-2" />הצמד שיחה</DropdownMenuItem>
+                      <DropdownMenuItem><Archive className="h-4 w-4 ml-2" />העבר לארכיון</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
               </div>
 
-              {/* Messages area */}
-              <ScrollArea className="flex-1 px-4 py-2">
+              {/* Messages */}
+              <ScrollArea className="flex-1 px-3 py-2">
                 {loading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
+                  <div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-center">
-                    <MessageCircle className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                    <p className="text-sm text-muted-foreground">אין הודעות עדיין. שלח את ההודעה הראשונה!</p>
+                  <div className="flex flex-col items-center justify-center h-40 text-center gap-2">
+                    <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
+                      <MessageCircle className="h-6 w-6 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">התחל שיחה — שלח הודעה ראשונה!</p>
+                    <p className="text-xs text-muted-foreground">ניתן לשלוח טקסט, קבצים, וידאו, תמונות, Google Drive ו-Gmail</p>
                   </div>
                 ) : (
                   <>
@@ -837,15 +889,9 @@ export function ChatMessenger() {
                       <div key={date}>
                         <DateDivider date={msgs[0].created_at} />
                         {msgs.map((msg, i) => (
-                          <MessageBubble
-                            key={msg.id}
-                            msg={msg}
-                            isOwn={msg.sender_id === user?.id}
-                            onReply={setReplyTo}
-                            onReact={addReaction}
-                            onDelete={deleteMessage}
-                            showName={i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id}
-                          />
+                          <MessageBubble key={msg.id} msg={msg} isOwn={msg.sender_id === user?.id}
+                            onReply={setReplyTo} onReact={addReaction} onDelete={deleteMessage}
+                            showName={i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id} />
                         ))}
                       </div>
                     ))}
@@ -854,96 +900,80 @@ export function ChatMessenger() {
                 <div ref={messagesEndRef} />
               </ScrollArea>
 
-              {/* Reply preview */}
+              {/* Reply bar */}
               {replyTo && (
-                <div className="px-4 py-2 border-t bg-muted/30 flex items-center gap-2">
-                  <Reply className="h-4 w-4 text-primary shrink-0" />
+                <div className="px-4 py-1.5 border-t bg-primary/5 flex items-center gap-2">
+                  <Reply className="h-3.5 w-3.5 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-primary">{replyTo.sender_name}</div>
+                    <div className="text-xs font-semibold text-primary">{replyTo.sender_name}</div>
                     <div className="text-xs text-muted-foreground truncate">{replyTo.content}</div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => setReplyTo(null)}
-                  >
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setReplyTo(null)}>
                     <X className="h-3 w-3" />
                   </Button>
                 </div>
               )}
 
-              {/* Input area */}
-              <div className="p-3 border-t bg-background">
-                <div className="flex items-end gap-2 bg-muted/40 rounded-2xl p-2 border">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                  />
+              {/* Input */}
+              <div className="p-3 border-t bg-muted/10">
+                <div className="flex items-end gap-2 bg-background rounded-2xl border shadow-sm px-3 py-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 rounded-full"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:text-primary"
+                          onClick={() => setFilePickerOpen(true)}>
                           <Paperclip className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>צרף קובץ</TooltipContent>
+                      <TooltipContent side="top">
+                        צרף קובץ — כל פורמט כולל וידאו, Google Drive, Gmail
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
 
-                  <Textarea
-                    ref={inputRef}
-                    placeholder="כתוב הודעה..."
+                  <Textarea ref={inputRef} placeholder="כתוב הודעה... (Enter לשליחה)"
                     value={input}
-                    onChange={e => {
-                      setInput(e.target.value);
-                      sendTyping();
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
+                    onChange={e => { setInput(e.target.value); sendTyping(); }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                     rows={1}
-                    className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 min-h-[36px] max-h-[120px] overflow-y-auto py-1.5 text-sm"
+                    className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 min-h-[34px] max-h-[120px] py-1 text-sm"
                     style={{ fieldSizing: 'content' } as any}
                   />
 
-                  <Button
-                    size="icon"
-                    className="h-8 w-8 shrink-0 rounded-full"
-                    onClick={handleSend}
-                    disabled={!input.trim() || sendingMessage}
-                  >
-                    {sendingMessage
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <Send className="h-4 w-4" />}
+                  <Button size="icon" className="h-8 w-8 shrink-0 rounded-xl" onClick={handleSend} disabled={!input.trim() || sendingMessage}>
+                    {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
-                <p className="text-[10px] text-muted-foreground text-center mt-1">
-                  Enter לשליחה • Shift+Enter לשורה חדשה
-                </p>
+                <div className="flex items-center justify-between mt-1.5 px-1">
+                  <p className="text-[10px] text-muted-foreground">Enter לשליחה • Shift+Enter לשורה חדשה</p>
+                  <p className="text-[10px] text-muted-foreground">📎 תמונות • 🎬 וידאו • 🎵 שמע • 📄 מסמכים • Drive • Gmail</p>
+                </div>
               </div>
             </>
           )}
         </div>
       )}
 
-      {/* New Conversation Dialog */}
-      <NewConversationDialog
-        open={newConvOpen}
-        onOpenChange={setNewConvOpen}
-        onCreated={(conv) => selectConversation(conv)}
+      {/* Dialogs */}
+      <NewConversationDialog open={newConvOpen} onOpenChange={setNewConvOpen} onCreated={(conv) => selectConversation(conv)} />
+
+      <ChatFilePicker
+        open={filePickerOpen}
+        onOpenChange={setFilePickerOpen}
+        onFilePicked={handleFilePicked}
+        conversationId={activeConversation?.id}
+        clientId={activeConvLocal?.client_id || undefined}
       />
+
+      {activeConversation && (
+        <AssignClientDialog
+          open={assignClientOpen}
+          onOpenChange={setAssignClientOpen}
+          conversationId={activeConversation.id}
+          currentClientId={activeConvLocal?.client_id}
+          onAssigned={handleClientAssigned}
+        />
+      )}
     </div>
   );
 }
