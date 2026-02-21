@@ -555,6 +555,195 @@ export function useChat() {
 
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unread_count || 0), 0);
 
+  // -----------------------------------------------------------
+  // Edit message
+  // -----------------------------------------------------------
+  const editMessage = useCallback(async (messageId: string, newContent: string) => {
+    if (!user || !newContent.trim()) return;
+    const { error } = await supabase
+      .from('chat_messages')
+      .update({ content: newContent.trim(), is_edited: true, edited_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .eq('sender_id', user.id);
+    if (!error) {
+      setMessages(prev => prev.map(m => m.id === messageId
+        ? { ...m, content: newContent.trim(), is_edited: true, edited_at: new Date().toISOString() }
+        : m));
+    }
+  }, [user]);
+
+  // -----------------------------------------------------------
+  // Pin / unpin message in conversation
+  // -----------------------------------------------------------
+  const pinMessage = useCallback(async (conversationId: string, messageId: string | null) => {
+    await supabase
+      .from('chat_conversations')
+      .update({ pinned_message_id: messageId })
+      .eq('id', conversationId);
+    setConversations(prev =>
+      prev.map(c => c.id === conversationId ? { ...c, pinned_message_id: messageId } as any : c)
+    );
+  }, []);
+
+  // -----------------------------------------------------------
+  // Forward message to another conversation
+  // -----------------------------------------------------------
+  const forwardMessage = useCallback(async (messageId: string, targetConversationId: string) => {
+    if (!user) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    await supabase.from('chat_messages').insert({
+      conversation_id: targetConversationId,
+      sender_id: user.id,
+      sender_type: 'user',
+      content: msg.content,
+      message_type: msg.message_type,
+      file_url: msg.file_url,
+      file_name: msg.file_name,
+      file_size: msg.file_size,
+      file_type: msg.file_type,
+      forwarded_from_id: messageId,
+    });
+  }, [user, messages]);
+
+  // -----------------------------------------------------------
+  // Search messages in active conversation
+  // -----------------------------------------------------------
+  const searchMessages = useCallback(async (query: string): Promise<ChatMessage[]> => {
+    if (!activeConversation || !query.trim()) return [];
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('conversation_id', activeConversation.id)
+      .eq('is_deleted', false)
+      .ilike('content', `%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    return (data || []).map((m: any) => ({ ...m, reactions: m.reactions || {}, is_edited: m.is_edited || false, is_deleted: false }));
+  }, [activeConversation]);
+
+  // -----------------------------------------------------------
+  // Create poll
+  // -----------------------------------------------------------
+  const createPoll = useCallback(async (question: string, options: string[], allowMultiple = false) => {
+    if (!user || !activeConversation) return;
+    // Insert poll
+    const { data: poll } = await supabase
+      .from('chat_polls')
+      .insert({
+        conversation_id: activeConversation.id,
+        created_by: user.id,
+        question,
+        options: options.map((text, i) => ({ id: String(i), text })),
+        allow_multiple: allowMultiple,
+      })
+      .select()
+      .single();
+
+    if (!poll) return;
+
+    // Create system message to hold poll
+    await sendMessage(`📊 סקר: ${question}`, {
+      messageType: 'text',
+    });
+  }, [user, activeConversation, sendMessage]);
+
+  // -----------------------------------------------------------
+  // Convert message to task
+  // -----------------------------------------------------------
+  const convertToTask = useCallback(async (messageId: string, taskTitle: string, assignedTo?: string) => {
+    if (!user || !activeConversation) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg) return;
+
+    // Insert into tasks table if it exists
+    let taskId: string | undefined;
+    const { data: task } = await supabase
+      .from('tasks')
+      .insert({
+        title: taskTitle,
+        description: msg.content,
+        assigned_to: assignedTo || user.id,
+        created_by: user.id,
+        status: 'pending',
+      })
+      .select('id')
+      .single()
+      .catch(() => ({ data: null }));
+
+    taskId = task?.id;
+
+    // Record the link
+    await supabase.from('chat_message_tasks').insert({
+      message_id: messageId,
+      conversation_id: activeConversation.id,
+      created_by: user.id,
+      task_title: taskTitle,
+      assigned_to: assignedTo || null,
+      task_id: taskId || null,
+    });
+
+    return taskId;
+  }, [user, activeConversation, messages]);
+
+  // -----------------------------------------------------------
+  // Schedule message
+  // -----------------------------------------------------------
+  const scheduleMessage = useCallback(async (content: string, scheduledAt: Date) => {
+    if (!user || !activeConversation) return;
+    await supabase.from('chat_scheduled_messages').insert({
+      conversation_id: activeConversation.id,
+      sender_id: user.id,
+      content,
+      scheduled_at: scheduledAt.toISOString(),
+    });
+  }, [user, activeConversation]);
+
+  // -----------------------------------------------------------
+  // Get media gallery for active conversation
+  // -----------------------------------------------------------
+  const getMediaGallery = useCallback(async (type: 'images' | 'files' | 'all' = 'all') => {
+    if (!activeConversation) return [];
+    let query = supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('conversation_id', activeConversation.id)
+      .eq('is_deleted', false)
+      .not('file_url', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (type === 'images') query = query.eq('message_type', 'image');
+    else if (type === 'files') query = query.neq('message_type', 'image');
+
+    const { data } = await query;
+    return (data || []).map((m: any) => ({ ...m, reactions: m.reactions || {}, is_edited: false, is_deleted: false }));
+  }, [activeConversation]);
+
+  // -----------------------------------------------------------
+  // AI Summary of conversation
+  // -----------------------------------------------------------
+  const summarizeConversation = useCallback(async (): Promise<string> => {
+    if (!activeConversation || messages.length === 0) return 'אין הודעות לסיכום';
+    const last50 = messages.slice(-50).filter(m => m.message_type === 'text');
+    const chatText = last50.map(m => `${m.sender_name}: ${m.content}`).join('\n');
+
+    try {
+      const { data } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          messages: [
+            { role: 'system', content: 'אתה עוזר עסקי. סכם את השיחה הבאה בנקודות עיקריות בעברית. תהיה קצר וברור.' },
+            { role: 'user', content: `סכם את השיחה הזו:\n\n${chatText}` }
+          ]
+        }
+      });
+      return data?.choices?.[0]?.message?.content || data?.response || 'לא ניתן לסכם';
+    } catch {
+      return 'שגיאה בסיכום';
+    }
+  }, [activeConversation, messages]);
+
   return {
     conversations,
     activeConversation,
@@ -573,5 +762,14 @@ export function useChat() {
     deleteMessage,
     sendTyping,
     markAsRead,
+    editMessage,
+    pinMessage,
+    forwardMessage,
+    searchMessages,
+    createPoll,
+    convertToTask,
+    scheduleMessage,
+    getMediaGallery,
+    summarizeConversation,
   };
 }
