@@ -1,7 +1,7 @@
 /**
  * Supabase Mock - מוק לכל קריאות Supabase בבדיקות
  */
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Mock response builder
 function createQueryBuilder(defaultData: any[] = [], defaultError: any = null) {
@@ -26,19 +26,29 @@ function createQueryBuilder(defaultData: any[] = [], defaultError: any = null) {
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     range: vi.fn().mockReturnThis(),
-    single: vi.fn().mockImplementation(() =>
-      Promise.resolve({ data: builder._data?.[0] || null, error: builder._error })
-    ),
-    maybeSingle: vi.fn().mockImplementation(() =>
-      Promise.resolve({ data: builder._data?.[0] || null, error: builder._error })
-    ),
+    single: vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({
+          data: builder._data?.[0] || null,
+          error: builder._error,
+        }),
+      ),
+    maybeSingle: vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({
+          data: builder._data?.[0] || null,
+          error: builder._error,
+        }),
+      ),
     then: function (resolve: any) {
       return resolve({ data: builder._data, error: builder._error });
     },
   };
 
   // Make the builder thenable (for await)
-  builder[Symbol.for('thenable')] = true;
+  builder[Symbol.for("thenable")] = true;
 
   return builder;
 }
@@ -47,17 +57,30 @@ function createQueryBuilder(defaultData: any[] = [], defaultError: any = null) {
 export const mockSupabase = {
   from: vi.fn((table: string) => createQueryBuilder()),
   auth: {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user-id' } }, error: null }),
+    getUser: vi
+      .fn()
+      .mockResolvedValue({
+        data: { user: { id: "test-user-id" } },
+        error: null,
+      }),
     signIn: vi.fn().mockResolvedValue({ data: {}, error: null }),
     signOut: vi.fn().mockResolvedValue({ error: null }),
-    onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
+    onAuthStateChange: vi
+      .fn()
+      .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
   },
   storage: {
     from: vi.fn(() => ({
-      upload: vi.fn().mockResolvedValue({ data: { path: 'test/file.txt' }, error: null }),
+      upload: vi
+        .fn()
+        .mockResolvedValue({ data: { path: "test/file.txt" }, error: null }),
       download: vi.fn().mockResolvedValue({ data: new Blob(), error: null }),
       remove: vi.fn().mockResolvedValue({ data: [], error: null }),
-      getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: 'https://example.com/file.txt' } }),
+      getPublicUrl: vi
+        .fn()
+        .mockReturnValue({
+          data: { publicUrl: "https://example.com/file.txt" },
+        }),
     })),
   },
   rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -69,7 +92,7 @@ export const mockSupabase = {
 };
 
 // Auto-mock the supabase client module
-vi.mock('@/integrations/supabase/client', () => ({
+vi.mock("@/integrations/supabase/client", () => ({
   supabase: mockSupabase,
 }));
 

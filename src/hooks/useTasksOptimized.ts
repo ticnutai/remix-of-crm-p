@@ -1,10 +1,10 @@
 // Optimized Tasks Hook with React Query - tenarch CRM Pro
 // Features: Optimistic updates, caching, prefetching, background sync
-import { useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
+import { useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 // Types
 export interface Task {
@@ -41,23 +41,25 @@ export interface TaskInsert {
 }
 
 // Query keys for cache management
-const TASKS_QUERY_KEY = ['tasks'] as const;
-const TASKS_TODAY_KEY = ['tasks', 'today'] as const;
-const TASKS_OVERDUE_KEY = ['tasks', 'overdue'] as const;
+const TASKS_QUERY_KEY = ["tasks"] as const;
+const TASKS_TODAY_KEY = ["tasks", "today"] as const;
+const TASKS_OVERDUE_KEY = ["tasks", "overdue"] as const;
 
 // Fetch functions
 async function fetchTasks(): Promise<Task[]> {
   const { data, error } = await supabase
-    .from('tasks')
-    .select(`
+    .from("tasks")
+    .select(
+      `
       *,
       client:clients(name),
       project:projects(name)
-    `)
-    .order('created_at', { ascending: false });
+    `,
+    )
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error('Tasks fetch error:', error);
+    console.error("Tasks fetch error:", error);
     return [];
   }
   return data as Task[];
@@ -70,19 +72,21 @@ async function fetchTodayTasks(): Promise<Task[]> {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const { data, error } = await supabase
-    .from('tasks')
-    .select(`
+    .from("tasks")
+    .select(
+      `
       *,
       client:clients(name),
       project:projects(name)
-    `)
-    .gte('due_date', today.toISOString())
-    .lt('due_date', tomorrow.toISOString())
-    .neq('status', 'completed')
-    .order('priority', { ascending: false });
+    `,
+    )
+    .gte("due_date", today.toISOString())
+    .lt("due_date", tomorrow.toISOString())
+    .neq("status", "completed")
+    .order("priority", { ascending: false });
 
   if (error) {
-    console.error('Today tasks fetch error:', error);
+    console.error("Today tasks fetch error:", error);
     return [];
   }
   return data as Task[];
@@ -94,11 +98,11 @@ export function useTasksOptimized() {
   const queryClient = useQueryClient();
 
   // Main tasks query
-  const { 
-    data: tasks = [], 
-    isLoading, 
+  const {
+    data: tasks = [],
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useQuery({
     queryKey: TASKS_QUERY_KEY,
     queryFn: fetchTasks,
@@ -110,10 +114,10 @@ export function useTasksOptimized() {
   // Create mutation with optimistic update
   const createMutation = useMutation({
     mutationFn: async (task: TaskInsert) => {
-      if (!user) throw new Error('Not authenticated');
-      
+      if (!user) throw new Error("Not authenticated");
+
       const { data, error } = await supabase
-        .from('tasks')
+        .from("tasks")
         .insert({ ...task, created_by: user.id })
         .select(`*, client:clients(name), project:projects(name)`)
         .single();
@@ -131,11 +135,11 @@ export function useTasksOptimized() {
         id: `temp-${Date.now()}`,
         ...newTask,
         description: newTask.description ?? null,
-        status: newTask.status ?? 'pending',
-        priority: newTask.priority ?? 'medium',
+        status: newTask.status ?? "pending",
+        priority: newTask.priority ?? "medium",
         due_date: newTask.due_date ?? null,
         completed_at: null,
-        created_by: user?.id ?? '',
+        created_by: user?.id ?? "",
         assigned_to: newTask.assigned_to ?? null,
         client_id: newTask.client_id ?? null,
         project_id: newTask.project_id ?? null,
@@ -144,7 +148,10 @@ export function useTasksOptimized() {
         updated_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) => [optimisticTask, ...old]);
+      queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) => [
+        optimisticTask,
+        ...old,
+      ]);
 
       return { previousTasks };
     },
@@ -153,8 +160,10 @@ export function useTasksOptimized() {
       if (context?.previousTasks) {
         queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
       }
-      console.error('❌ Task creation error:', err);
-      toast.error(`שגיאה ביצירת המשימה: ${err instanceof Error ? err.message : 'שגיאה לא ידועה'}`);
+      console.error("❌ Task creation error:", err);
+      toast.error(
+        `שגיאה ביצירת המשימה: ${err instanceof Error ? err.message : "שגיאה לא ידועה"}`,
+      );
     },
     onSuccess: (data) => {
       toast.success(`משימה נוצרה: ${data.title}`);
@@ -167,19 +176,25 @@ export function useTasksOptimized() {
 
   // Update mutation with optimistic update
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<TaskInsert> }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: Partial<TaskInsert>;
+    }) => {
       const updateData: Record<string, unknown> = { ...updates };
-      
-      if (updates.status === 'completed') {
+
+      if (updates.status === "completed") {
         updateData.completed_at = new Date().toISOString();
-      } else if (updates.status && updates.status !== 'completed') {
+      } else if (updates.status && updates.status !== "completed") {
         updateData.completed_at = null;
       }
 
       const { error } = await supabase
-        .from('tasks')
+        .from("tasks")
         .update(updateData)
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
       return { id, updates: updateData };
@@ -192,16 +207,19 @@ export function useTasksOptimized() {
       queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) =>
         old.map((task) =>
           task.id === id
-            ? { 
-                ...task, 
+            ? {
+                ...task,
                 ...updates,
-                completed_at: updates.status === 'completed' 
-                  ? new Date().toISOString() 
-                  : updates.status ? null : task.completed_at,
-                updated_at: new Date().toISOString() 
+                completed_at:
+                  updates.status === "completed"
+                    ? new Date().toISOString()
+                    : updates.status
+                      ? null
+                      : task.completed_at,
+                updated_at: new Date().toISOString(),
               }
-            : task
-        )
+            : task,
+        ),
       );
 
       return { previousTasks };
@@ -210,10 +228,10 @@ export function useTasksOptimized() {
       if (context?.previousTasks) {
         queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
       }
-      toast.error('שגיאה בעדכון המשימה');
+      toast.error("שגיאה בעדכון המשימה");
     },
     onSuccess: () => {
-      toast.success('המשימה עודכנה');
+      toast.success("המשימה עודכנה");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
@@ -223,10 +241,7 @@ export function useTasksOptimized() {
   // Delete mutation with optimistic update
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
 
       if (error) throw error;
       return id;
@@ -237,7 +252,7 @@ export function useTasksOptimized() {
 
       // Optimistically remove
       queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) =>
-        old.filter((task) => task.id !== id)
+        old.filter((task) => task.id !== id),
       );
 
       return { previousTasks };
@@ -246,10 +261,10 @@ export function useTasksOptimized() {
       if (context?.previousTasks) {
         queryClient.setQueryData(TASKS_QUERY_KEY, context.previousTasks);
       }
-      toast.error('שגיאה במחיקת המשימה');
+      toast.error("שגיאה במחיקת המשימה");
     },
     onSuccess: () => {
-      toast.success('המשימה נמחקה');
+      toast.success("המשימה נמחקה");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
@@ -258,56 +273,60 @@ export function useTasksOptimized() {
 
   // Memoized filtered tasks
   const pendingTasks = useMemo(
-    () => tasks.filter(t => t.status === 'pending'),
-    [tasks]
+    () => tasks.filter((t) => t.status === "pending"),
+    [tasks],
   );
 
   const completedTasks = useMemo(
-    () => tasks.filter(t => t.status === 'completed'),
-    [tasks]
+    () => tasks.filter((t) => t.status === "completed"),
+    [tasks],
   );
 
   const highPriorityTasks = useMemo(
-    () => tasks.filter(t => t.priority === 'high' && t.status !== 'completed'),
-    [tasks]
+    () =>
+      tasks.filter((t) => t.priority === "high" && t.status !== "completed"),
+    [tasks],
   );
 
   const overdueTasks = useMemo(
-    () => tasks.filter(t => {
-      if (!t.due_date || t.status === 'completed') return false;
-      return new Date(t.due_date) < new Date();
-    }),
-    [tasks]
+    () =>
+      tasks.filter((t) => {
+        if (!t.due_date || t.status === "completed") return false;
+        return new Date(t.due_date) < new Date();
+      }),
+    [tasks],
   );
 
   // Callbacks wrapped in useCallback for performance
   const createTask = useCallback(
     (task: TaskInsert) => createMutation.mutateAsync(task),
-    [createMutation]
+    [createMutation],
   );
 
   const updateTask = useCallback(
-    (id: string, updates: Partial<TaskInsert>) => 
+    (id: string, updates: Partial<TaskInsert>) =>
       updateMutation.mutateAsync({ id, updates }),
-    [updateMutation]
+    [updateMutation],
   );
 
   const deleteTask = useCallback(
     (id: string) => deleteMutation.mutateAsync(id),
-    [deleteMutation]
+    [deleteMutation],
   );
 
   const toggleComplete = useCallback(
     (id: string) => {
-      const task = tasks.find(t => t.id === id);
+      const task = tasks.find((t) => t.id === id);
       if (task) {
         updateMutation.mutate({
           id,
-          updates: { status: task.status === 'completed' ? 'pending' : 'completed' }
+          updates: {
+            status: task.status === "completed" ? "pending" : "completed",
+          },
         });
       }
     },
-    [tasks, updateMutation]
+    [tasks, updateMutation],
   );
 
   // Prefetch today's tasks
@@ -325,14 +344,14 @@ export function useTasksOptimized() {
     completedTasks,
     highPriorityTasks,
     overdueTasks,
-    
+
     // States
     loading: isLoading,
     error,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    
+
     // Actions
     createTask,
     updateTask,
@@ -340,7 +359,7 @@ export function useTasksOptimized() {
     toggleComplete,
     refetch,
     fetchTasks: refetch, // Backward compatibility alias
-    
+
     // Prefetching
     prefetchTodayTasks,
   };

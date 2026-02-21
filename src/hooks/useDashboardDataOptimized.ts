@@ -1,6 +1,6 @@
 /**
  * useDashboardData - גרסה משופרת עם React Query
- * 
+ *
  * שיפורים:
  * 1. שימוש ב-React Query עם caching - הנתונים נשמרים ב-cache ל-5 דקות
  * 2. הפרדת קריאות - הסטטיסטיקות נטענות קודם, הגרפים אחר כך
@@ -8,12 +8,12 @@
  * 4. Optimistic UI - הצגת נתונים מהקאש מיד
  */
 
-import { useMemo, useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { he } from 'date-fns/locale';
+import { useMemo, useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./useAuth";
+import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { he } from "date-fns/locale";
 
 // Types
 interface RevenueData {
@@ -49,25 +49,25 @@ const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 const CACHE_TIME = 30 * 60 * 1000; // 30 minutes
 
 const STATUS_TRANSLATIONS: Record<string, string> = {
-  'planning': 'בתכנון',
-  'in-progress': 'בביצוע',
-  'in_progress': 'בביצוע',
-  'active': 'פעיל',
-  'completed': 'הושלם',
-  'on-hold': 'מושהה',
-  'on_hold': 'מושהה',
-  'pending': 'ממתין',
-  'cancelled': 'בוטל',
+  planning: "בתכנון",
+  "in-progress": "בביצוע",
+  in_progress: "בביצוע",
+  active: "פעיל",
+  completed: "הושלם",
+  "on-hold": "מושהה",
+  on_hold: "מושהה",
+  pending: "ממתין",
+  cancelled: "בוטל",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  'בתכנון': 'hsl(199, 89%, 48%)',
-  'בביצוע': 'hsl(45, 70%, 50%)',
-  'פעיל': 'hsl(142, 70%, 45%)',
-  'הושלם': 'hsl(142, 70%, 45%)',
-  'מושהה': 'hsl(0, 84%, 60%)',
-  'ממתין': 'hsl(38, 92%, 50%)',
-  'בוטל': 'hsl(0, 0%, 50%)',
+  בתכנון: "hsl(199, 89%, 48%)",
+  בביצוע: "hsl(45, 70%, 50%)",
+  פעיל: "hsl(142, 70%, 45%)",
+  הושלם: "hsl(142, 70%, 45%)",
+  מושהה: "hsl(0, 84%, 60%)",
+  ממתין: "hsl(38, 92%, 50%)",
+  בוטל: "hsl(0, 0%, 50%)",
 };
 
 const DEFAULT_STATS: DashboardStats = {
@@ -83,41 +83,52 @@ const DEFAULT_STATS: DashboardStats = {
 
 // Query Keys
 export const DASHBOARD_QUERY_KEYS = {
-  all: ['dashboard'] as const,
-  clients: () => [...DASHBOARD_QUERY_KEYS.all, 'clients'] as const,
-  projects: () => [...DASHBOARD_QUERY_KEYS.all, 'projects'] as const,
-  timeEntries: () => [...DASHBOARD_QUERY_KEYS.all, 'timeEntries'] as const,
-  profiles: () => [...DASHBOARD_QUERY_KEYS.all, 'profiles'] as const,
-  invoices: () => [...DASHBOARD_QUERY_KEYS.all, 'invoices'] as const,
-  quotes: () => [...DASHBOARD_QUERY_KEYS.all, 'quotes'] as const,
-  stats: () => [...DASHBOARD_QUERY_KEYS.all, 'stats'] as const,
-  charts: () => [...DASHBOARD_QUERY_KEYS.all, 'charts'] as const,
+  all: ["dashboard"] as const,
+  clients: () => [...DASHBOARD_QUERY_KEYS.all, "clients"] as const,
+  projects: () => [...DASHBOARD_QUERY_KEYS.all, "projects"] as const,
+  timeEntries: () => [...DASHBOARD_QUERY_KEYS.all, "timeEntries"] as const,
+  profiles: () => [...DASHBOARD_QUERY_KEYS.all, "profiles"] as const,
+  invoices: () => [...DASHBOARD_QUERY_KEYS.all, "invoices"] as const,
+  quotes: () => [...DASHBOARD_QUERY_KEYS.all, "quotes"] as const,
+  stats: () => [...DASHBOARD_QUERY_KEYS.all, "stats"] as const,
+  charts: () => [...DASHBOARD_QUERY_KEYS.all, "charts"] as const,
 };
 
 // Helper: Promise with timeout
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, name: string): Promise<T> => {
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  name: string,
+): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${name} timeout after ${timeoutMs}ms`)), timeoutMs)
+      setTimeout(
+        () => reject(new Error(`${name} timeout after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
     ),
   ]);
 };
 
 // Fetchers - פונקציות קטנות לכל קריאת API
 const fetchClients = async () => {
-  const { data, error } = await supabase.from('clients').select('id, name, status, created_at');
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, status, created_at");
   if (error) {
-    console.error('Dashboard clients fetch error:', error);
+    console.error("Dashboard clients fetch error:", error);
     return [];
   }
   return data || [];
 };
 
 const fetchProjects = async () => {
-  const { data, error } = await supabase.from('projects').select('id, name, status, created_at, budget');
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, name, status, created_at, budget");
   if (error) {
-    console.error('Dashboard projects fetch error:', error);
+    console.error("Dashboard projects fetch error:", error);
     return [];
   }
   return data || [];
@@ -126,20 +137,24 @@ const fetchProjects = async () => {
 const fetchTimeEntries = async () => {
   const threeMonthsAgo = subMonths(new Date(), 3);
   const { data, error } = await supabase
-    .from('time_entries')
-    .select('id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate')
-    .gte('start_time', threeMonthsAgo.toISOString());
+    .from("time_entries")
+    .select(
+      "id, user_id, project_id, client_id, start_time, end_time, duration_minutes, hourly_rate",
+    )
+    .gte("start_time", threeMonthsAgo.toISOString());
   if (error) {
-    console.error('Dashboard time entries fetch error:', error);
+    console.error("Dashboard time entries fetch error:", error);
     return [];
   }
   return data || [];
 };
 
 const fetchProfiles = async () => {
-  const { data, error } = await supabase.from('profiles').select('id, full_name');
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name");
   if (error) {
-    console.error('Dashboard profiles fetch error:', error);
+    console.error("Dashboard profiles fetch error:", error);
     return [];
   }
   return data || [];
@@ -148,11 +163,11 @@ const fetchProfiles = async () => {
 const fetchInvoices = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
   const { data, error } = await supabase
-    .from('invoices')
-    .select('id, amount, paid_amount, status, issue_date, created_at')
-    .gte('created_at', sixMonthsAgo.toISOString());
+    .from("invoices")
+    .select("id, amount, paid_amount, status, issue_date, created_at")
+    .gte("created_at", sixMonthsAgo.toISOString());
   if (error) {
-    console.error('Dashboard invoices fetch error:', error);
+    console.error("Dashboard invoices fetch error:", error);
     return [];
   }
   return data || [];
@@ -161,11 +176,11 @@ const fetchInvoices = async () => {
 const fetchQuotes = async () => {
   const sixMonthsAgo = subMonths(new Date(), 6);
   const { data, error } = await supabase
-    .from('quotes')
-    .select('id, total_amount, paid_amount, status, issue_date, created_at')
-    .gte('created_at', sixMonthsAgo.toISOString());
+    .from("quotes")
+    .select("id, total_amount, paid_amount, status, issue_date, created_at")
+    .gte("created_at", sixMonthsAgo.toISOString());
   if (error) {
-    console.error('Dashboard quotes fetch error:', error);
+    console.error("Dashboard quotes fetch error:", error);
     return [];
   }
   return data || [];
@@ -249,91 +264,114 @@ export function useDashboardStats() {
       return DEFAULT_STATS;
     }
 
-    const { currentMonthStart, currentMonthEnd, lastMonthStart, lastMonthEnd } = getDateRanges();
+    const { currentMonthStart, currentMonthEnd, lastMonthStart, lastMonthEnd } =
+      getDateRanges();
 
     // Active clients
-    const activeClients = clients.filter(c => c.status === 'active').length;
-    const currentMonthClients = clients.filter(c => {
+    const activeClients = clients.filter((c) => c.status === "active").length;
+    const currentMonthClients = clients.filter((c) => {
       const date = new Date(c.created_at);
       return date >= currentMonthStart && date <= currentMonthEnd;
     }).length;
-    const lastMonthClients = clients.filter(c => {
+    const lastMonthClients = clients.filter((c) => {
       const date = new Date(c.created_at);
       return date >= lastMonthStart && date <= lastMonthEnd;
     }).length;
-    const clientsChange = lastMonthClients > 0 
-      ? Math.round(((currentMonthClients - lastMonthClients) / lastMonthClients) * 100)
-      : currentMonthClients > 0 ? 100 : 0;
+    const clientsChange =
+      lastMonthClients > 0
+        ? Math.round(
+            ((currentMonthClients - lastMonthClients) / lastMonthClients) * 100,
+          )
+        : currentMonthClients > 0
+          ? 100
+          : 0;
 
     // Open projects
-    const openProjects = projects.filter(p => 
-      p.status !== 'completed' && p.status !== 'cancelled'
+    const openProjects = projects.filter(
+      (p) => p.status !== "completed" && p.status !== "cancelled",
     ).length;
-    const currentMonthProjects = projects.filter(p => {
+    const currentMonthProjects = projects.filter((p) => {
       const date = new Date(p.created_at);
       return date >= currentMonthStart && date <= currentMonthEnd;
     }).length;
-    const lastMonthProjects = projects.filter(p => {
+    const lastMonthProjects = projects.filter((p) => {
       const date = new Date(p.created_at);
       return date >= lastMonthStart && date <= lastMonthEnd;
     }).length;
-    const projectsChange = lastMonthProjects > 0 
-      ? Math.round(((currentMonthProjects - lastMonthProjects) / lastMonthProjects) * 100)
-      : currentMonthProjects > 0 ? 100 : 0;
+    const projectsChange =
+      lastMonthProjects > 0
+        ? Math.round(
+            ((currentMonthProjects - lastMonthProjects) / lastMonthProjects) *
+              100,
+          )
+        : currentMonthProjects > 0
+          ? 100
+          : 0;
 
     // Revenue
     const currentMonthInvoiceRevenue = invoices
-      .filter(inv => {
+      .filter((inv) => {
         const date = new Date(inv.issue_date || inv.created_at);
         return date >= currentMonthStart && date <= currentMonthEnd;
       })
       .reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
 
     const lastMonthInvoiceRevenue = invoices
-      .filter(inv => {
+      .filter((inv) => {
         const date = new Date(inv.issue_date || inv.created_at);
         return date >= lastMonthStart && date <= lastMonthEnd;
       })
       .reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
 
     const currentMonthQuoteRevenue = quotes
-      .filter(q => {
+      .filter((q) => {
         const date = new Date(q.issue_date || q.created_at);
         return date >= currentMonthStart && date <= currentMonthEnd;
       })
       .reduce((sum, q) => sum + (q.paid_amount || 0), 0);
 
     const lastMonthQuoteRevenue = quotes
-      .filter(q => {
+      .filter((q) => {
         const date = new Date(q.issue_date || q.created_at);
         return date >= lastMonthStart && date <= lastMonthEnd;
       })
       .reduce((sum, q) => sum + (q.paid_amount || 0), 0);
 
-    const totalCurrentRevenue = currentMonthInvoiceRevenue + currentMonthQuoteRevenue;
+    const totalCurrentRevenue =
+      currentMonthInvoiceRevenue + currentMonthQuoteRevenue;
     const totalLastRevenue = lastMonthInvoiceRevenue + lastMonthQuoteRevenue;
-    const revenueChange = totalLastRevenue > 0 
-      ? Math.round(((totalCurrentRevenue - totalLastRevenue) / totalLastRevenue) * 100)
-      : totalCurrentRevenue > 0 ? 100 : 0;
+    const revenueChange =
+      totalLastRevenue > 0
+        ? Math.round(
+            ((totalCurrentRevenue - totalLastRevenue) / totalLastRevenue) * 100,
+          )
+        : totalCurrentRevenue > 0
+          ? 100
+          : 0;
 
     // Hours
     const currentMonthHours = timeEntries
-      .filter(entry => {
+      .filter((entry) => {
         const date = new Date(entry.start_time);
         return date >= currentMonthStart && date <= currentMonthEnd;
       })
       .reduce((sum, entry) => sum + (entry.duration_minutes || 0) / 60, 0);
 
     const lastMonthHours = timeEntries
-      .filter(entry => {
+      .filter((entry) => {
         const date = new Date(entry.start_time);
         return date >= lastMonthStart && date <= lastMonthEnd;
       })
       .reduce((sum, entry) => sum + (entry.duration_minutes || 0) / 60, 0);
 
-    const hoursChange = lastMonthHours > 0
-      ? Math.round(((currentMonthHours - lastMonthHours) / lastMonthHours) * 100)
-      : currentMonthHours > 0 ? 100 : 0;
+    const hoursChange =
+      lastMonthHours > 0
+        ? Math.round(
+            ((currentMonthHours - lastMonthHours) / lastMonthHours) * 100,
+          )
+        : currentMonthHours > 0
+          ? 100
+          : 0;
 
     return {
       activeClients,
@@ -345,13 +383,27 @@ export function useDashboardStats() {
       totalHours: Math.round(currentMonthHours),
       totalHoursChange: hoursChange,
     };
-  }, [clientsQuery.data, projectsQuery.data, timeEntriesQuery.data, invoicesQuery.data, quotesQuery.data]);
+  }, [
+    clientsQuery.data,
+    projectsQuery.data,
+    timeEntriesQuery.data,
+    invoicesQuery.data,
+    quotesQuery.data,
+  ]);
 
-  const isLoading = clientsQuery.isLoading || projectsQuery.isLoading || 
-                    timeEntriesQuery.isLoading || invoicesQuery.isLoading || quotesQuery.isLoading;
+  const isLoading =
+    clientsQuery.isLoading ||
+    projectsQuery.isLoading ||
+    timeEntriesQuery.isLoading ||
+    invoicesQuery.isLoading ||
+    quotesQuery.isLoading;
 
-  const isFetching = clientsQuery.isFetching || projectsQuery.isFetching ||
-                     timeEntriesQuery.isFetching || invoicesQuery.isFetching || quotesQuery.isFetching;
+  const isFetching =
+    clientsQuery.isFetching ||
+    projectsQuery.isFetching ||
+    timeEntriesQuery.isFetching ||
+    invoicesQuery.isFetching ||
+    quotesQuery.isFetching;
 
   return {
     stats,
@@ -416,20 +468,26 @@ export function useDashboardCharts() {
       const monthStart = startOfMonth(monthDate);
       const monthEnd = endOfMonth(monthDate);
 
-      const monthInvoices = invoices.filter(inv => {
+      const monthInvoices = invoices.filter((inv) => {
         const date = new Date(inv.issue_date || inv.created_at);
         return date >= monthStart && date <= monthEnd;
       });
-      const invoiceRevenue = monthInvoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+      const invoiceRevenue = monthInvoices.reduce(
+        (sum, inv) => sum + (inv.paid_amount || 0),
+        0,
+      );
 
-      const monthQuotes = quotes.filter(q => {
+      const monthQuotes = quotes.filter((q) => {
         const date = new Date(q.issue_date || q.created_at);
         return date >= monthStart && date <= monthEnd;
       });
-      const quoteRevenue = monthQuotes.reduce((sum, q) => sum + (q.paid_amount || 0), 0);
+      const quoteRevenue = monthQuotes.reduce(
+        (sum, q) => sum + (q.paid_amount || 0),
+        0,
+      );
 
       result.push({
-        month: format(monthDate, 'MMM', { locale: he }),
+        month: format(monthDate, "MMM", { locale: he }),
         revenue: invoiceRevenue + quoteRevenue,
         invoices: monthInvoices.length,
       });
@@ -443,15 +501,19 @@ export function useDashboardCharts() {
     const projects = projectsQuery.data || [];
     const statusCounts: Record<string, number> = {};
 
-    projects.forEach(project => {
-      const translatedStatus = STATUS_TRANSLATIONS[project.status || 'planning'] || project.status || 'בתכנון';
-      statusCounts[translatedStatus] = (statusCounts[translatedStatus] || 0) + 1;
+    projects.forEach((project) => {
+      const translatedStatus =
+        STATUS_TRANSLATIONS[project.status || "planning"] ||
+        project.status ||
+        "בתכנון";
+      statusCounts[translatedStatus] =
+        (statusCounts[translatedStatus] || 0) + 1;
     });
 
     return Object.entries(statusCounts).map(([name, value]) => ({
       name,
       value,
-      color: STATUS_COLORS[name] || 'hsl(222, 47%, 25%)',
+      color: STATUS_COLORS[name] || "hsl(222, 47%, 25%)",
     }));
   }, [projectsQuery.data]);
 
@@ -462,16 +524,17 @@ export function useDashboardCharts() {
     const { currentMonthStart, currentMonthEnd } = getDateRanges();
 
     const hoursByEmployeeMap: Record<string, number> = {};
-    
+
     timeEntries
-      .filter(entry => {
+      .filter((entry) => {
         const date = new Date(entry.start_time);
         return date >= currentMonthStart && date <= currentMonthEnd;
       })
-      .forEach(entry => {
-        const profile = profiles.find(p => p.id === entry.user_id);
-        const name = profile?.full_name || 'לא ידוע';
-        hoursByEmployeeMap[name] = (hoursByEmployeeMap[name] || 0) + (entry.duration_minutes || 0) / 60;
+      .forEach((entry) => {
+        const profile = profiles.find((p) => p.id === entry.user_id);
+        const name = profile?.full_name || "לא ידוע";
+        hoursByEmployeeMap[name] =
+          (hoursByEmployeeMap[name] || 0) + (entry.duration_minutes || 0) / 60;
       });
 
     return Object.entries(hoursByEmployeeMap)
@@ -487,16 +550,17 @@ export function useDashboardCharts() {
     const { currentMonthStart, currentMonthEnd } = getDateRanges();
 
     const hoursByProjectMap: Record<string, number> = {};
-    
+
     timeEntries
-      .filter(entry => {
+      .filter((entry) => {
         const date = new Date(entry.start_time);
         return date >= currentMonthStart && date <= currentMonthEnd;
       })
-      .forEach(entry => {
-        const project = projects.find(p => p.id === entry.project_id);
-        const name = project?.name || 'ללא פרויקט';
-        hoursByProjectMap[name] = (hoursByProjectMap[name] || 0) + (entry.duration_minutes || 0) / 60;
+      .forEach((entry) => {
+        const project = projects.find((p) => p.id === entry.project_id);
+        const name = project?.name || "ללא פרויקט";
+        hoursByProjectMap[name] =
+          (hoursByProjectMap[name] || 0) + (entry.duration_minutes || 0) / 60;
       });
 
     return Object.entries(hoursByProjectMap)
@@ -505,8 +569,12 @@ export function useDashboardCharts() {
       .slice(0, 7);
   }, [timeEntriesQuery.data, projectsQuery.data]);
 
-  const isLoading = projectsQuery.isLoading || timeEntriesQuery.isLoading || 
-                    profilesQuery.isLoading || invoicesQuery.isLoading || quotesQuery.isLoading;
+  const isLoading =
+    projectsQuery.isLoading ||
+    timeEntriesQuery.isLoading ||
+    profilesQuery.isLoading ||
+    invoicesQuery.isLoading ||
+    quotesQuery.isLoading;
 
   return {
     revenueData,
@@ -520,15 +588,21 @@ export function useDashboardCharts() {
 // Hook משולב לתאימות אחורה - משתמש ב-hooks החדשים
 export function useDashboardData() {
   const { stats, isLoading: statsLoading, isFetching } = useDashboardStats();
-  const { revenueData, projectsStatusData, hoursByEmployee, hoursByProject, isLoading: chartsLoading } = useDashboardCharts();
-  
+  const {
+    revenueData,
+    projectsStatusData,
+    hoursByEmployee,
+    hoursByProject,
+    isLoading: chartsLoading,
+  } = useDashboardCharts();
+
   // Force display after 8 seconds even if still loading
   const [forceLoaded, setForceLoaded] = useState(false);
-  
+
   useEffect(() => {
     if (statsLoading || chartsLoading) {
       const timer = setTimeout(() => {
-        console.log('[Dashboard] Force loading complete after 8 seconds');
+        console.log("[Dashboard] Force loading complete after 8 seconds");
         setForceLoaded(true);
       }, 8000);
       return () => clearTimeout(timer);
