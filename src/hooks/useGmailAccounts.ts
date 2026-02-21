@@ -163,6 +163,8 @@ export function useGmailAccounts() {
             };
 
             // Check if account already exists - update token
+            // Use a ref-like flag outside the updater to determine the toast message
+            let wasUpdated = false;
             setAccounts((prev) => {
               const existing = prev.findIndex((a) => a.email === email);
               let updated: GmailAccount[];
@@ -175,20 +177,26 @@ export function useGmailAccounts() {
                   scopes: response.scope || "",
                   avatarUrl,
                 };
-                toast({
-                  title: "חשבון עודכן",
-                  description: `${email} - הטוקן חודש בהצלחה`,
-                });
+                wasUpdated = true;
               } else {
                 updated = [...prev, newAccount];
-                toast({
-                  title: "חשבון נוסף",
-                  description: `${email} נוסף בהצלחה`,
-                });
               }
               localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
               return updated;
             });
+            // Toast after setState to avoid updating Toaster during render
+            // Note: wasUpdated is set synchronously by the updater before this line runs
+            if (wasUpdated) {
+              toast({
+                title: "חשבון עודכן",
+                description: `${email} - הטוקן חודש בהצלחה`,
+              });
+            } else {
+              toast({
+                title: "חשבון נוסף",
+                description: `${email} נוסף בהצלחה`,
+              });
+            }
 
             // Also save as the primary token if it's the first account
             // (keeps backward compat with useGoogleServices)

@@ -231,11 +231,11 @@ export function GmailSidebar({
             open={isLabelsExpanded}
             onOpenChange={setIsLabelsExpanded}
           >
-            <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
-              <span className="flex items-center gap-2">
+            <div className="flex items-center justify-between w-full py-1 text-sm font-medium">
+              <CollapsibleTrigger className="flex items-center gap-2 flex-1 cursor-pointer">
                 <Tag className="h-3.5 w-3.5" />
                 תוויות ({customLabels.length})
-              </span>
+              </CollapsibleTrigger>
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
@@ -248,13 +248,15 @@ export function GmailSidebar({
                 >
                   <Settings className="h-3 w-3" />
                 </Button>
-                {isLabelsExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
+                <CollapsibleTrigger className="cursor-pointer">
+                  {isLabelsExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </CollapsibleTrigger>
               </div>
-            </CollapsibleTrigger>
+            </div>
             <CollapsibleContent className="space-y-1 mt-1">
               {customLabels.map((label) => {
                 const count = Object.values(emailLabels).filter((labels) =>
@@ -340,11 +342,11 @@ export function GmailSidebar({
                 open={isClientsExpanded}
                 onOpenChange={setIsClientsExpanded}
               >
-                <CollapsibleTrigger className="flex items-center justify-between w-full py-1 text-sm font-medium">
-                  <span className="flex items-center gap-2">
+                <div className="flex items-center justify-between w-full py-1 text-sm font-medium">
+                  <CollapsibleTrigger className="flex items-center gap-2 flex-1 cursor-pointer">
                     <Building2 className="h-3.5 w-3.5" />
                     סינון לפי לקוח
-                  </span>
+                  </CollapsibleTrigger>
                   <div className="flex items-center gap-1">
                     <TooltipProvider>
                       <Tooltip>
@@ -372,13 +374,15 @@ export function GmailSidebar({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    {isClientsExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
+                    <CollapsibleTrigger className="cursor-pointer">
+                      {isClientsExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </CollapsibleTrigger>
                   </div>
-                </CollapsibleTrigger>
+                </div>
                 <CollapsibleContent className="space-y-1 mt-1">
                   <ScrollArea className="h-32">
                     {clients.slice(0, 10).map((client) => {

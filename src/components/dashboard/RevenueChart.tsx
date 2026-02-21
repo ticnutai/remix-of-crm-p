@@ -1,14 +1,34 @@
-import React, { useState, useMemo, useEffect, memo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line } from 'recharts';
-import { TrendingUp } from 'lucide-react';
-import { DisplayOptions, ViewType, TimeRange, ColorScheme, COLOR_SCHEMES } from '@/components/ui/display-options';
-import { useUserSettings } from '@/hooks/useUserSettings';
+import React, { useState, useMemo, useEffect, memo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+} from "recharts";
+import { TrendingUp } from "lucide-react";
+import {
+  DisplayOptions,
+  ViewType,
+  TimeRange,
+  ColorScheme,
+  COLOR_SCHEMES,
+} from "@/components/ui/display-options";
+import { useUserSettings } from "@/hooks/useUserSettings";
 
 // Helper to get CSS variable value and convert to HSL color
 const getCssVar = (varName: string, fallback: string): string => {
-  if (typeof window === 'undefined') return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  if (typeof window === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(varName)
+    .trim();
   if (!value) return fallback;
   return `hsl(${value})`;
 };
@@ -23,46 +43,55 @@ interface RevenueChartProps {
   isLoading?: boolean;
 }
 
-export const RevenueChart = memo(function RevenueChart({ data, isLoading }: RevenueChartProps) {
+export const RevenueChart = memo(function RevenueChart({
+  data,
+  isLoading,
+}: RevenueChartProps) {
   // Cloud-synced preferences
   const { value: prefs, setValue: setPrefs } = useUserSettings<{
     viewType: ViewType;
     timeRange: TimeRange;
     colorScheme: ColorScheme;
   }>({
-    key: 'dashboard_revenue_chart_prefs',
-    defaultValue: { viewType: 'chart', timeRange: 'month', colorScheme: 'sunset' },
+    key: "dashboard_revenue_chart_prefs",
+    defaultValue: {
+      viewType: "chart",
+      timeRange: "month",
+      colorScheme: "sunset",
+    },
   });
   const viewType = prefs.viewType;
   const timeRange = prefs.timeRange;
   const colorScheme = prefs.colorScheme;
-  const setViewType = (v: ViewType) => setPrefs(p => ({ ...p, viewType: v }));
-  const setTimeRange = (v: TimeRange) => setPrefs(p => ({ ...p, timeRange: v }));
-  const setColorScheme = (v: ColorScheme) => setPrefs(p => ({ ...p, colorScheme: v }));
+  const setViewType = (v: ViewType) => setPrefs((p) => ({ ...p, viewType: v }));
+  const setTimeRange = (v: TimeRange) =>
+    setPrefs((p) => ({ ...p, timeRange: v }));
+  const setColorScheme = (v: ColorScheme) =>
+    setPrefs((p) => ({ ...p, colorScheme: v }));
 
   // Dynamic colors based on theme
   const [chartColors, setChartColors] = useState({
-    tickColor: 'hsl(222, 20%, 45%)',
-    gridColor: 'hsl(222, 30%, 85%)'
+    tickColor: "hsl(222, 20%, 45%)",
+    gridColor: "hsl(222, 30%, 85%)",
   });
-  
+
   // Update colors when theme changes
   useEffect(() => {
     const updateColors = () => {
       setChartColors({
-        tickColor: getCssVar('--muted-foreground', '222 20% 45%'),
-        gridColor: getCssVar('--border', '222 30% 85%')
+        tickColor: getCssVar("--muted-foreground", "222 20% 45%"),
+        gridColor: getCssVar("--border", "222 30% 85%"),
       });
     };
-    
+
     updateColors();
-    
+
     const observer = new MutationObserver(updateColors);
-    observer.observe(document.documentElement, { 
-      attributes: true, 
-      attributeFilter: ['class', 'style'] 
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
     });
-    
+
     return () => observer.disconnect();
   }, []);
 
@@ -82,7 +111,9 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center">
-            <div className="animate-pulse text-muted-foreground">טוען נתונים...</div>
+            <div className="animate-pulse text-muted-foreground">
+              טוען נתונים...
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -99,7 +130,7 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
         <div className="bg-card border border-border rounded-lg shadow-lg p-3">
           <p className="font-medium text-foreground">{label}</p>
           <p className="text-secondary font-semibold">
-            ₪{payload[0].value.toLocaleString('he-IL')}
+            ₪{payload[0].value.toLocaleString("he-IL")}
           </p>
         </div>
       );
@@ -110,19 +141,19 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
   const renderChart = () => {
     const commonProps = {
       data,
-      margin: { top: 10, right: 10, left: 0, bottom: 0 }
+      margin: { top: 10, right: 10, left: 0, bottom: 0 },
     };
 
-    if (viewType === 'bar' || viewType === 'stacked-bar') {
+    if (viewType === "bar" || viewType === "stacked-bar") {
       return (
         <BarChart {...commonProps}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridColor} />
-          <XAxis 
-            dataKey="month" 
+          <XAxis
+            dataKey="month"
             tick={{ fill: chartColors.tickColor, fontSize: 12 }}
             axisLine={{ stroke: chartColors.gridColor }}
           />
-          <YAxis 
+          <YAxis
             tickFormatter={formatCurrency}
             tick={{ fill: chartColors.tickColor, fontSize: 12 }}
             axisLine={{ stroke: chartColors.gridColor }}
@@ -138,16 +169,16 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
       );
     }
 
-    if (viewType === 'line') {
+    if (viewType === "line") {
       return (
         <LineChart {...commonProps}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridColor} />
-          <XAxis 
-            dataKey="month" 
+          <XAxis
+            dataKey="month"
             tick={{ fill: chartColors.tickColor, fontSize: 12 }}
             axisLine={{ stroke: chartColors.gridColor }}
           />
-          <YAxis 
+          <YAxis
             tickFormatter={formatCurrency}
             tick={{ fill: chartColors.tickColor, fontSize: 12 }}
             axisLine={{ stroke: chartColors.gridColor }}
@@ -175,12 +206,12 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridColor} />
-        <XAxis 
-          dataKey="month" 
+        <XAxis
+          dataKey="month"
           tick={{ fill: chartColors.tickColor, fontSize: 12 }}
           axisLine={{ stroke: chartColors.gridColor }}
         />
-        <YAxis 
+        <YAxis
           tickFormatter={formatCurrency}
           tick={{ fill: chartColors.tickColor, fontSize: 12 }}
           axisLine={{ stroke: chartColors.gridColor }}
@@ -209,10 +240,10 @@ export const RevenueChart = memo(function RevenueChart({ data, isLoading }: Reve
           <DisplayOptions
             viewType={viewType}
             onViewTypeChange={setViewType}
-            availableViewTypes={['chart', 'bar', 'line', 'area']}
+            availableViewTypes={["chart", "bar", "line", "area"]}
             timeRange={timeRange}
             onTimeRangeChange={setTimeRange}
-            availableTimeRanges={['day', 'week', 'month', 'quarter', 'year']}
+            availableTimeRanges={["day", "week", "month", "quarter", "year"]}
             colorScheme={colorScheme}
             onColorSchemeChange={setColorScheme}
             showColorOptions={true}

@@ -1488,17 +1488,24 @@ export default function Gmail() {
   // Mute thread
   const handleMuteThread = useCallback(
     (threadId: string) => {
+      let wasMuted = false;
       setMutedThreads((prev) => {
         const next = new Set(prev);
         if (next.has(threadId)) {
           next.delete(threadId);
-          toast({ title: "השרשור הופעל מחדש" });
+          wasMuted = true;
         } else {
           next.add(threadId);
-          toast({ title: "השרשור הושתק" });
+          wasMuted = false;
         }
         return next;
       });
+      // Toast after setState to avoid updating Toaster during render
+      if (wasMuted) {
+        toast({ title: "השרשור הופעל מחדש" });
+      } else {
+        toast({ title: "השרשור הושתק" });
+      }
     },
     [toast],
   );

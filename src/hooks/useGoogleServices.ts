@@ -155,6 +155,20 @@ export function useGoogleServices() {
       if (savedEmail && user && !silentReauthInProgress) {
         silentReauthInProgress = true;
         silentReauthPromise = new Promise<string | null>((resolveReauth) => {
+          // Timeout: if silent re-auth doesn't complete within 8 seconds
+          // (e.g. popup blocked), give up gracefully so the app doesn't freeze
+          let resolved = false;
+          const timeoutId = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              silentReauthInProgress = false;
+              console.warn(
+                "[GoogleServices] Silent re-auth timed out (popup likely blocked). Continuing without connection.",
+              );
+              resolveReauth(null);
+            }
+          }, 8000);
+
           (async () => {
             try {
               await loadGisScript();
@@ -168,6 +182,9 @@ export function useGoogleServices() {
                     ...SCOPES_MAP.contacts,
                   ].join(" "),
                   callback: async (response: any) => {
+                    if (resolved) return; // timed out already
+                    resolved = true;
+                    clearTimeout(timeoutId);
                     silentReauthInProgress = false;
                     if (response.error) {
                       console.log(
@@ -192,6 +209,18 @@ export function useGoogleServices() {
                     );
                     resolveReauth(response.access_token);
                   },
+                  error_callback: (error: any) => {
+                    // Called when popup is blocked or other errors
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timeoutId);
+                    silentReauthInProgress = false;
+                    console.warn(
+                      "[GoogleServices] Silent re-auth error (popup blocked?):",
+                      error,
+                    );
+                    resolveReauth(null);
+                  },
                 },
               );
               // Try silent auth with login_hint
@@ -200,6 +229,9 @@ export function useGoogleServices() {
                 login_hint: savedEmail,
               });
             } catch (e) {
+              if (resolved) return;
+              resolved = true;
+              clearTimeout(timeoutId);
               console.log("[GoogleServices] Silent re-auth setup failed:", e);
               silentReauthInProgress = false;
               resolveReauth(null);
@@ -337,6 +369,18 @@ export function useGoogleServices() {
               });
 
               resolve(response.access_token);
+            },
+            error_callback: (error: any) => {
+              // Called when popup is blocked or closed by user
+              console.warn("[GoogleServices] OAuth error callback:", error);
+              setIsLoading(false);
+              setIsConnected(false);
+              toast({
+                title: "שגיאה בהתחברות",
+                description: "החלון נחסם או נסגר. נסה שוב.",
+                variant: "destructive",
+              });
+              resolve(null);
             },
           });
 

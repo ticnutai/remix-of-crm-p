@@ -78,13 +78,15 @@ export const WorkHoursChart = memo(function WorkHoursChart({
     dataViewMode: DataViewMode;
     chartType: ViewType;
   }>({
-    key: 'dashboard_workhours_chart_prefs',
-    defaultValue: { dataViewMode: 'employee', chartType: 'bar' },
+    key: "dashboard_workhours_chart_prefs",
+    defaultValue: { dataViewMode: "employee", chartType: "bar" },
   });
   const dataViewMode = prefs.dataViewMode;
   const chartType = prefs.chartType;
-  const setDataViewMode = (v: DataViewMode) => setPrefs(p => ({ ...p, dataViewMode: v }));
-  const setChartType = (v: ViewType) => setPrefs(p => ({ ...p, chartType: v }));
+  const setDataViewMode = (v: DataViewMode) =>
+    setPrefs((p) => ({ ...p, dataViewMode: v }));
+  const setChartType = (v: ViewType) =>
+    setPrefs((p) => ({ ...p, chartType: v }));
 
   // Dynamic colors based on theme
   const [chartColors, setChartColors] = useState({
