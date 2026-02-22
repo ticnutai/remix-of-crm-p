@@ -49,6 +49,12 @@ import {
   notifyNewMessage, requestNotificationPermission,
   getSoundEnabled, toggleSound, getNotificationsEnabled, toggleNotifications,
 } from '@/services/chatNotifications';
+import { useChatExtras } from '@/hooks/useChatExtras';
+import { TypingIndicator } from './TypingIndicator';
+import { MessageTemplates } from './MessageTemplates';
+import { GifPicker } from './GifPicker';
+import { ChatAnalyticsDashboard } from './ChatAnalyticsDashboard';
+import { Zap } from 'lucide-react';
 
 
 // -----------------------------------------------------------
@@ -656,6 +662,20 @@ export function ChatMessenger() {
   const [notifsOn, setNotifsOn] = useState(getNotificationsEnabled());
   const prevMsgCount = useRef(0);
 
+  // Extra feature state
+  const [gifOpen, setGifOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+
+  // useChatExtras
+  const {
+    isMuted, isFavorite, toggleMute, toggleFavorite,
+    allLabels, convLabels, addLabel, removeLabel,
+    savedMessages, saveMessage, isMessageSaved,
+    templates, useTemplate, translateMessage,
+    sendWhatsApp, sendSMS, slaInfo, readBy,
+  } = useChatExtras(activeConversation?.id);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -986,6 +1006,7 @@ export function ChatMessenger() {
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="start" dir="rtl">
                       <DropdownMenuItem onClick={handleAiSummary}><Sparkles className="h-4 w-4 ml-2 text-purple-500" />סיכום AI</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setAnalyticsOpen(true)}><BarChart2 className="h-4 w-4 ml-2 text-blue-500" />אנליטיקס</DropdownMenuItem>
                       <DropdownMenuItem onClick={handleExport}><FileDown className="h-4 w-4 ml-2" />ייצא טרנסקריפט</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openGallery('images')}><Image className="h-4 w-4 ml-2" />גלריית תמונות</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openGallery('files')}><Folder className="h-4 w-4 ml-2" />כל הקבצים</DropdownMenuItem>
@@ -1068,6 +1089,9 @@ export function ChatMessenger() {
                 <div ref={messagesEndRef} />
               </ScrollArea>
 
+              {/* Typing indicator */}
+              {activeConversation && <TypingIndicator conversationId={activeConversation.id} />}
+
               {/* Edit bar */}
               {editingMsg && (
                 <div className="px-4 py-2 border-t bg-blue-50 flex items-center gap-2">
@@ -1140,6 +1164,22 @@ export function ChatMessenger() {
                         </TooltipTrigger>
                         <TooltipContent side="top">תזמן הודעה</TooltipContent>
                       </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:text-pink-500" onClick={() => setGifOpen(true)}>
+                            <Image className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">GIF</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:text-yellow-500" onClick={() => setTemplatesOpen(true)}>
+                            <Zap className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">תבניות הודעה</TooltipContent>
+                      </Tooltip>
                     </TooltipProvider>
 
                     <Textarea ref={inputRef} placeholder="כתוב הודעה..."
@@ -1156,7 +1196,7 @@ export function ChatMessenger() {
                     </Button>
                   </div>
                 )}
-                <p className="text-[10px] text-muted-foreground text-center mt-1">📎 קבצים • 🎙️ קול • 📊 סקר • ⏰ תזמון • ↩️ Reply • 📌 הצמדה • ✏️ עריכה • 🤖 AI</p>
+                <p className="text-[10px] text-muted-foreground text-center mt-1">📎 • 🎙️ • 📊 • ⏰ • 🎬 GIF • ⚡ תבניות • ↩️ • 📌 • ✏️ • 🤖 AI</p>
               </div>
             </>
           )}
@@ -1305,6 +1345,24 @@ export function ChatMessenger() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* GIF Picker */}
+      <GifPicker
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onSelect={(url, title) => sendMessage(url, { messageType: 'image' as any, fileUrl: url, fileName: title || 'GIF' })}
+      />
+
+      {/* Message Templates */}
+      <MessageTemplates
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        templates={templates}
+        onSelect={(content) => setInput(content)}
+      />
+
+      {/* Analytics Dashboard */}
+      <ChatAnalyticsDashboard open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
     </div>
   );
 }
