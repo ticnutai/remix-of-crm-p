@@ -12,6 +12,8 @@ import {
   Briefcase,
   Calendar,
   ChevronLeft,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -67,6 +69,12 @@ interface CalendarListViewProps {
   tasks: Task[];
   reminders: Reminder[];
   onDayClick: (date: Date) => void;
+  onDeleteMeeting?: (id: string) => void;
+  onDeleteTask?: (id: string) => void;
+  onDeleteReminder?: (id: string) => void;
+  onEditMeeting?: (meeting: Meeting) => void;
+  onEditTask?: (task: Task) => void;
+  onEditReminder?: (reminder: Reminder) => void;
 }
 
 export function CalendarListView({
@@ -76,6 +84,12 @@ export function CalendarListView({
   tasks,
   reminders,
   onDayClick,
+  onDeleteMeeting,
+  onDeleteTask,
+  onDeleteReminder,
+  onEditMeeting,
+  onEditTask,
+  onEditReminder,
 }: CalendarListViewProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -219,19 +233,35 @@ export function CalendarListView({
                       {dayMeetings.map((meeting) => (
                         <div
                           key={meeting.id}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-[hsl(var(--navy))]/10 hover:bg-[hsl(var(--navy))]/20 transition-colors"
+                          className="group/item flex items-center gap-3 p-3 rounded-lg bg-[hsl(var(--navy))]/10 hover:bg-[hsl(var(--navy))]/20 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-10 h-10 rounded-lg bg-[hsl(var(--navy))] flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-[hsl(var(--navy))] flex items-center justify-center shrink-0">
                             <Users className="h-5 w-5 text-white" />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(parseISO(meeting.start_time), "HH:mm")} -{" "}
                               {format(parseISO(meeting.end_time), "HH:mm")}
                             </p>
                           </div>
-                          <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={(e) => { e.stopPropagation(); onEditMeeting?.(meeting); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(meeting.id); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
 
@@ -239,12 +269,13 @@ export function CalendarListView({
                       {dayTasks.map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+                          className="group/item flex items-center gap-3 p-3 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
                             <CheckSquare className="h-5 w-5 text-primary-foreground" />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium">{task.title}</p>
                             <Badge
                               variant="outline"
@@ -260,7 +291,22 @@ export function CalendarListView({
                                   : "עדיפות בינונית"}
                             </Badge>
                           </div>
-                          <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={(e) => { e.stopPropagation(); onEditTask?.(task); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
 
@@ -268,18 +314,34 @@ export function CalendarListView({
                       {dayReminders.map((reminder) => (
                         <div
                           key={reminder.id}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-warning/10 hover:bg-warning/20 transition-colors"
+                          className="group/item flex items-center gap-3 p-3 rounded-lg bg-warning/10 hover:bg-warning/20 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="w-10 h-10 rounded-lg bg-warning flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-warning flex items-center justify-center shrink-0">
                             <Bell className="h-5 w-5 text-warning-foreground" />
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium">{reminder.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(parseISO(reminder.remind_at), "HH:mm")}
                             </p>
                           </div>
-                          <ChevronLeft className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-primary"
+                              onClick={(e) => { e.stopPropagation(); onEditReminder?.(reminder); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon" variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(reminder.id); }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
 

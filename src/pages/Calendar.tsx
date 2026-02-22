@@ -44,6 +44,8 @@ import {
   RefreshCw,
   CloudOff,
   Cloud,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -168,6 +170,7 @@ const Calendar = () => {
   const [addType, setAddType] = useState<AddType>("meeting");
   const [addDialogDate, setAddDialogDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState<{ type: AddType; id: string } | null>(null);
 
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
@@ -404,6 +407,62 @@ const Calendar = () => {
     setAddDialogDate(date);
     setAddType("meeting");
     resetForms();
+    setEditMode(null);
+    setAddDialogOpen(true);
+  };
+
+  const handleDeleteMeeting = async (id: string) => {
+    if (!window.confirm("למחוק את הפגישה?")) return;
+    const { error } = await supabase.from("meetings").delete().eq("id", id);
+    if (!error) { toast({ title: "הפגישה נמחקה" }); fetchData(); }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (!window.confirm("למחוק את המשימה?")) return;
+    const { error } = await supabase.from("tasks").delete().eq("id", id);
+    if (!error) { toast({ title: "המשימה נמחקה" }); fetchData(); }
+  };
+
+  const handleDeleteReminder = async (id: string) => {
+    if (!window.confirm("למחוק את התזכורת?")) return;
+    const { error } = await supabase.from("reminders").delete().eq("id", id);
+    if (!error) { toast({ title: "התזכורת נמחקה" }); fetchData(); }
+  };
+
+  const handleEditMeeting = (meeting: Meeting) => {
+    setAddDialogDate(parseISO(meeting.start_time));
+    setAddType("meeting");
+    resetForms();
+    setMeetingForm((f) => ({
+      ...f,
+      title: meeting.title,
+      start_time: format(parseISO(meeting.start_time), "HH:mm"),
+      end_time: format(parseISO(meeting.end_time), "HH:mm"),
+    }));
+    setEditMode({ type: "meeting", id: meeting.id });
+    setAddDialogOpen(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    const date = task.due_date ? parseISO(task.due_date) : new Date();
+    setAddDialogDate(date);
+    setAddType("task");
+    resetForms();
+    setTaskForm((f) => ({ ...f, title: task.title, priority: task.priority }));
+    setEditMode({ type: "task", id: task.id });
+    setAddDialogOpen(true);
+  };
+
+  const handleEditReminder = (reminder: Reminder) => {
+    setAddDialogDate(parseISO(reminder.remind_at));
+    setAddType("reminder");
+    resetForms();
+    setReminderForm((f) => ({
+      ...f,
+      title: reminder.title,
+      time: format(parseISO(reminder.remind_at), "HH:mm"),
+    }));
+    setEditMode({ type: "reminder", id: reminder.id });
     setAddDialogOpen(true);
   };
 
@@ -439,6 +498,42 @@ const Calendar = () => {
     const dateStr = format(addDialogDate, "yyyy-MM-dd");
 
     try {
+      // ---- EDIT MODE ----
+      if (editMode) {
+        if (editMode.type === "meeting") {
+          const { error } = await supabase
+            .from("meetings")
+            .update({
+              title: meetingForm.title,
+              start_time: `${dateStr}T${meetingForm.start_time}:00`,
+              end_time: `${dateStr}T${meetingForm.end_time}:00`,
+            })
+            .eq("id", editMode.id);
+          if (error) throw error;
+          toast({ title: "הפגישה עודכנה" });
+        }
+        if (editMode.type === "task") {
+          const { error } = await supabase
+            .from("tasks")
+            .update({ title: taskForm.title, priority: taskForm.priority, due_date: `${dateStr}T23:59:59` })
+            .eq("id", editMode.id);
+          if (error) throw error;
+          toast({ title: "המשימה עודכנה" });
+        }
+        if (editMode.type === "reminder") {
+          const { error } = await supabase
+            .from("reminders")
+            .update({ title: reminderForm.title, remind_at: new Date(`${dateStr}T${reminderForm.time}:00`).toISOString() })
+            .eq("id", editMode.id);
+          if (error) throw error;
+          toast({ title: "התזכורת עודכנה" });
+        }
+        setEditMode(null);
+        setAddDialogOpen(false);
+        fetchData();
+        return;
+      }
+      // ---- ADD MODE ----
       if (addType === "meeting") {
         if (!meetingForm.title.trim()) {
           toast({
@@ -894,13 +989,23 @@ const Calendar = () => {
                     {dayMeetings.map((m) => (
                       <div
                         key={m.id}
-                        className="p-3 bg-[hsl(220,60%,25%)]/10 rounded-lg"
+                        className="group p-3 bg-[hsl(220,60%,25%)]/10 rounded-lg flex items-center justify-between hover:bg-[hsl(220,60%,25%)]/20 transition-colors"
                       >
-                        <p className="font-medium">{m.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(parseISO(m.start_time), "HH:mm")} -{" "}
-                          {format(parseISO(m.end_time), "HH:mm")}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{m.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(parseISO(m.start_time), "HH:mm")} -{" "}
+                            {format(parseISO(m.end_time), "HH:mm")}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditMeeting(m)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteMeeting(m.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -916,15 +1021,25 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {dayTasks.map((t) => (
-                      <div key={t.id} className="p-3 bg-primary/10 rounded-lg">
-                        <p className="font-medium">{t.title}</p>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {t.priority === "high"
-                            ? "עדיפות גבוהה"
-                            : t.priority === "low"
-                              ? "עדיפות נמוכה"
-                              : "עדיפות בינונית"}
-                        </Badge>
+                      <div key={t.id} className="group p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{t.title}</p>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {t.priority === "high"
+                              ? "עדיפות גבוהה"
+                              : t.priority === "low"
+                                ? "עדיפות נמוכה"
+                                : "עדיפות בינונית"}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditTask(t)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTask(t.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -940,11 +1055,21 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {dayReminders.map((r) => (
-                      <div key={r.id} className="p-3 bg-warning/10 rounded-lg">
-                        <p className="font-medium">{r.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(parseISO(r.remind_at), "HH:mm")}
-                        </p>
+                      <div key={r.id} className="group p-3 bg-warning/10 rounded-lg hover:bg-warning/20 transition-colors flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{r.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(parseISO(r.remind_at), "HH:mm")}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditReminder(r)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteReminder(r.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1037,6 +1162,12 @@ const Calendar = () => {
                 reminders={reminders}
                 onDayClick={setSelectedDate}
                 onAddClick={openAddDialog}
+                onDeleteMeeting={handleDeleteMeeting}
+                onDeleteTask={handleDeleteTask}
+                onDeleteReminder={handleDeleteReminder}
+                onEditMeeting={handleEditMeeting}
+                onEditTask={handleEditTask}
+                onEditReminder={handleEditReminder}
               />
             )}
 
@@ -1048,6 +1179,12 @@ const Calendar = () => {
                 tasks={tasks}
                 reminders={reminders}
                 onDayClick={setSelectedDate}
+                onDeleteMeeting={handleDeleteMeeting}
+                onDeleteTask={handleDeleteTask}
+                onDeleteReminder={handleDeleteReminder}
+                onEditMeeting={handleEditMeeting}
+                onEditTask={handleEditTask}
+                onEditReminder={handleEditReminder}
               />
             )}
 
@@ -1083,8 +1220,8 @@ const Calendar = () => {
         <DialogContent className="sm:max-w-[500px]" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center gap-2 justify-start">
-              <Plus className="h-5 w-5" />
-              הוסף ל-{format(addDialogDate, "d בMMMM", { locale: he })}
+              {editMode ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+              {editMode ? "עריכה" : `הוסף ל-${format(addDialogDate, "d בMMMM", { locale: he })}`}
             </DialogTitle>
           </DialogHeader>
 

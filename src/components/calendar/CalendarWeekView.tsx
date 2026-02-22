@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Users, CheckSquare, Bell, Plus } from "lucide-react";
+import { Clock, Users, CheckSquare, Bell, Plus, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -60,6 +60,12 @@ interface CalendarWeekViewProps {
   reminders: Reminder[];
   onDayClick: (date: Date) => void;
   onAddClick: (date: Date) => void;
+  onDeleteMeeting?: (id: string) => void;
+  onDeleteTask?: (id: string) => void;
+  onDeleteReminder?: (id: string) => void;
+  onEditMeeting?: (meeting: Meeting) => void;
+  onEditTask?: (task: Task) => void;
+  onEditReminder?: (reminder: Reminder) => void;
 }
 
 const hebrewDays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -73,6 +79,12 @@ export function CalendarWeekView({
   reminders,
   onDayClick,
   onAddClick,
+  onDeleteMeeting,
+  onDeleteTask,
+  onDeleteReminder,
+  onEditMeeting,
+  onEditTask,
+  onEditReminder,
 }: CalendarWeekViewProps) {
   const weekStart = startOfWeek(currentDate);
   const weekEnd = endOfWeek(currentDate);
@@ -196,14 +208,31 @@ export function CalendarWeekView({
                     return (
                       <div
                         key={meeting.id}
-                        className="absolute inset-x-1 bg-[hsl(var(--navy))] text-white rounded-md px-2 py-1 text-xs overflow-hidden shadow-md z-10 cursor-pointer hover:opacity-90"
+                        className="absolute inset-x-1 bg-[hsl(var(--navy))] text-white rounded-md px-2 py-1 text-xs overflow-hidden shadow-md z-10 cursor-pointer hover:opacity-90 group/meeting"
                         style={style}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center gap-1">
-                          <Users className="h-3 w-3 shrink-0" />
-                          <span className="truncate font-medium">
-                            {meeting.title}
-                          </span>
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <Users className="h-3 w-3 shrink-0" />
+                            <span className="truncate font-medium">
+                              {meeting.title}
+                            </span>
+                          </div>
+                          <div className="flex gap-0.5 opacity-0 group-hover/meeting:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onEditMeeting?.(meeting); }}
+                              className="hover:bg-white/30 rounded p-0.5"
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(meeting.id); }}
+                              className="hover:bg-red-500/50 rounded p-0.5"
+                            >
+                              <Trash2 className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="text-[10px] opacity-75">
                           {format(parseISO(meeting.start_time), "HH:mm")}
@@ -218,19 +247,37 @@ export function CalendarWeekView({
                       {dayTasks.slice(0, 2).map((task) => (
                         <div
                           key={task.id}
-                          className="bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded truncate"
+                          className="bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 group/task"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <CheckSquare className="h-2.5 w-2.5 inline ml-0.5" />
-                          {task.title}
+                          <CheckSquare className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate flex-1">{task.title}</span>
+                          <div className="flex gap-0.5 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                            <button onClick={(e) => { e.stopPropagation(); onEditTask?.(task); }} className="hover:bg-white/30 rounded p-0.5">
+                              <Pencil className="h-2 w-2" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }} className="hover:bg-red-500/50 rounded p-0.5">
+                              <Trash2 className="h-2 w-2" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                       {dayReminders.slice(0, 1).map((reminder) => (
                         <div
                           key={reminder.id}
-                          className="bg-warning/80 text-warning-foreground text-[10px] px-1.5 py-0.5 rounded truncate"
+                          className="bg-warning/80 text-warning-foreground text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 group/reminder"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <Bell className="h-2.5 w-2.5 inline ml-0.5" />
-                          {reminder.title}
+                          <Bell className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate flex-1">{reminder.title}</span>
+                          <div className="flex gap-0.5 opacity-0 group-hover/reminder:opacity-100 transition-opacity">
+                            <button onClick={(e) => { e.stopPropagation(); onEditReminder?.(reminder); }} className="hover:bg-white/30 rounded p-0.5">
+                              <Pencil className="h-2 w-2" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(reminder.id); }} className="hover:bg-red-500/50 rounded p-0.5">
+                              <Trash2 className="h-2 w-2" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
