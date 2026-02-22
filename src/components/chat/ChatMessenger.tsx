@@ -39,7 +39,8 @@ import {
   Trash2, Reply, Smile, Paperclip, Circle, X, Phone, Video, Pin, Archive,
   Edit3, Loader2, FileText, FileAudio, Download, ExternalLink, Tag, Link2,
   ChevronLeft, Mic, Share2, Clock, BarChart2, FileDown, Sparkles, CheckSquare,
-  Bell, BellOff, Volume2, VolumeX, Image, Folder, ListTodo,
+  Bell, BellOff, Volume2, VolumeX, Image, Folder, ListTodo, Star, Bookmark,
+  Smartphone, MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
@@ -51,6 +52,7 @@ import {
 } from '@/services/chatNotifications';
 import { useChatExtras } from '@/hooks/useChatExtras';
 import { TypingIndicator } from './TypingIndicator';
+import { ReadReceipts } from './ReadReceipts';
 import { MessageTemplates } from './MessageTemplates';
 import { GifPicker } from './GifPicker';
 import { ChatAnalyticsDashboard } from './ChatAnalyticsDashboard';
@@ -191,7 +193,7 @@ function MessageMedia({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
 // Message Bubble
 // -----------------------------------------------------------
 function MessageBubble({
-  msg, isOwn, onReply, onReact, onDelete, showName, onEdit, onForward, onPin, onTask,
+  msg, isOwn, onReply, onReact, onDelete, showName, onEdit, onForward, onPin, onTask, onSave, isSaved, readBy,
 }: {
   msg: ChatMessage; isOwn: boolean;
   onReply: (m: ChatMessage) => void;
@@ -201,6 +203,9 @@ function MessageBubble({
   onForward?: (m: ChatMessage) => void;
   onPin?: (id: string) => void;
   onTask?: (m: ChatMessage) => void;
+  onSave?: (id: string) => void;
+  isSaved?: boolean;
+  readBy?: { user_id: string; full_name: string; avatar_url?: string; last_read_at: string }[];
   showName: boolean;
 }) {
   const [showEmoji, setShowEmoji] = useState(false);
@@ -326,6 +331,16 @@ function MessageBubble({
                     <TooltipContent side="top">ערוך</TooltipContent>
                   </Tooltip>
                 )}
+                {onSave && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button onClick={() => onSave(msg.id)} className={cn('p-1 hover:bg-muted rounded', isSaved ? 'text-amber-500' : 'text-muted-foreground hover:text-amber-500')}>
+                        <Bookmark className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{isSaved ? 'הסר מהשמורים' : 'שמור הודעה'}</TooltipContent>
+                  </Tooltip>
+                )}
                 {isOwn && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -352,7 +367,10 @@ function MessageBubble({
           </div>
         )}
 
-        <span className="text-[10px] text-muted-foreground mt-0.5 mx-1">{formatTime(msg.created_at)}</span>
+        <div className="flex items-center gap-1 mt-0.5 mx-1">
+          <span className="text-[10px] text-muted-foreground">{formatTime(msg.created_at)}</span>
+          {readBy && <ReadReceipts readBy={readBy} messageCreatedAt={msg.created_at} isOwnMessage={isOwn} />}
+        </div>
       </div>
     </div>
   );
@@ -666,6 +684,7 @@ export function ChatMessenger() {
   const [gifOpen, setGifOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [savedMsgsOpen, setSavedMsgsOpen] = useState(false);
 
   // useChatExtras
   const {
@@ -858,13 +877,16 @@ export function ChatMessenger() {
     const title = conv.title || conv.client_name || 'שיחה פנימית';
     const lastTime = conv.last_message_at ? formatDistanceToNow(new Date(conv.last_message_at), { locale: he, addSuffix: true }) : '';
     const typeColor = conv.type === 'client' ? 'bg-blue-100 text-blue-600' : conv.type === 'group' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600';
+    const isFav = (conv as any).is_favorite;
     return (
       <button onClick={() => { selectConversation(conv); if (isMobile) setShowSidebar(false); }}
         className={cn('w-full flex items-start gap-2.5 px-2.5 py-2 rounded-xl text-right transition-all hover:bg-muted/60', isActive && 'bg-primary/10 border border-primary/15 shadow-sm')}>
         <div className={cn('shrink-0 h-9 w-9 rounded-full flex items-center justify-center', typeColor)}><TypeIcon className="h-4 w-4" /></div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1 mb-0.5">
-            <span className={cn('font-medium text-sm truncate', isActive && 'text-primary')}>{title}</span>
+            <span className={cn('font-medium text-sm truncate', isActive && 'text-primary')}>
+              {isFav && <Star className="inline h-2.5 w-2.5 text-amber-400 mb-0.5 ml-0.5" />}{title}
+            </span>
             <span className="text-[10px] text-muted-foreground shrink-0">{lastTime}</span>
           </div>
           <div className="flex items-center justify-between gap-1">
@@ -938,7 +960,14 @@ export function ChatMessenger() {
             )}
           </ScrollArea>
 
-          <div className="p-2.5 border-t bg-background/50 flex items-center gap-2">
+          <div className="px-2 py-1.5 border-t border-b">
+            <button onClick={() => setSavedMsgsOpen(true)} className="w-full flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+              <Bookmark className="h-3.5 w-3.5 text-amber-500" />
+              <span>הודעות שמורות {savedMessages.length > 0 && `(${savedMessages.length})`}</span>
+            </button>
+          </div>
+
+          <div className="p-2.5 bg-background/50 flex items-center gap-2">
             <div className="relative">
               <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px] bg-primary/20 font-bold">{profile?.full_name?.slice(0, 2) || 'אנ'}</AvatarFallback></Avatar>
               <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 absolute -bottom-0.5 -right-0.5" />
@@ -983,10 +1012,18 @@ export function ChatMessenger() {
                     {activeConvLocal?.type === 'client' ? <Building2 className="h-4 w-4" /> : activeConvLocal?.type === 'group' ? <Users className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm leading-tight">{activeConvLocal?.title || activeConvLocal?.client_name || 'שיחה פנימית'}</h3>
+                    <h3 className="font-semibold text-sm leading-tight">
+                      {isFavorite && <Star className="inline h-3 w-3 text-amber-400 mb-0.5 ml-0.5" />}
+                      {activeConvLocal?.title || activeConvLocal?.client_name || 'שיחה פנימית'}
+                    </h3>
                     <div className="flex items-center gap-1.5">
                       {activeConvLocal?.client_name && <Badge variant="secondary" className="text-[10px] h-4 px-1.5 rounded-full"><Building2 className="h-2.5 w-2.5 ml-0.5" />{activeConvLocal.client_name}</Badge>}
                       <span className="text-[10px] text-muted-foreground">{activeConvLocal?.type === 'client' ? 'שיחת לקוח' : activeConvLocal?.type === 'group' ? 'קבוצה' : 'פנימי'}</span>
+                      {slaInfo && (
+                        <Badge variant={slaInfo.isBreached ? 'destructive' : 'outline'} className="text-[10px] h-4 px-1.5 rounded-full">
+                          <Clock className="h-2.5 w-2.5 ml-0.5" />{slaInfo.isBreached ? 'SLA חרג' : `${slaInfo.first_response_minutes - slaInfo.minutesElapsed} דק׳`}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -999,6 +1036,22 @@ export function ChatMessenger() {
                     <Tooltip><TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openGallery('all')}><Folder className="h-4 w-4" /></Button>
                     </TooltipTrigger><TooltipContent>גלריית מדיה</TooltipContent></Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFavorite}>
+                          <Star className={cn('h-4 w-4', isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isFavorite ? 'הסר מהמועדפים' : 'הוסף למועדפים'}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                          {isMuted ? <BellOff className="h-4 w-4 text-muted-foreground" /> : <Bell className="h-4 w-4 text-muted-foreground" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isMuted ? 'בטל השתקה' : 'השתק שיחה'}</TooltipContent>
+                    </Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><Phone className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>שיחת טלפון</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><Video className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>שיחת וידאו</TooltipContent></Tooltip>
                   </TooltipProvider>
@@ -1010,6 +1063,15 @@ export function ChatMessenger() {
                       <DropdownMenuItem onClick={handleExport}><FileDown className="h-4 w-4 ml-2" />ייצא טרנסקריפט</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openGallery('images')}><Image className="h-4 w-4 ml-2" />גלריית תמונות</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openGallery('files')}><Folder className="h-4 w-4 ml-2" />כל הקבצים</DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setSavedMsgsOpen(true)}><Bookmark className="h-4 w-4 ml-2 text-amber-500" />הודעות שמורות</DropdownMenuItem>
+                      {activeConvLocal?.type === 'client' && activeConvLocal?.client_id && (
+                        <DropdownMenuItem onClick={() => {
+                          const phone = prompt('מספר טלפון לוואטסאפ:');
+                          if (phone && input.trim()) sendWhatsApp(phone, input, activeConvLocal.client_id!);
+                          else if (phone) sendWhatsApp(phone, 'שלום, אשמח לדבר איתך', activeConvLocal.client_id!);
+                        }}><Smartphone className="h-4 w-4 ml-2 text-green-600" />שלח WhatsApp</DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setAssignClientOpen(true)}><Link2 className="h-4 w-4 ml-2" />{activeConvLocal?.client_id ? 'שנה לקוח משויך' : 'שייך ללקוח'}</DropdownMenuItem>
                       <DropdownMenuItem><Pin className="h-4 w-4 ml-2" />הצמד שיחה</DropdownMenuItem>
@@ -1079,6 +1141,9 @@ export function ChatMessenger() {
                             onForward={(m) => setForwardMsg(m)}
                             onPin={handlePin}
                             onTask={(m) => { setTaskMsg(m); setTaskTitle(m.content.slice(0, 60)); }}
+                            onSave={saveMessage}
+                            isSaved={isMessageSaved(msg.id)}
+                            readBy={readBy}
                             showName={i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id}
                           />
                         ))}
@@ -1363,6 +1428,43 @@ export function ChatMessenger() {
 
       {/* Analytics Dashboard */}
       <ChatAnalyticsDashboard open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+
+      {/* Saved Messages Panel */}
+      <Dialog open={savedMsgsOpen} onOpenChange={setSavedMsgsOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bookmark className="h-5 w-5 text-amber-500" />
+              הודעות שמורות
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-96">
+            {savedMessages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+                <Bookmark className="h-10 w-10 text-muted-foreground/20" />
+                <p className="text-sm text-muted-foreground">שמור הודעות חשובות כדי למצוא אותן מהר</p>
+              </div>
+            ) : (
+              <div className="space-y-2 pr-1">
+                {savedMessages.map(s => (
+                  <div key={s.id} className="bg-muted/40 rounded-xl p-3 border">
+                    <p className="text-sm leading-relaxed line-clamp-4">{s.message?.content || '📎 קובץ'}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-muted-foreground">
+                        {s.saved_at ? format(new Date(s.saved_at), 'dd/MM HH:mm') : ''}
+                      </span>
+                      <Button variant="ghost" size="sm" className="h-6 text-xs text-destructive hover:text-destructive"
+                        onClick={() => saveMessage(s.message_id)}>
+                        הסר
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
