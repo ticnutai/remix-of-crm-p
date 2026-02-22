@@ -40,7 +40,7 @@ import {
   Edit3, Loader2, FileText, FileAudio, Download, ExternalLink, Tag, Link2,
   ChevronLeft, Mic, Share2, Clock, BarChart2, FileDown, Sparkles, CheckSquare,
   Bell, BellOff, Volume2, VolumeX, Image, Folder, ListTodo, Star, Bookmark,
-  Smartphone, MessageSquare,
+  Smartphone, MessageSquare, Globe, AlertTriangle, Info, CalendarClock, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
@@ -56,7 +56,10 @@ import { ReadReceipts } from './ReadReceipts';
 import { MessageTemplates } from './MessageTemplates';
 import { GifPicker } from './GifPicker';
 import { ChatAnalyticsDashboard } from './ChatAnalyticsDashboard';
-import { Zap } from 'lucide-react';
+import { ConvInfoPanel } from './ConvInfoPanel';
+import { PollMessage } from './PollMessage';
+import { ScheduledMessagesList } from './ScheduledMessagesList';
+import { MentionAutocomplete } from './MentionAutocomplete';
 
 
 // -----------------------------------------------------------
@@ -193,7 +196,8 @@ function MessageMedia({ msg, isOwn }: { msg: ChatMessage; isOwn: boolean }) {
 // Message Bubble
 // -----------------------------------------------------------
 function MessageBubble({
-  msg, isOwn, onReply, onReact, onDelete, showName, onEdit, onForward, onPin, onTask, onSave, isSaved, readBy,
+  msg, isOwn, onReply, onReact, onDelete, showName, onEdit, onForward, onPin, onTask,
+  onSave, isSaved, readBy, onTranslate, isUrgent, conversationId,
 }: {
   msg: ChatMessage; isOwn: boolean;
   onReply: (m: ChatMessage) => void;
@@ -206,10 +210,14 @@ function MessageBubble({
   onSave?: (id: string) => void;
   isSaved?: boolean;
   readBy?: { user_id: string; full_name: string; avatar_url?: string; last_read_at: string }[];
+  onTranslate?: (id: string, text: string) => void;
+  isUrgent?: boolean;
+  conversationId?: string;
   showName: boolean;
 }) {
   const [showEmoji, setShowEmoji] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [translated, setTranslated] = useState<string | null>(null);
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
@@ -222,7 +230,8 @@ function MessageBubble({
     emoji, count: (users as string[]).length,
   }));
 
-  const hasText = msg.content && msg.content !== msg.file_name;
+  const isPoll = !!msg.content?.startsWith('📊 סקר:');
+  const hasText = msg.content && msg.content !== msg.file_name && !isPoll;
 
   return (
     <div
@@ -255,15 +264,20 @@ function MessageBubble({
           <div className={cn(
             'rounded-2xl text-sm leading-relaxed break-words',
             isOwn ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-muted rounded-bl-sm',
-            'px-3 py-2'
+            'px-3 py-2',
+            isUrgent && !isOwn && 'border-r-2 border-red-500'
           )}>
+            {isUrgent && <div className="flex items-center gap-1 text-[10px] text-red-500 mb-1"><AlertTriangle className="h-3 w-3" />דחוף</div>}
             <MessageMedia msg={msg} isOwn={isOwn} />
-            {hasText && (
+            {isPoll && conversationId ? (
+              <PollMessage conversationId={conversationId} question={msg.content} isOwn={isOwn} />
+            ) : hasText ? (
               <span>
-                {msg.content}
-                {msg.is_edited && <span className="text-[10px] opacity-60 mr-1">(נערך)</span>}
+                {translated || msg.content}
+                {translated && <span className="text-[10px] opacity-60 mr-1"> (תרגום)</span>}
+                {msg.is_edited && !translated && <span className="text-[10px] opacity-60 mr-1">(נערך)</span>}
               </span>
-            )}
+            ) : null}
           </div>
 
           {hovered && (
@@ -329,6 +343,19 @@ function MessageBubble({
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">ערוך</TooltipContent>
+                  </Tooltip>
+                )}
+                {onTranslate && msg.message_type === 'text' && !isPoll && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button onClick={() => {
+                        if (translated) { setTranslated(null); }
+                        else { onTranslate(msg.id, msg.content); }
+                      }} className={cn('p-1 hover:bg-muted rounded', translated ? 'text-blue-500' : 'text-muted-foreground hover:text-blue-500')}>
+                        <Globe className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{translated ? 'בטל תרגום' : 'תרגם'}</TooltipContent>
                   </Tooltip>
                 )}
                 {onSave && (
@@ -685,6 +712,10 @@ export function ChatMessenger() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [savedMsgsOpen, setSavedMsgsOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [scheduledOpen, setScheduledOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [translatedMsgs, setTranslatedMsgs] = useState<Record<string, string>>({});
 
   // useChatExtras
   const {
@@ -693,7 +724,21 @@ export function ChatMessenger() {
     savedMessages, saveMessage, isMessageSaved,
     templates, useTemplate, translateMessage,
     sendWhatsApp, sendSMS, slaInfo, readBy,
+    setTheme, themeColor,
   } = useChatExtras(activeConversation?.id);
+
+  const handleTranslate = async (msgId: string, text: string) => {
+    const result = await translateMessage(text, 'he');
+    setTranslatedMsgs(prev => ({ ...prev, [msgId]: result }));
+  };
+
+  const handleArchive = async () => {
+    if (!activeConversation) return;
+    await supabase.from('chat_conversations').update({ is_archived: true }).eq('id', activeConversation.id);
+    setLocalConvs(prev => prev.filter(c => c.id !== activeConversation.id));
+    toast({ title: '🗂️ שיחה הועברה לארכיון' });
+    setInfoOpen(false);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -878,10 +923,14 @@ export function ChatMessenger() {
     const lastTime = conv.last_message_at ? formatDistanceToNow(new Date(conv.last_message_at), { locale: he, addSuffix: true }) : '';
     const typeColor = conv.type === 'client' ? 'bg-blue-100 text-blue-600' : conv.type === 'group' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600';
     const isFav = (conv as any).is_favorite;
+    const isOnline = conv.participants?.some(p => p.user_id && onlineUsers.includes(p.user_id));
     return (
       <button onClick={() => { selectConversation(conv); if (isMobile) setShowSidebar(false); }}
         className={cn('w-full flex items-start gap-2.5 px-2.5 py-2 rounded-xl text-right transition-all hover:bg-muted/60', isActive && 'bg-primary/10 border border-primary/15 shadow-sm')}>
-        <div className={cn('shrink-0 h-9 w-9 rounded-full flex items-center justify-center', typeColor)}><TypeIcon className="h-4 w-4" /></div>
+        <div className="relative shrink-0">
+          <div className={cn('h-9 w-9 rounded-full flex items-center justify-center', typeColor)}><TypeIcon className="h-4 w-4" /></div>
+          {isOnline && <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500 absolute -bottom-0.5 -right-0.5" />}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1 mb-0.5">
             <span className={cn('font-medium text-sm truncate', isActive && 'text-primary')}>
@@ -903,6 +952,25 @@ export function ChatMessenger() {
 
   return (
     <div className="flex h-[calc(100vh-220px)] min-h-[520px] bg-background border rounded-2xl overflow-hidden shadow-sm" dir="rtl">
+
+      {/* INFO PANEL (right side) */}
+      {infoOpen && activeConvLocal && (
+        <ConvInfoPanel
+          conversation={activeConvLocal}
+          onClose={() => setInfoOpen(false)}
+          isMuted={isMuted}
+          isFavorite={isFavorite}
+          onToggleMute={toggleMute}
+          onToggleFavorite={toggleFavorite}
+          themeColor={themeColor}
+          allLabels={allLabels}
+          convLabels={convLabels}
+          onAddLabel={addLabel}
+          onRemoveLabel={removeLabel}
+          onSetTheme={(color) => setTheme(color)}
+          onArchive={handleArchive}
+        />
+      )}
 
       {/* SIDEBAR */}
       {(showSidebar || !isMobile) && (
@@ -1144,6 +1212,9 @@ export function ChatMessenger() {
                             onSave={saveMessage}
                             isSaved={isMessageSaved(msg.id)}
                             readBy={readBy}
+                            onTranslate={handleTranslate}
+                            isUrgent={(msg as any).is_urgent}
+                            conversationId={activeConversation?.id}
                             showName={i === 0 || msgs[i - 1]?.sender_id !== msg.sender_id}
                           />
                         ))}
@@ -1231,6 +1302,14 @@ export function ChatMessenger() {
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:text-cyan-500" onClick={() => setScheduledOpen(true)}>
+                            <CalendarClock className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">הודעות מתוזמנות</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:text-pink-500" onClick={() => setGifOpen(true)}>
                             <Image className="h-4 w-4" />
                           </Button>
@@ -1247,14 +1326,42 @@ export function ChatMessenger() {
                       </Tooltip>
                     </TooltipProvider>
 
-                    <Textarea ref={inputRef} placeholder="כתוב הודעה..."
-                      value={input}
-                      onChange={e => { setInput(e.target.value); sendTyping(); }}
-                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                      rows={1}
-                      className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 min-h-[34px] max-h-[120px] py-1 text-sm"
-                      style={{ fieldSizing: 'content' } as any}
-                    />
+                    <div className="relative flex-1">
+                      {mentionQuery !== null && activeConversation && (
+                        <MentionAutocomplete
+                          conversationId={activeConversation.id}
+                          query={mentionQuery}
+                          onSelect={(name) => {
+                            const atIdx = input.lastIndexOf('@');
+                            setInput(input.slice(0, atIdx) + `@${name} `);
+                            setMentionQuery(null);
+                          }}
+                          onClose={() => setMentionQuery(null)}
+                        />
+                      )}
+                      <Textarea ref={inputRef} placeholder="כתוב הודעה... (הקלד @ לתיוג)"
+                        value={input}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setInput(val);
+                          sendTyping();
+                          // @mention detection
+                          const atIdx = val.lastIndexOf('@');
+                          if (atIdx !== -1 && (atIdx === 0 || val[atIdx - 1] === ' ')) {
+                            setMentionQuery(val.slice(atIdx + 1).split(' ')[0]);
+                          } else {
+                            setMentionQuery(null);
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (mentionQuery !== null && ['ArrowUp','ArrowDown','Enter','Tab'].includes(e.key)) return;
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                        }}
+                        rows={1}
+                        className="w-full resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 min-h-[34px] max-h-[120px] py-1 text-sm"
+                        style={{ fieldSizing: 'content' } as any}
+                      />
+                    </div>
 
                     <Button size="icon" className="h-8 w-8 shrink-0 rounded-xl" onClick={handleSend} disabled={!input.trim() || sendingMessage}>
                       {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -1428,6 +1535,9 @@ export function ChatMessenger() {
 
       {/* Analytics Dashboard */}
       <ChatAnalyticsDashboard open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+
+      {/* Scheduled Messages */}
+      <ScheduledMessagesList open={scheduledOpen} onClose={() => setScheduledOpen(false)} conversationId={activeConversation?.id} />
 
       {/* Saved Messages Panel */}
       <Dialog open={savedMsgsOpen} onOpenChange={setSavedMsgsOpen}>
