@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
@@ -17,6 +18,8 @@ import {
   Bell,
   Table as TableIcon,
   Calendar,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -70,6 +73,12 @@ interface CalendarScheduleViewProps {
   tasks: Task[];
   reminders: Reminder[];
   onDayClick: (date: Date) => void;
+  onDeleteMeeting?: (id: string) => void;
+  onDeleteTask?: (id: string) => void;
+  onDeleteReminder?: (id: string) => void;
+  onEditMeeting?: (meeting: Meeting) => void;
+  onEditTask?: (task: Task) => void;
+  onEditReminder?: (reminder: Reminder) => void;
 }
 
 export function CalendarScheduleView({
@@ -79,6 +88,12 @@ export function CalendarScheduleView({
   tasks,
   reminders,
   onDayClick,
+  onDeleteMeeting,
+  onDeleteTask,
+  onDeleteReminder,
+  onEditMeeting,
+  onEditTask,
+  onEditReminder,
 }: CalendarScheduleViewProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -246,41 +261,61 @@ export function CalendarScheduleView({
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5 max-w-[300px]">
-                          {dayMeetings.slice(0, 2).map((m) => (
-                            <Badge
-                              key={m.id}
-                              variant="outline"
-                              className="text-xs bg-[hsl(var(--navy))]/10 border-[hsl(var(--navy))]/30 truncate max-w-[140px]"
-                            >
-                              <Users className="h-3 w-3 ml-1" />
-                              {m.title}
-                            </Badge>
+                      <TableCell className="text-right" dir="rtl">
+                        <div className="flex flex-wrap gap-1.5 max-w-[340px]">
+                          {dayMeetings.map((m) => (
+                            <div key={m.id} className="group/badge relative inline-flex items-center gap-1 text-xs bg-[hsl(var(--navy))]/10 border border-[hsl(var(--navy))]/30 rounded-md px-1.5 py-0.5">
+                              <Users className="h-3 w-3 text-[hsl(var(--navy))] shrink-0" />
+                              <span className="truncate max-w-[100px]">{m.title}</span>
+                              <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
+                                <button
+                                  className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); onEditMeeting?.(m); }}
+                                ><Pencil className="h-3 w-3" /></button>
+                                <button
+                                  className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(m.id); }}
+                                ><Trash2 className="h-3 w-3" /></button>
+                              </div>
+                            </div>
                           ))}
-                          {dayTasks.slice(0, 2).map((t) => (
-                            <Badge
-                              key={t.id}
-                              variant="outline"
-                              className={cn(
-                                "text-xs truncate max-w-[140px]",
-                                t.priority === "high" &&
-                                  "border-red-500/50 bg-red-500/10",
-                                t.priority === "low" &&
-                                  "border-green-500/50 bg-green-500/10",
-                              )}
-                            >
-                              <CheckSquare className="h-3 w-3 ml-1" />
-                              {t.title}
-                            </Badge>
+                          {dayTasks.map((t) => (
+                            <div key={t.id} className={cn(
+                              "group/badge relative inline-flex items-center gap-1 text-xs border rounded-md px-1.5 py-0.5",
+                              t.priority === "high" ? "border-red-500/50 bg-red-500/10" :
+                              t.priority === "low" ? "border-green-500/50 bg-green-500/10" :
+                              "border-primary/30 bg-primary/10"
+                            )}>
+                              <CheckSquare className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[100px]">{t.title}</span>
+                              <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
+                                <button
+                                  className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); onEditTask?.(t); }}
+                                ><Pencil className="h-3 w-3" /></button>
+                                <button
+                                  className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); onDeleteTask?.(t.id); }}
+                                ><Trash2 className="h-3 w-3" /></button>
+                              </div>
+                            </div>
                           ))}
-                          {(dayMeetings.length > 2 || dayTasks.length > 2) && (
-                            <Badge variant="outline" className="text-xs">
-                              +
-                              {Math.max(0, dayMeetings.length - 2) +
-                                Math.max(0, dayTasks.length - 2)}
-                            </Badge>
-                          )}
+                          {dayReminders.map((r) => (
+                            <div key={r.id} className="group/badge relative inline-flex items-center gap-1 text-xs bg-warning/10 border border-warning/30 rounded-md px-1.5 py-0.5">
+                              <Bell className="h-3 w-3 text-warning shrink-0" />
+                              <span className="truncate max-w-[100px]">{r.title}</span>
+                              <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
+                                <button
+                                  className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
+                                  onClick={(e) => { e.stopPropagation(); onEditReminder?.(r); }}
+                                ><Pencil className="h-3 w-3" /></button>
+                                <button
+                                  className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(r.id); }}
+                                ><Trash2 className="h-3 w-3" /></button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </TableCell>
                     </TableRow>

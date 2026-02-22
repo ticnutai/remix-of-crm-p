@@ -687,6 +687,11 @@ export function useGoogleCalendar() {
         return 0;
       }
 
+      // Strip timezone suffix from dateTime — Google Calendar API requires local time
+      // when timeZone is provided (RFC3339 without offset), e.g. "2026-02-01T09:00:00"
+      const toLocalDT = (dt: string) =>
+        dt.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "").replace(" ", "T");
+
       let syncedCount = 0;
 
       for (const meeting of meetings) {
@@ -694,11 +699,11 @@ export function useGoogleCalendar() {
           summary: meeting.title,
           description: meeting.notes || "",
           start: {
-            dateTime: meeting.start_time,
+            dateTime: toLocalDT(meeting.start_time),
             timeZone: "Asia/Jerusalem",
           },
           end: {
-            dateTime: meeting.end_time,
+            dateTime: toLocalDT(meeting.end_time),
             timeZone: "Asia/Jerusalem",
           },
           location: meeting.location || "",

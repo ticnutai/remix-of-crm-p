@@ -1196,6 +1196,12 @@ const Calendar = () => {
                 tasks={tasks}
                 reminders={reminders}
                 onDayClick={setSelectedDate}
+                onDeleteMeeting={handleDeleteMeeting}
+                onDeleteTask={handleDeleteTask}
+                onDeleteReminder={handleDeleteReminder}
+                onEditMeeting={handleEditMeeting}
+                onEditTask={handleEditTask}
+                onEditReminder={handleEditReminder}
               />
             )}
 
@@ -1207,6 +1213,12 @@ const Calendar = () => {
                 tasks={tasks}
                 reminders={reminders}
                 onDayClick={setSelectedDate}
+                onDeleteMeeting={handleDeleteMeeting}
+                onDeleteTask={handleDeleteTask}
+                onDeleteReminder={handleDeleteReminder}
+                onEditMeeting={handleEditMeeting}
+                onEditTask={handleEditTask}
+                onEditReminder={handleEditReminder}
               />
             )}
 

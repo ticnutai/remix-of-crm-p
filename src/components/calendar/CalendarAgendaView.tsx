@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Clock,
@@ -8,14 +9,12 @@ import {
   CheckSquare,
   Bell,
   LayoutGrid,
-  ArrowLeft,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
   isSameDay,
   isToday,
   parseISO,
@@ -63,6 +62,12 @@ interface CalendarAgendaViewProps {
   tasks: Task[];
   reminders: Reminder[];
   onDayClick: (date: Date) => void;
+  onDeleteMeeting?: (id: string) => void;
+  onDeleteTask?: (id: string) => void;
+  onDeleteReminder?: (id: string) => void;
+  onEditMeeting?: (meeting: Meeting) => void;
+  onEditTask?: (task: Task) => void;
+  onEditReminder?: (reminder: Reminder) => void;
 }
 
 type EventItem = {
@@ -73,6 +78,7 @@ type EventItem = {
   title: string;
   subtitle?: string;
   priority?: string;
+  raw?: Meeting | Task | Reminder;
 };
 
 export function CalendarAgendaView({
@@ -82,6 +88,12 @@ export function CalendarAgendaView({
   tasks,
   reminders,
   onDayClick,
+  onDeleteMeeting,
+  onDeleteTask,
+  onDeleteReminder,
+  onEditMeeting,
+  onEditTask,
+  onEditReminder,
 }: CalendarAgendaViewProps) {
   // Combine all events into a single timeline
   const getAllEvents = (): EventItem[] => {
@@ -95,6 +107,7 @@ export function CalendarAgendaView({
         endTime: parseISO(m.end_time),
         title: m.title,
         subtitle: m.status,
+        raw: m,
       });
     });
 
@@ -106,6 +119,7 @@ export function CalendarAgendaView({
           time: parseISO(t.due_date),
           title: t.title,
           priority: t.priority,
+          raw: t,
         });
       }
     });
@@ -116,6 +130,7 @@ export function CalendarAgendaView({
         type: "reminder",
         time: parseISO(r.remind_at),
         title: r.title,
+        raw: r,
       });
     });
 
@@ -257,57 +272,77 @@ export function CalendarAgendaView({
                         return (
                           <div
                             key={`${event.type}-${event.id}`}
-                            className="flex items-start gap-3 p-4 rounded-xl bg-card border border-border hover:shadow-lg transition-all cursor-pointer group"
+                            className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:shadow-md transition-all group/event"
                           >
                             <div
                               className={cn(
-                                "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                                "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
                                 getEventColor(event.type, event.priority),
                               )}
                             >
-                              <Icon className="h-5 w-5" />
+                              <Icon className="h-4 w-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <h4 className="font-medium truncate">
-                                  {event.title}
-                                </h4>
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium truncate text-sm">{event.title}</h4>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {format(event.time, "HH:mm")}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                                 {event.endTime && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs h-4 px-1">
                                     {formatDuration(event.time, event.endTime)}
                                   </Badge>
                                 )}
                                 {event.subtitle && (
-                                  <span className="truncate">
-                                    {event.subtitle}
-                                  </span>
+                                  <span className="text-xs text-muted-foreground truncate">{event.subtitle}</span>
                                 )}
                                 {event.priority && (
                                   <Badge
                                     variant="outline"
                                     className={cn(
-                                      "text-xs",
-                                      event.priority === "high" &&
-                                        "border-red-500 text-red-500",
-                                      event.priority === "low" &&
-                                        "border-green-500 text-green-500",
+                                      "text-xs h-4 px-1",
+                                      event.priority === "high" && "border-red-500 text-red-500",
+                                      event.priority === "low" && "border-green-500 text-green-500",
                                     )}
                                   >
-                                    {event.priority === "high"
-                                      ? "גבוהה"
-                                      : event.priority === "low"
-                                        ? "נמוכה"
-                                        : "בינונית"}
+                                    {event.priority === "high" ? "גבוהה" : event.priority === "low" ? "נמוכה" : "בינונית"}
                                   </Badge>
                                 )}
                               </div>
                             </div>
-                            <ArrowLeft className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                            {/* Edit/Delete buttons on hover */}
+                            <div className="flex items-center gap-1 opacity-0 group-hover/event:opacity-100 transition-opacity shrink-0">
+                              {event.type !== "time" && (
+                                <>
+                                  <Button
+                                    size="icon" variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (event.type === "meeting") onEditMeeting?.(event.raw as Meeting);
+                                      else if (event.type === "task") onEditTask?.(event.raw as Task);
+                                      else if (event.type === "reminder") onEditReminder?.(event.raw as Reminder);
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon" variant="ghost"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (event.type === "meeting") onDeleteMeeting?.(event.id);
+                                      else if (event.type === "task") onDeleteTask?.(event.id);
+                                      else if (event.type === "reminder") onDeleteReminder?.(event.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
