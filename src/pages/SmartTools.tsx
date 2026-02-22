@@ -3,14 +3,14 @@
  * התראות חכמות + צ'אט AI + מרכז שיחות
  */
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SmartAlerts } from '@/components/alerts/SmartAlerts';
-import { AIChat } from '@/components/chat/AIChat';
-import { ChatMessenger } from '@/components/chat/ChatMessenger';
-import { Bell, Bot, MessageCircle } from 'lucide-react';
-import { AppLayout } from '@/components/layout';
-import { useChat } from '@/hooks/useChat';
-import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SmartAlerts } from "@/components/alerts/SmartAlerts";
+import { AIChat } from "@/components/chat/AIChat";
+import { ChatMessenger } from "@/components/chat/ChatMessenger";
+import { Bell, Bot, MessageCircle } from "lucide-react";
+import { AppLayout } from "@/components/layout";
+import { useChat } from "@/hooks/useChat";
+import { Badge } from "@/components/ui/badge";
 
 function SmartToolsInner() {
   const { totalUnread } = useChat();

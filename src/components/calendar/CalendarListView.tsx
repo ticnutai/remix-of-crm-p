@@ -248,16 +248,24 @@ export function CalendarListView({
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              onClick={(e) => { e.stopPropagation(); onEditMeeting?.(meeting); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditMeeting?.(meeting);
+                              }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(meeting.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteMeeting?.(meeting.id);
+                              }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -293,16 +301,24 @@ export function CalendarListView({
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              onClick={(e) => { e.stopPropagation(); onEditTask?.(task); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditTask?.(task);
+                              }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteTask?.(task.id);
+                              }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -328,16 +344,24 @@ export function CalendarListView({
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-primary"
-                              onClick={(e) => { e.stopPropagation(); onEditReminder?.(reminder); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditReminder?.(reminder);
+                              }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                              size="icon" variant="ghost"
+                              size="icon"
+                              variant="ghost"
                               className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(reminder.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteReminder?.(reminder.id);
+                              }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>

@@ -690,7 +690,10 @@ export function useGoogleCalendar() {
       // Strip timezone suffix from dateTime — Google Calendar API requires local time
       // when timeZone is provided (RFC3339 without offset), e.g. "2026-02-01T09:00:00"
       const toLocalDT = (dt: string) =>
-        dt.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "").replace(" ", "T");
+        dt
+          .replace(/Z$/, "")
+          .replace(/[+-]\d{2}:\d{2}$/, "")
+          .replace(" ", "T");
 
       let syncedCount = 0;
 

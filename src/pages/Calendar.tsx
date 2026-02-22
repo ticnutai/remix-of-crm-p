@@ -170,7 +170,10 @@ const Calendar = () => {
   const [addType, setAddType] = useState<AddType>("meeting");
   const [addDialogDate, setAddDialogDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState<{ type: AddType; id: string } | null>(null);
+  const [editMode, setEditMode] = useState<{
+    type: AddType;
+    id: string;
+  } | null>(null);
 
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
@@ -414,19 +417,28 @@ const Calendar = () => {
   const handleDeleteMeeting = async (id: string) => {
     if (!window.confirm("למחוק את הפגישה?")) return;
     const { error } = await supabase.from("meetings").delete().eq("id", id);
-    if (!error) { toast({ title: "הפגישה נמחקה" }); fetchData(); }
+    if (!error) {
+      toast({ title: "הפגישה נמחקה" });
+      fetchData();
+    }
   };
 
   const handleDeleteTask = async (id: string) => {
     if (!window.confirm("למחוק את המשימה?")) return;
     const { error } = await supabase.from("tasks").delete().eq("id", id);
-    if (!error) { toast({ title: "המשימה נמחקה" }); fetchData(); }
+    if (!error) {
+      toast({ title: "המשימה נמחקה" });
+      fetchData();
+    }
   };
 
   const handleDeleteReminder = async (id: string) => {
     if (!window.confirm("למחוק את התזכורת?")) return;
     const { error } = await supabase.from("reminders").delete().eq("id", id);
-    if (!error) { toast({ title: "התזכורת נמחקה" }); fetchData(); }
+    if (!error) {
+      toast({ title: "התזכורת נמחקה" });
+      fetchData();
+    }
   };
 
   const handleEditMeeting = (meeting: Meeting) => {
@@ -515,7 +527,11 @@ const Calendar = () => {
         if (editMode.type === "task") {
           const { error } = await supabase
             .from("tasks")
-            .update({ title: taskForm.title, priority: taskForm.priority, due_date: `${dateStr}T23:59:59` })
+            .update({
+              title: taskForm.title,
+              priority: taskForm.priority,
+              due_date: `${dateStr}T23:59:59`,
+            })
             .eq("id", editMode.id);
           if (error) throw error;
           toast({ title: "המשימה עודכנה" });
@@ -523,7 +539,12 @@ const Calendar = () => {
         if (editMode.type === "reminder") {
           const { error } = await supabase
             .from("reminders")
-            .update({ title: reminderForm.title, remind_at: new Date(`${dateStr}T${reminderForm.time}:00`).toISOString() })
+            .update({
+              title: reminderForm.title,
+              remind_at: new Date(
+                `${dateStr}T${reminderForm.time}:00`,
+              ).toISOString(),
+            })
             .eq("id", editMode.id);
           if (error) throw error;
           toast({ title: "התזכורת עודכנה" });
@@ -999,10 +1020,20 @@ const Calendar = () => {
                           </p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditMeeting(m)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleEditMeeting(m)}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteMeeting(m.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteMeeting(m.id)}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -1021,7 +1052,10 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {dayTasks.map((t) => (
-                      <div key={t.id} className="group p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors flex items-center justify-between">
+                      <div
+                        key={t.id}
+                        className="group p-3 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors flex items-center justify-between"
+                      >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium">{t.title}</p>
                           <Badge variant="outline" className="text-xs mt-1">
@@ -1033,10 +1067,20 @@ const Calendar = () => {
                           </Badge>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditTask(t)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleEditTask(t)}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteTask(t.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteTask(t.id)}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -1055,7 +1099,10 @@ const Calendar = () => {
                   </h4>
                   <div className="space-y-2">
                     {dayReminders.map((r) => (
-                      <div key={r.id} className="group p-3 bg-warning/10 rounded-lg hover:bg-warning/20 transition-colors flex items-center justify-between">
+                      <div
+                        key={r.id}
+                        className="group p-3 bg-warning/10 rounded-lg hover:bg-warning/20 transition-colors flex items-center justify-between"
+                      >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium">{r.title}</p>
                           <p className="text-sm text-muted-foreground">
@@ -1063,10 +1110,20 @@ const Calendar = () => {
                           </p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleEditReminder(r)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            onClick={() => handleEditReminder(r)}
+                          >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteReminder(r.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteReminder(r.id)}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -1232,8 +1289,14 @@ const Calendar = () => {
         <DialogContent className="sm:max-w-[500px]" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center gap-2 justify-start">
-              {editMode ? <Pencil className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-              {editMode ? "עריכה" : `הוסף ל-${format(addDialogDate, "d בMMMM", { locale: he })}`}
+              {editMode ? (
+                <Pencil className="h-5 w-5" />
+              ) : (
+                <Plus className="h-5 w-5" />
+              )}
+              {editMode
+                ? "עריכה"
+                : `הוסף ל-${format(addDialogDate, "d בMMMM", { locale: he })}`}
             </DialogTitle>
           </DialogHeader>
 

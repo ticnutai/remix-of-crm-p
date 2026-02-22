@@ -3,7 +3,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Users, CheckSquare, Bell, Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  Clock,
+  Users,
+  CheckSquare,
+  Bell,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   format,
@@ -221,13 +229,19 @@ export function CalendarWeekView({
                           </div>
                           <div className="flex gap-0.5 opacity-0 group-hover/meeting:opacity-100 transition-opacity shrink-0">
                             <button
-                              onClick={(e) => { e.stopPropagation(); onEditMeeting?.(meeting); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditMeeting?.(meeting);
+                              }}
                               className="hover:bg-white/30 rounded p-0.5"
                             >
                               <Pencil className="h-2.5 w-2.5" />
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(meeting.id); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteMeeting?.(meeting.id);
+                              }}
                               className="hover:bg-red-500/50 rounded p-0.5"
                             >
                               <Trash2 className="h-2.5 w-2.5" />
@@ -253,10 +267,22 @@ export function CalendarWeekView({
                           <CheckSquare className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate flex-1">{task.title}</span>
                           <div className="flex gap-0.5 opacity-0 group-hover/task:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); onEditTask?.(task); }} className="hover:bg-white/30 rounded p-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditTask?.(task);
+                              }}
+                              className="hover:bg-white/30 rounded p-0.5"
+                            >
                               <Pencil className="h-2 w-2" />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); onDeleteTask?.(task.id); }} className="hover:bg-red-500/50 rounded p-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteTask?.(task.id);
+                              }}
+                              className="hover:bg-red-500/50 rounded p-0.5"
+                            >
                               <Trash2 className="h-2 w-2" />
                             </button>
                           </div>
@@ -269,12 +295,26 @@ export function CalendarWeekView({
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Bell className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate flex-1">{reminder.title}</span>
+                          <span className="truncate flex-1">
+                            {reminder.title}
+                          </span>
                           <div className="flex gap-0.5 opacity-0 group-hover/reminder:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); onEditReminder?.(reminder); }} className="hover:bg-white/30 rounded p-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditReminder?.(reminder);
+                              }}
+                              className="hover:bg-white/30 rounded p-0.5"
+                            >
                               <Pencil className="h-2 w-2" />
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(reminder.id); }} className="hover:bg-red-500/50 rounded p-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteReminder?.(reminder.id);
+                              }}
+                              className="hover:bg-red-500/50 rounded p-0.5"
+                            >
                               <Trash2 className="h-2 w-2" />
                             </button>
                           </div>

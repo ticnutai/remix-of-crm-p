@@ -2309,7 +2309,7 @@ export default function Gmail() {
                 disabled={isLoading || gmailAccounts.isAdding}
                 className="w-full md:w-auto"
               >
-                {(isLoading || gmailAccounts.isAdding) ? (
+                {isLoading || gmailAccounts.isAdding ? (
                   <>
                     <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                     מתחבר...
@@ -2338,7 +2338,11 @@ export default function Gmail() {
                 <br />
                 <span className="text-xs">ניתן להוסיף מספר חשבונות Gmail</span>
               </p>
-              <Button onClick={handleConnect} size="lg" disabled={gmailAccounts.isAdding}>
+              <Button
+                onClick={handleConnect}
+                size="lg"
+                disabled={gmailAccounts.isAdding}
+              >
                 <Mail className="h-5 w-5 ml-2" />
                 התחבר עכשיו
               </Button>

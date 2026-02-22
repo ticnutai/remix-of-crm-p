@@ -284,30 +284,43 @@ export function CalendarAgendaView({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <h4 className="font-medium truncate text-sm">{event.title}</h4>
+                                <h4 className="font-medium truncate text-sm">
+                                  {event.title}
+                                </h4>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                                   {format(event.time, "HH:mm")}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                                 {event.endTime && (
-                                  <Badge variant="outline" className="text-xs h-4 px-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs h-4 px-1"
+                                  >
                                     {formatDuration(event.time, event.endTime)}
                                   </Badge>
                                 )}
                                 {event.subtitle && (
-                                  <span className="text-xs text-muted-foreground truncate">{event.subtitle}</span>
+                                  <span className="text-xs text-muted-foreground truncate">
+                                    {event.subtitle}
+                                  </span>
                                 )}
                                 {event.priority && (
                                   <Badge
                                     variant="outline"
                                     className={cn(
                                       "text-xs h-4 px-1",
-                                      event.priority === "high" && "border-red-500 text-red-500",
-                                      event.priority === "low" && "border-green-500 text-green-500",
+                                      event.priority === "high" &&
+                                        "border-red-500 text-red-500",
+                                      event.priority === "low" &&
+                                        "border-green-500 text-green-500",
                                     )}
                                   >
-                                    {event.priority === "high" ? "גבוהה" : event.priority === "low" ? "נמוכה" : "בינונית"}
+                                    {event.priority === "high"
+                                      ? "גבוהה"
+                                      : event.priority === "low"
+                                        ? "נמוכה"
+                                        : "בינונית"}
                                   </Badge>
                                 )}
                               </div>
@@ -317,25 +330,33 @@ export function CalendarAgendaView({
                               {event.type !== "time" && (
                                 <>
                                   <Button
-                                    size="icon" variant="ghost"
+                                    size="icon"
+                                    variant="ghost"
                                     className="h-7 w-7 text-muted-foreground hover:text-primary"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (event.type === "meeting") onEditMeeting?.(event.raw as Meeting);
-                                      else if (event.type === "task") onEditTask?.(event.raw as Task);
-                                      else if (event.type === "reminder") onEditReminder?.(event.raw as Reminder);
+                                      if (event.type === "meeting")
+                                        onEditMeeting?.(event.raw as Meeting);
+                                      else if (event.type === "task")
+                                        onEditTask?.(event.raw as Task);
+                                      else if (event.type === "reminder")
+                                        onEditReminder?.(event.raw as Reminder);
                                     }}
                                   >
                                     <Pencil className="h-3.5 w-3.5" />
                                   </Button>
                                   <Button
-                                    size="icon" variant="ghost"
+                                    size="icon"
+                                    variant="ghost"
                                     className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      if (event.type === "meeting") onDeleteMeeting?.(event.id);
-                                      else if (event.type === "task") onDeleteTask?.(event.id);
-                                      else if (event.type === "reminder") onDeleteReminder?.(event.id);
+                                      if (event.type === "meeting")
+                                        onDeleteMeeting?.(event.id);
+                                      else if (event.type === "task")
+                                        onDeleteTask?.(event.id);
+                                      else if (event.type === "reminder")
+                                        onDeleteReminder?.(event.id);
                                     }}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />

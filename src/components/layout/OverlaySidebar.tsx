@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -24,7 +24,6 @@ import {
   Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -275,6 +274,23 @@ export function OverlaySidebar({
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Preserve scroll position across route changes
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTop = useRef(0);
+
+  const handleNavScroll = useCallback(() => {
+    if (navScrollRef.current) {
+      savedScrollTop.current = navScrollRef.current.scrollTop;
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = navScrollRef.current;
+    if (el) {
+      el.scrollTop = savedScrollTop.current;
+    }
+  }, [location.pathname]);
+
   return (
     <>
       {/* ========== SIDEBAR PANEL ========== */}
@@ -390,10 +406,14 @@ export function OverlaySidebar({
           </div>
 
           {/* Navigation */}
-          <ScrollArea className="flex-1 p-3" style={{ overflow: "hidden" }}>
+          <div
+            ref={navScrollRef}
+            className="flex-1 p-3 sidebar-nav-scroll"
+            style={{ overflowY: "auto", scrollbarWidth: "none" }}
+            onScroll={handleNavScroll}
+          >
             <style>{`
-              .scrollarea-viewport { scrollbar-width: none; }
-              .scrollarea-viewport::-webkit-scrollbar { display: none; }
+              .sidebar-nav-scroll::-webkit-scrollbar { display: none; }
             `}</style>
             {/* Main Nav */}
             <div className="space-y-1 mb-4">
@@ -583,7 +603,7 @@ export function OverlaySidebar({
                   </Link>
                 ))}
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Footer with Theme Button - visible on hover */}
           <div

@@ -264,55 +264,102 @@ export function CalendarScheduleView({
                       <TableCell className="text-right" dir="rtl">
                         <div className="flex flex-wrap gap-1.5 max-w-[340px]">
                           {dayMeetings.map((m) => (
-                            <div key={m.id} className="group/badge relative inline-flex items-center gap-1 text-xs bg-[hsl(var(--navy))]/10 border border-[hsl(var(--navy))]/30 rounded-md px-1.5 py-0.5">
+                            <div
+                              key={m.id}
+                              className="group/badge relative inline-flex items-center gap-1 text-xs bg-[hsl(var(--navy))]/10 border border-[hsl(var(--navy))]/30 rounded-md px-1.5 py-0.5"
+                            >
                               <Users className="h-3 w-3 text-[hsl(var(--navy))] shrink-0" />
-                              <span className="truncate max-w-[100px]">{m.title}</span>
+                              <span className="truncate max-w-[100px]">
+                                {m.title}
+                              </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button
                                   className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); onEditMeeting?.(m); }}
-                                ><Pencil className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditMeeting?.(m);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
                                 <button
                                   className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                                  onClick={(e) => { e.stopPropagation(); onDeleteMeeting?.(m.id); }}
-                                ><Trash2 className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteMeeting?.(m.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </div>
                             </div>
                           ))}
                           {dayTasks.map((t) => (
-                            <div key={t.id} className={cn(
-                              "group/badge relative inline-flex items-center gap-1 text-xs border rounded-md px-1.5 py-0.5",
-                              t.priority === "high" ? "border-red-500/50 bg-red-500/10" :
-                              t.priority === "low" ? "border-green-500/50 bg-green-500/10" :
-                              "border-primary/30 bg-primary/10"
-                            )}>
+                            <div
+                              key={t.id}
+                              className={cn(
+                                "group/badge relative inline-flex items-center gap-1 text-xs border rounded-md px-1.5 py-0.5",
+                                t.priority === "high"
+                                  ? "border-red-500/50 bg-red-500/10"
+                                  : t.priority === "low"
+                                    ? "border-green-500/50 bg-green-500/10"
+                                    : "border-primary/30 bg-primary/10",
+                              )}
+                            >
                               <CheckSquare className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[100px]">{t.title}</span>
+                              <span className="truncate max-w-[100px]">
+                                {t.title}
+                              </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button
                                   className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); onEditTask?.(t); }}
-                                ><Pencil className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditTask?.(t);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
                                 <button
                                   className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                                  onClick={(e) => { e.stopPropagation(); onDeleteTask?.(t.id); }}
-                                ><Trash2 className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteTask?.(t.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </div>
                             </div>
                           ))}
                           {dayReminders.map((r) => (
-                            <div key={r.id} className="group/badge relative inline-flex items-center gap-1 text-xs bg-warning/10 border border-warning/30 rounded-md px-1.5 py-0.5">
+                            <div
+                              key={r.id}
+                              className="group/badge relative inline-flex items-center gap-1 text-xs bg-warning/10 border border-warning/30 rounded-md px-1.5 py-0.5"
+                            >
                               <Bell className="h-3 w-3 text-warning shrink-0" />
-                              <span className="truncate max-w-[100px]">{r.title}</span>
+                              <span className="truncate max-w-[100px]">
+                                {r.title}
+                              </span>
                               <div className="flex gap-0.5 opacity-0 group-hover/badge:opacity-100 transition-opacity">
                                 <button
                                   className="p-0.5 rounded hover:bg-primary/20 text-muted-foreground hover:text-primary"
-                                  onClick={(e) => { e.stopPropagation(); onEditReminder?.(r); }}
-                                ><Pencil className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditReminder?.(r);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
                                 <button
                                   className="p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                                  onClick={(e) => { e.stopPropagation(); onDeleteReminder?.(r.id); }}
-                                ><Trash2 className="h-3 w-3" /></button>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteReminder?.(r.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </div>
                             </div>
                           ))}
