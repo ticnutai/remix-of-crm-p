@@ -46,6 +46,7 @@ import {
   Cloud,
   Pencil,
   Trash2,
+  CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -58,6 +59,11 @@ import {
   subMonths,
   addWeeks,
   subWeeks,
+  addYears,
+  subYears,
+  setMonth,
+  getMonth,
+  getYear,
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
@@ -158,6 +164,40 @@ const Calendar = () => {
       );
     }
   }, [viewType, currentMonth, selectedDate]);
+
+  // Cloud persistence: load view from Supabase on mount
+  useEffect(() => {
+    if (!user) return;
+    const loadCloudView = async () => {
+      try {
+        const { data } = await supabase
+          .from("user_preferences")
+          .select("calendar_view")
+          .eq("user_id", user.id)
+          .single();
+        const saved = (data as any)?.calendar_view;
+        if (saved && ["month","week","list","agenda","schedule"].includes(saved)) {
+          setViewType(saved as CalendarViewType);
+          localStorage.setItem("calendar-view-type", saved);
+        }
+      } catch {}
+    };
+    loadCloudView();
+  }, [user]);
+
+  // Cloud persistence: save view when it changes (debounced)
+  useEffect(() => {
+    if (!user) return;
+    const timer = setTimeout(async () => {
+      try {
+        await supabase.from("user_preferences").upsert(
+          { user_id: user.id, calendar_view: viewType, updated_at: new Date().toISOString() } as any,
+          { onConflict: "user_id" }
+        );
+      } catch {}
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [viewType, user]);
 
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -732,6 +772,58 @@ const Calendar = () => {
     }
   };
 
+  const hebrewMonths = [
+    "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
+    "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
+  ];
+
+  const renderMonthNav = () => {
+    if (viewType !== "month") return null;
+    const currentYear = getYear(currentMonth);
+    const currentMonthIdx = getMonth(currentMonth);
+    return (
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap" dir="rtl">
+        {/* Year navigation */}
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(subYears(currentMonth, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-bold w-12 text-center">{currentYear}</span>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(addYears(currentMonth, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
+        {/* Month tabs */}
+        <div className="flex flex-wrap gap-1 justify-center flex-1">
+          {hebrewMonths.map((name, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentMonth(setMonth(currentMonth, idx))}
+              className={cn(
+                "px-2 py-1 rounded-lg text-xs font-medium transition-all",
+                currentMonthIdx === idx
+                  ? "bg-[hsl(var(--navy))] text-white shadow-md"
+                  : "bg-muted/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+              )}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        {/* Week view shortcut */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={() => setViewType("week")}
+        >
+          <CalendarRange className="h-3.5 w-3.5" />
+          שבועי
+        </Button>
+      </div>
+    );
+  };
+
   const handleNavigate = (direction: "prev" | "next") => {
     if (viewType === "week") {
       setCurrentMonth(
@@ -778,6 +870,9 @@ const Calendar = () => {
           {/* View Toggle */}
           <CalendarViewToggle view={viewType} onViewChange={setViewType} />
         </div>
+
+        {/* Month/Year quick nav - only in month view */}
+        {renderMonthNav()}
 
         {/* Bottom row: Actions */}
         <div className="flex items-center justify-end gap-2">
