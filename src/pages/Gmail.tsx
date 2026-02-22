@@ -1575,17 +1575,21 @@ export default function Gmail() {
 
   const handleConnect = useCallback(async () => {
     if (gmailAccounts.accounts.length > 0) {
-      // Multi-account mode: add another account
-      await gmailAccounts.addAccount();
-      const freshMsgs = await fetchFromAllAccounts(50);
-      if (freshMsgs && freshMsgs.length > 0) {
-        gmailCache.cacheMessages(freshMsgs);
+      // Multi-account mode: add another account (one OAuth popup)
+      const account = await gmailAccounts.addAccount();
+      if (account) {
+        const freshMsgs = await fetchFromAllAccounts(50);
+        if (freshMsgs && freshMsgs.length > 0) {
+          gmailCache.cacheMessages(freshMsgs);
+        }
       }
     } else {
-      // Single-account mode: connect and add as first multi-account
-      await fetchEmails(50);
-      // Also add to multi-account system
-      await gmailAccounts.addAccount();
+      // Single-account mode: addAccount does OAuth + saves token to localStorage
+      // Then fetchEmails uses that saved token - no second popup opened
+      const account = await gmailAccounts.addAccount();
+      if (account) {
+        await fetchEmails(50);
+      }
     }
     setHasLoaded(true);
   }, [fetchEmails, gmailAccounts, fetchFromAllAccounts, gmailCache]);
@@ -2302,10 +2306,10 @@ export default function Gmail() {
             ) : (
               <Button
                 onClick={handleConnect}
-                disabled={isLoading}
+                disabled={isLoading || gmailAccounts.isAdding}
                 className="w-full md:w-auto"
               >
-                {isLoading ? (
+                {(isLoading || gmailAccounts.isAdding) ? (
                   <>
                     <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                     מתחבר...
@@ -2322,7 +2326,7 @@ export default function Gmail() {
         </div>
 
         {/* Not Connected State */}
-        {!hasLoaded && !isLoading && (
+        {!hasLoaded && !isLoading && !gmailAccounts.isAdding && (
           <Card className="text-center py-16">
             <CardContent>
               <Mail className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -2334,7 +2338,7 @@ export default function Gmail() {
                 <br />
                 <span className="text-xs">ניתן להוסיף מספר חשבונות Gmail</span>
               </p>
-              <Button onClick={handleConnect} size="lg">
+              <Button onClick={handleConnect} size="lg" disabled={gmailAccounts.isAdding}>
                 <Mail className="h-5 w-5 ml-2" />
                 התחבר עכשיו
               </Button>
@@ -2342,7 +2346,7 @@ export default function Gmail() {
           </Card>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - fetchEmails */}
         {isLoading && !hasLoaded && (
           <Card>
             <CardContent className="py-8">
@@ -2357,6 +2361,16 @@ export default function Gmail() {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loading State - OAuth addAccount */}
+        {gmailAccounts.isAdding && !hasLoaded && (
+          <Card className="text-center py-16">
+            <CardContent>
+              <Loader2 className="h-10 w-10 mx-auto mb-4 animate-spin text-primary" />
+              <p className="text-muted-foreground">מחבר לחשבון Gmail...</p>
             </CardContent>
           </Card>
         )}
