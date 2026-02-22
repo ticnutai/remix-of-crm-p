@@ -408,53 +408,23 @@ function GmailTab({ onPick }: { onPick: (f: PickedFile) => void }) {
   const [search, setSearch] = useState('');
   const [loaded, setLoaded] = useState(false);
 
-  // 🔴 DEBUG: track mount/unmount
   useEffect(() => {
-    console.log('[GmailTab] MOUNTED. isConnected:', isConnected, '| loaded:', loaded, '| messages.length:', messages.length, '| isLoading:', isLoading);
-    return () => {
-      console.log('[GmailTab] UNMOUNTED.');
-    };
-  }, []);
-
-  // 🔴 DEBUG: track isLoading changes
-  useEffect(() => {
-    console.log('[GmailTab] isLoading changed →', isLoading);
-  }, [isLoading]);
-
-  // 🔴 DEBUG: track messages changes
-  useEffect(() => {
-    console.log('[GmailTab] messages changed → count:', messages.length, '| ids:', messages.slice(0,3).map(m=>m.id));
-  }, [messages]);
-
-  // 🔴 DEBUG: track isConnected changes
-  useEffect(() => {
-    console.log('[GmailTab] isConnected changed →', isConnected, '| loaded:', loaded);
-  }, [isConnected]);
-
-  useEffect(() => {
-    console.log('[GmailTab] fetch-guard check: isConnected', isConnected, 'loaded', loaded);
     if (isConnected && !loaded) {
-      console.log('[GmailTab] → calling fetchEmails(30, undefined, has:attachment)');
       fetchEmails(30, undefined, 'has:attachment');
       setLoaded(true);
-      console.log('[GmailTab] → setLoaded(true)');
     }
   }, [isConnected]);
 
   const handleSearch = (q: string) => {
-    console.log('[GmailTab] handleSearch:', q);
     setSearch(q);
     if (q.length > 2) {
-      console.log('[GmailTab] → fetchEmails with query:', `has:attachment ${q}`);
       fetchEmails(30, undefined, `has:attachment ${q}`);
     } else if (!q) {
-      console.log('[GmailTab] → fetchEmails reset (no query)');
       fetchEmails(30, undefined, 'has:attachment');
     }
   };
 
   if (!isConnected) {
-    console.log('[GmailTab] RENDER → not connected, showing connect screen');
     return (
       <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
         <Mail className="h-10 w-10 text-muted-foreground/30" />
@@ -472,8 +442,6 @@ function GmailTab({ onPick }: { onPick: (f: PickedFile) => void }) {
     return m.subject?.toLowerCase().includes(q) || m.fromName?.toLowerCase().includes(q);
   });
 
-  console.log('[GmailTab] RENDER → isConnected:', isConnected, '| isLoading:', isLoading, '| messages:', messages.length, '| filtered:', filtered.length);
-
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -490,10 +458,7 @@ function GmailTab({ onPick }: { onPick: (f: PickedFile) => void }) {
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={() => {
-            console.log('[GmailTab] RefreshCw clicked');
-            fetchEmails(30, undefined, 'has:attachment');
-          }}
+          onClick={() => fetchEmails(30, undefined, 'has:attachment')}
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </Button>
@@ -568,23 +533,11 @@ export function ChatFilePicker({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('upload');
 
-  // 🔴 DEBUG: track dialog open/close
-  useEffect(() => {
-    console.log('[ChatFilePicker] open changed →', open, '| activeTab:', activeTab);
-  }, [open]);
-
-  // 🔴 DEBUG: track tab changes
-  useEffect(() => {
-    console.log('[ChatFilePicker] activeTab →', activeTab);
-  }, [activeTab]);
-
   const handleTabChange = (val: string) => {
-    console.log('[ChatFilePicker] onValueChange called! old:', activeTab, '→ new:', val);
     setActiveTab(val);
   };
 
   const handlePick = (f: PickedFile) => {
-    console.log('[ChatFilePicker] handlePick:', f.file_name, '| source:', f.source);
     onFilePicked(f);
     onOpenChange(false);
     toast({
@@ -594,10 +547,7 @@ export function ChatFilePicker({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => {
-      console.log('[ChatFilePicker] Dialog onOpenChange →', v);
-      onOpenChange(v);
-    }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -616,7 +566,6 @@ export function ChatFilePicker({
             <TabsTrigger
               value="upload"
               className="gap-1.5 text-xs"
-              onClick={() => console.log('[ChatFilePicker] TabsTrigger CLICK: upload')}
             >
               <Upload className="h-3.5 w-3.5" />
               העלאה
@@ -624,7 +573,6 @@ export function ChatFilePicker({
             <TabsTrigger
               value="drive"
               className="gap-1.5 text-xs"
-              onClick={() => console.log('[ChatFilePicker] TabsTrigger CLICK: drive')}
             >
               <HardDrive className="h-3.5 w-3.5" />
               Google Drive
@@ -632,7 +580,6 @@ export function ChatFilePicker({
             <TabsTrigger
               value="gmail"
               className="gap-1.5 text-xs"
-              onClick={() => console.log('[ChatFilePicker] TabsTrigger CLICK: gmail')}
             >
               <Mail className="h-3.5 w-3.5" />
               Gmail
@@ -640,17 +587,14 @@ export function ChatFilePicker({
           </TabsList>
 
           <TabsContent value="upload">
-            {console.log('[ChatFilePicker] RENDERING TabsContent: upload') as any}
             <UploadTab onPick={handlePick} />
           </TabsContent>
 
           <TabsContent value="drive">
-            {console.log('[ChatFilePicker] RENDERING TabsContent: drive') as any}
             <GoogleDriveTab onPick={handlePick} />
           </TabsContent>
 
           <TabsContent value="gmail">
-            {console.log('[ChatFilePicker] RENDERING TabsContent: gmail') as any}
             <GmailTab onPick={handlePick} />
           </TabsContent>
         </Tabs>
