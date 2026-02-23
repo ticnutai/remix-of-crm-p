@@ -44,6 +44,7 @@ export interface ClientDetails {
   helka: string | null;
   migrash: string | null;
   taba: string | null;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }

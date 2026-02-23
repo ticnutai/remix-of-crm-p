@@ -64,6 +64,7 @@ import {
 } from "@/components/client-tabs";
 import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
+import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import {
   ArrowRight,
@@ -104,6 +105,7 @@ import {
   ChevronLeft,
   ChevronDown,
   Timer,
+  KeyRound,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -319,6 +321,7 @@ export default function ClientProfile() {
   const [isAddMeetingDialogOpen, setIsAddMeetingDialogOpen] = useState(false);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
+  const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -784,6 +787,22 @@ export default function ClientProfile() {
                 <Pencil className="h-4 w-4 ml-2" />
                 ערוך
               </Button>
+            )}
+            {(isAdmin || isManager) && !client.user_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCreateLoginDialogOpen(true)}
+                className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10"
+              >
+                <KeyRound className="h-4 w-4 ml-2" />
+                צור כניסה
+              </Button>
+            )}
+            {client.user_id && (
+              <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                יש גישה לפורטל
+              </Badge>
             )}
           </div>
         </div>
@@ -2163,6 +2182,16 @@ export default function ClientProfile() {
           onOpenChange={setIsAddTableTabDialogOpen}
           clientId={clientId}
           onSuccess={refetchCustomTabs}
+        />
+
+        {/* Create Client Login Dialog */}
+        <CreateClientLoginDialog
+          open={isCreateLoginDialogOpen}
+          onOpenChange={setIsCreateLoginDialogOpen}
+          clientId={clientId}
+          clientName={client.name}
+          clientEmail={client.email || ""}
+          onSuccess={refresh}
         />
 
         {/* Edit Client Dialog */}
