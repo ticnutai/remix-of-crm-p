@@ -152,7 +152,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.warn("Cloud backups unavailable, using local storage only");
+        // Cloud backups unavailable, using local storage only
         cloudAvailable.current = false;
         return;
       }

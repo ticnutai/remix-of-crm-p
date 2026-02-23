@@ -2,8 +2,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 
-// Debug logging
-const DEBUG = true;
+// Debug logging (disabled in production)
+const DEBUG = import.meta.env.DEV;
 const log = (...args: any[]) => {
   if (DEBUG) {
     console.log("[GoogleCalendar]", ...args);

@@ -91,27 +91,20 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
 
   const fetchRoles = useCallback(async (userId: string) => {
-    console.log("🔐 [useAuth] Fetching roles for user:", userId);
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
 
-    console.log("🔐 [useAuth] Roles response:", { data, error });
-
     if (error) {
-      console.error("❌ Error fetching roles:", error);
+      console.error("Error fetching roles:", error);
       return;
     }
 
     if (data && data.length > 0) {
       const userRoles = data.map((r) => r.role as AppRole);
-      console.log("✅ [useAuth] Setting roles:", userRoles);
       setRoles(userRoles);
     } else {
-      console.warn(
-        "⚠️ [useAuth] No roles found for user, defaulting to employee",
-      );
       // Default to employee if no roles found
       setRoles(["employee"]);
     }
@@ -124,13 +117,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[Auth] onAuthStateChange:", event, session?.user?.email);
+      if (import.meta.env.DEV) console.log("[Auth] onAuthStateChange:", event, session?.user?.email);
 
       // Handle auth errors (like invalid refresh token)
       if (event === "TOKEN_REFRESHED") {
-        console.log("[Auth] Token refreshed successfully");
+        if (import.meta.env.DEV) console.log("[Auth] Token refreshed successfully");
       } else if (event === "SIGNED_OUT") {
-        console.log("[Auth] User signed out or session expired");
+        if (import.meta.env.DEV) console.log("[Auth] User signed out or session expired");
         // Clear any stale data
         localStorage.removeItem("supabase.auth.token");
         setProfile(null);

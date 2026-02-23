@@ -69,7 +69,7 @@ class DataSyncService {
       this.startPeriodicSync();
     }
 
-    console.log("🔄 DataSyncService initialized");
+    // DataSyncService initialized
   }
 
   /**
@@ -107,7 +107,7 @@ class DataSyncService {
    * Handle coming online
    */
   private async onOnline(): Promise<void> {
-    console.log("🌐 Back online - starting sync");
+    // Back online - starting sync
     this.notifyListeners();
     await this.syncAll();
     this.startPeriodicSync();
@@ -117,7 +117,7 @@ class DataSyncService {
    * Handle going offline
    */
   private onOffline(): void {
-    console.log("📴 Gone offline - stopping periodic sync");
+    // Gone offline - stopping periodic sync
     this.stopPeriodicSync();
     this.notifyListeners();
   }
@@ -207,7 +207,7 @@ class DataSyncService {
       this.notifyListeners();
     }
 
-    console.log("🔄 Sync completed:", result);
+    // Sync completed
     return result;
   }
 
@@ -239,7 +239,7 @@ class DataSyncService {
     if (data && data.length > 0) {
       // Store in IndexedDB
       await offlineStorage.setMany(localTable, data as any);
-      console.log(`📥 Synced ${data.length} items to ${localTable}`);
+      // Synced items to local table
     }
 
     // Update sync metadata
@@ -256,7 +256,7 @@ class DataSyncService {
       return;
     }
 
-    console.log(`📤 Pushing ${queue.length} local changes to cloud`);
+    // Pushing local changes to cloud
 
     for (const item of queue) {
       try {

@@ -617,7 +617,7 @@ export class AutoBackupScheduler {
       this.checkAndBackup();
     }, checkInterval);
 
-    console.log("🔄 גיבוי אוטומטי הופעל");
+    // גיבוי אוטומטי הופעל
 
     // בדיקה מיידית
     this.checkAndBackup();
@@ -630,7 +630,7 @@ export class AutoBackupScheduler {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
-      console.log("⏹️ גיבוי אוטומטי נעצר");
+      // גיבוי אוטומטי נעצר
     }
   }
 
@@ -642,7 +642,7 @@ export class AutoBackupScheduler {
     if (this.shouldBackup(now, lastBackup)) {
       // בדיקה אם זה הזמן הנכון ביום
       if (this.isCorrectTime(now)) {
-        console.log("🔄 מתחיל גיבוי אוטומטי...");
+        // מתחיל גיבוי אוטומטי
         await this.performAutoBackup();
       }
     }
@@ -775,7 +775,7 @@ export class AutoBackupScheduler {
         size: JSON.stringify(backup).length,
       });
 
-      console.log("✅ גיבוי אוטומטי הושלם:", results);
+      // גיבוי אוטומטי הושלם
 
       // התראה על הצלחה
       if (this.config.notifyOnSuccess) {
@@ -821,7 +821,7 @@ export class AutoBackupScheduler {
 
     if (error) throw error;
 
-    console.log("☁️ נשמר לענן:", filePath);
+    // נשמר לענן
     return true;
   }
 
@@ -852,7 +852,7 @@ export class AutoBackupScheduler {
       if (error) {
         console.error("⚠️ שגיאה בשמירה לטבלת backups:", error.message);
       } else {
-        console.log("💾 נשמר גם לטבלת backups");
+        // נשמר גם לטבלת backups
       }
     } catch (e) {
       console.error("⚠️ saveToBackupsTable error:", e);
@@ -886,7 +886,7 @@ export class AutoBackupScheduler {
     // שמירה עם מגבלת גודל
     try {
       localStorage.setItem(key, JSON.stringify(backups));
-      console.log("💾 נשמר מקומית");
+      // נשמר מקומית
     } catch (e) {
       // אם נגמר המקום, מנקה ישנים ומנסה שוב
       const cleaned = backups.slice(-5);
@@ -909,8 +909,6 @@ export class AutoBackupScheduler {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-
-    console.log("📥 הורד לקובץ:", `${backupName}.json`);
   }
 
   /**
@@ -948,7 +946,7 @@ export class AutoBackupScheduler {
             .from("client-files")
             .remove([`backups/${user.id}/${file.name}`]);
         }
-        console.log(`🗑️ נמחקו ${toDelete.length} גיבויים ישנים מהענן`);
+        // נמחקו גיבויים ישנים מהענן
       }
     } catch (e) {
       console.error("שגיאה בניקוי גיבויים מהענן:", e);
@@ -1023,7 +1021,7 @@ export class AutoBackupScheduler {
    * הפעלת גיבוי ידני מיידי
    */
   async triggerManualBackup(): Promise<any> {
-    console.log("🔄 מתחיל גיבוי ידני...");
+    // מתחיל גיבוי ידני
     return await this.performAutoBackup();
   }
 
@@ -1047,7 +1045,7 @@ export class AutoBackupScheduler {
           );
         }
       } catch (e) {
-        console.log(`[AutoBackup] ${type}: ${message}`);
+        // AutoBackup log
       }
     }
   }

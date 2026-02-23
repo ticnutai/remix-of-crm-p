@@ -46,7 +46,7 @@ export function createOfflineQueryFn<T extends { id: string }>(
         console.warn(`⚠️ Supabase fetch failed for ${table}, trying IndexedDB:`, error);
         const cached = await offlineStorage.getAll<T>(table as StoreName);
         if (cached.length > 0) {
-          console.log(`📦 Serving ${cached.length} ${table} from IndexedDB cache`);
+          // Serving from IndexedDB cache
           return cached;
         }
         throw error; // No cache available either
@@ -54,7 +54,7 @@ export function createOfflineQueryFn<T extends { id: string }>(
     } else {
       // Offline — read from IndexedDB
       const cached = await offlineStorage.getAll<T>(table as StoreName);
-      console.log(`📴 Offline: serving ${cached.length} ${table} from IndexedDB`);
+      // Offline: serving from IndexedDB
       return cached;
     }
   };
@@ -107,7 +107,7 @@ export function createOfflineMutation<T>(
       }
     } else {
       // Offline — queue the change
-      console.log(`📴 Offline: queueing ${operation} on ${table}`);
+      // Offline: queueing operation
       const queueData = typeof data === 'object' && data !== null ? data : { id: data };
       await dataSyncService.queueChange(table, operation, queueData);
       return data;

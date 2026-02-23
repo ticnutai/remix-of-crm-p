@@ -175,7 +175,6 @@ export function CloudSyncProvider({ children }: { children: React.ReactNode }) {
 
     if (config.enabled) {
       scheduler.start();
-      console.log("🔄 גיבוי אוטומטי הופעל");
     }
 
     return () => {

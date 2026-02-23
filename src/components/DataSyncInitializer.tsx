@@ -19,7 +19,6 @@ export function DataSyncInitializer() {
 
     const initSync = async () => {
       try {
-        console.log('🔄 Initializing data sync service...');
         await dataSyncService.init();
         
         // Check if we have cached data
@@ -27,20 +26,15 @@ export function DataSyncInitializer() {
         
         if (!hasCached && navigator.onLine) {
           // First time - do a full sync to cache all data locally
-          console.log('📥 First sync - downloading all data to local storage...');
           await dataSyncService.syncAll();
-          console.log('✅ Initial sync completed');
         } else if (navigator.onLine) {
           // Already have data - just sync updates
-          console.log('🔄 Syncing updates...');
           await dataSyncService.syncAll();
-        } else {
-          console.log('📴 Offline - using cached data');
         }
         
         initializedRef.current = true;
       } catch (error) {
-        console.error('❌ Failed to initialize data sync:', error);
+        console.error('Failed to initialize data sync:', error);
       }
     };
 
@@ -51,7 +45,7 @@ export function DataSyncInitializer() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'BACKGROUND_SYNC_TRIGGER') {
-        console.log('🔄 Background sync triggered, syncing now...');
+        // Background sync triggered
         dataSyncService.syncAll();
       }
     };

@@ -213,10 +213,10 @@ export function useCloudPreferences() {
       if (error) {
         console.error("Error saving preferences:", error);
       } else {
-        console.log("✅ Preferences synced to cloud");
+        // Preferences synced to cloud
       }
     } catch (error) {
-      console.error("❌ Failed to sync preferences to cloud:", error);
+      console.error("Failed to sync preferences to cloud:", error);
     } finally {
       syncInProgress.current = false;
     }
@@ -245,7 +245,7 @@ export function useCloudPreferences() {
           localStorage.setItem("ten-arch-theme", data.theme_preset);
         }
 
-        console.log("✅ Preferences loaded from cloud");
+        // Preferences loaded from cloud
         return true;
       }
       return false;

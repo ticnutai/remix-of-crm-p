@@ -73,7 +73,7 @@ class OfflineStorageService {
       request.onsuccess = () => {
         this.db = request.result;
         this.isInitialized = true;
-        console.log('✅ IndexedDB initialized successfully');
+        // IndexedDB initialized successfully
         resolve();
       };
 
@@ -103,7 +103,7 @@ class OfflineStorageService {
           }
         });
 
-        console.log('📦 IndexedDB schema created/updated');
+        // IndexedDB schema created/updated
       };
     });
 
