@@ -64,6 +64,7 @@ import { SystemHealthCheck } from "./SystemHealthCheck";
 const DEV_MODE_KEY = "dev-tools-enabled";
 const DEV_TOOLS_CONFIG_KEY = "dev-tools-config";
 const DEV_BUTTONS_CONFIG_KEY = "dev-buttons-config";
+const DEV_BUTTONS_GROUPED_KEY = "dev-buttons-grouped";
 
 interface DevToolConfig {
   console: boolean;
@@ -81,6 +82,7 @@ interface DevButtonsConfig {
   database: boolean;
   clear: boolean;
   refresh: boolean;
+  tabsDebug: boolean;
 }
 
 const defaultConfig: DevToolConfig = {
@@ -99,6 +101,7 @@ const defaultFloatingConfig: DevButtonsConfig = {
   database: true,
   clear: true,
   refresh: true,
+  tabsDebug: true,
 };
 
 // Gold gradient styles
@@ -132,6 +135,10 @@ export function DeveloperSettings() {
     } catch {
       return defaultFloatingConfig;
     }
+  });
+
+  const [isGrouped, setIsGrouped] = useState(() => {
+    return localStorage.getItem(DEV_BUTTONS_GROUPED_KEY) === "true";
   });
 
   // Save config changes
@@ -303,6 +310,7 @@ export function DeveloperSettings() {
     database: "מסד נתונים",
     clear: "נקה Cache",
     refresh: "רענן דף",
+    tabsDebug: "דיבאג טאבים",
   };
 
   const allEnabled = Object.values(toolsConfig).every((v) => v);
@@ -503,7 +511,7 @@ export function DeveloperSettings() {
                   variant="outline"
                   className="border-yellow-500/50 text-yellow-600"
                 >
-                  {floatingEnabledCount}/6 פעילים
+                  {floatingEnabledCount}/{Object.keys(floatingConfig).length} פעילים
                 </Badge>
               </div>
             </div>
@@ -512,6 +520,71 @@ export function DeveloperSettings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Grouped/Individual Mode Toggle */}
+            <div
+              className={cn(
+                "flex items-center justify-between p-4 rounded-xl",
+                goldBg,
+                "border-2 border-yellow-500/30",
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <GripVertical className={cn("h-5 w-5", goldIcon)} />
+                <div>
+                  <h4 className="font-medium text-sm">מצב תצוגה</h4>
+                  <p className="text-xs text-muted-foreground">
+                    {isGrouped
+                      ? "כל הכפתורים מקובצים יחד בשורה אחת"
+                      : "כל כפתור בנפרד - ניתן להזיז כל אחד"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={isGrouped ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setIsGrouped(true);
+                    localStorage.setItem(DEV_BUTTONS_GROUPED_KEY, "true");
+                    window.dispatchEvent(
+                      new CustomEvent("devButtonsGroupedChanged", {
+                        detail: { grouped: true },
+                      }),
+                    );
+                    toast.success("כפתורים מקובצים יחד");
+                  }}
+                  className={cn(
+                    isGrouped
+                      ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                      : "border-yellow-500/50 hover:bg-yellow-500/10",
+                  )}
+                >
+                  מקובצים
+                </Button>
+                <Button
+                  variant={!isGrouped ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setIsGrouped(false);
+                    localStorage.setItem(DEV_BUTTONS_GROUPED_KEY, "false");
+                    window.dispatchEvent(
+                      new CustomEvent("devButtonsGroupedChanged", {
+                        detail: { grouped: false },
+                      }),
+                    );
+                    toast.success("כפתורים בנפרד");
+                  }}
+                  className={cn(
+                    !isGrouped
+                      ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                      : "border-yellow-500/50 hover:bg-yellow-500/10",
+                  )}
+                >
+                  בנפרד
+                </Button>
+              </div>
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Console Button */}
               <ToolCard
@@ -576,6 +649,17 @@ export function DeveloperSettings() {
                 enabled={floatingConfig.refresh}
                 onToggle={(enabled) =>
                   handleFloatingButtonToggle("refresh", enabled)
+                }
+              />
+
+              {/* Tabs Debug Button */}
+              <ToolCard
+                icon={Bug}
+                title="🐛 דיבאג טאבים"
+                description="דיבאג מפורט לכל הטאבים במערכת"
+                enabled={floatingConfig.tabsDebug}
+                onToggle={(enabled) =>
+                  handleFloatingButtonToggle("tabsDebug", enabled)
                 }
               />
             </div>

@@ -12,7 +12,6 @@ import { ThemeProvider } from "@/hooks/useTheme";
 import { CloudSyncProvider } from "@/components/CloudSyncProvider";
 import { DataSyncInitializer } from "@/components/DataSyncInitializer";
 import { UnifiedDevTools } from "@/components/dev-tools/UnifiedDevTools";
-import { TabsDebugToggle } from "@/components/dev-tools/TabsDebugToggle";
 import { FullPageLoader } from "@/components/ui/loading";
 import {
   PWAInstallBanner,
@@ -216,7 +215,6 @@ const App = () => {
                         </Suspense>
 
                         <UnifiedDevTools />
-                        <TabsDebugToggle />
 
                         {/* Auto Preload - Background data prefetching */}
                         <AutoPreload />

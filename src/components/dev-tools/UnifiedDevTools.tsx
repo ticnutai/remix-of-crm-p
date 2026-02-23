@@ -1,5 +1,5 @@
 // Unified Dev Tools - כלי פיתוח מאוחדים
-// כל כפתור צף בנפרד, ניתן להזזה עצמאית, עיצוב לבן עם זהב
+// כל כפתור צף בנפרד או מקובצים יחד, ניתן להזזה עצמאית, עיצוב לבן עם זהב
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,20 +16,23 @@ import {
   AlertTriangle,
   Info,
   Gauge,
-  GitPullRequest,
-  Upload,
   RefreshCw,
   Eye,
-  Settings,
-  Move,
+  BugOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  isTabsDebugEnabled,
+  setTabsDebugEnabled,
+  onTabsDebugChange,
+} from '@/lib/tabs-debug-state';
 
 const DEV_MODE_KEY = 'dev-tools-enabled';
 const DEV_BUTTONS_POSITIONS_KEY = 'dev-buttons-positions';
 const DEV_BUTTONS_CONFIG_KEY = 'dev-buttons-config';
 const DEV_TOOLS_MINIMIZED_KEY = 'dev-tools-minimized';
+const DEV_BUTTONS_GROUPED_KEY = 'dev-buttons-grouped';
 
 interface Position {
   x: number;
@@ -41,12 +44,6 @@ interface LogEntry {
   type: 'log' | 'warn' | 'error' | 'info';
   message: string;
   timestamp: Date;
-}
-
-interface ButtonConfig {
-  id: string;
-  enabled: boolean;
-  position: Position;
 }
 
 interface DevButtonProps {
@@ -79,19 +76,14 @@ function DraggableDevButton({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      
-      // Keep within viewport
       const maxX = window.innerWidth - 60;
       const maxY = window.innerHeight - 60;
-      
       const boundedPos = {
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
       };
-      
       setPosition(boundedPos);
     };
 
@@ -115,8 +107,6 @@ function DraggableDevButton({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!buttonRef.current) return;
-    
-    // Right click or ctrl+click for drag
     if (e.button === 2 || e.ctrlKey) {
       e.preventDefault();
       const rect = buttonRef.current.getBoundingClientRect();
@@ -128,7 +118,7 @@ function DraggableDevButton({
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = () => {
     if (!isDragging) {
       onClick();
     }
@@ -162,6 +152,94 @@ function DraggableDevButton({
   );
 }
 
+// Grouped buttons bar - כל הכפתורים ביחד בשורה אחת
+function GroupedDevBar({
+  buttons,
+  position,
+  onPositionChange,
+}: {
+  buttons: Array<{
+    id: string;
+    icon: React.ReactNode;
+    label: string;
+    onClick: () => void;
+    isActive?: boolean;
+  }>;
+  position: Position;
+  onPositionChange: (pos: Position) => void;
+}) {
+  const [currentPosition, setCurrentPosition] = useState<Position>(position);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      setCurrentPosition({
+        x: Math.max(0, e.clientX - dragOffset.x),
+        y: Math.max(0, e.clientY - dragOffset.y),
+      });
+    };
+    const handleMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        onPositionChange(currentPosition);
+      }
+    };
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset, currentPosition, onPositionChange]);
+
+  return (
+    <div
+      ref={barRef}
+      className={cn(
+        'fixed z-[99999] flex gap-1 p-1.5 rounded-full',
+        'bg-white/95 backdrop-blur-sm border-2 border-[#D4A843]/50',
+        'shadow-lg shadow-[#D4A843]/20',
+        isDragging && 'cursor-grabbing shadow-xl'
+      )}
+      style={{
+        left: `${currentPosition.x}px`,
+        top: `${currentPosition.y}px`,
+      }}
+      onMouseDown={(e) => {
+        if (e.target === barRef.current || e.ctrlKey) {
+          e.preventDefault();
+          const rect = barRef.current!.getBoundingClientRect();
+          setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+          setIsDragging(true);
+        }
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {buttons.map((btn) => (
+        <button
+          key={btn.id}
+          onClick={btn.onClick}
+          title={btn.label}
+          className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center',
+            'transition-all duration-200 hover:scale-110 active:scale-95',
+            btn.isActive
+              ? 'bg-[#D4A843] text-white shadow-[0_0_10px_rgba(212,168,67,0.5)]'
+              : 'text-[#D4A843] hover:bg-[#D4A843]/10'
+          )}
+        >
+          {btn.icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // חלון קונסול צף
 function ConsoleWindow({ 
   isOpen, 
@@ -178,7 +256,6 @@ function ConsoleWindow({
   const [position, setPosition] = useState<Position>({ x: 20, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -188,9 +265,7 @@ function ConsoleWindow({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape' && isOpen) onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -204,14 +279,11 @@ function ConsoleWindow({
         y: Math.max(0, Math.min(e.clientY - dragOffset.y, window.innerHeight - 400)),
       });
     };
-
     const handleMouseUp = () => setIsDragging(false);
-
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -231,9 +303,7 @@ function ConsoleWindow({
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('he-IL', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
     }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
   };
 
@@ -242,9 +312,7 @@ function ConsoleWindow({
       className="fixed z-[100000] bg-white border-2 border-[#D4A843] shadow-2xl w-[500px] h-[400px] flex flex-col"
       style={{ left: `${position.x}px`, top: `${position.y}px` }}
     >
-      {/* Header */}
       <div
-        ref={headerRef}
         className={cn(
           'flex items-center justify-between p-3 border-b border-[#D4A843]/30',
           'bg-gradient-to-r from-white to-gray-50 cursor-grab',
@@ -276,8 +344,6 @@ function ConsoleWindow({
           </Button>
         </div>
       </div>
-
-      {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-1 bg-gray-50 font-mono text-sm">
         {logs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
@@ -307,8 +373,6 @@ function ConsoleWindow({
           ))
         )}
       </div>
-
-      {/* Footer */}
       <div className="p-2 border-t border-[#D4A843]/30 bg-white text-center">
         <p className="text-xs text-gray-500">
           <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-[10px]">ESC</kbd> לסגירה
@@ -323,21 +387,13 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   const [position, setPosition] = useState<Position>({ x: 100, y: 100 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [metrics, setMetrics] = useState({
-    fps: 0,
-    memory: 0,
-    loadTime: 0,
-    domNodes: 0,
-  });
+  const [metrics, setMetrics] = useState({ fps: 0, memory: 0, loadTime: 0, domNodes: 0 });
 
   useEffect(() => {
     if (!isOpen) return;
-
     const updateMetrics = () => {
-      // FPS calculation
       let lastTime = performance.now();
       let frames = 0;
-      
       const countFrame = () => {
         frames++;
         const now = performance.now();
@@ -349,24 +405,16 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         if (isOpen) requestAnimationFrame(countFrame);
       };
       requestAnimationFrame(countFrame);
-
-      // Memory (if available)
       if ((performance as unknown as { memory?: { usedJSHeapSize: number } }).memory) {
         const memory = (performance as unknown as { memory: { usedJSHeapSize: number } }).memory;
-        setMetrics(prev => ({ 
-          ...prev, 
-          memory: Math.round(memory.usedJSHeapSize / 1024 / 1024) 
-        }));
+        setMetrics(prev => ({ ...prev, memory: Math.round(memory.usedJSHeapSize / 1024 / 1024) }));
       }
-
-      // DOM nodes
       setMetrics(prev => ({ 
         ...prev, 
         domNodes: document.querySelectorAll('*').length,
         loadTime: Math.round(performance.now())
       }));
     };
-
     updateMetrics();
     const interval = setInterval(updateMetrics, 2000);
     return () => clearInterval(interval);
@@ -383,13 +431,9 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      setPosition({
-        x: Math.max(0, e.clientX - dragOffset.x),
-        y: Math.max(0, e.clientY - dragOffset.y),
-      });
+      setPosition({ x: Math.max(0, e.clientX - dragOffset.x), y: Math.max(0, e.clientY - dragOffset.y) });
     };
     const handleMouseUp = () => setIsDragging(false);
-
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
@@ -425,9 +469,7 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
       <div className="p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">FPS</span>
-          <Badge className={cn(
-            metrics.fps >= 55 ? 'bg-green-500' : metrics.fps >= 30 ? 'bg-yellow-500' : 'bg-red-500'
-          )}>{metrics.fps}</Badge>
+          <Badge className={cn(metrics.fps >= 55 ? 'bg-green-500' : metrics.fps >= 30 ? 'bg-yellow-500' : 'bg-red-500')}>{metrics.fps}</Badge>
         </div>
         <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">זיכרון</span>
@@ -449,10 +491,7 @@ function PerformanceWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 // חלון Inspector צף
 function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [selectedElement, setSelectedElement] = useState<{
-    tagName: string;
-    id: string;
-    className: string;
-    dimensions: string;
+    tagName: string; id: string; className: string; dimensions: string;
   } | null>(null);
   const highlightRef = useRef<HTMLDivElement | null>(null);
 
@@ -468,22 +507,15 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
-
-      // Create or update highlight
       if (!highlightRef.current) {
         highlightRef.current = document.createElement('div');
         highlightRef.current.setAttribute('data-dev-tool', 'true');
         highlightRef.current.style.cssText = `
-          position: fixed;
-          pointer-events: none;
-          border: 2px solid #D4A843;
-          background: rgba(212, 168, 67, 0.1);
-          z-index: 99998;
-          transition: all 0.1s ease;
+          position: fixed; pointer-events: none; border: 2px solid #D4A843;
+          background: rgba(212, 168, 67, 0.1); z-index: 99998; transition: all 0.1s ease;
         `;
         document.body.appendChild(highlightRef.current);
       }
-
       const rect = target.getBoundingClientRect();
       highlightRef.current.style.left = `${rect.left}px`;
       highlightRef.current.style.top = `${rect.top}px`;
@@ -494,10 +526,8 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target || target.closest('[data-dev-tool]')) return;
-      
       e.preventDefault();
       e.stopPropagation();
-
       const rect = target.getBoundingClientRect();
       setSelectedElement({
         tagName: target.tagName.toLowerCase(),
@@ -532,7 +562,6 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
 
   return (
     <>
-      {/* Indicator */}
       <div 
         data-dev-tool="true"
         className="fixed top-4 left-1/2 -translate-x-1/2 z-[100001] bg-[#1e3a5f] text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
@@ -543,8 +572,6 @@ function InspectorWindow({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
           <X className="h-4 w-4" />
         </Button>
       </div>
-
-      {/* Info Card */}
       {selectedElement && (
         <Card data-dev-tool="true" className="fixed bottom-4 right-4 z-[100001] bg-white border-2 border-[#D4A843] shadow-xl p-4 w-[280px]">
           <div className="flex justify-between items-center mb-3">
@@ -583,10 +610,15 @@ export function UnifiedDevTools() {
     return localStorage.getItem(DEV_TOOLS_MINIMIZED_KEY) === 'true';
   });
 
+  const [isGrouped, setIsGrouped] = useState(() => {
+    return localStorage.getItem(DEV_BUTTONS_GROUPED_KEY) === 'true';
+  });
+
   // States for windows
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [tabsDebugActive, setTabsDebugActive] = useState(isTabsDebugEnabled);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   
   // Button positions
@@ -600,6 +632,7 @@ export function UnifiedDevTools() {
         database: { x: 20, y: 280 },
         clear: { x: 20, y: 340 },
         refresh: { x: 20, y: 400 },
+        tabsDebug: { x: 20, y: 460 },
       };
     } catch {
       return {
@@ -609,7 +642,17 @@ export function UnifiedDevTools() {
         database: { x: 20, y: 280 },
         clear: { x: 20, y: 340 },
         refresh: { x: 20, y: 400 },
+        tabsDebug: { x: 20, y: 460 },
       };
+    }
+  });
+
+  const [groupedPosition, setGroupedPosition] = useState<Position>(() => {
+    try {
+      const saved = localStorage.getItem('dev-buttons-grouped-position');
+      return saved ? JSON.parse(saved) : { x: 20, y: 100 };
+    } catch {
+      return { x: 20, y: 100 };
     }
   });
 
@@ -617,27 +660,29 @@ export function UnifiedDevTools() {
   const [buttonConfig, setButtonConfig] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem(DEV_BUTTONS_CONFIG_KEY);
-      return saved ? JSON.parse(saved) : {
+      return saved ? { tabsDebug: true, ...JSON.parse(saved) } : {
         console: true,
         inspector: true,
         performance: true,
         database: true,
         clear: true,
         refresh: true,
+        tabsDebug: true,
       };
     } catch {
       return {
-        console: true,
-        inspector: true,
-        performance: true,
-        database: true,
-        clear: true,
-        refresh: true,
+        console: true, inspector: true, performance: true,
+        database: true, clear: true, refresh: true, tabsDebug: true,
       };
     }
   });
 
   const originalConsole = useRef<Record<string, (...args: unknown[]) => void>>({});
+
+  // Listen for tabs debug changes
+  useEffect(() => {
+    return onTabsDebugChange((v) => setTabsDebugActive(v));
+  }, []);
 
   // Listen for dev mode changes
   useEffect(() => {
@@ -646,6 +691,24 @@ export function UnifiedDevTools() {
     };
     window.addEventListener('devModeChanged', handleDevModeChange as EventListener);
     return () => window.removeEventListener('devModeChanged', handleDevModeChange as EventListener);
+  }, []);
+
+  // Listen for button config changes from settings
+  useEffect(() => {
+    const handleConfigChange = (e: CustomEvent) => {
+      setButtonConfig(e.detail);
+    };
+    window.addEventListener('devButtonsConfigChanged', handleConfigChange as EventListener);
+    return () => window.removeEventListener('devButtonsConfigChanged', handleConfigChange as EventListener);
+  }, []);
+
+  // Listen for grouped mode changes
+  useEffect(() => {
+    const handleGroupedChange = (e: CustomEvent) => {
+      setIsGrouped(e.detail.grouped);
+    };
+    window.addEventListener('devButtonsGroupedChanged', handleGroupedChange as EventListener);
+    return () => window.removeEventListener('devButtonsGroupedChanged', handleGroupedChange as EventListener);
   }, []);
 
   // Save positions
@@ -657,15 +720,17 @@ export function UnifiedDevTools() {
     });
   }, []);
 
+  const handleGroupedPositionChange = useCallback((pos: Position) => {
+    setGroupedPosition(pos);
+    localStorage.setItem('dev-buttons-grouped-position', JSON.stringify(pos));
+  }, []);
+
   // Intercept console when console window is open
   useEffect(() => {
     if (!consoleOpen) return;
 
     originalConsole.current = {
-      log: console.log,
-      warn: console.warn,
-      error: console.error,
-      info: console.info,
+      log: console.log, warn: console.warn, error: console.error, info: console.info,
     };
 
     const addLog = (type: 'log' | 'warn' | 'error' | 'info', args: unknown[]) => {
@@ -679,28 +744,14 @@ export function UnifiedDevTools() {
 
       setLogs(prev => [...prev.slice(-500), {
         id: `${Date.now()}-${Math.random()}`,
-        type,
-        message,
-        timestamp: new Date(),
+        type, message, timestamp: new Date(),
       }]);
     };
 
-    console.log = (...args: unknown[]) => {
-      originalConsole.current.log?.(...args);
-      addLog('log', args);
-    };
-    console.warn = (...args: unknown[]) => {
-      originalConsole.current.warn?.(...args);
-      addLog('warn', args);
-    };
-    console.error = (...args: unknown[]) => {
-      originalConsole.current.error?.(...args);
-      addLog('error', args);
-    };
-    console.info = (...args: unknown[]) => {
-      originalConsole.current.info?.(...args);
-      addLog('info', args);
-    };
+    console.log = (...args: unknown[]) => { originalConsole.current.log?.(...args); addLog('log', args); };
+    console.warn = (...args: unknown[]) => { originalConsole.current.warn?.(...args); addLog('warn', args); };
+    console.error = (...args: unknown[]) => { originalConsole.current.error?.(...args); addLog('error', args); };
+    console.info = (...args: unknown[]) => { originalConsole.current.info?.(...args); addLog('info', args); };
 
     return () => {
       if (originalConsole.current.log) {
@@ -728,6 +779,24 @@ export function UnifiedDevTools() {
     toast.info(newMinimized ? 'כלי פיתוח מוזערו' : 'כלי פיתוח הורחבו');
   };
 
+  const handleTabsDebugToggle = () => {
+    const next = !tabsDebugActive;
+    setTabsDebugEnabled(next);
+    if (next) {
+      console.log(
+        '%c🐛 TABS DEBUG: ON',
+        'background: #4caf50; color: white; font-size: 14px; padding: 6px 12px; border-radius: 4px;'
+      );
+      toast.success('דיבאג טאבים הופעל');
+    } else {
+      console.log(
+        '%c🐛 TABS DEBUG: OFF',
+        'background: #f44336; color: white; font-size: 14px; padding: 6px 12px; border-radius: 4px;'
+      );
+      toast.info('דיבאג טאבים כבוי');
+    }
+  };
+
   const buttons = [
     {
       id: 'console',
@@ -739,7 +808,7 @@ export function UnifiedDevTools() {
     },
     {
       id: 'inspector',
-      icon: <Bug className="h-5 w-5" />,
+      icon: <Eye className="h-5 w-5" />,
       label: 'בודק אלמנטים',
       color: '#D4A843',
       onClick: () => setInspectorOpen(!inspectorOpen),
@@ -758,9 +827,7 @@ export function UnifiedDevTools() {
       icon: <Database className="h-5 w-5" />,
       label: 'מסד נתונים',
       color: '#D4A843',
-      onClick: () => {
-        toast.info('מסד נתונים - בפיתוח');
-      },
+      onClick: () => { toast.info('מסד נתונים - בפיתוח'); },
       isActive: false,
     },
     {
@@ -772,7 +839,6 @@ export function UnifiedDevTools() {
         localStorage.clear();
         sessionStorage.clear();
         toast.success('Cache נוקה');
-        // Restore dev mode
         localStorage.setItem(DEV_MODE_KEY, 'true');
       },
       isActive: false,
@@ -785,7 +851,17 @@ export function UnifiedDevTools() {
       onClick: () => window.location.reload(),
       isActive: false,
     },
+    {
+      id: 'tabsDebug',
+      icon: tabsDebugActive ? <Bug className="h-5 w-5" /> : <BugOff className="h-5 w-5" />,
+      label: 'דיבאג טאבים',
+      color: '#D4A843',
+      onClick: handleTabsDebugToggle,
+      isActive: tabsDebugActive,
+    },
   ];
+
+  const visibleButtons = buttons.filter(btn => buttonConfig[btn.id] !== false);
 
   return (
     <>
@@ -814,20 +890,30 @@ export function UnifiedDevTools() {
         </Button>
       </div>
 
-      {/* Floating Buttons - Hidden when minimized */}
-      {!isMinimized && buttons.filter(btn => buttonConfig[btn.id] !== false).map(btn => (
-        <DraggableDevButton
-          key={btn.id}
-          id={btn.id}
-          icon={btn.icon}
-          label={btn.label}
-          color={btn.color}
-          initialPosition={positions[btn.id] || { x: 20, y: 100 }}
-          onClick={btn.onClick}
-          isActive={btn.isActive}
-          onPositionChange={handlePositionChange}
-        />
-      ))}
+      {/* Floating Buttons - Grouped or Individual */}
+      {!isMinimized && (
+        isGrouped ? (
+          <GroupedDevBar
+            buttons={visibleButtons}
+            position={groupedPosition}
+            onPositionChange={handleGroupedPositionChange}
+          />
+        ) : (
+          visibleButtons.map(btn => (
+            <DraggableDevButton
+              key={btn.id}
+              id={btn.id}
+              icon={btn.icon}
+              label={btn.label}
+              color={btn.color}
+              initialPosition={positions[btn.id] || { x: 20, y: 100 }}
+              onClick={btn.onClick}
+              isActive={btn.isActive}
+              onPositionChange={handlePositionChange}
+            />
+          ))
+        )
+      )}
 
       {/* Windows */}
       <ConsoleWindow 
