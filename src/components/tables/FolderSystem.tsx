@@ -142,7 +142,7 @@ export function FolderSystem({ onSelectFolder, currentFolder }: FolderSystemProp
           navigate('/finance');
           break;
         case 'reminders':
-          navigate('/reminders');
+          navigate('/tasks-meetings?tab=reminders');
           break;
       }
     }

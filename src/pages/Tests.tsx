@@ -358,7 +358,7 @@ export function TestsContent() {
     },
     {
       name: "תזכורות",
-      url: "/reminders",
+      url: "/tasks-meetings?tab=reminders",
       tests: [
         {
           name: "בדיקת ניתוב",
