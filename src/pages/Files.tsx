@@ -284,7 +284,7 @@ export default function Files() {
   // State
   const [activeTab, setActiveTab] = useState<
     "drive" | "local" | "linked" | "stats"
-  >("drive");
+  >(isConnected ? "drive" : "local");
   const [hasLoaded, setHasLoaded] = useState(false);
   const [currentFolder, setCurrentFolder] = useState<
     { id: string; name: string }[]
@@ -1017,10 +1017,12 @@ export default function Files() {
 
   // displayFiles and filterFiles defined earlier (before selectAllDriveFiles)
 
-  // Stats
-  const totalSize = driveFiles.reduce((sum, f) => sum + (f.size || 0), 0);
-  const totalFiles = driveFiles.length;
-  const totalFolders = driveFolders.length;
+  // Stats — combine drive + local
+  const driveTotalSize = driveFiles.reduce((sum, f) => sum + (f.size || 0), 0);
+  const localTotalSize = advancedFiles.stats?.totalSize || 0;
+  const totalSize = driveTotalSize + localTotalSize;
+  const totalFiles = driveFiles.length + (advancedFiles.stats?.totalFiles || 0);
+  const totalFolders = driveFolders.length + (advancedFiles.folders?.length || 0);
   const starredCount = [...starredFiles].filter((id) =>
     driveFiles.some((f) => f.id === id),
   ).length;
@@ -1065,7 +1067,7 @@ export default function Files() {
           </div>
 
           <div className="flex gap-2 w-full md:w-auto flex-wrap">
-            {hasLoaded ? (
+            {hasLoaded && (
               <>
                 <Button
                   variant="outline"
@@ -1106,30 +1108,41 @@ export default function Files() {
                   </label>
                 </Button>
               </>
-            ) : (
-              <Button
-                onClick={handleConnect}
-                disabled={isDriveLoading}
-                className="w-full md:w-auto bg-gradient-to-r from-blue-500 to-blue-600"
-              >
-                {isDriveLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    מתחבר...
-                  </>
-                ) : (
-                  <>
-                    <HardDrive className="h-4 w-4 ml-2" />
-                    התחבר ל-Google Drive
-                  </>
-                )}
-              </Button>
+            )}
+            {!hasLoaded && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowLocalUploadDialog(true)}
+                  className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-white border-0"
+                >
+                  <Upload className="h-4 w-4 ml-2" />
+                  העלאת קובץ מקומי
+                </Button>
+                <Button
+                  onClick={handleConnect}
+                  disabled={isDriveLoading}
+                  variant="outline"
+                >
+                  {isDriveLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                      מתחבר...
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="h-4 w-4 ml-2" />
+                      חבר Google Drive
+                    </>
+                  )}
+                </Button>
+              </>
             )}
           </div>
         </div>
 
         {/* Stats Bar */}
-        {hasLoaded && (
+        {(hasLoaded || advancedFiles.files.length > 0 || advancedFiles.folders.length > 0) && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <Card className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-3">
@@ -1194,33 +1207,9 @@ export default function Files() {
           </div>
         )}
 
-        {/* Not Connected State */}
-        {!hasLoaded && !isDriveLoading && (
-          <Card className="text-center py-16 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-            <CardContent>
-              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                <HardDrive className="h-10 w-10 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h2 className="text-2xl font-bold mb-3">התחבר ל-Google Drive</h2>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                חבר את חשבון Google Drive שלך כדי לנהל, לשתף ולסנכרן את כל
-                הקבצים שלך במקום אחד
-              </p>
-              <Button
-                onClick={handleConnect}
-                size="lg"
-                className="bg-gradient-to-r from-blue-500 to-blue-600"
-              >
-                <HardDrive className="h-5 w-5 ml-2" />
-                התחבר עכשיו
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Loading State */}
+        {/* Loading State (only when actively connecting to Drive) */}
         {isDriveLoading && !hasLoaded && (
-          <Card>
+          <Card className="mb-4">
             <CardContent className="py-8">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
@@ -1230,8 +1219,8 @@ export default function Files() {
           </Card>
         )}
 
-        {/* Main Content */}
-        {hasLoaded && (
+        {/* Main Content — always visible */}
+        {
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as any)}
@@ -1241,6 +1230,9 @@ export default function Files() {
               <TabsTrigger value="drive" className="gap-2">
                 <Cloud className="h-4 w-4" />
                 Google Drive
+                {!isConnected && (
+                  <CloudOff className="h-3 w-3 text-muted-foreground" />
+                )}
               </TabsTrigger>
               <TabsTrigger value="local" className="gap-2">
                 <HardDrive className="h-4 w-4" />
@@ -1268,6 +1260,41 @@ export default function Files() {
 
             {/* Drive Tab */}
             <TabsContent value="drive">
+              {!hasLoaded ? (
+                <Card className="text-center py-16 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+                  <CardContent>
+                    <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                      <Cloud className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-3">התחבר ל-Google Drive</h2>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      חבר את חשבון Google Drive שלך כדי לנהל, לשתף ולסנכרן את כל
+                      הקבצים שלך בענן
+                    </p>
+                    <Button
+                      onClick={handleConnect}
+                      disabled={isDriveLoading}
+                      size="lg"
+                      className="bg-gradient-to-r from-blue-500 to-blue-600"
+                    >
+                      {isDriveLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 ml-2 animate-spin" />
+                          מתחבר...
+                        </>
+                      ) : (
+                        <>
+                          <HardDrive className="h-5 w-5 ml-2" />
+                          התחבר עכשיו
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      בינתיים, ניתן להשתמש בלשונית &quot;קבצים מקומיים&quot; לניהול קבצים מה-DB
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
               <Card
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -2048,6 +2075,7 @@ export default function Files() {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </TabsContent>
 
             {/* Local Files Tab (Supabase Storage) */}
@@ -2905,7 +2933,7 @@ export default function Files() {
               </div>
             </TabsContent>
           </Tabs>
-        )}
+        }
 
         {/* New Folder Dialog */}
         <Dialog
