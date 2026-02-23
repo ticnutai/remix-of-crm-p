@@ -85,6 +85,9 @@
     --table-border: 222 30% 88%;
     --table-border-gold: 45 70% 55%;
 
+    /* Navy - used in Calendar/toggles */
+    --navy: 222 47% 20%;
+
     /* Success/Warning/Info */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
@@ -135,6 +138,9 @@
 
     --input: 222 47% 20%;
     --ring: 45 70% 50%;
+
+    /* Navy - used in Calendar/toggles */
+    --navy: 222 47% 30%;
 
     /* Table dark mode */
     --table-header: 222 47% 18%;

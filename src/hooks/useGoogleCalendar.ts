@@ -146,7 +146,11 @@ const loadGisScript = (): Promise<void> => {
 };
 
 export function useGoogleCalendar() {
-  const [isConnected, setIsConnected] = useState(false);
+  // Initialize connected state from localStorage to avoid "מתחבר..." flash
+  const [isConnected, setIsConnected] = useState(() => {
+    const savedToken = loadTokenFromStorage();
+    return savedToken !== null;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [events, setEvents] = useState<GoogleCalendarEvent[]>([]);
   const [config, setConfig] = useState<GoogleCalendarConfig | null>(null);
