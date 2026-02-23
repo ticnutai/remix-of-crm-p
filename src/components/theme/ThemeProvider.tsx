@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isTableAvailable, markTableUnavailable } from '@/lib/supabaseTableCheck';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -50,22 +51,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   
   // Load user preference from DB
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !isTableAvailable('user_preferences')) return;
     
     const loadPreference = async () => {
       try {
-        const { data } = await (supabase as any)
+        const { data, error } = await (supabase as any)
           .from('user_preferences')
-          .select('theme')
+          .select('theme_preset')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
-        if (data?.theme) {
-          setThemeState(data.theme);
-          localStorage.setItem('theme', data.theme);
+        if (error) {
+          markTableUnavailable('user_preferences');
+          return;
         }
-      } catch (e) {
-        // No preference saved yet
+        if (data?.theme_preset) {
+          setThemeState(data.theme_preset);
+          localStorage.setItem('theme', data.theme_preset);
+        }
+      } catch {
+        markTableUnavailable('user_preferences');
       }
     };
     
@@ -77,17 +82,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('theme', newTheme);
     
     // Save to DB if logged in
-    if (user?.id) {
+    if (user?.id && isTableAvailable('user_preferences')) {
       try {
-        await (supabase as any)
+        const { error } = await (supabase as any)
           .from('user_preferences')
           .upsert({
             user_id: user.id,
-            theme: newTheme,
+            theme_preset: newTheme,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
-      } catch (e) {
-        console.error('Failed to save theme preference:', e);
+        if (error) markTableUnavailable('user_preferences');
+      } catch {
+        markTableUnavailable('user_preferences');
       }
     }
   };

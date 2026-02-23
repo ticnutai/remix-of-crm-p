@@ -117,7 +117,7 @@ const App = () => {
                       <Sonner />
                       <BrowserRouter
                         future={{
-                          v7_startTransition: true,
+                          v7_startTransition: false,
                           v7_relativeSplatPath: true,
                         }}
                       >

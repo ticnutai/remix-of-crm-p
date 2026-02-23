@@ -41,6 +41,7 @@ import {
 } from "./SidebarSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
@@ -100,17 +101,19 @@ export function OverlaySidebar({
 
   // Load theme from Supabase on mount (cloud persistence)
   useEffect(() => {
+    if (!isTableAvailable("user_preferences")) return;
     const loadCloudTheme = async () => {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) return;
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("user_preferences")
           .select("*")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
+        if (error) { markTableUnavailable("user_preferences"); return; }
         const theme = (data as any)?.sidebar_theme;
         if (theme) {
           setSidebarTheme(theme as SidebarTheme);
@@ -118,7 +121,7 @@ export function OverlaySidebar({
           themeLoadedFromCloud.current = true;
         }
       } catch (err) {
-        console.error("Error loading sidebar theme from cloud:", err);
+        markTableUnavailable("user_preferences");
         // Silently fall back to localStorage
       }
     };
@@ -135,6 +138,7 @@ export function OverlaySidebar({
     }
     // Debounce cloud save to avoid rapid writes when adjusting sliders
     const timer = setTimeout(async () => {
+      if (!isTableAvailable("user_preferences")) return;
       try {
         const {
           data: { user },
@@ -149,13 +153,10 @@ export function OverlaySidebar({
           { onConflict: "user_id" },
         );
         if (error) {
-          console.error(
-            "Failed to save sidebar theme to cloud:",
-            error.message,
-          );
+          markTableUnavailable("user_preferences");
         }
-      } catch (err) {
-        console.error("Error saving sidebar theme to cloud:", err);
+      } catch {
+        markTableUnavailable("user_preferences");
       }
     }, 800);
     return () => clearTimeout(timer);

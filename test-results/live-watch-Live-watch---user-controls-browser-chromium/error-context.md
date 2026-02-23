@@ -1,0 +1,588 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - banner [ref=e5]:
+          - generic [ref=e6]:
+            - heading "לקוחות" [level=1] [ref=e8]
+            - generic [ref=e9]:
+              - button [disabled]:
+                - img
+              - button [disabled]:
+                - img
+            - generic [ref=e10]:
+              - button "חיפוש... ⌘ K" [ref=e11] [cursor=pointer]:
+                - img [ref=e12]
+                - generic [ref=e15]: חיפוש...
+                - generic:
+                  - generic: ⌘
+                  - text: K
+              - button [ref=e16] [cursor=pointer]:
+                - img
+              - button "4" [ref=e17] [cursor=pointer]:
+                - img
+                - generic [ref=e18]: "4"
+              - button "התאמת טקסט עמוד" [ref=e19] [cursor=pointer]:
+                - img
+              - button "כבה אנימציות" [ref=e20] [cursor=pointer]:
+                - img
+              - button "שנה ערכת נושא" [ref=e21] [cursor=pointer]:
+                - img
+              - button "י יעקב" [ref=e22] [cursor=pointer]:
+                - generic [ref=e23]: י
+                - generic [ref=e24]: יעקב
+        - main [ref=e25]:
+          - generic [ref=e27]:
+            - generic [ref=e29]:
+              - generic [ref=e30]:
+                - img [ref=e31]
+                - heading "לקוחות" [level=1] [ref=e36]
+                - generic [ref=e37]: (126)
+                - button "הוסף לקוח" [ref=e38] [cursor=pointer]:
+                  - img [ref=e39]
+                  - text: הוסף לקוח
+                - button "טבלה" [ref=e42] [cursor=pointer]:
+                  - img [ref=e43]
+                  - text: טבלה
+                - button "בחירה מרובה" [ref=e45] [cursor=pointer]:
+                  - img [ref=e46]
+                  - text: בחירה מרובה
+                - button "שלבים" [ref=e49] [cursor=pointer]:
+                  - img [ref=e50]
+                  - text: שלבים
+                - button "סטטיסטיקות" [ref=e54] [cursor=pointer]:
+                  - img [ref=e55]
+                  - text: סטטיסטיקות
+                - button "תכונות זמינות" [ref=e57] [cursor=pointer]:
+                  - img [ref=e58]
+              - generic [ref=e60]:
+                - button "אפשרויות תצוגה" [ref=e62] [cursor=pointer]:
+                  - img [ref=e63]
+                - generic [ref=e66]:
+                  - img [ref=e67]
+                  - textbox "חיפוש לקוחות..." [ref=e70]
+            - generic [ref=e71]:
+              - generic [ref=e72]:
+                - generic [ref=e73]:
+                  - img [ref=e74]
+                  - generic [ref=e76]: "סינון:"
+                - button "סיווג א-ת" [ref=e77] [cursor=pointer]:
+                  - img
+                  - text: סיווג א-ת
+                  - img
+                - button "סיווג" [ref=e78] [cursor=pointer]:
+                  - img
+                  - text: סיווג
+                  - img
+                - button "קטגוריות 1" [ref=e79] [cursor=pointer]:
+                  - img
+                  - text: קטגוריות
+                  - generic [ref=e80]: "1"
+                  - img
+                - button "תגיות" [ref=e81] [cursor=pointer]:
+                  - img
+                  - text: תגיות
+                  - img
+                - button "שלבים" [ref=e82] [cursor=pointer]:
+                  - img
+                  - text: שלבים
+                  - img
+                - button "כל התאריכים" [ref=e83] [cursor=pointer]:
+                  - img
+                  - text: כל התאריכים
+                  - img
+                - button "תזכורות 0" [ref=e84] [cursor=pointer]:
+                  - img
+                  - text: תזכורות
+                  - generic [ref=e85]: "0"
+                - button "משימות 4" [ref=e86] [cursor=pointer]:
+                  - img
+                  - text: משימות
+                  - generic [ref=e87]: "4"
+                - button "פגישות 3" [ref=e88] [cursor=pointer]:
+                  - img
+                  - text: פגישות
+                  - generic [ref=e89]: "3"
+                - button "נקה פילטרים" [ref=e90] [cursor=pointer]:
+                  - img
+                  - text: נקה פילטרים
+              - generic [ref=e92]: 1 קטגוריות
+            - generic [ref=e94]:
+              - generic [ref=e96]:
+                - generic [ref=e97]:
+                  - text: 📊 מציג
+                  - strong [ref=e98]: "50"
+                  - text: מתוך
+                  - strong [ref=e99]: "126"
+                  - text: לקוחות
+                - generic [ref=e100]: "(סה\"כ במערכת: 147)"
+              - generic [ref=e101]:
+                - generic [ref=e103] [cursor=pointer]:
+                  - generic [ref=e106]: א
+                  - heading "אהרונסון" [level=3] [ref=e108]:
+                    - generic [ref=e109]: אהרונסון
+                - generic [ref=e111] [cursor=pointer]:
+                  - generic [ref=e114]: א
+                  - generic [ref=e115]:
+                    - heading "אחיאלי עופר" [level=3] [ref=e116]:
+                      - generic [ref=e117]: אחיאלי עופר
+                    - generic [ref=e119]:
+                      - img [ref=e120]
+                      - generic [ref=e123]: oferac7@gmail.com
+                - generic [ref=e125] [cursor=pointer]:
+                  - generic [ref=e128]: א
+                  - heading "אמיתי יוסף" [level=3] [ref=e130]:
+                    - generic [ref=e131]: אמיתי יוסף
+                - generic [ref=e133] [cursor=pointer]:
+                  - generic [ref=e136]: א
+                  - heading "אשכנזי הרב מאיר" [level=3] [ref=e138]:
+                    - generic [ref=e139]: אשכנזי הרב מאיר
+                - generic [ref=e141] [cursor=pointer]:
+                  - generic [ref=e144]: א
+                  - generic [ref=e145]:
+                    - heading "אשכנזי יוסי" [level=3] [ref=e146]:
+                      - generic [ref=e147]: אשכנזי יוסי
+                    - generic [ref=e149]:
+                      - img [ref=e150]
+                      - generic [ref=e153]: Yosi@amhlaw.co.il
+                - generic [ref=e155] [cursor=pointer]:
+                  - generic [ref=e158]: א
+                  - generic [ref=e159]:
+                    - heading "אשכנזי מענדי" [level=3] [ref=e160]:
+                      - generic [ref=e161]: אשכנזי מענדי
+                    - generic [ref=e163]:
+                      - img [ref=e164]
+                      - generic [ref=e167]: mendyash@gmail.com
+                - generic [ref=e169] [cursor=pointer]:
+                  - generic [ref=e172]: א
+                  - generic [ref=e173]:
+                    - img [ref=e176]
+                    - heading "אשכנזי מענדי 58" [level=3] [ref=e179]:
+                      - generic [ref=e180]: אשכנזי מענדי 58
+                    - generic [ref=e182]:
+                      - img [ref=e183]
+                      - generic [ref=e186]: מענדי אשכנזי <mm.ashkenazi@gmail.com>
+                - generic [ref=e188] [cursor=pointer]:
+                  - generic [ref=e191]: א
+                  - generic [ref=e192]:
+                    - heading "אתר הנדסי - שדות דן" [level=3] [ref=e193]:
+                      - generic [ref=e194]: אתר הנדסי - שדות דן
+                    - generic [ref=e196]:
+                      - img [ref=e197]
+                      - generic [ref=e200]: support@onecity.co.il
+                - generic [ref=e202] [cursor=pointer]:
+                  - generic [ref=e205]: ב
+                  - heading "בדני רונן" [level=3] [ref=e207]:
+                    - generic [ref=e208]: בדני רונן
+                - generic [ref=e210] [cursor=pointer]:
+                  - generic [ref=e213]: ב
+                  - heading "בורגן-גרודקא-הרשקוביץ" [level=3] [ref=e215]:
+                    - generic [ref=e216]: בורגן-גרודקא-הרשקוביץ
+                - generic [ref=e218] [cursor=pointer]:
+                  - generic [ref=e221]: ב
+                  - heading "בורובסקי לאה" [level=3] [ref=e223]:
+                    - generic [ref=e224]: בורובסקי לאה
+                - generic [ref=e226] [cursor=pointer]:
+                  - generic [ref=e229]: ב
+                  - heading "בורובסקי שלמה" [level=3] [ref=e231]:
+                    - generic [ref=e232]: בורובסקי שלמה
+                - generic [ref=e234] [cursor=pointer]:
+                  - generic [ref=e237]: ב
+                  - heading "בלוי מענדי" [level=3] [ref=e239]:
+                    - generic [ref=e240]: בלוי מענדי
+                - generic [ref=e242] [cursor=pointer]:
+                  - generic [ref=e245]: ב
+                  - generic [ref=e246]:
+                    - heading "בליניצקי רחלי" [level=3] [ref=e247]:
+                      - generic [ref=e248]: בליניצקי רחלי
+                    - generic [ref=e250]:
+                      - img [ref=e251]
+                      - generic [ref=e254]: rbalinko@hnn.co.il
+                - generic [ref=e256] [cursor=pointer]:
+                  - generic [ref=e259]: ב
+                  - heading "בסטומסקי" [level=3] [ref=e261]:
+                    - generic [ref=e262]: בסטומסקי
+                - generic [ref=e264] [cursor=pointer]:
+                  - generic [ref=e267]: ב
+                  - generic [ref=e268]:
+                    - img [ref=e271]
+                    - heading "ברוד" [level=3] [ref=e274]:
+                      - generic [ref=e275]: ברוד
+                    - generic [ref=e277]:
+                      - img [ref=e278]
+                      - generic [ref=e281]: Meir@amhlaw.co.il
+                - generic [ref=e283] [cursor=pointer]:
+                  - generic [ref=e286]: ב
+                  - generic [ref=e287]:
+                    - heading "ברכהן" [level=3] [ref=e288]:
+                      - generic [ref=e289]: ברכהן
+                    - generic [ref=e291]:
+                      - img [ref=e292]
+                      - generic [ref=e295]: rabbi@chabad-duesseldorf.de
+                - generic [ref=e297] [cursor=pointer]:
+                  - generic [ref=e300]: ג
+                  - generic [ref=e301]:
+                    - heading "גבעוני" [level=3] [ref=e302]:
+                      - generic [ref=e303]: גבעוני
+                    - generic [ref=e305]:
+                      - img [ref=e306]
+                      - generic [ref=e309]: dovgivoni@gmail.com scgivoni@gmail.com
+                - generic [ref=e311] [cursor=pointer]:
+                  - generic [ref=e314]: ג
+                  - generic [ref=e315]:
+                    - heading "גדז' אבי-מיכאל" [level=3] [ref=e316]:
+                      - generic [ref=e317]: גדז' אבי-מיכאל
+                    - generic [ref=e319]:
+                      - img [ref=e320]
+                      - generic [ref=e322]: "0547560700"
+                - generic [ref=e324] [cursor=pointer]:
+                  - generic [ref=e327]: ג
+                  - heading "גופין" [level=3] [ref=e329]:
+                    - generic [ref=e330]: גופין
+                - generic [ref=e332] [cursor=pointer]:
+                  - generic [ref=e335]: ג
+                  - heading "גורביץ" [level=3] [ref=e337]:
+                    - generic [ref=e338]: גורביץ
+                - generic [ref=e340] [cursor=pointer]:
+                  - generic [ref=e343]: ג
+                  - heading "גיקובס" [level=3] [ref=e345]:
+                    - generic [ref=e346]: גיקובס
+                - generic [ref=e348] [cursor=pointer]:
+                  - generic [ref=e351]: ג
+                  - heading "גרברציק" [level=3] [ref=e353]:
+                    - generic [ref=e354]: גרברציק
+                - generic [ref=e356] [cursor=pointer]:
+                  - generic [ref=e359]: ג
+                  - heading "גת אמנון" [level=3] [ref=e361]:
+                    - generic [ref=e362]: גת אמנון
+                - generic [ref=e364] [cursor=pointer]:
+                  - generic [ref=e367]: ד
+                  - generic [ref=e368]:
+                    - heading "דובי גבעוני" [level=3] [ref=e369]:
+                      - generic [ref=e370]: דובי גבעוני
+                    - generic [ref=e372]:
+                      - img [ref=e373]
+                      - generic [ref=e376]: dovgivoni@gmail.com
+                - generic [ref=e378] [cursor=pointer]:
+                  - generic [ref=e381]: ד
+                  - generic [ref=e382]:
+                    - heading "דוברסקין מנדי וחיה" [level=3] [ref=e383]:
+                      - generic [ref=e384]: דוברסקין מנדי וחיה
+                    - generic [ref=e386]:
+                      - img [ref=e387]
+                      - generic [ref=e390]: mendeld175@gmail.com
+                - generic [ref=e392] [cursor=pointer]:
+                  - generic [ref=e395]: ה
+                  - generic [ref=e396]:
+                    - heading "הולצמן" [level=3] [ref=e397]:
+                      - generic [ref=e398]: הולצמן
+                    - generic [ref=e400]:
+                      - img [ref=e401]
+                      - generic [ref=e404]: 9606718@gmail.com
+                - generic [ref=e406] [cursor=pointer]:
+                  - generic [ref=e409]: ה
+                  - generic [ref=e410]:
+                    - heading "הכהן יוסף יצחק" [level=3] [ref=e411]:
+                      - generic [ref=e412]: הכהן יוסף יצחק
+                    - generic [ref=e414]:
+                      - img [ref=e415]
+                      - generic [ref=e418]: eshnav4u@gmail.com
+                - generic [ref=e420] [cursor=pointer]:
+                  - generic [ref=e423]: ה
+                  - heading "הלפרין" [level=3] [ref=e425]:
+                    - generic [ref=e426]: הלפרין
+                - generic [ref=e428] [cursor=pointer]:
+                  - generic [ref=e431]: ה
+                  - generic [ref=e432]:
+                    - heading "הקו הכחול מדידות" [level=3] [ref=e433]:
+                      - generic [ref=e434]: הקו הכחול מדידות
+                    - generic [ref=e436]:
+                      - img [ref=e437]
+                      - generic [ref=e440]: kav.mapping@gmail.com
+                - generic [ref=e442] [cursor=pointer]:
+                  - generic [ref=e445]: ה
+                  - generic [ref=e446]:
+                    - heading "הרשקוביץ" [level=3] [ref=e447]:
+                      - generic [ref=e448]: הרשקוביץ
+                    - generic [ref=e450]:
+                      - img [ref=e451]
+                      - generic [ref=e454]: tsipi912@gmail.com
+                - generic [ref=e456] [cursor=pointer]:
+                  - generic [ref=e459]: ו
+                  - generic [ref=e460]:
+                    - heading "ווגנר" [level=3] [ref=e461]:
+                      - generic [ref=e462]: ווגנר
+                    - generic [ref=e464]:
+                      - img [ref=e465]
+                      - generic [ref=e468]: Livagner@gmail.com yehuditvagner@gmail.com
+                - generic [ref=e470] [cursor=pointer]:
+                  - generic [ref=e473]: ו
+                  - heading "וויפלד שלמהליכטשטיין" [level=3] [ref=e475]:
+                    - generic [ref=e476]: וויפלד שלמהליכטשטיין
+                - generic [ref=e478] [cursor=pointer]:
+                  - generic [ref=e481]: ו
+                  - heading "ויינפלד יוסי-תבע" [level=3] [ref=e483]:
+                    - generic [ref=e484]: ויינפלד יוסי-תבע
+                - generic [ref=e486] [cursor=pointer]:
+                  - generic [ref=e489]: ו
+                  - heading "ויינפלד שלמה -תבע" [level=3] [ref=e491]:
+                    - generic [ref=e492]: ויינפלד שלמה -תבע
+                - generic [ref=e494] [cursor=pointer]:
+                  - generic [ref=e497]: ו
+                  - heading "וישצקי שמואל ופנחס" [level=3] [ref=e499]:
+                    - generic [ref=e500]: וישצקי שמואל ופנחס
+                - generic [ref=e502] [cursor=pointer]:
+                  - generic [ref=e505]: ו
+                  - heading "ועקנין" [level=3] [ref=e507]:
+                    - generic [ref=e508]: ועקנין
+                - generic [ref=e510] [cursor=pointer]:
+                  - generic [ref=e513]: ז
+                  - generic [ref=e514]:
+                    - heading "זוהר" [level=3] [ref=e515]:
+                      - generic [ref=e516]: זוהר
+                    - generic [ref=e518]:
+                      - img [ref=e519]
+                      - generic [ref=e522]: baroochi770@gmail.com‬
+                - generic [ref=e524] [cursor=pointer]:
+                  - generic [ref=e527]: ז
+                  - heading "זייגן קטן" [level=3] [ref=e529]:
+                    - generic [ref=e530]: זייגן קטן
+                - generic [ref=e532] [cursor=pointer]:
+                  - generic [ref=e535]: ז
+                  - heading "זייגן+קטן" [level=3] [ref=e537]:
+                    - generic [ref=e538]: זייגן+קטן
+                - generic [ref=e540] [cursor=pointer]:
+                  - generic [ref=e543]: ז
+                  - generic [ref=e544]:
+                    - heading "זילברשטרום" [level=3] [ref=e545]:
+                      - generic [ref=e546]: זילברשטרום
+                    - generic [ref=e548]:
+                      - img [ref=e549]
+                      - generic [ref=e552]: zilbers10@gmail.com
+                - generic [ref=e554] [cursor=pointer]:
+                  - generic [ref=e557]: ז
+                  - generic [ref=e558]:
+                    - heading "זנד" [level=3] [ref=e559]:
+                      - generic [ref=e560]: זנד
+                    - generic [ref=e562]:
+                      - img [ref=e563]
+                      - generic [ref=e566]: batya770123@gmail.com
+                - generic [ref=e568] [cursor=pointer]:
+                  - generic [ref=e571]: ח
+                  - generic [ref=e572]:
+                    - heading "חדאד שמוליק ורחל" [level=3] [ref=e573]:
+                      - generic [ref=e574]: חדאד שמוליק ורחל
+                    - generic [ref=e576]:
+                      - img [ref=e577]
+                      - generic [ref=e580]: shmulik841@gmail.com
+                - generic [ref=e582] [cursor=pointer]:
+                  - generic [ref=e585]: ח
+                  - heading "חנונו" [level=3] [ref=e587]:
+                    - generic [ref=e588]: חנונו
+                - generic [ref=e590] [cursor=pointer]:
+                  - generic [ref=e593]: ח
+                  - generic [ref=e594]:
+                    - heading "חני הלפרין" [level=3] [ref=e595]:
+                      - generic [ref=e596]: חני הלפרין
+                    - generic [ref=e598]:
+                      - img [ref=e599]
+                      - generic [ref=e602]: halperinbn@gmail.com
+                - generic [ref=e604] [cursor=pointer]:
+                  - generic [ref=e607]: ט
+                  - heading "טולצינסקי" [level=3] [ref=e609]:
+                    - generic [ref=e610]: טולצינסקי
+                - generic [ref=e612] [cursor=pointer]:
+                  - generic [ref=e615]: ט
+                  - generic [ref=e616]:
+                    - heading "טיירי אשר- מגורים" [level=3] [ref=e617]:
+                      - generic [ref=e618]: טיירי אשר- מגורים
+                    - generic [ref=e620]:
+                      - img [ref=e621]
+                      - generic [ref=e624]: teriasher@gmail.com
+                - generic [ref=e626] [cursor=pointer]:
+                  - generic [ref=e629]: ט
+                  - heading "טיירי אשרי חקלאי" [level=3] [ref=e631]:
+                    - generic [ref=e632]: טיירי אשרי חקלאי
+                - generic [ref=e634] [cursor=pointer]:
+                  - generic [ref=e637]: י
+                  - generic [ref=e638]:
+                    - heading "יהודית לוי" [level=3] [ref=e639]:
+                      - generic [ref=e640]: יהודית לוי
+                    - generic [ref=e641]:
+                      - generic [ref=e642]:
+                        - img [ref=e643]
+                        - generic [ref=e645]: 03-9485816
+                      - generic [ref=e646]:
+                        - img [ref=e647]
+                        - generic [ref=e650]: PREES@MOAG.GOV.IL
+                - generic [ref=e652] [cursor=pointer]:
+                  - generic [ref=e655]: י
+                  - heading "יוקנט דודי" [level=3] [ref=e657]:
+                    - generic [ref=e658]: יוקנט דודי
+                - generic [ref=e660]: גלול למטה לטעינת עוד 50 לקוחות
+      - generic [ref=e667]:
+        - generic [ref=e668]:
+          - generic [ref=e669]:
+            - img [ref=e671]
+            - generic [ref=e675]:
+              - generic [ref=e676]: tenarch
+              - generic [ref=e677]: CRM Pro Max
+          - button [ref=e678] [cursor=pointer]:
+            - img
+        - generic [ref=e679]:
+          - generic [ref=e680]:
+            - paragraph [ref=e681]: ניווט ראשי
+            - link "לוח בקרה" [ref=e682] [cursor=pointer]:
+              - /url: /
+              - img [ref=e683]
+              - generic [ref=e688]: לוח בקרה
+            - link "היום שלי" [ref=e689] [cursor=pointer]:
+              - /url: /my-day
+              - img [ref=e690]
+              - generic [ref=e692]: היום שלי
+            - link "לקוחות" [ref=e693] [cursor=pointer]:
+              - /url: /clients
+              - img [ref=e694]
+              - generic [ref=e699]: לקוחות
+            - link "טבלת לקוחות" [ref=e700] [cursor=pointer]:
+              - /url: /datatable-pro
+              - img [ref=e701]
+              - generic [ref=e703]: טבלת לקוחות
+            - link "עובדים" [ref=e704] [cursor=pointer]:
+              - /url: /employees
+              - img [ref=e705]
+              - generic [ref=e717]: עובדים
+            - link "לוגי זמן" [ref=e718] [cursor=pointer]:
+              - /url: /time-logs
+              - img [ref=e719]
+              - generic [ref=e722]: לוגי זמן
+            - link "ניתוח זמנים" [ref=e723] [cursor=pointer]:
+              - /url: /time-analytics
+              - img [ref=e724]
+              - generic [ref=e727]: ניתוח זמנים
+            - link "משימות, פגישות ותזכורות" [ref=e728] [cursor=pointer]:
+              - /url: /tasks-meetings
+              - img [ref=e729]
+              - generic [ref=e731]: משימות, פגישות ותזכורות
+            - link "הצעות מחיר" [ref=e732] [cursor=pointer]:
+              - /url: /quotes
+              - img [ref=e733]
+              - generic [ref=e736]: הצעות מחיר
+            - link "כספים" [ref=e737] [cursor=pointer]:
+              - /url: /finance
+              - img [ref=e738]
+              - generic [ref=e741]: כספים
+            - link "תשלומים" [ref=e742] [cursor=pointer]:
+              - /url: /payments
+              - img [ref=e743]
+              - generic [ref=e746]: תשלומים
+            - link "דוחות" [ref=e747] [cursor=pointer]:
+              - /url: /reports
+              - img [ref=e748]
+              - generic [ref=e751]: דוחות
+            - link "לוח שנה" [ref=e752] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e753]
+              - generic [ref=e755]: לוח שנה
+            - link "Gmail" [ref=e756] [cursor=pointer]:
+              - /url: /gmail
+              - img [ref=e757]
+              - generic [ref=e760]: Gmail
+            - link "אנשי קשר" [ref=e761] [cursor=pointer]:
+              - /url: /contacts
+              - img [ref=e762]
+              - generic [ref=e767]: אנשי קשר
+            - link "קבצים" [ref=e768] [cursor=pointer]:
+              - /url: /files
+              - img [ref=e769]
+              - generic [ref=e771]: קבצים
+            - link "כלים חכמים" [ref=e772] [cursor=pointer]:
+              - /url: /smart-tools
+              - img [ref=e773]
+              - generic [ref=e776]: כלים חכמים
+          - generic [ref=e778]:
+            - button "0 0 משימות ופגישות" [expanded] [ref=e779] [cursor=pointer]:
+              - generic [ref=e780]:
+                - img [ref=e781]
+                - generic [ref=e783]:
+                  - generic [ref=e784]:
+                    - img [ref=e785]
+                    - text: "0"
+                  - generic [ref=e788]:
+                    - img [ref=e789]
+                    - text: "0"
+              - generic [ref=e791]: משימות ופגישות
+            - generic [ref=e794]:
+              - generic [ref=e795]:
+                - tablist [ref=e796]:
+                  - tab "משימות" [selected] [ref=e797] [cursor=pointer]:
+                    - img [ref=e798]
+                    - text: משימות
+                  - tab "פגישות" [ref=e801] [cursor=pointer]:
+                    - img [ref=e802]
+                    - text: פגישות
+                - button [ref=e804] [cursor=pointer]:
+                  - img
+              - generic [ref=e805]:
+                - generic [ref=e806]:
+                  - button "היום" [ref=e807] [cursor=pointer]
+                  - button "השבוע" [ref=e808] [cursor=pointer]
+                  - button "הכל" [ref=e809] [cursor=pointer]
+                - button [ref=e810] [cursor=pointer]:
+                  - img [ref=e811]
+              - tabpanel "משימות" [ref=e815]:
+                - generic [ref=e820]:
+                  - img [ref=e821]
+                  - paragraph [ref=e824]: אין משימות להיום
+                  - button "הוסף משימה" [ref=e825] [cursor=pointer]:
+                    - img
+                    - text: הוסף משימה
+          - generic [ref=e826]:
+            - generic [ref=e827]:
+              - img [ref=e828]
+              - paragraph [ref=e830]: טבלאות מותאמות
+              - generic [ref=e831]: "3"
+            - generic [ref=e832]:
+              - link "בקשה להעברת זכויות" [ref=e833] [cursor=pointer]:
+                - /url: /custom-table/05efdd7c-6732-40a8-9da1-baa7fd079003
+                - img [ref=e834]
+                - generic [ref=e836]: בקשה להעברת זכויות
+              - link "מנהל - בקשה לרכישת זכויות" [ref=e837] [cursor=pointer]:
+                - /url: /custom-table/8c52741d-f89c-4741-af1c-c52b7564a5af
+                - img [ref=e838]
+                - generic [ref=e840]: מנהל - בקשה לרכישת זכויות
+              - link "שינוי תב'ע" [ref=e841] [cursor=pointer]:
+                - /url: /custom-table/720a8792-3d87-4aea-ac4b-303e3eec4684
+                - img [ref=e842]
+                - generic [ref=e844]: שינוי תב'ע
+          - generic [ref=e845]:
+            - paragraph [ref=e846]: מערכת
+            - link "גיבויים וייבוא" [ref=e847] [cursor=pointer]:
+              - /url: /backups
+              - img [ref=e848]
+              - generic [ref=e852]: גיבויים וייבוא
+            - link "היסטוריה" [ref=e853] [cursor=pointer]:
+              - /url: /history
+              - img [ref=e854]
+              - generic [ref=e858]: היסטוריה
+            - link "הגדרות" [ref=e859] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e860]
+              - generic [ref=e863]: הגדרות
+            - link "בדיקות" [ref=e864] [cursor=pointer]:
+              - /url: /tests
+              - img [ref=e865]
+              - generic [ref=e867]: בדיקות
+        - button "ערכות נושא" [ref=e869] [cursor=pointer]:
+          - img [ref=e870]
+          - generic [ref=e876]: ערכות נושא
+      - button [ref=e878] [cursor=pointer]:
+        - img [ref=e880]
+  - generic [ref=e883]: "0"
+```

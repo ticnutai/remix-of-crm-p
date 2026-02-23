@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
 
 // All localStorage keys that should be synced to cloud
 const SYNC_KEYS = [
@@ -179,7 +180,7 @@ export function useCloudPreferences() {
 
   // Save preferences to cloud
   const saveToCloud = useCallback(async () => {
-    if (!user?.id || syncInProgress.current) return;
+    if (!user?.id || syncInProgress.current || !isTableAvailable("user_preferences")) return;
 
     // Debounce: don't sync more than once per 2 seconds
     const now = Date.now();
@@ -211,12 +212,14 @@ export function useCloudPreferences() {
       }
 
       if (error) {
-        console.error("Error saving preferences:", error);
+        markTableUnavailable("user_preferences");
+        // Silently fall back to local-only preferences
       } else {
         // Preferences synced to cloud
       }
-    } catch (error) {
-      console.error("Failed to sync preferences to cloud:", error);
+    } catch {
+      markTableUnavailable("user_preferences");
+      // Silently fall back to local-only preferences
     } finally {
       syncInProgress.current = false;
     }
@@ -224,14 +227,19 @@ export function useCloudPreferences() {
 
   // Load preferences from cloud
   const loadFromCloud = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !isTableAvailable("user_preferences")) return;
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_preferences")
         .select("*")
         .eq("user_id", user.id)
         .single();
+
+      if (error) {
+        markTableUnavailable("user_preferences");
+        return false;
+      }
 
       if (data) {
         // Apply UI preferences from cloud (using type assertion for new column)
@@ -249,9 +257,8 @@ export function useCloudPreferences() {
         return true;
       }
       return false;
-    } catch (error) {
-      // No preferences yet, that's OK
-      console.log("No cloud preferences found, using local");
+    } catch {
+      markTableUnavailable("user_preferences");
       return false;
     }
   }, [user?.id, applyToLocalStorage]);

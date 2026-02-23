@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
+import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
 
 export type BorderRadius = "none" | "small" | "medium" | "large" | "full";
 export type BorderWidth = "none" | "thin" | "normal" | "thick";
@@ -259,6 +260,7 @@ export function useUserPreferences() {
       return;
     }
 
+    if (!isTableAvailable("user_preferences")) { setLoading(false); return; }
     try {
       const { data, error } = await supabase
         .from("user_preferences")
@@ -266,7 +268,7 @@ export function useUserPreferences() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) { markTableUnavailable("user_preferences"); throw error; }
 
       if (data) {
         setPreferences({
@@ -418,6 +420,11 @@ export function useUserPreferences() {
   // Save preferences
   const savePreferences = async (newPreferences: Partial<UserPreferences>) => {
     if (!user?.id) return;
+    if (!isTableAvailable("user_preferences")) {
+      // Save locally only
+      setPreferences({ ...preferences, ...newPreferences });
+      return;
+    }
 
     setSaving(true);
     const updatedPreferences = { ...preferences, ...newPreferences };
@@ -431,7 +438,11 @@ export function useUserPreferences() {
         { onConflict: "user_id" },
       );
 
-      if (error) throw error;
+      if (error) {
+        markTableUnavailable("user_preferences");
+        setPreferences(updatedPreferences);
+        return;
+      }
 
       setPreferences(updatedPreferences);
       toast({

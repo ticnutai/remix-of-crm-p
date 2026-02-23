@@ -4,12 +4,12 @@ import React, {
   useContext,
   useState,
   useCallback,
-  useRef,
   ReactNode,
   useEffect,
 } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
 
 export interface BackupMetadata {
   id: string;
@@ -69,7 +69,6 @@ const cleanOldLocalBackups = (backups: BackupData[]): BackupData[] => {
 
 export function BackupProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
-  const cloudAvailable = useRef(true);
   const [backups, setBackups] = useState<BackupData[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -139,7 +138,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadCloudBackups = useCallback(async () => {
-    if (!cloudAvailable.current) return;
+    if (!isTableAvailable("backups")) return;
     try {
       const {
         data: { user },
@@ -153,7 +152,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         // Cloud backups unavailable, using local storage only
-        cloudAvailable.current = false;
+        markTableUnavailable("backups");
         return;
       }
 
@@ -213,7 +212,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       }
 
       // Load from cloud
-      if (!cloudAvailable.current) {
+      if (!isTableAvailable("backups")) {
         setBackups(localBackups);
       } else {
         const {
@@ -253,7 +252,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
             saveToStorage(mergedBackups);
           } else {
             if (error) {
-              cloudAvailable.current = false;
+              markTableUnavailable("backups");
             }
             setBackups(localBackups);
           }
@@ -292,7 +291,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       });
 
       // Save to Supabase cloud
-      if (!cloudAvailable.current) {
+      if (!isTableAvailable("backups")) {
         toast({
           title: "גיבוי נשמר מקומית",
           description: `הגיבוי "${name}" נשמר במחשב בלבד`,
@@ -313,7 +312,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
             });
 
             if (error) {
-              cloudAvailable.current = false;
+              markTableUnavailable("backups");
               toast({
                 title: "גיבוי נשמר מקומית",
                 description: "הגיבוי נשמר במחשב בלבד (שגיאה בשמירה לענן)",
@@ -377,7 +376,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
       });
 
       // Delete from Supabase cloud
-      if (cloudAvailable.current) {
+      if (isTableAvailable("backups")) {
         try {
           const {
             data: { user },
@@ -390,7 +389,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
               .eq("user_id", user.id);
 
             if (error) {
-              cloudAvailable.current = false;
+              markTableUnavailable("backups");
             }
           }
         } catch (e) {
@@ -475,7 +474,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
 
     // Clear from Supabase cloud
-    if (cloudAvailable.current) {
+    if (isTableAvailable("backups")) {
       try {
         const {
           data: { user },
@@ -487,7 +486,7 @@ export function BackupProvider({ children }: { children: ReactNode }) {
             .eq("user_id", user.id);
 
           if (error) {
-            cloudAvailable.current = false;
+            markTableUnavailable("backups");
           }
         }
       } catch (e) {

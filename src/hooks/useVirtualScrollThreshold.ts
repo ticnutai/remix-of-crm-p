@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { isTableAvailable, markTableUnavailable } from '@/lib/supabaseTableCheck';
 
 const DEFAULT_THRESHOLD = 50;
 
@@ -16,6 +17,7 @@ export function useVirtualScrollThreshold() {
         return;
       }
 
+      if (!isTableAvailable('user_preferences')) return;
       try {
         const { data, error } = await supabase
           .from('user_preferences')
@@ -23,7 +25,7 @@ export function useVirtualScrollThreshold() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) { markTableUnavailable('user_preferences'); throw error; }
 
         if (data?.virtual_scroll_threshold) {
           setThreshold(data.virtual_scroll_threshold);

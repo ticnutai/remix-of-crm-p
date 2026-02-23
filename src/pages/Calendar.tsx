@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { supabase } from "@/integrations/supabase/client";
+import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
 import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
@@ -167,15 +168,20 @@ const Calendar = () => {
 
   // Cloud persistence: load view from Supabase on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isTableAvailable("user_preferences")) return;
     const loadCloudView = async () => {
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("user_preferences")
-          .select("calendar_view")
+          .select("view_preferences")
           .eq("user_id", user.id)
-          .single();
-        const saved = (data as any)?.calendar_view;
+          .maybeSingle();
+        if (error) {
+          markTableUnavailable("user_preferences");
+          return;
+        }
+        const viewPrefs = (data as any)?.view_preferences;
+        const saved = typeof viewPrefs === 'object' && viewPrefs?.calendar_view;
         if (saved && ["month","week","list","agenda","schedule"].includes(saved)) {
           setViewType(saved as CalendarViewType);
           localStorage.setItem("calendar-view-type", saved);
@@ -187,13 +193,14 @@ const Calendar = () => {
 
   // Cloud persistence: save view when it changes (debounced)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isTableAvailable("user_preferences")) return;
     const timer = setTimeout(async () => {
       try {
-        await supabase.from("user_preferences").upsert(
-          { user_id: user.id, calendar_view: viewType, updated_at: new Date().toISOString() } as any,
+        const { error } = await supabase.from("user_preferences").upsert(
+          { user_id: user.id, view_preferences: { calendar_view: viewType } as any, updated_at: new Date().toISOString() } as any,
           { onConflict: "user_id" }
         );
+        if (error) markTableUnavailable("user_preferences");
       } catch {}
     }, 800);
     return () => clearTimeout(timer);
