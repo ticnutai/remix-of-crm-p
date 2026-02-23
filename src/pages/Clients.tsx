@@ -55,6 +55,7 @@ import {
 import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
 import { ClientsByStageView } from "@/components/clients/ClientsByStageView";
 import { ClientsStatisticsView } from "@/components/clients/ClientsStatisticsView";
+import { ClientAccessSection } from "@/components/clients/ClientAccessSection";
 import { BulkClassifyDialog } from "@/components/clients/BulkClassifyDialog";
 import { BulkStageDialog } from "@/components/clients/BulkStageDialog";
 import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog";
@@ -98,6 +99,7 @@ import {
   Clock,
   Layers,
   BarChart3,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -129,7 +131,7 @@ interface ClientStageInfo {
 
 export default function Clients() {
   const navigate = useNavigate();
-  const { isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading, isAdmin, isManager } = useAuth();
 
   // Google Sheets integration
   const {
@@ -193,6 +195,7 @@ export default function Clients() {
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
+  const [showAccessView, setShowAccessView] = useState(false);
 
   // Wrapper: persist showStagesView to cloud
   const setShowStagesView = useCallback(
@@ -2642,6 +2645,49 @@ export default function Clients() {
                 סטטיסטיקות
               </button>
 
+              {(isAdmin || isManager) && (
+                <button
+                  onClick={() => {
+                    setShowAccessView(!showAccessView);
+                    if (!showAccessView) {
+                      setShowStagesView(false);
+                      setShowStatisticsView(false);
+                    }
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 10px",
+                    backgroundColor: showAccessView ? "#d4a843" : "transparent",
+                    border: "1.5px solid #d4a843",
+                    borderRadius: "6px",
+                    color: showAccessView ? "#1e293b" : "#d4a843",
+                    fontWeight: "600",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!showAccessView) {
+                      e.currentTarget.style.backgroundColor = "#d4a843";
+                      e.currentTarget.style.color = "#1e293b";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!showAccessView) {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.color = "#d4a843";
+                    }
+                  }}
+                  title="ניהול גישות לפורטל"
+                >
+                  <Shield style={{ width: "13px", height: "13px" }} />
+                  גישות
+                </button>
+              )}
+
               <button
                 onClick={() => setShowFeaturesHelp(true)}
                 style={{
@@ -3362,7 +3408,11 @@ export default function Clients() {
         />
 
         {/* Statistics View - When Enabled */}
-        {showStatisticsView ? (
+        {showAccessView ? (
+          <div className="flex-1 overflow-auto">
+            <ClientAccessSection />
+          </div>
+        ) : showStatisticsView ? (
           <div className="flex-1 border rounded-lg bg-card overflow-hidden">
             <ClientsStatisticsView
               clients={clients}
