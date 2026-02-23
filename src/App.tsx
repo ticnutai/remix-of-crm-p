@@ -154,7 +154,7 @@ const App = () => {
                               path="/tasks"
                               element={<TasksAndMeetings />}
                             />
-                            <Route path="/reminders" element={<Reminders />} />
+                            <Route path="/reminders" element={<TasksAndMeetings />} />
                             <Route
                               path="/custom-table/:tableId"
                               element={<CustomTableView />}

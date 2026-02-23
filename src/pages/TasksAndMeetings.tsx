@@ -31,6 +31,7 @@ import {
   Filter,
   ClipboardList,
   Loader2,
+  Bell,
 } from "lucide-react";
 import {
   TasksViewToggle,
@@ -41,6 +42,7 @@ import {
   TasksTimelineView,
   TasksStatsHeader,
   MeetingsListView,
+  RemindersTabContent,
   ViewType,
 } from "@/components/tasks-meetings";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
@@ -202,7 +204,7 @@ const TasksAndMeetings = () => {
   if (!user) return null;
 
   return (
-    <AppLayout title="משימות ופגישות">
+    <AppLayout title="משימות, פגישות ותזכורות">
       <div className="p-4 md:p-6 space-y-6" dir="rtl">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -212,10 +214,10 @@ const TasksAndMeetings = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                משימות ופגישות
+                משימות, פגישות ותזכורות
               </h1>
               <p className="text-muted-foreground text-sm">
-                ניהול משימות ופגישות במקום אחד
+                ניהול משימות, פגישות ותזכורות במקום אחד
               </p>
             </div>
           </div>
@@ -274,6 +276,10 @@ const TasksAndMeetings = () => {
               <TabsTrigger value="meetings" className="gap-2">
                 <Calendar className="h-4 w-4" />
                 פגישות ({meetings.length})
+              </TabsTrigger>
+              <TabsTrigger value="reminders" className="gap-2">
+                <Bell className="h-4 w-4" />
+                תזכורות
               </TabsTrigger>
             </TabsList>
 
@@ -395,6 +401,11 @@ const TasksAndMeetings = () => {
                 onDelete={handleDeleteMeeting}
               />
             )}
+          </TabsContent>
+
+          {/* Reminders Content */}
+          <TabsContent value="reminders" className="mt-4">
+            <RemindersTabContent />
           </TabsContent>
         </Tabs>
       </div>

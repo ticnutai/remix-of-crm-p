@@ -43,7 +43,7 @@ const mainNavItems = [
   { title: 'לוגי זמן', url: '/time-logs', icon: Clock },
   { title: 'ניתוח זמנים', url: '/time-analytics', icon: Clock },
   { title: 'משימות ופגישות', url: '/tasks-meetings', icon: Calendar },
-  { title: 'תזכורות', url: '/reminders', icon: Bell },
+  { title: 'משימות, פגישות ותזכורות', url: '/tasks-meetings', icon: Calendar },
   { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
   { title: 'כספים', url: '/finance', icon: Wallet },
   { title: 'תשלומים', url: '/payments', icon: Wallet },
