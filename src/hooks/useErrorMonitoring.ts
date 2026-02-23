@@ -1,5 +1,5 @@
 // Enhanced Error Monitoring Hook - Real-time error detection with Supabase integration
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,6 +30,15 @@ export interface ErrorStats {
 const globalErrorStore: ErrorLog[] = [];
 const globalListeners: Set<(errors: ErrorLog[]) => void> = new Set();
 
+// Global flags to prevent multiple instances from double-wrapping console/fetch
+let consoleOverridden = false;
+let fetchOverridden = false;
+let originalConsoleErrorGlobal: typeof console.error | null = null;
+let originalConsoleWarnGlobal: typeof console.warn | null = null;
+let originalFetchGlobal: typeof fetch | null = null;
+let consoleOverrideCount = 0;
+let fetchOverrideCount = 0;
+
 function notifyListeners() {
   globalListeners.forEach(listener => listener([...globalErrorStore]));
 }
@@ -53,10 +62,6 @@ export function useErrorMonitoring(enabled: boolean = true) {
     networkErrors: 0,
     runtimeErrors: 0
   });
-  const initialized = useRef(false);
-  const originalConsoleError = useRef<typeof console.error | null>(null);
-  const originalConsoleWarn = useRef<typeof console.warn | null>(null);
-  const originalFetch = useRef<typeof fetch | null>(null);
 
   // Add new error to log
   const logError = useCallback((error: Omit<ErrorLog, 'id' | 'timestamp'>) => {
@@ -69,11 +74,8 @@ export function useErrorMonitoring(enabled: boolean = true) {
 
     addGlobalError(errorLog);
 
-    // Don't log to console - it causes infinite loops with the console interceptor
-    // The error is already captured and shown in the error monitor UI
-
     return errorLog;
-  }, [enabled]);
+  }, []);
 
   // Calculate stats
   const calculateStats = useCallback((errorList: ErrorLog[]): ErrorStats => {
@@ -108,79 +110,90 @@ export function useErrorMonitoring(enabled: boolean = true) {
     };
   }, [calculateStats]);
 
-  // Monitor console errors
+  // Monitor console errors - uses global flag to prevent double-wrapping
   useEffect(() => {
-    if (!enabled || initialized.current) return;
-    initialized.current = true;
+    if (!enabled) return;
 
-    // Store original functions
-    originalConsoleError.current = console.error;
-    originalConsoleWarn.current = console.warn;
+    // Only override if not already overridden by another instance
+    if (!consoleOverridden) {
+      consoleOverridden = true;
+      originalConsoleErrorGlobal = console.error;
+      originalConsoleWarnGlobal = console.warn;
 
-    // Override console.error
-    console.error = (...args: any[]) => {
-      originalConsoleError.current?.apply(console, args);
+      // Override console.error
+      console.error = (...args: any[]) => {
+        originalConsoleErrorGlobal?.apply(console, args);
 
-      // Skip React internal errors and our own logs
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ');
 
-      // Filter out noise
-      if (message.includes('Warning:') || 
-          message.includes('🔴 Error Details') ||
-          message.includes('Message:') ||
-          message.includes('Type:') ||
-          message.includes('Source:') ||
-          message.includes('Stack:') ||
-          message.includes('Context:') ||
-          message.includes('[vite]') ||
-          message.includes('HMR')) {
-        return;
-      }
+        // Filter out noise
+        if (message.includes('Warning:') || 
+            message.includes('🔴 Error Details') ||
+            message.includes('Message:') ||
+            message.includes('Type:') ||
+            message.includes('Source:') ||
+            message.includes('Stack:') ||
+            message.includes('Context:') ||
+            message.includes('[vite]') ||
+            message.includes('HMR')) {
+          return;
+        }
 
-      logError({
-        type: 'console',
-        severity: 'error',
-        message: message.slice(0, 500),
-        stack: new Error().stack,
-        source: 'console.error'
-      });
-    };
-
-    // Override console.warn (only for important warnings)
-    console.warn = (...args: any[]) => {
-      originalConsoleWarn.current?.apply(console, args);
-
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
-
-      // Only log significant warnings
-      if (message.includes('deprecated') || 
-          message.includes('Error') ||
-          message.includes('fail') ||
-          message.includes('Supabase')) {
-        logError({
+        addGlobalError({
+          id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          timestamp: new Date(),
+          resolved: false,
           type: 'console',
-          severity: 'warning',
+          severity: 'error',
           message: message.slice(0, 500),
-          source: 'console.warn'
+          stack: new Error().stack,
+          source: 'console.error'
         });
-      }
-    };
+      };
 
-    // Cleanup
+      // Override console.warn (only for important warnings)
+      console.warn = (...args: any[]) => {
+        originalConsoleWarnGlobal?.apply(console, args);
+
+        const message = args.map(arg => 
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ');
+
+        if (message.includes('deprecated') || 
+            message.includes('Error') ||
+            message.includes('fail') ||
+            message.includes('Supabase')) {
+          addGlobalError({
+            id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date(),
+            resolved: false,
+            type: 'console',
+            severity: 'warning',
+            message: message.slice(0, 500),
+            source: 'console.warn'
+          });
+        }
+      };
+    }
+    consoleOverrideCount++;
+
+    // Cleanup - only restore when last instance unmounts
     return () => {
-      if (originalConsoleError.current) {
-        console.error = originalConsoleError.current;
+      consoleOverrideCount--;
+      if (consoleOverrideCount <= 0 && consoleOverridden) {
+        if (originalConsoleErrorGlobal) {
+          console.error = originalConsoleErrorGlobal;
+        }
+        if (originalConsoleWarnGlobal) {
+          console.warn = originalConsoleWarnGlobal;
+        }
+        consoleOverridden = false;
+        consoleOverrideCount = 0;
       }
-      if (originalConsoleWarn.current) {
-        console.warn = originalConsoleWarn.current;
-      }
-      initialized.current = false;
     };
-  }, [enabled, logError]);
+  }, [enabled]);
 
   // Monitor unhandled errors
   useEffect(() => {
@@ -231,66 +244,83 @@ export function useErrorMonitoring(enabled: boolean = true) {
     };
   }, [enabled, logError]);
 
-  // Monitor fetch/network errors
+  // Monitor fetch/network errors - uses global flag to prevent double-wrapping
   useEffect(() => {
     if (!enabled) return;
 
-    originalFetch.current = globalThis.fetch.bind(globalThis);
+    if (!fetchOverridden) {
+      fetchOverridden = true;
+      originalFetchGlobal = globalThis.fetch.bind(globalThis);
 
-    globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
-      let url = 'unknown';
-      if (typeof args[0] === 'string') {
-        url = args[0];
-      } else if (args[0] instanceof URL) {
-        url = args[0].toString();
-      } else if (args[0] instanceof Request) {
-        url = args[0].url;
-      }
-      
-      try {
-        const response = await originalFetch.current!.apply(globalThis, args);
+      globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
+        let url = 'unknown';
+        if (typeof args[0] === 'string') {
+          url = args[0];
+        } else if (args[0] instanceof URL) {
+          url = args[0].toString();
+        } else if (args[0] instanceof Request) {
+          url = args[0].url;
+        }
+        
+        try {
+          const response = await originalFetchGlobal!.apply(globalThis, args);
 
-        // Log failed HTTP requests (4xx, 5xx)
-        if (!response.ok && response.status >= 400) {
-          const isSupabase = url.includes('supabase');
-          
-          logError({
-            type: isSupabase ? 'supabase' : 'network',
-            severity: response.status >= 500 ? 'error' : 'warning',
-            message: `HTTP ${response.status}: ${response.statusText} - ${url.slice(0, 100)}`,
+          // Log failed HTTP requests (4xx, 5xx) — skip expected 404s for dev files
+          if (!response.ok && response.status >= 400) {
+            const isDevFile = url.includes('pending-migrations') || url.includes('__dev/');
+            if (!isDevFile) {
+              const isSupabase = url.includes('supabase');
+              addGlobalError({
+                id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                timestamp: new Date(),
+                resolved: false,
+                type: isSupabase ? 'supabase' : 'network',
+                severity: response.status >= 500 ? 'error' : 'warning',
+                message: `HTTP ${response.status}: ${response.statusText} - ${url.slice(0, 100)}`,
+                context: {
+                  url: url.slice(0, 200),
+                  status: response.status,
+                  statusText: response.statusText,
+                  method: (args[1] as RequestInit)?.method || 'GET'
+                },
+                source: 'fetch'
+              });
+            }
+          }
+
+          return response;
+        } catch (error: any) {
+          addGlobalError({
+            id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date(),
+            resolved: false,
+            type: 'network',
+            severity: 'error',
+            message: error.message || 'Network request failed',
+            stack: error.stack,
             context: {
               url: url.slice(0, 200),
-              status: response.status,
-              statusText: response.statusText,
-              method: (args[1] as RequestInit)?.method || 'GET'
+              error: error.name
             },
             source: 'fetch'
           });
+          throw error;
         }
-
-        return response;
-      } catch (error: any) {
-        logError({
-          type: 'network',
-          severity: 'error',
-          message: error.message || 'Network request failed',
-          stack: error.stack,
-          context: {
-            url: url.slice(0, 200),
-            error: error.name
-          },
-          source: 'fetch'
-        });
-        throw error;
-      }
-    };
+      };
+    }
+    fetchOverrideCount++;
 
     return () => {
-      if (originalFetch.current) {
-        globalThis.fetch = originalFetch.current;
+      fetchOverrideCount--;
+      if (fetchOverrideCount <= 0 && fetchOverridden) {
+        if (originalFetchGlobal) {
+          globalThis.fetch = originalFetchGlobal;
+        }
+        fetchOverridden = false;
+        fetchOverrideCount = 0;
       }
     };
-  }, [enabled, logError]);
+  }, [enabled]);
 
   // Monitor Supabase auth state changes for errors
   useEffect(() => {
@@ -298,12 +328,14 @@ export function useErrorMonitoring(enabled: boolean = true) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' && !session) {
-        // Only log if unexpected
-        const lastError = errors[0];
+        // Only log if unexpected — check global store directly to avoid stale closure
+        const lastError = globalErrorStore[0];
         if (lastError?.type === 'supabase' && 
             Date.now() - lastError.timestamp.getTime() < 5000) {
-          // Auth issue detected after Supabase error
-          logError({
+          addGlobalError({
+            id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date(),
+            resolved: false,
             type: 'auth',
             severity: 'warning',
             message: 'Session ended - possible authentication issue',
@@ -317,7 +349,7 @@ export function useErrorMonitoring(enabled: boolean = true) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [enabled, errors, logError]);
+  }, [enabled]);
 
   // Clear all errors
   const clearErrors = useCallback(() => {

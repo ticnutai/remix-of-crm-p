@@ -47,7 +47,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ClientFieldManager } from "@/components/settings/ClientFieldManager";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -615,11 +614,11 @@ export function DeveloperSettings() {
         </Card>
       )}
 
-      {/* Migration Management Section */}
-      <MigrationManagement />
+      {/* Migration Management Section - only render when dev mode is on */}
+      {devMode && <MigrationManagement />}
 
-      {/* Script Runner Section */}
-      <ScriptRunner />
+      {/* Script Runner Section - only render when dev mode is on */}
+      {devMode && <ScriptRunner />}
 
       {/* Quick Actions - Premium Gold Design */}
       <Card className={cn(goldBg, goldBorder)}>
@@ -716,9 +715,6 @@ export function DeveloperSettings() {
 
       {/* System Health Check */}
       {devMode && <SystemHealthCheck />}
-
-      {/* Client Field Manager */}
-      <ClientFieldManager />
     </div>
   );
 }
