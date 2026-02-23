@@ -1,0 +1,531 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - region "Notifications (F8)":
+      - list
+    - region "Notifications alt+T"
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - banner [ref=e5]:
+          - generic [ref=e6]:
+            - heading "tenarch CRM Pro" [level=1] [ref=e8]
+            - generic [ref=e9]:
+              - button [disabled]:
+                - img
+              - button [disabled]:
+                - img
+            - generic [ref=e10]:
+              - button "חיפוש... ⌘ K" [ref=e11] [cursor=pointer]:
+                - img [ref=e12]
+                - generic [ref=e15]: חיפוש...
+                - generic:
+                  - generic: ⌘
+                  - text: K
+              - button [ref=e16] [cursor=pointer]:
+                - img
+              - button "4" [ref=e17] [cursor=pointer]:
+                - img
+                - generic [ref=e18]: "4"
+              - button "התאמת טקסט עמוד" [ref=e19] [cursor=pointer]:
+                - img
+              - button "כבה אנימציות" [ref=e20] [cursor=pointer]:
+                - img
+              - button "שנה ערכת נושא" [ref=e21] [cursor=pointer]:
+                - img
+              - button "י יעקב" [ref=e22] [cursor=pointer]:
+                - generic [ref=e23]: י
+                - generic [ref=e24]: יעקב
+        - main [ref=e25]:
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e29]:
+                - heading "ניהול כספים" [level=1] [ref=e30]
+                - paragraph [ref=e31]: חשבוניות, הכנסות ותזרים מזומנים
+              - generic [ref=e32]:
+                - button "תצוגת טאבים" [ref=e33] [cursor=pointer]:
+                  - img
+                  - text: תצוגת טאבים
+                - button "סנכרן PDFs לענן" [ref=e34] [cursor=pointer]:
+                  - img
+                  - text: סנכרן PDFs לענן
+                - button "סנכרן מחשבונית ירוקה" [ref=e35] [cursor=pointer]:
+                  - img
+                  - text: סנכרן מחשבונית ירוקה
+                - button "רענן" [ref=e36] [cursor=pointer]:
+                  - img
+                  - text: רענן
+                - button "חשבונית חדשה" [ref=e37] [cursor=pointer]:
+                  - img
+                  - text: חשבונית חדשה
+            - generic [ref=e38]:
+              - generic [ref=e40]:
+                - heading "פילטרים ואנליטיקס" [level=3] [ref=e41]:
+                  - img [ref=e42]
+                  - text: פילטרים ואנליטיקס
+                - button "הצג אנליטיקס" [ref=e44] [cursor=pointer]
+              - generic [ref=e46]:
+                - generic [ref=e47]:
+                  - text: מתאריך
+                  - textbox [ref=e48]
+                - generic [ref=e49]:
+                  - text: עד תאריך
+                  - textbox [ref=e50]
+                - generic [ref=e51]:
+                  - text: שנה
+                  - combobox [ref=e52] [cursor=pointer]:
+                    - generic: כל השנים
+                    - img [ref=e53]
+                - generic [ref=e55]:
+                  - text: חודש
+                  - combobox [ref=e56] [cursor=pointer]:
+                    - generic: כל החודשים
+                    - img [ref=e57]
+                - generic [ref=e59]:
+                  - text: לקוח
+                  - combobox [ref=e60] [cursor=pointer]:
+                    - generic: כל הלקוחות
+                    - img [ref=e61]
+                - generic [ref=e63]:
+                  - text: סטטוס
+                  - combobox [ref=e64] [cursor=pointer]:
+                    - generic: הכל
+                    - img [ref=e65]
+            - generic [ref=e67]:
+              - generic [ref=e68]:
+                - tablist [ref=e73]:
+                  - tab "סקירה כללית 3" [selected] [ref=e74] [cursor=pointer]:
+                    - img [ref=e75]
+                    - generic [ref=e77]: סקירה כללית
+                    - generic [ref=e78]: "3"
+                  - tab "חשבוניות 2" [ref=e79] [cursor=pointer]:
+                    - img [ref=e80]
+                    - generic [ref=e83]: חשבוניות
+                    - generic [ref=e84]: "2"
+                  - tab "הוצאות 1" [ref=e85] [cursor=pointer]:
+                    - img [ref=e86]
+                    - generic [ref=e89]: הוצאות
+                    - generic [ref=e90]: "1"
+                  - tab "תנועות בנק 1" [ref=e91] [cursor=pointer]:
+                    - img [ref=e92]
+                    - generic [ref=e94]: תנועות בנק
+                    - generic [ref=e95]: "1"
+                  - tab "לקוחות 2" [ref=e96] [cursor=pointer]:
+                    - img [ref=e97]
+                    - generic [ref=e100]: לקוחות
+                    - generic [ref=e101]: "2"
+                  - tab "דוחות 3" [ref=e102] [cursor=pointer]:
+                    - img [ref=e103]
+                    - generic [ref=e106]: דוחות
+                    - generic [ref=e107]: "3"
+                - generic [ref=e108]:
+                  - button [ref=e109] [cursor=pointer]:
+                    - img
+                  - button [ref=e110] [cursor=pointer]:
+                    - img
+                  - button "ערוך פריסה" [ref=e111] [cursor=pointer]:
+                    - img
+                    - text: ערוך פריסה
+              - generic [ref=e112]:
+                - generic [ref=e114]:
+                  - generic [ref=e116]:
+                    - generic [ref=e118]:
+                      - img [ref=e119]
+                      - heading "מדדים מרכזיים" [level=3] [ref=e121]
+                    - button [ref=e123] [cursor=pointer]:
+                      - img
+                  - generic [ref=e125]:
+                    - generic [ref=e128]:
+                      - heading "מדדי ביצוע (KPIs)" [level=3] [ref=e129]:
+                        - img [ref=e130]
+                        - text: מדדי ביצוע (KPIs)
+                      - paragraph [ref=e134]: מדדים פיננסיים מרכזיים לניטור הביצועים
+                    - generic [ref=e136]:
+                      - generic [ref=e139]:
+                        - generic [ref=e140]:
+                          - paragraph [ref=e141]: ימי גבייה ממוצעים (DSO)
+                          - generic [ref=e142]:
+                            - paragraph [ref=e143]: 0 ימים
+                            - img [ref=e145]
+                          - paragraph [ref=e148]: זמן ממוצע מהנפקה לתשלום
+                        - img [ref=e150]
+                      - generic [ref=e155]:
+                        - generic [ref=e156]:
+                          - paragraph [ref=e157]: מרווח רווח
+                          - generic [ref=e158]:
+                            - paragraph [ref=e159]: 0%
+                            - img [ref=e161]
+                          - paragraph [ref=e164]: רווח נקי מההכנסות
+                        - img [ref=e166]
+                      - generic [ref=e172]:
+                        - generic [ref=e173]:
+                          - paragraph [ref=e174]: צמיחה חודשית
+                          - generic [ref=e175]:
+                            - paragraph [ref=e176]: 0%
+                            - img [ref=e178]
+                          - paragraph [ref=e181]: השוואה לחודש קודם
+                        - img [ref=e183]
+                      - generic [ref=e188]:
+                        - generic [ref=e189]:
+                          - paragraph [ref=e190]: שיעור גבייה
+                          - generic [ref=e191]:
+                            - paragraph [ref=e192]: 0%
+                            - img [ref=e194]
+                          - paragraph [ref=e197]: מתוך סה״כ חשבוניות
+                        - img [ref=e199]
+                      - generic [ref=e203]:
+                        - generic [ref=e204]:
+                          - paragraph [ref=e205]: חשבוניות באיחור
+                          - generic [ref=e206]:
+                            - paragraph [ref=e207]: "0"
+                            - img [ref=e209]
+                          - paragraph [ref=e212]: 0% מסה״כ הפתוחות
+                        - img [ref=e214]
+                      - generic [ref=e218]:
+                        - generic [ref=e219]:
+                          - paragraph [ref=e220]: יחס הוצאות/הכנסות
+                          - generic [ref=e221]:
+                            - paragraph [ref=e222]: 0%
+                            - img [ref=e224]
+                          - paragraph [ref=e227]: אחוז הוצאות מההכנסות
+                        - img [ref=e229]
+                - generic [ref=e234]:
+                  - generic [ref=e236]:
+                    - generic [ref=e238]:
+                      - img [ref=e239]
+                      - heading "תזרים מזומנים" [level=3] [ref=e242]
+                    - button [ref=e244] [cursor=pointer]:
+                      - img
+                  - generic [ref=e246]:
+                    - generic [ref=e249]:
+                      - heading "תחזית תזרים מזומנים" [level=3] [ref=e250]:
+                        - img [ref=e251]
+                        - text: תחזית תזרים מזומנים
+                      - paragraph [ref=e254]: תחזית ל-6 חודשים הקרובים
+                    - generic [ref=e255]:
+                      - img [ref=e259]:
+                        - generic [ref=e264]:
+                          - generic [ref=e266]: פברואר
+                          - generic [ref=e268]: מרץ
+                          - generic [ref=e270]: אפריל
+                          - generic [ref=e272]: מאי
+                          - generic [ref=e274]: יוני
+                          - generic [ref=e276]: יולי
+                        - generic [ref=e278]:
+                          - generic [ref=e280]: ₪0
+                          - generic [ref=e282]: ₪1
+                          - generic [ref=e284]: ₪2
+                          - generic [ref=e286]: ₪3
+                          - generic [ref=e288]: ₪4
+                      - generic [ref=e289]:
+                        - generic [ref=e290]:
+                          - paragraph [ref=e291]: פברואר
+                          - generic [ref=e292]:
+                            - generic [ref=e293]:
+                              - generic [ref=e294]: +הכנסות
+                              - generic [ref=e295]: ₪0
+                            - generic [ref=e296]:
+                              - generic [ref=e297]: "-הוצאות"
+                              - generic [ref=e298]: ₪0
+                            - generic [ref=e300]:
+                              - generic [ref=e301]:
+                                - img [ref=e302]
+                                - text: נטו
+                              - generic [ref=e305]: ₪0
+                            - generic [ref=e306]:
+                              - generic [ref=e307]: יתרה
+                              - generic [ref=e308]: ₪0
+                        - generic [ref=e309]:
+                          - paragraph [ref=e310]: מרץ
+                          - generic [ref=e311]:
+                            - generic [ref=e312]:
+                              - generic [ref=e313]: +הכנסות
+                              - generic [ref=e314]: ₪0
+                            - generic [ref=e315]:
+                              - generic [ref=e316]: "-הוצאות"
+                              - generic [ref=e317]: ₪0
+                            - generic [ref=e319]:
+                              - generic [ref=e320]:
+                                - img [ref=e321]
+                                - text: נטו
+                              - generic [ref=e324]: ₪0
+                            - generic [ref=e325]:
+                              - generic [ref=e326]: יתרה
+                              - generic [ref=e327]: ₪0
+                        - generic [ref=e328]:
+                          - paragraph [ref=e329]: אפריל
+                          - generic [ref=e330]:
+                            - generic [ref=e331]:
+                              - generic [ref=e332]: +הכנסות
+                              - generic [ref=e333]: ₪0
+                            - generic [ref=e334]:
+                              - generic [ref=e335]: "-הוצאות"
+                              - generic [ref=e336]: ₪0
+                            - generic [ref=e338]:
+                              - generic [ref=e339]:
+                                - img [ref=e340]
+                                - text: נטו
+                              - generic [ref=e343]: ₪0
+                            - generic [ref=e344]:
+                              - generic [ref=e345]: יתרה
+                              - generic [ref=e346]: ₪0
+                        - generic [ref=e347]:
+                          - paragraph [ref=e348]: מאי
+                          - generic [ref=e349]:
+                            - generic [ref=e350]:
+                              - generic [ref=e351]: +הכנסות
+                              - generic [ref=e352]: ₪0
+                            - generic [ref=e353]:
+                              - generic [ref=e354]: "-הוצאות"
+                              - generic [ref=e355]: ₪0
+                            - generic [ref=e357]:
+                              - generic [ref=e358]:
+                                - img [ref=e359]
+                                - text: נטו
+                              - generic [ref=e362]: ₪0
+                            - generic [ref=e363]:
+                              - generic [ref=e364]: יתרה
+                              - generic [ref=e365]: ₪0
+                        - generic [ref=e366]:
+                          - paragraph [ref=e367]: יוני
+                          - generic [ref=e368]:
+                            - generic [ref=e369]:
+                              - generic [ref=e370]: +הכנסות
+                              - generic [ref=e371]: ₪0
+                            - generic [ref=e372]:
+                              - generic [ref=e373]: "-הוצאות"
+                              - generic [ref=e374]: ₪0
+                            - generic [ref=e376]:
+                              - generic [ref=e377]:
+                                - img [ref=e378]
+                                - text: נטו
+                              - generic [ref=e381]: ₪0
+                            - generic [ref=e382]:
+                              - generic [ref=e383]: יתרה
+                              - generic [ref=e384]: ₪0
+                        - generic [ref=e385]:
+                          - paragraph [ref=e386]: יולי
+                          - generic [ref=e387]:
+                            - generic [ref=e388]:
+                              - generic [ref=e389]: +הכנסות
+                              - generic [ref=e390]: ₪0
+                            - generic [ref=e391]:
+                              - generic [ref=e392]: "-הוצאות"
+                              - generic [ref=e393]: ₪0
+                            - generic [ref=e395]:
+                              - generic [ref=e396]:
+                                - img [ref=e397]
+                                - text: נטו
+                              - generic [ref=e400]: ₪0
+                            - generic [ref=e401]:
+                              - generic [ref=e402]: יתרה
+                              - generic [ref=e403]: ₪0
+                - generic [ref=e405]:
+                  - generic [ref=e407]:
+                    - generic [ref=e409]:
+                      - img [ref=e410]
+                      - heading "סיכום רווח ומע\"מ" [level=3] [ref=e412]
+                    - button [ref=e414] [cursor=pointer]:
+                      - img
+                  - generic [ref=e416]:
+                    - generic [ref=e417]:
+                      - heading "הכנסות (שולם)" [level=4] [ref=e418]:
+                        - img [ref=e419]
+                        - text: הכנסות (שולם)
+                      - generic [ref=e422]:
+                        - generic [ref=e423]:
+                          - generic [ref=e424]: "כולל מע\"מ:"
+                          - generic [ref=e425]: ₪0
+                        - generic [ref=e426]:
+                          - generic [ref=e427]: "לפני מע\"מ:"
+                          - generic [ref=e428]: ₪0
+                        - generic [ref=e429]:
+                          - generic [ref=e430]: "מע\"מ עסקאות:"
+                          - generic [ref=e431]: ₪0
+                    - generic [ref=e432]:
+                      - heading "הוצאות" [level=4] [ref=e433]:
+                        - img [ref=e434]
+                        - text: הוצאות
+                      - generic [ref=e436]:
+                        - generic [ref=e437]:
+                          - generic [ref=e438]: "סה\"כ הוצאות:"
+                          - generic [ref=e439]: ₪0
+                        - generic [ref=e440]:
+                          - generic [ref=e441]: "לפני מע\"מ:"
+                          - generic [ref=e442]: ₪0
+                        - generic [ref=e443]:
+                          - generic [ref=e444]: "מע\"מ תשומות:"
+                          - generic [ref=e445]: ₪0
+                    - generic [ref=e446]:
+                      - heading "סיכום" [level=4] [ref=e447]:
+                        - img [ref=e448]
+                        - text: סיכום
+                      - generic [ref=e451]:
+                        - generic [ref=e452]:
+                          - generic [ref=e453]: "רווח גולמי:"
+                          - generic [ref=e454]: ₪0
+                        - generic [ref=e455]:
+                          - generic [ref=e456]: "מע\"מ לתשלום:"
+                          - generic [ref=e457]: ₪0
+              - status [ref=e458]
+      - generic [ref=e465]:
+        - generic [ref=e466]:
+          - generic [ref=e467]:
+            - img [ref=e469]
+            - generic [ref=e473]:
+              - generic [ref=e474]: tenarch
+              - generic [ref=e475]: CRM Pro Max
+          - button [ref=e476] [cursor=pointer]:
+            - img
+        - generic [ref=e477]:
+          - generic [ref=e478]:
+            - paragraph [ref=e479]: ניווט ראשי
+            - link "לוח בקרה" [ref=e480] [cursor=pointer]:
+              - /url: /
+              - img [ref=e481]
+              - generic [ref=e486]: לוח בקרה
+            - link "היום שלי" [ref=e487] [cursor=pointer]:
+              - /url: /my-day
+              - img [ref=e488]
+              - generic [ref=e490]: היום שלי
+            - link "לקוחות" [ref=e491] [cursor=pointer]:
+              - /url: /clients
+              - img [ref=e492]
+              - generic [ref=e497]: לקוחות
+            - link "טבלת לקוחות" [ref=e498] [cursor=pointer]:
+              - /url: /datatable-pro
+              - img [ref=e499]
+              - generic [ref=e501]: טבלת לקוחות
+            - link "עובדים" [ref=e502] [cursor=pointer]:
+              - /url: /employees
+              - img [ref=e503]
+              - generic [ref=e515]: עובדים
+            - link "לוגי זמן" [ref=e516] [cursor=pointer]:
+              - /url: /time-logs
+              - img [ref=e517]
+              - generic [ref=e520]: לוגי זמן
+            - link "ניתוח זמנים" [ref=e521] [cursor=pointer]:
+              - /url: /time-analytics
+              - img [ref=e522]
+              - generic [ref=e525]: ניתוח זמנים
+            - link "משימות, פגישות ותזכורות" [ref=e526] [cursor=pointer]:
+              - /url: /tasks-meetings
+              - img [ref=e527]
+              - generic [ref=e529]: משימות, פגישות ותזכורות
+            - link "הצעות מחיר" [ref=e530] [cursor=pointer]:
+              - /url: /quotes
+              - img [ref=e531]
+              - generic [ref=e534]: הצעות מחיר
+            - link "כספים" [ref=e535] [cursor=pointer]:
+              - /url: /finance
+              - img [ref=e536]
+              - generic [ref=e539]: כספים
+            - link "תשלומים" [ref=e540] [cursor=pointer]:
+              - /url: /payments
+              - img [ref=e541]
+              - generic [ref=e544]: תשלומים
+            - link "דוחות" [ref=e545] [cursor=pointer]:
+              - /url: /reports
+              - img [ref=e546]
+              - generic [ref=e549]: דוחות
+            - link "לוח שנה" [ref=e550] [cursor=pointer]:
+              - /url: /calendar
+              - img [ref=e551]
+              - generic [ref=e553]: לוח שנה
+            - link "Gmail" [ref=e554] [cursor=pointer]:
+              - /url: /gmail
+              - img [ref=e555]
+              - generic [ref=e558]: Gmail
+            - link "אנשי קשר" [ref=e559] [cursor=pointer]:
+              - /url: /contacts
+              - img [ref=e560]
+              - generic [ref=e565]: אנשי קשר
+            - link "קבצים" [ref=e566] [cursor=pointer]:
+              - /url: /files
+              - img [ref=e567]
+              - generic [ref=e569]: קבצים
+            - link "כלים חכמים" [ref=e570] [cursor=pointer]:
+              - /url: /smart-tools
+              - img [ref=e571]
+              - generic [ref=e574]: כלים חכמים
+          - generic [ref=e576]:
+            - button "0 0 משימות ופגישות" [expanded] [ref=e577] [cursor=pointer]:
+              - generic [ref=e578]:
+                - img [ref=e579]
+                - generic [ref=e581]:
+                  - generic [ref=e582]:
+                    - img [ref=e583]
+                    - text: "0"
+                  - generic [ref=e586]:
+                    - img [ref=e587]
+                    - text: "0"
+              - generic [ref=e589]: משימות ופגישות
+            - generic [ref=e592]:
+              - generic [ref=e593]:
+                - tablist [ref=e594]:
+                  - tab "משימות" [selected] [ref=e595] [cursor=pointer]:
+                    - img [ref=e596]
+                    - text: משימות
+                  - tab "פגישות" [ref=e599] [cursor=pointer]:
+                    - img [ref=e600]
+                    - text: פגישות
+                - button [ref=e602] [cursor=pointer]:
+                  - img
+              - generic [ref=e603]:
+                - generic [ref=e604]:
+                  - button "היום" [ref=e605] [cursor=pointer]
+                  - button "השבוע" [ref=e606] [cursor=pointer]
+                  - button "הכל" [ref=e607] [cursor=pointer]
+                - button [ref=e608] [cursor=pointer]:
+                  - img [ref=e609]
+              - tabpanel "משימות" [ref=e613]:
+                - generic [ref=e618]:
+                  - img [ref=e619]
+                  - paragraph [ref=e622]: אין משימות להיום
+                  - button "הוסף משימה" [ref=e623] [cursor=pointer]:
+                    - img
+                    - text: הוסף משימה
+          - generic [ref=e624]:
+            - generic [ref=e625]:
+              - img [ref=e626]
+              - paragraph [ref=e628]: טבלאות מותאמות
+              - generic [ref=e629]: "3"
+            - generic [ref=e630]:
+              - link "בקשה להעברת זכויות" [ref=e631] [cursor=pointer]:
+                - /url: /custom-table/05efdd7c-6732-40a8-9da1-baa7fd079003
+                - img [ref=e632]
+                - generic [ref=e634]: בקשה להעברת זכויות
+              - link "מנהל - בקשה לרכישת זכויות" [ref=e635] [cursor=pointer]:
+                - /url: /custom-table/8c52741d-f89c-4741-af1c-c52b7564a5af
+                - img [ref=e636]
+                - generic [ref=e638]: מנהל - בקשה לרכישת זכויות
+              - link "שינוי תב'ע" [ref=e639] [cursor=pointer]:
+                - /url: /custom-table/720a8792-3d87-4aea-ac4b-303e3eec4684
+                - img [ref=e640]
+                - generic [ref=e642]: שינוי תב'ע
+          - generic [ref=e643]:
+            - paragraph [ref=e644]: מערכת
+            - link "גיבויים וייבוא" [ref=e645] [cursor=pointer]:
+              - /url: /backups
+              - img [ref=e646]
+              - generic [ref=e650]: גיבויים וייבוא
+            - link "היסטוריה" [ref=e651] [cursor=pointer]:
+              - /url: /history
+              - img [ref=e652]
+              - generic [ref=e656]: היסטוריה
+            - link "הגדרות" [ref=e657] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e658]
+              - generic [ref=e661]: הגדרות
+            - link "בדיקות" [ref=e662] [cursor=pointer]:
+              - /url: /tests
+              - img [ref=e663]
+              - generic [ref=e665]: בדיקות
+        - button "ערכות נושא" [ref=e667] [cursor=pointer]:
+          - img [ref=e668]
+          - generic [ref=e674]: ערכות נושא
+      - button [ref=e676] [cursor=pointer]:
+        - img [ref=e678]
+  - generic [ref=e681]: ₪0
+```

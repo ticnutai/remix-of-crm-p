@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTooltipButton } from "@/components/ui/info-tooltip-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useClients } from "@/hooks/useClients";
+import { useEmployeeClientAssignments } from "@/hooks/useEmployeeClientAssignments";
 import {
   ViewToggle,
   useViewMode,
@@ -66,6 +70,10 @@ import {
   Calculator,
   Clock,
   Download,
+  UsersRound,
+  Search,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 
 // Interface for time entries
@@ -187,6 +195,44 @@ export default function Employees() {
     employee: null,
   });
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Client assignment dialog
+  const [clientAssignDialog, setClientAssignDialog] = useState<{
+    open: boolean;
+    employee: Employee | null;
+  }>({
+    open: false,
+    employee: null,
+  });
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [isSavingClients, setIsSavingClients] = useState(false);
+
+  // Hooks for clients and assignments
+  const { clients: allClients, loading: loadingClients } = useClients();
+  const {
+    assignments: currentAssignments,
+    isLoading: loadingAssignments,
+    fetchAssignments,
+    fetchAllAssignments,
+    setClientAssignments,
+  } = useEmployeeClientAssignments();
+
+  // All assignments map: employeeId -> count
+  const [allAssignmentsMap, setAllAssignmentsMap] = useState<Record<string, number>>({});
+
+  // Fetch all assignments on mount to show counts
+  useEffect(() => {
+    const loadAllAssignments = async () => {
+      const all = await fetchAllAssignments();
+      const map: Record<string, number> = {};
+      (all || []).forEach((a: any) => {
+        map[a.employee_id] = (map[a.employee_id] || 0) + 1;
+      });
+      setAllAssignmentsMap(map);
+    };
+    if (user) loadAllAssignments();
+  }, [user, fetchAllAssignments]);
 
   // Tab state
   const [activeTab, setActiveTab] = useState("employees");
@@ -701,6 +747,98 @@ export default function Employees() {
     }
   };
 
+  // Handle open client assignment dialog
+  const handleOpenClientAssign = async (employee: Employee) => {
+    setClientAssignDialog({ open: true, employee });
+    setClientSearchQuery("");
+    setIsSavingClients(false);
+
+    // Fetch current assignments for this employee
+    const current = await fetchAssignments(employee.id);
+    const ids = new Set((current || []).map((a: any) => a.client_id));
+    setSelectedClientIds(ids);
+  };
+
+  // Handle save client assignments
+  const handleSaveClientAssignments = async () => {
+    if (!clientAssignDialog.employee) return;
+
+    setIsSavingClients(true);
+    const success = await setClientAssignments(
+      clientAssignDialog.employee.id,
+      Array.from(selectedClientIds),
+      user?.id
+    );
+
+    if (success) {
+      toast({
+        title: "לקוחות עודכנו",
+        description: `הוקצו ${selectedClientIds.size} לקוחות ל${clientAssignDialog.employee.full_name}`,
+      });
+
+      // Update the all-assignments map
+      setAllAssignmentsMap(prev => ({
+        ...prev,
+        [clientAssignDialog.employee!.id]: selectedClientIds.size,
+      }));
+
+      setClientAssignDialog({ open: false, employee: null });
+    } else {
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לשמור את הלקוחות המוקצים",
+        variant: "destructive",
+      });
+    }
+
+    setIsSavingClients(false);
+  };
+
+  // Toggle a client in the selection
+  const toggleClient = (clientId: string) => {
+    setSelectedClientIds(prev => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all clients
+  const toggleAllClients = () => {
+    const filtered = filteredClientsForAssign;
+    const allSelected = filtered.every(c => selectedClientIds.has(c.id));
+    if (allSelected) {
+      setSelectedClientIds(prev => {
+        const next = new Set(prev);
+        filtered.forEach(c => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelectedClientIds(prev => {
+        const next = new Set(prev);
+        filtered.forEach(c => next.add(c.id));
+        return next;
+      });
+    }
+  };
+
+  // Filtered clients for the assignment dialog
+  const filteredClientsForAssign = useMemo(() => {
+    if (!clientSearchQuery.trim()) return allClients;
+    const q = clientSearchQuery.toLowerCase();
+    return allClients.filter(
+      c =>
+        c.name?.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.phone?.includes(q) ||
+        c.company?.toLowerCase().includes(q)
+    );
+  }, [allClients, clientSearchQuery]);
+
   const columns: ColumnDef<Employee>[] = [
     {
       id: "full_name",
@@ -786,7 +924,7 @@ export default function Employees() {
       header: "פעולות",
       accessorKey: "id",
       cell: (_, row) => (
-        <div className="flex items-center gap-1 min-w-[200px]">
+        <div className="flex items-center gap-1 min-w-[260px]">
           <Button
             variant="outline"
             size="sm"
@@ -796,6 +934,24 @@ export default function Employees() {
             }}
           >
             עריכה
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenClientAssign(row);
+            }}
+            title="הקצאת לקוחות"
+            className="relative"
+          >
+            <UsersRound className="h-4 w-4 ml-1" />
+            לקוחות
+            {(allAssignmentsMap[row.id] || 0) > 0 && (
+              <Badge variant="secondary" className="mr-1 px-1.5 py-0 text-xs min-w-[18px] h-[18px] rounded-full">
+                {allAssignmentsMap[row.id]}
+              </Badge>
+            )}
           </Button>
           <Button
             variant="outline"
@@ -865,6 +1021,15 @@ export default function Employees() {
                 label: "ערוך",
                 icon: Pencil,
                 onClick: () => handleEditClick(employee),
+              },
+            ]
+          : []),
+        ...(isManager
+          ? [
+              {
+                label: `לקוחות${(allAssignmentsMap[employee.id] || 0) > 0 ? ` (${allAssignmentsMap[employee.id]})` : ""}`,
+                icon: UsersRound,
+                onClick: () => handleOpenClientAssign(employee),
               },
             ]
           : []),
@@ -2030,6 +2195,136 @@ export default function Employees() {
             >
               {isDeleting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
               מחק עובד
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Client Assignment Dialog */}
+      <Dialog
+        open={clientAssignDialog.open}
+        onOpenChange={(open) => {
+          if (!isSavingClients) {
+            setClientAssignDialog({
+              open,
+              employee: open ? clientAssignDialog.employee : null,
+            });
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh]" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UsersRound className="h-5 w-5" />
+              הקצאת לקוחות - {clientAssignDialog.employee?.full_name}
+            </DialogTitle>
+            <DialogDescription>
+              בחר אילו לקוחות העובד יוכל לראות ולנהל
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={clientSearchQuery}
+                onChange={(e) => setClientSearchQuery(e.target.value)}
+                placeholder="חיפוש לקוח..."
+                className="pr-10"
+              />
+              {clientSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={() => setClientSearchQuery("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Summary */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {selectedClientIds.size} לקוחות נבחרו מתוך {allClients.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleAllClients}
+                className="text-xs h-7"
+              >
+                {filteredClientsForAssign.length > 0 &&
+                  filteredClientsForAssign.every(c => selectedClientIds.has(c.id))
+                  ? "בטל הכל"
+                  : "בחר הכל"}
+              </Button>
+            </div>
+
+            {/* Client list */}
+            <ScrollArea className="h-[350px] border rounded-md">
+              {loadingClients ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredClientsForAssign.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+                  <UsersRound className="h-8 w-8 mb-2 opacity-50" />
+                  <p>לא נמצאו לקוחות</p>
+                </div>
+              ) : (
+                <div className="p-2 space-y-0.5">
+                  {filteredClientsForAssign.map((client) => (
+                    <label
+                      key={client.id}
+                      className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                        selectedClientIds.has(client.id) ? "bg-primary/5 border border-primary/20" : ""
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedClientIds.has(client.id)}
+                        onCheckedChange={() => toggleClient(client.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{client.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {client.company && <span>{client.company}</span>}
+                          {client.email && <span className="truncate">{client.email}</span>}
+                          {client.status && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                              {client.status}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {selectedClientIds.has(client.id) && (
+                        <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClientAssignDialog({ open: false, employee: null })}
+              disabled={isSavingClients}
+            >
+              ביטול
+            </Button>
+            <Button
+              onClick={handleSaveClientAssignments}
+              disabled={isSavingClients}
+              className="btn-gold"
+            >
+              {isSavingClients && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+              <CheckCircle2 className="h-4 w-4 ml-2" />
+              שמור ({selectedClientIds.size} לקוחות)
             </Button>
           </DialogFooter>
         </DialogContent>
