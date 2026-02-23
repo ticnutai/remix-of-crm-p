@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { createOfflineQueryFn, createOfflineMutation } from "@/lib/offlineQueryUtils";
 
 // Types
 export interface Task {
@@ -105,7 +106,7 @@ export function useTasksOptimized() {
     refetch,
   } = useQuery({
     queryKey: TASKS_QUERY_KEY,
-    queryFn: fetchTasks,
+    queryFn: createOfflineQueryFn<Task>('tasks', fetchTasks),
     enabled: !!user,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes cache
@@ -113,7 +114,7 @@ export function useTasksOptimized() {
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
-    mutationFn: async (task: TaskInsert) => {
+    mutationFn: createOfflineMutation<Task>('tasks', 'insert', async (task: any) => {
       if (!user) throw new Error("Not authenticated");
 
       const { data, error } = await supabase
@@ -124,7 +125,7 @@ export function useTasksOptimized() {
 
       if (error) throw error;
       return data as Task;
-    },
+    }),
     // Optimistic update
     onMutate: async (newTask) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
@@ -176,7 +177,7 @@ export function useTasksOptimized() {
 
   // Update mutation with optimistic update
   const updateMutation = useMutation({
-    mutationFn: async ({
+    mutationFn: createOfflineMutation<any>('tasks', 'update', async ({
       id,
       updates,
     }: {
@@ -198,7 +199,7 @@ export function useTasksOptimized() {
 
       if (error) throw error;
       return { id, updates: updateData };
-    },
+    }),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY);
@@ -240,12 +241,12 @@ export function useTasksOptimized() {
 
   // Delete mutation with optimistic update
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
+    mutationFn: createOfflineMutation<any>('tasks', 'delete', async (id: any) => {
+      const { error } = await supabase.from("tasks").delete().eq("id", typeof id === 'string' ? id : id.id);
 
       if (error) throw error;
       return id;
-    },
+    }),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY);

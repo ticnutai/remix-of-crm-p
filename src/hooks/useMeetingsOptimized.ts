@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
+import { createOfflineQueryFn } from '@/lib/offlineQueryUtils';
 
 // Types
 export interface Meeting {
@@ -118,7 +119,7 @@ export function useMeetingsOptimized() {
     refetch 
   } = useQuery({
     queryKey: MEETINGS_KEY,
-    queryFn: fetchMeetings,
+    queryFn: createOfflineQueryFn<Meeting>('meetings', fetchMeetings),
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -126,7 +127,7 @@ export function useMeetingsOptimized() {
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
-    mutationFn: async (meeting: MeetingInsert) => {
+    mutationFn: createOfflineMutation<Meeting>('meetings', 'insert', async (meeting: any) => {
       if (!user) throw new Error('Not authenticated');
       
       const { data, error } = await supabase
@@ -137,7 +138,7 @@ export function useMeetingsOptimized() {
 
       if (error) throw error;
       return data as Meeting;
-    },
+    }),
     onMutate: async (newMeeting) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
@@ -184,7 +185,7 @@ export function useMeetingsOptimized() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<MeetingInsert> }) => {
+    mutationFn: createOfflineMutation<any>('meetings', 'update', async ({ id, updates }: { id: string; updates: Partial<MeetingInsert> }) => {
       const { error } = await supabase
         .from('meetings')
         .update(updates)
@@ -192,7 +193,7 @@ export function useMeetingsOptimized() {
 
       if (error) throw error;
       return { id, updates };
-    },
+    }),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
@@ -227,15 +228,15 @@ export function useMeetingsOptimized() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: createOfflineMutation<any>('meetings', 'delete', async (id: any) => {
       const { error } = await supabase
         .from('meetings')
         .delete()
-        .eq('id', id);
+        .eq('id', typeof id === 'string' ? id : id.id);
 
       if (error) throw error;
       return id;
-    },
+    }),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);

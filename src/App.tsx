@@ -3,6 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createIDBPersister, PERSIST_MAX_AGE } from "@/lib/queryPersister";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { UndoRedoProvider } from "@/hooks/useUndoRedo";
 import { BackupProvider } from "@/hooks/useBackupRestore";
@@ -87,10 +89,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// IndexedDB persister — survives page refresh, 24h max age
+const idbPersister = createIDBPersister();
+const persistOptions = {
+  persister: idbPersister,
+  maxAge: PERSIST_MAX_AGE,
+  buster: 'v1', // Bump to invalidate all cached data
+};
+
 const App = () => {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
         <ThemeProvider>
           <TooltipProvider>
             <AuthProvider>
@@ -231,7 +241,7 @@ const App = () => {
             </AuthProvider>
           </TooltipProvider>
         </ThemeProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 };

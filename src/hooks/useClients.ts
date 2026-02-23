@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { createOfflineQueryFn } from '@/lib/offlineQueryUtils';
 
 export interface Client {
   id: string;
@@ -19,7 +20,7 @@ export function useClients() {
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: CLIENTS_QUERY_KEY,
-    queryFn: async () => {
+    queryFn: createOfflineQueryFn<Client>('clients', async () => {
       const { data, error } = await supabase
         .from('clients')
         .select('id, name, email, phone, company, address, status, stage')
@@ -30,7 +31,7 @@ export function useClients() {
         throw error;
       }
       return data as Client[];
-    },
+    }),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
