@@ -399,7 +399,7 @@ export function DeveloperSettings() {
         </CardContent>
       </Card>
 
-      {/* Individual Tool Controls - Premium Gold Cards */}
+      {/* Unified Dev Tools & Floating Buttons */}
       {devMode && (
         <Card className={cn(goldBg, goldBorder)}>
           <div className={cn(goldGradient, "h-1")} />
@@ -412,18 +412,20 @@ export function DeveloperSettings() {
                   variant="outline"
                   className="border-yellow-500/50 text-yellow-600"
                 >
-                  {enabledCount}/5 פעילים
+                  {enabledCount + floatingEnabledCount}/{Object.keys(toolsConfig).length + Object.keys(floatingConfig).length} פעילים
                 </Badge>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleEnableAll}
-                  disabled={allEnabled}
+                  onClick={() => {
+                    handleEnableAll();
+                    const allFloating: DevButtonsConfig = { console: true, inspector: true, performance: true, database: true, clear: true, refresh: true, tabsDebug: true };
+                    setFloatingConfig(allFloating);
+                  }}
                   className={cn(
                     "border-yellow-500/50 hover:bg-yellow-500/10",
-                    allEnabled && "opacity-50",
                   )}
                 >
                   <CheckCircle2 className={cn("h-4 w-4 mr-2", goldIcon)} />
@@ -432,8 +434,11 @@ export function DeveloperSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDisableAll}
-                  disabled={allDisabled}
+                  onClick={() => {
+                    handleDisableAll();
+                    const allFloatingOff: DevButtonsConfig = { console: false, inspector: false, performance: false, database: false, clear: false, refresh: false, tabsDebug: false };
+                    setFloatingConfig(allFloatingOff);
+                  }}
                   className="hover:bg-destructive/10"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
@@ -445,81 +450,7 @@ export function DeveloperSettings() {
               שליטה מלאה בכל כלי - הפעל או כבה כל אחד בנפרד
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Console Tool */}
-              <ToolCard
-                icon={Terminal}
-                title="📟 קונסול מפתחים"
-                description="יירוט console.log/error/warn + זיהוי עמודים ריקים"
-                enabled={toolsConfig.console}
-                onToggle={(enabled) => handleToolToggle("console", enabled)}
-              />
-
-              {/* Element Inspector */}
-              <ToolCard
-                icon={Eye}
-                title="🔍 זיהוי אלמנטים"
-                description="לחץ על אלמנט לזהות קומפוננטה וקובץ"
-                enabled={toolsConfig.inspector}
-                onToggle={(enabled) => handleToolToggle("inspector", enabled)}
-              />
-
-              {/* Performance Analyzer */}
-              <ToolCard
-                icon={Gauge}
-                title="⚡ מד ביצועים משופר"
-                description="Core Web Vitals, זיכרון, רשת + ניתוח מעמיק"
-                enabled={toolsConfig.performance}
-                onToggle={(enabled) => handleToolToggle("performance", enabled)}
-              />
-
-              {/* Copilot Integration */}
-              <ToolCard
-                icon={Send}
-                title="🤖 חיבור Copilot"
-                description="שלח מידע ישירות ל-VS Code Copilot"
-                enabled={toolsConfig.copilot}
-                onToggle={(enabled) => handleToolToggle("copilot", enabled)}
-              />
-
-              {/* Empty Page Detector */}
-              <ToolCard
-                icon={Bug}
-                title="🚨 זיהוי עמוד ריק"
-                description="אבחון אוטומטי של בעיות כשעמוד ריק"
-                enabled={toolsConfig.emptyPageDetector}
-                onToggle={(enabled) =>
-                  handleToolToggle("emptyPageDetector", enabled)
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Floating Dev Buttons Configuration */}
-      {devMode && (
-        <Card className={cn(goldBg, goldBorder)}>
-          <div className={cn(goldGradient, "h-1")} />
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVertical className={cn("h-5 w-5", goldIcon)} />
-                <CardTitle className="text-lg">כפתורי פיתוח צפים</CardTitle>
-                <Badge
-                  variant="outline"
-                  className="border-yellow-500/50 text-yellow-600"
-                >
-                  {floatingEnabledCount}/{Object.keys(floatingConfig).length} פעילים
-                </Badge>
-              </div>
-            </div>
-            <CardDescription>
-              שליטה על הכפתורים הצפים - בחר אילו כפתורים להציג
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             {/* Grouped/Individual Mode Toggle */}
             <div
               className={cn(
@@ -531,11 +462,11 @@ export function DeveloperSettings() {
               <div className="flex items-center gap-3">
                 <GripVertical className={cn("h-5 w-5", goldIcon)} />
                 <div>
-                  <h4 className="font-medium text-sm">מצב תצוגה</h4>
+                  <h4 className="font-medium text-sm">מצב תצוגה כפתורים צפים</h4>
                   <p className="text-xs text-muted-foreground">
                     {isGrouped
-                      ? "כל הכפתורים מקובצים יחד בשורה אחת"
-                      : "כל כפתור בנפרד - ניתן להזיז כל אחד"}
+                      ? "כל הכפתורים מקובצים יחד בשורה אחת ניתנת לגרירה"
+                      : "כל כפתור בנפרד - ניתן להזיז כל אחד בנפרד"}
                   </p>
                 </div>
               </div>
@@ -585,37 +516,54 @@ export function DeveloperSettings() {
               </div>
             </div>
 
+            <Separator className="bg-yellow-500/20" />
+
+            {/* All Tool Cards in one grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {/* Console Button */}
+              {/* Console Tool */}
               <ToolCard
                 icon={Terminal}
-                title="📟 קונסול"
-                description="פותח חלון קונסול מתקדם"
-                enabled={floatingConfig.console}
-                onToggle={(enabled) =>
-                  handleFloatingButtonToggle("console", enabled)
-                }
+                title="📟 קונסול מפתחים"
+                description="יירוט console.log/error/warn + זיהוי עמודים ריקים"
+                enabled={toolsConfig.console}
+                onToggle={(enabled) => handleToolToggle("console", enabled)}
               />
 
-              {/* Inspector Button */}
+              {/* Element Inspector */}
+              <ToolCard
+                icon={Eye}
+                title="🔍 זיהוי אלמנטים"
+                description="לחץ על אלמנט לזהות קומפוננטה וקובץ"
+                enabled={toolsConfig.inspector}
+                onToggle={(enabled) => handleToolToggle("inspector", enabled)}
+              />
+
+              {/* Performance Analyzer */}
+              <ToolCard
+                icon={Gauge}
+                title="⚡ מד ביצועים משופר"
+                description="Core Web Vitals, זיכרון, רשת + ניתוח מעמיק"
+                enabled={toolsConfig.performance}
+                onToggle={(enabled) => handleToolToggle("performance", enabled)}
+              />
+
+              {/* Copilot Integration */}
+              <ToolCard
+                icon={Send}
+                title="🤖 חיבור Copilot"
+                description="שלח מידע ישירות ל-VS Code Copilot"
+                enabled={toolsConfig.copilot}
+                onToggle={(enabled) => handleToolToggle("copilot", enabled)}
+              />
+
+              {/* Empty Page Detector */}
               <ToolCard
                 icon={Bug}
-                title="🐛 בודק אלמנטים"
-                description="מצב בדיקת אלמנטים"
-                enabled={floatingConfig.inspector}
+                title="🚨 זיהוי עמוד ריק"
+                description="אבחון אוטומטי של בעיות כשעמוד ריק"
+                enabled={toolsConfig.emptyPageDetector}
                 onToggle={(enabled) =>
-                  handleFloatingButtonToggle("inspector", enabled)
-                }
-              />
-
-              {/* Performance Button */}
-              <ToolCard
-                icon={Zap}
-                title="⚡ ביצועים"
-                description="מוניטור ביצועים"
-                enabled={floatingConfig.performance}
-                onToggle={(enabled) =>
-                  handleFloatingButtonToggle("performance", enabled)
+                  handleToolToggle("emptyPageDetector", enabled)
                 }
               />
 
