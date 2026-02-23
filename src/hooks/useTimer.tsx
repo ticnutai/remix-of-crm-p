@@ -362,7 +362,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         .eq("id", timerState.currentEntry.id)
         .then(() => {
           refreshEntries();
-        }).catch(() => {});
+        })
+        .catch(() => {});
     }
 
     setTimerState({

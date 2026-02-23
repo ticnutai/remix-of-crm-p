@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 function devMigrationsPlugin() {
   const migrationsDir = path.resolve(__dirname, "supabase", "migrations");
-  
+
   return {
     name: "dev-migrations-plugin",
     apply: "serve" as const,
@@ -39,10 +39,17 @@ function devMigrationsPlugin() {
             const pathname = url.pathname;
 
             // List migrations
-            if (pathname === "/__dev/migrations" || pathname === "/__dev/migrations/") {
-              const dirents = await fs.readdir(migrationsDir, { withFileTypes: true });
+            if (
+              pathname === "/__dev/migrations" ||
+              pathname === "/__dev/migrations/"
+            ) {
+              const dirents = await fs.readdir(migrationsDir, {
+                withFileTypes: true,
+              });
               const files = dirents
-                .filter((d) => d.isFile() && d.name.toLowerCase().endsWith(".sql"))
+                .filter(
+                  (d) => d.isFile() && d.name.toLowerCase().endsWith(".sql"),
+                )
                 .map((d) => ({
                   name: d.name,
                   path: `supabase/migrations/${d.name}`,
@@ -60,7 +67,12 @@ function devMigrationsPlugin() {
             const fileName = decodeURIComponent(fileNameRaw);
 
             // Prevent path traversal
-            if (!fileName || fileName.includes("/") || fileName.includes("\\") || fileName.includes("..")) {
+            if (
+              !fileName ||
+              fileName.includes("/") ||
+              fileName.includes("\\") ||
+              fileName.includes("..")
+            ) {
               res.statusCode = 400;
               res.setHeader("Content-Type", "text/plain; charset=utf-8");
               res.end("Bad Request");
@@ -120,16 +132,17 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabaseKey),       
+      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY":
+        JSON.stringify(supabaseKey),
     },
     plugins: [
-      react(), 
+      react(),
       mode === "development" && componentTagger(),
       mode === "development" && devMigrationsPlugin(),
     ].filter(Boolean),
     // Remove console.log and debugger in production
     esbuild: {
-      drop: mode === 'production' ? ['console', 'debugger'] : [],
+      drop: mode === "production" ? ["console", "debugger"] : [],
     },
     resolve: {
       alias: {
@@ -143,341 +156,447 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             // Vendor chunks - rarely change, better caching
-            if (id.includes('node_modules')) {
+            if (id.includes("node_modules")) {
               // React ecosystem - split into smaller chunks
-              if (id.includes('react-dom/client')) {
-                return 'vendor-react-dom-client';
+              if (id.includes("react-dom/client")) {
+                return "vendor-react-dom-client";
               }
-              if (id.includes('react-dom')) {
-                return 'vendor-react-dom';
+              if (id.includes("react-dom")) {
+                return "vendor-react-dom";
               }
-              if (id.includes('react-router-dom')) {
-                return 'vendor-router';
+              if (id.includes("react-router-dom")) {
+                return "vendor-router";
               }
-              if (id.includes('scheduler')) {
-                return 'vendor-scheduler';
+              if (id.includes("scheduler")) {
+                return "vendor-scheduler";
               }
-              if (id.includes('react-day-picker')) {
-                return 'vendor-day-picker';
+              if (id.includes("react-day-picker")) {
+                return "vendor-day-picker";
               }
-              if (id.includes('react-hook-form')) {
-                return 'vendor-form';
+              if (id.includes("react-hook-form")) {
+                return "vendor-form";
               }
-              if (id.includes('react-resizable-panels')) {
-                return 'vendor-panels';
+              if (id.includes("react-resizable-panels")) {
+                return "vendor-panels";
               }
               // Keep react core small - don't catch other react-* packages
               if (id.match(/[\\/]node_modules[\\/]react[\\/]/)) {
-                return 'vendor-react-core';
+                return "vendor-react-core";
               }
-              
+
               // UI libraries - split by category
-              if (id.includes('@radix-ui/react-dialog') || id.includes('@radix-ui/react-popover') || id.includes('@radix-ui/react-dropdown') || id.includes('@radix-ui/react-alert-dialog')) {
-                return 'vendor-ui-overlays';
+              if (
+                id.includes("@radix-ui/react-dialog") ||
+                id.includes("@radix-ui/react-popover") ||
+                id.includes("@radix-ui/react-dropdown") ||
+                id.includes("@radix-ui/react-alert-dialog")
+              ) {
+                return "vendor-ui-overlays";
               }
-              if (id.includes('@radix-ui/react-select') || id.includes('@radix-ui/react-checkbox') || id.includes('@radix-ui/react-radio') || id.includes('@radix-ui/react-switch')) {
-                return 'vendor-ui-forms';
+              if (
+                id.includes("@radix-ui/react-select") ||
+                id.includes("@radix-ui/react-checkbox") ||
+                id.includes("@radix-ui/react-radio") ||
+                id.includes("@radix-ui/react-switch")
+              ) {
+                return "vendor-ui-forms";
               }
-              if (id.includes('@radix-ui/react-tabs') || id.includes('@radix-ui/react-accordion') || id.includes('@radix-ui/react-collapsible')) {
-                return 'vendor-ui-panels';
+              if (
+                id.includes("@radix-ui/react-tabs") ||
+                id.includes("@radix-ui/react-accordion") ||
+                id.includes("@radix-ui/react-collapsible")
+              ) {
+                return "vendor-ui-panels";
               }
-              if (id.includes('@radix-ui/react-toast') || id.includes('@radix-ui/react-tooltip') || id.includes('@radix-ui/react-hover-card')) {
-                return 'vendor-ui-feedback';
+              if (
+                id.includes("@radix-ui/react-toast") ||
+                id.includes("@radix-ui/react-tooltip") ||
+                id.includes("@radix-ui/react-hover-card")
+              ) {
+                return "vendor-ui-feedback";
               }
-              if (id.includes('@radix-ui/react-menu') || id.includes('@radix-ui/react-context-menu') || id.includes('@radix-ui/react-navigation-menu')) {
-                return 'vendor-ui-overlays';
+              if (
+                id.includes("@radix-ui/react-menu") ||
+                id.includes("@radix-ui/react-context-menu") ||
+                id.includes("@radix-ui/react-navigation-menu")
+              ) {
+                return "vendor-ui-overlays";
               }
-              if (id.includes('@radix-ui')) {
-                return 'vendor-ui-core';
+              if (id.includes("@radix-ui")) {
+                return "vendor-ui-core";
               }
-              
+
               // Data & forms
-              if (id.includes('@tanstack/react-query')) {
-                return 'vendor-query';
+              if (id.includes("@tanstack/react-query")) {
+                return "vendor-query";
               }
-              if (id.includes('@tanstack/react-table')) {
-                return 'vendor-table';
+              if (id.includes("@tanstack/react-table")) {
+                return "vendor-table";
               }
-              if (id.includes('@tanstack/react-virtual')) {
-                return 'vendor-virtual';
+              if (id.includes("@tanstack/react-virtual")) {
+                return "vendor-virtual";
               }
-              if (id.includes('@hookform') || id.includes('zod')) {
-                return 'vendor-validation';
+              if (id.includes("@hookform") || id.includes("zod")) {
+                return "vendor-validation";
               }
-              
+
               // Utilities
-              if (id.includes('date-fns')) {
-                return 'vendor-date-fns';
+              if (id.includes("date-fns")) {
+                return "vendor-date-fns";
               }
-              if (id.includes('clsx') || id.includes('class-variance-authority') || id.includes('tailwind-merge')) {
-                return 'vendor-classnames';
+              if (
+                id.includes("clsx") ||
+                id.includes("class-variance-authority") ||
+                id.includes("tailwind-merge")
+              ) {
+                return "vendor-classnames";
               }
-              
+
               // Supabase - split realtime from core
-              if (id.includes('@supabase/realtime')) {
-                return 'vendor-supabase-realtime';
+              if (id.includes("@supabase/realtime")) {
+                return "vendor-supabase-realtime";
               }
-              if (id.includes('@supabase/functions')) {
-                return 'vendor-supabase-functions';
+              if (id.includes("@supabase/functions")) {
+                return "vendor-supabase-functions";
               }
-              if (id.includes('@supabase/storage')) {
-                return 'vendor-supabase-storage';
+              if (id.includes("@supabase/storage")) {
+                return "vendor-supabase-storage";
               }
-              if (id.includes('@supabase/postgrest')) {
-                return 'vendor-supabase-postgrest';
+              if (id.includes("@supabase/postgrest")) {
+                return "vendor-supabase-postgrest";
               }
-              if (id.includes('@supabase/gotrue')) {
-                return 'vendor-supabase-auth';
+              if (id.includes("@supabase/gotrue")) {
+                return "vendor-supabase-auth";
               }
-              if (id.includes('@supabase')) {
-                return 'vendor-supabase-core';
+              if (id.includes("@supabase")) {
+                return "vendor-supabase-core";
               }
-              
+
               // Charts - split d3 from recharts
-              if (id.includes('d3-shape') || id.includes('d3-path')) {
-                return 'vendor-d3-shapes';
+              if (id.includes("d3-shape") || id.includes("d3-path")) {
+                return "vendor-d3-shapes";
               }
-              if (id.includes('d3-scale') || id.includes('d3-interpolate') || id.includes('d3-color')) {
-                return 'vendor-d3-scales';
+              if (
+                id.includes("d3-scale") ||
+                id.includes("d3-interpolate") ||
+                id.includes("d3-color")
+              ) {
+                return "vendor-d3-scales";
               }
-              if (id.includes('d3-')) {
-                return 'vendor-d3-core';
+              if (id.includes("d3-")) {
+                return "vendor-d3-core";
               }
-              if (id.includes('recharts')) {
-                return 'vendor-recharts';
+              if (id.includes("recharts")) {
+                return "vendor-recharts";
               }
-              
+
               // Heavy document libraries - keep separate for lazy loading
-              if (id.includes('xlsx')) {
-                return 'lib-xlsx';
+              if (id.includes("xlsx")) {
+                return "lib-xlsx";
               }
-              if (id.includes('jspdf-autotable')) {
-                return 'lib-jspdf-table';
+              if (id.includes("jspdf-autotable")) {
+                return "lib-jspdf-table";
               }
-              if (id.includes('jspdf')) {
-                return 'lib-jspdf';
+              if (id.includes("jspdf")) {
+                return "lib-jspdf";
               }
-              if (id.includes('html2canvas')) {
-                return 'lib-html2canvas';
+              if (id.includes("html2canvas")) {
+                return "lib-html2canvas";
               }
-              if (id.includes('html2pdf')) {
-                return 'lib-html2pdf';
+              if (id.includes("html2pdf")) {
+                return "lib-html2pdf";
               }
-              if (id.includes('pdfjs-dist/build/pdf.worker')) {
-                return 'lib-pdfjs-worker';
+              if (id.includes("pdfjs-dist/build/pdf.worker")) {
+                return "lib-pdfjs-worker";
               }
-              if (id.includes('pdfjs-dist')) {
-                return 'lib-pdfjs';
+              if (id.includes("pdfjs-dist")) {
+                return "lib-pdfjs";
               }
-              if (id.includes('mammoth')) {
-                return 'lib-mammoth';
+              if (id.includes("mammoth")) {
+                return "lib-mammoth";
               }
-              if (id.includes('dompurify')) {
-                return 'lib-dompurify';
+              if (id.includes("dompurify")) {
+                return "lib-dompurify";
               }
-              
+
               // Icons - split by letter range for better distribution
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
+              if (id.includes("lucide-react")) {
+                return "vendor-icons";
               }
-              
+
               // Drag and drop
-              if (id.includes('@dnd-kit/core')) {
-                return 'vendor-dnd-core';
+              if (id.includes("@dnd-kit/core")) {
+                return "vendor-dnd-core";
               }
-              if (id.includes('@dnd-kit/sortable')) {
-                return 'vendor-dnd-sortable';
+              if (id.includes("@dnd-kit/sortable")) {
+                return "vendor-dnd-sortable";
               }
-              if (id.includes('@dnd-kit')) {
-                return 'vendor-dnd-utils';
+              if (id.includes("@dnd-kit")) {
+                return "vendor-dnd-utils";
               }
-              
+
               // Other UI libs
-              if (id.includes('cmdk')) {
-                return 'vendor-cmdk';
+              if (id.includes("cmdk")) {
+                return "vendor-cmdk";
               }
-              if (id.includes('embla-carousel')) {
-                return 'vendor-carousel';
+              if (id.includes("embla-carousel")) {
+                return "vendor-carousel";
               }
-              if (id.includes('sonner')) {
-                return 'vendor-sonner';
+              if (id.includes("sonner")) {
+                return "vendor-sonner";
               }
-              if (id.includes('vaul')) {
-                return 'vendor-vaul';
+              if (id.includes("vaul")) {
+                return "vendor-vaul";
               }
-              if (id.includes('next-themes')) {
-                return 'vendor-themes';
+              if (id.includes("next-themes")) {
+                return "vendor-themes";
               }
-              if (id.includes('zustand')) {
-                return 'vendor-state';
+              if (id.includes("zustand")) {
+                return "vendor-state";
               }
-              if (id.includes('input-otp')) {
-                return 'vendor-otp';
+              if (id.includes("input-otp")) {
+                return "vendor-otp";
               }
-              
+
               // Floating UI (used by radix)
-              if (id.includes('@floating-ui')) {
-                return 'vendor-floating-ui';
+              if (id.includes("@floating-ui")) {
+                return "vendor-floating-ui";
               }
-              
+
               // Aria & accessibility
-              if (id.includes('aria-') || id.includes('@react-aria')) {
-                return 'vendor-aria';
+              if (id.includes("aria-") || id.includes("@react-aria")) {
+                return "vendor-aria";
               }
-              
+
               // Animation
-              if (id.includes('framer-motion') || id.includes('motion')) {
-                return 'vendor-motion';
+              if (id.includes("framer-motion") || id.includes("motion")) {
+                return "vendor-motion";
               }
-              
+
               // Additional heavy libraries - split more granularly
-              if (id.includes('lodash')) {
-                return 'vendor-lodash';
+              if (id.includes("lodash")) {
+                return "vendor-lodash";
               }
-              if (id.includes('uuid') || id.includes('nanoid')) {
-                return 'vendor-ids';
+              if (id.includes("uuid") || id.includes("nanoid")) {
+                return "vendor-ids";
               }
-              if (id.includes('immer')) {
-                return 'vendor-immer';
+              if (id.includes("immer")) {
+                return "vendor-immer";
               }
-              if (id.includes('react-intersection-observer') || id.includes('react-resize')) {
-                return 'vendor-observers';
+              if (
+                id.includes("react-intersection-observer") ||
+                id.includes("react-resize")
+              ) {
+                return "vendor-observers";
               }
-              if (id.includes('react-virtualized') || id.includes('react-window')) {
-                return 'vendor-virtualization';
+              if (
+                id.includes("react-virtualized") ||
+                id.includes("react-window")
+              ) {
+                return "vendor-virtualization";
               }
-              if (id.includes('react-error-boundary')) {
-                return 'vendor-error-boundary';
+              if (id.includes("react-error-boundary")) {
+                return "vendor-error-boundary";
               }
-              if (id.includes('react-dropzone')) {
-                return 'vendor-dropzone';
+              if (id.includes("react-dropzone")) {
+                return "vendor-dropzone";
               }
-              if (id.includes('react-beautiful-dnd')) {
-                return 'vendor-dnd-beautiful';
+              if (id.includes("react-beautiful-dnd")) {
+                return "vendor-dnd-beautiful";
               }
-              if (id.includes('react-icons')) {
-                return 'vendor-react-icons';
+              if (id.includes("react-icons")) {
+                return "vendor-react-icons";
               }
-              if (id.includes('i18n') || id.includes('intl')) {
-                return 'vendor-i18n';
+              if (id.includes("i18n") || id.includes("intl")) {
+                return "vendor-i18n";
               }
-              if (id.includes('prop-types')) {
-                return 'vendor-prop-types';
+              if (id.includes("prop-types")) {
+                return "vendor-prop-types";
               }
-              if (id.includes('hoist-non-react-statics')) {
-                return 'vendor-hoist';
+              if (id.includes("hoist-non-react-statics")) {
+                return "vendor-hoist";
               }
-              
+
               // React Markdown and its dependencies (unified/remark ecosystem)
-              if (id.includes('react-markdown') || id.includes('remark') || id.includes('unified') || id.includes('micromark') || id.includes('mdast') || id.includes('hast') || id.includes('vfile') || id.includes('unist')) {
-                return 'vendor-markdown';
+              if (
+                id.includes("react-markdown") ||
+                id.includes("remark") ||
+                id.includes("unified") ||
+                id.includes("micromark") ||
+                id.includes("mdast") ||
+                id.includes("hast") ||
+                id.includes("vfile") ||
+                id.includes("unist")
+              ) {
+                return "vendor-markdown";
               }
-              
+
               // Table core dependencies
-              if (id.includes('@tanstack/table-core')) {
-                return 'vendor-table';
+              if (id.includes("@tanstack/table-core")) {
+                return "vendor-table";
               }
-              
+
               // Input masking
-              if (id.includes('input-otp') || id.includes('input-mask')) {
-                return 'vendor-input-mask';
+              if (id.includes("input-otp") || id.includes("input-mask")) {
+                return "vendor-input-mask";
               }
-              
+
               // Color picker
-              if (id.includes('react-colorful') || id.includes('react-color')) {
-                return 'vendor-color-picker';
+              if (id.includes("react-colorful") || id.includes("react-color")) {
+                return "vendor-color-picker";
               }
-              
+
               // Copy to clipboard
-              if (id.includes('copy-to-clipboard') || id.includes('clipboard')) {
-                return 'vendor-clipboard';
+              if (
+                id.includes("copy-to-clipboard") ||
+                id.includes("clipboard")
+              ) {
+                return "vendor-clipboard";
               }
-              
+
               // Use-sync libraries
-              if (id.includes('use-sync-external-store') || id.includes('use-callback-ref')) {
-                return 'vendor-react-utils';
+              if (
+                id.includes("use-sync-external-store") ||
+                id.includes("use-callback-ref")
+              ) {
+                return "vendor-react-utils";
               }
-              
+
               // Fix: catch tanstack core packages that weren't matched by react-specific rules
-              if (id.includes('@tanstack/query-core') || id.includes('@tanstack/query-persist-client-core')) {
-                return 'vendor-query';
+              if (
+                id.includes("@tanstack/query-core") ||
+                id.includes("@tanstack/query-persist-client-core")
+              ) {
+                return "vendor-query";
               }
-              if (id.includes('@tanstack/virtual-core')) {
-                return 'vendor-virtual';
+              if (id.includes("@tanstack/virtual-core")) {
+                return "vendor-virtual";
               }
-              
+
               // Fix: catch react-router and @remix-run/router (not just react-router-dom)
-              if (id.includes('react-router') || id.includes('@remix-run/router') || id.includes('tiny-invariant')) {
-                return 'vendor-router';
+              if (
+                id.includes("react-router") ||
+                id.includes("@remix-run/router") ||
+                id.includes("tiny-invariant")
+              ) {
+                return "vendor-router";
               }
-              
+
               // Fix: catch remark/rehype transitive deps
-              if (id.includes('property-information') || id.includes('space-separated-tokens') || 
-                  id.includes('comma-separated-tokens') || id.includes('html-url-attributes') ||
-                  id.includes('decode-named-character-reference') || id.includes('inline-style-parser') ||
-                  id.includes('style-to-object') || id.includes('style-to-js') || id.includes('trim-lines') ||
-                  id.includes('devlop') || id.includes('is-plain-obj') || id.includes('estree-util') ||
-                  id.includes('bail') || id.includes('trough') || id.includes('@ungap')) {
-                return 'vendor-markdown';
+              if (
+                id.includes("property-information") ||
+                id.includes("space-separated-tokens") ||
+                id.includes("comma-separated-tokens") ||
+                id.includes("html-url-attributes") ||
+                id.includes("decode-named-character-reference") ||
+                id.includes("inline-style-parser") ||
+                id.includes("style-to-object") ||
+                id.includes("style-to-js") ||
+                id.includes("trim-lines") ||
+                id.includes("devlop") ||
+                id.includes("is-plain-obj") ||
+                id.includes("estree-util") ||
+                id.includes("bail") ||
+                id.includes("trough") ||
+                id.includes("@ungap")
+              ) {
+                return "vendor-markdown";
               }
-              
+
               // SVG/XML processing (used by jsPDF/html2canvas)
-              if (id.includes('canvg') || id.includes('@xmldom') || id.includes('rgbcolor') ||
-                  id.includes('stackblur-canvas') || id.includes('svg-pathdata') || id.includes('dingbat-to-unicode')) {
-                return 'lib-jspdf';
+              if (
+                id.includes("canvg") ||
+                id.includes("@xmldom") ||
+                id.includes("rgbcolor") ||
+                id.includes("stackblur-canvas") ||
+                id.includes("svg-pathdata") ||
+                id.includes("dingbat-to-unicode")
+              ) {
+                return "lib-jspdf";
               }
-              
+
               // Compression libs (used by xlsx/pdf)
-              if (id.includes('jszip') || id.includes('fflate') || id.includes('pako') ||
-                  id.includes('fast-png') || id.includes('iobuffer')) {
-                return 'lib-xlsx';
+              if (
+                id.includes("jszip") ||
+                id.includes("fflate") ||
+                id.includes("pako") ||
+                id.includes("fast-png") ||
+                id.includes("iobuffer")
+              ) {
+                return "lib-xlsx";
               }
-              
+
               // XML builder (used by xlsx)
-              if (id.includes('xmlbuilder') || id.includes('lop') || id.includes('option') || id.includes('underscore')) {
-                return 'lib-xlsx';
+              if (
+                id.includes("xmlbuilder") ||
+                id.includes("lop") ||
+                id.includes("option") ||
+                id.includes("underscore")
+              ) {
+                return "lib-xlsx";
               }
-              
+
               // React animation/transition (used by recharts)
-              if (id.includes('react-smooth') || id.includes('react-transition-group') || 
-                  id.includes('dom-helpers') || id.includes('decimal.js')) {
-                return 'vendor-recharts';
+              if (
+                id.includes("react-smooth") ||
+                id.includes("react-transition-group") ||
+                id.includes("dom-helpers") ||
+                id.includes("decimal.js")
+              ) {
+                return "vendor-recharts";
               }
-              
+
               // Radix UI scroll/lock transitive deps
-              if (id.includes('react-remove-scroll') || id.includes('react-style-singleton') ||
-                  id.includes('use-sidecar') || id.includes('get-nonce') || id.includes('detect-node-es')) {
-                return 'vendor-ui-overlays';
+              if (
+                id.includes("react-remove-scroll") ||
+                id.includes("react-style-singleton") ||
+                id.includes("use-sidecar") ||
+                id.includes("get-nonce") ||
+                id.includes("detect-node-es")
+              ) {
+                return "vendor-ui-overlays";
               }
-              
-              // Transpilation helpers  
-              if (id.includes('@babel/runtime') || id.includes('core-js') || id.includes('tslib') ||
-                  id.includes('regenerator-runtime') || id.includes('react-is')) {
-                return 'vendor-polyfills';
+
+              // Transpilation helpers
+              if (
+                id.includes("@babel/runtime") ||
+                id.includes("core-js") ||
+                id.includes("tslib") ||
+                id.includes("regenerator-runtime") ||
+                id.includes("react-is")
+              ) {
+                return "vendor-polyfills";
               }
-              
+
               // File handling
-              if (id.includes('file-selector') || id.includes('attr-accept')) {
-                return 'vendor-dropzone';
+              if (id.includes("file-selector") || id.includes("attr-accept")) {
+                return "vendor-dropzone";
               }
-              
+
               // Misc utilities
-              if (id.includes('fast-equals') || id.includes('eventemitter3') || 
-                  id.includes('bluebird') || id.includes('extend') || id.includes('base64-js') ||
-                  id.includes('performance-now') || id.includes('raf') || id.includes('iceberg-js') ||
-                  id.includes('internmap')) {
-                return 'vendor-utils';
+              if (
+                id.includes("fast-equals") ||
+                id.includes("eventemitter3") ||
+                id.includes("bluebird") ||
+                id.includes("extend") ||
+                id.includes("base64-js") ||
+                id.includes("performance-now") ||
+                id.includes("raf") ||
+                id.includes("iceberg-js") ||
+                id.includes("internmap")
+              ) {
+                return "vendor-utils";
               }
-              
+
               // Everything else from node_modules
-              return 'vendor-misc';
+              return "vendor-misc";
             }
             return undefined;
           },
         },
       },
       // Minification
-      minify: 'esbuild',
+      minify: "esbuild",
       // Chunk size warning - these large libs cannot be split further:
       // - lib-xlsx (429KB) - Excel library, used for import/export
       // - lib-jspdf (340KB) - PDF generation
@@ -486,22 +605,22 @@ export default defineConfig(({ mode }) => {
       // - vendor-react-core (788KB) - React core (cannot be reduced)
       chunkSizeWarningLimit: 800,
       // Source maps only in dev
-      sourcemap: mode === 'development',
+      sourcemap: mode === "development",
       // Target modern browsers
-      target: 'es2020',
+      target: "es2020",
     },
     // Optimize deps pre-bundling
     optimizeDeps: {
       include: [
-        'react',
-        'react-dom',
-        'react-router-dom',
-        '@supabase/supabase-js',
-        'date-fns',
-        'lucide-react',
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "@supabase/supabase-js",
+        "date-fns",
+        "lucide-react",
       ],
       // Exclude heavy libs from pre-bundling
-      exclude: ['xlsx', 'jspdf', 'html2canvas'],
+      exclude: ["xlsx", "jspdf", "html2canvas"],
     },
   };
 });

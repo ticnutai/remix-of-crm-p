@@ -4,8 +4,8 @@
  * The user can navigate back or retry without a full page reload.
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -25,7 +25,7 @@ export class RouteErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (import.meta.env.DEV) {
-      console.error('[RouteErrorBoundary]', error, errorInfo.componentStack);
+      console.error("[RouteErrorBoundary]", error, errorInfo.componentStack);
     }
   }
 
@@ -34,18 +34,21 @@ export class RouteErrorBoundary extends Component<Props, State> {
   };
 
   private handleGoHome = () => {
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[60vh] flex items-center justify-center p-8" dir="rtl">
+        <div
+          className="min-h-[60vh] flex items-center justify-center p-8"
+          dir="rtl"
+        >
           <div className="max-w-md w-full text-center space-y-4">
             <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
             <h2 className="text-xl font-semibold">הדף נתקל בשגיאה</h2>
             <p className="text-muted-foreground text-sm">
-              {this.state.error?.message || 'שגיאה לא צפויה'}
+              {this.state.error?.message || "שגיאה לא צפויה"}
             </p>
             <div className="flex gap-3 justify-center">
               <button
@@ -72,7 +75,9 @@ export class RouteErrorBoundary extends Component<Props, State> {
 }
 
 /** Helper: wraps a lazy component in RouteErrorBoundary + Suspense */
-export function withErrorBoundary(LazyComponent: React.LazyExoticComponent<any>) {
+export function withErrorBoundary(
+  LazyComponent: React.LazyExoticComponent<any>,
+) {
   return (
     <RouteErrorBoundary>
       <LazyComponent />

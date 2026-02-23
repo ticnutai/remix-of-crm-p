@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { createOfflineQueryFn } from '@/lib/offlineQueryUtils';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { createOfflineQueryFn } from "@/lib/offlineQueryUtils";
 
 export interface Client {
   id: string;
@@ -13,21 +13,21 @@ export interface Client {
   stage: string | null;
 }
 
-const CLIENTS_QUERY_KEY = ['clients-list'] as const;
+const CLIENTS_QUERY_KEY = ["clients-list"] as const;
 
 export function useClients() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: CLIENTS_QUERY_KEY,
-    queryFn: createOfflineQueryFn<Client>('clients', async () => {
+    queryFn: createOfflineQueryFn<Client>("clients", async () => {
       const { data, error } = await supabase
-        .from('clients')
-        .select('id, name, email, phone, company, address, status, stage')
-        .order('name');
-      
+        .from("clients")
+        .select("id, name, email, phone, company, address, status, stage")
+        .order("name");
+
       if (error) {
-        console.error('❌ Error fetching clients:', error);
+        console.error("❌ Error fetching clients:", error);
         throw error;
       }
       return data as Client[];

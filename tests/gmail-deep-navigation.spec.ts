@@ -9,7 +9,10 @@ const BASE = "http://localhost:8080";
 // ──────────────────────────────────────────────────────────
 
 async function login(page: Page) {
-  await page.goto(`${BASE}/auth`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto(`${BASE}/auth`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
   await page.waitForTimeout(2000);
   if (!page.url().includes("/auth")) {
     console.log("✅ Already logged in");
@@ -18,13 +21,18 @@ async function login(page: Page) {
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
   await page.click('button[type="submit"]');
-  await page.waitForURL((u) => !u.toString().includes("/auth"), { timeout: 20000 });
+  await page.waitForURL((u) => !u.toString().includes("/auth"), {
+    timeout: 20000,
+  });
   console.log("✅ Logged in");
   await page.waitForTimeout(2000);
 }
 
 /** Check page is alive: not blank, no error boundary, no freeze */
-async function healthCheck(page: Page, label: string): Promise<{
+async function healthCheck(
+  page: Page,
+  label: string,
+): Promise<{
   ok: boolean;
   bodyLen: number;
   hasError: boolean;
@@ -32,7 +40,14 @@ async function healthCheck(page: Page, label: string): Promise<{
   redirectedToAuth: boolean;
   details: string;
 }> {
-  const result = { ok: true, bodyLen: 0, hasError: false, isFrozen: false, redirectedToAuth: false, details: "" };
+  const result = {
+    ok: true,
+    bodyLen: 0,
+    hasError: false,
+    isFrozen: false,
+    redirectedToAuth: false,
+    details: "",
+  };
 
   // Auth redirect?
   if (page.url().includes("/auth")) {
@@ -43,14 +58,18 @@ async function healthCheck(page: Page, label: string): Promise<{
   }
 
   // Page content length
-  result.bodyLen = await page.evaluate(() => document.body?.innerText?.trim()?.length || 0);
+  result.bodyLen = await page.evaluate(
+    () => document.body?.innerText?.trim()?.length || 0,
+  );
   if (result.bodyLen < 15) {
     result.ok = false;
     result.details += `Blank page (${result.bodyLen} chars). `;
   }
 
   // Error boundary / crash text
-  const errCount = await page.locator('text=/שגיאה|Error|Something went wrong|crashed/i').count();
+  const errCount = await page
+    .locator("text=/שגיאה|Error|Something went wrong|crashed/i")
+    .count();
   if (errCount > 0) {
     result.hasError = true;
     result.ok = false;
@@ -59,7 +78,13 @@ async function healthCheck(page: Page, label: string): Promise<{
 
   // Frozen check via rAF
   try {
-    await page.evaluate(() => new Promise<void>((r) => { requestAnimationFrame(() => r()); }), { timeout: 5000 });
+    await page.evaluate(
+      () =>
+        new Promise<void>((r) => {
+          requestAnimationFrame(() => r());
+        }),
+      { timeout: 5000 },
+    );
   } catch {
     result.isFrozen = true;
     result.ok = false;
@@ -73,7 +98,11 @@ async function healthCheck(page: Page, label: string): Promise<{
 /** Safely screenshot, returns true if succeeded */
 async function safeScreenshot(page: Page, name: string): Promise<boolean> {
   try {
-    await page.screenshot({ path: `test-results/${name}.png`, fullPage: true, timeout: 10000 });
+    await page.screenshot({
+      path: `test-results/${name}.png`,
+      fullPage: true,
+      timeout: 10000,
+    });
     return true;
   } catch {
     console.log(`  ⚠️ Screenshot failed: ${name}`);
@@ -82,9 +111,16 @@ async function safeScreenshot(page: Page, name: string): Promise<boolean> {
 }
 
 /** Navigate to a path and wait for it to settle */
-async function navigateTo(page: Page, path: string, settleMs = 3000): Promise<number> {
+async function navigateTo(
+  page: Page,
+  path: string,
+  settleMs = 3000,
+): Promise<number> {
   const start = Date.now();
-  await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+  await page.goto(`${BASE}${path}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 20000,
+  });
   await page.waitForTimeout(settleMs);
   return Date.now() - start;
 }
@@ -120,7 +156,9 @@ const ALL_TABS = [
 test.describe("Gmail Deep Navigation Test", () => {
   test.setTimeout(300000); // 5 minutes
 
-  test("Gmail tab — connect attempt, then navigate all tabs, then return", async ({ page }) => {
+  test("Gmail tab — connect attempt, then navigate all tabs, then return", async ({
+    page,
+  }) => {
     // ── Collect errors ──
     const consoleErrors: string[] = [];
     const jsErrors: string[] = [];
@@ -129,7 +167,12 @@ test.describe("Gmail Deep Navigation Test", () => {
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         const text = msg.text();
-        if (text.includes("[vite]") || text.includes("HMR") || text.includes("favicon")) return;
+        if (
+          text.includes("[vite]") ||
+          text.includes("HMR") ||
+          text.includes("favicon")
+        )
+          return;
         consoleErrors.push(text.slice(0, 300));
       }
     });
@@ -141,7 +184,9 @@ test.describe("Gmail Deep Navigation Test", () => {
     page.on("requestfailed", (req) => {
       const url = req.url();
       if (url.includes("favicon") || url.includes("hot-update")) return;
-      networkErrors.push(`${req.method()} ${url.slice(0, 150)} → ${req.failure()?.errorText || "unknown"}`);
+      networkErrors.push(
+        `${req.method()} ${url.slice(0, 150)} → ${req.failure()?.errorText || "unknown"}`,
+      );
     });
 
     // ═══════════════════════════════════════════════════════
@@ -165,12 +210,20 @@ test.describe("Gmail Deep Navigation Test", () => {
     console.log("\n═══ PHASE 2: GMAIL TAB (NOT CONNECTED) ═══");
     let loadTime = await navigateTo(page, "/gmail", 4000);
     let health = await healthCheck(page, "Gmail initial");
-    phaseResults.push({ phase: "2-gmail-initial", tab: "Gmail", path: "/gmail", loadTime, health });
+    phaseResults.push({
+      phase: "2-gmail-initial",
+      tab: "Gmail",
+      path: "/gmail",
+      loadTime,
+      health,
+    });
     console.log(`  Gmail initial: ${health.details} (${loadTime}ms)`);
     await safeScreenshot(page, "02-gmail-not-connected");
 
     // Verify "not connected" UI is visible
-    const connectBtn = page.locator('button:has-text("התחבר עכשיו"), button:has-text("התחבר ל-Gmail")');
+    const connectBtn = page.locator(
+      'button:has-text("התחבר עכשיו"), button:has-text("התחבר ל-Gmail")',
+    );
     const connectBtnCount = await connectBtn.count();
     console.log(`  Connect buttons found: ${connectBtnCount}`);
     expect(connectBtnCount).toBeGreaterThan(0);
@@ -185,10 +238,12 @@ test.describe("Gmail Deep Navigation Test", () => {
     // Click and wait — OAuth popup will likely fail
     try {
       // Listen for popup
-      const popupPromise = page.waitForEvent("popup", { timeout: 8000 }).catch(() => null);
+      const popupPromise = page
+        .waitForEvent("popup", { timeout: 8000 })
+        .catch(() => null);
       await connectBtn.first().click();
       const popup = await popupPromise;
-      
+
       if (popup) {
         console.log(`  OAuth popup opened: ${popup.url()}`);
         // Close it to simulate user cancelling
@@ -206,7 +261,13 @@ test.describe("Gmail Deep Navigation Test", () => {
 
     // Check Gmail page is still alive after the failed connect
     health = await healthCheck(page, "Gmail after connect");
-    phaseResults.push({ phase: "3-gmail-after-connect", tab: "Gmail", path: "/gmail", loadTime: 0, health });
+    phaseResults.push({
+      phase: "3-gmail-after-connect",
+      tab: "Gmail",
+      path: "/gmail",
+      loadTime: 0,
+      health,
+    });
     console.log(`  Gmail after connect attempt: ${health.details}`);
 
     const newJsErrors = jsErrors.slice(errsBefore);
@@ -216,12 +277,18 @@ test.describe("Gmail Deep Navigation Test", () => {
       newJsErrors.forEach((e) => console.log(`    • ${e.slice(0, 150)}`));
     }
     if (newConsoleErrors.length > 0) {
-      console.log(`  ⚠️ New console errors after connect: ${newConsoleErrors.length}`);
-      newConsoleErrors.slice(0, 5).forEach((e) => console.log(`    • ${e.slice(0, 150)}`));
+      console.log(
+        `  ⚠️ New console errors after connect: ${newConsoleErrors.length}`,
+      );
+      newConsoleErrors
+        .slice(0, 5)
+        .forEach((e) => console.log(`    • ${e.slice(0, 150)}`));
     }
 
     // Page should NOT be in error boundary state
-    const gmailErrorBoundary = await page.locator('text=/שגיאה בטעינת/i').count();
+    const gmailErrorBoundary = await page
+      .locator("text=/שגיאה בטעינת/i")
+      .count();
     if (gmailErrorBoundary > 0) {
       console.log("  ❌ Gmail error boundary activated!");
     }
@@ -239,7 +306,13 @@ test.describe("Gmail Deep Navigation Test", () => {
       try {
         loadTime = await navigateTo(page, tab.path, 3000);
         health = await healthCheck(page, `${tab.name} after Gmail`);
-        phaseResults.push({ phase: "4-from-gmail", tab: tab.name, path: tab.path, loadTime, health });
+        phaseResults.push({
+          phase: "4-from-gmail",
+          tab: tab.name,
+          path: tab.path,
+          loadTime,
+          health,
+        });
 
         if (health.redirectedToAuth) {
           console.log(`  ❌ ${tab.name}: Session lost! Re-logging in...`);
@@ -248,8 +321,12 @@ test.describe("Gmail Deep Navigation Test", () => {
         }
 
         // Check for interactive elements (page not empty shell)
-        const interactiveCount = await page.locator('button, a, input, select, [role="button"]').count();
-        console.log(`  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details} | ${interactiveCount} interactive elements | ${loadTime}ms`);
+        const interactiveCount = await page
+          .locator('button, a, input, select, [role="button"]')
+          .count();
+        console.log(
+          `  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details} | ${interactiveCount} interactive elements | ${loadTime}ms`,
+        );
 
         const safeName = tab.name.replace(/[^a-zA-Z0-9\u0590-\u05FF]/g, "_");
         await safeScreenshot(page, `04-from-gmail-${safeName}`);
@@ -257,17 +334,30 @@ test.describe("Gmail Deep Navigation Test", () => {
         // Any new JS errors caused by this navigation?
         const tabNewJsErrors = jsErrors.slice(jsErrsBefore);
         if (tabNewJsErrors.length > 0) {
-          console.log(`  ⚠️ ${tab.name} caused ${tabNewJsErrors.length} JS error(s):`);
-          tabNewJsErrors.forEach((e) => console.log(`    • ${e.slice(0, 150)}`));
+          console.log(
+            `  ⚠️ ${tab.name} caused ${tabNewJsErrors.length} JS error(s):`,
+          );
+          tabNewJsErrors.forEach((e) =>
+            console.log(`    • ${e.slice(0, 150)}`),
+          );
         }
       } catch (e: any) {
-        console.log(`  ❌ ${tab.name}: Navigation failed — ${e.message?.slice(0, 150)}`);
+        console.log(
+          `  ❌ ${tab.name}: Navigation failed — ${e.message?.slice(0, 150)}`,
+        );
         phaseResults.push({
           phase: "4-from-gmail",
           tab: tab.name,
           path: tab.path,
           loadTime: 0,
-          health: { ok: false, bodyLen: 0, hasError: false, isFrozen: false, redirectedToAuth: false, details: `Nav error: ${e.message?.slice(0, 100)}` },
+          health: {
+            ok: false,
+            bodyLen: 0,
+            hasError: false,
+            isFrozen: false,
+            redirectedToAuth: false,
+            details: `Nav error: ${e.message?.slice(0, 100)}`,
+          },
         });
       }
     }
@@ -278,7 +368,13 @@ test.describe("Gmail Deep Navigation Test", () => {
     console.log("\n═══ PHASE 5: RETURN TO GMAIL ═══");
     loadTime = await navigateTo(page, "/gmail", 4000);
     health = await healthCheck(page, "Gmail return");
-    phaseResults.push({ phase: "5-gmail-return", tab: "Gmail", path: "/gmail", loadTime, health });
+    phaseResults.push({
+      phase: "5-gmail-return",
+      tab: "Gmail",
+      path: "/gmail",
+      loadTime,
+      health,
+    });
     console.log(`  Gmail on return: ${health.details} (${loadTime}ms)`);
     await safeScreenshot(page, "05-gmail-return");
 
@@ -287,9 +383,19 @@ test.describe("Gmail Deep Navigation Test", () => {
     // ═══════════════════════════════════════════════════════
     console.log("\n═══ PHASE 6: RAPID TAB SWITCHING (STRESS TEST) ═══");
     const rapidSequence = [
-      "/gmail", "/clients", "/gmail", "/tasks-meetings", "/gmail",
-      "/settings", "/gmail", "/finance", "/gmail", "/calendar",
-      "/gmail", "/quotes", "/gmail",
+      "/gmail",
+      "/clients",
+      "/gmail",
+      "/tasks-meetings",
+      "/gmail",
+      "/settings",
+      "/gmail",
+      "/finance",
+      "/gmail",
+      "/calendar",
+      "/gmail",
+      "/quotes",
+      "/gmail",
     ];
 
     for (const path of rapidSequence) {
@@ -298,7 +404,13 @@ test.describe("Gmail Deep Navigation Test", () => {
         // Shorter settle time to simulate rapid switching
         loadTime = await navigateTo(page, path, 1500);
         health = await healthCheck(page, `rapid-${tabName}`);
-        phaseResults.push({ phase: "6-rapid", tab: tabName, path, loadTime, health });
+        phaseResults.push({
+          phase: "6-rapid",
+          tab: tabName,
+          path,
+          loadTime,
+          health,
+        });
 
         if (!health.ok) {
           console.log(`  ❌ Rapid switch to ${tabName}: ${health.details}`);
@@ -315,7 +427,14 @@ test.describe("Gmail Deep Navigation Test", () => {
           tab: tabName,
           path,
           loadTime: 0,
-          health: { ok: false, bodyLen: 0, hasError: false, isFrozen: false, redirectedToAuth: false, details: e.message?.slice(0, 100) || "unknown" },
+          health: {
+            ok: false,
+            bodyLen: 0,
+            hasError: false,
+            isFrozen: false,
+            redirectedToAuth: false,
+            details: e.message?.slice(0, 100) || "unknown",
+          },
         });
       }
     }
@@ -345,15 +464,27 @@ test.describe("Gmail Deep Navigation Test", () => {
         await page.waitForTimeout(800);
 
         // Find and click the sidebar link
-        const sidebarLink = page.locator(`nav a[href="${tab.path}"], aside a[href="${tab.path}"], [data-sidebar] a[href="${tab.path}"]`).first();
+        const sidebarLink = page
+          .locator(
+            `nav a[href="${tab.path}"], aside a[href="${tab.path}"], [data-sidebar] a[href="${tab.path}"]`,
+          )
+          .first();
         const linkVisible = await sidebarLink.isVisible().catch(() => false);
 
         if (linkVisible) {
           await sidebarLink.click();
           await page.waitForTimeout(3000);
           health = await healthCheck(page, `sidebar-${tab.name}`);
-          phaseResults.push({ phase: "7-sidebar", tab: tab.name, path: tab.path, loadTime: 0, health });
-          console.log(`  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details}`);
+          phaseResults.push({
+            phase: "7-sidebar",
+            tab: tab.name,
+            path: tab.path,
+            loadTime: 0,
+            health,
+          });
+          console.log(
+            `  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details}`,
+          );
         } else {
           // Try clicking by text in the sidebar area
           const textLink = page.locator(`a:has-text("${tab.name}")`).first();
@@ -362,13 +493,29 @@ test.describe("Gmail Deep Navigation Test", () => {
             await textLink.click();
             await page.waitForTimeout(3000);
             health = await healthCheck(page, `sidebar-${tab.name}`);
-            phaseResults.push({ phase: "7-sidebar", tab: tab.name, path: tab.path, loadTime: 0, health });
-            console.log(`  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details}`);
+            phaseResults.push({
+              phase: "7-sidebar",
+              tab: tab.name,
+              path: tab.path,
+              loadTime: 0,
+              health,
+            });
+            console.log(
+              `  ${health.ok ? "✅" : "❌"} ${tab.name}: ${health.details}`,
+            );
           } else {
-            console.log(`  ⚠️ Sidebar link not found for ${tab.name}, falling back to goto`);
+            console.log(
+              `  ⚠️ Sidebar link not found for ${tab.name}, falling back to goto`,
+            );
             await navigateTo(page, tab.path, 3000);
             health = await healthCheck(page, `sidebar-fallback-${tab.name}`);
-            phaseResults.push({ phase: "7-sidebar", tab: tab.name, path: tab.path, loadTime: 0, health });
+            phaseResults.push({
+              phase: "7-sidebar",
+              tab: tab.name,
+              path: tab.path,
+              loadTime: 0,
+              health,
+            });
           }
         }
 
@@ -387,8 +534,15 @@ test.describe("Gmail Deep Navigation Test", () => {
 
     // Try clicking various buttons/elements on Gmail page
     const interactionTests = [
-      { label: "Refresh button", selector: 'button:has-text("רענון"), button:has(svg.lucide-refresh-cw), button:has(svg.lucide-rotate-cw)' },
-      { label: "Search input", selector: 'input[placeholder*="חיפוש"], input[type="search"]' },
+      {
+        label: "Refresh button",
+        selector:
+          'button:has-text("רענון"), button:has(svg.lucide-refresh-cw), button:has(svg.lucide-rotate-cw)',
+      },
+      {
+        label: "Search input",
+        selector: 'input[placeholder*="חיפוש"], input[type="search"]',
+      },
       { label: "Connect button again", selector: 'button:has-text("התחבר")' },
     ];
 
@@ -404,7 +558,9 @@ test.describe("Gmail Deep Navigation Test", () => {
             console.log(`  ✅ ${label}: interacted OK`);
           } else {
             // For buttons, just click with a popup listener
-            const popupP = page.waitForEvent("popup", { timeout: 3000 }).catch(() => null);
+            const popupP = page
+              .waitForEvent("popup", { timeout: 3000 })
+              .catch(() => null);
             await el.click();
             const popup = await popupP;
             if (popup) await popup.close();
@@ -420,7 +576,13 @@ test.describe("Gmail Deep Navigation Test", () => {
     }
 
     health = await healthCheck(page, "Gmail after interactions");
-    phaseResults.push({ phase: "8-gmail-interactions", tab: "Gmail", path: "/gmail", loadTime: 0, health });
+    phaseResults.push({
+      phase: "8-gmail-interactions",
+      tab: "Gmail",
+      path: "/gmail",
+      loadTime: 0,
+      health,
+    });
     console.log(`  Gmail after interactions: ${health.details}`);
     await safeScreenshot(page, "08-gmail-after-interactions");
 
@@ -438,7 +600,9 @@ test.describe("Gmail Deep Navigation Test", () => {
       console.log(`\n── ${phase} ──`);
       for (const r of items) {
         const icon = r.health.ok ? "✅" : "❌";
-        console.log(`  ${icon} ${r.tab} (${r.path}) — ${r.health.details} ${r.loadTime ? `[${r.loadTime}ms]` : ""}`);
+        console.log(
+          `  ${icon} ${r.tab} (${r.path}) — ${r.health.details} ${r.loadTime ? `[${r.loadTime}ms]` : ""}`,
+        );
       }
     }
 
@@ -447,8 +611,12 @@ test.describe("Gmail Deep Navigation Test", () => {
     const uniqueConsoleErrors = [...new Set(consoleErrors)];
 
     console.log(`\n── Error Summary ──`);
-    console.log(`  JavaScript errors: ${jsErrors.length} total, ${uniqueJsErrors.length} unique`);
-    console.log(`  Console errors:    ${consoleErrors.length} total, ${uniqueConsoleErrors.length} unique`);
+    console.log(
+      `  JavaScript errors: ${jsErrors.length} total, ${uniqueJsErrors.length} unique`,
+    );
+    console.log(
+      `  Console errors:    ${consoleErrors.length} total, ${uniqueConsoleErrors.length} unique`,
+    );
     console.log(`  Network failures:  ${networkErrors.length}`);
 
     if (uniqueJsErrors.length > 0) {
@@ -458,12 +626,16 @@ test.describe("Gmail Deep Navigation Test", () => {
 
     if (uniqueConsoleErrors.length > 0) {
       console.log(`\n🟡 Console Errors:`);
-      uniqueConsoleErrors.slice(0, 15).forEach((e) => console.log(`  • ${e.slice(0, 250)}`));
+      uniqueConsoleErrors
+        .slice(0, 15)
+        .forEach((e) => console.log(`  • ${e.slice(0, 250)}`));
     }
 
     if (networkErrors.length > 0) {
       console.log(`\n🟠 Network Failures:`);
-      [...new Set(networkErrors)].slice(0, 10).forEach((e) => console.log(`  • ${e}`));
+      [...new Set(networkErrors)]
+        .slice(0, 10)
+        .forEach((e) => console.log(`  • ${e}`));
     }
 
     // Pass/fail counts
@@ -471,8 +643,12 @@ test.describe("Gmail Deep Navigation Test", () => {
     const passed = phaseResults.filter((r) => r.health.ok).length;
     const failed = phaseResults.filter((r) => !r.health.ok).length;
     const frozen = phaseResults.filter((r) => r.health.isFrozen).length;
-    const errorBoundaries = phaseResults.filter((r) => r.health.hasError).length;
-    const authLost = phaseResults.filter((r) => r.health.redirectedToAuth).length;
+    const errorBoundaries = phaseResults.filter(
+      (r) => r.health.hasError,
+    ).length;
+    const authLost = phaseResults.filter(
+      (r) => r.health.redirectedToAuth,
+    ).length;
 
     console.log(`\n── Final Score ──`);
     console.log(`  Total checks:     ${totalChecks}`);
@@ -481,7 +657,9 @@ test.describe("Gmail Deep Navigation Test", () => {
     console.log(`  🧊 Frozen:        ${frozen}`);
     console.log(`  💥 Error boundary: ${errorBoundaries}`);
     console.log(`  🔒 Auth lost:     ${authLost}`);
-    console.log(`  Pass rate:        ${((passed / totalChecks) * 100).toFixed(1)}%`);
+    console.log(
+      `  Pass rate:        ${((passed / totalChecks) * 100).toFixed(1)}%`,
+    );
     console.log("═".repeat(70));
 
     // Assert pass rate >= 80%

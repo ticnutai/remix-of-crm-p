@@ -1,13 +1,13 @@
 // Enhanced Error Monitoring Hook - Real-time error detection with Supabase integration
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ErrorLog {
   id: string;
   timestamp: Date;
-  type: 'console' | 'runtime' | 'network' | 'migration' | 'supabase' | 'auth';
-  severity: 'error' | 'warning' | 'info';
+  type: "console" | "runtime" | "network" | "migration" | "supabase" | "auth";
+  severity: "error" | "warning" | "info";
   message: string;
   stack?: string;
   context?: Record<string, any>;
@@ -40,7 +40,7 @@ let consoleOverrideCount = 0;
 let fetchOverrideCount = 0;
 
 function notifyListeners() {
-  globalListeners.forEach(listener => listener([...globalErrorStore]));
+  globalListeners.forEach((listener) => listener([...globalErrorStore]));
 }
 
 function addGlobalError(error: ErrorLog) {
@@ -60,16 +60,16 @@ export function useErrorMonitoring(enabled: boolean = true) {
     errorRate: 0,
     supabaseErrors: 0,
     networkErrors: 0,
-    runtimeErrors: 0
+    runtimeErrors: 0,
   });
 
   // Add new error to log
-  const logError = useCallback((error: Omit<ErrorLog, 'id' | 'timestamp'>) => {
+  const logError = useCallback((error: Omit<ErrorLog, "id" | "timestamp">) => {
     const errorLog: ErrorLog = {
       ...error,
       id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
-      resolved: false
+      resolved: false,
     };
 
     addGlobalError(errorLog);
@@ -81,17 +81,17 @@ export function useErrorMonitoring(enabled: boolean = true) {
   const calculateStats = useCallback((errorList: ErrorLog[]): ErrorStats => {
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 60000);
-    const recentErrors = errorList.filter(e => e.timestamp > oneMinuteAgo);
+    const recentErrors = errorList.filter((e) => e.timestamp > oneMinuteAgo);
 
     return {
       total: errorList.length,
-      errors: errorList.filter(e => e.severity === 'error').length,
-      warnings: errorList.filter(e => e.severity === 'warning').length,
+      errors: errorList.filter((e) => e.severity === "error").length,
+      warnings: errorList.filter((e) => e.severity === "warning").length,
       lastError: errorList[0],
       errorRate: recentErrors.length,
-      supabaseErrors: errorList.filter(e => e.type === 'supabase').length,
-      networkErrors: errorList.filter(e => e.type === 'network').length,
-      runtimeErrors: errorList.filter(e => e.type === 'runtime').length
+      supabaseErrors: errorList.filter((e) => e.type === "supabase").length,
+      networkErrors: errorList.filter((e) => e.type === "network").length,
+      runtimeErrors: errorList.filter((e) => e.type === "runtime").length,
     };
   }, []);
 
@@ -124,20 +124,26 @@ export function useErrorMonitoring(enabled: boolean = true) {
       console.error = (...args: any[]) => {
         originalConsoleErrorGlobal?.apply(console, args);
 
-        const message = args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-        ).join(' ');
+        const message = args
+          .map((arg) =>
+            typeof arg === "object"
+              ? JSON.stringify(arg, null, 2)
+              : String(arg),
+          )
+          .join(" ");
 
         // Filter out noise
-        if (message.includes('Warning:') || 
-            message.includes('🔴 Error Details') ||
-            message.includes('Message:') ||
-            message.includes('Type:') ||
-            message.includes('Source:') ||
-            message.includes('Stack:') ||
-            message.includes('Context:') ||
-            message.includes('[vite]') ||
-            message.includes('HMR')) {
+        if (
+          message.includes("Warning:") ||
+          message.includes("🔴 Error Details") ||
+          message.includes("Message:") ||
+          message.includes("Type:") ||
+          message.includes("Source:") ||
+          message.includes("Stack:") ||
+          message.includes("Context:") ||
+          message.includes("[vite]") ||
+          message.includes("HMR")
+        ) {
           return;
         }
 
@@ -145,11 +151,11 @@ export function useErrorMonitoring(enabled: boolean = true) {
           id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           timestamp: new Date(),
           resolved: false,
-          type: 'console',
-          severity: 'error',
+          type: "console",
+          severity: "error",
           message: message.slice(0, 500),
           stack: new Error().stack,
-          source: 'console.error'
+          source: "console.error",
         });
       };
 
@@ -157,22 +163,28 @@ export function useErrorMonitoring(enabled: boolean = true) {
       console.warn = (...args: any[]) => {
         originalConsoleWarnGlobal?.apply(console, args);
 
-        const message = args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-        ).join(' ');
+        const message = args
+          .map((arg) =>
+            typeof arg === "object"
+              ? JSON.stringify(arg, null, 2)
+              : String(arg),
+          )
+          .join(" ");
 
-        if (message.includes('deprecated') || 
-            message.includes('Error') ||
-            message.includes('fail') ||
-            message.includes('Supabase')) {
+        if (
+          message.includes("deprecated") ||
+          message.includes("Error") ||
+          message.includes("fail") ||
+          message.includes("Supabase")
+        ) {
           addGlobalError({
             id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: new Date(),
             resolved: false,
-            type: 'console',
-            severity: 'warning',
+            type: "console",
+            severity: "warning",
             message: message.slice(0, 500),
-            source: 'console.warn'
+            source: "console.warn",
           });
         }
       };
@@ -201,46 +213,48 @@ export function useErrorMonitoring(enabled: boolean = true) {
 
     const handleError = (event: ErrorEvent) => {
       logError({
-        type: 'runtime',
-        severity: 'error',
-        message: event.message || 'Unknown error',
+        type: "runtime",
+        severity: "error",
+        message: event.message || "Unknown error",
         stack: event.error?.stack,
         context: {
           filename: event.filename,
           lineno: event.lineno,
-          colno: event.colno
+          colno: event.colno,
         },
-        source: 'window.onerror'
+        source: "window.onerror",
       });
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
       const message = event.reason?.message || String(event.reason);
-      
+
       // Filter out specific errors
-      if (message.includes('ResizeObserver') || 
-          message.includes('Script error')) {
+      if (
+        message.includes("ResizeObserver") ||
+        message.includes("Script error")
+      ) {
         return;
       }
 
       logError({
-        type: 'runtime',
-        severity: 'error',
+        type: "runtime",
+        severity: "error",
         message: message.slice(0, 500),
         stack: event.reason?.stack,
         context: {
-          reason: String(event.reason)
+          reason: String(event.reason),
         },
-        source: 'unhandledrejection'
+        source: "unhandledrejection",
       });
     };
 
-    globalThis.addEventListener('error', handleError);
-    globalThis.addEventListener('unhandledrejection', handleRejection);
+    globalThis.addEventListener("error", handleError);
+    globalThis.addEventListener("unhandledrejection", handleRejection);
 
     return () => {
-      globalThis.removeEventListener('error', handleError);
-      globalThis.removeEventListener('unhandledrejection', handleRejection);
+      globalThis.removeEventListener("error", handleError);
+      globalThis.removeEventListener("unhandledrejection", handleRejection);
     };
   }, [enabled, logError]);
 
@@ -253,37 +267,38 @@ export function useErrorMonitoring(enabled: boolean = true) {
       originalFetchGlobal = globalThis.fetch.bind(globalThis);
 
       globalThis.fetch = async (...args: Parameters<typeof fetch>) => {
-        let url = 'unknown';
-        if (typeof args[0] === 'string') {
+        let url = "unknown";
+        if (typeof args[0] === "string") {
           url = args[0];
         } else if (args[0] instanceof URL) {
           url = args[0].toString();
         } else if (args[0] instanceof Request) {
           url = args[0].url;
         }
-        
+
         try {
           const response = await originalFetchGlobal!.apply(globalThis, args);
 
           // Log failed HTTP requests (4xx, 5xx) — skip expected 404s for dev files
           if (!response.ok && response.status >= 400) {
-            const isDevFile = url.includes('pending-migrations') || url.includes('__dev/');
+            const isDevFile =
+              url.includes("pending-migrations") || url.includes("__dev/");
             if (!isDevFile) {
-              const isSupabase = url.includes('supabase');
+              const isSupabase = url.includes("supabase");
               addGlobalError({
                 id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 timestamp: new Date(),
                 resolved: false,
-                type: isSupabase ? 'supabase' : 'network',
-                severity: response.status >= 500 ? 'error' : 'warning',
+                type: isSupabase ? "supabase" : "network",
+                severity: response.status >= 500 ? "error" : "warning",
                 message: `HTTP ${response.status}: ${response.statusText} - ${url.slice(0, 100)}`,
                 context: {
                   url: url.slice(0, 200),
                   status: response.status,
                   statusText: response.statusText,
-                  method: (args[1] as RequestInit)?.method || 'GET'
+                  method: (args[1] as RequestInit)?.method || "GET",
                 },
-                source: 'fetch'
+                source: "fetch",
               });
             }
           }
@@ -294,15 +309,15 @@ export function useErrorMonitoring(enabled: boolean = true) {
             id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: new Date(),
             resolved: false,
-            type: 'network',
-            severity: 'error',
-            message: error.message || 'Network request failed',
+            type: "network",
+            severity: "error",
+            message: error.message || "Network request failed",
             stack: error.stack,
             context: {
               url: url.slice(0, 200),
-              error: error.name
+              error: error.name,
             },
-            source: 'fetch'
+            source: "fetch",
           });
           throw error;
         }
@@ -326,21 +341,25 @@ export function useErrorMonitoring(enabled: boolean = true) {
   useEffect(() => {
     if (!enabled) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' && !session) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" && !session) {
         // Only log if unexpected — check global store directly to avoid stale closure
         const lastError = globalErrorStore[0];
-        if (lastError?.type === 'supabase' && 
-            Date.now() - lastError.timestamp.getTime() < 5000) {
+        if (
+          lastError?.type === "supabase" &&
+          Date.now() - lastError.timestamp.getTime() < 5000
+        ) {
           addGlobalError({
             id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             timestamp: new Date(),
             resolved: false,
-            type: 'auth',
-            severity: 'warning',
-            message: 'Session ended - possible authentication issue',
+            type: "auth",
+            severity: "warning",
+            message: "Session ended - possible authentication issue",
             context: { event },
-            source: 'supabase.auth'
+            source: "supabase.auth",
           });
         }
       }
@@ -355,52 +374,62 @@ export function useErrorMonitoring(enabled: boolean = true) {
   const clearErrors = useCallback(() => {
     globalErrorStore.length = 0;
     notifyListeners();
-    toast.success('לוג השגיאות נוקה');
+    toast.success("לוג השגיאות נוקה");
   }, []);
 
   // Clear old errors (older than 5 minutes)
   const clearOldErrors = useCallback(() => {
     const fiveMinutesAgo = new Date(Date.now() - 300000);
-    const recentErrors = globalErrorStore.filter(e => e.timestamp > fiveMinutesAgo);
+    const recentErrors = globalErrorStore.filter(
+      (e) => e.timestamp > fiveMinutesAgo,
+    );
     globalErrorStore.length = 0;
     globalErrorStore.push(...recentErrors);
     notifyListeners();
-    toast.info('שגיאות ישנות נוקו');
+    toast.info("שגיאות ישנות נוקו");
   }, []);
 
   // Get errors by type
-  const getErrorsByType = useCallback((type: ErrorLog['type']) => {
-    return errors.filter(e => e.type === type);
-  }, [errors]);
+  const getErrorsByType = useCallback(
+    (type: ErrorLog["type"]) => {
+      return errors.filter((e) => e.type === type);
+    },
+    [errors],
+  );
 
   // Get errors by severity
-  const getErrorsBySeverity = useCallback((severity: ErrorLog['severity']) => {
-    return errors.filter(e => e.severity === severity);
-  }, [errors]);
+  const getErrorsBySeverity = useCallback(
+    (severity: ErrorLog["severity"]) => {
+      return errors.filter((e) => e.severity === severity);
+    },
+    [errors],
+  );
 
   // Test error logging
   const testErrorLogging = useCallback(() => {
     logError({
-      type: 'console',
-      severity: 'info',
-      message: '🧪 בדיקת מערכת - זו שגיאה לדוגמה',
+      type: "console",
+      severity: "info",
+      message: "🧪 בדיקת מערכת - זו שגיאה לדוגמה",
       context: { test: true, timestamp: new Date().toISOString() },
-      source: 'test'
+      source: "test",
     });
 
     // Test Supabase connection
-    supabase.from('profiles').select('count', { count: 'exact', head: true })
+    supabase
+      .from("profiles")
+      .select("count", { count: "exact", head: true })
       .then(({ error }) => {
         if (error) {
           logError({
-            type: 'supabase',
-            severity: 'error',
+            type: "supabase",
+            severity: "error",
             message: `Supabase test failed: ${error.message}`,
             context: { code: error.code, details: error.details },
-            source: 'supabase.test'
+            source: "supabase.test",
           });
         } else {
-          toast.success('✅ Supabase מחובר ועובד');
+          toast.success("✅ Supabase מחובר ועובד");
         }
       });
   }, [logError]);
@@ -413,6 +442,6 @@ export function useErrorMonitoring(enabled: boolean = true) {
     clearOldErrors,
     getErrorsByType,
     getErrorsBySeverity,
-    testErrorLogging
+    testErrorLogging,
   };
 }

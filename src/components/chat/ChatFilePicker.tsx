@@ -358,6 +358,7 @@ function GoogleDriveTab({ onPick }: { onPick: (f: PickedFile) => void }) {
 
   useEffect(() => {
     if (isConnected) listFiles(currentFolder);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFolder, isConnected]);
 
   const handleSearch = async (q: string) => {
@@ -518,6 +519,7 @@ function GmailTab({ onPick }: { onPick: (f: PickedFile) => void }) {
       fetchEmails(30, undefined, "has:attachment");
       setLoaded(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
   const handleSearch = (q: string) => {

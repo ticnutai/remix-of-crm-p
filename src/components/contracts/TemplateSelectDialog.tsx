@@ -1,12 +1,12 @@
 // רכיב בחירת תבנית חוזה
 // מאפשר בחירת תבנית ומילוי אוטומטי של נתונים
 
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Check, 
-  Star, 
-  Copy, 
+import React, { useState, useEffect } from "react";
+import {
+  FileText,
+  Check,
+  Star,
+  Copy,
   Eye,
   Loader2,
   Building2,
@@ -15,28 +15,28 @@ import {
   Code,
   Palette,
   Megaphone,
-  MoreHorizontal
-} from 'lucide-react';
+  MoreHorizontal,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  useContractTemplates, 
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  useContractTemplates,
   ContractTemplate,
   replaceTemplateVariables,
   generatePaymentScheduleFromTemplate,
@@ -44,24 +44,24 @@ import {
   calculateEndDate,
   ClientData,
   CompanyData,
-} from '@/hooks/useContractTemplates';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import DOMPurify from 'dompurify';
+} from "@/hooks/useContractTemplates";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import DOMPurify from "dompurify";
 
 // ============================================================================
 // אייקונים לפי קטגוריה
 // ============================================================================
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  'כללי': <FileText className="h-5 w-5" />,
-  'שירותים': <Briefcase className="h-5 w-5" />,
-  'בנייה': <Hammer className="h-5 w-5" />,
-  'ייעוץ': <Building2 className="h-5 w-5" />,
-  'פיתוח תוכנה': <Code className="h-5 w-5" />,
-  'עיצוב': <Palette className="h-5 w-5" />,
-  'שיווק': <Megaphone className="h-5 w-5" />,
-  'אחר': <MoreHorizontal className="h-5 w-5" />,
+  כללי: <FileText className="h-5 w-5" />,
+  שירותים: <Briefcase className="h-5 w-5" />,
+  בנייה: <Hammer className="h-5 w-5" />,
+  ייעוץ: <Building2 className="h-5 w-5" />,
+  "פיתוח תוכנה": <Code className="h-5 w-5" />,
+  עיצוב: <Palette className="h-5 w-5" />,
+  שיווק: <Megaphone className="h-5 w-5" />,
+  אחר: <MoreHorizontal className="h-5 w-5" />,
 };
 
 // ============================================================================
@@ -71,7 +71,10 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 interface TemplateSelectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (template: ContractTemplate, generatedData: GeneratedContractData) => void;
+  onSelect: (
+    template: ContractTemplate,
+    generatedData: GeneratedContractData,
+  ) => void;
   client: ClientData | null;
   company?: CompanyData;
   contractValue?: number;
@@ -105,22 +108,24 @@ export function TemplateSelectDialog({
   startDate = new Date(),
 }: TemplateSelectDialogProps) {
   const { templates, isLoading } = useContractTemplates();
-  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>('הכל');
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ContractTemplate | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>("הכל");
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // קטגוריות ייחודיות
-  const categories = ['הכל', ...new Set(templates.map(t => t.category))];
+  const categories = ["הכל", ...new Set(templates.map((t) => t.category))];
 
   // סינון לפי קטגוריה
-  const filteredTemplates = activeCategory === 'הכל'
-    ? templates
-    : templates.filter(t => t.category === activeCategory);
+  const filteredTemplates =
+    activeCategory === "הכל"
+      ? templates
+      : templates.filter((t) => t.category === activeCategory);
 
   // איפוס בחירה כשנפתח
   useEffect(() => {
     if (open) {
-      const defaultTemplate = templates.find(t => t.is_default);
+      const defaultTemplate = templates.find((t) => t.is_default);
       setSelectedTemplate(defaultTemplate || null);
     }
   }, [open, templates]);
@@ -134,14 +139,14 @@ export function TemplateSelectDialog({
     const paymentSchedule = generatePaymentScheduleFromTemplate(
       selectedTemplate,
       startDate,
-      contractValue
+      contractValue,
     );
 
     const generatedData: GeneratedContractData = {
-      terms_and_conditions: selectedTemplate.default_terms_and_conditions || '',
-      special_clauses: selectedTemplate.default_special_clauses || '',
-      payment_terms: selectedTemplate.default_payment_terms || '',
-      end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
+      terms_and_conditions: selectedTemplate.default_terms_and_conditions || "",
+      special_clauses: selectedTemplate.default_special_clauses || "",
+      payment_terms: selectedTemplate.default_payment_terms || "",
+      end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
       payment_schedule: paymentSchedule,
     };
 
@@ -169,7 +174,7 @@ export function TemplateSelectDialog({
               {/* טאבים לקטגוריות */}
               <Tabs value={activeCategory} onValueChange={setActiveCategory}>
                 <TabsList className="flex-wrap h-auto gap-1 p-1">
-                  {categories.map(cat => (
+                  {categories.map((cat) => (
                     <TabsTrigger key={cat} value={cat} className="text-sm">
                       {cat}
                     </TabsTrigger>
@@ -180,7 +185,7 @@ export function TemplateSelectDialog({
               {/* רשימת תבניות */}
               <ScrollArea className="h-[400px]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
-                  {filteredTemplates.map(template => (
+                  {filteredTemplates.map((template) => (
                     <TemplateCard
                       key={template.id}
                       template={template}
@@ -203,7 +208,7 @@ export function TemplateSelectDialog({
 
               {/* פרטי תבנית נבחרת */}
               {selectedTemplate && (
-                <SelectedTemplateInfo 
+                <SelectedTemplateInfo
                   template={selectedTemplate}
                   contractValue={contractValue}
                   startDate={startDate}
@@ -251,12 +256,17 @@ interface TemplateCardProps {
   onPreview: () => void;
 }
 
-function TemplateCard({ template, isSelected, onSelect, onPreview }: TemplateCardProps) {
+function TemplateCard({
+  template,
+  isSelected,
+  onSelect,
+  onPreview,
+}: TemplateCardProps) {
   return (
     <Card
       className={cn(
         "cursor-pointer transition-all hover:shadow-md",
-        isSelected && "ring-2 ring-primary border-primary"
+        isSelected && "ring-2 ring-primary border-primary",
       )}
       onClick={onSelect}
     >
@@ -264,7 +274,9 @@ function TemplateCard({ template, isSelected, onSelect, onPreview }: TemplateCar
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              {CATEGORY_ICONS[template.category] || <FileText className="h-5 w-5" />}
+              {CATEGORY_ICONS[template.category] || (
+                <FileText className="h-5 w-5" />
+              )}
             </div>
             <div>
               <CardTitle className="text-base flex items-center gap-2">
@@ -287,9 +299,9 @@ function TemplateCard({ template, isSelected, onSelect, onPreview }: TemplateCar
       </CardHeader>
       <CardContent className="pt-0">
         <CardDescription className="text-sm line-clamp-2">
-          {template.description || 'ללא תיאור'}
+          {template.description || "ללא תיאור"}
         </CardDescription>
-        
+
         <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
           {template.default_payment_schedule?.length > 0 && (
             <span className="flex items-center gap-1">
@@ -302,7 +314,7 @@ function TemplateCard({ template, isSelected, onSelect, onPreview }: TemplateCar
             </span>
           )}
         </div>
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -330,14 +342,18 @@ interface SelectedTemplateInfoProps {
   startDate: Date;
 }
 
-function SelectedTemplateInfo({ template, contractValue, startDate }: SelectedTemplateInfoProps) {
+function SelectedTemplateInfo({
+  template,
+  contractValue,
+  startDate,
+}: SelectedTemplateInfoProps) {
   // וידוא שתאריך ההתחלה תקין
   const validStartDate = (() => {
     try {
       if (startDate instanceof Date && !isNaN(startDate.getTime())) {
         return startDate;
       }
-      if (typeof startDate === 'string' || typeof startDate === 'number') {
+      if (typeof startDate === "string" || typeof startDate === "number") {
         const parsed = new Date(startDate);
         return isNaN(parsed.getTime()) ? new Date() : parsed;
       }
@@ -347,7 +363,11 @@ function SelectedTemplateInfo({ template, contractValue, startDate }: SelectedTe
     }
   })();
 
-  const paymentSchedule = generatePaymentScheduleFromTemplate(template, validStartDate, contractValue);
+  const paymentSchedule = generatePaymentScheduleFromTemplate(
+    template,
+    validStartDate,
+    contractValue,
+  );
   const endDate = calculateEndDate(validStartDate, template);
 
   return (
@@ -356,15 +376,15 @@ function SelectedTemplateInfo({ template, contractValue, startDate }: SelectedTe
         <Check className="h-4 w-4 text-primary" />
         תבנית נבחרת: {template.name}
       </h4>
-      
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
         {endDate && (
           <div>
             <span className="text-muted-foreground">תאריך סיום משוער:</span>
-            <p className="font-medium">{format(endDate, 'dd/MM/yyyy')}</p>
+            <p className="font-medium">{format(endDate, "dd/MM/yyyy")}</p>
           </div>
         )}
-        
+
         {paymentSchedule.length > 0 && (
           <div className="col-span-2 md:col-span-3">
             <span className="text-muted-foreground">לוח תשלומים:</span>
@@ -406,12 +426,17 @@ function TemplatePreviewDialog({
   startDate,
 }: TemplatePreviewDialogProps) {
   // וידוא שתאריך ההתחלה תקין
-  const validStartDate = startDate instanceof Date && !isNaN(startDate.getTime()) 
-    ? startDate 
-    : new Date();
-  
+  const validStartDate =
+    startDate instanceof Date && !isNaN(startDate.getTime())
+      ? startDate
+      : new Date();
+
   // יצירת לוח תשלומים
-  const paymentSchedule = generatePaymentScheduleFromTemplate(template, validStartDate, contractValue);
+  const paymentSchedule = generatePaymentScheduleFromTemplate(
+    template,
+    validStartDate,
+    contractValue,
+  );
   const paymentScheduleHtml = generatePaymentScheduleHtml(paymentSchedule);
   const endDate = calculateEndDate(validStartDate, template);
 
@@ -420,18 +445,18 @@ function TemplatePreviewDialog({
     template.html_content,
     client,
     {
-      number: 'C2026-XXXX',
-      title: 'חוזה לדוגמה',
+      number: "C2026-XXXX",
+      title: "חוזה לדוגמה",
       value: contractValue,
-      description: 'תיאור הפרויקט יופיע כאן',
-      start_date: format(validStartDate, 'yyyy-MM-dd'),
-      end_date: endDate ? format(endDate, 'yyyy-MM-dd') : undefined,
+      description: "תיאור הפרויקט יופיע כאן",
+      start_date: format(validStartDate, "yyyy-MM-dd"),
+      end_date: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       payment_terms: template.default_payment_terms,
       terms_and_conditions: template.default_terms_and_conditions,
       special_clauses: template.default_special_clauses,
     },
     company,
-    paymentScheduleHtml
+    paymentScheduleHtml,
   );
 
   return (
@@ -445,13 +470,15 @@ function TemplatePreviewDialog({
         </DialogHeader>
 
         <ScrollArea className="h-[600px] border rounded-lg">
-          <div 
+          <div
             className="p-8 bg-white text-black"
-            style={{ 
-              fontFamily: 'David, Arial, sans-serif',
-              direction: 'rtl',
+            style={{
+              fontFamily: "David, Arial, sans-serif",
+              direction: "rtl",
             }}
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(previewHtml),
+            }}
           />
         </ScrollArea>
 

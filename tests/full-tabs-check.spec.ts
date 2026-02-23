@@ -4,7 +4,10 @@ const EMAIL = "jj1212t@gmail.com";
 const PASSWORD = "543211";
 
 async function login(page: Page) {
-  await page.goto("http://localhost:8080/auth", { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto("http://localhost:8080/auth", {
+    waitUntil: "domcontentloaded",
+    timeout: 30000,
+  });
   await page.waitForTimeout(2000);
 
   // If already logged in (redirected away from auth), skip
@@ -16,7 +19,9 @@ async function login(page: Page) {
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
   await page.click('button[type="submit"]');
-  await page.waitForURL((u) => !u.toString().includes("/auth"), { timeout: 20000 });
+  await page.waitForURL((u) => !u.toString().includes("/auth"), {
+    timeout: 20000,
+  });
   console.log("✅ Logged in successfully");
   await page.waitForTimeout(2000);
 }
@@ -50,12 +55,17 @@ test.describe("Full Tabs Navigation Test", () => {
     // Collect console errors
     const consoleErrors: string[] = [];
     const jsErrors: string[] = [];
-    
+
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         const text = msg.text();
         // Skip known noise
-        if (text.includes("[vite]") || text.includes("HMR") || text.includes("favicon")) return;
+        if (
+          text.includes("[vite]") ||
+          text.includes("HMR") ||
+          text.includes("favicon")
+        )
+          return;
         consoleErrors.push(text.slice(0, 200));
       }
     });
@@ -66,9 +76,18 @@ test.describe("Full Tabs Navigation Test", () => {
 
     // Step 1: Login
     await login(page);
-    await page.screenshot({ path: "test-results/00-after-login.png", fullPage: true });
+    await page.screenshot({
+      path: "test-results/00-after-login.png",
+      fullPage: true,
+    });
 
-    const results: Array<{ tab: string; path: string; status: string; error?: string; loadTime: number }> = [];
+    const results: Array<{
+      tab: string;
+      path: string;
+      status: string;
+      error?: string;
+      loadTime: number;
+    }> = [];
 
     // Step 2: Navigate each tab
     for (const tab of TABS) {
@@ -78,12 +97,12 @@ test.describe("Full Tabs Navigation Test", () => {
 
       try {
         console.log(`\n📌 Navigating to: ${tab.name} (${tab.path})`);
-        
+
         await page.goto(`http://localhost:8080${tab.path}`, {
           waitUntil: "domcontentloaded",
           timeout: 15000,
         });
-        
+
         // Wait for content to render
         await page.waitForTimeout(3000);
 
@@ -94,20 +113,32 @@ test.describe("Full Tabs Navigation Test", () => {
           console.log(`  ❌ ${tab.name}: Redirected to auth!`);
           // Try to re-login
           await login(page);
-          results.push({ tab: tab.name, path: tab.path, status, error, loadTime: Date.now() - start });
+          results.push({
+            tab: tab.name,
+            path: tab.path,
+            status,
+            error,
+            loadTime: Date.now() - start,
+          });
           continue;
         }
 
         // Check for blank/empty page
-        const bodyText = await page.evaluate(() => document.body?.innerText?.trim()?.length || 0);
+        const bodyText = await page.evaluate(
+          () => document.body?.innerText?.trim()?.length || 0,
+        );
         if (bodyText < 20) {
           status = "⚠️ EMPTY PAGE";
           error = `Page body has only ${bodyText} chars`;
-          console.log(`  ⚠️ ${tab.name}: Page appears empty (${bodyText} chars)`);
+          console.log(
+            `  ⚠️ ${tab.name}: Page appears empty (${bodyText} chars)`,
+          );
         }
 
         // Check for error boundaries / crash messages
-        const errorBoundary = await page.locator('text=/שגיאה|Error|Something went wrong|crash/i').count();
+        const errorBoundary = await page
+          .locator("text=/שגיאה|Error|Something went wrong|crash/i")
+          .count();
         if (errorBoundary > 0) {
           status = "❌ ERROR BOUNDARY";
           error = "Error boundary or crash detected on page";
@@ -129,51 +160,62 @@ test.describe("Full Tabs Navigation Test", () => {
 
         // Take screenshot
         const safeName = tab.name.replace(/[^a-zA-Z0-9\u0590-\u05FF]/g, "_");
-        await page.screenshot({
-          path: `test-results/tab-${safeName}.png`,
-          fullPage: true,
-          timeout: 10000,
-        }).catch(() => {
-          console.log(`  ⚠️ Could not take screenshot for ${tab.name}`);
-        });
+        await page
+          .screenshot({
+            path: `test-results/tab-${safeName}.png`,
+            fullPage: true,
+            timeout: 10000,
+          })
+          .catch(() => {
+            console.log(`  ⚠️ Could not take screenshot for ${tab.name}`);
+          });
 
         if (status === "✅ OK") {
           console.log(`  ✅ ${tab.name}: OK (${Date.now() - start}ms)`);
         }
-
       } catch (e: any) {
         status = "❌ NAVIGATION ERROR";
         error = e.message?.slice(0, 200);
         console.log(`  ❌ ${tab.name}: ${e.message?.slice(0, 100)}`);
       }
 
-      results.push({ tab: tab.name, path: tab.path, status, error, loadTime: Date.now() - start });
+      results.push({
+        tab: tab.name,
+        path: tab.path,
+        status,
+        error,
+        loadTime: Date.now() - start,
+      });
     }
 
     // Step 3: Print summary
     console.log("\n\n" + "=".repeat(60));
     console.log("📊 FULL TABS TEST SUMMARY");
     console.log("=".repeat(60));
-    
+
     for (const r of results) {
       console.log(`${r.status} ${r.tab} (${r.path}) - ${r.loadTime}ms`);
       if (r.error) console.log(`   └─ ${r.error}`);
     }
 
-    const failed = results.filter(r => !r.status.includes("OK"));
-    console.log(`\n📈 Results: ${results.length - failed.length}/${results.length} passed`);
-    
+    const failed = results.filter((r) => !r.status.includes("OK"));
+    console.log(
+      `\n📈 Results: ${results.length - failed.length}/${results.length} passed`,
+    );
+
     if (consoleErrors.length > 0) {
       console.log(`\n🔴 Console errors (${consoleErrors.length}):`);
       // Deduplicate
       const unique = [...new Set(consoleErrors)];
-      unique.slice(0, 20).forEach(e => console.log(`   • ${e.slice(0, 150)}`));
+      unique
+        .slice(0, 20)
+        .forEach((e) => console.log(`   • ${e.slice(0, 150)}`));
     }
 
     if (jsErrors.length > 0) {
       console.log(`\n💥 JavaScript errors (${jsErrors.length}):`);
       const unique = [...new Set(jsErrors)];
-      unique.forEach(e => console.log(`   • ${e}`));
+      unique.forEach((e) => console.log(`   • ${e}`));
     }
 
     console.log("=".repeat(60));

@@ -117,13 +117,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (import.meta.env.DEV) console.log("[Auth] onAuthStateChange:", event, session?.user?.email);
+      if (import.meta.env.DEV)
+        console.log("[Auth] onAuthStateChange:", event, session?.user?.email);
 
       // Handle auth errors (like invalid refresh token)
       if (event === "TOKEN_REFRESHED") {
-        if (import.meta.env.DEV) console.log("[Auth] Token refreshed successfully");
+        if (import.meta.env.DEV)
+          console.log("[Auth] Token refreshed successfully");
       } else if (event === "SIGNED_OUT") {
-        if (import.meta.env.DEV) console.log("[Auth] User signed out or session expired");
+        if (import.meta.env.DEV)
+          console.log("[Auth] User signed out or session expired");
         // Clear any stale data
         localStorage.removeItem("supabase.auth.token");
         setProfile(null);

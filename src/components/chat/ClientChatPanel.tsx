@@ -54,6 +54,7 @@ export function ClientChatPanel({
     ) {
       selectConversation(clientConv);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientConv?.id]);
 
   useEffect(() => {

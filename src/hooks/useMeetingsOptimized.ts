@@ -1,12 +1,15 @@
 // Optimized Meetings Hook with React Query - tenarch CRM Pro
 // Features: Optimistic updates, caching, calendar sync
-import { useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
-import { createOfflineQueryFn, createOfflineMutation } from '@/lib/offlineQueryUtils';
+import { useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
+import {
+  createOfflineQueryFn,
+  createOfflineMutation,
+} from "@/lib/offlineQueryUtils";
 
 // Types
 export interface Meeting {
@@ -40,23 +43,25 @@ export interface MeetingInsert {
 }
 
 // Query keys
-const MEETINGS_KEY = ['meetings'] as const;
-const MEETINGS_TODAY_KEY = ['meetings', 'today'] as const;
-const MEETINGS_WEEK_KEY = ['meetings', 'week'] as const;
+const MEETINGS_KEY = ["meetings"] as const;
+const MEETINGS_TODAY_KEY = ["meetings", "today"] as const;
+const MEETINGS_WEEK_KEY = ["meetings", "week"] as const;
 
 // Fetch functions
 async function fetchMeetings(): Promise<Meeting[]> {
   const { data, error } = await supabase
-    .from('meetings')
-    .select(`
+    .from("meetings")
+    .select(
+      `
       *,
       client:clients(name),
       project:projects(name)
-    `)
-    .order('start_time', { ascending: true });
+    `,
+    )
+    .order("start_time", { ascending: true });
 
   if (error) {
-    console.error('Meetings fetch error:', error);
+    console.error("Meetings fetch error:", error);
     throw error;
   }
   return data as Meeting[];
@@ -64,21 +69,23 @@ async function fetchMeetings(): Promise<Meeting[]> {
 
 async function fetchTodayMeetings(): Promise<Meeting[]> {
   const today = new Date();
-  
+
   const { data, error } = await supabase
-    .from('meetings')
-    .select(`
+    .from("meetings")
+    .select(
+      `
       *,
       client:clients(name),
       project:projects(name)
-    `)
-    .gte('start_time', startOfDay(today).toISOString())
-    .lte('start_time', endOfDay(today).toISOString())
-    .neq('status', 'cancelled')
-    .order('start_time', { ascending: true });
+    `,
+    )
+    .gte("start_time", startOfDay(today).toISOString())
+    .lte("start_time", endOfDay(today).toISOString())
+    .neq("status", "cancelled")
+    .order("start_time", { ascending: true });
 
   if (error) {
-    console.error('Today meetings fetch error:', error);
+    console.error("Today meetings fetch error:", error);
     throw error;
   }
   return data as Meeting[];
@@ -86,21 +93,23 @@ async function fetchTodayMeetings(): Promise<Meeting[]> {
 
 async function fetchWeekMeetings(): Promise<Meeting[]> {
   const today = new Date();
-  
+
   const { data, error } = await supabase
-    .from('meetings')
-    .select(`
+    .from("meetings")
+    .select(
+      `
       *,
       client:clients(name),
       project:projects(name)
-    `)
-    .gte('start_time', startOfWeek(today, { weekStartsOn: 0 }).toISOString())
-    .lte('start_time', endOfWeek(today, { weekStartsOn: 0 }).toISOString())
-    .neq('status', 'cancelled')
-    .order('start_time', { ascending: true });
+    `,
+    )
+    .gte("start_time", startOfWeek(today, { weekStartsOn: 0 }).toISOString())
+    .lte("start_time", endOfWeek(today, { weekStartsOn: 0 }).toISOString())
+    .neq("status", "cancelled")
+    .order("start_time", { ascending: true });
 
   if (error) {
-    console.error('Week meetings fetch error:', error);
+    console.error("Week meetings fetch error:", error);
     throw error;
   }
   return data as Meeting[];
@@ -112,14 +121,14 @@ export function useMeetingsOptimized() {
   const queryClient = useQueryClient();
 
   // Main meetings query
-  const { 
-    data: meetings = [], 
-    isLoading, 
+  const {
+    data: meetings = [],
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useQuery({
     queryKey: MEETINGS_KEY,
-    queryFn: createOfflineQueryFn<Meeting>('meetings', fetchMeetings),
+    queryFn: createOfflineQueryFn<Meeting>("meetings", fetchMeetings),
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -127,40 +136,46 @@ export function useMeetingsOptimized() {
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
-    mutationFn: createOfflineMutation<Meeting>('meetings', 'insert', async (meeting: any) => {
-      if (!user) throw new Error('Not authenticated');
-      
-      const { data, error } = await supabase
-        .from('meetings')
-        .insert({ ...meeting, created_by: user.id })
-        .select(`*, client:clients(name), project:projects(name)`)
-        .single();
+    mutationFn: createOfflineMutation<Meeting>(
+      "meetings",
+      "insert",
+      async (meeting: any) => {
+        if (!user) throw new Error("Not authenticated");
 
-      if (error) throw error;
-      return data as Meeting;
-    }),
+        const { data, error } = await supabase
+          .from("meetings")
+          .insert({ ...meeting, created_by: user.id })
+          .select(`*, client:clients(name), project:projects(name)`)
+          .single();
+
+        if (error) throw error;
+        return data as Meeting;
+      },
+    ),
     onMutate: async (newMeeting) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
-      const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
+      const previousMeetings =
+        queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
 
       const optimisticMeeting: Meeting = {
         id: `temp-${Date.now()}`,
         ...newMeeting,
         description: newMeeting.description ?? null,
         location: newMeeting.location ?? null,
-        meeting_type: newMeeting.meeting_type ?? 'in_person',
-        status: newMeeting.status ?? 'scheduled',
+        meeting_type: newMeeting.meeting_type ?? "in_person",
+        status: newMeeting.status ?? "scheduled",
         client_id: newMeeting.client_id ?? null,
         project_id: newMeeting.project_id ?? null,
-        created_by: user?.id ?? '',
+        created_by: user?.id ?? "",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
       queryClient.setQueryData<Meeting[]>(MEETINGS_KEY, (old = []) => {
         const updated = [...old, optimisticMeeting];
-        return updated.sort((a, b) => 
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        return updated.sort(
+          (a, b) =>
+            new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
         );
       });
 
@@ -170,8 +185,10 @@ export function useMeetingsOptimized() {
       if (context?.previousMeetings) {
         queryClient.setQueryData(MEETINGS_KEY, context.previousMeetings);
       }
-      console.error('❌ Meeting creation error:', err);
-      toast.error(`שגיאה ביצירת הפגישה: ${err instanceof Error ? err.message : 'שגיאה לא ידועה'}`);
+      console.error("❌ Meeting creation error:", err);
+      toast.error(
+        `שגיאה ביצירת הפגישה: ${err instanceof Error ? err.message : "שגיאה לא ידועה"}`,
+      );
     },
     onSuccess: (data) => {
       toast.success(`פגישה נוצרה: ${data.title}`);
@@ -185,27 +202,42 @@ export function useMeetingsOptimized() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: createOfflineMutation<any>('meetings', 'update', async ({ id, updates }: { id: string; updates: Partial<MeetingInsert> }) => {
-      const { error } = await supabase
-        .from('meetings')
-        .update(updates)
-        .eq('id', id);
+    mutationFn: createOfflineMutation<any>(
+      "meetings",
+      "update",
+      async ({
+        id,
+        updates,
+      }: {
+        id: string;
+        updates: Partial<MeetingInsert>;
+      }) => {
+        const { error } = await supabase
+          .from("meetings")
+          .update(updates)
+          .eq("id", id);
 
-      if (error) throw error;
-      return { id, updates };
-    }),
+        if (error) throw error;
+        return { id, updates };
+      },
+    ),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
-      const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
+      const previousMeetings =
+        queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
 
       queryClient.setQueryData<Meeting[]>(MEETINGS_KEY, (old = []) =>
-        old.map((meeting) =>
-          meeting.id === id
-            ? { ...meeting, ...updates, updated_at: new Date().toISOString() }
-            : meeting
-        ).sort((a, b) => 
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-        )
+        old
+          .map((meeting) =>
+            meeting.id === id
+              ? { ...meeting, ...updates, updated_at: new Date().toISOString() }
+              : meeting,
+          )
+          .sort(
+            (a, b) =>
+              new Date(a.start_time).getTime() -
+              new Date(b.start_time).getTime(),
+          ),
       );
 
       return { previousMeetings };
@@ -214,10 +246,10 @@ export function useMeetingsOptimized() {
       if (context?.previousMeetings) {
         queryClient.setQueryData(MEETINGS_KEY, context.previousMeetings);
       }
-      toast.error('שגיאה בעדכון הפגישה');
+      toast.error("שגיאה בעדכון הפגישה");
     },
     onSuccess: () => {
-      toast.success('הפגישה עודכנה');
+      toast.success("הפגישה עודכנה");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
@@ -228,21 +260,26 @@ export function useMeetingsOptimized() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: createOfflineMutation<any>('meetings', 'delete', async (id: any) => {
-      const { error } = await supabase
-        .from('meetings')
-        .delete()
-        .eq('id', typeof id === 'string' ? id : id.id);
+    mutationFn: createOfflineMutation<any>(
+      "meetings",
+      "delete",
+      async (id: any) => {
+        const { error } = await supabase
+          .from("meetings")
+          .delete()
+          .eq("id", typeof id === "string" ? id : id.id);
 
-      if (error) throw error;
-      return id;
-    }),
+        if (error) throw error;
+        return id;
+      },
+    ),
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
-      const previousMeetings = queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
+      const previousMeetings =
+        queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
 
       queryClient.setQueryData<Meeting[]>(MEETINGS_KEY, (old = []) =>
-        old.filter((meeting) => meeting.id !== id)
+        old.filter((meeting) => meeting.id !== id),
       );
 
       return { previousMeetings };
@@ -251,10 +288,10 @@ export function useMeetingsOptimized() {
       if (context?.previousMeetings) {
         queryClient.setQueryData(MEETINGS_KEY, context.previousMeetings);
       }
-      toast.error('שגיאה במחיקת הפגישה');
+      toast.error("שגיאה במחיקת הפגישה");
     },
     onSuccess: () => {
-      toast.success('הפגישה נמחקה');
+      toast.success("הפגישה נמחקה");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
@@ -265,45 +302,46 @@ export function useMeetingsOptimized() {
 
   // Memoized filtered meetings
   const upcomingMeetings = useMemo(
-    () => meetings.filter(m => 
-      new Date(m.start_time) > new Date() && m.status !== 'cancelled'
-    ),
-    [meetings]
+    () =>
+      meetings.filter(
+        (m) => new Date(m.start_time) > new Date() && m.status !== "cancelled",
+      ),
+    [meetings],
   );
 
-  const todayMeetings = useMemo(
-    () => {
-      const today = new Date();
-      const start = startOfDay(today);
-      const end = endOfDay(today);
-      return meetings.filter(m => {
-        const meetingDate = new Date(m.start_time);
-        return meetingDate >= start && meetingDate <= end && m.status !== 'cancelled';
-      });
-    },
-    [meetings]
-  );
+  const todayMeetings = useMemo(() => {
+    const today = new Date();
+    const start = startOfDay(today);
+    const end = endOfDay(today);
+    return meetings.filter((m) => {
+      const meetingDate = new Date(m.start_time);
+      return (
+        meetingDate >= start && meetingDate <= end && m.status !== "cancelled"
+      );
+    });
+  }, [meetings]);
 
   // Callbacks
   const createMeeting = useCallback(
     (meeting: MeetingInsert) => createMutation.mutateAsync(meeting),
-    [createMutation]
+    [createMutation],
   );
 
   const updateMeeting = useCallback(
-    (id: string, updates: Partial<MeetingInsert>) => 
+    (id: string, updates: Partial<MeetingInsert>) =>
       updateMutation.mutateAsync({ id, updates }),
-    [updateMutation]
+    [updateMutation],
   );
 
   const deleteMeeting = useCallback(
     (id: string) => deleteMutation.mutateAsync(id),
-    [deleteMutation]
+    [deleteMutation],
   );
 
   const cancelMeeting = useCallback(
-    (id: string) => updateMutation.mutate({ id, updates: { status: 'cancelled' } }),
-    [updateMutation]
+    (id: string) =>
+      updateMutation.mutate({ id, updates: { status: "cancelled" } }),
+    [updateMutation],
   );
 
   // Prefetch functions
@@ -326,14 +364,14 @@ export function useMeetingsOptimized() {
     meetings,
     upcomingMeetings,
     todayMeetings,
-    
+
     // States
     loading: isLoading,
     error,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    
+
     // Actions
     createMeeting,
     updateMeeting,
@@ -341,7 +379,7 @@ export function useMeetingsOptimized() {
     cancelMeeting,
     refetch,
     fetchMeetings: refetch, // Backward compatibility alias
-    
+
     // Prefetching
     prefetchTodayMeetings,
     prefetchWeekMeetings,

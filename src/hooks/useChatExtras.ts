@@ -73,7 +73,7 @@ export function useChatExtras(conversationId?: string | null) {
   // Load per-conversation settings
   useEffect(() => {
     if (!user || !conversationId) return;
-    supabase
+    void supabase
       .from("chat_conversation_settings")
       .select("*")
       .eq("conversation_id", conversationId)
@@ -84,21 +84,21 @@ export function useChatExtras(conversationId?: string | null) {
         setIsFavorite(data?.is_favorite || false);
         setThemeColorState(data?.theme_color || null);
         setThemeEmojiState(data?.theme_emoji || null);
-      }).catch(() => {});
+      });
   }, [user, conversationId]);
 
   // Load labels
   useEffect(() => {
-    supabase
+    void supabase
       .from("chat_labels")
       .select("*")
       .order("name")
-      .then(({ data }) => setAllLabels(data || [])).catch(() => {});
+      .then(({ data }) => setAllLabels(data || []));
   }, []);
 
   useEffect(() => {
     if (!conversationId) return;
-    supabase
+    void supabase
       .from("chat_conversation_labels")
       .select("label_id, chat_labels(*)")
       .eq("conversation_id", conversationId)
@@ -106,16 +106,16 @@ export function useChatExtras(conversationId?: string | null) {
         setConvLabels(
           (data || []).map((r: any) => r.chat_labels).filter(Boolean),
         ),
-      ).catch(() => {});
+      );
   }, [conversationId]);
 
   // Load templates
   useEffect(() => {
-    supabase
+    void supabase
       .from("chat_message_templates")
       .select("*")
       .order("use_count", { ascending: false })
-      .then(({ data }) => setTemplates(data || [])).catch(() => {});
+      .then(({ data }) => setTemplates(data || []));
   }, []);
 
   // Load saved messages
@@ -144,7 +144,7 @@ export function useChatExtras(conversationId?: string | null) {
   // Load read receipts for conversation
   useEffect(() => {
     if (!conversationId) return;
-    supabase
+    void supabase
       .from("chat_participants")
       .select("user_id, last_read_at, profiles(full_name, avatar_url)")
       .eq("conversation_id", conversationId)
@@ -160,7 +160,7 @@ export function useChatExtras(conversationId?: string | null) {
             }))
             .filter((p) => p.last_read_at),
         );
-      }).catch(() => {});
+      });
   }, [conversationId, user?.id]);
 
   // Load SLA
@@ -261,13 +261,11 @@ export function useChatExtras(conversationId?: string | null) {
   const addLabel = useCallback(
     async (labelId: string) => {
       if (!conversationId || !user) return;
-      await supabase
-        .from("chat_conversation_labels")
-        .upsert({
-          conversation_id: conversationId,
-          label_id: labelId,
-          added_by: user.id,
-        });
+      await supabase.from("chat_conversation_labels").upsert({
+        conversation_id: conversationId,
+        label_id: labelId,
+        added_by: user.id,
+      });
       const label = allLabels.find((l) => l.id === labelId);
       if (label)
         setConvLabels((prev) => [
@@ -324,10 +322,10 @@ export function useChatExtras(conversationId?: string | null) {
   );
 
   const useTemplate = useCallback(async (templateId: string) => {
-    await supabase
-      .from("chat_message_templates")
-      .update({ use_count: supabase.rpc("increment" as any) })
-      .eq("id", templateId);
+    // Increment use_count via raw SQL since rpc can't be used inline
+    await supabase.rpc("increment_template_use_count" as any, {
+      template_id: templateId,
+    });
   }, []);
 
   const createTemplate = useCallback(

@@ -3,8 +3,8 @@
  * Provides sync status and controls for offline-first data access
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { dataSyncService } from '@/lib/dataSyncService';
+import { useState, useEffect, useCallback } from "react";
+import { dataSyncService } from "@/lib/dataSyncService";
 
 interface SyncStatus {
   isOnline: boolean;
@@ -26,9 +26,12 @@ export function useDataSync() {
 
   useEffect(() => {
     // Initialize sync service
-    dataSyncService.init().then(() => {
-      setIsInitialized(true);
-    }).catch(() => {});
+    dataSyncService
+      .init()
+      .then(() => {
+        setIsInitialized(true);
+      })
+      .catch(() => {});
 
     // Subscribe to status changes
     const unsubscribe = dataSyncService.onStatusChange(setStatus);
@@ -36,9 +39,9 @@ export function useDataSync() {
     // Update pending changes count periodically
     const updatePendingCount = async () => {
       const count = await dataSyncService.getPendingChangesCount();
-      setStatus(prev => ({ ...prev, pendingChanges: count }));
+      setStatus((prev) => ({ ...prev, pendingChanges: count }));
     };
-    
+
     updatePendingCount();
     const interval = setInterval(updatePendingCount, 10000);
 
@@ -56,21 +59,27 @@ export function useDataSync() {
     return dataSyncService.forceFullSync();
   }, []);
 
-  const queueChange = useCallback(async (
-    table: string, 
-    operation: 'insert' | 'update' | 'delete', 
-    data: any
-  ) => {
-    return dataSyncService.queueChange(table, operation, data);
-  }, []);
+  const queueChange = useCallback(
+    async (
+      table: string,
+      operation: "insert" | "update" | "delete",
+      data: any,
+    ) => {
+      return dataSyncService.queueChange(table, operation, data);
+    },
+    [],
+  );
 
-  const getData = useCallback(async <T,>(table: string): Promise<T[]> => {
+  const getData = useCallback(async <T>(table: string): Promise<T[]> => {
     return dataSyncService.getData<T>(table);
   }, []);
 
-  const getItem = useCallback(async <T,>(table: string, id: string): Promise<T | undefined> => {
-    return dataSyncService.getItem<T>(table, id);
-  }, []);
+  const getItem = useCallback(
+    async <T>(table: string, id: string): Promise<T | undefined> => {
+      return dataSyncService.getItem<T>(table, id);
+    },
+    [],
+  );
 
   const getStorageInfo = useCallback(async () => {
     return dataSyncService.getStorageInfo();

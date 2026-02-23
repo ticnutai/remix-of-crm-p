@@ -55,7 +55,7 @@ export function ScheduledMessagesList({
         .eq("sender_id", user.id);
       if (conversationId) q = q.eq("conversation_id", conversationId);
       const { data } = await q.order("scheduled_at");
-      setMsgs((data || []) as ScheduledMsg[]);
+      setMsgs((data || []) as unknown as ScheduledMsg[]);
     } finally {
       setLoading(false);
     }

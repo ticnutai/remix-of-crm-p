@@ -14,7 +14,14 @@ export interface ChatMessage {
   sender_client_id: string | null;
   sender_type: "user" | "client";
   content: string;
-  message_type: "text" | "image" | "file" | "voice" | "system" | "video" | "audio";
+  message_type:
+    | "text"
+    | "image"
+    | "file"
+    | "voice"
+    | "system"
+    | "video"
+    | "audio";
   file_url?: string | null;
   file_name?: string | null;
   file_size?: number | null;
@@ -200,7 +207,7 @@ export function useChat() {
           ),
         ];
 
-        let profilesMap: Record<
+        const profilesMap: Record<
           string,
           { full_name: string; avatar_url?: string }
         > = {};
@@ -237,6 +244,8 @@ export function useChat() {
         setLoading(false);
       }
     },
+    // markAsRead is defined below but stable — safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user],
   );
 
@@ -316,8 +325,9 @@ export function useChat() {
         // Optimistic UI
         const newMsg: ChatMessage = {
           ...data,
-          sender_type: data.sender_type as ChatMessage['sender_type'],
-          message_type: data.message_type as ChatMessage['message_type'],
+          sender_type: data.sender_type as ChatMessage["sender_type"],
+          message_type: data.message_type as ChatMessage["message_type"],
+          metadata: (data.metadata ?? {}) as Record<string, any>,
           reactions: {},
           sender_name: profile?.full_name || "אתה",
           is_edited: false,

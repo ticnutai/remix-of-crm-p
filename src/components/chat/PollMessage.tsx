@@ -74,7 +74,9 @@ export function PollMessage({
 
     const counts: VoteCounts = {};
     for (const v of votes || []) {
-      const optIds = Array.isArray(v.option_ids) ? v.option_ids : [v.option_ids];
+      const optIds = Array.isArray(v.option_ids)
+        ? v.option_ids
+        : [v.option_ids];
       for (const oid of optIds) {
         counts[oid as string] = (counts[oid as string] || 0) + 1;
       }
@@ -85,7 +87,9 @@ export function PollMessage({
     // My votes
     const mine = (votes || [])
       .filter((v: any) => v.user_id === user?.id)
-      .flatMap((v: any) => Array.isArray(v.option_ids) ? v.option_ids : [v.option_ids]);
+      .flatMap((v: any) =>
+        Array.isArray(v.option_ids) ? v.option_ids : [v.option_ids],
+      );
     setMyVotes(mine);
     setLoading(false);
   }, [conversationId, question, user?.id]);

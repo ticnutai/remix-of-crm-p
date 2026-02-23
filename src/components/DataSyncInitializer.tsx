@@ -3,9 +3,9 @@
  * Initializes the offline sync system and performs initial data sync
  */
 
-import { useEffect, useRef } from 'react';
-import { dataSyncService } from '@/lib/dataSyncService';
-import { useAuth } from '@/hooks/useAuth';
+import { useEffect, useRef } from "react";
+import { dataSyncService } from "@/lib/dataSyncService";
+import { useAuth } from "@/hooks/useAuth";
 
 export function DataSyncInitializer() {
   const { user } = useAuth();
@@ -20,10 +20,10 @@ export function DataSyncInitializer() {
     const initSync = async () => {
       try {
         await dataSyncService.init();
-        
+
         // Check if we have cached data
         const hasCached = await dataSyncService.hasCachedData();
-        
+
         if (!hasCached && navigator.onLine) {
           // First time - do a full sync to cache all data locally
           await dataSyncService.syncAll();
@@ -31,10 +31,10 @@ export function DataSyncInitializer() {
           // Already have data - just sync updates
           await dataSyncService.syncAll();
         }
-        
+
         initializedRef.current = true;
       } catch (error) {
-        console.error('Failed to initialize data sync:', error);
+        console.error("Failed to initialize data sync:", error);
       }
     };
 
@@ -44,16 +44,16 @@ export function DataSyncInitializer() {
   // Listen for background sync messages from service worker
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'BACKGROUND_SYNC_TRIGGER') {
+      if (event.data?.type === "BACKGROUND_SYNC_TRIGGER") {
         // Background sync triggered
         dataSyncService.syncAll();
       }
     };
 
-    navigator.serviceWorker?.addEventListener('message', handleMessage);
-    
+    navigator.serviceWorker?.addEventListener("message", handleMessage);
+
     return () => {
-      navigator.serviceWorker?.removeEventListener('message', handleMessage);
+      navigator.serviceWorker?.removeEventListener("message", handleMessage);
     };
   }, []);
 

@@ -1,6 +1,6 @@
 // DocumentPreview - תצוגה מקדימה של החוזה
-import React, { useMemo } from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import React, { useMemo } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ContractDocument,
   ContractBlock,
@@ -15,10 +15,10 @@ import {
   CustomContent,
   COLOR_SCHEMES,
   DESIGN_TEMPLATES,
-} from './types';
-import { cn } from '@/lib/utils';
-import DOMPurify from 'dompurify';
-import { CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+} from "./types";
+import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
+import { CheckCircle, AlertCircle, Info, AlertTriangle } from "lucide-react";
 
 interface DocumentPreviewProps {
   document: ContractDocument;
@@ -37,38 +37,42 @@ export function DocumentPreview({
   const template = DESIGN_TEMPLATES[document.designTemplate];
 
   // CSS Variables לערכת הצבעים
-  const cssVariables = useMemo(() => ({
-    '--contract-primary': colorScheme.primary,
-    '--contract-secondary': colorScheme.secondary,
-    '--contract-accent': colorScheme.accent,
-    '--contract-background': colorScheme.background,
-    '--contract-text': colorScheme.text,
-  }), [colorScheme]);
+  const cssVariables = useMemo(
+    () => ({
+      "--contract-primary": colorScheme.primary,
+      "--contract-secondary": colorScheme.secondary,
+      "--contract-accent": colorScheme.accent,
+      "--contract-background": colorScheme.background,
+      "--contract-text": colorScheme.text,
+    }),
+    [colorScheme],
+  );
 
   // סגנונות לפי תבנית
   const templateStyles = useMemo(() => {
     switch (document.designTemplate) {
-      case 'modern':
+      case "modern":
         return {
-          container: 'rounded-xl shadow-2xl',
-          header: 'bg-gradient-to-br from-[var(--contract-primary)] to-[var(--contract-secondary)] text-white',
-          section: 'border-r-4 border-[var(--contract-primary)] pr-4',
-          card: 'backdrop-blur-sm bg-white/80 rounded-lg shadow-md',
+          container: "rounded-xl shadow-2xl",
+          header:
+            "bg-gradient-to-br from-[var(--contract-primary)] to-[var(--contract-secondary)] text-white",
+          section: "border-r-4 border-[var(--contract-primary)] pr-4",
+          card: "backdrop-blur-sm bg-white/80 rounded-lg shadow-md",
         };
-      case 'minimal':
+      case "minimal":
         return {
-          container: 'border-2',
-          header: 'border-b-2 border-[var(--contract-primary)]',
-          section: 'border-b border-gray-200 pb-4',
-          card: 'bg-gray-50 rounded-md',
+          container: "border-2",
+          header: "border-b-2 border-[var(--contract-primary)]",
+          section: "border-b border-gray-200 pb-4",
+          card: "bg-gray-50 rounded-md",
         };
-      case 'classic':
+      case "classic":
       default:
         return {
-          container: 'border shadow-lg',
-          header: 'bg-[var(--contract-primary)] text-white',
-          section: 'border-b border-gray-300 pb-4',
-          card: 'bg-white border rounded-md shadow-sm',
+          container: "border shadow-lg",
+          header: "bg-[var(--contract-primary)] text-white",
+          section: "border-b border-gray-300 pb-4",
+          card: "bg-white border rounded-md shadow-sm",
         };
     }
   }, [document.designTemplate]);
@@ -76,19 +80,19 @@ export function DocumentPreview({
   const visibleBlocks = document.blocks.filter((b) => b.visible);
 
   return (
-    <ScrollArea className={cn('h-full', className)}>
+    <ScrollArea className={cn("h-full", className)}>
       <div
         className={cn(
-          'max-w-4xl mx-auto my-8 bg-white',
-          document.settings?.darkMode && 'bg-gray-900 text-white',
-          templateStyles.container
+          "max-w-4xl mx-auto my-8 bg-white",
+          document.settings?.darkMode && "bg-gray-900 text-white",
+          templateStyles.container,
         )}
         style={cssVariables as React.CSSProperties}
         dir="rtl"
       >
         {/* Header */}
         {document.settings?.showHeader && (
-          <div className={cn('px-8 py-6', templateStyles.header)}>
+          <div className={cn("px-8 py-6", templateStyles.header)}>
             <div className="text-center">
               <h1 className="text-2xl font-bold">{document.title}</h1>
             </div>
@@ -101,9 +105,10 @@ export function DocumentPreview({
             <div
               key={block.id}
               className={cn(
-                'transition-all cursor-pointer',
-                selectedBlockId === block.id && 'ring-2 ring-blue-500 rounded-lg',
-                document.designTemplate === 'modern' && 'hover:shadow-lg'
+                "transition-all cursor-pointer",
+                selectedBlockId === block.id &&
+                  "ring-2 ring-blue-500 rounded-lg",
+                document.designTemplate === "modern" && "hover:shadow-lg",
               )}
               onClick={() => onSelectBlock?.(block.id)}
             >
@@ -128,26 +133,46 @@ export function DocumentPreview({
 function renderBlock(
   block: ContractBlock,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   switch (block.type) {
-    case 'header':
-      return renderHeaderBlock(block.content as HeaderContent, styles, darkMode);
-    case 'parties':
-      return renderPartiesBlock(block.content as PartiesContent, styles, darkMode);
-    case 'section':
+    case "header":
+      return renderHeaderBlock(
+        block.content as HeaderContent,
+        styles,
+        darkMode,
+      );
+    case "parties":
+      return renderPartiesBlock(
+        block.content as PartiesContent,
+        styles,
+        darkMode,
+      );
+    case "section":
       return renderSectionBlock(block, styles, darkMode);
-    case 'payments':
-      return renderPaymentsBlock(block.content as PaymentsContent, styles, darkMode);
-    case 'timeline':
-      return renderTimelineBlock(block.content as TimelineContent, styles, darkMode);
-    case 'terms':
+    case "payments":
+      return renderPaymentsBlock(
+        block.content as PaymentsContent,
+        styles,
+        darkMode,
+      );
+    case "timeline":
+      return renderTimelineBlock(
+        block.content as TimelineContent,
+        styles,
+        darkMode,
+      );
+    case "terms":
       return renderTermsBlock(block.content as TermsContent, styles, darkMode);
-    case 'signatures':
-      return renderSignaturesBlock(block.content as SignaturesContent, styles, darkMode);
-    case 'notes':
+    case "signatures":
+      return renderSignaturesBlock(
+        block.content as SignaturesContent,
+        styles,
+        darkMode,
+      );
+    case "notes":
       return renderNotesBlock(block.content as NotesContent, styles, darkMode);
-    case 'custom':
+    case "custom":
       return renderCustomBlock(block.content as CustomContent);
     default:
       return <div className="text-muted-foreground">בלוק לא מוכר</div>;
@@ -158,10 +183,10 @@ function renderBlock(
 function renderHeaderBlock(
   content: HeaderContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   return (
-    <div className={cn('text-center space-y-2 py-4', styles.section)}>
+    <div className={cn("text-center space-y-2 py-4", styles.section)}>
       {content.logo && (
         <img
           src={content.logo}
@@ -174,7 +199,9 @@ function renderHeaderBlock(
         <p className="text-lg text-muted-foreground">{content.subtitle}</p>
       )}
       <div className="flex justify-center gap-8 text-sm text-muted-foreground mt-4">
-        {content.contractNumber && <span>מס׳ חוזה: {content.contractNumber}</span>}
+        {content.contractNumber && (
+          <span>מס׳ חוזה: {content.contractNumber}</span>
+        )}
         {content.date && <span>תאריך: {content.date}</span>}
       </div>
     </div>
@@ -185,23 +212,41 @@ function renderHeaderBlock(
 function renderPartiesBlock(
   content: PartiesContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   return (
-    <div className={cn('space-y-4', styles.section)}>
+    <div className={cn("space-y-4", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">הצדדים להסכם</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {content.parties.map((party, index) => (
-          <div key={party.id} className={cn('p-4', styles.card)}>
+          <div key={party.id} className={cn("p-4", styles.card)}>
             <h3 className="font-bold mb-2">
-              צד {party.type === 'client' ? 'א׳ (המזמין)' : 'ב׳ (הספק)'}
+              צד {party.type === "client" ? "א׳ (המזמין)" : "ב׳ (הספק)"}
             </h3>
             <div className="space-y-1 text-sm">
-              <p><strong>שם:</strong> {party.name || '________'}</p>
-              {party.idNumber && <p><strong>ח.פ/ת.ז:</strong> {party.idNumber}</p>}
-              {party.address && <p><strong>כתובת:</strong> {party.address}</p>}
-              {party.phone && <p><strong>טלפון:</strong> {party.phone}</p>}
-              {party.email && <p><strong>דוא״ל:</strong> {party.email}</p>}
+              <p>
+                <strong>שם:</strong> {party.name || "________"}
+              </p>
+              {party.idNumber && (
+                <p>
+                  <strong>ח.פ/ת.ז:</strong> {party.idNumber}
+                </p>
+              )}
+              {party.address && (
+                <p>
+                  <strong>כתובת:</strong> {party.address}
+                </p>
+              )}
+              {party.phone && (
+                <p>
+                  <strong>טלפון:</strong> {party.phone}
+                </p>
+              )}
+              {party.email && (
+                <p>
+                  <strong>דוא״ל:</strong> {party.email}
+                </p>
+              )}
             </div>
           </div>
         ))}
@@ -214,11 +259,11 @@ function renderPartiesBlock(
 function renderSectionBlock(
   block: ContractBlock,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   const content = block.content as SectionContent;
   return (
-    <div className={cn('space-y-3', styles.section)}>
+    <div className={cn("space-y-3", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">{block.title}</h2>
       {content.items.length > 0 ? (
         <ul className="space-y-2">
@@ -226,21 +271,23 @@ function renderSectionBlock(
             <li
               key={item.id}
               className={cn(
-                'flex items-start gap-2',
-                !item.included && 'opacity-50 line-through'
+                "flex items-start gap-2",
+                !item.included && "opacity-50 line-through",
               )}
             >
               {content.showCheckmarks !== false && (
                 <CheckCircle
                   className={cn(
-                    'h-5 w-5 flex-shrink-0 mt-0.5',
-                    item.included ? 'text-green-500' : 'text-gray-300'
+                    "h-5 w-5 flex-shrink-0 mt-0.5",
+                    item.included ? "text-green-500" : "text-gray-300",
                   )}
                 />
               )}
               <span className="flex-1">{item.text}</span>
               {content.showPrices && item.price !== undefined && (
-                <span className="font-medium">₪{item.price.toLocaleString()}</span>
+                <span className="font-medium">
+                  ₪{item.price.toLocaleString()}
+                </span>
               )}
             </li>
           ))}
@@ -256,11 +303,11 @@ function renderSectionBlock(
 function renderPaymentsBlock(
   content: PaymentsContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
-  const currency = content.currency || '₪';
+  const currency = content.currency || "₪";
   return (
-    <div className={cn('space-y-4', styles.section)}>
+    <div className={cn("space-y-4", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">לוח תשלומים</h2>
       {content.paymentTerms && (
         <p className="text-sm text-muted-foreground">
@@ -286,9 +333,11 @@ function renderPaymentsBlock(
                   <td className="py-2 px-3">{step.title}</td>
                   <td className="py-2 px-3">{step.percentage}%</td>
                   <td className="py-2 px-3">
-                    {step.amount ? `${currency}${step.amount.toLocaleString()}` : '-'}
+                    {step.amount
+                      ? `${currency}${step.amount.toLocaleString()}`
+                      : "-"}
                   </td>
-                  <td className="py-2 px-3">{step.dueDate || '-'}</td>
+                  <td className="py-2 px-3">{step.dueDate || "-"}</td>
                 </tr>
               ))}
             </tbody>
@@ -305,10 +354,10 @@ function renderPaymentsBlock(
 function renderTimelineBlock(
   content: TimelineContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   return (
-    <div className={cn('space-y-4', styles.section)}>
+    <div className={cn("space-y-4", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">לוח זמנים</h2>
       {content.steps.length > 0 ? (
         <div className="relative">
@@ -351,10 +400,10 @@ function renderTimelineBlock(
 function renderTermsBlock(
   content: TermsContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   return (
-    <div className={cn('space-y-4', styles.section)}>
+    <div className={cn("space-y-4", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">תנאים והתניות</h2>
       {content.terms.length > 0 && (
         <ol className="list-decimal list-inside space-y-2 text-sm">
@@ -366,7 +415,7 @@ function renderTermsBlock(
       {content.specialClauses && content.specialClauses.length > 0 && (
         <div className="space-y-3 mt-4">
           {content.specialClauses.map((clause) => (
-            <div key={clause.id} className={cn('p-3', styles.card)}>
+            <div key={clause.id} className={cn("p-3", styles.card)}>
               <h3 className="font-bold text-sm mb-1">{clause.title}</h3>
               <p className="text-sm">{clause.text}</p>
             </div>
@@ -381,10 +430,10 @@ function renderTermsBlock(
 function renderSignaturesBlock(
   content: SignaturesContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   return (
-    <div className={cn('space-y-6 pt-8', styles.section)}>
+    <div className={cn("space-y-6 pt-8", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">חתימות</h2>
       <div className="grid grid-cols-2 gap-8">
         {content.fields.map((field) => (
@@ -412,13 +461,13 @@ function renderSignaturesBlock(
 function renderNotesBlock(
   content: NotesContent,
   styles: Record<string, string>,
-  darkMode?: boolean
+  darkMode?: boolean,
 ) {
   const getIcon = (type?: string) => {
     switch (type) {
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-      case 'important':
+      case "important":
         return <AlertCircle className="h-5 w-5 text-red-500" />;
       default:
         return <Info className="h-5 w-5 text-blue-500" />;
@@ -427,22 +476,25 @@ function renderNotesBlock(
 
   const getBgColor = (type?: string) => {
     switch (type) {
-      case 'warning':
-        return 'bg-amber-50 border-amber-200';
-      case 'important':
-        return 'bg-red-50 border-red-200';
+      case "warning":
+        return "bg-amber-50 border-amber-200";
+      case "important":
+        return "bg-red-50 border-red-200";
       default:
-        return 'bg-blue-50 border-blue-200';
+        return "bg-blue-50 border-blue-200";
     }
   };
 
   return (
-    <div className={cn('space-y-3', styles.section)}>
+    <div className={cn("space-y-3", styles.section)}>
       <h2 className="text-xl font-bold border-b pb-2">הערות חשובות</h2>
       {content.notes.map((note) => (
         <div
           key={note.id}
-          className={cn('flex items-start gap-3 p-3 rounded-md border', getBgColor(note.type))}
+          className={cn(
+            "flex items-start gap-3 p-3 rounded-md border",
+            getBgColor(note.type),
+          )}
         >
           {getIcon(note.type)}
           <p className="text-sm">{note.text}</p>

@@ -1,16 +1,22 @@
 // גלריית תבניות חוזים - תצוגה ועריכה של תבניות HTML
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Eye,
   Pencil,
@@ -23,12 +29,12 @@ import {
   Grid3x3,
   List,
   X,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import DOMPurify from 'dompurify';
-import { toast } from '@/hooks/use-toast';
-import { AdvancedContractEditor } from './AdvancedContractEditor';
-import { ContractDocument } from './AdvancedContractEditor/types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
+import { toast } from "@/hooks/use-toast";
+import { AdvancedContractEditor } from "./AdvancedContractEditor";
+import { ContractDocument } from "./AdvancedContractEditor/types";
 
 interface TemplateFile {
   id: string;
@@ -47,13 +53,17 @@ interface TemplateGalleryProps {
 
 export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
   const [templates, setTemplates] = useState<TemplateFile[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateFile | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateFile | null>(
+    null,
+  );
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [templateContent, setTemplateContent] = useState<string>('');
-  const [editorDocument, setEditorDocument] = useState<ContractDocument | null>(null);
+  const [templateContent, setTemplateContent] = useState<string>("");
+  const [editorDocument, setEditorDocument] = useState<ContractDocument | null>(
+    null,
+  );
 
   // טעינת רשימת התבניות
   useEffect(() => {
@@ -66,28 +76,30 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
     // תבניות שצירפת
     const templatesList: TemplateFile[] = [
       {
-        id: '1',
-        name: 'הצעת מחיר לתוספת בניה',
-        fileName: 'הצעת-מחיר-לתוספת-בניה-1.html',
-        description: 'הוצאת היתר בניה לתוספת בניה למבנה מגורים קיים - גוש 6273',
-        category: 'תוספת בניה',
-        price: '₪35,000',
+        id: "1",
+        name: "הצעת מחיר לתוספת בניה",
+        fileName: "הצעת-מחיר-לתוספת-בניה-1.html",
+        description: "הוצאת היתר בניה לתוספת בניה למבנה מגורים קיים - גוש 6273",
+        category: "תוספת בניה",
+        price: "₪35,000",
       },
       {
-        id: '2',
-        name: 'הצעת מחיר להרחבה צפונית',
-        fileName: 'הצעת-מחיר-להרחבה-צפונית-2.html',
-        description: 'הוצאת היתר בניה ליחידת דיור אחת במגרש בהרחבה הצפונית - גוש 7311',
-        category: 'הרחבה',
-        price: '₪37,000',
+        id: "2",
+        name: "הצעת מחיר להרחבה צפונית",
+        fileName: "הצעת-מחיר-להרחבה-צפונית-2.html",
+        description:
+          "הוצאת היתר בניה ליחידת דיור אחת במגרש בהרחבה הצפונית - גוש 7311",
+        category: "הרחבה",
+        price: "₪37,000",
       },
       {
-        id: '3',
-        name: 'הצעת מחיר לרישוי בלבד',
-        fileName: 'הצעת-מחיר-לרישוי-בלבד-3.html',
-        description: 'הוצאת היתר בניה עם קבלת תוכנית וגרמושקא מאדריכל מתכנן - גוש 7188',
-        category: 'רישוי',
-        price: '₪30,000',
+        id: "3",
+        name: "הצעת מחיר לרישוי בלבד",
+        fileName: "הצעת-מחיר-לרישוי-בלבד-3.html",
+        description:
+          "הוצאת היתר בניה עם קבלת תוכנית וגרמושקא מאדריכל מתכנן - גוש 7188",
+        category: "רישוי",
+        price: "₪30,000",
       },
     ];
     setTemplates(templatesList);
@@ -98,40 +110,43 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
     try {
       const response = await fetch(`/quotes/${fileName}`);
       if (!response.ok) {
-        throw new Error('Failed to load template');
+        throw new Error("Failed to load template");
       }
       const content = await response.text();
       return content;
     } catch (error) {
-      console.error('Error loading template:', error);
+      console.error("Error loading template:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לטעון את התבנית',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא ניתן לטעון את התבנית",
+        variant: "destructive",
       });
-      return '';
+      return "";
     }
   };
 
   // המרת HTML לפורמט העורך
-  const convertHtmlToDocument = (html: string, template: TemplateFile): ContractDocument => {
+  const convertHtmlToDocument = (
+    html: string,
+    template: TemplateFile,
+  ): ContractDocument => {
     // פישוט - נחלץ את התוכן הראשי מה-HTML
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
+    const doc = parser.parseFromString(html, "text/html");
+
     const blocks = [];
-    
+
     // כותרת
-    const headerEl = doc.querySelector('.header');
+    const headerEl = doc.querySelector(".header");
     if (headerEl) {
       blocks.push({
-        id: 'header-1',
-        type: 'header' as const,
-        title: 'כותרת',
+        id: "header-1",
+        type: "header" as const,
+        title: "כותרת",
         content: {
-          title: headerEl.querySelector('h1')?.textContent || template.name,
-          subtitle: headerEl.querySelector('.subtitle')?.textContent || '',
-          contractNumber: '',
+          title: headerEl.querySelector("h1")?.textContent || template.name,
+          subtitle: headerEl.querySelector(".subtitle")?.textContent || "",
+          contractNumber: "",
           date: new Date().toISOString(),
         },
         visible: true,
@@ -140,18 +155,20 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
     }
 
     // סעיפים
-    const sections = doc.querySelectorAll('.section');
+    const sections = doc.querySelectorAll(".section");
     sections.forEach((section, index) => {
-      const title = section.querySelector('.section-title')?.textContent || `סעיף ${index + 1}`;
-      const items = section.querySelectorAll('.item');
-      const itemsContent = Array.from(items).map(item => ({
-        text: item.querySelector('.text')?.textContent || '',
+      const title =
+        section.querySelector(".section-title")?.textContent ||
+        `סעיף ${index + 1}`;
+      const items = section.querySelectorAll(".item");
+      const itemsContent = Array.from(items).map((item) => ({
+        text: item.querySelector(".text")?.textContent || "",
         checked: true,
       }));
 
       blocks.push({
         id: `section-${index + 1}`,
-        type: 'section' as const,
+        type: "section" as const,
         title,
         content: {
           title,
@@ -166,8 +183,8 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
       id: template.id,
       title: template.name,
       blocks,
-      colorScheme: 'gold' as const,
-      designTemplate: 'classic' as const,
+      colorScheme: "gold" as const,
+      designTemplate: "classic" as const,
       metadata: {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -202,8 +219,8 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
   // שמירת עריכה
   const handleSaveEdit = async (document: ContractDocument) => {
     toast({
-      title: 'נשמר בהצלחה',
-      description: 'התבנית עודכנה',
+      title: "נשמר בהצלחה",
+      description: "התבנית עודכנה",
     });
     setEditorOpen(false);
   };
@@ -213,7 +230,7 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
     const content = await loadTemplateContent(template.fileName);
     // כאן תוכל להוסיף לוגיקה לשמירת העותק
     toast({
-      title: 'הועתק',
+      title: "הועתק",
       description: `נוצר עותק של "${template.name}"`,
     });
   };
@@ -221,25 +238,26 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
   // הורדת תבנית
   const handleDownload = async (template: TemplateFile) => {
     const content = await loadTemplateContent(template.fileName);
-    const blob = new Blob([content], { type: 'text/html' });
+    const blob = new Blob([content], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = template.fileName;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     toast({
-      title: 'הורד בהצלחה',
+      title: "הורד בהצלחה",
       description: `התבנית "${template.name}" הורדה`,
     });
   };
 
   // סינון תבניות
-  const filteredTemplates = templates.filter(template =>
-    template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.category.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTemplates = templates.filter(
+    (template) =>
+      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.category.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -253,13 +271,19 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <DialogTitle className="text-2xl">גלריית תבניות מתקדמות</DialogTitle>
+                  <DialogTitle className="text-2xl">
+                    גלריית תבניות מתקדמות
+                  </DialogTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     {templates.length} תבניות זמינות לעריכה וניהול
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+              >
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -279,16 +303,16 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
               </div>
               <div className="flex gap-1 border rounded-lg p-1">
                 <Button
-                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => setViewMode("grid")}
                 >
                   <Grid3x3 className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
                   size="sm"
-                  onClick={() => setViewMode('list')}
+                  onClick={() => setViewMode("list")}
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -297,7 +321,7 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
           </div>
 
           <ScrollArea className="flex-1 px-6">
-            {viewMode === 'grid' ? (
+            {viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 py-4">
                 {filteredTemplates.map((template) => (
                   <Card
@@ -307,7 +331,9 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
                     <CardHeader>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <CardTitle className="text-lg line-clamp-2">{template.name}</CardTitle>
+                          <CardTitle className="text-lg line-clamp-2">
+                            {template.name}
+                          </CardTitle>
                           <CardDescription className="mt-2 line-clamp-2">
                             {template.description}
                           </CardDescription>
@@ -318,7 +344,9 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
                     <CardContent>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold text-primary">{template.price}</span>
+                          <span className="text-2xl font-bold text-primary">
+                            {template.price}
+                          </span>
                           <Badge variant="outline" className="text-xs">
                             + מע״מ
                           </Badge>
@@ -371,7 +399,10 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
             ) : (
               <div className="space-y-3 py-4">
                 {filteredTemplates.map((template) => (
-                  <Card key={template.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={template.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
@@ -379,8 +410,13 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold truncate">{template.name}</h3>
-                            <Badge variant="secondary" className="flex-shrink-0">
+                            <h3 className="font-semibold truncate">
+                              {template.name}
+                            </h3>
+                            <Badge
+                              variant="secondary"
+                              className="flex-shrink-0"
+                            >
                               {template.category}
                             </Badge>
                           </div>
@@ -389,7 +425,9 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
                           </p>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-lg font-bold text-primary">{template.price}</span>
+                          <span className="text-lg font-bold text-primary">
+                            {template.price}
+                          </span>
                           <Button
                             variant="outline"
                             size="sm"
@@ -429,7 +467,9 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
           <ScrollArea className="flex-1 p-6">
             <div
               className="bg-white"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(templateContent) }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(templateContent),
+              }}
             />
           </ScrollArea>
         </DialogContent>

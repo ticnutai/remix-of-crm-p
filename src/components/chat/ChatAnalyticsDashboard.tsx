@@ -73,7 +73,7 @@ export function ChatAnalyticsDashboard({
       .order("message_count", { ascending: false })
       .limit(20)
       .then(({ data }) => {
-        setRows((data || []) as AnalyticsRow[]);
+        setRows((data || []) as unknown as AnalyticsRow[]);
         setLoading(false);
       });
   }, [open]);

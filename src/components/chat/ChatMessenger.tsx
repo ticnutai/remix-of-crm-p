@@ -704,10 +704,12 @@ function NewConversationDialog({
         .select("id, full_name, email")
         .order("full_name")
         .limit(100),
-    ]).then(([cRes, eRes]) => {
-      setClients(cRes.data || []);
-      setEmployees(eRes.data || []);
-    }).catch(() => {});
+    ])
+      .then(([cRes, eRes]) => {
+        setClients(cRes.data || []);
+        setEmployees(eRes.data || []);
+      })
+      .catch(() => {});
   }, [open]);
 
   const filteredClients = clients.filter(
@@ -960,12 +962,12 @@ function AssignClientDialog({
 
   useEffect(() => {
     if (!open) return;
-    supabase
+    void supabase
       .from("clients")
       .select("id, name")
       .order("name")
       .limit(200)
-      .then(({ data }) => setClients(data || [])).catch(() => {});
+      .then(({ data }) => setClients(data || []));
   }, [open]);
 
   const filtered = clients.filter(
@@ -1216,6 +1218,7 @@ export function ChatMessenger() {
       }
     }
     prevMsgCount.current = messages.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Request notification permission on mount
@@ -1231,7 +1234,7 @@ export function ChatMessenger() {
       const pinned = messages.find((m) => m.id === conv.pinned_message_id);
       if (pinned) setPinnedMsg(pinned);
     }
-  }, [activeConversation?.id, localConvs]);
+  }, [activeConversation?.id, localConvs, messages]);
 
   const groupedMessages = messages.reduce<
     { date: string; msgs: ChatMessage[] }[]
@@ -1946,7 +1949,7 @@ export function ChatMessenger() {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" dir="rtl">
+                    <DropdownMenuContent align="start">
                       <DropdownMenuItem onClick={handleAiSummary}>
                         <Sparkles className="h-4 w-4 ml-2 text-purple-500" />
                         סיכום AI

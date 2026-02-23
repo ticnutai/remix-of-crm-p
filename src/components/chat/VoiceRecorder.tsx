@@ -40,6 +40,7 @@ export function VoiceRecorder({ onRecorded, onCancel }: VoiceRecorderProps) {
       if (streamRef.current)
         streamRef.current.getTracks().forEach((t) => t.stop());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startTimer = () => {

@@ -1,25 +1,32 @@
 // Email Date Navigator - Calendar picker and floating date indicator
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { 
-  Calendar as CalendarIcon, 
-  ChevronUp, 
+} from "@/components/ui/popover";
+import {
+  Calendar as CalendarIcon,
+  ChevronUp,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   X,
-  Loader2
-} from 'lucide-react';
-import { format, isToday, isYesterday, isSameDay, addMonths, subMonths } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+  Loader2,
+} from "lucide-react";
+import {
+  format,
+  isToday,
+  isYesterday,
+  isSameDay,
+  addMonths,
+  subMonths,
+} from "date-fns";
+import { he } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface EmailDateNavigatorProps {
   onDateSelect: (date: Date) => void;
@@ -38,17 +45,17 @@ export const EmailDateNavigator = ({
   const [displayMonth, setDisplayMonth] = useState(new Date());
 
   const formatSelectedDate = (date: Date) => {
-    if (isToday(date)) return 'היום';
-    if (isYesterday(date)) return 'אתמול';
-    return format(date, 'dd/MM/yyyy', { locale: he });
+    if (isToday(date)) return "היום";
+    if (isYesterday(date)) return "אתמול";
+    return format(date, "dd/MM/yyyy", { locale: he });
   };
 
   const handlePrevMonth = () => {
-    setDisplayMonth(prev => subMonths(prev, 1));
+    setDisplayMonth((prev) => subMonths(prev, 1));
   };
 
   const handleNextMonth = () => {
-    setDisplayMonth(prev => addMonths(prev, 1));
+    setDisplayMonth((prev) => addMonths(prev, 1));
   };
 
   return (
@@ -56,12 +63,14 @@ export const EmailDateNavigator = ({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant={selectedDate ? 'default' : 'outline'}
+            variant={selectedDate ? "default" : "outline"}
             size="sm"
             className="gap-2"
           >
             <CalendarIcon className="h-4 w-4" />
-            {selectedDate ? formatSelectedDate(selectedDate) : 'חיפוש לפי תאריך'}
+            {selectedDate
+              ? formatSelectedDate(selectedDate)
+              : "חיפוש לפי תאריך"}
             {isLoading && <Loader2 className="h-3 w-3 animate-spin" />}
           </Button>
         </PopoverTrigger>
@@ -77,7 +86,7 @@ export const EmailDateNavigator = ({
               <ChevronRight className="h-4 w-4" />
             </Button>
             <span className="font-medium text-sm">
-              {format(displayMonth, 'MMMM yyyy', { locale: he })}
+              {format(displayMonth, "MMMM yyyy", { locale: he })}
             </span>
             <Button
               variant="ghost"
@@ -88,7 +97,7 @@ export const EmailDateNavigator = ({
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
-          
+
           {/* Calendar with 2 months */}
           <div className="flex flex-col md:flex-row">
             <Calendar
@@ -109,23 +118,26 @@ export const EmailDateNavigator = ({
               classNames={{
                 months: "flex flex-col md:flex-row gap-4",
                 month: "space-y-4",
-                caption: "flex justify-center pt-1 relative items-center text-sm font-medium",
+                caption:
+                  "flex justify-center pt-1 relative items-center text-sm font-medium",
                 caption_label: "hidden",
                 nav: "hidden",
                 table: "w-full border-collapse space-y-1",
                 head_row: "flex",
-                head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+                head_cell:
+                  "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
                 row: "flex w-full mt-2",
                 cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
                 day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-accent rounded-md transition-colors",
-                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                day_selected:
+                  "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                 day_today: "bg-accent text-accent-foreground",
                 day_outside: "text-muted-foreground opacity-50",
                 day_disabled: "text-muted-foreground opacity-50",
               }}
             />
           </div>
-          
+
           {/* Quick Select Buttons */}
           <div className="p-3 border-t space-y-2">
             <div className="grid grid-cols-2 gap-2">
@@ -179,7 +191,7 @@ export const EmailDateNavigator = ({
           </div>
         </PopoverContent>
       </Popover>
-      
+
       {selectedDate && (
         <Button
           variant="ghost"
@@ -209,9 +221,9 @@ export const FloatingDateIndicator = ({
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
-      if (isToday(date)) return 'היום';
-      if (isYesterday(date)) return 'אתמול';
-      return format(date, 'EEEE, dd בMMMM yyyy', { locale: he });
+      if (isToday(date)) return "היום";
+      if (isYesterday(date)) return "אתמול";
+      return format(date, "EEEE, dd בMMMM yyyy", { locale: he });
     } catch {
       return dateStr;
     }
@@ -234,7 +246,7 @@ export const FloatingDateIndicator = ({
 export const useScrollDateTracker = (
   containerRef: React.RefObject<HTMLElement>,
   messages: Array<{ id: string; date: string }>,
-  enabled: boolean = true
+  enabled: boolean = true,
 ) => {
   const [currentDate, setCurrentDate] = useState<string | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -244,12 +256,12 @@ export const useScrollDateTracker = (
     if (!enabled || !containerRef.current) return;
 
     setIsScrolling(true);
-    
+
     // Clear previous timeout
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
-    
+
     // Hide indicator after scroll stops
     scrollTimeoutRef.current = setTimeout(() => {
       setIsScrolling(false);
@@ -258,16 +270,19 @@ export const useScrollDateTracker = (
     // Find the first visible message
     const container = containerRef.current;
     const containerRect = container.getBoundingClientRect();
-    
+
     // Find message elements in the container
-    const messageElements = container.querySelectorAll('[data-message-id]');
-    
+    const messageElements = container.querySelectorAll("[data-message-id]");
+
     for (const element of messageElements) {
       const rect = element.getBoundingClientRect();
       // Check if element is visible in the container
-      if (rect.top >= containerRect.top && rect.top <= containerRect.top + 100) {
-        const messageId = element.getAttribute('data-message-id');
-        const message = messages.find(m => m.id === messageId);
+      if (
+        rect.top >= containerRect.top &&
+        rect.top <= containerRect.top + 100
+      ) {
+        const messageId = element.getAttribute("data-message-id");
+        const message = messages.find((m) => m.id === messageId);
         if (message) {
           setCurrentDate(message.date);
           break;
@@ -280,10 +295,10 @@ export const useScrollDateTracker = (
     const container = containerRef.current;
     if (!container || !enabled) return;
 
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
     return () => {
-      container.removeEventListener('scroll', handleScroll);
+      container.removeEventListener("scroll", handleScroll);
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
@@ -316,7 +331,7 @@ export const LoadMoreTrigger = ({
           onLoadMore();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (triggerRef.current) {
@@ -354,9 +369,9 @@ export const DateSeparator = React.memo(({ date }: DateSeparatorProps) => {
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      if (isToday(d)) return 'היום';
-      if (isYesterday(d)) return 'אתמול';
-      return format(d, 'EEEE, dd בMMMM', { locale: he });
+      if (isToday(d)) return "היום";
+      if (isYesterday(d)) return "אתמול";
+      return format(d, "EEEE, dd בMMMM", { locale: he });
     } catch {
       return dateStr;
     }
@@ -371,4 +386,4 @@ export const DateSeparator = React.memo(({ date }: DateSeparatorProps) => {
     </div>
   );
 });
-DateSeparator.displayName = 'DateSeparator';
+DateSeparator.displayName = "DateSeparator";

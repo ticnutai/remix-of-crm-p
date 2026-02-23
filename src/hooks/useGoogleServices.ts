@@ -245,12 +245,14 @@ export function useGoogleServices() {
         silentReauthPromise
       ) {
         // Another instance is already doing silent re-auth, wait for it
-        silentReauthPromise.then((token) => {
-          if (token) {
-            setAccessToken(token);
-            setIsConnected(true);
-          }
-        }).catch(() => {});
+        silentReauthPromise
+          .then((token) => {
+            if (token) {
+              setAccessToken(token);
+              setIsConnected(true);
+            }
+          })
+          .catch(() => {});
       }
     }
   }, [user]);

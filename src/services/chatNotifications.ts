@@ -39,9 +39,13 @@ export function playNotificationSound() {
         );
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.3);
-      } catch {}
+      } catch {
+        /* audio API may fail */
+      }
     });
-  } catch {}
+  } catch {
+    /* audio context may be blocked */
+  }
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -66,7 +70,7 @@ export function showDesktopNotification(
     tag: "chat-message",
     renotify: true,
     silent: true, // we handle sound ourselves
-  });
+  } as NotificationOptions);
   setTimeout(() => n.close(), 5000);
   n.onclick = () => {
     window.focus();

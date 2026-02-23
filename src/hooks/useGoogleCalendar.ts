@@ -380,24 +380,26 @@ export function useGoogleCalendar() {
         setHasTriedAutoConnect(true);
         log("Auto-connecting with saved credentials...");
         // Initialize and restore connection - returns the tokenClient directly
-        initializeGoogleApi().then((client) => {
-          // If we have a saved email but no valid token, try silent auth
-          if (!savedToken && savedEmail && client) {
-            log(
-              "No valid token but have email, attempting silent reconnect with:",
-              savedEmail,
-            );
-            // Use the returned client directly (not the stale state)
-            try {
-              client.requestAccessToken({
-                prompt: "",
-                login_hint: savedEmail,
-              });
-            } catch (e) {
-              log("Silent reconnect failed:", e);
+        initializeGoogleApi()
+          .then((client) => {
+            // If we have a saved email but no valid token, try silent auth
+            if (!savedToken && savedEmail && client) {
+              log(
+                "No valid token but have email, attempting silent reconnect with:",
+                savedEmail,
+              );
+              // Use the returned client directly (not the stale state)
+              try {
+                client.requestAccessToken({
+                  prompt: "",
+                  login_hint: savedEmail,
+                });
+              } catch (e) {
+                log("Silent reconnect failed:", e);
+              }
             }
-          }
-        }).catch(() => {});
+          })
+          .catch(() => {});
       }
     }
   }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi]);

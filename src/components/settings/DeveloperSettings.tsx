@@ -411,7 +411,10 @@ export function DeveloperSettings() {
                   variant="outline"
                   className="border-yellow-500/50 text-yellow-600"
                 >
-                  {enabledCount + floatingEnabledCount}/{Object.keys(toolsConfig).length + Object.keys(floatingConfig).length} פעילים
+                  {enabledCount + floatingEnabledCount}/
+                  {Object.keys(toolsConfig).length +
+                    Object.keys(floatingConfig).length}{" "}
+                  פעילים
                 </Badge>
               </div>
               <div className="flex gap-2">
@@ -420,12 +423,18 @@ export function DeveloperSettings() {
                   size="sm"
                   onClick={() => {
                     handleEnableAll();
-                    const allFloating: DevButtonsConfig = { console: true, inspector: true, performance: true, database: true, clear: true, refresh: true, tabsDebug: true };
+                    const allFloating: DevButtonsConfig = {
+                      console: true,
+                      inspector: true,
+                      performance: true,
+                      database: true,
+                      clear: true,
+                      refresh: true,
+                      tabsDebug: true,
+                    };
                     setFloatingConfig(allFloating);
                   }}
-                  className={cn(
-                    "border-yellow-500/50 hover:bg-yellow-500/10",
-                  )}
+                  className={cn("border-yellow-500/50 hover:bg-yellow-500/10")}
                 >
                   <CheckCircle2 className={cn("h-4 w-4 mr-2", goldIcon)} />
                   הפעל הכל
@@ -435,7 +444,15 @@ export function DeveloperSettings() {
                   size="sm"
                   onClick={() => {
                     handleDisableAll();
-                    const allFloatingOff: DevButtonsConfig = { console: false, inspector: false, performance: false, database: false, clear: false, refresh: false, tabsDebug: false };
+                    const allFloatingOff: DevButtonsConfig = {
+                      console: false,
+                      inspector: false,
+                      performance: false,
+                      database: false,
+                      clear: false,
+                      refresh: false,
+                      tabsDebug: false,
+                    };
                     setFloatingConfig(allFloatingOff);
                   }}
                   className="hover:bg-destructive/10"
@@ -461,7 +478,9 @@ export function DeveloperSettings() {
               <div className="flex items-center gap-3">
                 <GripVertical className={cn("h-5 w-5", goldIcon)} />
                 <div>
-                  <h4 className="font-medium text-sm">מצב תצוגה כפתורים צפים</h4>
+                  <h4 className="font-medium text-sm">
+                    מצב תצוגה כפתורים צפים
+                  </h4>
                   <p className="text-xs text-muted-foreground">
                     {isGrouped
                       ? "כל הכפתורים מקובצים יחד בשורה אחת ניתנת לגרירה"

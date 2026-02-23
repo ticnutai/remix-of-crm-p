@@ -84,7 +84,11 @@ import { AdvancedNotificationsSettings } from "@/components/settings/AdvancedNot
 import { GoogleCalendarSettingsMulti } from "@/components/settings/GoogleCalendarSettingsMulti";
 import { GoogleContactsSettings } from "@/components/settings/GoogleContactsSettings";
 import { DataCleanupTab } from "@/components/settings/DataCleanupTab";
-const DeveloperSettings = lazy(() => import("@/components/settings/DeveloperSettings").then(m => ({ default: m.DeveloperSettings })));
+const DeveloperSettings = lazy(() =>
+  import("@/components/settings/DeveloperSettings").then((m) => ({
+    default: m.DeveloperSettings,
+  })),
+);
 import { ClientFieldManager } from "@/components/settings/ClientFieldManager";
 import { EdgeFunctionsManager } from "@/components/settings/EdgeFunctionsManager";
 import { EmailTemplateManager } from "@/components/settings/EmailTemplateManager";
@@ -1551,11 +1555,13 @@ export default function Settings() {
             {/* Developer Settings Tab (Admin Only) */}
             {isAdmin && (
               <TabsContent value="developer" className="space-y-6">
-                <Suspense fallback={
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
-                  </div>
-                }>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-yellow-500" />
+                    </div>
+                  }
+                >
                   <DeveloperSettings />
                 </Suspense>
               </TabsContent>

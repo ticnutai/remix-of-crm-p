@@ -75,7 +75,11 @@ interface DraggableTaskCardProps {
   onDelete: (id: string) => void;
 }
 
-const DraggableTaskCard = React.memo(function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
+const DraggableTaskCard = React.memo(function DraggableTaskCard({
+  task,
+  onEdit,
+  onDelete,
+}: DraggableTaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,

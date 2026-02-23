@@ -66,7 +66,9 @@ function loadConfig(): ReminderConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
-  } catch {}
+  } catch {
+    /* ignore parse errors */
+  }
   return {
     enabled: true,
     thresholds: DEFAULT_THRESHOLDS,
@@ -85,7 +87,9 @@ function loadNotified(): Record<string, number> {
   try {
     const saved = localStorage.getItem(NOTIFIED_KEY);
     if (saved) return JSON.parse(saved);
-  } catch {}
+  } catch {
+    /* ignore parse errors */
+  }
   return {};
 }
 

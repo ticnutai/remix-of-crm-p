@@ -95,13 +95,16 @@ const idbPersister = createIDBPersister();
 const persistOptions = {
   persister: idbPersister,
   maxAge: PERSIST_MAX_AGE,
-  buster: 'v1', // Bump to invalidate all cached data
+  buster: "v1", // Bump to invalidate all cached data
 };
 
 const App = () => {
   return (
     <ErrorBoundary>
-      <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+      >
         <ThemeProvider>
           <TooltipProvider>
             <AuthProvider>
@@ -120,19 +123,46 @@ const App = () => {
                       >
                         <Suspense fallback={<FullPageLoader />}>
                           <Routes>
-                            <Route path="/" element={withErrorBoundary(Index)} />
-                            <Route path="/auth" element={withErrorBoundary(Auth)} />
-                            <Route path="/clients" element={withErrorBoundary(Clients)} />
+                            <Route
+                              path="/"
+                              element={withErrorBoundary(Index)}
+                            />
+                            <Route
+                              path="/auth"
+                              element={withErrorBoundary(Auth)}
+                            />
+                            <Route
+                              path="/clients"
+                              element={withErrorBoundary(Clients)}
+                            />
                             <Route
                               path="/clients/:clientId"
                               element={withErrorBoundary(ClientProfile)}
                             />
-                            <Route path="/employees" element={withErrorBoundary(Employees)} />
-                            <Route path="/calendar" element={withErrorBoundary(Calendar)} />
-                            <Route path="/reports" element={withErrorBoundary(Reports)} />
-                            <Route path="/settings" element={withErrorBoundary(Settings)} />
-                            <Route path="/backups" element={withErrorBoundary(Backups)} />
-                            <Route path="/time-logs" element={withErrorBoundary(TimeLogs)} />
+                            <Route
+                              path="/employees"
+                              element={withErrorBoundary(Employees)}
+                            />
+                            <Route
+                              path="/calendar"
+                              element={withErrorBoundary(Calendar)}
+                            />
+                            <Route
+                              path="/reports"
+                              element={withErrorBoundary(Reports)}
+                            />
+                            <Route
+                              path="/settings"
+                              element={withErrorBoundary(Settings)}
+                            />
+                            <Route
+                              path="/backups"
+                              element={withErrorBoundary(Backups)}
+                            />
+                            <Route
+                              path="/time-logs"
+                              element={withErrorBoundary(TimeLogs)}
+                            />
                             <Route
                               path="/datatable-pro"
                               element={withErrorBoundary(DataTablePro)}
@@ -165,7 +195,10 @@ const App = () => {
                               path="/tasks"
                               element={withErrorBoundary(TasksAndMeetings)}
                             />
-                            <Route path="/reminders" element={withErrorBoundary(TasksAndMeetings)} />
+                            <Route
+                              path="/reminders"
+                              element={withErrorBoundary(TasksAndMeetings)}
+                            />
                             <Route
                               path="/custom-table/:tableId"
                               element={withErrorBoundary(CustomTableView)}
@@ -174,26 +207,56 @@ const App = () => {
                               path="/client-profile/:clientId"
                               element={withErrorBoundary(ClientProfile)}
                             />
-                            <Route path="/finance" element={withErrorBoundary(Finance)} />
-                            <Route path="/payments" element={withErrorBoundary(Payments)} />
-                            <Route path="/history" element={withErrorBoundary(History)} />
-                            <Route path="/my-day" element={withErrorBoundary(MyDay)} />
+                            <Route
+                              path="/finance"
+                              element={withErrorBoundary(Finance)}
+                            />
+                            <Route
+                              path="/payments"
+                              element={withErrorBoundary(Payments)}
+                            />
+                            <Route
+                              path="/history"
+                              element={withErrorBoundary(History)}
+                            />
+                            <Route
+                              path="/my-day"
+                              element={withErrorBoundary(MyDay)}
+                            />
                             <Route
                               path="/time-analytics"
                               element={withErrorBoundary(TimeAnalytics)}
                             />
-                            <Route path="/quotes" element={withErrorBoundary(Quotes)} />
+                            <Route
+                              path="/quotes"
+                              element={withErrorBoundary(Quotes)}
+                            />
                             {/* Contracts integrated into Quotes page */}
-                            <Route path="/gmail" element={withErrorBoundary(Gmail)} />
-                            <Route path="/contacts" element={withErrorBoundary(Contacts)} />
-                            <Route path="/files" element={withErrorBoundary(Files)} />
+                            <Route
+                              path="/gmail"
+                              element={withErrorBoundary(Gmail)}
+                            />
+                            <Route
+                              path="/contacts"
+                              element={withErrorBoundary(Contacts)}
+                            />
+                            <Route
+                              path="/files"
+                              element={withErrorBoundary(Files)}
+                            />
                             {/* Redirect old advanced-files to unified files page */}
-                            <Route path="/advanced-files" element={withErrorBoundary(Files)} />
+                            <Route
+                              path="/advanced-files"
+                              element={withErrorBoundary(Files)}
+                            />
                             <Route
                               path="/email-analytics"
                               element={withErrorBoundary(EmailAnalytics)}
                             />
-                            <Route path="/analytics" element={withErrorBoundary(Analytics)} />
+                            <Route
+                              path="/analytics"
+                              element={withErrorBoundary(Analytics)}
+                            />
                             <Route
                               path="/audit-log"
                               element={withErrorBoundary(AuditLogPage)}
@@ -203,16 +266,34 @@ const App = () => {
                               element={withErrorBoundary(QuoteTemplates)}
                             />
                             {/* V2 Advanced Features */}
-                            <Route path="/kanban" element={withErrorBoundary(TasksKanban)} />
-                            <Route path="/dashboard" element={withErrorBoundary(Dashboard)} />
-                            <Route path="/workflows" element={withErrorBoundary(Workflows)} />
-                            <Route path="/tests" element={withErrorBoundary(Tests)} />
+                            <Route
+                              path="/kanban"
+                              element={withErrorBoundary(TasksKanban)}
+                            />
+                            <Route
+                              path="/dashboard"
+                              element={withErrorBoundary(Dashboard)}
+                            />
+                            <Route
+                              path="/workflows"
+                              element={withErrorBoundary(Workflows)}
+                            />
+                            <Route
+                              path="/tests"
+                              element={withErrorBoundary(Tests)}
+                            />
                             <Route
                               path="/custom-reports"
                               element={withErrorBoundary(CustomReports)}
                             />
-                            <Route path="/documents" element={withErrorBoundary(Documents)} />
-                            <Route path="/calls" element={withErrorBoundary(Calls)} />
+                            <Route
+                              path="/documents"
+                              element={withErrorBoundary(Documents)}
+                            />
+                            <Route
+                              path="/calls"
+                              element={withErrorBoundary(Calls)}
+                            />
                             <Route
                               path="/smart-tools"
                               element={withErrorBoundary(SmartTools)}
