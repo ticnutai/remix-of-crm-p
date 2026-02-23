@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Loader2, Eye, EyeOff, Copy, Check, Wand2 } from "lucide-react";
 
 interface CreateClientLoginDialogProps {
   open: boolean;
@@ -23,6 +23,33 @@ interface CreateClientLoginDialogProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Generate a username from client name:
+ * - Transliterate Hebrew to English
+ * - Add random digits for uniqueness
+ */
+function generateUsername(clientName: string): string {
+  const hebrewToEnglish: Record<string, string> = {
+    'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v',
+    'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k',
+    'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's',
+    'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'ts', 'ץ': 'ts', 'ק': 'k',
+    'ר': 'r', 'ש': 'sh', 'ת': 't',
+  };
+
+  const transliterated = clientName
+    .trim()
+    .split('')
+    .map(ch => hebrewToEnglish[ch] || ch)
+    .join('')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-zA-Z0-9.]/g, '')
+    .toLowerCase();
+
+  const suffix = Math.floor(Math.random() * 900 + 100);
+  return transliterated ? `${transliterated}${suffix}` : `client${suffix}`;
+}
+
 function generatePassword(length = 12): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$";
   let password = "";
@@ -30,6 +57,29 @@ function generatePassword(length = 12): string {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+}
+
+function generateEmailFromName(clientName: string, domain = "portal.tenarch.co.il"): string {
+  const hebrewToEnglish: Record<string, string> = {
+    'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v',
+    'ז': 'z', 'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k',
+    'ל': 'l', 'מ': 'm', 'ם': 'm', 'נ': 'n', 'ן': 'n', 'ס': 's',
+    'ע': 'a', 'פ': 'p', 'ף': 'f', 'צ': 'ts', 'ץ': 'ts', 'ק': 'k',
+    'ר': 'r', 'ש': 'sh', 'ת': 't',
+  };
+
+  const transliterated = clientName
+    .trim()
+    .split('')
+    .map(ch => hebrewToEnglish[ch] || ch)
+    .join('')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-zA-Z0-9.]/g, '')
+    .toLowerCase();
+
+  const suffix = Math.floor(Math.random() * 900 + 100);
+  const local = transliterated || `client${suffix}`;
+  return `${local}@${domain}`;
 }
 
 export function CreateClientLoginDialog({
@@ -47,6 +97,16 @@ export function CreateClientLoginDialog({
   const [copied, setCopied] = useState(false);
   const [created, setCreated] = useState(false);
   const { toast } = useToast();
+
+  const suggestedUsername = useMemo(() => generateUsername(clientName), [clientName]);
+
+  const handleAutoGenerate = () => {
+    if (!email) {
+      setEmail(clientEmail || generateEmailFromName(clientName));
+    }
+    setPassword(generatePassword());
+    toast({ title: "פרטים נוצרו אוטומטית" });
+  };
 
   const handleCreate = async () => {
     if (!email || !password) {
@@ -75,7 +135,7 @@ export function CreateClientLoginDialog({
   };
 
   const handleCopyCredentials = async () => {
-    const text = `פרטי כניסה לפורטל:\nאימייל: ${email}\nסיסמה: ${password}`;
+    const text = `פרטי כניסה לפורטל:\nאימייל: ${email}\nסיסמה: ${password}\nקישור: ${window.location.origin}/auth`;
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -123,15 +183,29 @@ export function CreateClientLoginDialog({
 
         {!created ? (
           <div className="space-y-4">
+            {/* Auto-generate button */}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleAutoGenerate}
+            >
+              <Wand2 className="h-4 w-4 ml-2" />
+              צור פרטים אוטומטית
+            </Button>
+
             <div className="space-y-2">
-              <Label>אימייל</Label>
+              <Label>אימייל / שם משתמש</Label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="client@example.com"
+                placeholder={clientEmail || `${suggestedUsername}@example.com`}
                 dir="ltr"
               />
+              <p className="text-xs text-muted-foreground">
+                שם משתמש מוצע: <span className="font-mono text-foreground">{suggestedUsername}</span>
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -173,6 +247,7 @@ export function CreateClientLoginDialog({
             <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm" dir="ltr">
               <div><strong>Email:</strong> {email}</div>
               <div><strong>Password:</strong> {password}</div>
+              <div><strong>Portal:</strong> {window.location.origin}/auth</div>
             </div>
 
             <div className="flex gap-2">
