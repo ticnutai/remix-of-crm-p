@@ -185,7 +185,7 @@ export default defineConfig(({ mode }) => {
                 return 'vendor-ui-feedback';
               }
               if (id.includes('@radix-ui/react-menu') || id.includes('@radix-ui/react-context-menu') || id.includes('@radix-ui/react-navigation-menu')) {
-                return 'vendor-ui-menus';
+                return 'vendor-ui-overlays';
               }
               if (id.includes('@radix-ui')) {
                 return 'vendor-ui-core';
@@ -396,6 +396,77 @@ export default defineConfig(({ mode }) => {
               // Use-sync libraries
               if (id.includes('use-sync-external-store') || id.includes('use-callback-ref')) {
                 return 'vendor-react-utils';
+              }
+              
+              // Fix: catch tanstack core packages that weren't matched by react-specific rules
+              if (id.includes('@tanstack/query-core') || id.includes('@tanstack/query-persist-client-core')) {
+                return 'vendor-query';
+              }
+              if (id.includes('@tanstack/virtual-core')) {
+                return 'vendor-virtual';
+              }
+              
+              // Fix: catch react-router and @remix-run/router (not just react-router-dom)
+              if (id.includes('react-router') || id.includes('@remix-run/router') || id.includes('tiny-invariant')) {
+                return 'vendor-router';
+              }
+              
+              // Fix: catch remark/rehype transitive deps
+              if (id.includes('property-information') || id.includes('space-separated-tokens') || 
+                  id.includes('comma-separated-tokens') || id.includes('html-url-attributes') ||
+                  id.includes('decode-named-character-reference') || id.includes('inline-style-parser') ||
+                  id.includes('style-to-object') || id.includes('style-to-js') || id.includes('trim-lines') ||
+                  id.includes('devlop') || id.includes('is-plain-obj') || id.includes('estree-util') ||
+                  id.includes('bail') || id.includes('trough') || id.includes('@ungap')) {
+                return 'vendor-markdown';
+              }
+              
+              // SVG/XML processing (used by jsPDF/html2canvas)
+              if (id.includes('canvg') || id.includes('@xmldom') || id.includes('rgbcolor') ||
+                  id.includes('stackblur-canvas') || id.includes('svg-pathdata') || id.includes('dingbat-to-unicode')) {
+                return 'lib-jspdf';
+              }
+              
+              // Compression libs (used by xlsx/pdf)
+              if (id.includes('jszip') || id.includes('fflate') || id.includes('pako') ||
+                  id.includes('fast-png') || id.includes('iobuffer')) {
+                return 'lib-xlsx';
+              }
+              
+              // XML builder (used by xlsx)
+              if (id.includes('xmlbuilder') || id.includes('lop') || id.includes('option') || id.includes('underscore')) {
+                return 'lib-xlsx';
+              }
+              
+              // React animation/transition (used by recharts)
+              if (id.includes('react-smooth') || id.includes('react-transition-group') || 
+                  id.includes('dom-helpers') || id.includes('decimal.js')) {
+                return 'vendor-recharts';
+              }
+              
+              // Radix UI scroll/lock transitive deps
+              if (id.includes('react-remove-scroll') || id.includes('react-style-singleton') ||
+                  id.includes('use-sidecar') || id.includes('get-nonce') || id.includes('detect-node-es')) {
+                return 'vendor-ui-overlays';
+              }
+              
+              // Transpilation helpers  
+              if (id.includes('@babel/runtime') || id.includes('core-js') || id.includes('tslib') ||
+                  id.includes('regenerator-runtime') || id.includes('react-is')) {
+                return 'vendor-polyfills';
+              }
+              
+              // File handling
+              if (id.includes('file-selector') || id.includes('attr-accept')) {
+                return 'vendor-dropzone';
+              }
+              
+              // Misc utilities
+              if (id.includes('fast-equals') || id.includes('eventemitter3') || 
+                  id.includes('bluebird') || id.includes('extend') || id.includes('base64-js') ||
+                  id.includes('performance-now') || id.includes('raf') || id.includes('iceberg-js') ||
+                  id.includes('internmap')) {
+                return 'vendor-utils';
               }
               
               // Everything else from node_modules

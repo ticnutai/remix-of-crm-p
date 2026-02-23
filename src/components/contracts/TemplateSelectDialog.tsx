@@ -47,6 +47,7 @@ import {
 } from '@/hooks/useContractTemplates';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import DOMPurify from 'dompurify';
 
 // ============================================================================
 // אייקונים לפי קטגוריה
@@ -450,7 +451,7 @@ function TemplatePreviewDialog({
               fontFamily: 'David, Arial, sans-serif',
               direction: 'rtl',
             }}
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }}
           />
         </ScrollArea>
 

@@ -75,7 +75,7 @@ interface DraggableTaskCardProps {
   onDelete: (id: string) => void;
 }
 
-function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
+const DraggableTaskCard = React.memo(function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -181,7 +181,7 @@ function DraggableTaskCard({ task, onEdit, onDelete }: DraggableTaskCardProps) {
       </CardContent>
     </Card>
   );
-}
+});
 
 interface DroppableColumnProps {
   column: (typeof columns)[0];

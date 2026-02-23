@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -150,7 +151,7 @@ export function EmailPreviewModal({
               >
                 <div
                   className="p-4"
-                  dangerouslySetInnerHTML={{ __html: renderContent() }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderContent()) }}
                 />
               </ScrollArea>
             </div>

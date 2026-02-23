@@ -1,9 +1,11 @@
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import { DigitalContractData } from "@/hooks/useDigitalContracts";
 import { DEFAULT_DESIGN } from "@/types/contract-design";
 
 export const exportContractToPdf = async (contract: DigitalContractData, filename: string) => {
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import("jspdf"),
+    import("html2canvas"),
+  ]);
   const design = contract.design || DEFAULT_DESIGN;
   
   // Create a temporary container for the PDF content

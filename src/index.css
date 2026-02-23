@@ -1,23 +1,8 @@
 /* e-control CRM Pro - Navy Executive Theme */
 /* Design System with Hebrew/RTL Support */
 
-@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap");
-
-/* Timer digit fonts - Monospace and Display fonts */
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Teko:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
+/* All mono/display fonts consolidated into a single request (was 14 separate HTTP requests) */
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Fira+Code:wght@300;400;500&family=Source+Code+Pro:wght@300;400;500&family=Roboto+Mono:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400;500&family=Space+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Orbitron:wght@400;500;600&family=Share+Tech+Mono&family=Oxanium:wght@300;400;500&family=Rajdhani:wght@300;400;500&family=Teko:wght@300;400;500&family=Oswald:wght@300;400;500&family=Bebas+Neue&display=swap");
 
 @tailwind base;
 @tailwind components;

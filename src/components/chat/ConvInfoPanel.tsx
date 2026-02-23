@@ -83,19 +83,19 @@ export function ConvInfoPanel({
       .from("chat_participants")
       .select("*, profiles(full_name, avatar_url, email)")
       .eq("conversation_id", conversation.id)
-      .then(({ data }) => setParticipants(data || []));
+      .then(({ data }) => setParticipants(data || [])).catch(() => {});
     // Load stats
     supabase
       .from("chat_files")
       .select("id", { count: "exact" })
       .eq("conversation_id", conversation.id)
-      .then(({ count }) => setFileCount(count || 0));
+      .then(({ count }) => setFileCount(count || 0)).catch(() => {});
     supabase
       .from("chat_messages")
       .select("id", { count: "exact" })
       .eq("conversation_id", conversation.id)
       .eq("is_deleted", false)
-      .then(({ count }) => setMsgCount(count || 0));
+      .then(({ count }) => setMsgCount(count || 0)).catch(() => {});
   }, [conversation.id]);
 
   const unassignedLabels = allLabels.filter(

@@ -21,6 +21,7 @@ import {
   OfflineIndicator,
 } from "@/components/pwa";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { withErrorBoundary } from "@/components/RouteErrorBoundary";
 import { AutoPreload } from "@/components/AutoPreload";
 
 // Lazy load pages for better performance
@@ -119,106 +120,106 @@ const App = () => {
                       >
                         <Suspense fallback={<FullPageLoader />}>
                           <Routes>
-                            <Route path="/" element={<Index />} />
-                            <Route path="/auth" element={<Auth />} />
-                            <Route path="/clients" element={<Clients />} />
+                            <Route path="/" element={withErrorBoundary(Index)} />
+                            <Route path="/auth" element={withErrorBoundary(Auth)} />
+                            <Route path="/clients" element={withErrorBoundary(Clients)} />
                             <Route
                               path="/clients/:clientId"
-                              element={<ClientProfile />}
+                              element={withErrorBoundary(ClientProfile)}
                             />
-                            <Route path="/employees" element={<Employees />} />
-                            <Route path="/calendar" element={<Calendar />} />
-                            <Route path="/reports" element={<Reports />} />
-                            <Route path="/settings" element={<Settings />} />
-                            <Route path="/backups" element={<Backups />} />
-                            <Route path="/time-logs" element={<TimeLogs />} />
+                            <Route path="/employees" element={withErrorBoundary(Employees)} />
+                            <Route path="/calendar" element={withErrorBoundary(Calendar)} />
+                            <Route path="/reports" element={withErrorBoundary(Reports)} />
+                            <Route path="/settings" element={withErrorBoundary(Settings)} />
+                            <Route path="/backups" element={withErrorBoundary(Backups)} />
+                            <Route path="/time-logs" element={withErrorBoundary(TimeLogs)} />
                             <Route
                               path="/datatable-pro"
-                              element={<DataTablePro />}
+                              element={withErrorBoundary(DataTablePro)}
                             />
                             <Route
                               path="/client-portal"
-                              element={<ClientPortal />}
+                              element={withErrorBoundary(ClientPortal)}
                             />
                             <Route
                               path="/client-portal/messages"
-                              element={<ClientMessages />}
+                              element={withErrorBoundary(ClientMessages)}
                             />
                             <Route
                               path="/client-portal/files"
-                              element={<ClientFiles />}
+                              element={withErrorBoundary(ClientFiles)}
                             />
                             <Route
                               path="/client-portal/projects"
-                              element={<ClientProjects />}
+                              element={withErrorBoundary(ClientProjects)}
                             />
                             <Route
                               path="/tasks-meetings"
-                              element={<TasksAndMeetings />}
+                              element={withErrorBoundary(TasksAndMeetings)}
                             />
                             <Route
                               path="/meetings"
-                              element={<TasksAndMeetings />}
+                              element={withErrorBoundary(TasksAndMeetings)}
                             />
                             <Route
                               path="/tasks"
-                              element={<TasksAndMeetings />}
+                              element={withErrorBoundary(TasksAndMeetings)}
                             />
-                            <Route path="/reminders" element={<TasksAndMeetings />} />
+                            <Route path="/reminders" element={withErrorBoundary(TasksAndMeetings)} />
                             <Route
                               path="/custom-table/:tableId"
-                              element={<CustomTableView />}
+                              element={withErrorBoundary(CustomTableView)}
                             />
                             <Route
                               path="/client-profile/:clientId"
-                              element={<ClientProfile />}
+                              element={withErrorBoundary(ClientProfile)}
                             />
-                            <Route path="/finance" element={<Finance />} />
-                            <Route path="/payments" element={<Payments />} />
-                            <Route path="/history" element={<History />} />
-                            <Route path="/my-day" element={<MyDay />} />
+                            <Route path="/finance" element={withErrorBoundary(Finance)} />
+                            <Route path="/payments" element={withErrorBoundary(Payments)} />
+                            <Route path="/history" element={withErrorBoundary(History)} />
+                            <Route path="/my-day" element={withErrorBoundary(MyDay)} />
                             <Route
                               path="/time-analytics"
-                              element={<TimeAnalytics />}
+                              element={withErrorBoundary(TimeAnalytics)}
                             />
-                            <Route path="/quotes" element={<Quotes />} />
+                            <Route path="/quotes" element={withErrorBoundary(Quotes)} />
                             {/* Contracts integrated into Quotes page */}
-                            <Route path="/gmail" element={<Gmail />} />
-                            <Route path="/contacts" element={<Contacts />} />
-                            <Route path="/files" element={<Files />} />
+                            <Route path="/gmail" element={withErrorBoundary(Gmail)} />
+                            <Route path="/contacts" element={withErrorBoundary(Contacts)} />
+                            <Route path="/files" element={withErrorBoundary(Files)} />
                             {/* Redirect old advanced-files to unified files page */}
-                            <Route path="/advanced-files" element={<Files />} />
+                            <Route path="/advanced-files" element={withErrorBoundary(Files)} />
                             <Route
                               path="/email-analytics"
-                              element={<EmailAnalytics />}
+                              element={withErrorBoundary(EmailAnalytics)}
                             />
-                            <Route path="/analytics" element={<Analytics />} />
+                            <Route path="/analytics" element={withErrorBoundary(Analytics)} />
                             <Route
                               path="/audit-log"
-                              element={<AuditLogPage />}
+                              element={withErrorBoundary(AuditLogPage)}
                             />
                             <Route
                               path="/quote-templates"
-                              element={<QuoteTemplates />}
+                              element={withErrorBoundary(QuoteTemplates)}
                             />
                             {/* V2 Advanced Features */}
-                            <Route path="/kanban" element={<TasksKanban />} />
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/workflows" element={<Workflows />} />
-                            <Route path="/tests" element={<Tests />} />
+                            <Route path="/kanban" element={withErrorBoundary(TasksKanban)} />
+                            <Route path="/dashboard" element={withErrorBoundary(Dashboard)} />
+                            <Route path="/workflows" element={withErrorBoundary(Workflows)} />
+                            <Route path="/tests" element={withErrorBoundary(Tests)} />
                             <Route
                               path="/custom-reports"
-                              element={<CustomReports />}
+                              element={withErrorBoundary(CustomReports)}
                             />
-                            <Route path="/documents" element={<Documents />} />
-                            <Route path="/calls" element={<Calls />} />
+                            <Route path="/documents" element={withErrorBoundary(Documents)} />
+                            <Route path="/calls" element={withErrorBoundary(Calls)} />
                             <Route
                               path="/smart-tools"
-                              element={<SmartTools />}
+                              element={withErrorBoundary(SmartTools)}
                             />
                             <Route
                               path="/document-editor"
-                              element={<DocumentEditorPage />}
+                              element={withErrorBoundary(DocumentEditorPage)}
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>

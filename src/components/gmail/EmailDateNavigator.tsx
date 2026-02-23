@@ -350,7 +350,7 @@ interface DateSeparatorProps {
   date: string;
 }
 
-export const DateSeparator = ({ date }: DateSeparatorProps) => {
+export const DateSeparator = React.memo(({ date }: DateSeparatorProps) => {
   const formatDate = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
@@ -370,4 +370,5 @@ export const DateSeparator = ({ date }: DateSeparatorProps) => {
       </span>
     </div>
   );
-};
+});
+DateSeparator.displayName = 'DateSeparator';

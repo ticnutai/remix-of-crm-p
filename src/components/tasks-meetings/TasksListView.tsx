@@ -71,7 +71,7 @@ interface SortableTaskItemProps {
   onToggleComplete: (task: Task) => void;
 }
 
-const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
+const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(({
   task,
   index,
   onEdit,
@@ -224,7 +224,8 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = ({
       </CardContent>
     </Card>
   );
-};
+});
+SortableTaskItem.displayName = 'SortableTaskItem';
 
 export function TasksListView({
   tasks,

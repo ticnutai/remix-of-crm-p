@@ -84,7 +84,7 @@ export function useChatExtras(conversationId?: string | null) {
         setIsFavorite(data?.is_favorite || false);
         setThemeColorState(data?.theme_color || null);
         setThemeEmojiState(data?.theme_emoji || null);
-      });
+      }).catch(() => {});
   }, [user, conversationId]);
 
   // Load labels
@@ -93,7 +93,7 @@ export function useChatExtras(conversationId?: string | null) {
       .from("chat_labels")
       .select("*")
       .order("name")
-      .then(({ data }) => setAllLabels(data || []));
+      .then(({ data }) => setAllLabels(data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export function useChatExtras(conversationId?: string | null) {
         setConvLabels(
           (data || []).map((r: any) => r.chat_labels).filter(Boolean),
         ),
-      );
+      ).catch(() => {});
   }, [conversationId]);
 
   // Load templates
@@ -115,7 +115,7 @@ export function useChatExtras(conversationId?: string | null) {
       .from("chat_message_templates")
       .select("*")
       .order("use_count", { ascending: false })
-      .then(({ data }) => setTemplates(data || []));
+      .then(({ data }) => setTemplates(data || [])).catch(() => {});
   }, []);
 
   // Load saved messages
@@ -160,7 +160,7 @@ export function useChatExtras(conversationId?: string | null) {
             }))
             .filter((p) => p.last_read_at),
         );
-      });
+      }).catch(() => {});
   }, [conversationId, user?.id]);
 
   // Load SLA

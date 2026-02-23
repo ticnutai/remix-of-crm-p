@@ -300,7 +300,7 @@ interface SortableTaskProps {
   stopTaskTimer?: (taskId: string) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
 }
-function SortableTaskItem({
+const SortableTaskItem = React.memo(function SortableTaskItem({
   task,
   stage,
   index,
@@ -773,7 +773,7 @@ function SortableTaskItem({
       )}
     </ContextMenu>
   );
-}
+});
 
 // Sortable Task Item for Expanded Dialog
 interface SortableExpandedTaskProps {

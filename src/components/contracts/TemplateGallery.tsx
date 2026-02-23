@@ -25,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 import { toast } from '@/hooks/use-toast';
 import { AdvancedContractEditor } from './AdvancedContractEditor';
 import { ContractDocument } from './AdvancedContractEditor/types';
@@ -428,7 +429,7 @@ export function TemplateGallery({ open, onOpenChange }: TemplateGalleryProps) {
           <ScrollArea className="flex-1 p-6">
             <div
               className="bg-white"
-              dangerouslySetInnerHTML={{ __html: templateContent }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(templateContent) }}
             />
           </ScrollArea>
         </DialogContent>

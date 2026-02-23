@@ -393,7 +393,7 @@ export function useGoogleCalendar() {
               log("Silent reconnect failed:", e);
             }
           }
-        });
+        }).catch(() => {});
       }
     }
   }, [config, hasTriedAutoConnect, isConnected, initializeGoogleApi]);

@@ -250,7 +250,7 @@ export function useGoogleServices() {
             setAccessToken(token);
             setIsConnected(true);
           }
-        });
+        }).catch(() => {});
       }
     }
   }, [user]);

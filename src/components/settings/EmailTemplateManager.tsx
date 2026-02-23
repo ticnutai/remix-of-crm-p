@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -376,7 +377,7 @@ export function EmailTemplateManager() {
 
               <TabsContent value="html">
                 <ScrollArea className="h-[500px] border rounded-md p-4 bg-white">
-                  <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getPreviewHtml()) }} />
                 </ScrollArea>
               </TabsContent>
             </Tabs>

@@ -59,7 +59,7 @@ interface TaskCardProps {
   onStatusChange: (id: string, status: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onStatusChange }) => {
+const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onEdit, onDelete, onStatusChange }) => {
   const priority = PRIORITIES[task.priority as keyof typeof PRIORITIES] || PRIORITIES.medium;
   
   return (
@@ -126,7 +126,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit, onDelete, onStatusCha
       </CardContent>
     </Card>
   );
-};
+});
+TaskCard.displayName = 'TaskCard';
 
 interface KanbanColumnProps {
   column: typeof COLUMNS[0];

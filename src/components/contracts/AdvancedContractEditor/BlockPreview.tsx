@@ -11,6 +11,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 import { ContractBlock, ColorScheme } from './types';
 
 interface BlockPreviewProps {
@@ -302,7 +303,7 @@ export function BlockPreview({ block, colorScheme, isSelected }: BlockPreviewPro
           return (
             <div
               className="prose prose-slate dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: content.html }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content.html) }}
             />
           );
         }

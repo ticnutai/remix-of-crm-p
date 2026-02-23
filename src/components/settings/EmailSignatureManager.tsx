@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -230,7 +231,7 @@ export function EmailSignatureManager() {
               {/* Preview */}
               <div className="border rounded-lg p-4 bg-muted/30">
                 <p className="text-sm font-medium mb-2">תצוגה מקדימה:</p>
-                <div dangerouslySetInnerHTML={{ __html: form.html_content }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(form.html_content) }} />
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -297,7 +298,7 @@ export function EmailSignatureManager() {
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-32 border rounded-lg p-3 bg-muted/30">
-                  <div dangerouslySetInnerHTML={{ __html: signature.html_content }} />
+                  <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(signature.html_content) }} />
                 </ScrollArea>
               </CardContent>
             </Card>

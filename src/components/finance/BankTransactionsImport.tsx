@@ -9,7 +9,6 @@ import { Upload, FileSpreadsheet, Check, X, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 
 interface ColumnMapping {
   transaction_date: string;
@@ -105,6 +104,7 @@ export function BankTransactionsImport({ onImportComplete }: BankTransactionsImp
 
     try {
       const data = await uploadedFile.arrayBuffer();
+      const XLSX = await import('xlsx');
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];

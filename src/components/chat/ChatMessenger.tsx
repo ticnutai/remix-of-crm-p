@@ -707,7 +707,7 @@ function NewConversationDialog({
     ]).then(([cRes, eRes]) => {
       setClients(cRes.data || []);
       setEmployees(eRes.data || []);
-    });
+    }).catch(() => {});
   }, [open]);
 
   const filteredClients = clients.filter(
@@ -965,7 +965,7 @@ function AssignClientDialog({
       .select("id, name")
       .order("name")
       .limit(200)
-      .then(({ data }) => setClients(data || []));
+      .then(({ data }) => setClients(data || [])).catch(() => {});
   }, [open]);
 
   const filtered = clients.filter(

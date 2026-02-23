@@ -35,7 +35,7 @@ import {
   Table as TableIcon,
   Zap,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import type * as XLSXTypes from 'xlsx';
 
 import { 
   ImportAnalysis, 
@@ -112,8 +112,9 @@ export function ImportTab({ onComplete }: ImportTabProps) {
         data = JSON.parse(cleanText);
       } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         const buffer = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
         const workbook = XLSX.read(buffer, { type: 'array' });
-        data = parseExcelWorkbook(workbook);
+        data = await parseExcelWorkbook(workbook);
       } else if (fileName.endsWith('.csv')) {
         const text = await file.text();
         data = parseCSVContent(text);
@@ -172,7 +173,8 @@ export function ImportTab({ onComplete }: ImportTabProps) {
   };
   
   // Parse Excel workbook to our format
-  const parseExcelWorkbook = (workbook: XLSX.WorkBook): any => {
+  const parseExcelWorkbook = async (workbook: XLSXTypes.WorkBook): Promise<any> => {
+    const XLSX = await import('xlsx');
     const data: Record<string, any[]> = {};
     
     for (const sheetName of workbook.SheetNames) {

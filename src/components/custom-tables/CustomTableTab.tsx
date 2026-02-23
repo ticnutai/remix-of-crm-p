@@ -166,7 +166,7 @@ export function CustomTableTab({ table, onDeleteTable, canManage }: CustomTableT
           if (clientsData) {
             setClients(clientsData);
           }
-        });
+        }).catch(() => {});
     }
   }, [table.columns]);
 

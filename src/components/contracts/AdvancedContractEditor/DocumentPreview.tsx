@@ -17,6 +17,7 @@ import {
   DESIGN_TEMPLATES,
 } from './types';
 import { cn } from '@/lib/utils';
+import DOMPurify from 'dompurify';
 import { CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
 interface DocumentPreviewProps {
@@ -456,7 +457,7 @@ function renderCustomBlock(content: CustomContent) {
   return (
     <div
       className="custom-content"
-      dangerouslySetInnerHTML={{ __html: content.html }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content.html) }}
     />
   );
 }

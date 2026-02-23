@@ -28,7 +28,7 @@ export function useDataSync() {
     // Initialize sync service
     dataSyncService.init().then(() => {
       setIsInitialized(true);
-    });
+    }).catch(() => {});
 
     // Subscribe to status changes
     const unsubscribe = dataSyncService.onStatusChange(setStatus);
