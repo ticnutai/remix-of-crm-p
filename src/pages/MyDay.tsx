@@ -850,8 +850,8 @@ export default function MyDay() {
                   {reminders.map((reminder) => (
                     <HoverItemWrapper
                       key={reminder.id}
-                      onClick={() => navigate(`/reminders?id=${reminder.id}`)}
-                      onEdit={() => navigate(`/reminders?edit=${reminder.id}`)}
+                      onClick={() => navigate(`/tasks-meetings?tab=reminders&id=${reminder.id}`)}
+                      onEdit={() => navigate(`/tasks-meetings?tab=reminders&edit=${reminder.id}`)}
                       onDelete={() => handleDeleteReminder(reminder.id)}
                       className="rounded-lg"
                     >

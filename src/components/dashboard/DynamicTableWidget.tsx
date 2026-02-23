@@ -50,7 +50,7 @@ const TABLE_NAVIGATION_MAP: Record<string, string> = {
   projects: '/projects',
   tasks: '/tasks',
   meetings: '/calendar',
-  reminders: '/reminders',
+  reminders: '/tasks-meetings?tab=reminders',
   time_entries: '/time-tracking',
   profiles: '/team',
   invoices: '/invoices',
