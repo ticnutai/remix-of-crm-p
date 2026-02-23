@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from 'date-fns';
-import { createOfflineQueryFn } from '@/lib/offlineQueryUtils';
+import { createOfflineQueryFn, createOfflineMutation } from '@/lib/offlineQueryUtils';
 
 // Types
 export interface Meeting {
