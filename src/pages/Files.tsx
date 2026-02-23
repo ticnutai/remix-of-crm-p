@@ -613,6 +613,57 @@ export default function Files() {
     });
   }, []);
 
+  // Filter and sort files (defined early so callbacks can reference displayFiles)
+  const filterFiles = (files: DriveFile[]) => {
+    let filtered = [...files];
+
+    if (filterCategory === "starred") {
+      filtered = filtered.filter((file) => starredFiles.has(file.id));
+    } else if (filterCategory !== "all") {
+      filtered = filtered.filter((file) => {
+        const config = getFileTypeConfig(file.mimeType);
+        switch (filterCategory) {
+          case "documents":
+            return config.label === "מסמך" || config.label === "PDF";
+          case "images":
+            return config.label === "תמונה";
+          case "videos":
+            return config.label === "וידאו";
+          case "audio":
+            return config.label === "אודיו";
+          case "spreadsheets":
+            return config.label === "גיליון";
+          case "archives":
+            return config.label === "ארכיון";
+          default:
+            return true;
+        }
+      });
+    }
+
+    const sortOption = SORT_OPTIONS.find((s) => s.id === sortBy);
+    if (sortOption) {
+      filtered.sort((a, b) => {
+        let aVal = a[sortOption.field as keyof DriveFile];
+        let bVal = b[sortOption.field as keyof DriveFile];
+        if (typeof aVal === "string") aVal = aVal.toLowerCase();
+        if (typeof bVal === "string") bVal = bVal.toLowerCase();
+        if (sortOption.direction === "asc") {
+          return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        } else {
+          return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+        }
+      });
+    }
+
+    return filtered;
+  };
+
+  const displayFiles =
+    searchQuery && searchResults.length > 0
+      ? filterFiles(searchResults)
+      : filterFiles(driveFiles);
+
   const selectAllDriveFiles = useCallback(() => {
     if (selectedDriveFiles.size === displayFiles.length) {
       setSelectedDriveFiles(new Set());
@@ -964,56 +1015,7 @@ export default function Files() {
     });
   };
 
-  // Filter and sort files
-  const filterFiles = (files: DriveFile[]) => {
-    let filtered = [...files];
-
-    if (filterCategory === "starred") {
-      filtered = filtered.filter((file) => starredFiles.has(file.id));
-    } else if (filterCategory !== "all") {
-      filtered = filtered.filter((file) => {
-        const config = getFileTypeConfig(file.mimeType);
-        switch (filterCategory) {
-          case "documents":
-            return config.label === "מסמך" || config.label === "PDF";
-          case "images":
-            return config.label === "תמונה";
-          case "videos":
-            return config.label === "וידאו";
-          case "audio":
-            return config.label === "אודיו";
-          case "spreadsheets":
-            return config.label === "גיליון";
-          case "archives":
-            return config.label === "ארכיון";
-          default:
-            return true;
-        }
-      });
-    }
-
-    const sortOption = SORT_OPTIONS.find((s) => s.id === sortBy);
-    if (sortOption) {
-      filtered.sort((a, b) => {
-        let aVal = a[sortOption.field as keyof DriveFile];
-        let bVal = b[sortOption.field as keyof DriveFile];
-        if (typeof aVal === "string") aVal = aVal.toLowerCase();
-        if (typeof bVal === "string") bVal = bVal.toLowerCase();
-        if (sortOption.direction === "asc") {
-          return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-        } else {
-          return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
-        }
-      });
-    }
-
-    return filtered;
-  };
-
-  const displayFiles =
-    searchQuery && searchResults.length > 0
-      ? filterFiles(searchResults)
-      : filterFiles(driveFiles);
+  // displayFiles and filterFiles defined earlier (before selectAllDriveFiles)
 
   // Stats
   const totalSize = driveFiles.reduce((sum, f) => sum + (f.size || 0), 0);
