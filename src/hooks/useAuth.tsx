@@ -162,6 +162,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
     // THEN check for existing session (only once)
     // Add timeout to prevent infinite loading
+    let fetchTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const timeoutId = setTimeout(() => {
       console.warn(
         "[Auth] Session check timed out, setting isLoading to false",
@@ -194,7 +195,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
       if (session?.user) {
         // Fetch all user data in parallel with timeout
-        const fetchTimeoutId = setTimeout(() => {
+        fetchTimeoutId = setTimeout(() => {
           console.warn("[Auth] Profile/roles fetch timed out");
           setIsLoading(false);
           initialLoadDone = true;
@@ -224,6 +225,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(timeoutId);
+      if (fetchTimeoutId) clearTimeout(fetchTimeoutId);
     };
   }, [fetchProfile, fetchRoles, fetchClientId]);
 

@@ -74,7 +74,10 @@ export function PollMessage({
 
     const counts: VoteCounts = {};
     for (const v of votes || []) {
-      counts[v.option_id] = (counts[v.option_id] || 0) + 1;
+      const optIds = Array.isArray(v.option_ids) ? v.option_ids : [v.option_ids];
+      for (const oid of optIds) {
+        counts[oid as string] = (counts[oid as string] || 0) + 1;
+      }
     }
     setVoteCounts(counts);
     setTotalVotes(votes?.length || 0);
@@ -82,7 +85,7 @@ export function PollMessage({
     // My votes
     const mine = (votes || [])
       .filter((v: any) => v.user_id === user?.id)
-      .map((v: any) => v.option_id);
+      .flatMap((v: any) => Array.isArray(v.option_ids) ? v.option_ids : [v.option_ids]);
     setMyVotes(mine);
     setLoading(false);
   }, [conversationId, question, user?.id]);
@@ -102,8 +105,7 @@ export function PollMessage({
           .from("chat_poll_votes")
           .delete()
           .eq("poll_id", poll.id)
-          .eq("user_id", user.id)
-          .eq("option_id", optionId);
+          .eq("user_id", user.id);
         setMyVotes((prev) => prev.filter((v) => v !== optionId));
         setVoteCounts((prev) => ({
           ...prev,
@@ -118,8 +120,7 @@ export function PollMessage({
               .from("chat_poll_votes")
               .delete()
               .eq("poll_id", poll.id)
-              .eq("user_id", user.id)
-              .eq("option_id", v);
+              .eq("user_id", user.id);
             setVoteCounts((prev) => ({
               ...prev,
               [v]: Math.max(0, (prev[v] || 1) - 1),
@@ -132,9 +133,9 @@ export function PollMessage({
           {
             poll_id: poll.id,
             user_id: user.id,
-            option_id: optionId,
+            option_ids: [optionId],
           },
-          { onConflict: "poll_id,user_id,option_id" },
+          { onConflict: "poll_id,user_id" },
         );
         setMyVotes((prev) =>
           poll.allow_multiple ? [...prev, optionId] : [optionId],

@@ -14,7 +14,7 @@ export interface ChatMessage {
   sender_client_id: string | null;
   sender_type: "user" | "client";
   content: string;
-  message_type: "text" | "image" | "file" | "voice" | "system";
+  message_type: "text" | "image" | "file" | "voice" | "system" | "video" | "audio";
   file_url?: string | null;
   file_name?: string | null;
   file_size?: number | null;
@@ -28,6 +28,7 @@ export interface ChatMessage {
   created_at: string;
   sender_name?: string;
   sender_avatar?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface ChatParticipant {
@@ -315,6 +316,8 @@ export function useChat() {
         // Optimistic UI
         const newMsg: ChatMessage = {
           ...data,
+          sender_type: data.sender_type as ChatMessage['sender_type'],
+          message_type: data.message_type as ChatMessage['message_type'],
           reactions: {},
           sender_name: profile?.full_name || "אתה",
           is_edited: false,
@@ -738,20 +741,24 @@ export function useChat() {
 
       // Insert into tasks table if it exists
       let taskId: string | undefined;
-      const { data: task } = await supabase
-        .from("tasks")
-        .insert({
-          title: taskTitle,
-          description: msg.content,
-          assigned_to: assignedTo || user.id,
-          created_by: user.id,
-          status: "pending",
-        })
-        .select("id")
-        .single()
-        .catch(() => ({ data: null }));
+      try {
+        const { data: task } = await supabase
+          .from("tasks")
+          .insert({
+            title: taskTitle,
+            description: msg.content,
+            assigned_to: assignedTo || user.id,
+            created_by: user.id,
+            status: "pending",
+          })
+          .select("id")
+          .single();
 
-      taskId = task?.id;
+        taskId = task?.id;
+      } catch {
+        // Task creation failed — continue without task link
+        taskId = undefined;
+      }
 
       // Record the link
       await supabase.from("chat_message_tasks").insert({

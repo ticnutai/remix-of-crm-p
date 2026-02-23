@@ -310,7 +310,7 @@ export function useAutoReminders() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [config.enabled, config.checkIntervalMinutes]);
+  }, [config.enabled, config.checkIntervalMinutes, checkReminders]);
 
   return {
     config,

@@ -57,7 +57,7 @@ async function fetchMeetings(): Promise<Meeting[]> {
 
   if (error) {
     console.error('Meetings fetch error:', error);
-    return [];
+    throw error;
   }
   return data as Meeting[];
 }
@@ -79,7 +79,7 @@ async function fetchTodayMeetings(): Promise<Meeting[]> {
 
   if (error) {
     console.error('Today meetings fetch error:', error);
-    return [];
+    throw error;
   }
   return data as Meeting[];
 }
@@ -101,7 +101,7 @@ async function fetchWeekMeetings(): Promise<Meeting[]> {
 
   if (error) {
     console.error('Week meetings fetch error:', error);
-    return [];
+    throw error;
   }
   return data as Meeting[];
 }

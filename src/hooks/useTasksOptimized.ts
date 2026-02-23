@@ -61,7 +61,7 @@ async function fetchTasks(): Promise<Task[]> {
 
   if (error) {
     console.error("Tasks fetch error:", error);
-    return [];
+    throw error;
   }
   return data as Task[];
 }
@@ -88,7 +88,7 @@ async function fetchTodayTasks(): Promise<Task[]> {
 
   if (error) {
     console.error("Today tasks fetch error:", error);
-    return [];
+    throw error;
   }
   return data as Task[];
 }
