@@ -100,6 +100,7 @@ import {
   Layers,
   BarChart3,
   Shield,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
