@@ -324,6 +324,10 @@ export default function Files() {
   const [linkedFiles, setLinkedFiles] = useState<any[]>([]);
   const [isLoadingLocal, setIsLoadingLocal] = useState(false);
 
+  // Client files (uploaded via client profile → client_files table)
+  const [clientFiles, setClientFiles] = useState<any[]>([]);
+  const [isLoadingClientFiles, setIsLoadingClientFiles] = useState(false);
+
   // Advanced files (local Supabase storage)
   const advancedFiles = useAdvancedFiles();
   const [showLocalUploadDialog, setShowLocalUploadDialog] = useState(false);
@@ -448,13 +452,31 @@ export default function Files() {
     }
   }, [user]);
 
+  // Load client files from client_files table
+  const loadClientFiles = useCallback(async () => {
+    if (!user) return;
+    setIsLoadingClientFiles(true);
+    try {
+      const { data, error } = await supabase
+        .from("client_files")
+        .select(`*, clients (id, name)`)
+        .eq("uploaded_by", user.id)
+        .order("created_at", { ascending: false });
+      if (!error) setClientFiles(data || []);
+      else console.error("Error loading client_files:", error);
+    } finally {
+      setIsLoadingClientFiles(false);
+    }
+  }, [user]);
+
   // Auto-load files
   useEffect(() => {
     if (isConnected && !hasLoaded && !isDriveLoading) {
       listDriveFiles("root").then(() => setHasLoaded(true));
     }
     loadLinkedFiles();
-  }, [isConnected, hasLoaded, isDriveLoading, listDriveFiles, loadLinkedFiles]);
+    loadClientFiles();
+  }, [isConnected, hasLoaded, isDriveLoading, listDriveFiles, loadLinkedFiles, loadClientFiles]);
 
   // Connect to Google Drive
   const handleConnect = async () => {
@@ -2351,6 +2373,39 @@ export default function Files() {
                           ? `נבחרו ${selectedLocalFiles.size} מתוך ${advancedFiles.files.length}`
                           : `בחר הכל (${advancedFiles.files.length})`}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Client Files Section - files uploaded via client profile */}
+                  {(clientFiles.length > 0 || isLoadingClientFiles) && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                        <Paperclip className="h-4 w-4 text-blue-500" />
+                        קבצים מלקוחות
+                        <span className="text-xs text-muted-foreground font-normal">({clientFiles.length})</span>
+                      </h4>
+                      {isLoadingClientFiles ? (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> טוען...</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {clientFiles.map((cf) => (
+                            <div key={cf.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 group">
+                              <FileText className="h-8 w-8 text-blue-400 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{cf.file_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {cf.clients?.name && <span className="ml-2">{cf.clients.name}</span>}
+                                  {cf.file_size && <span>{formatFileSize(cf.file_size)}</span>}
+                                  <span className="mr-2">{new Date(cf.created_at).toLocaleDateString("he-IL")}</span>
+                                </p>
+                              </div>
+                              <a href={cf.file_url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="ghost" size="sm"><Download className="h-4 w-4" /></Button>
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
