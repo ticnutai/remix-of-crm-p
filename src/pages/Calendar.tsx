@@ -221,9 +221,6 @@ const Calendar = () => {
   }, [viewType, user]);
 
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Add dialog state
@@ -239,8 +236,18 @@ const Calendar = () => {
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  // Use a ref so auto-sync effect doesn't re-fire just because isSyncing flipped
+  const isSyncingRef = React.useRef(false);
 
   const { showDuplicates } = useDedup();
+  // Ref so fetchData closure never needs showDuplicates in its deps
+  const showDuplicatesRef = React.useRef(showDuplicates);
+  useEffect(() => { showDuplicatesRef.current = showDuplicates; }, [showDuplicates]);
+
+  // Raw data (dedup applied below via useMemo)
+  const [rawMeetings, setRawMeetings] = React.useState<Meeting[]>([]);
+  const [rawTasks, setRawTasks] = React.useState<Task[]>([]);
+  const [rawReminders, setRawReminders] = React.useState<Reminder[]>([]);
 
   // Shared data for forms
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
@@ -342,60 +349,16 @@ const Calendar = () => {
     ]);
 
     if (timeRes.data) setTimeEntries(timeRes.data as TimeEntry[]);
-    if (meetingsRes.data) {
-      const rawMeetings = meetingsRes.data as Meeting[];
-      const dedupedMeetings = showDuplicates
-        ? rawMeetings
-        : dedupeByKey(
-            rawMeetings,
-            (m) =>
-              `${m.title.trim().toLowerCase()}|${m.start_time.slice(0, 16)}|${m.end_time.slice(0, 16)}`,
-          );
-      if (dedupedMeetings.length < rawMeetings.length) {
-        console.warn(
-          `[Calendar] Removed ${rawMeetings.length - dedupedMeetings.length} duplicate meetings from render`,
-        );
-      }
-      setMeetings(dedupedMeetings);
-    }
-    if (tasksRes.data) {
-      const rawTasks = tasksRes.data as Task[];
-      const dedupedTasks = showDuplicates
-        ? rawTasks
-        : dedupeByKey(
-            rawTasks,
-            (t) =>
-              `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`,
-          );
-      if (dedupedTasks.length < rawTasks.length) {
-        console.warn(
-          `[Calendar] Removed ${rawTasks.length - dedupedTasks.length} duplicate tasks from render`,
-        );
-      }
-      setTasks(dedupedTasks);
-    }
-    if (remindersRes.data) {
-      const rawReminders = remindersRes.data as Reminder[];
-      const dedupedReminders = showDuplicates
-        ? rawReminders
-        : dedupeByKey(
-            rawReminders,
-            (r) =>
-              `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`,
-          );
-      if (dedupedReminders.length < rawReminders.length) {
-        console.warn(
-          `[Calendar] Removed ${rawReminders.length - dedupedReminders.length} duplicate reminders from render`,
-        );
-      }
-      setReminders(dedupedReminders);
-    }
+    // Store raw data — dedup is applied in useMemo below (avoids showDuplicates in deps)
+    if (meetingsRes.data) setRawMeetings(meetingsRes.data as Meeting[]);
+    if (tasksRes.data) setRawTasks(tasksRes.data as Task[]);
+    if (remindersRes.data) setRawReminders(remindersRes.data as Reminder[]);
     if (clientsRes.data) setClients(clientsRes.data);
     if (projectsRes.data) setProjects(projectsRes.data);
 
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, currentMonth, showDuplicates]);
+  }, [user?.id, currentMonth]);
 
   useEffect(() => {
     if (user) {
@@ -403,6 +366,32 @@ const Calendar = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, fetchData]);
+
+  // Apply dedup to raw data — runs instantly without triggering re-fetches
+  const meetings = useMemo(() => {
+    const deduped = showDuplicates
+      ? rawMeetings
+      : dedupeByKey(
+          rawMeetings,
+          (m) => `${m.title.trim().toLowerCase()}|${m.start_time.slice(0, 16)}|${m.end_time.slice(0, 16)}`,
+        );
+    if (deduped.length < rawMeetings.length) {
+      console.warn(`[Calendar] Deduped ${rawMeetings.length - deduped.length} duplicate meetings`);
+    }
+    return deduped;
+  }, [rawMeetings, showDuplicates]);
+
+  const tasks = useMemo(() => {
+    return showDuplicates
+      ? rawTasks
+      : dedupeByKey(rawTasks, (t) => `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`);
+  }, [rawTasks, showDuplicates]);
+
+  const reminders = useMemo(() => {
+    return showDuplicates
+      ? rawReminders
+      : dedupeByKey(rawReminders, (r) => `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`);
+  }, [rawReminders, showDuplicates]);
 
   // Auto sync with Google Calendar when page loads and user is connected
   const lastSyncedMonthRef = React.useRef<string>("");
@@ -415,13 +404,13 @@ const Calendar = () => {
         !user ||
         !isGoogleConnected ||
         alreadySynced ||
-        isSyncing ||
-        googleLoading
+        isSyncingRef.current
       ) {
         return;
       }
 
       lastSyncedMonthRef.current = monthKey;
+      isSyncingRef.current = true;
       setIsSyncing(true);
 
       try {
@@ -438,13 +427,14 @@ const Calendar = () => {
       } catch (error) {
         console.error("[Calendar] Auto sync error:", error);
       } finally {
+        isSyncingRef.current = false;
         setIsSyncing(false);
       }
     };
 
     performAutoSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isGoogleConnected, isSyncing, googleLoading, currentMonth]);
+  }, [user?.id, isGoogleConnected, currentMonth]);
 
   // Pre-grouped data by date string for O(1) lookups instead of filtering per cell
   const groupedByDate = useMemo(() => {
