@@ -417,22 +417,24 @@ export default function MyDay() {
     console.log("📊 [MyDay] fetchTodayData range:", todayStart, "->", todayEnd);
 
     const [tasksRes, meetingsRes, remindersRes, timeRes] = await Promise.all([
-      // Tasks due today or overdue
+      // Tasks due today or overdue (scoped to current user)
       supabase
         .from("tasks")
         .select(
           "id, title, description, status, priority, due_date, client:clients(name), project:projects(name)",
         )
+        .eq("created_by", user.id)
         .or(`due_date.lte.${todayEnd},status.neq.completed`)
         .neq("status", "completed")
         .order("priority", { ascending: false }),
 
-      // Meetings today
+      // Meetings today (scoped to current user)
       supabase
         .from("meetings")
         .select(
           "id, title, description, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
         )
+        .eq("created_by", user.id)
         .gte("start_time", todayStart)
         .lte("start_time", todayEnd)
         .order("start_time", { ascending: true }),
@@ -449,12 +451,13 @@ export default function MyDay() {
         .eq("is_dismissed", false)
         .order("remind_at", { ascending: true }),
 
-      // Time entries today
+      // Time entries today (scoped to current user)
       supabase
         .from("time_entries")
         .select(
           "id, start_time, end_time, duration_minutes, description, project:projects(name), client:clients(name)",
         )
+        .eq("user_id", user.id)
         .gte("start_time", todayStart)
         .lte("start_time", todayEnd)
         .order("start_time", { ascending: true }),

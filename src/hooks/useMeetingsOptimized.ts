@@ -6,10 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
-import {
-  createOfflineQueryFn,
-  createOfflineMutation,
-} from "@/lib/offlineQueryUtils";
+import { createOfflineMutation } from "@/lib/offlineQueryUtils";
 
 // Types
 export interface Meeting {
@@ -47,8 +44,8 @@ const MEETINGS_KEY = ["meetings"] as const;
 const MEETINGS_TODAY_KEY = ["meetings", "today"] as const;
 const MEETINGS_WEEK_KEY = ["meetings", "week"] as const;
 
-// Fetch functions
-async function fetchMeetings(): Promise<Meeting[]> {
+// Fetch functions (all scoped to the current user via created_by)
+async function fetchMeetings(userId: string): Promise<Meeting[]> {
   const { data, error } = await supabase
     .from("meetings")
     .select(
@@ -58,6 +55,7 @@ async function fetchMeetings(): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
+    .eq("created_by", userId)
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -67,7 +65,7 @@ async function fetchMeetings(): Promise<Meeting[]> {
   return data as Meeting[];
 }
 
-async function fetchTodayMeetings(): Promise<Meeting[]> {
+async function fetchTodayMeetings(userId: string): Promise<Meeting[]> {
   const today = new Date();
 
   const { data, error } = await supabase
@@ -79,6 +77,7 @@ async function fetchTodayMeetings(): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
+    .eq("created_by", userId)
     .gte("start_time", startOfDay(today).toISOString())
     .lte("start_time", endOfDay(today).toISOString())
     .neq("status", "cancelled")
@@ -91,7 +90,7 @@ async function fetchTodayMeetings(): Promise<Meeting[]> {
   return data as Meeting[];
 }
 
-async function fetchWeekMeetings(): Promise<Meeting[]> {
+async function fetchWeekMeetings(userId: string): Promise<Meeting[]> {
   const today = new Date();
 
   const { data, error } = await supabase
@@ -103,6 +102,7 @@ async function fetchWeekMeetings(): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
+    .eq("created_by", userId)
     .gte("start_time", startOfWeek(today, { weekStartsOn: 0 }).toISOString())
     .lte("start_time", endOfWeek(today, { weekStartsOn: 0 }).toISOString())
     .neq("status", "cancelled")
@@ -127,8 +127,8 @@ export function useMeetingsOptimized() {
     error,
     refetch,
   } = useQuery({
-    queryKey: MEETINGS_KEY,
-    queryFn: createOfflineQueryFn<Meeting>("meetings", fetchMeetings),
+    queryKey: [...MEETINGS_KEY, user?.id],
+    queryFn: () => fetchMeetings(user!.id),
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -345,18 +345,20 @@ export function useMeetingsOptimized() {
 
   // Prefetch functions
   const prefetchTodayMeetings = useCallback(() => {
+    if (!user) return;
     queryClient.prefetchQuery({
-      queryKey: MEETINGS_TODAY_KEY,
-      queryFn: fetchTodayMeetings,
+      queryKey: [...MEETINGS_TODAY_KEY, user.id],
+      queryFn: () => fetchTodayMeetings(user.id),
     });
-  }, [queryClient]);
+  }, [queryClient, user]);
 
   const prefetchWeekMeetings = useCallback(() => {
+    if (!user) return;
     queryClient.prefetchQuery({
-      queryKey: MEETINGS_WEEK_KEY,
-      queryFn: fetchWeekMeetings,
+      queryKey: [...MEETINGS_WEEK_KEY, user.id],
+      queryFn: () => fetchWeekMeetings(user.id),
     });
-  }, [queryClient]);
+  }, [queryClient, user]);
 
   return {
     // Data
@@ -390,8 +392,8 @@ export function useTodayMeetings() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: MEETINGS_TODAY_KEY,
-    queryFn: fetchTodayMeetings,
+    queryKey: [...MEETINGS_TODAY_KEY, user?.id],
+    queryFn: () => fetchTodayMeetings(user!.id),
     enabled: !!user,
     staleTime: 1 * 60 * 1000,
   });
@@ -401,8 +403,8 @@ export function useWeekMeetings() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: MEETINGS_WEEK_KEY,
-    queryFn: fetchWeekMeetings,
+    queryKey: [...MEETINGS_WEEK_KEY, user?.id],
+    queryFn: () => fetchWeekMeetings(user!.id),
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
