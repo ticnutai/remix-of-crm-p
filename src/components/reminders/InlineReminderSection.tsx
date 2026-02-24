@@ -2,12 +2,12 @@
  * InlineReminderSection - Compact reminder creation section for dialogs (QuickAddTask, QuickAddMeeting)
  * Includes: reminder time presets, notification methods, ringtone, recurring, calendar sync
  */
-import React, { useState, useRef } from 'react';
-import { useReminders } from '@/hooks/useReminders';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import React, { useState, useRef } from "react";
+import { useReminders } from "@/hooks/useReminders";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Bell,
   Volume2,
@@ -16,58 +16,94 @@ import {
   ChevronUp,
   Loader2,
   Upload,
-} from 'lucide-react';
-import { addMinutes, addHours } from 'date-fns';
-import { toast } from 'sonner';
+} from "lucide-react";
+import { addMinutes, addHours } from "date-fns";
+import { toast } from "sonner";
 
 // Sidebar colors (matches the dialog theme)
 const sidebarColors = {
-  navy: '#162C58',
-  gold: '#d8ac27',
-  goldLight: '#e8c85a',
-  goldDark: '#b8941f',
-  navyLight: '#1E3A6E',
-  navyDark: '#0F1F3D',
+  navy: "#162C58",
+  gold: "#d8ac27",
+  goldLight: "#e8c85a",
+  goldDark: "#b8941f",
+  navyLight: "#1E3A6E",
+  navyDark: "#0F1F3D",
 };
 
 const reminderMethods = [
-  { value: 'browser', label: 'דפדפן', emoji: '🔔' },
-  { value: 'popup', label: 'פופ-אפ', emoji: '📢' },
-  { value: 'email', label: 'אימייל', emoji: '📧' },
-  { value: 'sms', label: 'SMS', emoji: '💬' },
-  { value: 'whatsapp', label: 'וואטסאפ', emoji: '📱' },
-  { value: 'voice', label: 'קולי', emoji: '🔊' },
+  { value: "browser", label: "דפדפן", emoji: "🔔" },
+  { value: "popup", label: "פופ-אפ", emoji: "📢" },
+  { value: "email", label: "אימייל", emoji: "📧" },
+  { value: "sms", label: "SMS", emoji: "💬" },
+  { value: "whatsapp", label: "וואטסאפ", emoji: "📱" },
+  { value: "voice", label: "קולי", emoji: "🔊" },
 ];
 
 const quickReminders = [
-  { label: '5 דק׳ לפני', minutes: -5 },
-  { label: '15 דק׳', minutes: -15 },
-  { label: '30 דק׳', minutes: -30 },
-  { label: 'שעה לפני', minutes: -60 },
-  { label: 'יום לפני', minutes: -1440 },
+  { label: "5 דק׳ לפני", minutes: -5 },
+  { label: "15 דק׳", minutes: -15 },
+  { label: "30 דק׳", minutes: -30 },
+  { label: "שעה לפני", minutes: -60 },
+  { label: "יום לפני", minutes: -1440 },
 ];
 
 const RINGTONES = [
-  { id: 'default', name: 'ברירת מחדל', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
-  { id: 'chime', name: 'צליל פעמון', url: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' },
-  { id: 'bell', name: 'פעמון קלאסי', url: 'https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3' },
-  { id: 'alert', name: 'התראה חדה', url: 'https://assets.mixkit.co/active_storage/sfx/2872/2872-preview.mp3' },
-  { id: 'gentle', name: 'עדין', url: 'https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3' },
-  { id: 'urgent', name: 'דחוף', url: 'https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3' },
-  { id: 'melody', name: 'מלודי', url: 'https://assets.mixkit.co/active_storage/sfx/2875/2875-preview.mp3' },
-  { id: 'digital', name: 'דיגיטלי', url: 'https://assets.mixkit.co/active_storage/sfx/2876/2876-preview.mp3' },
-  { id: 'soft', name: 'רך ונעים', url: 'https://assets.mixkit.co/active_storage/sfx/2877/2877-preview.mp3' },
+  {
+    id: "default",
+    name: "ברירת מחדל",
+    url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+  },
+  {
+    id: "chime",
+    name: "צליל פעמון",
+    url: "https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3",
+  },
+  {
+    id: "bell",
+    name: "פעמון קלאסי",
+    url: "https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3",
+  },
+  {
+    id: "alert",
+    name: "התראה חדה",
+    url: "https://assets.mixkit.co/active_storage/sfx/2872/2872-preview.mp3",
+  },
+  {
+    id: "gentle",
+    name: "עדין",
+    url: "https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3",
+  },
+  {
+    id: "urgent",
+    name: "דחוף",
+    url: "https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3",
+  },
+  {
+    id: "melody",
+    name: "מלודי",
+    url: "https://assets.mixkit.co/active_storage/sfx/2875/2875-preview.mp3",
+  },
+  {
+    id: "digital",
+    name: "דיגיטלי",
+    url: "https://assets.mixkit.co/active_storage/sfx/2876/2876-preview.mp3",
+  },
+  {
+    id: "soft",
+    name: "רך ונעים",
+    url: "https://assets.mixkit.co/active_storage/sfx/2877/2877-preview.mp3",
+  },
 ];
 
 const recurringOptions = [
-  { value: 'none', label: 'ללא' },
-  { value: 'daily', label: 'יומי' },
-  { value: 'weekly', label: 'שבועי' },
-  { value: 'monthly', label: 'חודשי' },
+  { value: "none", label: "ללא" },
+  { value: "daily", label: "יומי" },
+  { value: "weekly", label: "שבועי" },
+  { value: "monthly", label: "חודשי" },
 ];
 
 interface InlineReminderSectionProps {
-  entityType: 'task' | 'meeting';
+  entityType: "task" | "meeting";
   entityTitle: string;
   entityDate?: Date;
   entityDescription?: string;
@@ -85,12 +121,12 @@ export function InlineReminderSection({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [expanded, setExpanded] = useState(false);
-  const [selectedMethods, setSelectedMethods] = useState<string[]>(['browser']);
-  const [reminderTime, setReminderTime] = useState<string>('');
+  const [selectedMethods, setSelectedMethods] = useState<string[]>(["browser"]);
+  const [reminderTime, setReminderTime] = useState<string>("");
   const [quickPreset, setQuickPreset] = useState<number | null>(-15);
-  const [ringtone, setRingtone] = useState('default');
+  const [ringtone, setRingtone] = useState("default");
   const [isRecurring, setIsRecurring] = useState(false);
-  const [recurringInterval, setRecurringInterval] = useState('none');
+  const [recurringInterval, setRecurringInterval] = useState("none");
   const [recurringCount, setRecurringCount] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -98,7 +134,7 @@ export function InlineReminderSection({
     setSelectedMethods((prev) =>
       prev.includes(method)
         ? prev.filter((m) => m !== method)
-        : [...prev, method]
+        : [...prev, method],
     );
   };
 
@@ -123,7 +159,7 @@ export function InlineReminderSection({
   const handleCreateReminder = async () => {
     const remindAt = getReminderDateTime();
     if (!remindAt || !entityTitle) {
-      toast.error('יש לבחור זמן תזכורת ולהזין כותרת');
+      toast.error("יש לבחור זמן תזכורת ולהזין כותרת");
       return;
     }
 
@@ -133,12 +169,12 @@ export function InlineReminderSection({
         title: `תזכורת: ${entityTitle}`,
         message: entityDescription || undefined,
         remind_at: remindAt.toISOString(),
-        reminder_type: selectedMethods[0] || 'browser',
+        reminder_type: selectedMethods[0] || "browser",
         entity_type: entityType,
       } as any);
-      toast.success('תזכורת נוצרה בהצלחה! 🔔');
+      toast.success("תזכורת נוצרה בהצלחה! 🔔");
     } catch {
-      toast.error('שגיאה ביצירת תזכורת');
+      toast.error("שגיאה ביצירת תזכורת");
     } finally {
       setIsCreating(false);
     }
@@ -146,40 +182,42 @@ export function InlineReminderSection({
 
   const handleCalendarSync = () => {
     if (!entityDate || !entityTitle) {
-      toast.error('חסרים פרטים לסנכרון לוח שנה');
+      toast.error("חסרים פרטים לסנכרון לוח שנה");
       return;
     }
 
     const start = entityDate;
     const end = addHours(entityDate, 1);
-    const pad = (n: number) => String(n).padStart(2, '0');
+    const pad = (n: number) => String(n).padStart(2, "0");
     const fmtDate = (d: Date) =>
       `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
 
     const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//CRM//NONSGML v1.0//EN',
-      'BEGIN:VEVENT',
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//CRM//NONSGML v1.0//EN",
+      "BEGIN:VEVENT",
       `DTSTART:${fmtDate(start)}`,
       `DTEND:${fmtDate(end)}`,
       `SUMMARY:${entityTitle}`,
-      entityDescription ? `DESCRIPTION:${entityDescription.replace(/\n/g, '\\n')}` : '',
-      entityLocation ? `LOCATION:${entityLocation}` : '',
-      'END:VEVENT',
-      'END:VCALENDAR',
+      entityDescription
+        ? `DESCRIPTION:${entityDescription.replace(/\n/g, "\\n")}`
+        : "",
+      entityLocation ? `LOCATION:${entityLocation}` : "",
+      "END:VEVENT",
+      "END:VCALENDAR",
     ]
       .filter(Boolean)
-      .join('\r\n');
+      .join("\r\n");
 
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
-    link.download = `${entityTitle.replace(/[^\w\u0590-\u05FF\s-]/g, '')}.ics`;
+    link.download = `${entityTitle.replace(/[^\w\u0590-\u05FF\s-]/g, "")}.ics`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('קובץ לוח שנה הורד בהצלחה 📅');
+    toast.success("קובץ לוח שנה הורד בהצלחה 📅");
   };
 
   // Collapsed state — single button
@@ -215,7 +253,10 @@ export function InlineReminderSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-          <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+          <span
+            className="text-sm font-medium"
+            style={{ color: sidebarColors.goldLight }}
+          >
             תזכורת וסנכרון
           </span>
         </div>
@@ -231,7 +272,10 @@ export function InlineReminderSection({
 
       {/* Quick time presets */}
       <div>
-        <Label className="text-[11px] mb-1.5 block" style={{ color: sidebarColors.goldLight }}>
+        <Label
+          className="text-[11px] mb-1.5 block"
+          style={{ color: sidebarColors.goldLight }}
+        >
           מתי להזכיר?
         </Label>
         <div className="flex flex-wrap gap-1.5">
@@ -241,15 +285,18 @@ export function InlineReminderSection({
               type="button"
               onClick={() => {
                 setQuickPreset(preset.minutes);
-                setReminderTime('');
+                setReminderTime("");
               }}
               className={`px-2 py-1 text-[10px] rounded-md border transition-colors ${
                 quickPreset === preset.minutes
-                  ? 'border-amber-500 bg-amber-500/20 text-amber-300'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
               }`}
               style={{
-                background: quickPreset === preset.minutes ? undefined : `${sidebarColors.navyLight}50`,
+                background:
+                  quickPreset === preset.minutes
+                    ? undefined
+                    : `${sidebarColors.navyLight}50`,
               }}
             >
               {preset.label}
@@ -260,7 +307,10 @@ export function InlineReminderSection({
 
       {/* Custom datetime */}
       <div>
-        <Label className="text-[11px] mb-1 block" style={{ color: sidebarColors.goldLight }}>
+        <Label
+          className="text-[11px] mb-1 block"
+          style={{ color: sidebarColors.goldLight }}
+        >
           או בחר זמן מדויק
         </Label>
         <Input
@@ -281,7 +331,10 @@ export function InlineReminderSection({
 
       {/* Reminder methods */}
       <div>
-        <Label className="text-[11px] mb-1.5 block" style={{ color: sidebarColors.goldLight }}>
+        <Label
+          className="text-[11px] mb-1.5 block"
+          style={{ color: sidebarColors.goldLight }}
+        >
           אמצעי התראה (ניתן לבחור כמה)
         </Label>
         <div className="flex flex-wrap gap-1.5">
@@ -292,11 +345,13 @@ export function InlineReminderSection({
               onClick={() => toggleMethod(method.value)}
               className={`px-2 py-1 text-[10px] rounded-md border transition-colors flex items-center gap-1 ${
                 selectedMethods.includes(method.value)
-                  ? 'border-amber-500 bg-amber-500/20 text-amber-300'
-                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                  ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                  : "border-transparent text-gray-400 hover:text-gray-200"
               }`}
               style={{
-                background: selectedMethods.includes(method.value) ? undefined : `${sidebarColors.navyLight}50`,
+                background: selectedMethods.includes(method.value)
+                  ? undefined
+                  : `${sidebarColors.navyLight}50`,
               }}
             >
               <span>{method.emoji}</span>
@@ -308,7 +363,10 @@ export function InlineReminderSection({
 
       {/* Ringtone selector */}
       <div className="flex items-center gap-2">
-        <Volume2 className="h-3 w-3 shrink-0" style={{ color: sidebarColors.gold }} />
+        <Volume2
+          className="h-3 w-3 shrink-0"
+          style={{ color: sidebarColors.gold }}
+        />
         <select
           value={ringtone}
           onChange={(e) => setRingtone(e.target.value)}
@@ -385,7 +443,10 @@ export function InlineReminderSection({
                 color: sidebarColors.goldLight,
               }}
             />
-            <span className="text-[10px]" style={{ color: sidebarColors.goldLight }}>
+            <span
+              className="text-[10px]"
+              style={{ color: sidebarColors.goldLight }}
+            >
               פעמים
             </span>
           </>
@@ -419,7 +480,10 @@ export function InlineReminderSection({
           size="sm"
           variant="outline"
           className="gap-1.5 text-xs h-8"
-          style={{ borderColor: `${sidebarColors.gold}40`, color: sidebarColors.goldLight }}
+          style={{
+            borderColor: `${sidebarColors.gold}40`,
+            color: sidebarColors.goldLight,
+          }}
           onClick={handleCalendarSync}
         >
           <CalendarPlus className="h-3.5 w-3.5" />

@@ -175,7 +175,9 @@ vi.mock("@/components/tasks-meetings", () => ({
       ))}
     </div>
   ),
-  RemindersTabContent: () => <div data-testid="reminders-tab-content">Reminders</div>,
+  RemindersTabContent: () => (
+    <div data-testid="reminders-tab-content">Reminders</div>
+  ),
 }));
 
 // Mock QuickAddTask – capture props to verify editingTask
