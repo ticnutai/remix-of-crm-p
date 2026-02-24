@@ -189,7 +189,12 @@ class AdvancedFileManager {
     sortBy?: "name" | "date" | "size" | "downloads";
     sortOrder?: "asc" | "desc";
   }): Promise<FileMetadata[]> {
-    let query = (supabase as any).from("file_metadata").select("*");
+    // פילטר לפי המשתמש הנוכחי
+    const { data: authData } = await supabase.auth.getSession();
+    const userId = authData?.session?.user?.id;
+    if (!userId) return [];
+
+    let query = (supabase as any).from("file_metadata").select("*").eq("uploaded_by", userId);
 
     if (filters?.folderId) {
       query = query.eq("folder_id", filters.folderId);
@@ -865,22 +870,24 @@ export function useAdvancedFiles() {
   const [folders, setFolders] = useState<FolderStructure[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stats, setStats] = useState<FileStats | null>(null);
   const { toast } = useToast();
 
   const loadFiles = useCallback(
     async (folderId?: string) => {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const files = await advancedFileManager.getFiles({ folderId });
         setFiles(files);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading files:", error);
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן לטעון קבצים",
-          variant: "destructive",
-        });
+        const msg = !navigator.onLine
+          ? "אין חיבור לאינטרנט — לא ניתן לטעון קבצים"
+          : "שגיאה בטעינת הקבצים מהשרת";
+        setLoadError(msg);
+        toast({ title: "שגיאה", description: msg, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -1000,6 +1007,7 @@ export function useAdvancedFiles() {
     currentFolder,
     setCurrentFolder,
     isLoading,
+    loadError,
     stats,
     uploadFile,
     deleteFile,

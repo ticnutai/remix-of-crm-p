@@ -122,6 +122,7 @@ import {
   AlertTriangle,
   FolderDown,
   SquareCheck,
+  WifiOff,
 } from "lucide-react";
 import { useGoogleDrive, DriveFile, DriveFolder } from "@/hooks/useGoogleDrive";
 import { useGoogleServices } from "@/hooks/useGoogleServices";
@@ -2374,6 +2375,19 @@ export default function Files() {
                   {advancedFiles.isLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : advancedFiles.loadError ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <WifiOff className="h-12 w-12 mx-auto mb-4 opacity-40 text-destructive" />
+                      <p className="text-destructive font-medium">{advancedFiles.loadError}</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => advancedFiles.loadFiles(advancedFiles.currentFolder)}
+                        className="mt-4"
+                      >
+                        <RefreshCw className="h-4 w-4 ml-2" />
+                        נסה שוב
+                      </Button>
                     </div>
                   ) : advancedFiles.files.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
