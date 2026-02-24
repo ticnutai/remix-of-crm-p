@@ -398,7 +398,7 @@ export default function DataTablePro() {
     config: tableStyleConfig,
     updateConfig: updateTableStyleConfig,
     resetConfig: resetTableStyleConfig,
-  } = useTableStyleConfig("clients");
+  } = useTableStyleConfig();
 
   // Database sync hook
   const {

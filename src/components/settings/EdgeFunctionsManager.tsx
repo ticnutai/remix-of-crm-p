@@ -607,7 +607,7 @@ export function EdgeFunctionsManager() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success("📄 דוח בדיקות הורד בהצלחה");
-  }, [testResults, functions, categories]);
+  }, [testResults, functions]);
 
   // Status badge
   const getStatusBadge = (status: string) => {

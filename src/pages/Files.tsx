@@ -1956,7 +1956,7 @@ export default function Files() {
                                       onClick={() => toggleStarFile(file.id)}
                                     >
                                       <Star className="h-4 w-4 ml-2" />{" "}
-                                      {file.starred
+                                      {(file as any).starred
                                         ? "הסר ממועדפים"
                                         : "הוסף למועדפים"}
                                     </ContextMenuItem>
@@ -2206,7 +2206,7 @@ export default function Files() {
                                       onClick={() => toggleStarFile(file.id)}
                                     >
                                       <Star className="h-4 w-4 ml-2" />{" "}
-                                      {file.starred
+                                      {(file as any).starred
                                         ? "הסר ממועדפים"
                                         : "הוסף למועדפים"}
                                     </ContextMenuItem>
@@ -2342,9 +2342,7 @@ export default function Files() {
                           advancedFiles.files.length > 0
                         }
                         onCheckedChange={() =>
-                          selectAllLocalFiles(
-                            advancedFiles.files.map((f) => f.id),
-                          )
+                          selectAllLocalFiles()
                         }
                       />
                       <span className="text-sm text-muted-foreground">

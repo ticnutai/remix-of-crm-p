@@ -721,9 +721,9 @@ export default function Employees() {
         },
       );
 
-      if (sqlError || !sqlResult?.success) {
+      if (sqlError || !(sqlResult as any)?.success) {
         throw new Error(
-          sqlError?.message || sqlResult?.error || "שגיאה בעדכון סיסמה",
+          sqlError?.message || (sqlResult as any)?.error || "שגיאה בעדכון סיסמה",
         );
       }
 
@@ -755,7 +755,7 @@ export default function Employees() {
 
     // Fetch current assignments for this employee
     const current = await fetchAssignments(employee.id);
-    const ids = new Set((current || []).map((a: any) => a.client_id));
+    const ids = new Set<string>((current || []).map((a: any) => a.client_id));
     setSelectedClientIds(ids);
   };
 

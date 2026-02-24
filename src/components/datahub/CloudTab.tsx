@@ -97,7 +97,7 @@ export function CloudTab({ onRestore }: CloudTabProps) {
       setSettings(prev => ({
         ...prev,
         autoBackup: autoBackupStatus.config.enabled,
-        backupFrequency: autoBackupStatus.config.frequency,
+        backupFrequency: autoBackupStatus.config.frequency as "daily" | "hourly" | "monthly" | "weekly",
         backupTime: autoBackupStatus.config.time,
         maxBackups: autoBackupStatus.config.maxBackups,
         saveToCloud: autoBackupStatus.config.saveToCloud,
