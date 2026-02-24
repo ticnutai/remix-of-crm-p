@@ -2035,6 +2035,69 @@ export type Database = {
           },
         ]
       }
+      client_meeting_requests: {
+        Row: {
+          calendar_event_id: string | null
+          client_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          meeting_type: string | null
+          preferred_date: string | null
+          preferred_time_slot: string | null
+          requested_by: string
+          staff_response: string | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          calendar_event_id?: string | null
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          meeting_type?: string | null
+          preferred_date?: string | null
+          preferred_time_slot?: string | null
+          requested_by: string
+          staff_response?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          calendar_event_id?: string | null
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          meeting_type?: string | null
+          preferred_date?: string | null
+          preferred_time_slot?: string | null
+          requested_by?: string
+          staff_response?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_meeting_requests_calendar_event_id_fkey"
+            columns: ["calendar_event_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_meeting_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_messages: {
         Row: {
           client_id: string
@@ -2042,6 +2105,7 @@ export type Database = {
           id: string
           is_read: boolean | null
           message: string
+          metadata: Json | null
           sender_id: string
           sender_type: string
         }
@@ -2051,6 +2115,7 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           message: string
+          metadata?: Json | null
           sender_id: string
           sender_type: string
         }
@@ -2060,12 +2125,54 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           message?: string
+          metadata?: Json | null
           sender_id?: string
           sender_type?: string
         }
         Relationships: [
           {
             foreignKeyName: "client_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_notifications: {
+        Row: {
+          action_url: string | null
+          client_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          client_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notifications_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"

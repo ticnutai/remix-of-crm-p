@@ -39,6 +39,9 @@ const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const ClientMessages = lazy(() => import("./pages/ClientMessages"));
 const ClientFiles = lazy(() => import("./pages/ClientFiles"));
 const ClientProjects = lazy(() => import("./pages/ClientProjects"));
+const ClientMeetings = lazy(() => import("./pages/ClientMeetings"));
+const ClientNotifications = lazy(() => import("./pages/ClientNotifications"));
+const ClientSettings = lazy(() => import("./pages/ClientSettings"));
 const TasksAndMeetings = lazy(() => import("./pages/TasksAndMeetings"));
 
 const CustomTableView = lazy(() => import("./pages/CustomTableView"));
@@ -182,6 +185,18 @@ const App = () => {
                             <Route
                               path="/client-portal/projects"
                               element={withErrorBoundary(ClientProjects)}
+                            />
+                            <Route
+                              path="/client-portal/meetings"
+                              element={withErrorBoundary(ClientMeetings)}
+                            />
+                            <Route
+                              path="/client-portal/notifications"
+                              element={withErrorBoundary(ClientNotifications)}
+                            />
+                            <Route
+                              path="/client-portal/settings"
+                              element={withErrorBoundary(ClientSettings)}
                             />
                             <Route
                               path="/tasks-meetings"
