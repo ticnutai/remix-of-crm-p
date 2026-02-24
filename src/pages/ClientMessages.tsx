@@ -28,7 +28,7 @@ interface Message {
   is_read: boolean;
   created_at: string;
   attachments?: MessageAttachment[];
-  metadata?: { attachments?: MessageAttachment[] };
+  metadata?: any;
 }
 
 export default function ClientMessages() {
@@ -227,8 +227,8 @@ export default function ClientMessages() {
           sender_type: 'client',
           message: newMessage.trim() || (attachments.length > 0 ? '📎 קבצים מצורפים' : ''),
           is_read: false,
-          metadata: attachments.length > 0 ? { attachments } : null
-        });
+          metadata: attachments.length > 0 ? { attachments } as any : null
+        } as any);
 
       if (error) throw error;
       
