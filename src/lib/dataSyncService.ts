@@ -64,6 +64,18 @@ class DataSyncService {
     window.addEventListener("online", () => this.onOnline());
     window.addEventListener("offline", () => this.onOffline());
 
+    // Re-sync when the tab becomes visible again (after device sleep / background)
+    document.addEventListener("visibilitychange", () => {
+      if (
+        document.visibilityState === "visible" &&
+        navigator.onLine &&
+        !this.isSyncing
+      ) {
+        // Small delay to let the network stack recover first
+        setTimeout(() => this.syncAll(), 1500);
+      }
+    });
+
     // Start periodic sync if online
     if (navigator.onLine) {
       this.startPeriodicSync();
@@ -212,11 +224,12 @@ class DataSyncService {
   }
 
   /**
-   * Sync a single table from Supabase to local storage
+   * Sync a single table from Supabase to local storage (with retry)
    */
   private async syncTable(
     localTable: SyncTableName,
     supabaseTable: string,
+    retries = 2,
   ): Promise<void> {
     // Get last sync time for this table
     const syncMeta = await offlineStorage.getSyncMeta(localTable);
@@ -233,13 +246,23 @@ class DataSyncService {
     const { data, error } = await query;
 
     if (error) {
+      // Retry on network errors (e.g. ERR_NETWORK_IO_SUSPENDED after sleep)
+      const isNetworkError =
+        error.message?.includes("network") ||
+        error.message?.includes("Failed to fetch") ||
+        error.message?.includes("NetworkError") ||
+        error.code === "PGRST301";
+
+      if (isNetworkError && retries > 0) {
+        await new Promise((r) => setTimeout(r, 1000 * (3 - retries)));
+        return this.syncTable(localTable, supabaseTable, retries - 1);
+      }
       throw new Error(`Supabase error: ${error.message}`);
     }
 
     if (data && data.length > 0) {
       // Store in IndexedDB
       await offlineStorage.setMany(localTable, data as any);
-      // Synced items to local table
     }
 
     // Update sync metadata
