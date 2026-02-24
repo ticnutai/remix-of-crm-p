@@ -9,7 +9,10 @@ import React, {
 } from "react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 
 export interface BackupMetadata {
   id: string;

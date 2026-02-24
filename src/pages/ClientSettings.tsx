@@ -1,32 +1,62 @@
 // Client Portal - Settings/Profile Page (Enhanced)
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Loader2, User, Mail, Phone, Lock, LogOut, Shield, CheckCircle, Sun, Moon, Monitor, Bell, BellOff, Save, Pencil } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useTheme } from '@/hooks/useTheme';
-import PortalNavigation from '@/components/client-portal/PortalNavigation';
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Loader2,
+  User,
+  Mail,
+  Phone,
+  Lock,
+  LogOut,
+  Shield,
+  CheckCircle,
+  Sun,
+  Moon,
+  Monitor,
+  Bell,
+  BellOff,
+  Save,
+  Pencil,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/useTheme";
+import PortalNavigation from "@/components/client-portal/PortalNavigation";
 
 export default function ClientSettings() {
-  const { user, profile, isClient, isLoading, signOut, updatePassword, updateProfile } = useAuth();
+  const {
+    user,
+    profile,
+    isClient,
+    isLoading,
+    signOut,
+    updatePassword,
+    updateProfile,
+  } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Profile editing state
   const [editingProfile, setEditingProfile] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   // Password state
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
   // Notification preferences (local storage for now)
@@ -36,21 +66,23 @@ export default function ClientSettings() {
 
   useEffect(() => {
     if (profile) {
-      setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
+      setFullName(profile.full_name || "");
+      setPhone(profile.phone || "");
     }
   }, [profile]);
 
   // Load notification prefs from localStorage
   useEffect(() => {
-    const prefs = localStorage.getItem('portal-notification-prefs');
+    const prefs = localStorage.getItem("portal-notification-prefs");
     if (prefs) {
       try {
         const parsed = JSON.parse(prefs);
         setEmailNotifications(parsed.email ?? true);
         setPushNotifications(parsed.push ?? true);
         setMessageSound(parsed.sound ?? true);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
@@ -64,7 +96,7 @@ export default function ClientSettings() {
 
   const handleSaveProfile = async () => {
     if (!fullName.trim()) {
-      toast({ title: 'שם מלא הוא שדה חובה', variant: 'destructive' });
+      toast({ title: "שם מלא הוא שדה חובה", variant: "destructive" });
       return;
     }
     setSavingProfile(true);
@@ -74,10 +106,10 @@ export default function ClientSettings() {
         phone: phone.trim() || undefined,
       });
       if (error) throw error;
-      toast({ title: 'הפרופיל עודכן בהצלחה' });
+      toast({ title: "הפרופיל עודכן בהצלחה" });
       setEditingProfile(false);
     } catch {
-      toast({ title: 'שגיאה בעדכון הפרופיל', variant: 'destructive' });
+      toast({ title: "שגיאה בעדכון הפרופיל", variant: "destructive" });
     } finally {
       setSavingProfile(false);
     }
@@ -85,22 +117,25 @@ export default function ClientSettings() {
 
   const handlePasswordChange = async () => {
     if (newPassword.length < 6) {
-      toast({ title: 'הסיסמה חייבת להכיל לפחות 6 תווים', variant: 'destructive' });
+      toast({
+        title: "הסיסמה חייבת להכיל לפחות 6 תווים",
+        variant: "destructive",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast({ title: 'הסיסמאות לא תואמות', variant: 'destructive' });
+      toast({ title: "הסיסמאות לא תואמות", variant: "destructive" });
       return;
     }
     setChangingPassword(true);
     try {
       const { error } = await updatePassword(newPassword);
       if (error) throw error;
-      toast({ title: 'הסיסמה עודכנה בהצלחה' });
-      setNewPassword('');
-      setConfirmPassword('');
+      toast({ title: "הסיסמה עודכנה בהצלחה" });
+      setNewPassword("");
+      setConfirmPassword("");
     } catch {
-      toast({ title: 'שגיאה בעדכון הסיסמה', variant: 'destructive' });
+      toast({ title: "שגיאה בעדכון הסיסמה", variant: "destructive" });
     } finally {
       setChangingPassword(false);
     }
@@ -108,20 +143,20 @@ export default function ClientSettings() {
 
   const handleSaveNotificationPrefs = (key: string, value: boolean) => {
     const newPrefs = {
-      email: key === 'email' ? value : emailNotifications,
-      push: key === 'push' ? value : pushNotifications,
-      sound: key === 'sound' ? value : messageSound,
+      email: key === "email" ? value : emailNotifications,
+      push: key === "push" ? value : pushNotifications,
+      sound: key === "sound" ? value : messageSound,
     };
-    localStorage.setItem('portal-notification-prefs', JSON.stringify(newPrefs));
-    if (key === 'email') setEmailNotifications(value);
-    if (key === 'push') setPushNotifications(value);
-    if (key === 'sound') setMessageSound(value);
-    toast({ title: 'העדפות ההתראות עודכנו' });
+    localStorage.setItem("portal-notification-prefs", JSON.stringify(newPrefs));
+    if (key === "email") setEmailNotifications(value);
+    if (key === "push") setPushNotifications(value);
+    if (key === "sound") setMessageSound(value);
+    toast({ title: "העדפות ההתראות עודכנו" });
   };
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate("/auth");
   };
 
   return (
@@ -142,7 +177,11 @@ export default function ClientSettings() {
                 פרטים אישיים
               </CardTitle>
               {!editingProfile && (
-                <Button variant="ghost" size="sm" onClick={() => setEditingProfile(true)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingProfile(true)}
+                >
                   <Pencil className="h-4 w-4 ml-1" />
                   עריכה
                 </Button>
@@ -155,11 +194,15 @@ export default function ClientSettings() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center shrink-0">
                     <span className="text-primary-foreground font-bold text-lg">
-                      {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
+                      {(profile?.full_name ||
+                        user?.email ||
+                        "?")[0].toUpperCase()}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <p className="font-medium">{profile?.full_name || 'משתמש'}</p>
+                    <p className="font-medium">
+                      {profile?.full_name || "משתמש"}
+                    </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{user?.email}</span>
@@ -205,15 +248,19 @@ export default function ClientSettings() {
                     disabled={savingProfile}
                     className="flex-1"
                   >
-                    {savingProfile ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <Save className="h-4 w-4 ml-1" />}
+                    {savingProfile ? (
+                      <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4 ml-1" />
+                    )}
                     שמור
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => {
                       setEditingProfile(false);
-                      setFullName(profile?.full_name || '');
-                      setPhone(profile?.phone || '');
+                      setFullName(profile?.full_name || "");
+                      setPhone(profile?.phone || "");
                     }}
                   >
                     ביטול
@@ -228,21 +275,39 @@ export default function ClientSettings() {
         <Card>
           <CardHeader className="text-right pb-2">
             <CardTitle className="text-base flex items-center gap-2">
-              {resolvedTheme === 'dark' ? <Moon className="h-5 w-5 text-primary" /> : <Sun className="h-5 w-5 text-primary" />}
+              {resolvedTheme === "dark" ? (
+                <Moon className="h-5 w-5 text-primary" />
+              ) : (
+                <Sun className="h-5 w-5 text-primary" />
+              )}
               מראה
             </CardTitle>
-            <CardDescription className="text-xs">בחר את ערכת הנושא המועדפת עליך</CardDescription>
+            <CardDescription className="text-xs">
+              בחר את ערכת הנושא המועדפת עליך
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { value: 'light' as const, label: 'בהיר', icon: <Sun className="h-4 w-4" /> },
-                { value: 'dark' as const, label: 'כהה', icon: <Moon className="h-4 w-4" /> },
-                { value: 'system' as const, label: 'מערכת', icon: <Monitor className="h-4 w-4" /> },
+                {
+                  value: "light" as const,
+                  label: "בהיר",
+                  icon: <Sun className="h-4 w-4" />,
+                },
+                {
+                  value: "dark" as const,
+                  label: "כהה",
+                  icon: <Moon className="h-4 w-4" />,
+                },
+                {
+                  value: "system" as const,
+                  label: "מערכת",
+                  icon: <Monitor className="h-4 w-4" />,
+                },
               ].map((option) => (
                 <Button
                   key={option.value}
-                  variant={theme === option.value ? 'default' : 'outline'}
+                  variant={theme === option.value ? "default" : "outline"}
                   className="flex flex-col items-center gap-1 h-auto py-3"
                   onClick={() => setTheme(option.value)}
                 >
@@ -261,40 +326,52 @@ export default function ClientSettings() {
               <Bell className="h-5 w-5 text-primary" />
               העדפות התראות
             </CardTitle>
-            <CardDescription className="text-xs">התאם אישית את ההתראות שלך</CardDescription>
+            <CardDescription className="text-xs">
+              התאם אישית את ההתראות שלך
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="email-notif" className="text-sm">התראות אימייל</Label>
+                <Label htmlFor="email-notif" className="text-sm">
+                  התראות אימייל
+                </Label>
               </div>
               <Switch
                 id="email-notif"
                 checked={emailNotifications}
-                onCheckedChange={(v) => handleSaveNotificationPrefs('email', v)}
+                onCheckedChange={(v) => handleSaveNotificationPrefs("email", v)}
               />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {pushNotifications ? <Bell className="h-4 w-4 text-muted-foreground" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
-                <Label htmlFor="push-notif" className="text-sm">התראות דחיפה</Label>
+                {pushNotifications ? (
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <BellOff className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Label htmlFor="push-notif" className="text-sm">
+                  התראות דחיפה
+                </Label>
               </div>
               <Switch
                 id="push-notif"
                 checked={pushNotifications}
-                onCheckedChange={(v) => handleSaveNotificationPrefs('push', v)}
+                onCheckedChange={(v) => handleSaveNotificationPrefs("push", v)}
               />
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="msg-sound" className="text-sm">צליל הודעות</Label>
+                <Label htmlFor="msg-sound" className="text-sm">
+                  צליל הודעות
+                </Label>
               </div>
               <Switch
                 id="msg-sound"
                 checked={messageSound}
-                onCheckedChange={(v) => handleSaveNotificationPrefs('sound', v)}
+                onCheckedChange={(v) => handleSaveNotificationPrefs("sound", v)}
               />
             </div>
           </CardContent>
@@ -307,7 +384,9 @@ export default function ClientSettings() {
               <Lock className="h-5 w-5 text-primary" />
               שינוי סיסמה
             </CardTitle>
-            <CardDescription className="text-xs">עדכן את סיסמת הכניסה שלך</CardDescription>
+            <CardDescription className="text-xs">
+              עדכן את סיסמת הכניסה שלך
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
@@ -335,7 +414,9 @@ export default function ClientSettings() {
               disabled={changingPassword || !newPassword || !confirmPassword}
               className="w-full"
             >
-              {changingPassword && <Loader2 className="h-4 w-4 ml-1 animate-spin" />}
+              {changingPassword && (
+                <Loader2 className="h-4 w-4 ml-1 animate-spin" />
+              )}
               עדכן סיסמה
             </Button>
           </CardContent>
@@ -344,7 +425,11 @@ export default function ClientSettings() {
         {/* Logout */}
         <Card>
           <CardContent className="p-4">
-            <Button variant="destructive" onClick={handleSignOut} className="w-full">
+            <Button
+              variant="destructive"
+              onClick={handleSignOut}
+              className="w-full"
+            >
               <LogOut className="h-4 w-4 ml-2" />
               התנתק
             </Button>

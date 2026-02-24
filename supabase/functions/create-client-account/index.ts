@@ -29,12 +29,18 @@ serve(async (req) => {
       });
     }
 
-    const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const callerClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      },
+    );
 
-    const { data: { user: caller } } = await callerClient.auth.getUser();
+    const {
+      data: { user: caller },
+    } = await callerClient.auth.getUser();
     if (!caller) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -62,7 +68,10 @@ serve(async (req) => {
     if (!clientId || !email || !password) {
       return new Response(
         JSON.stringify({ error: "clientId, email, and password are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -76,7 +85,10 @@ serve(async (req) => {
     if (existingClient?.user_id) {
       return new Response(
         JSON.stringify({ error: "ללקוח זה כבר יש חשבון כניסה" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -101,7 +113,10 @@ serve(async (req) => {
     // Set role to 'client' (upsert - new users won't have a row yet)
     await supabaseAdmin
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
+      .upsert(
+        { user_id: userId, role: "client" },
+        { onConflict: "user_id,role" },
+      );
 
     // Link user to client record
     await supabaseAdmin
@@ -121,10 +136,14 @@ serve(async (req) => {
         message: `חשבון נוצר בהצלחה עבור ${clientName || email}`,
         user_id: userId,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Internal server error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal server error";
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,16 +1,25 @@
 // Client Portal - Messages Page with File Attachments
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Loader2, Send, Paperclip, Image, FileText, X, Download, ZoomIn } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import PortalNavigation from '@/components/client-portal/PortalNavigation';
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Loader2,
+  Send,
+  Paperclip,
+  Image,
+  FileText,
+  X,
+  Download,
+  ZoomIn,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import PortalNavigation from "@/components/client-portal/PortalNavigation";
 
 interface MessageAttachment {
   id: string;
@@ -37,7 +46,7 @@ export default function ClientMessages() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -47,9 +56,9 @@ export default function ClientMessages() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     } else if (!isLoading && user && !isClient) {
-      navigate('/');
+      navigate("/");
     }
   }, [isLoading, user, isClient, navigate]);
 
@@ -64,26 +73,26 @@ export default function ClientMessages() {
 
   const fetchMessages = async () => {
     if (!clientId) return;
-    
+
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('client_messages')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: true });
+        .from("client_messages")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
-      
+
       // Parse attachments from metadata if exists
-      const messagesWithAttachments = (data || []).map(msg => ({
+      const messagesWithAttachments = (data || []).map((msg) => ({
         ...msg,
-        attachments: (msg as any).metadata?.attachments || []
+        attachments: (msg as any).metadata?.attachments || [],
       }));
-      
+
       setMessages(messagesWithAttachments);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
     } finally {
       setLoading(false);
     }
@@ -91,40 +100,40 @@ export default function ClientMessages() {
 
   const markMessagesAsRead = async () => {
     if (!clientId) return;
-    
+
     await supabase
-      .from('client_messages')
+      .from("client_messages")
       .update({ is_read: true })
-      .eq('client_id', clientId)
-      .eq('sender_type', 'staff')
-      .eq('is_read', false);
+      .eq("client_id", clientId)
+      .eq("sender_type", "staff")
+      .eq("is_read", false);
   };
 
   const subscribeToMessages = () => {
     const channel = supabase
-      .channel('client-messages')
+      .channel("client-messages")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'client_messages',
-          filter: `client_id=eq.${clientId}`
+          event: "INSERT",
+          schema: "public",
+          table: "client_messages",
+          filter: `client_id=eq.${clientId}`,
         },
         (payload) => {
           const newMsg = {
-            ...payload.new as Message,
-            attachments: (payload.new as any).metadata?.attachments || []
+            ...(payload.new as Message),
+            attachments: (payload.new as any).metadata?.attachments || [],
           };
-          setMessages(prev => [...prev, newMsg]);
+          setMessages((prev) => [...prev, newMsg]);
           // Mark as read if from staff
-          if (newMsg.sender_type === 'staff') {
+          if (newMsg.sender_type === "staff") {
             supabase
-              .from('client_messages')
+              .from("client_messages")
               .update({ is_read: true })
-              .eq('id', newMsg.id);
+              .eq("id", newMsg.id);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -142,37 +151,39 @@ export default function ClientMessages() {
 
   // Calculate unread count
   useEffect(() => {
-    const count = messages.filter(m => !m.is_read && m.sender_type === 'staff').length;
+    const count = messages.filter(
+      (m) => !m.is_read && m.sender_type === "staff",
+    ).length;
     setUnreadCount(count);
   }, [messages]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    
+
     // Validate files
-    const validFiles = files.filter(file => {
+    const validFiles = files.filter((file) => {
       // Max 10MB per file
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: 'קובץ גדול מדי',
+          title: "קובץ גדול מדי",
           description: `${file.name} גדול מ-10MB`,
-          variant: 'destructive'
+          variant: "destructive",
         });
         return false;
       }
       return true;
     });
 
-    setSelectedFiles(prev => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
-    
+    setSelectedFiles((prev) => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
+
     // Reset input
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const removeSelectedFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadFiles = async (): Promise<MessageAttachment[]> => {
@@ -184,13 +195,13 @@ export default function ClientMessages() {
       try {
         const fileName = `${clientId}/messages/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
-          .from('client-files')
+          .from("client-files")
           .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
-          .from('client-files')
+          .from("client-files")
           .getPublicUrl(fileName);
 
         uploadedFiles.push({
@@ -198,10 +209,10 @@ export default function ClientMessages() {
           file_name: file.name,
           file_url: urlData.publicUrl,
           file_type: file.type,
-          file_size: file.size
+          file_size: file.size,
         });
       } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error("Error uploading file:", error);
       }
     }
 
@@ -210,36 +221,41 @@ export default function ClientMessages() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!newMessage.trim() && selectedFiles.length === 0) || !clientId || !user) return;
+    if (
+      (!newMessage.trim() && selectedFiles.length === 0) ||
+      !clientId ||
+      !user
+    )
+      return;
 
     setSending(true);
     setUploading(selectedFiles.length > 0);
-    
+
     try {
       // Upload files if any
       const attachments = await uploadFiles();
 
-      const { error } = await supabase
-        .from('client_messages')
-        .insert({
-          client_id: clientId,
-          sender_id: user.id,
-          sender_type: 'client',
-          message: newMessage.trim() || (attachments.length > 0 ? '📎 קבצים מצורפים' : ''),
-          is_read: false,
-          metadata: attachments.length > 0 ? { attachments } as any : null
-        } as any);
+      const { error } = await supabase.from("client_messages").insert({
+        client_id: clientId,
+        sender_id: user.id,
+        sender_type: "client",
+        message:
+          newMessage.trim() ||
+          (attachments.length > 0 ? "📎 קבצים מצורפים" : ""),
+        is_read: false,
+        metadata: attachments.length > 0 ? ({ attachments } as any) : null,
+      } as any);
 
       if (error) throw error;
-      
-      setNewMessage('');
+
+      setNewMessage("");
       setSelectedFiles([]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשלוח את ההודעה',
-        variant: 'destructive'
+        title: "שגיאה",
+        description: "לא ניתן לשלוח את ההודעה",
+        variant: "destructive",
       });
     } finally {
       setSending(false);
@@ -248,18 +264,21 @@ export default function ClientMessages() {
   };
 
   const isImageFile = (fileType: string) => {
-    return fileType?.startsWith('image/');
+    return fileType?.startsWith("image/");
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
   const formatTime = (dateString: string) => {
     const d = new Date(dateString);
-    return d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString("he-IL", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   if (isLoading || loading) {
@@ -290,80 +309,95 @@ export default function ClientMessages() {
                     אין הודעות עדיין. התחל שיחה חדשה!
                   </p>
                 ) : (
-                  messages.map(message => (
+                  messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex ${message.sender_type === 'client' ? 'justify-start' : 'justify-end'}`}
+                      className={`flex ${message.sender_type === "client" ? "justify-start" : "justify-end"}`}
                     >
                       <div
                         className={`max-w-[85%] rounded-2xl px-4 py-2 ${
-                          message.sender_type === 'client'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
+                          message.sender_type === "client"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
                         }`}
                       >
                         {/* Message Text */}
-                        {message.message && !message.message.startsWith('📎') && (
-                          <p className="whitespace-pre-wrap text-right">{message.message}</p>
-                        )}
-                        
+                        {message.message &&
+                          !message.message.startsWith("📎") && (
+                            <p className="whitespace-pre-wrap text-right">
+                              {message.message}
+                            </p>
+                          )}
+
                         {/* Attachments */}
-                        {message.attachments && message.attachments.length > 0 && (
-                          <div className="space-y-2 mt-2">
-                            {message.attachments.map((attachment) => (
-                              <div key={attachment.id} className="rounded-lg overflow-hidden">
-                                {isImageFile(attachment.file_type) ? (
-                                  // Image Preview
-                                  <Dialog>
-                                    <DialogTrigger asChild>
-                                      <div className="cursor-pointer relative group">
+                        {message.attachments &&
+                          message.attachments.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                              {message.attachments.map((attachment) => (
+                                <div
+                                  key={attachment.id}
+                                  className="rounded-lg overflow-hidden"
+                                >
+                                  {isImageFile(attachment.file_type) ? (
+                                    // Image Preview
+                                    <Dialog>
+                                      <DialogTrigger asChild>
+                                        <div className="cursor-pointer relative group">
+                                          <img
+                                            src={attachment.file_url}
+                                            alt={attachment.file_name}
+                                            className="max-w-full max-h-48 rounded-lg object-cover"
+                                          />
+                                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                            <ZoomIn className="h-8 w-8 text-white" />
+                                          </div>
+                                        </div>
+                                      </DialogTrigger>
+                                      <DialogContent className="max-w-4xl">
                                         <img
                                           src={attachment.file_url}
                                           alt={attachment.file_name}
-                                          className="max-w-full max-h-48 rounded-lg object-cover"
+                                          className="w-full h-auto max-h-[80vh] object-contain"
                                         />
-                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                          <ZoomIn className="h-8 w-8 text-white" />
-                                        </div>
+                                      </DialogContent>
+                                    </Dialog>
+                                  ) : (
+                                    // File Attachment
+                                    <a
+                                      href={attachment.file_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`flex items-center gap-2 p-2 rounded-lg ${
+                                        message.sender_type === "client"
+                                          ? "bg-primary-foreground/10 hover:bg-primary-foreground/20"
+                                          : "bg-background hover:bg-background/80"
+                                      } transition-colors`}
+                                    >
+                                      <FileText className="h-5 w-5 shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {attachment.file_name}
+                                        </p>
+                                        <p className="text-xs opacity-70">
+                                          {formatFileSize(attachment.file_size)}
+                                        </p>
                                       </div>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-4xl">
-                                      <img
-                                        src={attachment.file_url}
-                                        alt={attachment.file_name}
-                                        className="w-full h-auto max-h-[80vh] object-contain"
-                                      />
-                                    </DialogContent>
-                                  </Dialog>
-                                ) : (
-                                  // File Attachment
-                                  <a
-                                    href={attachment.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`flex items-center gap-2 p-2 rounded-lg ${
-                                      message.sender_type === 'client'
-                                        ? 'bg-primary-foreground/10 hover:bg-primary-foreground/20'
-                                        : 'bg-background hover:bg-background/80'
-                                    } transition-colors`}
-                                  >
-                                    <FileText className="h-5 w-5 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium truncate">{attachment.file_name}</p>
-                                      <p className="text-xs opacity-70">{formatFileSize(attachment.file_size)}</p>
-                                    </div>
-                                    <Download className="h-4 w-4 shrink-0" />
-                                  </a>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        
+                                      <Download className="h-4 w-4 shrink-0" />
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                         {/* Time */}
-                        <p className={`text-xs mt-1 text-left ${
-                          message.sender_type === 'client' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                        }`}>
+                        <p
+                          className={`text-xs mt-1 text-left ${
+                            message.sender_type === "client"
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                          }`}
+                        >
                           {formatTime(message.created_at)}
                         </p>
                       </div>
@@ -379,7 +413,7 @@ export default function ClientMessages() {
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {selectedFiles.map((file, index) => (
                     <div key={index} className="relative shrink-0">
-                      {file.type.startsWith('image/') ? (
+                      {file.type.startsWith("image/") ? (
                         <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted">
                           <img
                             src={URL.createObjectURL(file)}
@@ -391,7 +425,7 @@ export default function ClientMessages() {
                         <div className="w-16 h-16 rounded-lg bg-muted flex flex-col items-center justify-center p-1">
                           <FileText className="h-5 w-5 text-muted-foreground" />
                           <span className="text-[10px] text-muted-foreground truncate w-full text-center mt-1">
-                            {file.name.split('.').pop()?.toUpperCase()}
+                            {file.name.split(".").pop()?.toUpperCase()}
                           </span>
                         </div>
                       )}
@@ -408,7 +442,10 @@ export default function ClientMessages() {
             )}
 
             {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="p-3 border-t bg-card flex gap-2 items-end mb-16">
+            <form
+              onSubmit={handleSendMessage}
+              className="p-3 border-t bg-card flex gap-2 items-end mb-16"
+            >
               <input
                 type="file"
                 ref={fileInputRef}
@@ -417,7 +454,7 @@ export default function ClientMessages() {
                 multiple
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
               />
-              
+
               <Button
                 type="button"
                 variant="ghost"
@@ -428,7 +465,7 @@ export default function ClientMessages() {
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
-              
+
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
@@ -437,10 +474,12 @@ export default function ClientMessages() {
                 className="flex-1 text-right"
                 dir="rtl"
               />
-              
-              <Button 
-                type="submit" 
-                disabled={sending || (!newMessage.trim() && selectedFiles.length === 0)}
+
+              <Button
+                type="submit"
+                disabled={
+                  sending || (!newMessage.trim() && selectedFiles.length === 0)
+                }
                 size="icon"
                 className="shrink-0"
               >

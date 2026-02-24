@@ -37,6 +37,7 @@ import {
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { NotificationOptions } from './NotificationOptions';
+import { InlineReminderSection } from '@/components/reminders/InlineReminderSection';
 
 // Sidebar colors
 const sidebarColors = {
@@ -288,6 +289,14 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(functi
                 </PopoverContent>
               </Popover>
             </div>
+
+            {/* Reminder & Calendar Sync */}
+            <InlineReminderSection
+              entityType="task"
+              entityTitle={title}
+              entityDate={dueDate}
+              entityDescription={description}
+            />
 
             {/* Notification Options */}
             {clients.length > 0 && (

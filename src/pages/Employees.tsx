@@ -134,7 +134,11 @@ const roleConfig = {
   },
 };
 
-const defaultRoleConfig = { label: "עובד", icon: User, color: "bg-muted text-muted-foreground" };
+const defaultRoleConfig = {
+  label: "עובד",
+  icon: User,
+  color: "bg-muted text-muted-foreground",
+};
 const getRoleConfig = (role: string | undefined | null) =>
   roleConfig[role as keyof typeof roleConfig] ?? defaultRoleConfig;
 
@@ -208,7 +212,9 @@ export default function Employees() {
     open: false,
     employee: null,
   });
-  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [isSavingClients, setIsSavingClients] = useState(false);
 
@@ -223,7 +229,9 @@ export default function Employees() {
   } = useEmployeeClientAssignments();
 
   // All assignments map: employeeId -> count
-  const [allAssignmentsMap, setAllAssignmentsMap] = useState<Record<string, number>>({});
+  const [allAssignmentsMap, setAllAssignmentsMap] = useState<
+    Record<string, number>
+  >({});
 
   // Fetch all assignments on mount to show counts
   useEffect(() => {
@@ -727,7 +735,9 @@ export default function Employees() {
 
       if (sqlError || !(sqlResult as any)?.success) {
         throw new Error(
-          sqlError?.message || (sqlResult as any)?.error || "שגיאה בעדכון סיסמה",
+          sqlError?.message ||
+            (sqlResult as any)?.error ||
+            "שגיאה בעדכון סיסמה",
         );
       }
 
@@ -771,7 +781,7 @@ export default function Employees() {
     const success = await setClientAssignments(
       clientAssignDialog.employee.id,
       Array.from(selectedClientIds),
-      user?.id
+      user?.id,
     );
 
     if (success) {
@@ -781,7 +791,7 @@ export default function Employees() {
       });
 
       // Update the all-assignments map
-      setAllAssignmentsMap(prev => ({
+      setAllAssignmentsMap((prev) => ({
         ...prev,
         [clientAssignDialog.employee!.id]: selectedClientIds.size,
       }));
@@ -800,7 +810,7 @@ export default function Employees() {
 
   // Toggle a client in the selection
   const toggleClient = (clientId: string) => {
-    setSelectedClientIds(prev => {
+    setSelectedClientIds((prev) => {
       const next = new Set(prev);
       if (next.has(clientId)) {
         next.delete(clientId);
@@ -814,17 +824,17 @@ export default function Employees() {
   // Select/deselect all clients
   const toggleAllClients = () => {
     const filtered = filteredClientsForAssign;
-    const allSelected = filtered.every(c => selectedClientIds.has(c.id));
+    const allSelected = filtered.every((c) => selectedClientIds.has(c.id));
     if (allSelected) {
-      setSelectedClientIds(prev => {
+      setSelectedClientIds((prev) => {
         const next = new Set(prev);
-        filtered.forEach(c => next.delete(c.id));
+        filtered.forEach((c) => next.delete(c.id));
         return next;
       });
     } else {
-      setSelectedClientIds(prev => {
+      setSelectedClientIds((prev) => {
         const next = new Set(prev);
-        filtered.forEach(c => next.add(c.id));
+        filtered.forEach((c) => next.add(c.id));
         return next;
       });
     }
@@ -835,11 +845,11 @@ export default function Employees() {
     if (!clientSearchQuery.trim()) return allClients;
     const q = clientSearchQuery.toLowerCase();
     return allClients.filter(
-      c =>
+      (c) =>
         c.name?.toLowerCase().includes(q) ||
         c.email?.toLowerCase().includes(q) ||
         c.phone?.includes(q) ||
-        c.company?.toLowerCase().includes(q)
+        c.company?.toLowerCase().includes(q),
     );
   }, [allClients, clientSearchQuery]);
 
@@ -952,7 +962,10 @@ export default function Employees() {
             <UsersRound className="h-4 w-4 ml-1" />
             לקוחות
             {(allAssignmentsMap[row.id] || 0) > 0 && (
-              <Badge variant="secondary" className="mr-1 px-1.5 py-0 text-xs min-w-[18px] h-[18px] rounded-full">
+              <Badge
+                variant="secondary"
+                className="mr-1 px-1.5 py-0 text-xs min-w-[18px] h-[18px] rounded-full"
+              >
                 {allAssignmentsMap[row.id]}
               </Badge>
             )}
@@ -2261,7 +2274,9 @@ export default function Employees() {
                 className="text-xs h-7"
               >
                 {filteredClientsForAssign.length > 0 &&
-                  filteredClientsForAssign.every(c => selectedClientIds.has(c.id))
+                filteredClientsForAssign.every((c) =>
+                  selectedClientIds.has(c.id),
+                )
                   ? "בטל הכל"
                   : "בחר הכל"}
               </Button>
@@ -2284,7 +2299,9 @@ export default function Employees() {
                     <label
                       key={client.id}
                       className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                        selectedClientIds.has(client.id) ? "bg-primary/5 border border-primary/20" : ""
+                        selectedClientIds.has(client.id)
+                          ? "bg-primary/5 border border-primary/20"
+                          : ""
                       }`}
                     >
                       <Checkbox
@@ -2292,12 +2309,19 @@ export default function Employees() {
                         onCheckedChange={() => toggleClient(client.id)}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{client.name}</p>
+                        <p className="font-medium text-sm truncate">
+                          {client.name}
+                        </p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           {client.company && <span>{client.company}</span>}
-                          {client.email && <span className="truncate">{client.email}</span>}
+                          {client.email && (
+                            <span className="truncate">{client.email}</span>
+                          )}
                           {client.status && (
-                            <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1 py-0"
+                            >
                               {client.status}
                             </Badge>
                           )}
@@ -2316,7 +2340,9 @@ export default function Employees() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setClientAssignDialog({ open: false, employee: null })}
+              onClick={() =>
+                setClientAssignDialog({ open: false, employee: null })
+              }
               disabled={isSavingClients}
             >
               ביטול
@@ -2326,7 +2352,9 @@ export default function Employees() {
               disabled={isSavingClients}
               className="btn-gold"
             >
-              {isSavingClients && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+              {isSavingClients && (
+                <Loader2 className="h-4 w-4 animate-spin ml-2" />
+              )}
               <CheckCircle2 className="h-4 w-4 ml-2" />
               שמור ({selectedClientIds.size} לקוחות)
             </Button>

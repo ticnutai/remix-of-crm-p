@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Meeting } from "@/hooks/useMeetingsOptimized";
 import { cleanTitle, cleanDescription } from "@/utils/cleanDisplayText";
+import { processDedup, getDedupKey } from "@/utils/sortAndDedup";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,9 @@ import {
   Video,
   Phone,
   Users,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format, parseISO, isPast, isToday, isTomorrow } from "date-fns";
 import { he } from "date-fns/locale";
@@ -43,6 +47,30 @@ export function MeetingsListView({
   onEdit,
   onDelete,
 }: MeetingsListViewProps) {
+  const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const toggleDedupGroup = (groupKey: string) => {
+    setExpandedDedupGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
+
+  // Apply duplicate detection
+  const { visible: visibleMeetings, dupMap } = useMemo(
+    () =>
+      processDedup(
+        meetings,
+        (m) => getDedupKey(m.start_time, m.title),
+        expandedDedupGroups,
+      ),
+    [meetings, expandedDedupGroups],
+  );
+
   if (meetings.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -53,7 +81,7 @@ export function MeetingsListView({
 
   // Group meetings by date
   const groupedMeetings: { [key: string]: Meeting[] } = {};
-  meetings.forEach((meeting) => {
+  visibleMeetings.forEach((meeting) => {
     const dateKey = format(parseISO(meeting.start_time), "yyyy-MM-dd");
     if (!groupedMeetings[dateKey]) {
       groupedMeetings[dateKey] = [];
@@ -122,6 +150,34 @@ export function MeetingsListView({
                       <div className="flex items-start gap-4 flex-row-reverse">
                         {/* Actions */}
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Duplicate indicator */}
+                          {dupMap.has(meeting.id) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                toggleDedupGroup(dupMap.get(meeting.id)!.key)
+                              }
+                              className="h-8 gap-1 text-xs text-amber-600 hover:text-amber-700 opacity-100"
+                              title={
+                                expandedDedupGroups.has(
+                                  dupMap.get(meeting.id)!.key,
+                                )
+                                  ? "\u05d4\u05e1\u05ea\u05e8 \u05db\u05e4\u05d5\u05dc\u05d9\u05dd"
+                                  : "\u05d4\u05e6\u05d2 \u05d4\u05db\u05dc"
+                              }
+                            >
+                              <Layers className="h-4 w-4" />
+                              <span>{dupMap.get(meeting.id)!.count}</span>
+                              {expandedDedupGroups.has(
+                                dupMap.get(meeting.id)!.key,
+                              ) ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

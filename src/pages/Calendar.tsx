@@ -25,7 +25,10 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { supabase } from "@/integrations/supabase/client";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 import { toast } from "@/hooks/use-toast";
 import {
   ChevronLeft,
@@ -181,8 +184,11 @@ const Calendar = () => {
           return;
         }
         const viewPrefs = (data as any)?.view_preferences;
-        const saved = typeof viewPrefs === 'object' && viewPrefs?.calendar_view;
-        if (saved && ["month","week","list","agenda","schedule"].includes(saved)) {
+        const saved = typeof viewPrefs === "object" && viewPrefs?.calendar_view;
+        if (
+          saved &&
+          ["month", "week", "list", "agenda", "schedule"].includes(saved)
+        ) {
           setViewType(saved as CalendarViewType);
           localStorage.setItem("calendar-view-type", saved);
         }
@@ -196,10 +202,16 @@ const Calendar = () => {
     if (!user || !isTableAvailable("user_preferences")) return;
     const timer = setTimeout(async () => {
       try {
-        const { error } = await supabase.from("user_preferences").upsert(
-          { user_id: user.id, view_preferences: { calendar_view: viewType } as any, updated_at: new Date().toISOString() } as any,
-          { onConflict: "user_id" }
-        );
+        const { error } = await supabase
+          .from("user_preferences")
+          .upsert(
+            {
+              user_id: user.id,
+              view_preferences: { calendar_view: viewType } as any,
+              updated_at: new Date().toISOString(),
+            } as any,
+            { onConflict: "user_id" },
+          );
         if (error) markTableUnavailable("user_preferences");
       } catch {}
     }, 800);
@@ -780,8 +792,18 @@ const Calendar = () => {
   };
 
   const hebrewMonths = [
-    "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
-    "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
+    "ינואר",
+    "פברואר",
+    "מרץ",
+    "אפריל",
+    "מאי",
+    "יוני",
+    "יולי",
+    "אוגוסט",
+    "ספטמבר",
+    "אוקטובר",
+    "נובמבר",
+    "דצמבר",
   ];
 
   const renderMonthNav = () => {
@@ -789,14 +811,29 @@ const Calendar = () => {
     const currentYear = getYear(currentMonth);
     const currentMonthIdx = getMonth(currentMonth);
     return (
-      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap" dir="rtl">
+      <div
+        className="flex items-center justify-between gap-2 mb-4 flex-wrap"
+        dir="rtl"
+      >
         {/* Year navigation */}
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(subYears(currentMonth, 1))}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setCurrentMonth(subYears(currentMonth, 1))}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-bold w-12 text-center">{currentYear}</span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(addYears(currentMonth, 1))}>
+          <span className="text-sm font-bold w-12 text-center">
+            {currentYear}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setCurrentMonth(addYears(currentMonth, 1))}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
         </div>
@@ -810,7 +847,7 @@ const Calendar = () => {
                 "px-2 py-1 rounded-lg text-xs font-medium transition-all",
                 currentMonthIdx === idx
                   ? "bg-[hsl(var(--navy))] text-white shadow-md"
-                  : "bg-muted/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-accent/60 hover:text-foreground",
               )}
             >
               {name}

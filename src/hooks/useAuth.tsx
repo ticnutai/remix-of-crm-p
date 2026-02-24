@@ -231,7 +231,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     let recoveryInFlight = false;
 
     const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible' || recoveryInFlight) return;
+      if (document.visibilityState !== "visible" || recoveryInFlight) return;
       recoveryInFlight = true;
 
       try {
@@ -239,14 +239,21 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         //   • ERR_NETWORK_IO_SUSPENDED (stale requests after sleep)
         //   • 400 on refresh_token (expired token)
         //   • WebSocket disconnect (realtime reconnects automatically after new token)
-        const { data: { session: freshSession }, error } = await supabase.auth.getSession();
+        const {
+          data: { session: freshSession },
+          error,
+        } = await supabase.auth.getSession();
 
         if (error) {
           // If the refresh itself fails, sign out cleanly
-          if (error.message?.includes('refresh') || error.message?.includes('Refresh Token') || error.message?.includes('Invalid')) {
-            console.warn('[Auth] Session expired after resume – signing out');
-            localStorage.removeItem('supabase.auth.token');
-            await supabase.auth.signOut({ scope: 'local' });
+          if (
+            error.message?.includes("refresh") ||
+            error.message?.includes("Refresh Token") ||
+            error.message?.includes("Invalid")
+          ) {
+            console.warn("[Auth] Session expired after resume – signing out");
+            localStorage.removeItem("supabase.auth.token");
+            await supabase.auth.signOut({ scope: "local" });
           }
         } else if (freshSession?.user && freshSession.user.id !== user?.id) {
           // Edge case: session user changed
@@ -265,8 +272,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [user?.id, fetchProfile, fetchRoles, fetchClientId]);
 
   const signIn = async (email: string, password: string) => {

@@ -23,17 +23,22 @@ test("Live watch - user controls browser", async ({ browser }) => {
 
   // Monitor console
   page.on("console", (msg) => {
-    if (msg.type() === "error") log(`❌ CONSOLE ERROR: ${msg.text().substring(0, 250)}`);
-    if (msg.type() === "warning") log(`⚠️ WARNING: ${msg.text().substring(0, 150)}`);
+    if (msg.type() === "error")
+      log(`❌ CONSOLE ERROR: ${msg.text().substring(0, 250)}`);
+    if (msg.type() === "warning")
+      log(`⚠️ WARNING: ${msg.text().substring(0, 150)}`);
   });
 
   // Monitor network errors
   page.on("response", (res) => {
-    if (res.status() >= 400) log(`🔴 HTTP ${res.status()}: ${res.url().substring(0, 150)}`);
+    if (res.status() >= 400)
+      log(`🔴 HTTP ${res.status()}: ${res.url().substring(0, 150)}`);
   });
 
   // Monitor JS crashes
-  page.on("pageerror", (err) => log(`💥 JS CRASH: ${err.message.substring(0, 250)}`));
+  page.on("pageerror", (err) =>
+    log(`💥 JS CRASH: ${err.message.substring(0, 250)}`),
+  );
 
   // Monitor navigation
   page.on("framenavigated", (frame) => {
@@ -60,9 +65,10 @@ test("Live watch - user controls browser", async ({ browser }) => {
   log("✅ Page loaded. Go ahead and use the app!");
 
   // Wait and monitor - check every 5 seconds for page state
-  for (let i = 0; i < 120; i++) { // 120 * 5s = 10 minutes
+  for (let i = 0; i < 120; i++) {
+    // 120 * 5s = 10 minutes
     await page.waitForTimeout(5000);
-    
+
     // Log current URL every 30 seconds
     if (i % 6 === 0) {
       try {
@@ -80,10 +86,12 @@ test("Live watch - user controls browser", async ({ browser }) => {
   log("         SESSION RECORDING SUMMARY");
   log("========================================");
   log(`Total events: ${events.length}`);
-  
-  const errors = events.filter(e => e.includes("❌") || e.includes("💥") || e.includes("🔴"));
+
+  const errors = events.filter(
+    (e) => e.includes("❌") || e.includes("💥") || e.includes("🔴"),
+  );
   log(`Errors: ${errors.length}`);
-  errors.forEach(e => log(`  ${e}`));
+  errors.forEach((e) => log(`  ${e}`));
 
   await context.close();
 });

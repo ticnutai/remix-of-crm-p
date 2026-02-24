@@ -18,48 +18,70 @@ test("Live watch v2 - click tracking", async ({ browser }) => {
   };
 
   // Track CLICKS
-  await page.exposeFunction("__logClick", (x: number, y: number, tag: string, text: string, href: string) => {
-    log(`🖱️ CLICK at (${x},${y}) on <${tag}> text="${text.substring(0,50)}" href="${href}"`);
-  });
+  await page.exposeFunction(
+    "__logClick",
+    (x: number, y: number, tag: string, text: string, href: string) => {
+      log(
+        `🖱️ CLICK at (${x},${y}) on <${tag}> text="${text.substring(0, 50)}" href="${href}"`,
+      );
+    },
+  );
 
   // Track mousedown to see what element is being pressed
-  await page.exposeFunction("__logMouseDown", (x: number, y: number, tag: string, text: string, href: string) => {
-    log(`👆 MOUSEDOWN at (${x},${y}) on <${tag}> text="${text.substring(0,50)}" href="${href}"`);
-  });
+  await page.exposeFunction(
+    "__logMouseDown",
+    (x: number, y: number, tag: string, text: string, href: string) => {
+      log(
+        `👆 MOUSEDOWN at (${x},${y}) on <${tag}> text="${text.substring(0, 50)}" href="${href}"`,
+      );
+    },
+  );
 
   // Inject click/mousedown trackers
   await page.addInitScript(() => {
-    document.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement;
-      const link = target.closest("a");
-      (window as any).__logClick?.(
-        e.clientX, e.clientY,
-        target.tagName,
-        target.textContent?.trim().substring(0, 50) || "",
-        link?.getAttribute("href") || ""
-      );
-    }, true);
+    document.addEventListener(
+      "click",
+      (e) => {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        (window as any).__logClick?.(
+          e.clientX,
+          e.clientY,
+          target.tagName,
+          target.textContent?.trim().substring(0, 50) || "",
+          link?.getAttribute("href") || "",
+        );
+      },
+      true,
+    );
 
-    document.addEventListener("mousedown", (e) => {
-      const target = e.target as HTMLElement;
-      const link = target.closest("a");
-      (window as any).__logMouseDown?.(
-        e.clientX, e.clientY,
-        target.tagName,
-        target.textContent?.trim().substring(0, 50) || "",
-        link?.getAttribute("href") || ""
-      );
-    }, true);
+    document.addEventListener(
+      "mousedown",
+      (e) => {
+        const target = e.target as HTMLElement;
+        const link = target.closest("a");
+        (window as any).__logMouseDown?.(
+          e.clientX,
+          e.clientY,
+          target.tagName,
+          target.textContent?.trim().substring(0, 50) || "",
+          link?.getAttribute("href") || "",
+        );
+      },
+      true,
+    );
   });
 
   // Console errors
   page.on("console", (msg) => {
-    if (msg.type() === "error") log(`❌ ERROR: ${msg.text().substring(0, 200)}`);
+    if (msg.type() === "error")
+      log(`❌ ERROR: ${msg.text().substring(0, 200)}`);
   });
 
   // Network errors
   page.on("response", (res) => {
-    if (res.status() >= 400) log(`🔴 HTTP ${res.status()}: ${res.url().substring(0, 120)}`);
+    if (res.status() >= 400)
+      log(`🔴 HTTP ${res.status()}: ${res.url().substring(0, 120)}`);
   });
 
   // Navigation
@@ -68,7 +90,9 @@ test("Live watch v2 - click tracking", async ({ browser }) => {
   });
 
   // JS crashes
-  page.on("pageerror", (err) => log(`💥 CRASH: ${err.message.substring(0, 200)}`));
+  page.on("pageerror", (err) =>
+    log(`💥 CRASH: ${err.message.substring(0, 200)}`),
+  );
 
   // Popups
   page.on("popup", (popup) => log(`🪟 POPUP: ${popup.url()}`));

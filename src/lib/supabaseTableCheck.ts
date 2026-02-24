@@ -45,5 +45,7 @@ export function isTableAvailable(tableName: string): boolean {
  */
 export function resetTableCache(): void {
   unavailableTables.clear();
-  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {}
 }

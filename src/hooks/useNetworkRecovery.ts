@@ -1,6 +1,6 @@
 /**
  * Network Recovery Hook
- * 
+ *
  * Handles automatic recovery after device sleep / tab background:
  * - Reconnects Supabase Realtime WebSocket channels
  * - Suppresses noisy ERR_NETWORK_IO_SUSPENDED console errors
@@ -49,7 +49,11 @@ export function useNetworkRecovery() {
       }
 
       // Page became visible again after being hidden
-      if (wasHidden && document.visibilityState === "visible" && navigator.onLine) {
+      if (
+        wasHidden &&
+        document.visibilityState === "visible" &&
+        navigator.onLine
+      ) {
         wasHidden = false;
         // Delay to let the network stack recover and auth token refresh first
         setTimeout(() => recover(), 2000);

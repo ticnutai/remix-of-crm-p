@@ -3,7 +3,10 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useToast } from "./use-toast";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 
 export type BorderRadius = "none" | "small" | "medium" | "large" | "full";
 export type BorderWidth = "none" | "thin" | "normal" | "thick";
@@ -260,7 +263,10 @@ export function useUserPreferences() {
       return;
     }
 
-    if (!isTableAvailable("user_preferences")) { setLoading(false); return; }
+    if (!isTableAvailable("user_preferences")) {
+      setLoading(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("user_preferences")
@@ -268,7 +274,10 @@ export function useUserPreferences() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (error) { markTableUnavailable("user_preferences"); throw error; }
+      if (error) {
+        markTableUnavailable("user_preferences");
+        throw error;
+      }
 
       if (data) {
         setPreferences({

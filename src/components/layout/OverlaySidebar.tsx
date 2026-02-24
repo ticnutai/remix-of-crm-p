@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -41,7 +47,10 @@ import {
 } from "./SidebarSettingsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
@@ -113,7 +122,10 @@ export function OverlaySidebar({
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        if (error) { markTableUnavailable("user_preferences"); return; }
+        if (error) {
+          markTableUnavailable("user_preferences");
+          return;
+        }
         const theme = (data as any)?.sidebar_theme;
         if (theme) {
           setSidebarTheme(theme as SidebarTheme);

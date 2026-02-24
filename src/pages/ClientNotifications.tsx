@@ -1,16 +1,27 @@
 // Client Portal - Notifications & Reminders Page
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Bell, BellOff, CheckCheck, Info, AlertTriangle, MessageSquare, CalendarDays, FileText, Trash2 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
-import PortalNavigation from '@/components/client-portal/PortalNavigation';
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  Bell,
+  BellOff,
+  CheckCheck,
+  Info,
+  AlertTriangle,
+  MessageSquare,
+  CalendarDays,
+  FileText,
+  Trash2,
+} from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { he } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
+import PortalNavigation from "@/components/client-portal/PortalNavigation";
 
 interface ClientNotification {
   id: string;
@@ -30,8 +41,8 @@ export default function ClientNotifications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !user) navigate('/auth');
-    else if (!isLoading && user && !isClient) navigate('/');
+    if (!isLoading && !user) navigate("/auth");
+    else if (!isLoading && user && !isClient) navigate("/");
   }, [isLoading, user, isClient, navigate]);
 
   useEffect(() => {
@@ -43,33 +54,54 @@ export default function ClientNotifications() {
     if (!clientId) return;
 
     const channel = supabase
-      .channel('client-notifications-realtime')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'client_notifications',
-        filter: `client_id=eq.${clientId}`,
-      }, (payload) => {
-        setNotifications(prev => [payload.new as ClientNotification, ...prev]);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'client_notifications',
-        filter: `client_id=eq.${clientId}`,
-      }, (payload) => {
-        setNotifications(prev =>
-          prev.map(n => n.id === (payload.new as ClientNotification).id ? payload.new as ClientNotification : n)
-        );
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'client_notifications',
-        filter: `client_id=eq.${clientId}`,
-      }, (payload) => {
-        setNotifications(prev => prev.filter(n => n.id !== (payload.old as any).id));
-      })
+      .channel("client-notifications-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "client_notifications",
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          setNotifications((prev) => [
+            payload.new as ClientNotification,
+            ...prev,
+          ]);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "client_notifications",
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === (payload.new as ClientNotification).id
+                ? (payload.new as ClientNotification)
+                : n,
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "client_notifications",
+          filter: `client_id=eq.${clientId}`,
+        },
+        (payload) => {
+          setNotifications((prev) =>
+            prev.filter((n) => n.id !== (payload.old as any).id),
+          );
+        },
+      )
       .subscribe();
 
     return () => {
@@ -82,57 +114,72 @@ export default function ClientNotifications() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('client_notifications')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+        .from("client_notifications")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setNotifications(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const markAsRead = async (id: string) => {
-    await supabase.from('client_notifications').update({ is_read: true }).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    await supabase
+      .from("client_notifications")
+      .update({ is_read: true })
+      .eq("id", id);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
+    );
   };
 
   const markAllAsRead = async () => {
     if (!clientId) return;
     await supabase
-      .from('client_notifications')
+      .from("client_notifications")
       .update({ is_read: true })
-      .eq('client_id', clientId)
-      .eq('is_read', false);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    toast({ title: 'כל ההתראות סומנו כנקראו' });
+      .eq("client_id", clientId)
+      .eq("is_read", false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    toast({ title: "כל ההתראות סומנו כנקראו" });
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'message': return <MessageSquare className="h-4 w-4" />;
-      case 'meeting': return <CalendarDays className="h-4 w-4" />;
-      case 'file': return <FileText className="h-4 w-4" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
+      case "message":
+        return <MessageSquare className="h-4 w-4" />;
+      case "meeting":
+        return <CalendarDays className="h-4 w-4" />;
+      case "file":
+        return <FileText className="h-4 w-4" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'message': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'meeting': return 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400';
-      case 'file': return 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400';
-      case 'warning': return 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400';
-      default: return 'bg-primary/10 text-primary';
+      case "message":
+        return "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400";
+      case "meeting":
+        return "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400";
+      case "file":
+        return "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400";
+      case "warning":
+        return "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400";
+      default:
+        return "bg-primary/10 text-primary";
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   if (isLoading || loading) {
     return (
@@ -149,7 +196,9 @@ export default function ClientNotifications() {
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-semibold">התראות</h1>
             {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-xs">{unreadCount} חדשות</Badge>
+              <Badge variant="destructive" className="text-xs">
+                {unreadCount} חדשות
+              </Badge>
             )}
           </div>
           {unreadCount > 0 && (
@@ -167,31 +216,38 @@ export default function ClientNotifications() {
             <CardContent className="py-12 text-center">
               <BellOff className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-muted-foreground">אין התראות</p>
-              <p className="text-xs text-muted-foreground mt-1">כאן יופיעו עדכונים מהצוות</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                כאן יופיעו עדכונים מהצוות
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-2">
-            {notifications.map(notification => (
+            {notifications.map((notification) => (
               <Card
                 key={notification.id}
                 className={`cursor-pointer transition-all hover:shadow-md ${
-                  !notification.is_read ? 'border-primary/30 bg-primary/5' : ''
+                  !notification.is_read ? "border-primary/30 bg-primary/5" : ""
                 }`}
                 onClick={() => {
                   if (!notification.is_read) markAsRead(notification.id);
-                  if (notification.action_url) navigate(notification.action_url);
+                  if (notification.action_url)
+                    navigate(notification.action_url);
                 }}
               >
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
-                    <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${getTypeColor(notification.type)}`}>
+                    <div
+                      className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${getTypeColor(notification.type)}`}
+                    >
                       {getTypeIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className={`text-sm ${!notification.is_read ? 'font-semibold' : 'font-medium'}`}>
+                          <p
+                            className={`text-sm ${!notification.is_read ? "font-semibold" : "font-medium"}`}
+                          >
                             {notification.title}
                           </p>
                           {notification.message && (
@@ -205,7 +261,10 @@ export default function ClientNotifications() {
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: he })}
+                        {formatDistanceToNow(
+                          new Date(notification.created_at),
+                          { addSuffix: true, locale: he },
+                        )}
                       </p>
                     </div>
                   </div>

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Task } from "@/hooks/useTasksOptimized";
 import { cleanTitle, cleanDescription } from "@/utils/cleanDisplayText";
+import { processDedup, getDedupKey } from "@/utils/sortAndDedup";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,9 @@ import {
   ArrowDown,
   AlertCircle,
   GripVertical,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { format, parseISO, isPast, isToday } from "date-fns";
 import { he } from "date-fns/locale";
@@ -230,6 +234,30 @@ export function TasksListView({
   onToggleComplete,
   onReorder,
 }: TasksListViewProps) {
+  const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const toggleDedupGroup = (groupKey: string) => {
+    setExpandedDedupGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
+
+  // Duplicate detection
+  const { visible: visibleTasks, dupMap } = useMemo(
+    () =>
+      processDedup(
+        tasks,
+        (t) => getDedupKey(t.due_date, t.title),
+        expandedDedupGroups,
+      ),
+    [tasks, expandedDedupGroups],
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -261,19 +289,45 @@ export function TasksListView({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={tasks.map((t) => t.id)}
+        items={visibleTasks.map((t) => t.id)}
         strategy={verticalListSortingStrategy}
       >
         <div className="space-y-3">
-          {tasks.map((task, index) => (
-            <SortableTaskItem
-              key={task.id}
-              task={task}
-              index={index}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onToggleComplete={onToggleComplete}
-            />
+          {visibleTasks.map((task, index) => (
+            <React.Fragment key={task.id}>
+              <SortableTaskItem
+                task={task}
+                index={index}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggleComplete={onToggleComplete}
+              />
+              {dupMap.has(task.id) && (
+                <div className="flex justify-center -mt-1 mb-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleDedupGroup(dupMap.get(task.id)!.key)}
+                    className="gap-2 text-xs text-amber-600 hover:text-amber-700"
+                  >
+                    <Layers className="h-4 w-4" />
+                    {expandedDedupGroups.has(dupMap.get(task.id)!.key) ? (
+                      <>
+                        <ChevronUp className="h-3 w-3" />{" "}
+                        \u05d4\u05e1\u05ea\u05e8
+                        \u05db\u05e4\u05d5\u05dc\u05d9\u05dd
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-3 w-3" /> \u05e2\u05d5\u05d3{" "}
+                        {dupMap.get(task.id)!.count - 1}{" "}
+                        \u05db\u05e4\u05d5\u05dc\u05d9\u05dd
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
       </SortableContext>

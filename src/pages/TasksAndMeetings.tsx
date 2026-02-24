@@ -32,7 +32,11 @@ import {
   ClipboardList,
   Loader2,
   Bell,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
+import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import {
   TasksViewToggle,
   TasksListView,
@@ -47,6 +51,7 @@ import {
 } from "@/components/tasks-meetings";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { isPast, parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
@@ -70,11 +75,15 @@ const TasksAndMeetings = () => {
     fetchMeetings,
   } = useMeetings();
 
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "tasks");
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "tasks",
+  );
   const [taskView, setTaskView] = useState<ViewType>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<SortField>("event_date");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -141,6 +150,44 @@ const TasksAndMeetings = () => {
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  // Sort tasks
+  const sortedTasks = sortItems(
+    filteredTasks,
+    sortBy,
+    sortOrder,
+    (task, field) => {
+      switch (field) {
+        case "created_at":
+          return task.created_at;
+        case "event_date":
+          return task.due_date;
+        case "title":
+          return task.title;
+        default:
+          return null;
+      }
+    },
+  );
+
+  // Sort meetings
+  const sortedMeetings = sortItems(
+    filteredMeetings,
+    sortBy,
+    sortOrder,
+    (meeting, field) => {
+      switch (field) {
+        case "created_at":
+          return meeting.created_at;
+        case "event_date":
+          return meeting.start_time;
+        case "title":
+          return meeting.title;
+        default:
+          return null;
+      }
+    },
+  );
 
   // Handlers
   const handleEditTask = (task: Task) => {
@@ -236,6 +283,14 @@ const TasksAndMeetings = () => {
               <Calendar className="h-4 w-4" />
               פגישה חדשה
             </Button>
+            <AddReminderDialog
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Bell className="h-4 w-4" />
+                  תזכורת חדשה
+                </Button>
+              }
+            />
 
             <QuickAddTask
               open={taskDialogOpen}
@@ -333,6 +388,41 @@ const TasksAndMeetings = () => {
                 </Select>
               </>
             )}
+
+            {activeTab !== "reminders" && (
+              <>
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) => setSortBy(v as SortField)}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <ArrowUpDown className="h-4 w-4 ml-2" />
+                    <SelectValue placeholder="מיון" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at">תאריך יצירה</SelectItem>
+                    <SelectItem value="event_date">
+                      {activeTab === "tasks" ? "תאריך יעד" : "מועד פגישה"}
+                    </SelectItem>
+                    <SelectItem value="title">שם</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                  }
+                  title={sortOrder === "asc" ? "סדר עולה" : "סדר יורד"}
+                >
+                  {sortOrder === "asc" ? (
+                    <ArrowUp className="h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Tasks Content */}
@@ -345,7 +435,7 @@ const TasksAndMeetings = () => {
               <>
                 {taskView === "list" && (
                   <TasksListView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
@@ -353,7 +443,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "grid" && (
                   <TasksGridView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
@@ -361,7 +451,7 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "kanban" && (
                   <TasksKanbanView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onStatusChange={handleStatusChange}
@@ -369,16 +459,16 @@ const TasksAndMeetings = () => {
                 )}
                 {taskView === "calendar" && (
                   <TasksCalendarView
-                    tasks={filteredTasks}
-                    meetings={filteredMeetings}
+                    tasks={sortedTasks}
+                    meetings={sortedMeetings}
                     onTaskClick={handleEditTask}
                     onMeetingClick={handleEditMeeting}
                   />
                 )}
                 {taskView === "timeline" && (
                   <TasksTimelineView
-                    tasks={filteredTasks}
-                    meetings={filteredMeetings}
+                    tasks={sortedTasks}
+                    meetings={sortedMeetings}
                     onTaskEdit={handleEditTask}
                     onTaskDelete={handleDeleteTask}
                     onMeetingEdit={handleEditMeeting}
@@ -397,7 +487,7 @@ const TasksAndMeetings = () => {
               </div>
             ) : (
               <MeetingsListView
-                meetings={filteredMeetings}
+                meetings={sortedMeetings}
                 onEdit={handleEditMeeting}
                 onDelete={handleDeleteMeeting}
               />

@@ -39,6 +39,7 @@ import {
 import { format, setHours, setMinutes, addHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { NotificationOptions } from './NotificationOptions';
+import { InlineReminderSection } from '@/components/reminders/InlineReminderSection';
 
 // Sidebar colors
 const sidebarColors = {
@@ -403,6 +404,15 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 />
               </div>
             </div>
+
+            {/* Reminder & Calendar Sync */}
+            <InlineReminderSection
+              entityType="meeting"
+              entityTitle={title}
+              entityDate={date}
+              entityDescription={description}
+              entityLocation={location}
+            />
 
             {/* Notification Options */}
             {clients.length > 0 && (

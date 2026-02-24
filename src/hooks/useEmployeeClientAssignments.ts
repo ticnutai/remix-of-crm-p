@@ -4,7 +4,10 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 
 interface EmployeeClientAssignment {
   id: string;
@@ -18,7 +21,9 @@ interface EmployeeClientAssignment {
 const TABLE_NAME = "employee_client_assignments";
 
 export function useEmployeeClientAssignments() {
-  const [assignments, setAssignments] = useState<EmployeeClientAssignment[]>([]);
+  const [assignments, setAssignments] = useState<EmployeeClientAssignment[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch all assignments for a specific employee
@@ -30,13 +35,15 @@ export function useEmployeeClientAssignments() {
 
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase
-        .from(TABLE_NAME as any) as any)
+      const { data, error } = await (supabase.from(TABLE_NAME as any) as any)
         .select("*")
         .eq("employee_id", employeeId);
 
       if (error) {
-        if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        if (
+          error.code === "42P01" ||
+          error.message?.includes("does not exist")
+        ) {
           markTableUnavailable(TABLE_NAME);
           setAssignments([]);
           return [];
@@ -64,12 +71,15 @@ export function useEmployeeClientAssignments() {
     }
 
     try {
-      const { data, error } = await (supabase
-        .from(TABLE_NAME as any) as any)
-        .select("*");
+      const { data, error } = await (
+        supabase.from(TABLE_NAME as any) as any
+      ).select("*");
 
       if (error) {
-        if (error.code === "42P01" || error.message?.includes("does not exist")) {
+        if (
+          error.code === "42P01" ||
+          error.message?.includes("does not exist")
+        ) {
           markTableUnavailable(TABLE_NAME);
           return [];
         }
@@ -85,126 +95,140 @@ export function useEmployeeClientAssignments() {
   }, []);
 
   // Assign a client to an employee
-  const assignClient = useCallback(async (
-    employeeId: string,
-    clientId: string,
-    assignedBy?: string,
-    notes?: string
-  ) => {
-    if (!isTableAvailable(TABLE_NAME)) return false;
+  const assignClient = useCallback(
+    async (
+      employeeId: string,
+      clientId: string,
+      assignedBy?: string,
+      notes?: string,
+    ) => {
+      if (!isTableAvailable(TABLE_NAME)) return false;
 
-    try {
-      const { error } = await (supabase
-        .from(TABLE_NAME as any) as any)
-        .insert({
+      try {
+        const { error } = await (
+          supabase.from(TABLE_NAME as any) as any
+        ).insert({
           employee_id: employeeId,
           client_id: clientId,
           assigned_by: assignedBy || null,
           notes: notes || null,
         });
 
-      if (error) {
-        if (error.code === "42P01" || error.message?.includes("does not exist")) {
-          markTableUnavailable(TABLE_NAME);
+        if (error) {
+          if (
+            error.code === "42P01" ||
+            error.message?.includes("does not exist")
+          ) {
+            markTableUnavailable(TABLE_NAME);
+            return false;
+          }
+          // Ignore unique constraint violation (already assigned)
+          if (error.code === "23505") return true;
+          console.error("Error assigning client:", error);
           return false;
         }
-        // Ignore unique constraint violation (already assigned)
-        if (error.code === "23505") return true;
-        console.error("Error assigning client:", error);
+
+        return true;
+      } catch (err) {
+        console.error("Error:", err);
         return false;
       }
-
-      return true;
-    } catch (err) {
-      console.error("Error:", err);
-      return false;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Remove a client assignment from an employee
-  const removeClient = useCallback(async (employeeId: string, clientId: string) => {
-    if (!isTableAvailable(TABLE_NAME)) return false;
+  const removeClient = useCallback(
+    async (employeeId: string, clientId: string) => {
+      if (!isTableAvailable(TABLE_NAME)) return false;
 
-    try {
-      const { error } = await (supabase
-        .from(TABLE_NAME as any) as any)
-        .delete()
-        .eq("employee_id", employeeId)
-        .eq("client_id", clientId);
+      try {
+        const { error } = await (supabase.from(TABLE_NAME as any) as any)
+          .delete()
+          .eq("employee_id", employeeId)
+          .eq("client_id", clientId);
 
-      if (error) {
-        if (error.code === "42P01" || error.message?.includes("does not exist")) {
-          markTableUnavailable(TABLE_NAME);
+        if (error) {
+          if (
+            error.code === "42P01" ||
+            error.message?.includes("does not exist")
+          ) {
+            markTableUnavailable(TABLE_NAME);
+            return false;
+          }
+          console.error("Error removing client assignment:", error);
           return false;
         }
-        console.error("Error removing client assignment:", error);
+
+        return true;
+      } catch (err) {
+        console.error("Error:", err);
         return false;
       }
-
-      return true;
-    } catch (err) {
-      console.error("Error:", err);
-      return false;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Batch update: set exactly these client IDs for an employee
-  const setClientAssignments = useCallback(async (
-    employeeId: string,
-    clientIds: string[],
-    assignedBy?: string
-  ) => {
-    if (!isTableAvailable(TABLE_NAME)) {
-      toast({
-        title: "טבלת הקצאת לקוחות לא זמינה",
-        description: "יש להריץ את המיגרציה קודם",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    try {
-      // First delete all existing assignments for this employee
-      const { error: deleteError } = await (supabase
-        .from(TABLE_NAME as any) as any)
-        .delete()
-        .eq("employee_id", employeeId);
-
-      if (deleteError) {
-        if (deleteError.code === "42P01" || deleteError.message?.includes("does not exist")) {
-          markTableUnavailable(TABLE_NAME);
-          return false;
-        }
-        console.error("Error clearing assignments:", deleteError);
+  const setClientAssignments = useCallback(
+    async (employeeId: string, clientIds: string[], assignedBy?: string) => {
+      if (!isTableAvailable(TABLE_NAME)) {
+        toast({
+          title: "טבלת הקצאת לקוחות לא זמינה",
+          description: "יש להריץ את המיגרציה קודם",
+          variant: "destructive",
+        });
         return false;
       }
 
-      // Then insert new assignments
-      if (clientIds.length > 0) {
-        const rows = clientIds.map(clientId => ({
-          employee_id: employeeId,
-          client_id: clientId,
-          assigned_by: assignedBy || null,
-        }));
+      try {
+        // First delete all existing assignments for this employee
+        const { error: deleteError } = await (
+          supabase.from(TABLE_NAME as any) as any
+        )
+          .delete()
+          .eq("employee_id", employeeId);
 
-        const { error: insertError } = await (supabase
-          .from(TABLE_NAME as any) as any)
-          .insert(rows);
-
-        if (insertError) {
-          console.error("Error inserting assignments:", insertError);
+        if (deleteError) {
+          if (
+            deleteError.code === "42P01" ||
+            deleteError.message?.includes("does not exist")
+          ) {
+            markTableUnavailable(TABLE_NAME);
+            return false;
+          }
+          console.error("Error clearing assignments:", deleteError);
           return false;
         }
-      }
 
-      // Refresh local state
-      await fetchAssignments(employeeId);
-      return true;
-    } catch (err) {
-      console.error("Error:", err);
-      return false;
-    }
-  }, [fetchAssignments]);
+        // Then insert new assignments
+        if (clientIds.length > 0) {
+          const rows = clientIds.map((clientId) => ({
+            employee_id: employeeId,
+            client_id: clientId,
+            assigned_by: assignedBy || null,
+          }));
+
+          const { error: insertError } = await (
+            supabase.from(TABLE_NAME as any) as any
+          ).insert(rows);
+
+          if (insertError) {
+            console.error("Error inserting assignments:", insertError);
+            return false;
+          }
+        }
+
+        // Refresh local state
+        await fetchAssignments(employeeId);
+        return true;
+      } catch (err) {
+        console.error("Error:", err);
+        return false;
+      }
+    },
+    [fetchAssignments],
+  );
 
   return {
     assignments,

@@ -4,7 +4,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { isTableAvailable, markTableUnavailable } from "@/lib/supabaseTableCheck";
+import {
+  isTableAvailable,
+  markTableUnavailable,
+} from "@/lib/supabaseTableCheck";
 
 // All localStorage keys that should be synced to cloud
 const SYNC_KEYS = [
@@ -180,7 +183,12 @@ export function useCloudPreferences() {
 
   // Save preferences to cloud
   const saveToCloud = useCallback(async () => {
-    if (!user?.id || syncInProgress.current || !isTableAvailable("user_preferences")) return;
+    if (
+      !user?.id ||
+      syncInProgress.current ||
+      !isTableAvailable("user_preferences")
+    )
+      return;
 
     // Debounce: don't sync more than once per 2 seconds
     const now = Date.now();

@@ -1,15 +1,34 @@
 // Client Portal - Main Dashboard
-import { useAuth } from '@/hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderKanban, MessageSquare, FileText, Bell, LogOut, CheckCircle, Clock, AlertCircle, CalendarDays, Settings, CreditCard } from 'lucide-react';
-import { format, isFuture, isToday } from 'date-fns';
-import { he } from 'date-fns/locale';
-import PortalNavigation from '@/components/client-portal/PortalNavigation';
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Loader2,
+  FolderKanban,
+  MessageSquare,
+  FileText,
+  Bell,
+  LogOut,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  CalendarDays,
+  Settings,
+  CreditCard,
+} from "lucide-react";
+import { format, isFuture, isToday } from "date-fns";
+import { he } from "date-fns/locale";
+import PortalNavigation from "@/components/client-portal/PortalNavigation";
 
 interface Project {
   id: string;
@@ -70,9 +89,9 @@ export default function ClientPortal() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     } else if (!isLoading && user && !isClient) {
-      navigate('/');
+      navigate("/");
     }
   }, [isLoading, user, isClient, navigate]);
 
@@ -84,39 +103,45 @@ export default function ClientPortal() {
 
   const fetchData = async () => {
     if (!clientId) return;
-    
+
     setLoading(true);
     try {
-      const [projectsRes, messagesRes, filesRes, meetingsRes, notificationsRes] = await Promise.all([
+      const [
+        projectsRes,
+        messagesRes,
+        filesRes,
+        meetingsRes,
+        notificationsRes,
+      ] = await Promise.all([
         supabase
-          .from('projects')
-          .select('id, name, status, priority, start_date, end_date')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false }),
+          .from("projects")
+          .select("id, name, status, priority, start_date, end_date")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false }),
         supabase
-          .from('client_messages')
-          .select('id, message, sender_type, is_read, created_at')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
+          .from("client_messages")
+          .select("id, message, sender_type, is_read, created_at")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
           .limit(5),
         supabase
-          .from('client_files')
-          .select('id, file_name, uploader_type, created_at')
-          .eq('client_id', clientId)
-          .order('created_at', { ascending: false })
+          .from("client_files")
+          .select("id, file_name, uploader_type, created_at")
+          .eq("client_id", clientId)
+          .order("created_at", { ascending: false })
           .limit(5),
         supabase
-          .from('calendar_events')
-          .select('id, title, start_time, end_time, location')
-          .eq('client_id', clientId)
-          .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true })
+          .from("calendar_events")
+          .select("id, title, start_time, end_time, location")
+          .eq("client_id", clientId)
+          .gte("start_time", new Date().toISOString())
+          .order("start_time", { ascending: true })
           .limit(3),
         supabase
-          .from('client_notifications')
-          .select('id, title, is_read')
-          .eq('client_id', clientId)
-          .eq('is_read', false)
+          .from("client_notifications")
+          .select("id, title, is_read")
+          .eq("client_id", clientId)
+          .eq("is_read", false)
           .limit(10),
       ]);
 
@@ -128,19 +153,19 @@ export default function ClientPortal() {
 
       // Fetch project updates
       if (projectsRes.data && projectsRes.data.length > 0) {
-        const projectIds = projectsRes.data.map(p => p.id);
+        const projectIds = projectsRes.data.map((p) => p.id);
         const { data: updatesData } = await supabase
-          .from('project_updates')
-          .select('id, title, content, created_at, project_id')
-          .in('project_id', projectIds)
-          .eq('visible_to_client', true)
-          .order('created_at', { ascending: false })
+          .from("project_updates")
+          .select("id, title, content, created_at, project_id")
+          .in("project_id", projectIds)
+          .eq("visible_to_client", true)
+          .order("created_at", { ascending: false })
           .limit(5);
-        
+
         setUpdates(updatesData || []);
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
@@ -148,22 +173,33 @@ export default function ClientPortal() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/auth');
+    navigate("/auth");
   };
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      'planning': { label: 'תכנון', variant: 'outline' },
-      'active': { label: 'פעיל', variant: 'default' },
-      'on_hold': { label: 'בהמתנה', variant: 'secondary' },
-      'completed': { label: 'הושלם', variant: 'default' },
-      'cancelled': { label: 'בוטל', variant: 'destructive' },
+    const statusMap: Record<
+      string,
+      {
+        label: string;
+        variant: "default" | "secondary" | "destructive" | "outline";
+      }
+    > = {
+      planning: { label: "תכנון", variant: "outline" },
+      active: { label: "פעיל", variant: "default" },
+      on_hold: { label: "בהמתנה", variant: "secondary" },
+      completed: { label: "הושלם", variant: "default" },
+      cancelled: { label: "בוטל", variant: "destructive" },
     };
-    const config = statusMap[status] || { label: status, variant: 'outline' as const };
+    const config = statusMap[status] || {
+      label: status,
+      variant: "outline" as const,
+    };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const unreadMessages = messages.filter(m => !m.is_read && m.sender_type === 'staff').length;
+  const unreadMessages = messages.filter(
+    (m) => !m.is_read && m.sender_type === "staff",
+  ).length;
   const unreadNotifications = notifications.length;
 
   if (isLoading || loading) {
@@ -180,7 +216,11 @@ export default function ClientPortal() {
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/client-portal/settings')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/client-portal/settings")}
+            >
               <Settings className="h-5 w-5" />
             </Button>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
@@ -190,12 +230,16 @@ export default function ClientPortal() {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <h1 className="text-lg font-semibold">שלום, {profile?.full_name || 'לקוח'} 👋</h1>
-              <p className="text-xs text-muted-foreground">ברוך הבא לפורטל הלקוח</p>
+              <h1 className="text-lg font-semibold">
+                שלום, {profile?.full_name || "לקוח"} 👋
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                ברוך הבא לפורטל הלקוח
+              </p>
             </div>
             <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">
-                {(profile?.full_name || '?')[0].toUpperCase()}
+                {(profile?.full_name || "?")[0].toUpperCase()}
               </span>
             </div>
           </div>
@@ -206,7 +250,10 @@ export default function ClientPortal() {
       <main className="container px-4 py-6 space-y-5">
         {/* Quick Stats */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/client-portal/projects')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/projects")}
+          >
             <CardContent className="p-3 text-center">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
                 <FolderKanban className="h-4.5 w-4.5 text-primary" />
@@ -216,7 +263,10 @@ export default function ClientPortal() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/client-portal/messages')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/messages")}
+          >
             <CardContent className="p-3 text-center relative">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1 relative">
                 <MessageSquare className="h-4.5 w-4.5 text-primary" />
@@ -231,7 +281,10 @@ export default function ClientPortal() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/client-portal/files')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/files")}
+          >
             <CardContent className="p-3 text-center">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
                 <FileText className="h-4.5 w-4.5 text-primary" />
@@ -241,7 +294,10 @@ export default function ClientPortal() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/client-portal/meetings')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/meetings")}
+          >
             <CardContent className="p-3 text-center">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1">
                 <CalendarDays className="h-4.5 w-4.5 text-primary" />
@@ -251,7 +307,10 @@ export default function ClientPortal() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/client-portal/notifications')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/notifications")}
+          >
             <CardContent className="p-3 text-center relative">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-1 relative">
                 <Bell className="h-4.5 w-4.5 text-primary" />
@@ -287,23 +346,36 @@ export default function ClientPortal() {
                   פגישות קרובות
                 </CardTitle>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/client-portal/meetings')}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/client-portal/meetings")}
+              >
                 הכל
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {upcomingMeetings.map(meeting => (
-                  <div key={meeting.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                {upcomingMeetings.map((meeting) => (
+                  <div
+                    key={meeting.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
                     <div>
                       <p className="font-medium text-sm">{meeting.title}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(meeting.start_time), 'EEEE dd/MM, HH:mm', { locale: he })}
+                        {format(
+                          new Date(meeting.start_time),
+                          "EEEE dd/MM, HH:mm",
+                          { locale: he },
+                        )}
                       </p>
                     </div>
                     {isToday(new Date(meeting.start_time)) && (
-                      <Badge variant="default" className="text-xs">היום</Badge>
+                      <Badge variant="default" className="text-xs">
+                        היום
+                      </Badge>
                     )}
                   </div>
                 ))}
@@ -317,28 +389,42 @@ export default function ClientPortal() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="text-right">
               <CardTitle className="text-base">הפרויקטים שלי</CardTitle>
-              <CardDescription className="text-xs">סטטוס והתקדמות</CardDescription>
+              <CardDescription className="text-xs">
+                סטטוס והתקדמות
+              </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate('/client-portal/projects')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/client-portal/projects")}
+            >
               הכל
             </Button>
           </CardHeader>
           <CardContent>
             {projects.length === 0 ? (
-              <p className="text-muted-foreground text-center py-6 text-sm">אין פרויקטים להצגה</p>
+              <p className="text-muted-foreground text-center py-6 text-sm">
+                אין פרויקטים להצגה
+              </p>
             ) : (
               <div className="space-y-2">
-                {projects.slice(0, 3).map(project => (
-                  <div key={project.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                {projects.slice(0, 3).map((project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
                     <div>
                       <p className="font-medium text-sm">{project.name}</p>
                       {project.end_date && (
                         <p className="text-xs text-muted-foreground">
-                          סיום: {format(new Date(project.end_date), 'dd/MM/yyyy', { locale: he })}
+                          סיום:{" "}
+                          {format(new Date(project.end_date), "dd/MM/yyyy", {
+                            locale: he,
+                          })}
                         </p>
                       )}
                     </div>
-                    {getStatusBadge(project.status || 'planning')}
+                    {getStatusBadge(project.status || "planning")}
                   </div>
                 ))}
               </div>
@@ -351,20 +437,31 @@ export default function ClientPortal() {
           <Card>
             <CardHeader className="text-right pb-2">
               <CardTitle className="text-base">עדכונים אחרונים</CardTitle>
-              <CardDescription className="text-xs">עדכוני סטטוס מהצוות</CardDescription>
+              <CardDescription className="text-xs">
+                עדכוני סטטוס מהצוות
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {updates.map(update => (
-                  <div key={update.id} className="p-3 rounded-lg border text-right">
+                {updates.map((update) => (
+                  <div
+                    key={update.id}
+                    className="p-3 rounded-lg border text-right"
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-medium text-sm">{update.title}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        {format(new Date(update.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+                        {format(
+                          new Date(update.created_at),
+                          "dd/MM/yyyy HH:mm",
+                          { locale: he },
+                        )}
                       </p>
                     </div>
                     {update.content && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{update.content}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {update.content}
+                      </p>
                     )}
                   </div>
                 ))}
@@ -375,27 +472,50 @@ export default function ClientPortal() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pb-20">
-          <Button className="h-auto py-3" onClick={() => navigate('/client-portal/messages')}>
+          <Button
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/messages")}
+          >
             <MessageSquare className="h-4 w-4 ml-1" />
             שלח הודעה
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/files')}>
+          <Button
+            variant="outline"
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/files")}
+          >
             <FileText className="h-4 w-4 ml-1" />
             העלה קובץ
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/meetings')}>
+          <Button
+            variant="outline"
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/meetings")}
+          >
             <CalendarDays className="h-4 w-4 ml-1" />
             בקש פגישה
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/payments')}>
+          <Button
+            variant="outline"
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/payments")}
+          >
             <CreditCard className="h-4 w-4 ml-1" />
             תשלומים
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/projects')}>
+          <Button
+            variant="outline"
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/projects")}
+          >
             <FolderKanban className="h-4 w-4 ml-1" />
             צפה בתיקים
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/settings')}>
+          <Button
+            variant="outline"
+            className="h-auto py-3"
+            onClick={() => navigate("/client-portal/settings")}
+          >
             <Settings className="h-4 w-4 ml-1" />
             הגדרות
           </Button>
