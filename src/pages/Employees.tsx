@@ -134,6 +134,10 @@ const roleConfig = {
   },
 };
 
+const defaultRoleConfig = { label: "עובד", icon: User, color: "bg-muted text-muted-foreground" };
+const getRoleConfig = (role: string | undefined | null) =>
+  roleConfig[role as keyof typeof roleConfig] ?? defaultRoleConfig;
+
 export default function Employees() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, isAdmin, isManager, roles } = useAuth();
@@ -863,7 +867,7 @@ export default function Employees() {
       accessorKey: "role",
       sortable: true,
       cell: (value) => {
-        const config = roleConfig[value as keyof typeof roleConfig];
+        const config = getRoleConfig(value as string);
         const Icon = config.icon;
         return (
           <Badge className={config.color}>
@@ -995,7 +999,7 @@ export default function Employees() {
     <MobileCard
       key={employee.id}
       title={employee.full_name}
-      subtitle={`${roleConfig[employee.role].label} • ${employee.email}`}
+      subtitle={`${getRoleConfig(employee.role).label} • ${employee.email}`}
       status={{
         label: employee.is_active ? "פעיל" : "לא פעיל",
         variant: employee.is_active ? "default" : "secondary",
@@ -1077,11 +1081,11 @@ export default function Employees() {
               </p>
             </div>
           </div>
-          <Badge className={roleConfig[employee.role].color}>
-            {React.createElement(roleConfig[employee.role].icon, {
+          <Badge className={getRoleConfig(employee.role).color}>
+            {React.createElement(getRoleConfig(employee.role).icon, {
               className: "h-3 w-3 ml-1",
             })}
-            {roleConfig[employee.role].label}
+            {getRoleConfig(employee.role).label}
           </Badge>
         </div>
         <div className="flex items-center justify-between text-sm">
@@ -1126,8 +1130,8 @@ export default function Employees() {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Badge className={roleConfig[employee.role].color}>
-          {roleConfig[employee.role].label}
+        <Badge className={getRoleConfig(employee.role).color}>
+          {getRoleConfig(employee.role).label}
         </Badge>
         <Badge
           variant={employee.is_active ? "default" : "secondary"}
@@ -1152,8 +1156,8 @@ export default function Employees() {
         </span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Badge variant="outline" className={roleConfig[employee.role].color}>
-          {roleConfig[employee.role].label}
+        <Badge variant="outline" className={getRoleConfig(employee.role).color}>
+          {getRoleConfig(employee.role).label}
         </Badge>
         <div
           className={`w-2 h-2 rounded-full ${employee.is_active ? "bg-success" : "bg-muted-foreground"}`}
