@@ -672,21 +672,54 @@ export default function Files() {
     }
   };
 
-  // Keyboard shortcuts: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y redo
+  // Keyboard shortcuts: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y redo, Ctrl+A selectAll, Delete, F2 rename, Escape
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const ctrl = e.ctrlKey || e.metaKey;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      // Ctrl+V paste
       if (ctrl && e.key === "v" && copiedFile) { e.preventDefault(); handlePasteFile(); }
+      // Ctrl+X cut
       if (ctrl && e.key === "x" && selectedLocalFile) { e.preventDefault(); handleCutFile(selectedLocalFile, "local"); }
+      // Ctrl+C copy
       if (ctrl && e.key === "c" && selectedLocalFile) { e.preventDefault(); handleCopyFile(selectedLocalFile, "local"); }
-      if (ctrl && e.key === "z") { e.preventDefault(); handleUndo(); }
+      // Ctrl+Z undo
+      if (ctrl && e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      // Ctrl+Y / Ctrl+Shift+Z redo
       if (ctrl && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); handleRedo(); }
+      // Ctrl+A select all
+      if (ctrl && e.key === "a") {
+        e.preventDefault();
+        if (activeTab === "local") { if (!isMultiSelectMode) setIsMultiSelectMode(true); selectAllLocalFiles(); }
+        else if (activeTab === "drive") { if (!isMultiSelectMode) setIsMultiSelectMode(true); selectAllDriveFiles(); }
+      }
+      // Delete key — delete selected files
+      if (e.key === "Delete") {
+        if (activeTab === "local" && selectedLocalFiles.size > 0) {
+          setDeleteConfirm({ open: true, type: "bulk-local", name: `${selectedLocalFiles.size} קבצים` });
+        } else if (activeTab === "drive" && selectedDriveFiles.size > 0) {
+          setDeleteConfirm({ open: true, type: "bulk-drive", name: `${selectedDriveFiles.size} קבצים` });
+        } else if (selectedLocalFile) {
+          handleDeleteLocalFile(selectedLocalFile);
+        }
+      }
+      // F2 — rename selected file
+      if (e.key === "F2" && selectedLocalFile) {
+        e.preventDefault();
+        openRenameDialog(selectedLocalFile, "local");
+      }
+      // Escape — clear selection
+      if (e.key === "Escape") {
+        if (copiedFile) { setCopiedFile(null); setCopiedFileType(null); setIsCutMode(false); toast({ title: "בוטל", duration: 1000 }); }
+        else if (isMultiSelectMode) { clearSelections(); }
+        else if (selectedLocalFile) { setSelectedLocalFile(null); }
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [copiedFile, copiedFileType, isCutMode, selectedLocalFile, undoStack, redoStack]);
+  }, [copiedFile, copiedFileType, isCutMode, selectedLocalFile, undoStack, redoStack, activeTab, isMultiSelectMode, selectedLocalFiles, selectedDriveFiles]);
 
   // Multi-select functions
   const toggleDriveFileSelection = useCallback((fileId: string) => {
