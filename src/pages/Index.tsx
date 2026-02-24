@@ -255,7 +255,14 @@ const clientColumns: ColumnDef<Client>[] = [
 // Dashboard Content Component
 function DashboardContent() {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, profile } = useAuth();
+  const { user, isLoading: authLoading, profile, isClient } = useAuth();
+
+  // Redirect client users to the client portal
+  useEffect(() => {
+    if (!authLoading && isClient) {
+      navigate('/client-portal', { replace: true });
+    }
+  }, [authLoading, isClient, navigate]);
   const [clients, setClients] = useState(initialClients);
   const { pushAction } = useUndoRedo();
   const { createBackup, backups, exportBackup, restoreBackup } =
