@@ -528,6 +528,15 @@ export function useGoogleCalendar() {
         return fetchedEvents;
       } catch (error: any) {
         console.error("Failed to fetch events:", error);
+        // Handle auth errors (401/403) — clear token so we don't keep retrying
+        const status = error?.status || error?.code || error?.result?.error?.code;
+        if (status === 401 || status === 403) {
+          console.warn("[GoogleCalendar] Auth error", status, "— clearing token");
+          clearTokenFromStorage();
+          setIsConnected(false);
+          // Don't show a toast here to avoid spamming on repeated failures
+          return [];
+        }
         toast({
           title: "שגיאה בטעינת אירועים",
           description: error.message || "נסה שוב",

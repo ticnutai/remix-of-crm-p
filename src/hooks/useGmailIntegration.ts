@@ -156,6 +156,19 @@ export function useGmailIntegration() {
         const listResponse = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        // Handle auth errors — clear stored token so the app doesn't keep
+        // hammering the API with an invalid/insufficient-scopes token
+        if (listResponse.status === 401 || listResponse.status === 403) {
+          console.warn(`📧 Gmail auth error ${listResponse.status} — clearing stored token`);
+          localStorage.removeItem("google_services_token");
+          localStorage.removeItem("google_services_token_expiry");
+          localStorage.removeItem("google_services_scopes");
+          setIsLoading(false);
+          setIsLoadingMore(false);
+          return [];
+        }
+
         const listData = await listResponse.json();
 
         // Save next page token for pagination

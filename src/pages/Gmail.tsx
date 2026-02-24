@@ -879,40 +879,58 @@ export default function Gmail() {
     [gmailAccounts, fetchEmails, fetchEmailsWithToken, setMessages],
   );
 
+  // Stable refs so the autoload effect doesn't need fetchEmails/fetchFromAllAccounts
+  // in its dependency array (their identity changes on every render due to toast recreation)
+  const fetchEmailsRef = useRef(fetchEmails);
+  useEffect(() => { fetchEmailsRef.current = fetchEmails; }, [fetchEmails]);
+  const fetchFromAllAccountsRef = useRef(fetchFromAllAccounts);
+  useEffect(() => { fetchFromAllAccountsRef.current = fetchFromAllAccounts; }, [fetchFromAllAccounts]);
+
+  // Guard ref: set to true the instant we begin loading — prevents concurrent calls
+  // even when React batches state updates or the effect re-fires before isLoading flips
+  const loadAttemptedRef = useRef(false);
+
   // Auto-load emails if already connected (with cache)
   useEffect(() => {
     const hasMultiAccounts = gmailAccounts.accounts.length > 0;
     const shouldLoad =
-      (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading;
+      (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading && !loadAttemptedRef.current;
 
     if (shouldLoad) {
+      // Mark as attempted immediately (before any async work) to prevent re-entry
+      loadAttemptedRef.current = true;
+
       // Check cache first for instant display
       const cached = gmailCache.getCachedMessages();
       if (cached && cached.length > 0) {
         // We have cached data, show it immediately and refresh in background
         setHasLoaded(true);
         if (hasMultiAccounts) {
-          fetchFromAllAccounts(50).then((freshMsgs) => {
+          fetchFromAllAccountsRef.current(50).then((freshMsgs) => {
             if (freshMsgs && freshMsgs.length > 0) {
               gmailCache.cacheMessages(freshMsgs);
             }
+            // Allow future manual refreshes by re-enabling the ref
+            loadAttemptedRef.current = false;
           });
         } else {
-          fetchEmails(50).then((freshMsgs) => {
+          fetchEmailsRef.current(50).then((freshMsgs) => {
             if (freshMsgs && freshMsgs.length > 0) {
               gmailCache.cacheMessages(freshMsgs);
             }
+            loadAttemptedRef.current = false;
           });
         }
       } else {
         const fetchFn = hasMultiAccounts
-          ? fetchFromAllAccounts(50)
-          : fetchEmails(50);
+          ? fetchFromAllAccountsRef.current(50)
+          : fetchEmailsRef.current(50);
         fetchFn.then((msgs) => {
           if (msgs && msgs.length > 0) {
             gmailCache.cacheMessages(msgs);
           }
           setHasLoaded(true);
+          loadAttemptedRef.current = false;
         });
       }
     }
@@ -920,10 +938,11 @@ export default function Gmail() {
     isConnected,
     hasLoaded,
     isLoading,
-    fetchEmails,
-    fetchFromAllAccounts,
     gmailCache,
     gmailAccounts.accounts.length,
+    // fetchEmails and fetchFromAllAccounts intentionally omitted:
+    // their references change every render (toast identity instability).
+    // We use fetchEmailsRef / fetchFromAllAccountsRef for the actual calls.
   ]);
 
   // Background pre-fetch email bodies after list loads
