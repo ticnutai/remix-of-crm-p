@@ -883,11 +883,19 @@ export function useAdvancedFiles() {
         setFiles(files);
       } catch (error: any) {
         console.error("Error loading files:", error);
+        // build a human-readable message from the actual Supabase error
+        const supaMsg: string =
+          error?.message ||
+          error?.error_description ||
+          error?.details ||
+          "";
         const msg = !navigator.onLine
           ? "אין חיבור לאינטרנט — לא ניתן לטעון קבצים"
+          : supaMsg
+          ? `שגיאת שרת: ${supaMsg}`
           : "שגיאה בטעינת הקבצים מהשרת";
         setLoadError(msg);
-        toast({ title: "שגיאה", description: msg, variant: "destructive" });
+        toast({ title: "שגיאה בטעינת קבצים", description: msg, variant: "destructive" });
       } finally {
         setIsLoading(false);
       }

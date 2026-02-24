@@ -2392,8 +2392,16 @@ export default function Files() {
                   ) : advancedFiles.files.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                      <p>אין קבצים מקומיים</p>
+                      <p className="font-medium">אין קבצים מקומיים</p>
                       <p className="text-sm mt-2">העלה קבצים כדי להתחיל</p>
+                      {user && (
+                        <p className="text-xs mt-3 text-muted-foreground/70 max-w-xs mx-auto">
+                          אם העלית קבצים ישירות לדאטהבייס — הרץ את ה-SQL הבא ב-Supabase Dashboard:<br/>
+                          <code className="text-xs bg-muted rounded px-1 mt-1 inline-block break-all">
+                            {`UPDATE file_metadata SET uploaded_by = '${user.id}' WHERE uploaded_by IS NULL;`}
+                          </code>
+                        </p>
+                      )}
                       <Button
                         onClick={() => setShowLocalUploadDialog(true)}
                         className="mt-4"
