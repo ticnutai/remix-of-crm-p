@@ -52,6 +52,7 @@ import {
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
+import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { isPast, parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
@@ -271,6 +272,7 @@ const TasksAndMeetings = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <DedupToggleButton />
             <Button className="gap-2" onClick={() => setTaskDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               משימה חדשה

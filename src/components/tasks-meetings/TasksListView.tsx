@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Task } from "@/hooks/useTasksOptimized";
 import { cleanTitle, cleanDescription } from "@/utils/cleanDisplayText";
 import { processDedup, getDedupKey } from "@/utils/sortAndDedup";
+import { useDedup } from "@/contexts/DedupContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -234,6 +235,7 @@ export function TasksListView({
   onToggleComplete,
   onReorder,
 }: TasksListViewProps) {
+  const { showDuplicates, setDuplicateCount } = useDedup();
   const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
     new Set(),
   );
@@ -247,16 +249,25 @@ export function TasksListView({
     });
   };
 
-  // Duplicate detection
-  const { visible: visibleTasks, dupMap } = useMemo(
-    () =>
-      processDedup(
-        tasks,
-        (t) => getDedupKey(t.due_date, t.title),
-        expandedDedupGroups,
-      ),
-    [tasks, expandedDedupGroups],
-  );
+  // Duplicate detection (global toggle controls whether to apply it)
+  const { visible: visibleTasks, dupMap } = useMemo(() => {
+    if (showDuplicates) {
+      return {
+        visible: tasks,
+        dupMap: new Map<string, { count: number; key: string }>(),
+      };
+    }
+    return processDedup(
+      tasks,
+      (t) => getDedupKey(t.due_date, t.title),
+      expandedDedupGroups,
+    );
+  }, [tasks, expandedDedupGroups, showDuplicates]);
+
+  // Report duplicate count to global context
+  useEffect(() => {
+    setDuplicateCount(dupMap.size);
+  }, [dupMap.size, setDuplicateCount]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),

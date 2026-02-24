@@ -53,6 +53,8 @@ import {
   CalendarRange,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDedup } from "@/contexts/DedupContext";
+import { DedupToggleButton } from "@/components/DedupToggleButton";
 import {
   format,
   startOfMonth,
@@ -204,16 +206,14 @@ const Calendar = () => {
     if (!user || !isTableAvailable("user_preferences")) return;
     const timer = setTimeout(async () => {
       try {
-        const { error } = await supabase
-          .from("user_preferences")
-          .upsert(
-            {
-              user_id: user.id,
-              view_preferences: { calendar_view: viewType } as any,
-              updated_at: new Date().toISOString(),
-            } as any,
-            { onConflict: "user_id" },
-          );
+        const { error } = await supabase.from("user_preferences").upsert(
+          {
+            user_id: user.id,
+            view_preferences: { calendar_view: viewType } as any,
+            updated_at: new Date().toISOString(),
+          } as any,
+          { onConflict: "user_id" },
+        );
         if (error) markTableUnavailable("user_preferences");
       } catch {}
     }, 800);
@@ -239,6 +239,8 @@ const Calendar = () => {
   // Google Calendar settings dialog state
   const [googleSettingsOpen, setGoogleSettingsOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const { showDuplicates } = useDedup();
 
   // Shared data for forms
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
@@ -342,11 +344,13 @@ const Calendar = () => {
     if (timeRes.data) setTimeEntries(timeRes.data as TimeEntry[]);
     if (meetingsRes.data) {
       const rawMeetings = meetingsRes.data as Meeting[];
-      const dedupedMeetings = dedupeByKey(
-        rawMeetings,
-        (m) =>
-          `${m.title.trim().toLowerCase()}|${m.start_time.slice(0, 16)}|${m.end_time.slice(0, 16)}`,
-      );
+      const dedupedMeetings = showDuplicates
+        ? rawMeetings
+        : dedupeByKey(
+            rawMeetings,
+            (m) =>
+              `${m.title.trim().toLowerCase()}|${m.start_time.slice(0, 16)}|${m.end_time.slice(0, 16)}`,
+          );
       if (dedupedMeetings.length < rawMeetings.length) {
         console.warn(
           `[Calendar] Removed ${rawMeetings.length - dedupedMeetings.length} duplicate meetings from render`,
@@ -356,10 +360,13 @@ const Calendar = () => {
     }
     if (tasksRes.data) {
       const rawTasks = tasksRes.data as Task[];
-      const dedupedTasks = dedupeByKey(
-        rawTasks,
-        (t) => `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`,
-      );
+      const dedupedTasks = showDuplicates
+        ? rawTasks
+        : dedupeByKey(
+            rawTasks,
+            (t) =>
+              `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`,
+          );
       if (dedupedTasks.length < rawTasks.length) {
         console.warn(
           `[Calendar] Removed ${rawTasks.length - dedupedTasks.length} duplicate tasks from render`,
@@ -369,10 +376,13 @@ const Calendar = () => {
     }
     if (remindersRes.data) {
       const rawReminders = remindersRes.data as Reminder[];
-      const dedupedReminders = dedupeByKey(
-        rawReminders,
-        (r) => `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`,
-      );
+      const dedupedReminders = showDuplicates
+        ? rawReminders
+        : dedupeByKey(
+            rawReminders,
+            (r) =>
+              `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`,
+          );
       if (dedupedReminders.length < rawReminders.length) {
         console.warn(
           `[Calendar] Removed ${rawReminders.length - dedupedReminders.length} duplicate reminders from render`,
@@ -385,7 +395,7 @@ const Calendar = () => {
 
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, currentMonth]);
+  }, [user?.id, currentMonth, showDuplicates]);
 
   useEffect(() => {
     if (user) {
@@ -563,7 +573,12 @@ const Calendar = () => {
     const durationMs = originalEnd.getTime() - originalStart.getTime();
 
     const newStart = new Date(targetDate);
-    newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+    newStart.setHours(
+      originalStart.getHours(),
+      originalStart.getMinutes(),
+      0,
+      0,
+    );
     const newEnd = new Date(newStart.getTime() + durationMs);
 
     const { error } = await supabase
@@ -1080,6 +1095,7 @@ const Calendar = () => {
 
         {/* Bottom row: Actions */}
         <div className="flex items-center justify-end gap-2">
+          <DedupToggleButton />
           {/* Google Calendar Indicator */}
           <GoogleCalendarIndicator
             isConnected={isGoogleConnected}

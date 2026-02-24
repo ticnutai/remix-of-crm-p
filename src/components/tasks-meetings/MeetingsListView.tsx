@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Meeting } from "@/hooks/useMeetingsOptimized";
 import { cleanTitle, cleanDescription } from "@/utils/cleanDisplayText";
 import { processDedup, getDedupKey } from "@/utils/sortAndDedup";
+import { useDedup } from "@/contexts/DedupContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export function MeetingsListView({
   onEdit,
   onDelete,
 }: MeetingsListViewProps) {
+  const { showDuplicates, setDuplicateCount } = useDedup();
   const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
     new Set(),
   );
@@ -60,16 +62,34 @@ export function MeetingsListView({
     });
   };
 
+  // When global mode is "show all", always expand everything; otherwise apply dedup
+  const effectiveExpanded = useMemo(() => {
+    if (showDuplicates) {
+      // Return a set that will make processDedup expand every group
+      return new Set<string>(["__all__"]);
+    }
+    return expandedDedupGroups;
+  }, [showDuplicates, expandedDedupGroups]);
+
   // Apply duplicate detection
-  const { visible: visibleMeetings, dupMap } = useMemo(
-    () =>
-      processDedup(
-        meetings,
-        (m) => getDedupKey(m.start_time, m.title),
-        expandedDedupGroups,
-      ),
-    [meetings, expandedDedupGroups],
-  );
+  const { visible: visibleMeetings, dupMap } = useMemo(() => {
+    if (showDuplicates) {
+      return {
+        visible: meetings,
+        dupMap: new Map<string, { count: number; key: string }>(),
+      };
+    }
+    return processDedup(
+      meetings,
+      (m) => getDedupKey(m.start_time, m.title),
+      expandedDedupGroups,
+    );
+  }, [meetings, expandedDedupGroups, showDuplicates]);
+
+  // Report duplicate count up to global context
+  useEffect(() => {
+    setDuplicateCount(dupMap.size);
+  }, [dupMap.size, setDuplicateCount]);
 
   if (meetings.length === 0) {
     return (

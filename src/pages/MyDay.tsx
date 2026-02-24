@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/display-options";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { useDedup } from "@/contexts/DedupContext";
 import {
   Dialog,
   DialogContent,
@@ -515,10 +517,30 @@ export default function MyDay() {
 
   const greeting = getGreeting();
   const GreetingIcon = greeting.icon;
+  const { showDuplicates } = useDedup();
 
-  // Stats
-  const totalTasks = tasks.length;
-  const pendingMeetings = meetings.filter(
+  // Client-side dedup for meetings and tasks (extra safety layer)
+  const visibleMeetings = React.useMemo(() => {
+    if (showDuplicates) return meetings;
+    const seen = new Map<string, (typeof meetings)[0]>();
+    meetings.forEach((m) => {
+      const key = `${m.title.trim().toLowerCase()}|${m.start_time?.slice(0, 16) ?? ""}`;
+      if (!seen.has(key)) seen.set(key, m);
+    });
+    return Array.from(seen.values());
+  }, [meetings, showDuplicates]);
+
+  const visibleTasks = React.useMemo(() => {
+    if (showDuplicates) return tasks;
+    const seen = new Map<string, (typeof tasks)[0]>();
+    tasks.forEach((t) => {
+      const key = `${t.title.trim().toLowerCase()}|${(t.due_date ?? "").slice(0, 10)}`;
+      if (!seen.has(key)) seen.set(key, t);
+    });
+    return Array.from(seen.values());
+  }, [tasks, showDuplicates]);
+  const totalTasks = visibleTasks.length;
+  const pendingMeetings = visibleMeetings.filter(
     (m) => m.status === "scheduled",
   ).length;
   const totalTimeMinutes = timeEntries.reduce(
@@ -554,6 +576,7 @@ export default function MyDay() {
               </p>
             </div>
           </div>
+          <DedupToggleButton />
         </div>
 
         {/* Quick Stats */}
@@ -633,7 +656,7 @@ export default function MyDay() {
               </div>
             </CardHeader>
             <CardContent>
-              {meetings.length === 0 ? (
+              {visibleMeetings.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין פגישות מתוכננות להיום</p>
@@ -646,7 +669,7 @@ export default function MyDay() {
                       : "space-y-3",
                   )}
                 >
-                  {meetings.map((meeting) => {
+                  {visibleMeetings.map((meeting) => {
                     const MeetingIcon =
                       meetingTypeIcons[
                         meeting.meeting_type as keyof typeof meetingTypeIcons
@@ -728,7 +751,7 @@ export default function MyDay() {
               </div>
             </CardHeader>
             <CardContent>
-              {tasks.length === 0 ? (
+              {visibleTasks.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין משימות פתוחות</p>
@@ -741,7 +764,7 @@ export default function MyDay() {
                       : "space-y-2",
                   )}
                 >
-                  {tasks.slice(0, 6).map((task) => {
+                  {visibleTasks.slice(0, 6).map((task) => {
                     const PriorityIcon =
                       priorityIcons[
                         task.priority as keyof typeof priorityIcons
@@ -813,13 +836,13 @@ export default function MyDay() {
                       </HoverItemWrapper>
                     );
                   })}
-                  {tasks.length > 6 && (
+                  {visibleTasks.length > 6 && (
                     <Button
                       variant="ghost"
                       className="w-full"
                       onClick={() => navigate("/tasks")}
                     >
-                      עוד {tasks.length - 6} משימות...
+                      עוד {visibleTasks.length - 6} משימות...
                     </Button>
                   )}
                 </div>
@@ -853,8 +876,16 @@ export default function MyDay() {
                   {reminders.map((reminder) => (
                     <HoverItemWrapper
                       key={reminder.id}
-                      onClick={() => navigate(`/tasks-meetings?tab=reminders&id=${reminder.id}`)}
-                      onEdit={() => navigate(`/tasks-meetings?tab=reminders&edit=${reminder.id}`)}
+                      onClick={() =>
+                        navigate(
+                          `/tasks-meetings?tab=reminders&id=${reminder.id}`,
+                        )
+                      }
+                      onEdit={() =>
+                        navigate(
+                          `/tasks-meetings?tab=reminders&edit=${reminder.id}`,
+                        )
+                      }
                       onDelete={() => handleDeleteReminder(reminder.id)}
                       className="rounded-lg"
                     >
