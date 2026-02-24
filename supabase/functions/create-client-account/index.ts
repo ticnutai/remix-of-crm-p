@@ -98,11 +98,10 @@ serve(async (req) => {
 
     const userId = userData.user.id;
 
-    // Set role to 'client'
+    // Set role to 'client' (upsert - new users won't have a row yet)
     await supabaseAdmin
       .from("user_roles")
-      .update({ role: "client" })
-      .eq("user_id", userId);
+      .upsert({ user_id: userId, role: "client" }, { onConflict: "user_id,role" });
 
     // Link user to client record
     await supabaseAdmin

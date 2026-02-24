@@ -1,7 +1,8 @@
 // Client Portal - Bottom Navigation Component
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, FolderKanban, MessageSquare, FileImage, CalendarDays, Bell, Settings } from 'lucide-react';
+import { Home, FolderKanban, MessageSquare, FileImage, CalendarDays, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePortalUnreadCounts } from '@/hooks/usePortalUnreadCounts';
 
 interface NavItem {
   path: string;
@@ -19,14 +20,10 @@ const navItems: NavItem[] = [
   { path: '/client-portal/notifications', icon: <Bell className="h-5 w-5" />, label: 'התראות', badgeKey: 'notifications' },
 ];
 
-interface PortalNavigationProps {
-  unreadMessages?: number;
-  unreadNotifications?: number;
-}
-
-export default function PortalNavigation({ unreadMessages = 0, unreadNotifications = 0 }: PortalNavigationProps) {
+export default function PortalNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { unreadMessages, unreadNotifications } = usePortalUnreadCounts();
 
   const isActive = (path: string) => {
     if (path === '/client-portal') {
@@ -43,7 +40,7 @@ export default function PortalNavigation({ unreadMessages = 0, unreadNotificatio
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t shadow-lg safe-area-bottom" dir="rtl">
-      <div className={`grid grid-cols-${navItems.length} h-16`} style={{ gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }}>
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }}>
         {navItems.map((item) => {
           const active = isActive(item.path);
           const badgeCount = getBadgeCount(item);

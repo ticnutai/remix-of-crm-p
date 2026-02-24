@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FolderKanban, MessageSquare, FileText, Bell, LogOut, CheckCircle, Clock, AlertCircle, CalendarDays, Settings } from 'lucide-react';
+import { Loader2, FolderKanban, MessageSquare, FileText, Bell, LogOut, CheckCircle, Clock, AlertCircle, CalendarDays, Settings, CreditCard } from 'lucide-react';
 import { format, isFuture, isToday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import PortalNavigation from '@/components/client-portal/PortalNavigation';
@@ -374,7 +374,7 @@ export default function ClientPortal() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-20">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pb-20">
           <Button className="h-auto py-3" onClick={() => navigate('/client-portal/messages')}>
             <MessageSquare className="h-4 w-4 ml-1" />
             שלח הודעה
@@ -387,15 +387,23 @@ export default function ClientPortal() {
             <CalendarDays className="h-4 w-4 ml-1" />
             בקש פגישה
           </Button>
+          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/payments')}>
+            <CreditCard className="h-4 w-4 ml-1" />
+            תשלומים
+          </Button>
           <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/projects')}>
             <FolderKanban className="h-4 w-4 ml-1" />
             צפה בתיקים
+          </Button>
+          <Button variant="outline" className="h-auto py-3" onClick={() => navigate('/client-portal/settings')}>
+            <Settings className="h-4 w-4 ml-1" />
+            הגדרות
           </Button>
         </div>
       </main>
 
       {/* Bottom Navigation */}
-      <PortalNavigation unreadMessages={unreadMessages} unreadNotifications={unreadNotifications} />
+      <PortalNavigation />
     </div>
   );
 }

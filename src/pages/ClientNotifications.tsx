@@ -1,7 +1,7 @@
 // Client Portal - Notifications & Reminders Page
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,45 @@ export default function ClientNotifications() {
 
   useEffect(() => {
     if (clientId) fetchNotifications();
+  }, [clientId]);
+
+  // Realtime subscription for live notification updates
+  useEffect(() => {
+    if (!clientId) return;
+
+    const channel = supabase
+      .channel('client-notifications-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'client_notifications',
+        filter: `client_id=eq.${clientId}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new as ClientNotification, ...prev]);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'client_notifications',
+        filter: `client_id=eq.${clientId}`,
+      }, (payload) => {
+        setNotifications(prev =>
+          prev.map(n => n.id === (payload.new as ClientNotification).id ? payload.new as ClientNotification : n)
+        );
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'client_notifications',
+        filter: `client_id=eq.${clientId}`,
+      }, (payload) => {
+        setNotifications(prev => prev.filter(n => n.id !== (payload.old as any).id));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [clientId]);
 
   const fetchNotifications = async () => {

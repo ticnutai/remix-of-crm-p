@@ -456,7 +456,7 @@ export default function ClientMessages() {
       </div>
 
       {/* Bottom Navigation */}
-      <PortalNavigation unreadMessages={unreadCount} />
+      <PortalNavigation />
     </div>
   );
 }
