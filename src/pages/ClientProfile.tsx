@@ -422,7 +422,7 @@ export default function ClientProfile() {
     const customData = buildCustomData(editCustomFieldValues);
     await updateClient({
       ...editForm,
-      custom_data: Object.keys(customData).length > 0 ? customData : {},
+      ...(Object.keys(customData).length > 0 ? { custom_data: customData } as any : {}),
     });
     setIsEditDialogOpen(false);
   };

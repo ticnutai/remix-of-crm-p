@@ -302,7 +302,6 @@ export function DocumentPreview({
               <EditableField
                 field="companyName"
                 className="text-2xl font-bold block"
-                style={{ color: doc.primaryColor }}
               >
                 {doc.companyName || "שם החברה"}
               </EditableField>
@@ -334,7 +333,6 @@ export function DocumentPreview({
               <EditableField
                 field="title"
                 className="text-xl font-bold block"
-                style={{ color: doc.primaryColor }}
               >
                 {doc.title}
               </EditableField>

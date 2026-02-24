@@ -136,22 +136,18 @@ export function useMeetingsOptimized() {
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
-    mutationFn: createOfflineMutation<Meeting>(
-      "meetings",
-      "insert",
-      async (meeting: any) => {
-        if (!user) throw new Error("Not authenticated");
+    mutationFn: async (meeting: MeetingInsert) => {
+      if (!user) throw new Error("Not authenticated");
 
-        const { data, error } = await supabase
-          .from("meetings")
-          .insert({ ...meeting, created_by: user.id })
-          .select(`*, client:clients(name), project:projects(name)`)
-          .single();
+      const { data, error } = await supabase
+        .from("meetings")
+        .insert({ ...meeting, created_by: user.id })
+        .select(`*, client:clients(name), project:projects(name)`)
+        .single();
 
-        if (error) throw error;
-        return data as Meeting;
-      },
-    ),
+      if (error) throw error;
+      return data as Meeting;
+    },
     onMutate: async (newMeeting) => {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings =
@@ -323,7 +319,10 @@ export function useMeetingsOptimized() {
 
   // Callbacks
   const createMeeting = useCallback(
-    (meeting: MeetingInsert) => createMutation.mutateAsync(meeting),
+    async (meeting: MeetingInsert): Promise<Meeting> => {
+      const result = await createMutation.mutateAsync(meeting);
+      return result;
+    },
     [createMutation],
   );
 

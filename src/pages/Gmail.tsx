@@ -867,8 +867,8 @@ export default function Gmail() {
 
       // Sort by date descending
       allMessages.sort((a, b) => {
-        const dateA = a.internalDate ? Number(a.internalDate) : 0;
-        const dateB = b.internalDate ? Number(b.internalDate) : 0;
+        const dateA = new Date(a.date).getTime() || 0;
+        const dateB = new Date(b.date).getTime() || 0;
         return dateB - dateA;
       });
 
@@ -2441,10 +2441,10 @@ export default function Gmail() {
                 setIsComposeOpen(true);
               }}
               onForward={(msg) => {
-                const fwdSubject = msg.snippet
-                  ? `Fwd: ${subject}`
-                  : `Fwd: ${subject}`;
-                const fwdBody = `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${msg.fromName || msg.from}<br/>נושא: ${subject || ""}</div><br/><div>${msg.snippet || ""}</div>`;
+                const fwdSubject = (msg as any).subject?.startsWith("Fwd:")
+                  ? (msg as any).subject
+                  : `Fwd: ${(msg as any).subject || ""}`;
+                const fwdBody = `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${msg.fromName || msg.from}<br/>נושא: ${(msg as any).subject || ""}</div><br/><div>${msg.snippet || ""}</div>`;
                 setComposeData({
                   to: "",
                   subject: fwdSubject,
@@ -2845,7 +2845,7 @@ export default function Gmail() {
                           customLabels={customLabels}
                           onBulkAddLabel={bulkAddLabel}
                           onBulkSetPriority={bulkSetPriority}
-                          folders={emailFolders.folders}
+                          folders={emailFolders.folders as any}
                           onBulkMoveToFolder={bulkMoveToFolder}
                           onBulkArchive={async () => {
                             const ids = [...selectedMessages];
@@ -3138,7 +3138,7 @@ export default function Gmail() {
                                         onToggleSelection={
                                           toggleMessageSelection
                                         }
-                                        onToggleStar={toggleStar}
+                                        onToggleStar={toggleStar as any}
                                         onOpenChat={openChatView}
                                         onOpenSenderChat={openSenderChat}
                                         onSetReminder={(msg) => {
@@ -3149,7 +3149,7 @@ export default function Gmail() {
                                           setSelectedEmailForAction(msg);
                                           setIsNoteDialogOpen(true);
                                         }}
-                                        onMarkAsRead={markAsRead}
+                                        onMarkAsRead={markAsRead as any}
                                         onTogglePin={(messageId, isPinned) => {
                                           emailMetadata.setPin(
                                             messageId,
@@ -3209,7 +3209,7 @@ export default function Gmail() {
                                         }}
                                         onArchive={archiveEmail}
                                         onDelete={deleteEmail}
-                                        onReportSpam={reportSpam}
+                                        onReportSpam={reportSpam as any}
                                         onMuteThread={handleMuteThread}
                                         onSnooze={handleSnooze}
                                         onRefresh={handleRefresh}
@@ -3450,7 +3450,7 @@ export default function Gmail() {
                             title="לא נקרא"
                           />
                         )}
-                        {previewMessage.hasAttachments && (
+                        {(previewMessage as any).hasAttachments && (
                           <span
                             style={{ marginRight: 6, fontSize: "0.72rem" }}
                             title="קבצים מצורפים"
@@ -3620,7 +3620,7 @@ export default function Gmail() {
                       )
                         ? previewMessage.subject
                         : `Re: ${previewMessage.subject}`;
-                      setDraftData({
+                      setComposeData({
                         to: previewMessage.from,
                         subject: replySubject,
                       });
@@ -3641,7 +3641,7 @@ export default function Gmail() {
                       )
                         ? previewMessage.subject
                         : `Fwd: ${previewMessage.subject}`;
-                      setDraftData({ to: "", subject: fwdSubject });
+                      setComposeData({ to: "", subject: fwdSubject });
                       setIsComposeOpen(true);
                     }}
                   >

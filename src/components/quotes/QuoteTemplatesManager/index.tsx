@@ -559,7 +559,7 @@ export function QuoteTemplatesManager() {
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" dir="rtl">
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => {
                     setRenamingTemplateId(template.id);
@@ -842,7 +842,7 @@ export function QuoteTemplatesManager() {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" dir="rtl">
+                    <DropdownMenuContent align="end">
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();

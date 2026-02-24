@@ -531,7 +531,7 @@ export const EmailDetailView = memo(function EmailDetailView({
                       <Timer className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" dir="rtl">
+                  <DropdownMenuContent align="end">
                     <DropdownMenuItem
                       onClick={() => {
                         const d = new Date();

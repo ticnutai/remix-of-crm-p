@@ -191,8 +191,7 @@ export function CustomTableTab({
           if (clientsData) {
             setClients(clientsData);
           }
-        })
-        .catch(() => {});
+        });
     }
   }, [table.columns]);
 

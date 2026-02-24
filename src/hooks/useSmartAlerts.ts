@@ -394,15 +394,15 @@ export function useSmartAlerts() {
     // Check client deadlines
     const { data: deadlines } = await supabase
       .from("client_deadlines")
-      .select("id, title, deadline_date, client_id, clients(name)")
-      .gte("deadline_date", today.toISOString())
-      .lte("deadline_date", sevenDaysFromNow.toISOString())
-      .eq("is_completed", false)
+      .select("id, title, start_date, deadline_days, client_id, clients(name)")
+      .eq("status", "active")
       .limit(20);
 
-    return (deadlines || []).map((deadline) => {
+    return (deadlines || []).map((deadline: any) => {
+      const deadlineDate = new Date(deadline.start_date);
+      deadlineDate.setDate(deadlineDate.getDate() + (deadline.deadline_days || 0));
       const daysUntil = Math.ceil(
-        (new Date(deadline.deadline_date).getTime() - today.getTime()) /
+        (deadlineDate.getTime() - today.getTime()) /
           (1000 * 60 * 60 * 24),
       );
       return {
@@ -415,14 +415,14 @@ export function useSmartAlerts() {
             : daysUntil === 1
               ? "דדליין מחר!"
               : `דדליין בעוד ${daysUntil} ימים`,
-        message: `${deadline.title} - ${(deadline as any).clients?.name || "לקוח"}`,
+        message: `${deadline.title} - ${deadline.clients?.name || "לקוח"}`,
         actionLabel: "פתח לקוח",
         actionUrl: `/clients/${deadline.client_id}`,
         data: deadline,
         createdAt: new Date(),
-        priority: daysUntil <= 2 ? 1 : 2,
+        priority: (daysUntil <= 2 ? 1 : 2) as 1 | 2 | 3,
       };
-    });
+    }).filter((d: any) => d.type);
   }, []);
 
   /**

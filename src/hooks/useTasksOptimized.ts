@@ -117,22 +117,18 @@ export function useTasksOptimized() {
 
   // Create mutation with optimistic update
   const createMutation = useMutation({
-    mutationFn: createOfflineMutation<Task>(
-      "tasks",
-      "insert",
-      async (task: any) => {
-        if (!user) throw new Error("Not authenticated");
+    mutationFn: async (task: TaskInsert) => {
+      if (!user) throw new Error("Not authenticated");
 
-        const { data, error } = await supabase
-          .from("tasks")
-          .insert({ ...task, created_by: user.id })
-          .select(`*, client:clients(name), project:projects(name)`)
-          .single();
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({ ...task, created_by: user.id })
+        .select(`*, client:clients(name), project:projects(name)`)
+        .single();
 
-        if (error) throw error;
-        return data as Task;
-      },
-    ),
+      if (error) throw error;
+      return data as Task;
+    },
     // Optimistic update
     onMutate: async (newTask) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
@@ -312,7 +308,10 @@ export function useTasksOptimized() {
 
   // Callbacks wrapped in useCallback for performance
   const createTask = useCallback(
-    (task: TaskInsert) => createMutation.mutateAsync(task),
+    async (task: TaskInsert): Promise<Task> => {
+      const result = await createMutation.mutateAsync(task);
+      return result;
+    },
     [createMutation],
   );
 

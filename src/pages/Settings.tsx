@@ -522,9 +522,9 @@ export default function Settings() {
         },
       );
 
-      if (sqlError || !sqlResult?.success) {
+      if (sqlError || !(sqlResult as any)?.success) {
         throw new Error(
-          sqlError?.message || sqlResult?.error || "שגיאה בעדכון סיסמה",
+          sqlError?.message || (sqlResult as any)?.error || "שגיאה בעדכון סיסמה",
         );
       }
 

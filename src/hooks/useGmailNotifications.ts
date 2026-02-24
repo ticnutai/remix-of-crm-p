@@ -68,14 +68,13 @@ export function useGmailNotifications(options: GmailNotificationOptions) {
       if (!permissionGranted || !notificationsEnabled) return;
 
       try {
-        const notification = new Notification(title, {
+      const notification = new Notification(title, {
           body,
           icon: "/favicon.ico",
           badge: "/favicon.ico",
           tag: "gmail-new-email",
-          renotify: true,
           silent: false,
-        });
+        } as NotificationOptions);
 
         if (onClick) {
           notification.onclick = () => {

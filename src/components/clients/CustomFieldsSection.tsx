@@ -699,8 +699,6 @@ const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
       >
         <AlertDialogContent
           dir="rtl"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right">
