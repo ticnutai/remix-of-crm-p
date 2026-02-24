@@ -11,6 +11,7 @@ const mockNavigate = vi.fn();
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => mockNavigate,
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
   useLocation: () => ({ pathname: "/tasks-meetings" }),
   Link: ({ children, to }: any) => <a href={to}>{children}</a>,
 }));
@@ -102,6 +103,12 @@ vi.mock("@/components/layout", () => ({
   ),
 }));
 
+vi.mock("@/components/reminders/AddReminderDialog", () => ({
+  AddReminderDialog: ({ trigger }: any) => (
+    <div data-testid="add-reminder-dialog-mock">{trigger || null}</div>
+  ),
+}));
+
 // Mock sub-views with correct prop names matching the real component
 vi.mock("@/components/tasks-meetings", () => ({
   TasksViewToggle: ({ view, onViewChange }: any) => (
@@ -168,6 +175,7 @@ vi.mock("@/components/tasks-meetings", () => ({
       ))}
     </div>
   ),
+  RemindersTabContent: () => <div data-testid="reminders-tab-content">Reminders</div>,
 }));
 
 // Mock QuickAddTask – capture props to verify editingTask

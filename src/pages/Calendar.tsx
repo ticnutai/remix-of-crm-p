@@ -123,6 +123,8 @@ interface Reminder {
   is_dismissed: boolean;
 }
 
+type CalendarDragItemType = "meeting" | "task" | "reminder";
+
 const hebrewDays = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 type AddType = "meeting" | "task" | "reminder";
@@ -242,6 +244,17 @@ const Calendar = () => {
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
+  const dedupeByKey = <T,>(items: T[], getKey: (item: T) => string) => {
+    const map = new Map<string, T>();
+    items.forEach((item) => {
+      const key = getKey(item);
+      if (!map.has(key)) {
+        map.set(key, item);
+      }
+    });
+    return Array.from(map.values());
+  };
+
   // Form states
   const [meetingForm, setMeetingForm] = useState({
     title: "",
@@ -295,18 +308,21 @@ const Calendar = () => {
         .select(
           "id, start_time, end_time, description, duration_minutes, project_id, client_id, project:projects(name), client:clients(name)",
         )
+        .eq("user_id", user.id)
         .gte("start_time", start.toISOString())
         .lte("start_time", end.toISOString())
         .order("start_time", { ascending: true }),
       supabase
         .from("meetings")
         .select("id, title, start_time, end_time, status")
+        .eq("created_by", user.id)
         .gte("start_time", start.toISOString())
         .lte("start_time", end.toISOString())
         .order("start_time", { ascending: true }),
       supabase
         .from("tasks")
         .select("id, title, due_date, status, priority")
+        .eq("created_by", user.id)
         .gte("due_date", start.toISOString())
         .lte("due_date", end.toISOString())
         .neq("status", "completed")
@@ -314,6 +330,7 @@ const Calendar = () => {
       supabase
         .from("reminders")
         .select("id, title, remind_at, is_dismissed")
+        .eq("user_id", user.id)
         .gte("remind_at", start.toISOString())
         .lte("remind_at", end.toISOString())
         .eq("is_dismissed", false)
@@ -323,9 +340,46 @@ const Calendar = () => {
     ]);
 
     if (timeRes.data) setTimeEntries(timeRes.data as TimeEntry[]);
-    if (meetingsRes.data) setMeetings(meetingsRes.data as Meeting[]);
-    if (tasksRes.data) setTasks(tasksRes.data as Task[]);
-    if (remindersRes.data) setReminders(remindersRes.data as Reminder[]);
+    if (meetingsRes.data) {
+      const rawMeetings = meetingsRes.data as Meeting[];
+      const dedupedMeetings = dedupeByKey(
+        rawMeetings,
+        (m) =>
+          `${m.title.trim().toLowerCase()}|${m.start_time.slice(0, 16)}|${m.end_time.slice(0, 16)}`,
+      );
+      if (dedupedMeetings.length < rawMeetings.length) {
+        console.warn(
+          `[Calendar] Removed ${rawMeetings.length - dedupedMeetings.length} duplicate meetings from render`,
+        );
+      }
+      setMeetings(dedupedMeetings);
+    }
+    if (tasksRes.data) {
+      const rawTasks = tasksRes.data as Task[];
+      const dedupedTasks = dedupeByKey(
+        rawTasks,
+        (t) => `${t.title.trim().toLowerCase()}|${(t.due_date || "").slice(0, 16)}`,
+      );
+      if (dedupedTasks.length < rawTasks.length) {
+        console.warn(
+          `[Calendar] Removed ${rawTasks.length - dedupedTasks.length} duplicate tasks from render`,
+        );
+      }
+      setTasks(dedupedTasks);
+    }
+    if (remindersRes.data) {
+      const rawReminders = remindersRes.data as Reminder[];
+      const dedupedReminders = dedupeByKey(
+        rawReminders,
+        (r) => `${r.title.trim().toLowerCase()}|${r.remind_at.slice(0, 16)}`,
+      );
+      if (dedupedReminders.length < rawReminders.length) {
+        console.warn(
+          `[Calendar] Removed ${rawReminders.length - dedupedReminders.length} duplicate reminders from render`,
+        );
+      }
+      setReminders(dedupedReminders);
+    }
     if (clientsRes.data) setClients(clientsRes.data);
     if (projectsRes.data) setProjects(projectsRes.data);
 
@@ -497,6 +551,112 @@ const Calendar = () => {
     if (!error) {
       toast({ title: "התזכורת נמחקה" });
       fetchData();
+    }
+  };
+
+  const moveMeetingToDate = async (id: string, targetDate: Date) => {
+    const meeting = meetings.find((m) => m.id === id);
+    if (!meeting) return;
+
+    const originalStart = parseISO(meeting.start_time);
+    const originalEnd = parseISO(meeting.end_time);
+    const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+    const newStart = new Date(targetDate);
+    newStart.setHours(originalStart.getHours(), originalStart.getMinutes(), 0, 0);
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    const { error } = await supabase
+      .from("meetings")
+      .update({
+        start_time: newStart.toISOString(),
+        end_time: newEnd.toISOString(),
+      })
+      .eq("id", id);
+
+    if (!error) {
+      toast({ title: "הפגישה הוזזה ליום החדש" });
+      fetchData();
+    }
+  };
+
+  const moveTaskToDate = async (id: string, targetDate: Date) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const originalDue = task.due_date ? parseISO(task.due_date) : null;
+    const newDue = new Date(targetDate);
+
+    if (originalDue) {
+      newDue.setHours(
+        originalDue.getHours(),
+        originalDue.getMinutes(),
+        originalDue.getSeconds(),
+        0,
+      );
+    } else {
+      newDue.setHours(23, 59, 59, 0);
+    }
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ due_date: newDue.toISOString() })
+      .eq("id", id);
+
+    if (!error) {
+      toast({ title: "המשימה הוזזה ליום החדש" });
+      fetchData();
+    }
+  };
+
+  const moveReminderToDate = async (id: string, targetDate: Date) => {
+    const reminder = reminders.find((r) => r.id === id);
+    if (!reminder) return;
+
+    const original = parseISO(reminder.remind_at);
+    const newTime = new Date(targetDate);
+    newTime.setHours(
+      original.getHours(),
+      original.getMinutes(),
+      original.getSeconds(),
+      0,
+    );
+
+    const { error } = await supabase
+      .from("reminders")
+      .update({ remind_at: newTime.toISOString() })
+      .eq("id", id);
+
+    if (!error) {
+      toast({ title: "התזכורת הוזזה ליום החדש" });
+      fetchData();
+    }
+  };
+
+  const handleDropOnDate = async (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const raw = e.dataTransfer.getData("text/calendar-item");
+    if (!raw) return;
+
+    try {
+      const payload = JSON.parse(raw) as {
+        type: CalendarDragItemType;
+        id: string;
+      };
+
+      if (payload.type === "meeting") {
+        await moveMeetingToDate(payload.id, day);
+      }
+      if (payload.type === "task") {
+        await moveTaskToDate(payload.id, day);
+      }
+      if (payload.type === "reminder") {
+        await moveReminderToDate(payload.id, day);
+      }
+    } catch {
+      // ignore invalid drag payload
     }
   };
 
@@ -1007,6 +1167,8 @@ const Calendar = () => {
               key={day.toString()}
               onClick={() => setSelectedDate(day)}
               onDoubleClick={() => openAddDialog(day)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => void handleDropOnDate(e, day)}
               className={cn(
                 "min-h-[100px] p-2 border rounded-lg cursor-pointer transition-all group",
                 !isCurrentMonth && "bg-muted/30 text-muted-foreground",
@@ -1045,6 +1207,13 @@ const Calendar = () => {
                   <div
                     key={m.id}
                     className="bg-[hsl(220,60%,25%)]/80 text-white rounded px-1 py-0.5 truncate"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        "text/calendar-item",
+                        JSON.stringify({ type: "meeting", id: m.id }),
+                      );
+                    }}
                   >
                     <Users className="h-2 w-2 inline ml-0.5" />
                     {m.title}
@@ -1056,6 +1225,13 @@ const Calendar = () => {
                   <div
                     key={t.id}
                     className="bg-primary/20 text-primary rounded px-1 py-0.5 truncate"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        "text/calendar-item",
+                        JSON.stringify({ type: "task", id: t.id }),
+                      );
+                    }}
                   >
                     <CheckSquare className="h-2 w-2 inline ml-0.5" />
                     {t.title}
@@ -1067,6 +1243,13 @@ const Calendar = () => {
                   <div
                     key={r.id}
                     className="bg-warning/20 text-warning rounded px-1 py-0.5 truncate"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        "text/calendar-item",
+                        JSON.stringify({ type: "reminder", id: r.id }),
+                      );
+                    }}
                   >
                     <Bell className="h-2 w-2 inline ml-0.5" />
                     {r.title}
@@ -1358,6 +1541,9 @@ const Calendar = () => {
                 reminders={reminders}
                 onDayClick={setSelectedDate}
                 onAddClick={openAddDialog}
+                onMoveMeeting={moveMeetingToDate}
+                onMoveTask={moveTaskToDate}
+                onMoveReminder={moveReminderToDate}
                 onDeleteMeeting={handleDeleteMeeting}
                 onDeleteTask={handleDeleteTask}
                 onDeleteReminder={handleDeleteReminder}

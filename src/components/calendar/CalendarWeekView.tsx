@@ -68,6 +68,9 @@ interface CalendarWeekViewProps {
   reminders: Reminder[];
   onDayClick: (date: Date) => void;
   onAddClick: (date: Date) => void;
+  onMoveMeeting?: (id: string, targetDate: Date) => Promise<void>;
+  onMoveTask?: (id: string, targetDate: Date) => Promise<void>;
+  onMoveReminder?: (id: string, targetDate: Date) => Promise<void>;
   onDeleteMeeting?: (id: string) => void;
   onDeleteTask?: (id: string) => void;
   onDeleteReminder?: (id: string) => void;
@@ -87,6 +90,9 @@ export function CalendarWeekView({
   reminders,
   onDayClick,
   onAddClick,
+  onMoveMeeting,
+  onMoveTask,
+  onMoveReminder,
   onDeleteMeeting,
   onDeleteTask,
   onDeleteReminder,
@@ -125,6 +131,31 @@ export function CalendarWeekView({
     );
 
     return { top: `${top}px`, height: `${height}px` };
+  };
+
+  const handleDrop = async (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const raw = e.dataTransfer.getData("text/calendar-item");
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        type: "meeting" | "task" | "reminder";
+        id: string;
+      };
+      if (parsed.type === "meeting") {
+        await onMoveMeeting?.(parsed.id, day);
+      }
+      if (parsed.type === "task") {
+        await onMoveTask?.(parsed.id, day);
+      }
+      if (parsed.type === "reminder") {
+        await onMoveReminder?.(parsed.id, day);
+      }
+    } catch {
+      // ignore invalid drag payload
+    }
   };
 
   return (
@@ -189,6 +220,8 @@ export function CalendarWeekView({
                     isToday(day) && "bg-[hsl(var(--gold))]/5",
                   )}
                   onClick={() => onDayClick(day)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => void handleDrop(e, day)}
                 >
                   {/* Hour slots */}
                   {hours.map((hour) => (
@@ -219,6 +252,13 @@ export function CalendarWeekView({
                         className="absolute inset-x-1 bg-[hsl(var(--navy))] text-white rounded-md px-2 py-1 text-xs overflow-hidden shadow-md z-10 cursor-pointer hover:opacity-90 group/meeting"
                         style={style}
                         onClick={(e) => e.stopPropagation()}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData(
+                            "text/calendar-item",
+                            JSON.stringify({ type: "meeting", id: meeting.id }),
+                          );
+                        }}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-1 min-w-0">
@@ -263,6 +303,13 @@ export function CalendarWeekView({
                           key={task.id}
                           className="bg-primary/80 text-primary-foreground text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 group/task"
                           onClick={(e) => e.stopPropagation()}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(
+                              "text/calendar-item",
+                              JSON.stringify({ type: "task", id: task.id }),
+                            );
+                          }}
                         >
                           <CheckSquare className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate flex-1">{task.title}</span>
@@ -293,6 +340,16 @@ export function CalendarWeekView({
                           key={reminder.id}
                           className="bg-warning/80 text-warning-foreground text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 group/reminder"
                           onClick={(e) => e.stopPropagation()}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData(
+                              "text/calendar-item",
+                              JSON.stringify({
+                                type: "reminder",
+                                id: reminder.id,
+                              }),
+                            );
+                          }}
                         >
                           <Bell className="h-2.5 w-2.5 shrink-0" />
                           <span className="truncate flex-1">
