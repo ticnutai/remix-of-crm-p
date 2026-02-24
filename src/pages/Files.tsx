@@ -123,6 +123,9 @@ import {
   FolderDown,
   SquareCheck,
   WifiOff,
+  Scissors,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { useGoogleDrive, DriveFile, DriveFolder } from "@/hooks/useGoogleDrive";
 import { useGoogleServices } from "@/hooks/useGoogleServices";
@@ -344,13 +347,20 @@ export default function Files() {
   const [newTagInput, setNewTagInput] = useState("");
   const [selectedFileTags, setSelectedFileTags] = useState<string[]>([]);
 
-  // Copy/Paste state for files
-  const [copiedFile, setCopiedFile] = useState<FileMetadata | DriveFile | null>(
-    null,
-  );
-  const [copiedFileType, setCopiedFileType] = useState<
-    "local" | "drive" | null
-  >(null);
+  // Copy/Paste/Cut/Undo/Redo state
+  const [copiedFile, setCopiedFile] = useState<FileMetadata | DriveFile | null>(null);
+  const [copiedFileType, setCopiedFileType] = useState<"local" | "drive" | null>(null);
+  const [isCutMode, setIsCutMode] = useState(false);
+  type UndoAction =
+    | { type: "rename"; fileType: "local" | "drive"; id: string; oldName: string; newName: string }
+    | { type: "paste"; id: string }
+    | { type: "cut-paste"; id: string; oldFolderId: string | undefined };
+  const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoAction[]>([]);
+  const pushUndo = (action: UndoAction) => {
+    setUndoStack((prev) => [...prev.slice(-19), action]);
+    setRedoStack([]);
+  };
 
   // Multi-select state
   const [selectedDriveFiles, setSelectedDriveFiles] = useState<Set<string>>(
@@ -585,51 +595,98 @@ export default function Files() {
     }
   };
 
-  // Copy/Paste functionality
+  // Copy/Cut/Paste/Undo/Redo functionality
   const handleCopyFile = (
     file: FileMetadata | DriveFile,
     type: "local" | "drive",
   ) => {
     setCopiedFile(file);
     setCopiedFileType(type);
-    toast({
-      title: "הקובץ הועתק",
-      description: `"${file.name}" מוכן להדבקה`,
-      duration: 2000,
-    });
+    setIsCutMode(false);
+    toast({ title: "הקובץ הועתק", description: `"‫${file.name}"‬ מוכן להדבקה`, duration: 2000 });
+  };
+
+  const handleCutFile = (
+    file: FileMetadata | DriveFile,
+    type: "local" | "drive",
+  ) => {
+    setCopiedFile(file);
+    setCopiedFileType(type);
+    setIsCutMode(true);
+    toast({ title: "הקובץ נגזר", description: `"‫${file.name}"‬ — הדבק כדי להעביר`, duration: 2000 });
   };
 
   const handlePasteFile = async () => {
     if (!copiedFile || !copiedFileType) return;
-
     if (copiedFileType === "local" && "path" in copiedFile) {
-      // Duplicate local file
-      await advancedFiles.duplicateFile(copiedFile.id);
-      toast({
-        title: "קובץ הודבק",
-        description: `עותק של "${copiedFile.name}" נוצר`,
-      });
+      if (isCutMode) {
+        const oldFolderId = (copiedFile as FileMetadata).folderId;
+        await advancedFiles.moveToFolder(copiedFile.id, advancedFiles.currentFolder);
+        pushUndo({ type: "cut-paste", id: copiedFile.id, oldFolderId });
+        toast({ title: "קובץ הועבר", description: `"‫${copiedFile.name}"‬ הועבר בהצלחה` });
+        setCopiedFile(null); setCopiedFileType(null); setIsCutMode(false);
+      } else {
+        const newFile = await advancedFiles.duplicateFile(copiedFile.id);
+        if (newFile) pushUndo({ type: "paste", id: newFile.id });
+        toast({ title: "קובץ הודבק", description: `עותק של "‫${copiedFile.name}"‬ נוצר` });
+      }
     } else if (copiedFileType === "drive") {
-      // Copy link to clipboard
-      const driveFile = copiedFile as DriveFile;
-      await navigator.clipboard.writeText(driveFile.webViewLink);
+      await navigator.clipboard.writeText((copiedFile as DriveFile).webViewLink);
       toast({ title: "קישור הועתק", description: "קישור לקובץ הועתק ללוח" });
     }
   };
 
-  // Keyboard shortcuts for copy/paste
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+V or Cmd+V to paste
-      if ((e.ctrlKey || e.metaKey) && e.key === "v" && copiedFile) {
-        e.preventDefault();
-        handlePasteFile();
-      }
-    };
+  const handleUndo = async () => {
+    if (undoStack.length === 0) { toast({ title: "אין פעולות לבטל", duration: 1500 }); return; }
+    const action = undoStack[undoStack.length - 1];
+    setUndoStack((prev) => prev.slice(0, -1));
+    setRedoStack((prev) => [...prev, action]);
+    if (action.type === "rename") {
+      if (action.fileType === "local") {
+        await advancedFiles.renameFile(action.id, action.oldName);
+        await advancedFiles.loadFiles(advancedFiles.currentFolder);
+      } else { await renameDriveFile(action.id, action.oldName); await handleRefresh(); }
+      toast({ title: "↩ שינוי שם בוטל", duration: 2000 });
+    } else if (action.type === "paste") {
+      const file = advancedFiles.files.find((f) => f.id === action.id);
+      if (file) await advancedFiles.deleteFile(file);
+      toast({ title: "↩ הדבקה בוטלה", duration: 2000 });
+    } else if (action.type === "cut-paste") {
+      await advancedFiles.moveToFolder(action.id, action.oldFolderId);
+      await advancedFiles.loadFiles(advancedFiles.currentFolder);
+      toast({ title: "↩ העברה בוטלה", duration: 2000 });
+    }
+  };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [copiedFile, copiedFileType]);
+  const handleRedo = async () => {
+    if (redoStack.length === 0) { toast({ title: "אין פעולות לחזור", duration: 1500 }); return; }
+    const action = redoStack[redoStack.length - 1];
+    setRedoStack((prev) => prev.slice(0, -1));
+    setUndoStack((prev) => [...prev, action]);
+    if (action.type === "rename" && action.newName) {
+      if (action.fileType === "local") {
+        await advancedFiles.renameFile(action.id, action.newName);
+        await advancedFiles.loadFiles(advancedFiles.currentFolder);
+      } else { await renameDriveFile(action.id, action.newName); await handleRefresh(); }
+      toast({ title: "↪ שינוי שם חזר", duration: 2000 });
+    }
+  };
+
+  // Keyboard shortcuts: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste, Ctrl+Z undo, Ctrl+Y redo
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (ctrl && e.key === "v" && copiedFile) { e.preventDefault(); handlePasteFile(); }
+      if (ctrl && e.key === "x" && selectedLocalFile) { e.preventDefault(); handleCutFile(selectedLocalFile, "local"); }
+      if (ctrl && e.key === "c" && selectedLocalFile) { e.preventDefault(); handleCopyFile(selectedLocalFile, "local"); }
+      if (ctrl && e.key === "z") { e.preventDefault(); handleUndo(); }
+      if (ctrl && (e.key === "y" || (e.shiftKey && e.key === "Z"))) { e.preventDefault(); handleRedo(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [copiedFile, copiedFileType, isCutMode, selectedLocalFile, undoStack, redoStack]);
 
   // Multi-select functions
   const toggleDriveFileSelection = useCallback((fileId: string) => {
@@ -1016,10 +1073,14 @@ export default function Files() {
     if (!renamingFile || !renameValue.trim()) return;
     if (renamingFile.type === "drive") {
       const success = await renameDriveFile(renamingFile.id, renameValue);
-      if (success) await handleRefresh();
+      if (success) {
+        pushUndo({ type: "rename", fileType: "drive", id: renamingFile.id, oldName: renamingFile.name, newName: renameValue });
+        await handleRefresh();
+      }
     } else {
       try {
         await advancedFiles.renameFile(renamingFile.id, renameValue);
+        pushUndo({ type: "rename", fileType: "local", id: renamingFile.id, oldName: renamingFile.name, newName: renameValue });
         await advancedFiles.loadFiles(advancedFiles.currentFolder);
         toast({ title: "השם עודכן בהצלחה" });
       } catch {
@@ -2294,10 +2355,32 @@ export default function Files() {
                       </CardDescription>
                     </div>
                     <div className="flex gap-2 flex-wrap">
+                      {/* Undo / Redo */}
+                      <Button
+                        variant="outline" size="icon"
+                        onClick={handleUndo}
+                        disabled={undoStack.length === 0}
+                        title="בטל (Ctrl+Z)"
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline" size="icon"
+                        onClick={handleRedo}
+                        disabled={redoStack.length === 0}
+                        title="חזור (Ctrl+Y)"
+                      >
+                        <Redo2 className="h-4 w-4" />
+                      </Button>
+                      {/* Clipboard actions */}
                       {copiedFile && copiedFileType === "local" && (
-                        <Button variant="outline" onClick={handlePasteFile}>
+                        <Button
+                          variant={isCutMode ? "destructive" : "outline"}
+                          onClick={handlePasteFile}
+                          title="הדבק (Ctrl+V)"
+                        >
                           <ClipboardPaste className="h-4 w-4 ml-2" />
-                          הדבק
+                          {isCutMode ? "העבר" : "הדבק"}
                         </Button>
                       )}
                       <Button
@@ -2631,6 +2714,14 @@ export default function Files() {
                                               <Tags className="h-4 w-4 ml-2" />
                                               ניהול תגיות
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleCopyFile(file, "local")}>
+                                              <ClipboardCopy className="h-4 w-4 ml-2" />
+                                              העתק (Ctrl+C)
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleCutFile(file, "local")}>
+                                              <Scissors className="h-4 w-4 ml-2" />
+                                              גזור (Ctrl+X)
+                                            </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem
                                               className="text-red-600"
@@ -2744,6 +2835,14 @@ export default function Files() {
                                           >
                                             <Tags className="h-4 w-4 ml-2" />
                                             תגיות
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleCopyFile(file, "local")}>
+                                            <ClipboardCopy className="h-4 w-4 ml-2" />
+                                            העתק (Ctrl+C)
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleCutFile(file, "local")}>
+                                            <Scissors className="h-4 w-4 ml-2" />
+                                            גזור (Ctrl+X)
                                           </DropdownMenuItem>
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem
@@ -3027,17 +3126,19 @@ export default function Files() {
                                           ניהול תגיות
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                          onClick={() =>
-                                            handleCopyFile(file, "local")
-                                          }
+                                          onClick={() => handleCopyFile(file, "local")}
                                         >
                                           <ClipboardCopy className="h-4 w-4 ml-2" />
-                                          העתקה
+                                          העתק (Ctrl+C)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                          onClick={() =>
-                                            advancedFiles.duplicateFile(file.id)
-                                          }
+                                          onClick={() => handleCutFile(file, "local")}
+                                        >
+                                          <Scissors className="h-4 w-4 ml-2" />
+                                          גזור (Ctrl+X)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => advancedFiles.duplicateFile(file.id)}
                                         >
                                           <Copy className="h-4 w-4 ml-2" />
                                           שכפול
