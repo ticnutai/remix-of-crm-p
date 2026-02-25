@@ -51,6 +51,7 @@ const mainNavItems = [
   { title: 'Gmail', url: '/gmail', icon: Mail },
   { title: '📁 קבצים', url: '/files', icon: HardDrive },
   { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
+  { title: '🏢 פורטל לקוחות', url: '/portal-management', icon: Users },
 ];
 
 const systemNavItems = [

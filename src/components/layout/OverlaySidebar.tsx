@@ -71,6 +71,7 @@ const mainNavItems = [
   { title: "אנשי קשר", url: "/contacts", icon: Users },
   { title: "קבצים", url: "/files", icon: HardDrive },
   { title: "כלים חכמים", url: "/smart-tools", icon: Bot },
+  { title: "פורטל לקוחות", url: "/portal-management", icon: Users },
 ];
 
 const systemNavItems = [
