@@ -96,6 +96,7 @@ export function ClientsFilterStrip({
   categories = [],
   allTags = [],
   onOpenCategoryManager,
+  onUpdate,
 }: ClientsFilterStripProps) {
   const [stageDefinitions, setStageDefinitions] = useState<
     ClientStageDefinition[]
