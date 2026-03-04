@@ -967,5 +967,24 @@ export function ClientsFilterStrip({
         </div>
       )}
     </div>
+  return (
+    <>
+      {content}
+
+      {/* Add Clients to Category Dialog */}
+      {addToCategory && (
+        <AddClientsToCategoryDialog
+          isOpen={!!addToCategoryId}
+          onClose={() => setAddToCategoryId(null)}
+          categoryId={addToCategory.id}
+          categoryName={addToCategory.name}
+          categoryColor={addToCategory.color || '#d4a843'}
+          onUpdate={() => {
+            onUpdate?.();
+            setAddToCategoryId(null);
+          }}
+        />
+      )}
+    </>
   );
 }
