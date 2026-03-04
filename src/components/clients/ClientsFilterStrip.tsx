@@ -273,6 +273,7 @@ export function ClientsFilterStrip({
   );
 
   return (
+    <>
     <div
       dir="rtl"
       className="bg-white rounded-lg border-2 border-[#d4a843] p-2 mb-2"
