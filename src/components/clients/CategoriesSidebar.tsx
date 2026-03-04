@@ -27,6 +27,7 @@ interface CategoriesSidebarProps {
   onToggleCategory: (categoryId: string) => void;
   onClearCategories: () => void;
   clientCounts?: Record<string, number>;
+  onUpdate?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
