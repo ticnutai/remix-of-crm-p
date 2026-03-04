@@ -54,6 +54,7 @@ export function CategoriesSidebar({
   }
 
   return (
+    <>
     <div
       dir="rtl"
       style={{
