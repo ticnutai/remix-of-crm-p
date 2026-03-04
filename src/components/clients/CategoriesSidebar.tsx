@@ -44,7 +44,11 @@ export function CategoriesSidebar({
   onToggleCategory,
   onClearCategories,
   clientCounts = {},
+  onUpdate,
 }: CategoriesSidebarProps) {
+  const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
+  const addToCategory = categories.find((c) => c.id === addToCategoryId);
+
   if (categories.length === 0) {
     return null;
   }
