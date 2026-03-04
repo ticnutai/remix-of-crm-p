@@ -109,7 +109,8 @@ export function ClientsFilterStrip({
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
-
+  const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
+  const addToCategory = categories.find((c) => c.id === addToCategoryId);
   // Fetch unique stages from all clients
   useEffect(() => {
     fetchStageDefinitions();
