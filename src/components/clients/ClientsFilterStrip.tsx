@@ -968,9 +968,6 @@ export function ClientsFilterStrip({
         </div>
       )}
     </div>
-  return (
-    <>
-      {content}
 
       {/* Add Clients to Category Dialog */}
       {addToCategory && (
