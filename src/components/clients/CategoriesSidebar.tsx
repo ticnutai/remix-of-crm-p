@@ -215,6 +215,39 @@ export function CategoriesSidebar({
                     ✓
                   </Badge>
                 )}
+
+                {/* Add clients button */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddToCategoryId(category.id);
+                  }}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '6px',
+                    border: '1px solid #d4a843',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                    color: '#d4a843',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#d4a843';
+                    e.currentTarget.style.color = '#ffffff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isSelected ? '#ffffff' : 'transparent';
+                    e.currentTarget.style.color = '#d4a843';
+                  }}
+                  title={`הוסף לקוחות ל${category.name}`}
+                >
+                  <Plus style={{ width: '14px', height: '14px' }} />
+                </div>
               </button>
             );
           })}
