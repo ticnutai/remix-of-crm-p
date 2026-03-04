@@ -3406,6 +3406,10 @@ export default function Clients() {
           categories={categories}
           allTags={allTags}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
+          onUpdate={() => {
+            fetchClients();
+            fetchCategoriesAndTags();
+          }}
         />
 
         {/* Statistics View - When Enabled */}
