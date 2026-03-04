@@ -76,6 +76,7 @@ interface ClientsFilterStripProps {
   categories?: ClientCategory[];
   allTags?: string[];
   onOpenCategoryManager?: () => void;
+  onUpdate?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
