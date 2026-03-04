@@ -1,5 +1,5 @@
 // Categories Sidebar Component - tenarch CRM Pro
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -9,8 +9,10 @@ import {
   Building, 
   Handshake,
   X,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 
 interface ClientCategory {
   id: string;
