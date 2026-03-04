@@ -566,6 +566,19 @@ export function ClientsFilterStrip({
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-6 w-6 hover:bg-amber-100 hover:text-amber-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCategoriesDialogOpen(false);
+                            setAddToCategoryId(category.id);
+                          }}
+                          title={`הוסף לקוחות ל${category.name}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
                           onClick={(e) => {
                             e.stopPropagation();
