@@ -1,6 +1,7 @@
 // Clients Filter Strip Component - tenarch CRM Pro
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
