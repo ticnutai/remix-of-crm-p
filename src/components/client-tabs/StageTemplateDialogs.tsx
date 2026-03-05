@@ -41,6 +41,9 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
+  Settings2,
+  X,
+  Check,
 } from "lucide-react";
 import {
   useStageTemplates,
@@ -444,14 +447,55 @@ export function ApplyTemplateDialog({
   onApplied,
   folderId,
 }: ApplyTemplateDialogProps) {
-  const { templates, loading, applyTemplate, deleteTemplate, updateTemplate } =
-    useStageTemplates();
+  const {
+    templates,
+    loading,
+    applyTemplate,
+    deleteTemplate,
+    updateTemplate,
+    addStageToTemplate,
+    deleteStageFromTemplate,
+    renameStageInTemplate,
+  } = useStageTemplates();
   const [applying, setApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [showAllTasks, setShowAllTasks] = useState<Record<string, boolean>>({});
+  // selectedStagesByTemplate: maps templateId -> Set of selected stage IDs
+  const [selectedStagesByTemplate, setSelectedStagesByTemplate] = useState<
+    Record<string, Set<string>>
+  >();
+  // Edit-stages mode: which templateId is being edited
+  const [editStagesMode, setEditStagesMode] = useState<string | null>(null);
+  const [newStageName, setNewStageName] = useState("");
+  const [addingStage, setAddingStage] = useState(false);
+  const [renamingStage, setRenamingStage] = useState<{
+    stageId: string;
+    name: string;
+  } | null>(null);
+  const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+
+  const handleAddStage = async (templateId: string) => {
+    if (!newStageName.trim()) return;
+    setAddingStage(true);
+    await addStageToTemplate(templateId, newStageName.trim());
+    setNewStageName("");
+    setAddingStage(false);
+  };
+
+  const handleDeleteStage = async (stageId: string) => {
+    setDeletingStageId(stageId);
+    await deleteStageFromTemplate(stageId);
+    setDeletingStageId(null);
+  };
+
+  const handleRenameStage = async (stageId: string) => {
+    if (!renamingStage || !renamingStage.name.trim()) return;
+    await renameStageInTemplate(stageId, renamingStage.name.trim());
+    setRenamingStage(null);
+  };
 
   const filteredTemplates = templates.filter(
     (t) =>
@@ -459,13 +503,55 @@ export function ApplyTemplateDialog({
       t.description?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleApply = async (templateId: string) => {
+  // Toggle a single stage checkbox for a template
+  const toggleStageSelection = (
+    templateId: string,
+    stageId: string,
+    allStageIds: string[],
+  ) => {
+    setSelectedStagesByTemplate((prev) => {
+      const current = prev?.[templateId]
+        ? new Set(prev[templateId])
+        : new Set(allStageIds); // default: all selected
+      if (current.has(stageId)) {
+        current.delete(stageId);
+      } else {
+        current.add(stageId);
+      }
+      return { ...prev, [templateId]: current };
+    });
+  };
+
+  // Toggle select-all / deselect-all for a template
+  const toggleAllStages = (templateId: string, allStageIds: string[]) => {
+    setSelectedStagesByTemplate((prev) => {
+      const current = prev?.[templateId];
+      const allSelected =
+        !current || current.size === allStageIds.length;
+      return {
+        ...prev,
+        [templateId]: allSelected ? new Set() : new Set(allStageIds),
+      };
+    });
+  };
+
+  const handleApply = async (templateId: string, allStageIds: string[]) => {
+    // Get selected stages (default = all)
+    const selected = selectedStagesByTemplate?.[templateId];
+    const selectedIds =
+      selected && selected.size < allStageIds.length
+        ? Array.from(selected)
+        : undefined; // undefined = apply all
+
+    if (selected && selected.size === 0) return; // nothing selected
+
     setApplying(true);
     const result = await applyTemplate(
       templateId,
       clientId,
       existingStagesCount,
       folderId,
+      selectedIds,
     );
     setApplying(false);
 
@@ -541,6 +627,17 @@ export function ApplyTemplateDialog({
                     ) ||
                     template.tasks?.length ||
                     0;
+
+                  const allStageIds = (template.stages || []).map(
+                    (s) => s.id,
+                  );
+                  const selectedSet = selectedStagesByTemplate?.[template.id];
+                  // If no selection state yet, all stages are considered selected
+                  const effectiveSelected =
+                    selectedSet ?? new Set(allStageIds);
+                  const allChecked =
+                    effectiveSelected.size === allStageIds.length;
+                  const noneChecked = effectiveSelected.size === 0;
 
                   return (
                     <div
@@ -652,79 +749,316 @@ export function ApplyTemplateDialog({
                             </p>
                           )}
 
-                          {template.stages && template.stages.length > 0 && (
-                            <div className="space-y-3 mb-3 max-h-[250px] overflow-y-auto">
-                              {template.stages.map((stage, stageIndex) => {
+                          {/* Toolbar: toggle edit-stages mode */}
+                          {template.is_multi_stage && (
+                            <div className="flex items-center justify-between mb-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditStagesMode(
+                                    editStagesMode === template.id
+                                      ? null
+                                      : template.id,
+                                  );
+                                  setNewStageName("");
+                                  setRenamingStage(null);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-1.5 text-xs rounded px-2 py-1 transition-colors",
+                                  editStagesMode === template.id
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-primary hover:bg-primary/10",
+                                )}
+                              >
+                                <Settings2 className="h-3.5 w-3.5" />
+                                {editStagesMode === template.id
+                                  ? "סיום עריכה"
+                                  : "ערוך שלבים"}
+                              </button>
+                            </div>
+                          )}
+
+                          {/* EDIT STAGES MODE */}
+                          {editStagesMode === template.id ? (
+                            <div className="space-y-2 mb-3">
+                              {(template.stages || []).map((stage) => {
                                 const StageIcon =
                                   STAGE_ICONS[stage.stage_icon] || FolderOpen;
-                                const stageKey = `${template.id}-${stage.id}`;
-                                const showAll = showAllTasks[stageKey];
-                                const tasksToShow = showAll
-                                  ? stage.tasks
-                                  : stage.tasks?.slice(0, 3);
+                                const isRenaming =
+                                  renamingStage?.stageId === stage.id;
+                                const isDeleting = deletingStageId === stage.id;
 
                                 return (
                                   <div
                                     key={stage.id}
-                                    className="text-sm text-right border-b border-muted pb-2 last:border-b-0"
+                                    className="flex items-center gap-2 bg-background border rounded-lg px-3 py-2"
                                   >
-                                    <div className="flex items-center gap-2 font-medium justify-start mb-1">
-                                      <StageIcon className="h-4 w-4 text-primary" />
-                                      <span>{stage.stage_name}</span>
-                                      <Badge
-                                        variant="outline"
-                                        className="text-[10px] mr-auto"
-                                      >
-                                        {stage.tasks?.length || 0} משימות
-                                      </Badge>
-                                    </div>
-                                    {stage.tasks && stage.tasks.length > 0 && (
-                                      <div className="mr-6 mt-1 space-y-1">
-                                        {tasksToShow?.map((task) => (
-                                          <div
-                                            key={task.id}
-                                            className="text-xs text-muted-foreground flex items-center gap-1.5"
-                                          >
-                                            <CheckSquare className="h-3 w-3 text-muted-foreground/60" />
-                                            <span>{task.title}</span>
-                                          </div>
-                                        ))}
-                                        {stage.tasks.length > 3 && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setShowAllTasks((prev) => ({
-                                                ...prev,
-                                                [stageKey]: !prev[stageKey],
-                                              }));
-                                            }}
-                                            className="text-xs text-primary hover:underline mt-1"
-                                          >
-                                            {showAll
-                                              ? "הסתר"
-                                              : `+${stage.tasks.length - 3} נוספות`}
-                                          </button>
-                                        )}
-                                      </div>
+                                    <StageIcon className="h-4 w-4 text-primary flex-shrink-0" />
+                                    {isRenaming ? (
+                                      <>
+                                        <Input
+                                          value={renamingStage.name}
+                                          onChange={(e) =>
+                                            setRenamingStage({
+                                              stageId: stage.id,
+                                              name: e.target.value,
+                                            })
+                                          }
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter")
+                                              handleRenameStage(stage.id);
+                                            if (e.key === "Escape")
+                                              setRenamingStage(null);
+                                          }}
+                                          autoFocus
+                                          className="h-7 flex-1 text-sm"
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 text-green-600 hover:text-green-600"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRenameStage(stage.id);
+                                          }}
+                                        >
+                                          <Check className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingStage(null);
+                                          }}
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1 text-sm font-medium">
+                                          {stage.stage_name}
+                                        </span>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px]"
+                                        >
+                                          {stage.tasks?.length || 0} משימות
+                                        </Badge>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setRenamingStage({
+                                              stageId: stage.id,
+                                              name: stage.stage_name,
+                                            });
+                                          }}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-7 w-7 text-destructive hover:text-destructive"
+                                          disabled={isDeleting}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (
+                                              confirm(
+                                                `למחוק את השלב "${stage.stage_name}"?`,
+                                              )
+                                            ) {
+                                              handleDeleteStage(stage.id);
+                                            }
+                                          }}
+                                        >
+                                          {isDeleting ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          )}
+                                        </Button>
+                                      </>
                                     )}
                                   </div>
                                 );
                               })}
-                            </div>
-                          )}
 
-                          <Button
-                            className="w-full"
-                            onClick={() => handleApply(template.id)}
-                            disabled={applying}
-                          >
-                            {applying && (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            )}
-                            החל תבנית ({template.stages?.length || 0} שלבים,{" "}
-                            {totalTasks} משימות)
-                            {template.includes_task_content && " - כולל מילוי"}
-                          </Button>
+                              {/* Add new stage row */}
+                              <div
+                                className="flex items-center gap-2 border border-dashed rounded-lg px-3 py-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <Input
+                                  value={newStageName}
+                                  onChange={(e) =>
+                                    setNewStageName(e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter")
+                                      handleAddStage(template.id);
+                                  }}
+                                  placeholder="שם שלב חדש..."
+                                  className="h-7 flex-1 text-sm border-0 bg-transparent focus-visible:ring-0"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 text-xs text-primary"
+                                  disabled={
+                                    !newStageName.trim() || addingStage
+                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddStage(template.id);
+                                  }}
+                                >
+                                  {addingStage ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    "הוסף"
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* NORMAL VIEW MODE */
+                            <>
+                              {template.stages && template.stages.length > 0 && (
+                                <div className="space-y-3 mb-3 max-h-[250px] overflow-y-auto">
+                                  {/* Select all / Deselect all */}
+                                  <div className="flex items-center justify-between pb-1 border-b border-muted">
+                                    <span className="text-xs text-muted-foreground">
+                                      {effectiveSelected.size} /{" "}
+                                      {allStageIds.length} שלבים נבחרו
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleAllStages(
+                                          template.id,
+                                          allStageIds,
+                                        );
+                                      }}
+                                      className="text-xs text-primary hover:underline"
+                                    >
+                                      {allChecked ? "בטל הכל" : "בחר הכל"}
+                                    </button>
+                                  </div>
+
+                                  {template.stages.map((stage) => {
+                                    const StageIcon =
+                                      STAGE_ICONS[stage.stage_icon] ||
+                                      FolderOpen;
+                                    const stageKey = `${template.id}-${stage.id}`;
+                                    const showAll = showAllTasks[stageKey];
+                                    const tasksToShow = showAll
+                                      ? stage.tasks
+                                      : stage.tasks?.slice(0, 3);
+                                    const isChecked = effectiveSelected.has(
+                                      stage.id,
+                                    );
+
+                                    return (
+                                      <div
+                                        key={stage.id}
+                                        className={cn(
+                                          "text-sm text-right border-b border-muted pb-2 last:border-b-0 rounded px-1 transition-colors",
+                                          isChecked ? "" : "opacity-50",
+                                        )}
+                                      >
+                                        <div className="flex items-center gap-2 font-medium justify-start mb-1">
+                                          <Checkbox
+                                            checked={isChecked}
+                                            onCheckedChange={(e) => {
+                                              (
+                                                e as React.MouseEvent
+                                              )?.stopPropagation?.();
+                                              toggleStageSelection(
+                                                template.id,
+                                                stage.id,
+                                                allStageIds,
+                                              );
+                                            }}
+                                            onClick={(e) =>
+                                              e.stopPropagation()
+                                            }
+                                            className="h-4 w-4 flex-shrink-0"
+                                          />
+                                          <StageIcon className="h-4 w-4 text-primary" />
+                                          <span>{stage.stage_name}</span>
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] mr-auto"
+                                          >
+                                            {stage.tasks?.length || 0} משימות
+                                          </Badge>
+                                        </div>
+                                        {stage.tasks &&
+                                          stage.tasks.length > 0 && (
+                                            <div className="mr-6 mt-1 space-y-1">
+                                              {tasksToShow?.map((task) => (
+                                                <div
+                                                  key={task.id}
+                                                  className="text-xs text-muted-foreground flex items-center gap-1.5"
+                                                >
+                                                  <CheckSquare className="h-3 w-3 text-muted-foreground/60" />
+                                                  <span>{task.title}</span>
+                                                </div>
+                                              ))}
+                                              {stage.tasks.length > 3 && (
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowAllTasks((prev) => ({
+                                                      ...prev,
+                                                      [stageKey]:
+                                                        !prev[stageKey],
+                                                    }));
+                                                  }}
+                                                  className="text-xs text-primary hover:underline mt-1"
+                                                >
+                                                  {showAll
+                                                    ? "הסתר"
+                                                    : `+${stage.tasks.length - 3} נוספות`}
+                                                </button>
+                                              )}
+                                            </div>
+                                          )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              <Button
+                                className="w-full"
+                                onClick={() =>
+                                  handleApply(template.id, allStageIds)
+                                }
+                                disabled={applying || noneChecked}
+                              >
+                                {applying && (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                )}
+                                {noneChecked
+                                  ? "בחר לפחות שלב אחד"
+                                  : allChecked
+                                    ? `החל תבנית (${allStageIds.length} שלבים, ${totalTasks} משימות)`
+                                    : `החל ${effectiveSelected.size} שלבים נבחרים`}
+                                {!noneChecked &&
+                                  template.includes_task_content &&
+                                  " - כולל מילוי"}
+                              </Button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

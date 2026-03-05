@@ -390,12 +390,14 @@ export function useStageTemplates() {
 
   // Apply template to a client - creates stages and tasks
   // If template includes_task_content, the task completion status and styling will be preserved
+  // selectedStageIds: optional array of stage IDs to apply (if empty/undefined, apply all)
   const applyTemplate = useCallback(
     async (
       templateId: string,
       clientId: string,
       existingStagesCount: number = 0,
       folderId?: string | null,
+      selectedStageIds?: string[],
     ) => {
       try {
         const template = templates.find((t) => t.id === templateId);
@@ -404,8 +406,16 @@ export function useStageTemplates() {
         const createdStages: string[] = [];
         const includesContent = template.includes_task_content;
 
-        if (template.stages && template.stages.length > 0) {
-          for (const templateStage of template.stages) {
+        // Filter stages if specific ones are selected
+        const stagesToApply =
+          selectedStageIds && selectedStageIds.length > 0
+            ? (template.stages || []).filter((s) =>
+                selectedStageIds.includes(s.id),
+              )
+            : template.stages || [];
+
+        if (stagesToApply.length > 0) {
+          for (const templateStage of stagesToApply) {
             const stageId = `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
             // Create stage
@@ -618,6 +628,76 @@ export function useStageTemplates() {
           title: "שגיאה בעדכון התבנית",
           variant: "destructive",
         });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
+  // Add a new stage to an existing template
+  const addStageToTemplate = useCallback(
+    async (templateId: string, stageName: string, stageIcon = "FolderOpen") => {
+      try {
+        const template = templates.find((t) => t.id === templateId);
+        const nextOrder = (template?.stages?.length ?? 0);
+        const { error } = await db
+          .from("stage_template_stages")
+          .insert({
+            template_id: templateId,
+            stage_name: stageName,
+            stage_icon: stageIcon,
+            sort_order: nextOrder,
+          });
+        if (error) throw error;
+        toast({ title: "השלב נוסף לתבנית" });
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error adding stage to template:", error);
+        toast({ title: "שגיאה בהוספת השלב", variant: "destructive" });
+        return false;
+      }
+    },
+    [templates, toast, loadTemplates],
+  );
+
+  // Delete a stage from an existing template
+  const deleteStageFromTemplate = useCallback(
+    async (stageId: string) => {
+      try {
+        // Delete tasks first
+        await db.from("stage_template_tasks").delete().eq("template_stage_id", stageId);
+        const { error } = await db
+          .from("stage_template_stages")
+          .delete()
+          .eq("id", stageId);
+        if (error) throw error;
+        toast({ title: "השלב נמחק" });
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error deleting stage from template:", error);
+        toast({ title: "שגיאה במחיקת השלב", variant: "destructive" });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
+  // Rename a stage in a template
+  const renameStageInTemplate = useCallback(
+    async (stageId: string, newName: string) => {
+      try {
+        const { error } = await db
+          .from("stage_template_stages")
+          .update({ stage_name: newName })
+          .eq("id", stageId);
+        if (error) throw error;
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error renaming stage in template:", error);
+        toast({ title: "שגיאה בשינוי שם השלב", variant: "destructive" });
         return false;
       }
     },
@@ -882,6 +962,9 @@ export function useStageTemplates() {
     copyStagesFromClient,
     updateTemplate,
     deleteTemplate,
+    addStageToTemplate,
+    deleteStageFromTemplate,
+    renameStageInTemplate,
     getClientsForCopy,
     getClientStages,
   };
