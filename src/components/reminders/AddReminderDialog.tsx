@@ -211,10 +211,11 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
       title: form.title,
       message: form.message,
       remind_at: new Date(form.remind_at).toISOString(),
-      reminder_type: selectedTypes[0] || 'browser', // Keep for backward compatibility
+      reminder_type: selectedTypes[0] || 'browser',
       reminder_types: selectedTypes,
       entity_type: entityType || null,
       entity_id: entityId || null,
+      client_id: selectedClientId || null,
       is_recurring: form.is_recurring,
       recurring_interval: form.recurring_interval !== 'none' ? form.recurring_interval : null,
       recurring_count: form.recurring_count,
@@ -224,7 +225,7 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
       recipient_phones: form.recipient_phones,
       send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
       send_sms: form.send_sms || selectedTypes.includes('sms'),
-      email_template_id: selectedTemplate, // Add template support
+      email_template_id: selectedTemplate,
     };
     
     await createReminder(reminderData);
