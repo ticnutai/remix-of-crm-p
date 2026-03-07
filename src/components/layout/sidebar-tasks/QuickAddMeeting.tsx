@@ -132,6 +132,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [location, setLocation] = useState("");
     const [clientId, setClientId] = useState<string>("");
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
 
     // Load initial data when dialog opens
     useEffect(() => {
