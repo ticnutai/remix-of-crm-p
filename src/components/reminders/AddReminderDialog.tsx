@@ -293,6 +293,76 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
               />
             </div>
 
+            {/* Client Assignment */}
+            <div className="space-y-2">
+              <Label>שיוך ללקוח</Label>
+              {selectedClientId ? (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-primary/40 bg-primary/5">
+                  <span className="text-sm font-medium">
+                    {clients.find(c => c.id === selectedClientId)?.name || "לקוח"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClientId('')}
+                    className="p-1 rounded hover:bg-muted transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="חיפוש לקוח..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="pr-9 text-right text-sm"
+                    />
+                  </div>
+                  {(clientSearch || clients.length <= 8) && (
+                    <div className="max-h-[150px] overflow-y-auto border rounded-lg p-1 space-y-0.5">
+                      {clients
+                        .filter(c =>
+                          !clientSearch ||
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                          c.email?.toLowerCase().includes(clientSearch.toLowerCase())
+                        )
+                        .map(client => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedClientId(client.id);
+                              setClientSearch('');
+                            }}
+                            className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted flex items-center gap-2"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                              {client.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 text-right">
+                              <div className="font-medium">{client.name}</div>
+                              {client.email && (
+                                <div className="text-xs text-muted-foreground">{client.email}</div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      {clients.filter(c =>
+                        !clientSearch ||
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="text-center py-3 text-sm text-muted-foreground">
+                          לא נמצאו לקוחות
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Multiple Reminder Types */}
             <div>
               <Label className="mb-2 block">סוגי התראה (ניתן לבחור כמה)</Label>
