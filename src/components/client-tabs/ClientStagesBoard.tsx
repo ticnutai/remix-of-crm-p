@@ -82,6 +82,10 @@ import {
   Play,
   Square,
   CalendarIcon,
+  Link2,
+  UserRound,
+  Building2,
+  Check,
 } from "lucide-react";
 import { TaskTitleWithConsultants } from "@/components/consultants/TaskTitleWithConsultants";
 import { format, parseISO } from "date-fns";
@@ -107,6 +111,16 @@ import {
 } from "./StageTemplateDialogs";
 import { useClientFolders } from "@/hooks/useClientFolders";
 import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
+import { useClients } from "@/hooks/useClients";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 interface ClientStagesBoardProps {
   clientId: string;
@@ -296,7 +310,11 @@ interface SortableTaskProps {
     },
   ) => void;
   updateTaskCompletedDate?: (taskId: string, date: string | null) => void;
-  startTaskTimer?: (taskId: string, targetDays: number) => void;
+  startTaskTimer?: (
+    taskId: string,
+    targetDays: number,
+    startDate?: string,
+  ) => void;
   stopTaskTimer?: (taskId: string) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
 }
@@ -318,6 +336,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   cycleTaskTimerStyle,
 }: SortableTaskProps) {
   const [editingDate, setEditingDate] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState("");
   const {
     attributes,
     listeners,
@@ -630,7 +649,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                             size="sm"
                             className="h-7 text-xs justify-center"
                             onClick={() =>
-                              startTaskTimer(task.id, option.value)
+                              startTaskTimer(
+                                task.id,
+                                option.value,
+                                customStartDate || undefined,
+                              )
                             }
                           >
                             {option.value} ימים
@@ -658,7 +681,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                                   (e.target as HTMLInputElement).value,
                                 );
                                 if (days > 0 && days <= 365) {
-                                  startTaskTimer(task.id, days);
+                                  startTaskTimer(
+                                    task.id,
+                                    days,
+                                    customStartDate || undefined,
+                                  );
                                 }
                               }
                             }}
@@ -673,7 +700,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                               if (input?.value) {
                                 const days = Number.parseInt(input.value);
                                 if (days > 0 && days <= 365) {
-                                  startTaskTimer(task.id, days);
+                                  startTaskTimer(
+                                    task.id,
+                                    days,
+                                    customStartDate || undefined,
+                                  );
                                 }
                               }
                             }}
@@ -681,6 +712,28 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                             <Play className="h-3 w-3" />
                           </Button>
                         </div>
+                      </div>
+
+                      {/* Custom start date input */}
+                      <div className="border-t pt-2">
+                        <p className="text-xs text-muted-foreground mb-1 text-center">
+                          תאריך התחלה (אופציונלי):
+                        </p>
+                        <Input
+                          type="date"
+                          className="h-7 text-xs"
+                          value={customStartDate}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                        />
+                        {customStartDate && (
+                          <p className="text-xs text-blue-500 mt-1 text-center">
+                            מתחיל מ-
+                            {new Date(customStartDate).toLocaleDateString(
+                              "he-IL",
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )
@@ -1379,6 +1432,8 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     refresh: refreshFolders,
   } = useClientFolders(clientId);
 
+  const { clients } = useClients();
+
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [addFolderDialog, setAddFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -1493,6 +1548,26 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     days: string;
   } | null>(null);
 
+  // Custom timer start date input state
+  const [customTimerStartDate, setCustomTimerStartDate] = useState<{
+    stageId: string;
+    date: string;
+  } | null>(null);
+
+  // Add Task dialog state (with optional client/contact link)
+  const [addTaskDialog, setAddTaskDialog] = useState<{
+    stageId: string;
+    title: string;
+    linkedClientId?: string | null;
+    linkedContactId?: string | null;
+    linkedLabel?: string;
+  } | null>(null);
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [allContacts, setAllContacts] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
+
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1534,6 +1609,29 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
     await addTask(stageId, addingTask.title);
     setAddingTask(null);
   };
+  const handleAddTaskFromDialog = async () => {
+    if (!addTaskDialog || !addTaskDialog.title.trim()) return;
+    await addTask(
+      addTaskDialog.stageId,
+      addTaskDialog.title,
+      addTaskDialog.linkedClientId ?? null,
+      addTaskDialog.linkedContactId ?? null,
+    );
+    setAddTaskDialog(null);
+  };
+  // Lazy-load contacts list when add-task dialog is opened
+  useEffect(() => {
+    if (addTaskDialog && !contactsLoaded) {
+      supabase
+        .from("client_contacts")
+        .select("id, name")
+        .order("name")
+        .then(({ data }) => {
+          if (data) setAllContacts(data);
+          setContactsLoaded(true);
+        });
+    }
+  }, [addTaskDialog, contactsLoaded]);
   const handleBulkAdd = async () => {
     if (!bulkAddDialog || !bulkAddDialog.tasks.trim()) return;
     const titles = bulkAddDialog.tasks
@@ -2379,7 +2477,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                             <Timer className="h-3.5 w-3.5" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="end">
+                        <PopoverContent className="w-60 p-2" align="end">
                           <div className="space-y-2">
                             <p className="text-xs font-medium text-center mb-2">
                               בחר ימי יעד
@@ -2397,6 +2495,10 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                     startStageTimer(
                                       stage.stage_id,
                                       option.value,
+                                      customTimerStartDate?.stageId ===
+                                        stage.stage_id
+                                        ? customTimerStartDate.date || undefined
+                                        : undefined,
                                     )
                                   }
                                 >
@@ -2437,7 +2539,15 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                         customTimerDays.days,
                                       );
                                       if (days > 0 && days <= 365) {
-                                        startStageTimer(stage.stage_id, days);
+                                        startStageTimer(
+                                          stage.stage_id,
+                                          days,
+                                          customTimerStartDate?.stageId ===
+                                            stage.stage_id
+                                            ? customTimerStartDate.date ||
+                                                undefined
+                                            : undefined,
+                                        );
                                         setCustomTimerDays(null);
                                       }
                                     }
@@ -2456,7 +2566,15 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                         customTimerDays.days,
                                       );
                                       if (days > 0 && days <= 365) {
-                                        startStageTimer(stage.stage_id, days);
+                                        startStageTimer(
+                                          stage.stage_id,
+                                          days,
+                                          customTimerStartDate?.stageId ===
+                                            stage.stage_id
+                                            ? customTimerStartDate.date ||
+                                                undefined
+                                            : undefined,
+                                        );
                                         setCustomTimerDays(null);
                                       }
                                     }
@@ -2465,6 +2583,39 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                   <Play className="h-3 w-3" />
                                 </Button>
                               </div>
+                            </div>
+
+                            {/* Custom start date input */}
+                            <div className="border-t pt-2 mt-2">
+                              <p className="text-xs text-muted-foreground mb-1 text-center">
+                                תאריך התחלה (אופציונלי):
+                              </p>
+                              <Input
+                                type="date"
+                                className="h-7 text-xs"
+                                value={
+                                  customTimerStartDate?.stageId ===
+                                  stage.stage_id
+                                    ? customTimerStartDate.date
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setCustomTimerStartDate({
+                                    stageId: stage.stage_id,
+                                    date: e.target.value,
+                                  })
+                                }
+                              />
+                              {customTimerStartDate?.stageId ===
+                                stage.stage_id &&
+                                customTimerStartDate.date && (
+                                  <p className="text-xs text-blue-500 mt-1 text-center">
+                                    מתחיל מ-
+                                    {new Date(
+                                      customTimerStartDate.date,
+                                    ).toLocaleDateString("he-IL")}
+                                  </p>
+                                )}
                             </div>
                           </div>
                         </PopoverContent>
@@ -2659,66 +2810,35 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
 
                 {/* Add Task Section */}
                 <div className="pt-2 border-t">
-                  {addingTask?.stageId === stage.stage_id ? (
-                    <div className="flex gap-2">
-                      <Input
-                        value={addingTask.title}
-                        onChange={(e) =>
-                          setAddingTask({
-                            ...addingTask,
-                            title: e.target.value,
-                          })
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleAddTask(stage.stage_id);
-                          } else if (e.key === "Escape") {
-                            setAddingTask(null);
-                          }
-                        }}
-                        placeholder="שם המשימה..."
-                        className="h-8 text-right"
-                        autoFocus
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddTask(stage.stage_id)}
-                        className="shrink-0"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() =>
-                          setAddingTask({
-                            stageId: stage.stage_id,
-                            title: "",
-                          })
-                        }
-                      >
-                        <Plus className="h-4 w-4 ml-2" />
-                        הוסף משימה
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setBulkAddDialog({
-                            stageId: stage.stage_id,
-                            tasks: "",
-                          })
-                        }
-                        title="הוסף משימות מרובות"
-                      >
-                        <ListPlus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() =>
+                        setAddTaskDialog({
+                          stageId: stage.stage_id,
+                          title: "",
+                        })
+                      }
+                    >
+                      <Plus className="h-4 w-4 ml-2" />
+                      הוסף משימה
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setBulkAddDialog({
+                          stageId: stage.stage_id,
+                          tasks: "",
+                        })
+                      }
+                      title="הוסף משימות מרובות"
+                    >
+                      <ListPlus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -2890,7 +3010,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                               הפעל טיימר ימים
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-56 p-2" align="end">
+                          <PopoverContent className="w-60 p-2" align="end">
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-center mb-2">
                                 בחר ימי יעד לשלב
@@ -2908,6 +3028,11 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                       startStageTimer(
                                         expandedStageData.stage_id,
                                         option.value,
+                                        customTimerStartDate?.stageId ===
+                                          expandedStageData.stage_id
+                                          ? customTimerStartDate.date ||
+                                              undefined
+                                          : undefined,
                                       );
                                     }}
                                   >
@@ -2952,6 +3077,11 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                           startStageTimer(
                                             expandedStageData.stage_id,
                                             days,
+                                            customTimerStartDate?.stageId ===
+                                              expandedStageData.stage_id
+                                              ? customTimerStartDate.date ||
+                                                  undefined
+                                              : undefined,
                                           );
                                           setCustomTimerDays(null);
                                         }
@@ -2974,6 +3104,11 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                           startStageTimer(
                                             expandedStageData.stage_id,
                                             days,
+                                            customTimerStartDate?.stageId ===
+                                              expandedStageData.stage_id
+                                              ? customTimerStartDate.date ||
+                                                  undefined
+                                              : undefined,
                                           );
                                           setCustomTimerDays(null);
                                         }
@@ -2983,6 +3118,39 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                                     <Play className="h-3 w-3" />
                                   </Button>
                                 </div>
+                              </div>
+
+                              {/* Custom start date input */}
+                              <div className="border-t pt-2 mt-2">
+                                <p className="text-xs text-muted-foreground mb-1 text-center">
+                                  תאריך התחלה (אופציונלי):
+                                </p>
+                                <Input
+                                  type="date"
+                                  className="h-7 text-xs"
+                                  value={
+                                    customTimerStartDate?.stageId ===
+                                    expandedStageData.stage_id
+                                      ? customTimerStartDate.date
+                                      : ""
+                                  }
+                                  onChange={(e) =>
+                                    setCustomTimerStartDate({
+                                      stageId: expandedStageData.stage_id,
+                                      date: e.target.value,
+                                    })
+                                  }
+                                />
+                                {customTimerStartDate?.stageId ===
+                                  expandedStageData.stage_id &&
+                                  customTimerStartDate.date && (
+                                    <p className="text-xs text-blue-500 mt-1 text-center">
+                                      מתחיל מ-
+                                      {new Date(
+                                        customTimerStartDate.date,
+                                      ).toLocaleDateString("he-IL")}
+                                    </p>
+                                  )}
                               </div>
                             </div>
                           </PopoverContent>
@@ -3287,7 +3455,7 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                       variant="outline"
                       className="flex-1"
                       onClick={() => {
-                        setAddingTask({
+                        setAddTaskDialog({
                           stageId: expandedStageData.stage_id,
                           title: "",
                         });
@@ -3326,6 +3494,184 @@ export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
                 </>
               );
             })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Task Dialog */}
+      <Dialog
+        open={addTaskDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddTaskDialog(null);
+            setClientPickerOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[440px]" dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle>הוספת משימה</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input
+              value={addTaskDialog?.title ?? ""}
+              onChange={(e) =>
+                setAddTaskDialog((prev) =>
+                  prev ? { ...prev, title: e.target.value } : null,
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddTaskFromDialog();
+                if (e.key === "Escape") setAddTaskDialog(null);
+              }}
+              placeholder="שם המשימה..."
+              className="text-right"
+              autoFocus
+            />
+
+            {/* Client / Contact link picker */}
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium text-right">
+                קישור ללקוח / איש קשר{" "}
+                <span className="text-muted-foreground font-normal">
+                  (אופציונלי)
+                </span>
+              </p>
+              <Popover
+                open={clientPickerOpen}
+                onOpenChange={setClientPickerOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-between text-right"
+                  >
+                    <span
+                      className={
+                        addTaskDialog?.linkedLabel
+                          ? ""
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {addTaskDialog?.linkedLabel ?? "בחר לקוח או איש קשר..."}
+                    </span>
+                    <Link2 className="h-4 w-4 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[400px] p-0"
+                  dir="rtl"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput
+                      placeholder="חיפוש לקוח או איש קשר..."
+                      className="text-right"
+                    />
+                    <CommandList>
+                      <CommandEmpty>לא נמצאו תוצאות</CommandEmpty>
+                      {(addTaskDialog?.linkedClientId ||
+                        addTaskDialog?.linkedContactId) && (
+                        <CommandGroup>
+                          <CommandItem
+                            onSelect={() => {
+                              setAddTaskDialog((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      linkedClientId: null,
+                                      linkedContactId: null,
+                                      linkedLabel: undefined,
+                                    }
+                                  : null,
+                              );
+                              setClientPickerOpen(false);
+                            }}
+                            className="text-red-500"
+                          >
+                            <X className="h-4 w-4 ml-2" />
+                            נקה קישור
+                          </CommandItem>
+                        </CommandGroup>
+                      )}
+                      <CommandGroup heading="לקוחות">
+                        {clients.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`client-${c.name}${c.company ? ` ${c.company}` : ""}`}
+                            onSelect={() => {
+                              setAddTaskDialog((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      linkedClientId: c.id,
+                                      linkedContactId: null,
+                                      linkedLabel: c.company
+                                        ? `${c.name} (${c.company})`
+                                        : c.name,
+                                    }
+                                  : null,
+                              );
+                              setClientPickerOpen(false);
+                            }}
+                          >
+                            <Building2 className="h-4 w-4 ml-2 shrink-0 text-muted-foreground" />
+                            <span>{c.name}</span>
+                            {c.company && (
+                              <span className="text-muted-foreground text-xs mr-2">
+                                {c.company}
+                              </span>
+                            )}
+                            {addTaskDialog?.linkedClientId === c.id && (
+                              <Check className="h-4 w-4 mr-auto text-primary" />
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                      <CommandGroup heading="אנשי קשר">
+                        {allContacts.map((c) => (
+                          <CommandItem
+                            key={c.id}
+                            value={`contact-${c.name}`}
+                            onSelect={() => {
+                              setAddTaskDialog((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      linkedContactId: c.id,
+                                      linkedClientId: null,
+                                      linkedLabel: c.name,
+                                    }
+                                  : null,
+                              );
+                              setClientPickerOpen(false);
+                            }}
+                          >
+                            <UserRound className="h-4 w-4 ml-2 shrink-0 text-muted-foreground" />
+                            <span>{c.name}</span>
+                            {addTaskDialog?.linkedContactId === c.id && (
+                              <Check className="h-4 w-4 mr-auto text-primary" />
+                            )}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={handleAddTaskFromDialog}
+              disabled={!addTaskDialog?.title.trim()}
+            >
+              <Plus className="h-4 w-4 ml-2" />
+              הוסף
+            </Button>
+            <Button variant="ghost" onClick={() => setAddTaskDialog(null)}>
+              ביטול
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

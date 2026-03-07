@@ -53,6 +53,22 @@ export interface ReminderInsert {
   recurring_interval?: string;
 }
 
+// Decode literal unicode escapes stored in DB (e.g. \u05de → מ)
+function decodeUnicode(str: string | null | undefined): string | null {
+  if (!str) return str ?? null;
+  return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+}
+
+function decodeReminder(r: Reminder): Reminder {
+  return {
+    ...r,
+    title: decodeUnicode(r.title) ?? r.title,
+    message: decodeUnicode(r.message),
+  };
+}
+
 export function useReminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [activeReminders, setActiveReminders] = useState<Reminder[]>([]);
@@ -93,7 +109,7 @@ export function useReminders() {
     if (error) {
       console.error("Error fetching reminders:", error);
     } else {
-      setReminders((data as Reminder[]) || []);
+      setReminders(((data as Reminder[]) || []).map(decodeReminder));
     }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps

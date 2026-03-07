@@ -314,7 +314,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     // Adjust end_time so generated duration_minutes column is correct
     const startTime = timerState.currentEntry.start_time;
-    const endTime = new Date(new Date(startTime).getTime() + roundedElapsed * 1000);
+    const endTime = new Date(
+      new Date(startTime).getTime() + roundedElapsed * 1000,
+    );
 
     // Note: duration_minutes is a generated column - only update end_time and is_running
     const { data, error } = await supabase
@@ -354,7 +356,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   const pauseTimer = () => {
     // Local pause - doesn't update DB. Records pausedAt so resume can skip the paused duration.
-    setTimerState((prev) => ({ ...prev, isRunning: false, pausedAt: new Date() }));
+    setTimerState((prev) => ({
+      ...prev,
+      isRunning: false,
+      pausedAt: new Date(),
+    }));
   };
 
   const resumeTimer = () => {
@@ -363,8 +369,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         // Shift startTime forward by the pause duration so elapsed stays at the value it was when paused
         if (prev.pausedAt && prev.startTime) {
           const pauseDuration = Date.now() - prev.pausedAt.getTime();
-          const newStartTime = new Date(prev.startTime.getTime() + pauseDuration);
-          return { ...prev, isRunning: true, pausedAt: null, startTime: newStartTime };
+          const newStartTime = new Date(
+            prev.startTime.getTime() + pauseDuration,
+          );
+          return {
+            ...prev,
+            isRunning: true,
+            pausedAt: null,
+            startTime: newStartTime,
+          };
         }
         return { ...prev, isRunning: true, pausedAt: null };
       });
@@ -408,7 +421,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
     // Adjust end_time so generated duration_minutes column is correct
     const startTime = timerState.currentEntry.start_time;
-    const endTime = new Date(new Date(startTime).getTime() + roundedElapsed * 1000);
+    const endTime = new Date(
+      new Date(startTime).getTime() + roundedElapsed * 1000,
+    );
 
     // Combine existing description with notes if provided
     const updatedDescription = notes

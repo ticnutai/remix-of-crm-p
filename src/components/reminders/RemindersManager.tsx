@@ -47,7 +47,8 @@ import {
 interface Reminder {
   id: string;
   title: string;
-  description?: string;
+  message?: string;
+  description?: string; // legacy alias
   remind_at: string;
   reminder_type: string;
   is_completed: boolean;
@@ -56,6 +57,14 @@ interface Reminder {
   related_type?: string;
   related_id?: string;
   created_at: string;
+}
+
+// Decode literal unicode escapes (e.g. \u05de stored as plain text in DB)
+function decodeUnicode(str: string | undefined | null): string {
+  if (!str) return "";
+  return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
 }
 
 const REMINDER_TYPES = {
@@ -233,15 +242,15 @@ export function RemindersManager() {
                 <span
                   className={`font-medium ${reminder.is_completed ? "line-through" : ""}`}
                 >
-                  {reminder.title}
+                  {decodeUnicode(reminder.title)}
                 </span>
                 <Badge className={typeConfig.color}>{typeConfig.label}</Badge>
                 {isOverdue && <Badge variant="destructive">באיחור</Badge>}
               </div>
 
-              {reminder.description && (
+              {(reminder.message || reminder.description) && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  {reminder.description}
+                  {decodeUnicode(reminder.message || reminder.description)}
                 </p>
               )}
 

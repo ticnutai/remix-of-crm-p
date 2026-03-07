@@ -136,7 +136,12 @@ export function useClientStages(clientId: string) {
   }, [initializeStages]);
 
   // Add a new task
-  const addTask = async (stageId: string, title: string) => {
+  const addTask = async (
+    stageId: string,
+    title: string,
+    linkedClientId?: string | null,
+    linkedContactId?: string | null,
+  ) => {
     try {
       const maxSortOrder = tasks
         .filter((t) => t.stage_id === stageId)
@@ -149,6 +154,8 @@ export function useClientStages(clientId: string) {
           stage_id: stageId,
           title,
           sort_order: maxSortOrder + 1,
+          ...(linkedClientId ? { linked_client_id: linkedClientId } : {}),
+          ...(linkedContactId ? { linked_contact_id: linkedContactId } : {}),
         })
         .select()
         .single();
@@ -353,9 +360,15 @@ export function useClientStages(clientId: string) {
   };
 
   // Start task timer - sets started_at and target_working_days
-  const startTaskTimer = async (taskId: string, targetDays: number) => {
+  const startTaskTimer = async (
+    taskId: string,
+    targetDays: number,
+    startDate?: string,
+  ) => {
     try {
-      const now = new Date().toISOString();
+      const now = startDate
+        ? new Date(startDate).toISOString()
+        : new Date().toISOString();
 
       const { error } = await supabase
         .from("client_stage_tasks")
@@ -487,9 +500,15 @@ export function useClientStages(clientId: string) {
   };
 
   // Start stage timer - sets started_at and target_working_days for a stage
-  const startStageTimer = async (stageId: string, targetDays: number) => {
+  const startStageTimer = async (
+    stageId: string,
+    targetDays: number,
+    startDate?: string,
+  ) => {
     try {
-      const now = new Date().toISOString();
+      const now = startDate
+        ? new Date(startDate).toISOString()
+        : new Date().toISOString();
 
       const { error } = await supabase
         .from("client_stages")
