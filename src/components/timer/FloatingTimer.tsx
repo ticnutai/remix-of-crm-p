@@ -491,8 +491,8 @@ function FloatingTimerContent() {
             </span>
           </button>
 
-          {/* Minimize/Maximize Toggle - Shows when timer is active */}
-          {(timerState.isRunning || timerState.elapsed > 0) && (
+          {/* Minimize/Maximize Toggle - Shows when timer is active, hidden when popover open */}
+          {(timerState.isRunning || timerState.elapsed > 0) && !open && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -515,8 +515,8 @@ function FloatingTimerContent() {
             </button>
           )}
 
-          {/* Floating Timer Badge - Navy & Gold Theme - Hidden when minimized */}
-          {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && (
+          {/* Floating Timer Badge - Navy & Gold Theme - Hidden when minimized or popover open */}
+          {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && !open && (
             <div
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-2xl",
@@ -572,8 +572,13 @@ function FloatingTimerContent() {
                     className={cn(
                       "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
-                      "bg-gradient-to-br from-red-500 to-red-700 text-white shadow-md shadow-red-500/30",
+                      "border",
                     )}
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(45,80%,50%), hsl(45,90%,45%))',
+                      color: 'hsl(220,60%,15%)',
+                      boxShadow: '0 4px 12px hsla(45,80%,50%,0.35)',
+                    }}
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>
@@ -866,29 +871,7 @@ function FloatingTimerContent() {
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Save Button */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={async () => {
-                        await saveEntry();
-                        toast.success("הזמן נשמר בהצלחה");
-                      }}
-                      disabled={timerState.elapsed === 0}
-                      className={cn(
-                        "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                        "hover:scale-110 active:scale-95 border",
-                        "disabled:opacity-30 disabled:cursor-not-allowed",
-                        "bg-white/10 border-white/30 hover:bg-white/20",
-                      )}
-                    >
-                      <Save className="h-4 w-4 text-white" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>שמור</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {/* Save button removed - use Stop flow instead */}
             </div>
 
             {/* Today Total - Small */}
@@ -1011,24 +994,24 @@ function FloatingTimerContent() {
         onThemeChange={setTimerTheme}
       />
 
-      {/* Stop Timer Dialog - Non-Modal */}
+      {/* Stop Timer Dialog - Non-Modal - White bg, Gold icons, Navy text */}
       <Dialog
         open={isStopDialogOpen}
         onOpenChange={setIsStopDialogOpen}
         modal={false}
       >
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent className="sm:max-w-md bg-white border-2 border-[hsl(45,80%,50%)]" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-right">
-              <Clock className="h-5 w-5 text-[#D4AF37]" />
+            <DialogTitle className="flex items-center gap-2 text-right text-[hsl(220,60%,20%)]">
+              <Clock className="h-5 w-5 text-[hsl(45,80%,50%)]" />
               סיום רישום זמן ⏱️
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Time display */}
-            <div className="text-center p-4 rounded-xl bg-gradient-to-br from-[hsl(220,60%,20%)] to-[hsl(220,60%,15%)] border border-[#D4AF37]/30">
-              <div className="text-3xl font-mono font-light text-[#D4AF37] tracking-wider">
+            {/* Time display - White bg with gold border */}
+            <div className="text-center p-4 rounded-xl bg-white border-2 border-[hsl(45,80%,50%)]/40">
+              <div className="text-3xl font-mono font-light text-[hsl(220,60%,20%)] tracking-wider">
                 {(() => {
                   const hours = Math.floor(timerState.elapsed / 3600000);
                   const minutes = Math.floor(
@@ -1044,7 +1027,7 @@ function FloatingTimerContent() {
 
             {/* Title with quick options */}
             <div className="space-y-2">
-              <Label htmlFor="stop-description">כותרת / תיאור</Label>
+              <Label htmlFor="stop-description" className="text-[hsl(220,60%,20%)]">כותרת / תיאור</Label>
               <QuickInputSection
                 type="title"
                 onSelect={(title) =>
@@ -1059,13 +1042,13 @@ function FloatingTimerContent() {
                 value={stopDescription}
                 onChange={(e) => setStopDescription(e.target.value)}
                 placeholder="מה עשית?"
-                className="text-right"
+                className="text-right border-[hsl(45,80%,50%)]/40 text-[hsl(220,60%,20%)] focus:border-[hsl(45,80%,50%)]"
               />
             </div>
 
             {/* Notes with quick options */}
             <div className="space-y-2">
-              <Label htmlFor="stop-notes">הערות (אופציונלי)</Label>
+              <Label htmlFor="stop-notes" className="text-[hsl(220,60%,20%)]">הערות (אופציונלי)</Label>
               <QuickInputSection
                 type="note"
                 onSelect={(note) =>
@@ -1078,7 +1061,7 @@ function FloatingTimerContent() {
                 value={stopNotes}
                 onChange={(e) => setStopNotes(e.target.value)}
                 placeholder="הערות נוספות..."
-                className="text-right min-h-[80px]"
+                className="text-right min-h-[80px] border-[hsl(45,80%,50%)]/40 text-[hsl(220,60%,20%)] focus:border-[hsl(45,80%,50%)]"
               />
             </div>
           </div>
@@ -1086,6 +1069,7 @@ function FloatingTimerContent() {
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
+              className="border-[hsl(220,60%,20%)]/30 text-[hsl(220,60%,20%)] hover:bg-gray-50"
               onClick={() => {
                 // Resume timer on cancel
                 resumeTimer();
@@ -1108,9 +1092,9 @@ function FloatingTimerContent() {
                 setIsStopDialogOpen(false);
                 toast.success("רישום הזמן נשמר בהצלחה! ✅");
               }}
-              className="bg-[#D4AF37] hover:bg-[#B8973A] text-white"
+              className="bg-[hsl(45,80%,50%)] hover:bg-[hsl(45,80%,45%)] text-[hsl(220,60%,15%)] font-semibold"
             >
-              <Save className="h-4 w-4 ml-2" />
+              <Save className="h-4 w-4 ml-2 text-[hsl(220,60%,15%)]" />
               שמור
             </Button>
           </DialogFooter>

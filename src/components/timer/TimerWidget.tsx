@@ -31,7 +31,6 @@ import {
   User,
   Pause,
   RotateCcw,
-  Save,
   FileText,
   ChevronDown,
   ChevronUp,
@@ -42,7 +41,6 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTimerTheme } from "./TimerThemeContext";
-import { SaveTimeDialog } from "./SaveTimeDialog";
 
 // Get hooks outside component to use in render
 
@@ -591,55 +589,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
                 </Button>
               )}
 
-              {/* Save Button */}
-              {timerState.elapsed > 0 && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-10 w-10 rounded-xl p-0 backdrop-blur-sm transition-all"
-                    style={{
-                      borderColor: timerState.isRunning
-                        ? `${theme.controlButtonsActiveColor || "hsl(45, 80%, 50%)"}80`
-                        : "rgba(255,255,255,0.3)",
-                      color: timerState.isRunning
-                        ? theme.controlButtonsActiveColor || "hsl(45, 80%, 60%)"
-                        : "white",
-                    }}
-                    onClick={() => {
-                      // Pause timer and show save dialog
-                      pauseTimer();
-                      setShowSavePanel(true);
-                    }}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
-                  <SaveTimeDialog
-                    open={showSavePanel}
-                    onOpenChange={setShowSavePanel}
-                    elapsedTime={timerState.elapsed}
-                    onCancel={() => {
-                      // Resume timer when user cancels
-                      resumeTimer();
-                    }}
-                    onSave={async (title, notesText) => {
-                      try {
-                        // Stop and save
-                        await stopTimer();
-                        setDescription(title);
-                        setNotes(notesText);
-                        await saveEntry(
-                          title + (notesText ? ` | ${notesText}` : ""),
-                        );
-                        toast.success("רישום הזמן נשמר בהצלחה! ✅");
-                      } catch (error) {
-                        toast.error("שגיאה בשמירת רישום הזמן");
-                        console.error("Save error:", error);
-                      }
-                    }}
-                  />
-                </>
-              )}
+              {/* Save button removed - use Stop flow instead */}
             </div>
           </div>
         )}

@@ -241,34 +241,34 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         dir="rtl"
-        className="max-w-lg bg-gradient-to-br from-slate-900 to-slate-800 border-2 border-amber-500 text-white shadow-2xl rounded-2xl"
+        className="max-w-lg bg-white border-2 border-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)] shadow-2xl rounded-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="text-amber-400 flex items-center justify-between text-lg">
+          <DialogTitle className="text-[hsl(220,60%,20%)] flex items-center justify-between text-lg">
             <div className="flex items-center gap-2">
-              <Save className="h-5 w-5" />
+              <Save className="h-5 w-5 text-[hsl(45,80%,50%)]" />
               שמירת רישום זמן
             </div>
             {/* Cloud Status Indicator */}
             {cloudLoading ? (
-               <Cloud className="h-4 w-4 animate-pulse text-white/50" />
+               <Cloud className="h-4 w-4 animate-pulse text-[hsl(220,60%,20%)]/50" />
             ) : cloudSaving ? (
-               <Cloud className="h-4 w-4 animate-bounce text-amber-500" />
+               <Cloud className="h-4 w-4 animate-bounce text-[hsl(45,80%,50%)]" />
             ) : (
-               <Cloud className="h-4 w-4 text-green-500/50" />
+               <Cloud className="h-4 w-4 text-[hsl(45,80%,50%)]/50" />
             )}
           </DialogTitle>
         </DialogHeader>
         
         {/* Time Display */}
-        <div className="text-center py-4 rounded-xl bg-slate-950 border border-amber-500/30">
-          <div className="flex items-center justify-center gap-2 text-amber-400 mb-1">
+        <div className="text-center py-4 rounded-xl bg-white border-2 border-[hsl(45,80%,50%)]/40">
+          <div className="flex items-center justify-center gap-2 text-[hsl(45,80%,50%)] mb-1">
             <Clock className="h-4 w-4" />
             <span className="text-xs">זמן שהושקע</span>
           </div>
-          <div className="text-4xl font-mono font-light text-amber-300 tracking-wider">
+          <div className="text-4xl font-mono font-light text-[hsl(220,60%,20%)] tracking-wider">
             {formatTime(elapsedTime)}
           </div>
         </div>
@@ -277,13 +277,13 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
           {/* ===== TITLES SECTION ===== */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-amber-400 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
+              <h3 className="text-sm font-semibold text-[hsl(220,60%,20%)] flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[hsl(45,80%,50%)]" />
                 כותרת / תיאור
               </h3>
               <button
                 type="button"
-                className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
+                className="p-1.5 rounded text-[hsl(220,60%,20%)]/50 hover:text-[hsl(220,60%,20%)] hover:bg-gray-100 transition-all flex items-center gap-1 text-xs"
                 onClick={() => setShowBulkTitles(!showBulkTitles)}
               >
                 <ListPlus className="h-3.5 w-3.5" />
@@ -299,7 +299,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     <Input
                       value={editingTitle.value}
                       onChange={(e) => setEditingTitle({ ...editingTitle, value: e.target.value })}
-                      className="h-8 w-32 bg-white/10 border-amber-500 text-white text-xs"
+                      className="h-8 w-32 bg-gray-50 border-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)] text-xs"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') saveEditTitle();
@@ -308,7 +308,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     />
                     <button
                       type="button"
-                      className="h-8 w-8 flex items-center justify-center rounded bg-green-600 hover:bg-green-500 text-white"
+                      className="h-8 w-8 flex items-center justify-center rounded bg-[hsl(45,80%,50%)] hover:bg-[hsl(45,80%,45%)] text-[hsl(220,60%,15%)]"
                       onClick={saveEditTitle}
                     >
                       <Check className="h-3 w-3" />
@@ -321,8 +321,8 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                       className={cn(
                         "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                         title === t
-                          ? "bg-amber-500 text-slate-900 border-amber-400 shadow-lg"
-                          : "bg-white/5 border-white/20 hover:border-amber-500/60 hover:bg-white/10 text-white"
+                          ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] border-[hsl(45,80%,45%)] shadow-lg"
+                          : "bg-gray-50 border-gray-200 hover:border-[hsl(45,80%,50%)]/60 hover:bg-gray-100 text-[hsl(220,60%,20%)]"
                       )}
                       onClick={() => selectTitle(t)}
                     >
@@ -331,14 +331,14 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5 z-10">
                       <button
                         type="button"
-                        className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
+                        className="p-0.5 rounded bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)]"
                         onClick={() => startEditTitle(idx, t)}
                       >
                         <Edit2 className="h-2.5 w-2.5" />
                       </button>
                       <button
                         type="button"
-                        className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
+                        className="p-0.5 rounded bg-[hsl(220,60%,20%)] text-white hover:bg-[hsl(220,60%,25%)]"
                         onClick={() => removeTitle(idx)}
                       >
                         <Trash2 className="h-2.5 w-2.5" />
@@ -354,7 +354,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                   value={newTitleInput}
                   onChange={(e) => setNewTitleInput(e.target.value)}
                   placeholder="הוסף כותרת..."
-                  className="h-8 w-32 bg-gray-100 border-2 border-amber-300 text-gray-800 text-xs placeholder:text-gray-400"
+                  className="h-8 w-32 bg-gray-50 border-2 border-[hsl(45,80%,50%)]/50 text-[hsl(220,60%,20%)] text-xs placeholder:text-gray-400"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -364,7 +364,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                 />
                 <button
                   type="button"
-                  className="h-8 w-8 flex items-center justify-center rounded-md bg-amber-500 text-slate-900 hover:bg-amber-400 shadow-md"
+                  className="h-8 w-8 flex items-center justify-center rounded-md bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)] shadow-md"
                   onClick={() => {
                     console.log('[SaveTimeDialog] Plus button clicked, input:', newTitleInput);
                     addTitle();
@@ -377,19 +377,19 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
 
             {/* Bulk titles */}
             {showBulkTitles && (
-              <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
-                <div className="text-[10px] text-white/60">הכנס כל כותרת בשורה נפרדת:</div>
+              <div className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-[10px] text-[hsl(220,60%,20%)]/60">הכנס כל כותרת בשורה נפרדת:</div>
                 <Textarea
                   value={bulkTitlesInput}
                   onChange={(e) => setBulkTitlesInput(e.target.value)}
                   placeholder={"חוזה\nבקרת תכן\nתשלום לקוח"}
-                  className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
+                  className="h-20 bg-white border-gray-200 text-[hsl(220,60%,20%)] text-xs resize-none"
                 />
                 <div className="flex gap-2">
                   <Button 
                     type="button" 
                     size="sm" 
-                    className="h-7 text-xs bg-amber-500 text-slate-900 hover:bg-amber-400"
+                    className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)]"
                     onClick={addBulkTitles}
                   >
                     <Plus className="h-3 w-3 ml-1" />
@@ -399,7 +399,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     type="button" 
                     size="sm" 
                     variant="outline" 
-                    className="h-7 text-xs border-white/20 text-white hover:bg-white/10"
+                    className="h-7 text-xs border-gray-200 text-[hsl(220,60%,20%)] hover:bg-gray-100"
                     onClick={() => setShowBulkTitles(false)}
                   >
                     ביטול
@@ -413,20 +413,20 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="מה עשית?"
-              className="h-10 bg-white/5 border-white/20 text-white"
+              className="h-10 bg-gray-50 border-gray-200 text-[hsl(220,60%,20%)] focus:border-[hsl(45,80%,50%)]"
             />
           </div>
 
           {/* ===== NOTES SECTION ===== */}
-          <div className="space-y-3 pt-3 border-t border-white/10">
+          <div className="space-y-3 pt-3 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-sky-400 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
+              <h3 className="text-sm font-semibold text-[hsl(220,60%,20%)] flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[hsl(45,80%,50%)]" />
                 הערות (אופציונלי)
               </h3>
               <button
                 type="button"
-                className="p-1.5 rounded text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 text-xs"
+                className="p-1.5 rounded text-[hsl(220,60%,20%)]/50 hover:text-[hsl(220,60%,20%)] hover:bg-gray-100 transition-all flex items-center gap-1 text-xs"
                 onClick={() => setShowBulkNotes(!showBulkNotes)}
               >
                 <ListPlus className="h-3.5 w-3.5" />
@@ -442,7 +442,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     <Input
                       value={editingNote.value}
                       onChange={(e) => setEditingNote({ ...editingNote, value: e.target.value })}
-                      className="h-8 w-32 bg-white/10 border-sky-500 text-white text-xs"
+                      className="h-8 w-32 bg-gray-50 border-[hsl(45,80%,50%)] text-[hsl(220,60%,20%)] text-xs"
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') saveEditNote();
@@ -451,7 +451,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     />
                     <button
                       type="button"
-                      className="h-8 w-8 flex items-center justify-center rounded bg-green-600 hover:bg-green-500 text-white"
+                      className="h-8 w-8 flex items-center justify-center rounded bg-[hsl(45,80%,50%)] hover:bg-[hsl(45,80%,45%)] text-[hsl(220,60%,15%)]"
                       onClick={saveEditNote}
                     >
                       <Check className="h-3 w-3" />
@@ -464,8 +464,8 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                       className={cn(
                         "px-3 py-1.5 text-xs rounded-lg border-2 transition-all font-medium",
                         notes === n
-                          ? "bg-sky-500 text-white border-sky-400 shadow-lg"
-                          : "bg-white/5 border-white/20 hover:border-sky-500/60 hover:bg-white/10 text-white"
+                          ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] border-[hsl(45,80%,45%)] shadow-lg"
+                          : "bg-gray-50 border-gray-200 hover:border-[hsl(45,80%,50%)]/60 hover:bg-gray-100 text-[hsl(220,60%,20%)]"
                       )}
                       onClick={() => selectNote(n)}
                     >
@@ -474,14 +474,14 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5 z-10">
                       <button
                         type="button"
-                        className="p-0.5 rounded bg-blue-500 text-white hover:bg-blue-400"
+                        className="p-0.5 rounded bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)]"
                         onClick={() => startEditNote(idx, n)}
                       >
                         <Edit2 className="h-2.5 w-2.5" />
                       </button>
                       <button
                         type="button"
-                        className="p-0.5 rounded bg-red-500 text-white hover:bg-red-400"
+                        className="p-0.5 rounded bg-[hsl(220,60%,20%)] text-white hover:bg-[hsl(220,60%,25%)]"
                         onClick={() => removeNote(idx)}
                       >
                         <Trash2 className="h-2.5 w-2.5" />
@@ -497,7 +497,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                   value={newNoteInput}
                   onChange={(e) => setNewNoteInput(e.target.value)}
                   placeholder="הוסף הערה..."
-                  className="h-8 w-32 bg-gray-100 border-2 border-sky-300 text-gray-800 text-xs placeholder:text-gray-400"
+                  className="h-8 w-32 bg-gray-50 border-2 border-[hsl(45,80%,50%)]/50 text-[hsl(220,60%,20%)] text-xs placeholder:text-gray-400"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -507,7 +507,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                 />
                 <button
                   type="button"
-                  className="h-8 w-8 flex items-center justify-center rounded-md bg-sky-500 text-white hover:bg-sky-400 shadow-md"
+                  className="h-8 w-8 flex items-center justify-center rounded-md bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)] shadow-md"
                   onClick={() => {
                     console.log('[SaveTimeDialog] Plus note button clicked, input:', newNoteInput);
                     addNote();
@@ -520,19 +520,19 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
 
             {/* Bulk notes */}
             {showBulkNotes && (
-              <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
-                <div className="text-[10px] text-white/60">הכנס כל הערה בשורה נפרדת:</div>
+              <div className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-[10px] text-[hsl(220,60%,20%)]/60">הכנס כל הערה בשורה נפרדת:</div>
                 <Textarea
                   value={bulkNotesInput}
                   onChange={(e) => setBulkNotesInput(e.target.value)}
                   placeholder={"מיילים\nמסמכים\nפיקוח"}
-                  className="h-20 bg-white/5 border-white/20 text-white text-xs resize-none"
+                  className="h-20 bg-white border-gray-200 text-[hsl(220,60%,20%)] text-xs resize-none"
                 />
                 <div className="flex gap-2">
                   <Button 
                     type="button" 
                     size="sm" 
-                    className="h-7 text-xs bg-sky-500 text-white hover:bg-sky-400"
+                    className="h-7 text-xs bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)]"
                     onClick={addBulkNotes}
                   >
                     <Plus className="h-3 w-3 ml-1" />
@@ -542,7 +542,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
                     type="button" 
                     size="sm" 
                     variant="outline" 
-                    className="h-7 text-xs border-white/20 text-white hover:bg-white/10"
+                    className="h-7 text-xs border-gray-200 text-[hsl(220,60%,20%)] hover:bg-gray-100"
                     onClick={() => setShowBulkNotes(false)}
                   >
                     ביטול
@@ -556,16 +556,16 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="הערות נוספות..."
-              className="min-h-[80px] bg-white/5 border-white/20 text-white resize-none"
+              className="min-h-[80px] bg-gray-50 border-gray-200 text-[hsl(220,60%,20%)] resize-none focus:border-[hsl(45,80%,50%)]"
             />
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t border-white/10">
+        <div className="flex gap-3 pt-4 border-t border-gray-200">
           <Button
             type="button"
-            className="flex-1 h-11 text-base bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 hover:from-amber-400 hover:to-amber-500 rounded-xl font-semibold shadow-lg"
+            className="flex-1 h-11 text-base bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)] rounded-xl font-semibold shadow-lg"
             onClick={handleSave}
           >
             <Save className="h-5 w-5 ml-2" />
@@ -574,7 +574,7 @@ export function SaveTimeDialog({ open, onOpenChange, elapsedTime, onSave, onCanc
           <Button
             type="button"
             variant="outline"
-            className="h-11 px-6 border-white/30 text-white hover:bg-white/10 rounded-xl"
+            className="h-11 px-6 border-gray-200 text-[hsl(220,60%,20%)] hover:bg-gray-50 rounded-xl"
             onClick={() => {
               // Resume timer on cancel if callback provided
               if (onCancel) {
