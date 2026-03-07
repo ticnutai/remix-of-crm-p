@@ -304,8 +304,13 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const endTime = new Date();
-    const durationMinutes = Math.floor(timerState.elapsed / 60);
+    // Round down to nearest 30 seconds (half-minute)
+    const roundedElapsed = Math.floor(timerState.elapsed / 30) * 30;
+    const durationMinutes = roundedElapsed / 60; // e.g. 1.5 for 90 seconds
+
+    // Adjust end_time so generated duration_minutes column is correct
+    const startTime = timerState.currentEntry.start_time;
+    const endTime = new Date(new Date(startTime).getTime() + roundedElapsed * 1000);
 
     // Note: duration_minutes is a generated column - only update end_time and is_running
     const { data, error } = await supabase
@@ -383,8 +388,13 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const endTime = new Date();
-    const durationMinutes = Math.floor(timerState.elapsed / 60);
+    // Round down to nearest 30 seconds (half-minute)
+    const roundedElapsed = Math.floor(timerState.elapsed / 30) * 30;
+    const durationMinutes = roundedElapsed / 60; // e.g. 1.5 for 90 seconds
+
+    // Adjust end_time so generated duration_minutes column is correct
+    const startTime = timerState.currentEntry.start_time;
+    const endTime = new Date(new Date(startTime).getTime() + roundedElapsed * 1000);
 
     // Combine existing description with notes if provided
     const updatedDescription = notes
@@ -499,10 +509,14 @@ export function useTimer() {
   return context;
 }
 
-// Helper function
+// Helper function - shows half-minute precision
 function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (hours === 0) return `${mins} דקות`;
-  return `${hours} שעות ו-${mins} דקות`;
+  // Format: show .30 for half minutes
+  const wholeMinutes = Math.floor(mins);
+  const hasHalf = mins % 1 !== 0;
+  const minStr = hasHalf ? `${wholeMinutes}.30` : `${wholeMinutes}`;
+  if (hours === 0) return `${minStr} דקות`;
+  return `${hours} שעות ו-${minStr} דקות`;
 }
