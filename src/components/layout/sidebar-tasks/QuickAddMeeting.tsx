@@ -35,6 +35,9 @@ import {
   Clock,
   Loader2,
   Calendar as CalendarIcon2,
+  UserPlus,
+  X,
+  Search,
 } from "lucide-react";
 import { format, setHours, setMinutes, addHours } from "date-fns";
 import { he } from "date-fns/locale";
@@ -129,6 +132,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [location, setLocation] = useState("");
     const [clientId, setClientId] = useState<string>("");
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
 
     // Load initial data when dialog opens
     useEffect(() => {
@@ -449,6 +454,126 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                     }}
                   />
                 </div>
+              </div>
+
+              {/* Client Assignment */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  שיוך ללקוח
+                </Label>
+                {clientId && clientId !== "none" ? (
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    style={{
+                      background: `${sidebarColors.gold}15`,
+                      borderColor: `${sidebarColors.gold}60`,
+                    }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                      {clients.find(c => c.id === clientId)?.name || "לקוח"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setClientId("")}
+                      className="p-1 rounded hover:bg-white/10 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" style={{ color: sidebarColors.goldLight }} />
+                    </button>
+                  </div>
+                ) : (
+                  <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        style={{
+                          background: `${sidebarColors.navyLight}50`,
+                          borderColor: `${sidebarColors.gold}40`,
+                          color: `${sidebarColors.goldLight}60`,
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                        בחר לקוח או איש קשר
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[320px] p-0 overflow-hidden"
+                      align="start"
+                      style={{
+                        background: sidebarColors.navy,
+                        border: `1px solid ${sidebarColors.gold}40`,
+                      }}
+                    >
+                      <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
+                        <div className="relative">
+                          <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                          <Input
+                            placeholder="חיפוש לקוח..."
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            className="pr-9 text-right text-sm"
+                            style={{
+                              background: `${sidebarColors.navyLight}50`,
+                              borderColor: `${sidebarColors.gold}30`,
+                              color: sidebarColors.goldLight,
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto p-1">
+                        {clients
+                          .filter(c =>
+                            !clientSearch ||
+                            c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            c.phone?.includes(clientSearch)
+                          )
+                          .map(client => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => {
+                                setClientId(client.id);
+                                setIsClientPickerOpen(false);
+                                setClientSearch("");
+                              }}
+                              className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-white/10 flex items-center gap-2"
+                              style={{ color: sidebarColors.goldLight }}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                style={{
+                                  background: `${sidebarColors.gold}25`,
+                                  color: sidebarColors.gold,
+                                }}
+                              >
+                                {client.name.charAt(0)}
+                              </div>
+                              <div className="flex-1 text-right">
+                                <div className="font-medium">{client.name}</div>
+                                {client.email && (
+                                  <div className="text-xs opacity-60">{client.email}</div>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        {clients.filter(c =>
+                          !clientSearch ||
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                        ).length === 0 && (
+                          <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                            לא נמצאו לקוחות
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
 
               {/* Reminder & Calendar Sync */}
