@@ -1,5 +1,6 @@
 // Client Name with Category Tooltip - tenarch CRM Pro
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { FolderOpen, Users, Heart, Building, Handshake } from 'lucide-react';
@@ -37,8 +38,29 @@ export function ClientNameWithCategory({
   className,
 }: ClientNameWithCategoryProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; right: number } | null>(null);
+  const triggerRef = useRef<HTMLSpanElement>(null);
 
   const category = categoryId ? categories.find(c => c.id === categoryId) : null;
+
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setTooltipPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    updatePosition();
+    setShowTooltip(true);
+  }, [updatePosition]);
+
+  const handleMouseLeave = useCallback(() => {
+    setShowTooltip(false);
+  }, []);
 
   // Render with Link if clientId provided
   const nameElement = clientId ? (
@@ -59,30 +81,31 @@ export function ClientNameWithCategory({
 
   return (
     <span
+      ref={triggerRef}
       style={{ position: 'relative', display: 'inline-block', cursor: 'default' }}
-      onMouseEnter={() => setShowTooltip(true)}
-      onMouseLeave={() => setShowTooltip(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {nameElement}
       
-      {/* Tooltip */}
-      {showTooltip && (
+      {/* Tooltip rendered via Portal to escape overflow:hidden */}
+      {showTooltip && tooltipPos && createPortal(
         <div
           dir="rtl"
           style={{
-            position: 'absolute',
-            top: '100%',
-            right: '0',
-            marginTop: '6px',
+            position: 'fixed',
+            top: tooltipPos.top,
+            right: tooltipPos.right,
             backgroundColor: '#1e293b',
             border: '2px solid #d4a843',
             borderRadius: '8px',
             padding: '8px 12px',
             boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
-            zIndex: 1000,
+            zIndex: 9999,
             minWidth: '160px',
             whiteSpace: 'nowrap',
-            animation: 'fadeIn 0.2s ease-in',
+            animation: 'clientCatFadeIn 0.2s ease-in',
+            pointerEvents: 'none',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -139,11 +162,12 @@ export function ClientNameWithCategory({
               borderBottom: '8px solid #d4a843',
             }}
           />
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
-        @keyframes fadeIn {
+        @keyframes clientCatFadeIn {
           from {
             opacity: 0;
             transform: translateY(-4px);
