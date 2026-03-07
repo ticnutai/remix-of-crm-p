@@ -31,6 +31,7 @@ interface TimerState {
   startTime: Date | null;
   elapsed: number; // in seconds
   currentEntry: TimeEntry | null;
+  pausedAt: Date | null; // tracks when timer was paused so resume offset can be calculated
 }
 
 interface TimerContextType {
@@ -64,6 +65,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     startTime: null,
     elapsed: 0,
     currentEntry: null,
+    pausedAt: null,
   });
   const [todayEntries, setTodayEntries] = useState<TimeEntry[]>([]);
   const [weekTotal, setWeekTotal] = useState(0);
@@ -105,6 +107,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         startTime,
         elapsed,
         currentEntry: data as TimeEntry,
+        pausedAt: null,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,6 +292,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       startTime,
       elapsed: 0,
       currentEntry: data as TimeEntry,
+      pausedAt: null,
     });
 
     toast({
@@ -337,6 +341,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       startTime: null,
       elapsed: 0,
       currentEntry: null,
+      pausedAt: null,
     });
 
     toast({
@@ -348,13 +353,21 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   };
 
   const pauseTimer = () => {
-    // Local pause - doesn't update DB
-    setTimerState((prev) => ({ ...prev, isRunning: false }));
+    // Local pause - doesn't update DB. Records pausedAt so resume can skip the paused duration.
+    setTimerState((prev) => ({ ...prev, isRunning: false, pausedAt: new Date() }));
   };
 
   const resumeTimer = () => {
     if (timerState.currentEntry) {
-      setTimerState((prev) => ({ ...prev, isRunning: true }));
+      setTimerState((prev) => {
+        // Shift startTime forward by the pause duration so elapsed stays at the value it was when paused
+        if (prev.pausedAt && prev.startTime) {
+          const pauseDuration = Date.now() - prev.pausedAt.getTime();
+          const newStartTime = new Date(prev.startTime.getTime() + pauseDuration);
+          return { ...prev, isRunning: true, pausedAt: null, startTime: newStartTime };
+        }
+        return { ...prev, isRunning: true, pausedAt: null };
+      });
     }
   };
 
@@ -375,6 +388,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       startTime: null,
       elapsed: 0,
       currentEntry: null,
+      pausedAt: null,
     });
 
     toast({
@@ -427,6 +441,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       startTime: null,
       elapsed: 0,
       currentEntry: null,
+      pausedAt: null,
     });
 
     toast({
