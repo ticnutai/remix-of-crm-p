@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, Loader2, Check, Users, User } from 'lucide-react';
+import { Search, Loader2, Check, Users, User, UserMinus, UserPlus } from 'lucide-react';
 
 interface AddClientsToCategoryDialogProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ export function AddClientsToCategoryDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
 
   // Fetch clients when dialog opens
@@ -46,6 +47,7 @@ export function AddClientsToCategoryDialog({
     if (isOpen) {
       fetchClients();
       setSelectedIds(new Set());
+      setRemovedIds(new Set());
       setSearch('');
     }
   }, [isOpen]);
@@ -84,40 +86,75 @@ export function AddClientsToCategoryDialog({
   );
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const isInCategory = alreadyInCategory.has(id);
+    if (isInCategory) {
+      // Toggle removal of existing category member
+      setRemovedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    } else {
+      // Toggle selection for adding
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    }
   };
 
   const selectAll = () => {
     const notInCategory = filtered.filter((c) => !alreadyInCategory.has(c.id));
     setSelectedIds(new Set(notInCategory.map((c) => c.id)));
+    setRemovedIds(new Set());
   };
 
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setRemovedIds(new Set());
+  };
+
+  const hasChanges = selectedIds.size > 0 || removedIds.size > 0;
 
   const handleSave = async () => {
-    if (selectedIds.size === 0) return;
+    if (!hasChanges) return;
     setSaving(true);
     try {
-      const ids = Array.from(selectedIds);
-      const { error } = await supabase
-        .from('clients')
-        .update({ category_id: categoryId })
-        .in('id', ids);
-      if (error) throw error;
+      // Add new clients to category
+      if (selectedIds.size > 0) {
+        const addIds = Array.from(selectedIds);
+        const { error } = await supabase
+          .from('clients')
+          .update({ category_id: categoryId })
+          .in('id', addIds);
+        if (error) throw error;
+      }
+
+      // Remove clients from category
+      if (removedIds.size > 0) {
+        const removeIds = Array.from(removedIds);
+        const { error } = await supabase
+          .from('clients')
+          .update({ category_id: null })
+          .in('id', removeIds);
+        if (error) throw error;
+      }
+
+      const messages: string[] = [];
+      if (selectedIds.size > 0) messages.push(`${selectedIds.size} לקוחות הוספו`);
+      if (removedIds.size > 0) messages.push(`${removedIds.size} לקוחות הוסרו`);
 
       toast({
         title: 'הלקוחות עודכנו בהצלחה',
-        description: `${ids.length} לקוחות הוספו לקטגוריה "${categoryName}"`,
+        description: messages.join(' | '),
       });
       onUpdate();
       onClose();
     } catch (err) {
-      console.error('Error assigning category:', err);
+      console.error('Error updating category:', err);
       toast({
         title: 'שגיאה',
         description: 'לא ניתן לעדכן את הלקוחות',
@@ -134,7 +171,7 @@ export function AddClientsToCategoryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[hsl(220,60%,20%)]">
             <Users className="h-5 w-5" />
-            הוסף לקוחות לקטגוריה
+            ניהול לקוחות בקטגוריה
             <Badge
               className="mr-2 text-white text-xs"
               style={{ backgroundColor: categoryColor }}
@@ -143,7 +180,7 @@ export function AddClientsToCategoryDialog({
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            סמן את הלקוחות שברצונך להוסיף לקטגוריה זו
+            סמן לקוחות להוספה או בטל סימון להסרה מהקטגוריה
           </DialogDescription>
         </DialogHeader>
 
@@ -176,11 +213,20 @@ export function AddClientsToCategoryDialog({
               </button>
             )}
           </div>
-          {selectedIds.size > 0 && (
-            <span className="text-muted-foreground">
-              {selectedIds.size} נבחרו
-            </span>
-          )}
+          <div className="flex gap-3">
+            {selectedIds.size > 0 && (
+              <span className="text-emerald-600 text-xs font-medium flex items-center gap-1">
+                <UserPlus className="h-3 w-3" />
+                +{selectedIds.size} להוספה
+              </span>
+            )}
+            {removedIds.size > 0 && (
+              <span className="text-red-500 text-xs font-medium flex items-center gap-1">
+                <UserMinus className="h-3 w-3" />
+                -{removedIds.size} להסרה
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Client list */}
@@ -197,31 +243,48 @@ export function AddClientsToCategoryDialog({
             <div className="p-2 space-y-1">
               {filtered.map((client) => {
                 const isInCategory = alreadyInCategory.has(client.id);
+                const isMarkedForRemoval = removedIds.has(client.id);
                 const isSelected = selectedIds.has(client.id);
+                const isChecked = isInCategory ? !isMarkedForRemoval : isSelected;
 
                 return (
                   <label
                     key={client.id}
                     className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all border ${
-                      isInCategory
-                        ? 'bg-muted/50 border-transparent opacity-60 cursor-default'
+                      isMarkedForRemoval
+                        ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800'
+                        : isInCategory
+                        ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
                         : isSelected
                         ? 'bg-[hsl(40,70%,65%,0.12)] border-[hsl(40,70%,65%)]'
                         : 'border-transparent hover:bg-muted/50'
                     }`}
                   >
                     <Checkbox
-                      checked={isInCategory || isSelected}
-                      disabled={isInCategory}
-                      onCheckedChange={() => !isInCategory && toggleSelect(client.id)}
+                      checked={isChecked}
+                      onCheckedChange={() => toggleSelect(client.id)}
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-[hsl(220,60%,20%)] truncate flex items-center gap-1.5">
+                      <div className={`font-semibold text-sm truncate flex items-center gap-1.5 ${
+                        isMarkedForRemoval 
+                          ? 'text-red-600 dark:text-red-400 line-through' 
+                          : 'text-[hsl(220,60%,20%)]'
+                      }`}>
                         <User className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                         {client.name}
-                        {isInCategory && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            כבר בקטגוריה
+                        {isInCategory && !isMarkedForRemoval && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
+                            בקטגוריה
+                          </Badge>
+                        )}
+                        {isMarkedForRemoval && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
+                            יוסר
+                          </Badge>
+                        )}
+                        {isSelected && !isInCategory && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                            חדש
                           </Badge>
                         )}
                       </div>
@@ -246,18 +309,18 @@ export function AddClientsToCategoryDialog({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving || selectedIds.size === 0}
+            disabled={saving || !hasChanges}
             className="bg-[hsl(220,60%,20%)] hover:bg-[hsl(220,60%,25%)] text-white"
           >
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                מוסיף...
+                מעדכן...
               </>
             ) : (
               <>
                 <Check className="h-4 w-4 ml-2" />
-                הוסף {selectedIds.size > 0 ? `${selectedIds.size} לקוחות` : ''}
+                שמור {hasChanges ? 'שינויים' : ''}
               </>
             )}
           </Button>
