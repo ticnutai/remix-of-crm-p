@@ -1,5 +1,5 @@
 // Categories Sidebar Component - tenarch CRM Pro
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -9,8 +9,10 @@ import {
   Building, 
   Handshake,
   X,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 
 interface ClientCategory {
   id: string;
@@ -25,6 +27,7 @@ interface CategoriesSidebarProps {
   onToggleCategory: (categoryId: string) => void;
   onClearCategories: () => void;
   clientCounts?: Record<string, number>;
+  onUpdate?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -41,12 +44,17 @@ export function CategoriesSidebar({
   onToggleCategory,
   onClearCategories,
   clientCounts = {},
+  onUpdate,
 }: CategoriesSidebarProps) {
+  const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
+  const addToCategory = categories.find((c) => c.id === addToCategoryId);
+
   if (categories.length === 0) {
     return null;
   }
 
   return (
+    <>
     <div
       dir="rtl"
       style={{
@@ -208,6 +216,39 @@ export function CategoriesSidebar({
                     ✓
                   </Badge>
                 )}
+
+                {/* Add clients button */}
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddToCategoryId(category.id);
+                  }}
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '6px',
+                    border: '1px solid #d4a843',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    backgroundColor: isSelected ? '#ffffff' : 'transparent',
+                    color: '#d4a843',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#d4a843';
+                    e.currentTarget.style.color = '#ffffff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isSelected ? '#ffffff' : 'transparent';
+                    e.currentTarget.style.color = '#d4a843';
+                  }}
+                  title={`הוסף לקוחות ל${category.name}`}
+                >
+                  <Plus style={{ width: '14px', height: '14px' }} />
+                </div>
               </button>
             );
           })}
@@ -232,5 +273,21 @@ export function CategoriesSidebar({
         </div>
       )}
     </div>
+
+      {/* Add Clients to Category Dialog */}
+      {addToCategory && (
+        <AddClientsToCategoryDialog
+          isOpen={!!addToCategoryId}
+          onClose={() => setAddToCategoryId(null)}
+          categoryId={addToCategory.id}
+          categoryName={addToCategory.name}
+          categoryColor={addToCategory.color || '#d4a843'}
+          onUpdate={() => {
+            onUpdate?.();
+            setAddToCategoryId(null);
+          }}
+        />
+      )}
+    </>
   );
 }

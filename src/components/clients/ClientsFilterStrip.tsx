@@ -1,6 +1,7 @@
 // Clients Filter Strip Component - tenarch CRM Pro
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -75,6 +76,7 @@ interface ClientsFilterStripProps {
   categories?: ClientCategory[];
   allTags?: string[];
   onOpenCategoryManager?: () => void;
+  onUpdate?: () => void;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -94,6 +96,7 @@ export function ClientsFilterStrip({
   categories = [],
   allTags = [],
   onOpenCategoryManager,
+  onUpdate,
 }: ClientsFilterStripProps) {
   const [stageDefinitions, setStageDefinitions] = useState<
     ClientStageDefinition[]
@@ -106,7 +109,8 @@ export function ClientsFilterStrip({
   const [sortDialogOpen, setSortDialogOpen] = useState(false);
   const [classificationDialogOpen, setClassificationDialogOpen] =
     useState(false);
-
+  const [addToCategoryId, setAddToCategoryId] = useState<string | null>(null);
+  const addToCategory = categories.find((c) => c.id === addToCategoryId);
   // Fetch unique stages from all clients
   useEffect(() => {
     fetchStageDefinitions();
@@ -269,6 +273,7 @@ export function ClientsFilterStrip({
   );
 
   return (
+    <>
     <div
       dir="rtl"
       className="bg-white rounded-lg border-2 border-[#d4a843] p-2 mb-2"
@@ -559,6 +564,19 @@ export function ClientsFilterStrip({
                         {category.name}
                       </button>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 hover:bg-amber-100 hover:text-amber-700"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCategoriesDialogOpen(false);
+                            setAddToCategoryId(category.id);
+                          }}
+                          title={`הוסף לקוחות ל${category.name}`}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -950,5 +968,21 @@ export function ClientsFilterStrip({
         </div>
       )}
     </div>
+
+      {/* Add Clients to Category Dialog */}
+      {addToCategory && (
+        <AddClientsToCategoryDialog
+          isOpen={!!addToCategoryId}
+          onClose={() => setAddToCategoryId(null)}
+          categoryId={addToCategory.id}
+          categoryName={addToCategory.name}
+          categoryColor={addToCategory.color || '#d4a843'}
+          onUpdate={() => {
+            onUpdate?.();
+            setAddToCategoryId(null);
+          }}
+        />
+      )}
+    </>
   );
 }

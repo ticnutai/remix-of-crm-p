@@ -4273,6 +4273,51 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_client_assignments: {
+        Row: {
+          assigned_by: string | null
+          client_id: string
+          created_at: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_by?: string | null
+          client_id: string
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_by?: string | null
+          client_id?: string
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_client_assignments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_client_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           created_at: string | null
@@ -5228,8 +5273,10 @@ export type Database = {
           id: string
           invoice_id: string
           notes: string | null
+          payer_name: string | null
           payment_date: string
           payment_method: string | null
+          vat_rate: number | null
         }
         Insert: {
           amount: number
@@ -5238,8 +5285,10 @@ export type Database = {
           id?: string
           invoice_id: string
           notes?: string | null
+          payer_name?: string | null
           payment_date?: string
           payment_method?: string | null
+          vat_rate?: number | null
         }
         Update: {
           amount?: number
@@ -5248,8 +5297,10 @@ export type Database = {
           id?: string
           invoice_id?: string
           notes?: string | null
+          payer_name?: string | null
           payment_date?: string
           payment_method?: string | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
@@ -5593,8 +5644,10 @@ export type Database = {
           client_id: string | null
           contract_id: string | null
           created_at: string | null
+          created_by: string | null
           description: string | null
           id: string
+          invoice_id: string | null
           payment_date: string
           payment_method: string | null
           receipt_number: string | null
@@ -5607,8 +5660,10 @@ export type Database = {
           client_id?: string | null
           contract_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           id?: string
+          invoice_id?: string | null
           payment_date: string
           payment_method?: string | null
           receipt_number?: string | null
@@ -5621,8 +5676,10 @@ export type Database = {
           client_id?: string | null
           contract_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           id?: string
+          invoice_id?: string | null
           payment_date?: string
           payment_method?: string | null
           receipt_number?: string | null
@@ -5823,6 +5880,7 @@ export type Database = {
           notes: string | null
           quantity: number | null
           quote_id: string
+          subtotal: number | null
           unit: string | null
           unit_price: number
           updated_at: string | null
@@ -5839,6 +5897,7 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           quote_id: string
+          subtotal?: number | null
           unit?: string | null
           unit_price: number
           updated_at?: string | null
@@ -5855,6 +5914,7 @@ export type Database = {
           notes?: string | null
           quantity?: number | null
           quote_id?: string
+          subtotal?: number | null
           unit?: string | null
           unit_price?: number
           updated_at?: string | null
@@ -6087,6 +6147,9 @@ export type Database = {
       }
       quotes: {
         Row: {
+          advance_payment_amount: number | null
+          advance_payment_percentage: number | null
+          advance_payment_required: boolean | null
           client_id: string
           contract_type: string | null
           converted_to_contract_id: string | null
@@ -6097,9 +6160,12 @@ export type Database = {
           description: string | null
           discount_amount: number | null
           discount_percentage: number | null
+          estimated_hours: number | null
+          hourly_rate: number | null
           id: string
           issue_date: string
           items: Json | null
+          language: string | null
           notes: string | null
           paid_amount: number | null
           payment_schedule: Json | null
@@ -6126,6 +6192,9 @@ export type Database = {
           viewed_at: string | null
         }
         Insert: {
+          advance_payment_amount?: number | null
+          advance_payment_percentage?: number | null
+          advance_payment_required?: boolean | null
           client_id: string
           contract_type?: string | null
           converted_to_contract_id?: string | null
@@ -6136,9 +6205,12 @@ export type Database = {
           description?: string | null
           discount_amount?: number | null
           discount_percentage?: number | null
+          estimated_hours?: number | null
+          hourly_rate?: number | null
           id?: string
           issue_date?: string
           items?: Json | null
+          language?: string | null
           notes?: string | null
           paid_amount?: number | null
           payment_schedule?: Json | null
@@ -6165,6 +6237,9 @@ export type Database = {
           viewed_at?: string | null
         }
         Update: {
+          advance_payment_amount?: number | null
+          advance_payment_percentage?: number | null
+          advance_payment_required?: boolean | null
           client_id?: string
           contract_type?: string | null
           converted_to_contract_id?: string | null
@@ -6175,9 +6250,12 @@ export type Database = {
           description?: string | null
           discount_amount?: number | null
           discount_percentage?: number | null
+          estimated_hours?: number | null
+          hourly_rate?: number | null
           id?: string
           issue_date?: string
           items?: Json | null
+          language?: string | null
           notes?: string | null
           paid_amount?: number | null
           payment_schedule?: Json | null
@@ -6451,27 +6529,48 @@ export type Database = {
       }
       stage_template_tasks: {
         Row: {
+          background_color: string | null
+          completed: boolean | null
+          completed_at: string | null
           created_at: string
           id: string
+          is_bold: boolean | null
           sort_order: number
+          started_at: string | null
+          target_working_days: number | null
           template_id: string
           template_stage_id: string | null
+          text_color: string | null
           title: string
         }
         Insert: {
+          background_color?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
           created_at?: string
           id?: string
+          is_bold?: boolean | null
           sort_order?: number
+          started_at?: string | null
+          target_working_days?: number | null
           template_id: string
           template_stage_id?: string | null
+          text_color?: string | null
           title: string
         }
         Update: {
+          background_color?: string | null
+          completed?: boolean | null
+          completed_at?: string | null
           created_at?: string
           id?: string
+          is_bold?: boolean | null
           sort_order?: number
+          started_at?: string | null
+          target_working_days?: number | null
           template_id?: string
           template_stage_id?: string | null
+          text_color?: string | null
           title?: string
         }
         Relationships: [
@@ -6499,6 +6598,7 @@ export type Database = {
           description: string | null
           icon: string | null
           id: string
+          includes_task_content: boolean | null
           is_multi_stage: boolean | null
           name: string
           updated_at: string
@@ -6510,6 +6610,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          includes_task_content?: boolean | null
           is_multi_stage?: boolean | null
           name: string
           updated_at?: string
@@ -6521,6 +6622,7 @@ export type Database = {
           description?: string | null
           icon?: string | null
           id?: string
+          includes_task_content?: boolean | null
           is_multi_stage?: boolean | null
           name?: string
           updated_at?: string
@@ -6844,6 +6946,7 @@ export type Database = {
           border_radius: string | null
           border_width: string | null
           button_style: string | null
+          calendar_view: string | null
           card_style: string | null
           channels: Json | null
           created_at: string | null
@@ -6894,6 +6997,7 @@ export type Database = {
           border_radius?: string | null
           border_width?: string | null
           button_style?: string | null
+          calendar_view?: string | null
           card_style?: string | null
           channels?: Json | null
           created_at?: string | null
@@ -6944,6 +7048,7 @@ export type Database = {
           border_radius?: string | null
           border_width?: string | null
           button_style?: string | null
+          calendar_view?: string | null
           card_style?: string | null
           channels?: Json | null
           created_at?: string | null
@@ -7550,6 +7655,7 @@ export type Database = {
           tag: string
         }[]
       }
+      get_user_role: { Args: { p_user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
