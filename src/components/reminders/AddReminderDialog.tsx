@@ -248,6 +248,8 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
     setSelectedTypes(['browser']);
     setSelectedRingtone('default');
     setCustomRingtoneUrl(null);
+    setSelectedClientId('');
+    setClientSearch('');
     setOpen(false);
   };
 
