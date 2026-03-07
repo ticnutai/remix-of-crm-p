@@ -95,6 +95,7 @@ function FloatingTimerContent() {
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
   const [stopDescription, setStopDescription] = useState("");
   const [stopNotes, setStopNotes] = useState("");
+  const [stoppedElapsed, setStoppedElapsed] = useState(0);
 
   // Minimized state
   const [isMinimized, setIsMinimized] = useState(() => {
@@ -565,7 +566,8 @@ function FloatingTimerContent() {
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
-                      // Pause the timer (don't stop), then open save dialog
+                      // Capture elapsed time, pause the timer, then open save dialog
+                      setStoppedElapsed(timerState.elapsed);
                       pauseTimer();
                       setIsStopDialogOpen(true);
                     }}
@@ -822,6 +824,7 @@ function FloatingTimerContent() {
                     <button
                       onClick={() => {
                         if (timerState.isRunning || timerState.elapsed > 0) {
+                          setStoppedElapsed(timerState.elapsed);
                           pauseTimer();
                           setIsStopDialogOpen(true);
                         }
@@ -1014,12 +1017,13 @@ function FloatingTimerContent() {
             <div className="text-center p-4 rounded-xl bg-white border-2 border-[hsl(45,80%,50%)]/40">
               <div className="text-3xl font-mono font-light text-[hsl(220,60%,20%)] tracking-wider">
                 {(() => {
-                  const hours = Math.floor(timerState.elapsed / 3600000);
+                  const elapsed = stoppedElapsed || timerState.elapsed;
+                  const hours = Math.floor(elapsed / 3600000);
                   const minutes = Math.floor(
-                    (timerState.elapsed % 3600000) / 60000,
+                    (elapsed % 3600000) / 60000,
                   );
                   const seconds = Math.floor(
-                    (timerState.elapsed % 60000) / 1000,
+                    (elapsed % 60000) / 1000,
                   );
                   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
                 })()}
@@ -1074,6 +1078,7 @@ function FloatingTimerContent() {
               onClick={() => {
                 // Resume timer on cancel
                 resumeTimer();
+                setStoppedElapsed(0);
                 setIsStopDialogOpen(false);
               }}
             >
@@ -1090,6 +1095,7 @@ function FloatingTimerContent() {
                 await saveEntry(combinedNotes || undefined);
                 setStopDescription("");
                 setStopNotes("");
+                setStoppedElapsed(0);
                 setIsStopDialogOpen(false);
                 toast.success("רישום הזמן נשמר בהצלחה! ✅");
               }}
