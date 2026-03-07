@@ -69,6 +69,8 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<{ id: string; name: string; email: string | null; phone: string | null; whatsapp: string | null }[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientSearch, setClientSearch] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['browser']);
   const [selectedRingtone, setSelectedRingtone] = useState('default');
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
