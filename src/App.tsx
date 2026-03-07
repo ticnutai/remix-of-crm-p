@@ -76,6 +76,7 @@ const Calls = lazy(() => import("./pages/Calls"));
 const Tests = lazy(() => import("./pages/Tests"));
 const SmartTools = lazy(() => import("./pages/SmartTools"));
 const DocumentEditorPage = lazy(() => import("./pages/DocumentEditorPage"));
+const PlanningGIS = lazy(() => import("./pages/PlanningGIS"));
 
 // Optimized QueryClient with aggressive caching and performance settings
 const queryClient = new QueryClient({
@@ -325,6 +326,10 @@ const App = () => {
                               <Route
                                 path="/document-editor"
                                 element={withErrorBoundary(DocumentEditorPage)}
+                              />
+                              <Route
+                                path="/planning-gis"
+                                element={withErrorBoundary(PlanningGIS)}
                               />
                               <Route path="*" element={<NotFound />} />
                             </Routes>

@@ -31,6 +31,7 @@ import {
   Mail,
   HardDrive,
   Bot,
+  MapPinned,
 } from 'lucide-react';
 
 // Navigation items for mobile
@@ -50,6 +51,7 @@ const mainNavItems = [
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
   { title: '📁 קבצים', url: '/files', icon: HardDrive },
+  { title: 'תכנון & GIS', url: '/planning-gis', icon: MapPinned },
   { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
 ];
 

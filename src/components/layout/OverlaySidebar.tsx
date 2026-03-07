@@ -28,6 +28,7 @@ import {
   TestTube,
   Bot,
   Palette,
+  MapPinned,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -70,6 +71,7 @@ const mainNavItems = [
   { title: "Gmail", url: "/gmail", icon: Mail },
   { title: "אנשי קשר", url: "/contacts", icon: Users },
   { title: "קבצים", url: "/files", icon: HardDrive },
+  { title: "תכנון & GIS", url: "/planning-gis", icon: MapPinned },
   { title: "כלים חכמים", url: "/smart-tools", icon: Bot },
 ];
 

@@ -496,6 +496,7 @@ export function useStageTemplates() {
       targetClientId: string,
       stageIds?: string[], // If empty, copy all stages
       folderId?: string | null,
+      copyWithCompletion?: boolean,
     ) => {
       try {
         // Fetch source stages
@@ -571,7 +572,7 @@ export function useStageTemplates() {
             stage_id: stageIdMap.get(task.stage_id)!,
             title: task.title,
             sort_order: task.sort_order,
-            completed: false, // Reset completion status
+            completed: copyWithCompletion ? task.completed : false,
           }));
 
         if (tasksToInsert && tasksToInsert.length > 0) {

@@ -50,7 +50,10 @@ import {
   StageTemplate,
   ClientStage,
 } from "@/hooks/useStageTemplates";
+import { useClientFolders, ClientFolder } from "@/hooks/useClientFolders";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { Folder, CheckCircle } from "lucide-react";
 
 // Icon mapping
 const STAGE_ICONS: Record<string, React.ElementType> = {
@@ -1100,6 +1103,7 @@ export function CopyStagesDialog({
 }: CopyStagesDialogProps) {
   const { getClientsForCopy, getClientStages, copyStagesFromClient } =
     useStageTemplates();
+  const { folders: targetFolders } = useClientFolders(targetClientId);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [clientStages, setClientStages] = useState<ClientStage[]>([]);
@@ -1107,6 +1111,8 @@ export function CopyStagesDialog({
   const [loading, setLoading] = useState(false);
   const [copying, setCopying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string | null>(folderId || null);
+  const [copyWithCompletion, setCopyWithCompletion] = useState(false);
 
   // Load clients on open
   useEffect(() => {
@@ -1116,6 +1122,8 @@ export function CopyStagesDialog({
       setClientStages([]);
       setSelectedStages(new Set());
       setSearchQuery("");
+      setSelectedTargetFolder(folderId || null);
+      setCopyWithCompletion(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -1154,7 +1162,8 @@ export function CopyStagesDialog({
       selectedClient,
       targetClientId,
       Array.from(selectedStages),
-      folderId,
+      selectedTargetFolder,
+      copyWithCompletion,
     );
     setCopying(false);
 
@@ -1284,6 +1293,56 @@ export function CopyStagesDialog({
                   <Badge variant="secondary">{selectedStages.size} שלבים</Badge>
                   <Badge variant="secondary">{totalTasks} משימות</Badge>
                 </div>
+              </div>
+
+              {/* Target folder selection */}
+              <Separator />
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Folder className="h-4 w-4 text-amber-500" />
+                  בחר תיקייה יעד
+                </Label>
+                <Select
+                  value={selectedTargetFolder || "__none__"}
+                  onValueChange={(val) => setSelectedTargetFolder(val === "__none__" ? null : val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="ללא תיקייה (שורש)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">
+                      <span className="flex items-center gap-2">
+                        <Layers className="h-4 w-4" />
+                        ללא תיקייה (שורש)
+                      </span>
+                    </SelectItem>
+                    {targetFolders.map((folder) => (
+                      <SelectItem key={folder.id} value={folder.id}>
+                        <span className="flex items-center gap-2">
+                          <Folder className="h-4 w-4 text-amber-500" />
+                          {folder.folder_name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Copy with completion status */}
+              <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <div>
+                    <div className="text-sm font-medium">העתק עם סטטוס מילוי</div>
+                    <div className="text-xs text-muted-foreground">
+                      שמור את סימוני ה"נעשה" מהלקוח המקור
+                    </div>
+                  </div>
+                </div>
+                <Switch
+                  checked={copyWithCompletion}
+                  onCheckedChange={setCopyWithCompletion}
+                />
               </div>
             </>
           )}
