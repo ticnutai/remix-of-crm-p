@@ -185,8 +185,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit}>
-            <div className="px-5 py-4 space-y-4">
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(80vh - 120px)' }}>
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
               {/* Title */}
               <div className="space-y-2">
                 <Label
