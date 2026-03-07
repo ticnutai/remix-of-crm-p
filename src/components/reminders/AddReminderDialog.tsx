@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone } from 'lucide-react';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search } from 'lucide-react';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
