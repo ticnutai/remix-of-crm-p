@@ -980,10 +980,7 @@ export function ApplyTemplateDialog({
                                         <div className="flex items-center gap-2 font-medium justify-start mb-1">
                                           <Checkbox
                                             checked={isChecked}
-                                            onCheckedChange={(e) => {
-                                              (
-                                                e as React.MouseEvent
-                                              )?.stopPropagation?.();
+                                            onCheckedChange={() => {
                                               toggleStageSelection(
                                                 template.id,
                                                 stage.id,
