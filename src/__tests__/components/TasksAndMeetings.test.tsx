@@ -251,6 +251,10 @@ vi.mock("@/components/notifications/NotificationCenter", () => ({
 vi.mock("@/components/pwa/SyncStatusIndicator", () => ({
   SyncStatusIndicator: () => <span>Sync</span>,
 }));
+vi.mock("@/components/DedupToggleButton", () => ({
+  DedupToggleButton: () => <button data-testid="dedup-toggle">Dedup</button>,
+  default: () => <button data-testid="dedup-toggle">Dedup</button>,
+}));
 
 import TasksAndMeetings from "@/pages/TasksAndMeetings";
 

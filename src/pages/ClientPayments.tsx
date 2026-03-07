@@ -1,7 +1,7 @@
 // Client Portal - Payments & Payment Stages (Read-Only)
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Card,
@@ -64,11 +64,7 @@ export default function ClientPayments() {
     else if (!isLoading && user && !isClient) navigate("/");
   }, [isLoading, user, isClient, navigate]);
 
-  useEffect(() => {
-    if (clientId) fetchPayments();
-  }, [clientId]);
-
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     if (!clientId) return;
     setLoading(true);
     try {
@@ -85,7 +81,11 @@ export default function ClientPayments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) fetchPayments();
+  }, [clientId, fetchPayments]);
 
   const summary = useMemo(() => {
     const totalAmount = stages.reduce(

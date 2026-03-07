@@ -48,7 +48,9 @@ export function DedupProvider({ children }: { children: React.ReactNode }) {
       const next = !prev;
       try {
         localStorage.setItem(LS_KEY, String(next));
-      } catch {}
+      } catch {
+        // localStorage may be unavailable
+      }
       return next;
     });
   }, []);
