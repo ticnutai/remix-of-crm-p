@@ -491,8 +491,8 @@ function FloatingTimerContent() {
             </span>
           </button>
 
-          {/* Minimize/Maximize Toggle - Shows when timer is active, hidden when popover open */}
-          {(timerState.isRunning || timerState.elapsed > 0) && !open && (
+          {/* Minimize/Maximize Toggle - Shows when timer is active, hidden when popover or stop dialog open */}
+          {(timerState.isRunning || timerState.elapsed > 0) && !open && !isStopDialogOpen && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -515,8 +515,8 @@ function FloatingTimerContent() {
             </button>
           )}
 
-          {/* Floating Timer Badge - Navy & Gold Theme - Hidden when minimized or popover open */}
-          {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && !open && (
+          {/* Floating Timer Badge - Navy & Gold Theme - Hidden when minimized, popover open, or stop dialog open */}
+          {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && !open && !isStopDialogOpen && (
             <div
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-2xl",
@@ -822,6 +822,7 @@ function FloatingTimerContent() {
                     <button
                       onClick={() => {
                         if (timerState.isRunning || timerState.elapsed > 0) {
+                          pauseTimer();
                           setIsStopDialogOpen(true);
                         }
                       }}

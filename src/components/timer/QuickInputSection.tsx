@@ -184,7 +184,7 @@ export function QuickInputSection({ type, onSelect, selectedValue }: Readonly<Qu
           title={isEditing ? 'סיום עריכה' : 'עריכת אפשרויות'}
         >
           {isEditing ? (
-            <Check className="h-3 w-3 text-green-500" />
+            <Check className="h-3 w-3 text-[hsl(45,80%,50%)]" />
           ) : (
             <Settings2 className="h-3 w-3 text-muted-foreground" />
           )}
@@ -199,12 +199,12 @@ export function QuickInputSection({ type, onSelect, selectedValue }: Readonly<Qu
               className={cn(
                 "cursor-pointer transition-all text-xs py-1 px-2.5 hover:scale-105",
                 selectedValue?.includes(option.label)
-                  ? "ring-2 ring-[#D4AF37] ring-offset-1 bg-[#D4AF37]/10"
+                  ? "ring-2 ring-[hsl(45,80%,50%)] ring-offset-1 bg-[hsl(45,80%,50%)]/10"
                   : "hover:bg-muted"
               )}
               style={{
-                borderColor: option.color,
-                color: selectedValue?.includes(option.label) ? '#D4AF37' : option.color,
+                borderColor: 'hsl(220, 60%, 20%)',
+                color: selectedValue?.includes(option.label) ? 'hsl(45, 80%, 50%)' : 'hsl(220, 60%, 20%)',
               }}
               onClick={(e) => {
                 e.preventDefault();
@@ -229,7 +229,7 @@ export function QuickInputSection({ type, onSelect, selectedValue }: Readonly<Qu
                   e.stopPropagation();
                   removeOption(option.id);
                 }}
-                className="absolute -top-1.5 -left-1.5 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1.5 -left-1.5 bg-[hsl(220,60%,20%)] text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-2.5 w-2.5" />
               </button>
@@ -260,7 +260,7 @@ export function QuickInputSection({ type, onSelect, selectedValue }: Readonly<Qu
             />
             <button
               type="button"
-              className="h-7 w-7 flex items-center justify-center rounded bg-green-500 text-white hover:bg-green-400"
+              className="h-7 w-7 flex items-center justify-center rounded bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] hover:bg-[hsl(45,80%,45%)]"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
