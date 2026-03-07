@@ -1018,12 +1018,12 @@ function FloatingTimerContent() {
               <div className="text-3xl font-mono font-light text-[hsl(220,60%,20%)] tracking-wider">
                 {(() => {
                   const elapsed = stoppedElapsed || timerState.elapsed;
-                  const hours = Math.floor(elapsed / 3600000);
+                  const hours = Math.floor(elapsed / 3600);
                   const minutes = Math.floor(
-                    (elapsed % 3600000) / 60000,
+                    (elapsed % 3600) / 60,
                   );
                   const seconds = Math.floor(
-                    (elapsed % 60000) / 1000,
+                    elapsed % 60,
                   );
                   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
                 })()}
