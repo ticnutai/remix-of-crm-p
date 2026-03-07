@@ -448,7 +448,8 @@ export default function TimeLogs() {
             supabase
               .from("time_entries")
               .select("*")
-              .order("start_time", { ascending: false }),
+              .order("start_time", { ascending: false })
+              .limit(5000),
             supabase.from("clients").select("id, name").order("name"),
             supabase
               .from("projects")
@@ -1036,7 +1037,8 @@ export default function TimeLogs() {
     const { data } = await supabase
       .from("time_entries")
       .select("*")
-      .order("start_time", { ascending: false });
+      .order("start_time", { ascending: false })
+      .limit(5000);
 
     if (data) setTimeEntries(data as TimeEntry[]);
 
@@ -1087,7 +1089,8 @@ export default function TimeLogs() {
     const { data } = await supabase
       .from("time_entries")
       .select("*")
-      .order("start_time", { ascending: false });
+      .order("start_time", { ascending: false })
+      .limit(5000);
 
     if (data) setTimeEntries(data as TimeEntry[]);
 
