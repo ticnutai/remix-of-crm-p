@@ -3230,24 +3230,7 @@ export default function ClientProfile() {
                           </div>
                         </div>
                       )}
-                      {client.street && (
-                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
-                          <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <p className="text-[11px] text-muted-foreground">רחוב</p>
-                            <p className="text-sm font-medium">{client.street}</p>
-                          </div>
-                        </div>
-                      )}
-                      {client.moshav && (
-                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
-                          <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div>
-                            <p className="text-[11px] text-muted-foreground">מושב / יישוב</p>
-                            <p className="text-sm font-medium">{client.moshav}</p>
-                          </div>
-                        </div>
-                      )}
+                      
                       {client.gush && (
                         <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
                           <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
