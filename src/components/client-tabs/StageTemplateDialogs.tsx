@@ -459,6 +459,9 @@ export function ApplyTemplateDialog({
     addStageToTemplate,
     deleteStageFromTemplate,
     renameStageInTemplate,
+    addTaskToTemplateStage,
+    deleteTaskFromTemplate,
+    renameTaskInTemplate,
   } = useStageTemplates();
   const [applying, setApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -479,6 +482,15 @@ export function ApplyTemplateDialog({
     name: string;
   } | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+  // Task editing state
+  const [expandedEditStage, setExpandedEditStage] = useState<string | null>(null);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [renamingTask, setRenamingTask] = useState<{
+    taskId: string;
+    title: string;
+  } | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
   const handleAddStage = async (templateId: string) => {
     if (!newStageName.trim()) return;
