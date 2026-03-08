@@ -86,11 +86,23 @@ export function NotificationOptions({
     whatsapp: !!(selectedClient?.whatsapp || selectedClient?.phone),
   };
 
-  // Reset channels when client changes
+  // Auto-select available channels when client changes
   useEffect(() => {
-    setSelectedChannels([]);
     setSendResults([]);
-  }, [selectedClientId]);
+    if (selectedClientId && selectedClientId !== 'none') {
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client) {
+        const autoChannels: NotificationChannel[] = [];
+        if (client.whatsapp || client.phone) autoChannels.push('whatsapp');
+        if (client.email) autoChannels.push('email');
+        setSelectedChannels(autoChannels);
+      } else {
+        setSelectedChannels([]);
+      }
+    } else {
+      setSelectedChannels([]);
+    }
+  }, [selectedClientId, clients]);
 
   const toggleChannel = (channel: NotificationChannel) => {
     if (!availableChannels[channel]) return;
