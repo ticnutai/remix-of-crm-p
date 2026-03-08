@@ -69,6 +69,7 @@ import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginD
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import {
   ArrowRight,
   Building,
