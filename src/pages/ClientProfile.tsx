@@ -838,7 +838,7 @@ export default function ClientProfile() {
         </div>
 
         {/* Client Info Card - Elegant Navy Border */}
-        <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
+        {displaySettings.showClientCard && <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start justify-between gap-6">
               {/* Right side - Client info */}
