@@ -110,6 +110,10 @@ import {
   SlidersHorizontal,
   Eye,
   EyeOff,
+  Hash,
+  User,
+  Briefcase,
+  BarChart3,
 } from "lucide-react";
 import {
   Popover,
@@ -3073,96 +3077,245 @@ export default function ClientProfile() {
           </DialogContent>
         </Dialog>
 
-        {/* Client Info Dialog */}
-        <Dialog open={isClientInfoDialogOpen} onOpenChange={setIsClientInfoDialogOpen}>
-          <DialogContent className="max-w-lg" dir="rtl">
+        {/* Client Info Dialog - Non-modal */}
+        <Dialog open={isClientInfoDialogOpen} onOpenChange={setIsClientInfoDialogOpen} modal={false}>
+          <DialogContent className="max-w-2xl" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
-                  <Building className="h-6 w-6 text-[hsl(45,70%,55%)]" />
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                  <Building className="h-7 w-7 text-primary" />
                 </div>
-                {client.name}
-              </DialogTitle>
-              <DialogDescription>פרטי לקוח</DialogDescription>
+                <div className="flex-1">
+                  <DialogTitle className="text-xl font-bold">{client.name}</DialogTitle>
+                  <DialogDescription className="flex items-center gap-2 mt-1">
+                    <StatusBadge status={client.status} />
+                    {client.stage && <Badge variant="outline" className="text-xs">{client.stage}</Badge>}
+                    {client.source && <Badge variant="secondary" className="text-xs">{client.source}</Badge>}
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <Separator />
-            <div className="space-y-4 py-2">
-              {/* Status */}
-              <div className="flex items-center gap-2">
-                <StatusBadge status={client.status} />
-                {client.stage && (
-                  <Badge variant="outline">{client.stage}</Badge>
-                )}
+
+            <div className="space-y-5 py-2">
+              {/* === Section: Identity === */}
+              {(client.id_number || client.company || client.source || client.budget_range) && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Hash className="h-3.5 w-3.5" />
+                    זיהוי
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {client.id_number && (
+                      <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                        <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-muted-foreground">ת.ז / ח.פ</p>
+                          <p className="text-sm font-mono font-medium" dir="ltr">{client.id_number}</p>
+                        </div>
+                      </div>
+                    )}
+                    {client.company && (
+                      <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                        <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-muted-foreground">חברה</p>
+                          <p className="text-sm font-medium">{client.company}</p>
+                        </div>
+                      </div>
+                    )}
+                    {client.source && (
+                      <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                        <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-muted-foreground">מקור</p>
+                          <p className="text-sm font-medium">{client.source}</p>
+                        </div>
+                      </div>
+                    )}
+                    {client.budget_range && (
+                      <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                        <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-muted-foreground">טווח תקציב</p>
+                          <p className="text-sm font-medium">{client.budget_range}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* === Section: Contact === */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Phone className="h-3.5 w-3.5" />
+                  פרטי התקשרות
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {isValidPhone(client.phone) && (
+                    <a href={`tel:${client.phone}`} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-colors group">
+                      <Phone className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">טלפון ראשי</p>
+                        <p className="text-sm font-mono font-medium group-hover:text-primary" dir="ltr">{formatPhoneDisplay(client.phone)}</p>
+                      </div>
+                    </a>
+                  )}
+                  {isValidPhone(client.phone_secondary) && (
+                    <a href={`tel:${client.phone_secondary}`} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-colors group">
+                      <Phone className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">טלפון משני</p>
+                        <p className="text-sm font-mono font-medium group-hover:text-primary" dir="ltr">{formatPhoneDisplay(client.phone_secondary)}</p>
+                      </div>
+                    </a>
+                  )}
+                  {client.whatsapp && (
+                    <a href={`https://wa.me/${client.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-green-500/10 hover:border-green-500/30 transition-colors group">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground group-hover:text-green-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">WhatsApp</p>
+                        <p className="text-sm font-mono font-medium group-hover:text-green-500" dir="ltr">{client.whatsapp}</p>
+                      </div>
+                    </a>
+                  )}
+                  {client.email && (
+                    <a href={`mailto:${client.email}`} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-colors group">
+                      <Mail className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">אימייל</p>
+                        <p className="text-sm font-medium group-hover:text-primary truncate max-w-[200px]">{client.email}</p>
+                      </div>
+                    </a>
+                  )}
+                  {client.website && (
+                    <a href={client.website.startsWith('http') ? client.website : `https://${client.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-colors group">
+                      <Globe className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">אתר</p>
+                        <p className="text-sm font-medium group-hover:text-primary truncate max-w-[200px]">{client.website}</p>
+                      </div>
+                    </a>
+                  )}
+                  {client.linkedin && (
+                    <a href={client.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 hover:bg-blue-500/10 hover:border-blue-500/30 transition-colors group">
+                      <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-blue-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-[11px] text-muted-foreground">LinkedIn</p>
+                        <p className="text-sm font-medium group-hover:text-blue-500">פרופיל</p>
+                      </div>
+                    </a>
+                  )}
+                </div>
               </div>
 
-              {/* Contact Details */}
-              <div className="grid gap-3">
-                {client.company && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">חברה:</span>
-                    <span>{client.company}</span>
-                  </div>
-                )}
-                {client.email && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">אימייל:</span>
-                    <a href={`mailto:${client.email}`} className="text-primary hover:underline">{client.email}</a>
-                  </div>
-                )}
-                {isValidPhone(client.phone) && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">טלפון:</span>
-                    <a href={`tel:${client.phone}`} dir="ltr" className="font-mono text-primary hover:underline">{formatPhoneDisplay(client.phone)}</a>
-                  </div>
-                )}
-                {client.address && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">כתובת:</span>
-                    <span>{client.address}</span>
-                  </div>
-                )}
-                {client.website && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="font-medium">אתר:</span>
-                    <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{client.website}</a>
-                  </div>
-                )}
-              </div>
-
-              {/* Additional Info */}
-              {client.notes && (
+              {/* === Section: Address & Location === */}
+              {(client.address || client.gush) && (
                 <>
                   <Separator />
-                  <div className="text-sm">
-                    <span className="font-medium text-muted-foreground">הערות:</span>
-                    <p className="mt-1 whitespace-pre-wrap">{client.notes}</p>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <MapPin className="h-3.5 w-3.5" />
+                      כתובת ומיקום
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      {client.address && (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50 col-span-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">כתובת</p>
+                            <p className="text-sm font-medium">{client.address}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {client.gush && (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                          <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">גוש</p>
+                            <p className="text-sm font-mono font-medium">{client.gush}</p>
+                          </div>
+                        </div>
+                      )}
+                      {client.helka && (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                          <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">חלקה</p>
+                            <p className="text-sm font-mono font-medium">{client.helka}</p>
+                          </div>
+                        </div>
+                      )}
+                      {client.taba && (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                          <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">תב"א</p>
+                            <p className="text-sm font-mono font-medium">{client.taba}</p>
+                          </div>
+                        </div>
+                      )}
+                      {client.migrash && (
+                        <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
+                          <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div>
+                            <p className="text-[11px] text-muted-foreground">מגרש</p>
+                            <p className="text-sm font-mono font-medium">{client.migrash}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
               )}
 
-              {/* Stats Summary */}
+              {/* === Section: Notes === */}
+              {client.notes && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <FileText className="h-3.5 w-3.5" />
+                      הערות
+                    </h4>
+                    <div className="p-3 rounded-lg bg-muted/40 border border-border/50 text-sm whitespace-pre-wrap leading-relaxed">
+                      {client.notes}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* === Section: Stats === */}
               <Separator />
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                  <FolderKanban className="h-4 w-4 text-muted-foreground" />
-                  <span>{stats.activeProjects} פרויקטים פעילים</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{stats.thisMonthHours} שעות החודש</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>₪{stats.totalRevenue.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
-                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                  <span>{stats.openTasks} משימות פתוחות</span>
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  סטטיסטיקות
+                </h4>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="text-center p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <FolderKanban className="h-5 w-5 text-primary mx-auto mb-1" />
+                    <p className="text-lg font-bold text-primary">{stats.activeProjects}</p>
+                    <p className="text-[10px] text-muted-foreground">פרויקטים</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-accent/50 border border-accent">
+                    <Clock className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
+                    <p className="text-lg font-bold">{stats.thisMonthHours}</p>
+                    <p className="text-[10px] text-muted-foreground">שעות</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                    <DollarSign className="h-5 w-5 text-green-500 mx-auto mb-1" />
+                    <p className="text-lg font-bold text-green-500">₪{stats.totalRevenue.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground">הכנסות</p>
+                  </div>
+                  <div className="text-center p-3 rounded-lg bg-orange-500/5 border border-orange-500/20">
+                    <CheckSquare className="h-5 w-5 text-orange-500 mx-auto mb-1" />
+                    <p className="text-lg font-bold text-orange-500">{stats.openTasks}</p>
+                    <p className="text-[10px] text-muted-foreground">משימות</p>
+                  </div>
                 </div>
               </div>
             </div>
