@@ -346,10 +346,10 @@ export function ClientInfoDialogContent({
   return (
     <>
       {/* Premium Header */}
-      <div className="relative bg-gradient-to-bl from-primary/15 via-primary/5 to-transparent px-6 pt-6 pb-4 border-b border-primary/10">
+      <div className="relative bg-gradient-to-bl from-[#d8ac27]/12 via-[#d8ac27]/5 to-transparent px-6 pt-6 pb-4 border-b border-[#d8ac27]/20">
         <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-black text-primary-foreground">{client.name?.charAt(0) || "?"}</span>
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#d8ac27] to-[#b8922a] shadow-lg shadow-[#d8ac27]/30 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-black text-white">{client.name?.charAt(0) || "?"}</span>
           </div>
           <div className="flex-1 min-w-0">
             <DialogHeader className="p-0 space-y-0">
