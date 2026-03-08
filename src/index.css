@@ -650,7 +650,29 @@
     background-color: hsl(var(--muted-foreground));
   }
 
-  /* Hidden scrollbar but still scrollable */
+  /* Gold thin scrollbar for navy dialogs */
+  .gold-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d8ac2740 transparent;
+  }
+
+  .gold-scrollbar::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .gold-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .gold-scrollbar::-webkit-scrollbar-thumb {
+    background: #d8ac2740;
+    border-radius: 3px;
+  }
+
+  .gold-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d8ac2780;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

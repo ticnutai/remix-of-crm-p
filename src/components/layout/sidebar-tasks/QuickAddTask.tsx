@@ -13,13 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -112,7 +105,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<string>("medium");
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-    const [clientId, setClientId] = useState<string>("");
+    const [clientIds, setClientIds] = useState<string[]>([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
@@ -124,7 +117,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
         setDescription(initialData.description || "");
         setPriority(initialData.priority || "medium");
         setDueDate(initialData.dueDate);
-        setClientId(initialData.clientId || "");
+        setClientIds(initialData.clientId ? [initialData.clientId] : []);
       }
     }, [open, initialData]);
 
@@ -133,7 +126,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setDescription("");
       setPriority("medium");
       setDueDate(undefined);
-      setClientId("");
+      setClientIds([]);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -147,7 +140,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           description: description.trim() || null,
           priority,
           due_date: dueDate ? dueDate.toISOString() : null,
-          client_id: clientId && clientId !== "none" ? clientId : null,
+          client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "pending",
         });
         resetForm();
@@ -157,10 +150,22 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       }
     };
 
+    const toggleClient = (id: string) => {
+      setClientIds(prev =>
+        prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+      );
+    };
+
+    const removeClient = (id: string) => {
+      setClientIds(prev => prev.filter(c => c !== id));
+    };
+
+    const selectedClients = clients.filter(c => clientIds.includes(c.id));
+
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent
-          className="sm:max-w-[400px] p-0 overflow-hidden"
+          className="sm:max-w-[500px] p-0 overflow-hidden"
           dir="rtl"
           style={{
             background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
@@ -190,8 +195,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(80vh - 120px)' }}>
-            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(85vh - 120px)' }}>
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 gold-scrollbar">
               {/* Title */}
               <div className="space-y-2">
                 <Label
@@ -328,103 +333,109 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 </Popover>
               </div>
 
-              {/* Client Assignment */}
+              {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
                 <Label
                   className="text-sm font-medium"
                   style={{ color: sidebarColors.goldLight }}
                 >
-                  שיוך ללקוח
+                  שיוך ללקוחות
                 </Label>
-                {clientId && clientId !== "none" ? (
-                  <div
-                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
-                    style={{
-                      background: `${sidebarColors.gold}15`,
-                      borderColor: `${sidebarColors.gold}60`,
-                    }}
-                  >
-                    <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
-                      {clients.find(c => c.id === clientId)?.name || "לקוח"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setClientId("")}
-                      className="p-1 rounded hover:bg-white/10 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" style={{ color: sidebarColors.goldLight }} />
-                    </button>
-                  </div>
-                ) : (
-                  <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start gap-2"
+                {/* Selected clients chips */}
+                {selectedClients.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedClients.map(client => (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                         style={{
-                          background: `${sidebarColors.navyLight}50`,
-                          borderColor: `${sidebarColors.gold}40`,
-                          color: `${sidebarColors.goldLight}60`,
+                          background: `${sidebarColors.gold}20`,
+                          border: `1px solid ${sidebarColors.gold}50`,
+                          color: sidebarColors.goldLight,
                         }}
                       >
-                        <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
-                        בחר לקוח או איש קשר
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-[320px] p-0 overflow-hidden"
-                      align="start"
+                        <span>{client.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeClient(client.id)}
+                          className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start gap-2"
                       style={{
-                        background: sidebarColors.navy,
-                        border: `1px solid ${sidebarColors.gold}40`,
+                        background: `${sidebarColors.navyLight}50`,
+                        borderColor: `${sidebarColors.gold}40`,
+                        color: `${sidebarColors.goldLight}60`,
                       }}
                     >
-                      <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
-                        <div className="relative">
-                          <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
-                          <Input
-                            placeholder="חיפוש לקוח..."
-                            value={clientSearch}
-                            onChange={(e) => setClientSearch(e.target.value)}
-                            className="pr-9 text-right text-sm"
-                            style={{
-                              background: `${sidebarColors.navyLight}50`,
-                              borderColor: `${sidebarColors.gold}30`,
-                              color: sidebarColors.goldLight,
-                            }}
-                            autoFocus
-                          />
-                        </div>
+                      <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                      {selectedClients.length > 0 ? `${selectedClients.length} לקוחות נבחרו — הוסף עוד` : "בחר לקוח או איש קשר"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[320px] p-0 overflow-hidden"
+                    align="start"
+                    style={{
+                      background: sidebarColors.navy,
+                      border: `1px solid ${sidebarColors.gold}40`,
+                    }}
+                  >
+                    <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
+                      <div className="relative">
+                        <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                        <Input
+                          placeholder="חיפוש לקוח..."
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          className="pr-9 text-right text-sm"
+                          style={{
+                            background: `${sidebarColors.navyLight}50`,
+                            borderColor: `${sidebarColors.gold}30`,
+                            color: sidebarColors.goldLight,
+                          }}
+                          autoFocus
+                        />
                       </div>
-                      <div className="max-h-[200px] overflow-y-auto p-1">
-                        {clients
-                          .filter(c =>
-                            !clientSearch ||
-                            c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                            c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                            c.phone?.includes(clientSearch)
-                          )
-                          .map(client => (
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto p-1 gold-scrollbar">
+                      {clients
+                        .filter(c =>
+                          !clientSearch ||
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                          c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                          c.phone?.includes(clientSearch)
+                        )
+                        .map(client => {
+                          const isSelected = clientIds.includes(client.id);
+                          return (
                             <button
                               key={client.id}
                               type="button"
-                              onClick={() => {
-                                setClientId(client.id);
-                                setIsClientPickerOpen(false);
-                                setClientSearch("");
-                              }}
-                              className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-white/10 flex items-center gap-2"
+                              onClick={() => toggleClient(client.id)}
+                              className={cn(
+                                "w-full text-right px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                                isSelected ? "bg-white/15" : "hover:bg-white/10"
+                              )}
                               style={{ color: sidebarColors.goldLight }}
                             >
                               <div
                                 className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                                 style={{
-                                  background: `${sidebarColors.gold}25`,
+                                  background: isSelected ? `${sidebarColors.gold}40` : `${sidebarColors.gold}25`,
                                   color: sidebarColors.gold,
                                 }}
                               >
-                                {client.name.charAt(0)}
+                                {isSelected ? "✓" : client.name.charAt(0)}
                               </div>
                               <div className="flex-1 text-right">
                                 <div className="font-medium">{client.name}</div>
@@ -433,19 +444,19 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                                 )}
                               </div>
                             </button>
-                          ))}
-                        {clients.filter(c =>
-                          !clientSearch ||
-                          c.name.toLowerCase().includes(clientSearch.toLowerCase())
-                        ).length === 0 && (
-                          <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
-                            לא נמצאו לקוחות
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
+                          );
+                        })}
+                      {clients.filter(c =>
+                        !clientSearch ||
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                          לא נמצאו לקוחות
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Reminder & Calendar Sync */}
@@ -457,14 +468,16 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               />
 
               {/* Notification Options */}
-              {clients.length > 0 && (
+              {clients.length > 0 && clientIds.length > 0 && (
                 <NotificationOptions
                   type="task"
                   clients={clients}
-                  selectedClientId={
-                    clientId && clientId !== "none" ? clientId : undefined
-                  }
-                  onClientChange={setClientId}
+                  selectedClientIds={clientIds}
+                  onClientChange={(id) => {
+                    if (!clientIds.includes(id)) {
+                      setClientIds(prev => [...prev, id]);
+                    }
+                  }}
                   details={{
                     title,
                     description,
