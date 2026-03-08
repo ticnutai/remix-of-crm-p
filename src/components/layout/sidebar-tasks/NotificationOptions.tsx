@@ -76,6 +76,7 @@ export function NotificationOptions({
   const [selectedChannels, setSelectedChannels] = useState<NotificationChannel[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [sendResults, setSendResults] = useState<{ channel: string; success: boolean }[]>([]);
+  const notificationRef = React.useRef<HTMLDivElement>(null);
   
   const selectedClient = clients.find(c => c.id === selectedClientId);
   
@@ -103,6 +104,15 @@ export function NotificationOptions({
       setSelectedChannels([]);
     }
   }, [selectedClientId, clients]);
+
+  // Auto-scroll to notification section when client is selected
+  useEffect(() => {
+    if (selectedClient && notificationRef.current) {
+      setTimeout(() => {
+        notificationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [selectedClient]);
 
   const toggleChannel = (channel: NotificationChannel) => {
     if (!availableChannels[channel]) return;
@@ -147,17 +157,14 @@ export function NotificationOptions({
 
       if (error) throw error;
 
-      // Handle results
       const results = data?.results || [];
       setSendResults(results);
 
-      // Check for WhatsApp URL to open
       const whatsappResult = results.find((r: any) => r.channel === 'whatsapp' && r.success);
       if (whatsappResult?.error?.startsWith('https://wa.me/')) {
         window.open(whatsappResult.error, '_blank');
       }
 
-      // Show toast based on results
       const successCount = results.filter((r: any) => r.success).length;
       if (successCount > 0) {
         toast.success(`נשלח בהצלחה ל-${successCount} ערוץ/ים`);
@@ -182,17 +189,6 @@ export function NotificationOptions({
   };
 
   if (clients.length === 0) return null;
-
-  const notificationRef = React.useRef<HTMLDivElement>(null);
-
-  // Auto-scroll to notification section when client is selected
-  useEffect(() => {
-    if (selectedClient && notificationRef.current) {
-      setTimeout(() => {
-        notificationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
-    }
-  }, [selectedClient]);
 
   return (
     <div 
