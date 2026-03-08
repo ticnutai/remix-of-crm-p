@@ -3090,7 +3090,7 @@ export default function ClientProfile() {
                   <DialogDescription className="flex items-center gap-2 mt-1">
                     <StatusBadge status={client.status} />
                     {client.stage && <Badge variant="outline" className="text-xs">{client.stage}</Badge>}
-                    {client.classification && <Badge variant="secondary" className="text-xs">{client.classification}</Badge>}
+                    {client.source && <Badge variant="secondary" className="text-xs">{client.source}</Badge>}
                   </DialogDescription>
                 </div>
               </div>
