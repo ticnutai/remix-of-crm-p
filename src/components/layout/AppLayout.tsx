@@ -116,7 +116,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
       <div 
         className="flex flex-col min-h-screen transition-all duration-300 ease-out"
         style={{ 
-          paddingRight: sidebarVisible ? sidebarWidth : 0,
+          paddingRight: sidebarVisible ? sidebarWidth + 16 : 0,
         }}
       >
         <AppHeader 
