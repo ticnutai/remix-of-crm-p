@@ -768,7 +768,7 @@ export function ClientInfoDialogContent({
               {/* Show custom fields */}
               {customFieldDefs.length > 0 && (
                 <div className="grid grid-cols-2 gap-2">
-                  {customFieldDefs.map((def) => (
+                  {customFieldDefs.filter((def) => isFieldVisible(def.field_key)).map((def) => (
                     <FieldCard
                       key={def.id}
                       icon={Sparkles}
