@@ -42,12 +42,14 @@ import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
   title?: string;
+  onTitleClick?: () => void;
   onMobileMenuToggle?: () => void;
   isMobile?: boolean;
 }
 
 export function AppHeader({
   title = "tenarch CRM Pro",
+  onTitleClick,
   onMobileMenuToggle,
   isMobile,
 }: AppHeaderProps) {
