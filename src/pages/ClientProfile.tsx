@@ -977,14 +977,24 @@ export default function ClientProfile() {
               <TrendingUp className="h-4 w-4" />
               שלבי עבודה
             </TabsTrigger>
-            <TabsTrigger
-              value="all-data"
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
+            <button
+              onClick={() => {
+                const newVal = !showAllTabs;
+                setShowAllTabs(newVal);
+                localStorage.setItem(`client-tabs-expanded-${clientId}`, String(newVal));
+              }}
+              className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                showAllTabs
+                  ? 'bg-gradient-to-r from-[hsl(45,70%,35%)] to-[hsl(45,70%,45%)] text-white border border-[hsl(45,70%,55%)]'
+                  : 'border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] bg-[hsl(45,70%,45%)]/5'
+              }`}
             >
               <Layers className="h-4 w-4" />
               כל הנתונים
-            </TabsTrigger>
+              {showAllTabs ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
 
+            {showAllTabs && (
             <TabsTrigger
               value="time"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
