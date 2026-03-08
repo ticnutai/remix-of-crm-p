@@ -433,6 +433,8 @@ export default function ClientProfile() {
     include_vat: false,
     notes: "",
   });
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesText, setNotesText] = useState("");
   const { toast } = useToast();
 
   // Open edit dialog
@@ -1541,18 +1543,73 @@ export default function ClientProfile() {
             </div>
 
             {/* Notes */}
-            {client.notes && (
-              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
-                <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                  <CardTitle className="text-lg">הערות</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
+            <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">הערות</CardTitle>
+                <div className="flex items-center gap-1">
+                  {editingNotes ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={async () => {
+                          try {
+                            await updateClient({ notes: notesText || null });
+                            setEditingNotes(false);
+                            toast({ title: "הערות נשמרו" });
+                          } catch (err) {
+                            toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          setEditingNotes(false);
+                          setNotesText(client.notes || "");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-[#d8ac27] hover:text-[#b8922a] hover:bg-[#d8ac27]/10"
+                      onClick={() => {
+                        setNotesText(client.notes || "");
+                        setEditingNotes(true);
+                      }}
+                    >
+                      {client.notes ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="p-4">
+                {editingNotes ? (
+                  <Textarea
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="הוסף הערות..."
+                    className="text-right min-h-[100px] resize-none border-[#d8ac27]/30 focus:border-[#d8ac27]"
+                    autoFocus
+                  />
+                ) : client.notes ? (
                   <p className="whitespace-pre-wrap text-right">
                     {client.notes}
                   </p>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-muted-foreground text-center text-sm py-2">אין הערות - לחץ על + להוספה</p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Time Entries Tab - Full Featured */}
