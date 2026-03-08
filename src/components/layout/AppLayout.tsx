@@ -69,7 +69,7 @@ interface AppLayoutProps {
   onTitleClick?: () => void;
 }
 
-export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title }, ref) {
+export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title, onTitleClick }, ref) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
