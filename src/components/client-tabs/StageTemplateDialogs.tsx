@@ -459,6 +459,9 @@ export function ApplyTemplateDialog({
     addStageToTemplate,
     deleteStageFromTemplate,
     renameStageInTemplate,
+    addTaskToTemplateStage,
+    deleteTaskFromTemplate,
+    renameTaskInTemplate,
   } = useStageTemplates();
   const [applying, setApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -479,6 +482,15 @@ export function ApplyTemplateDialog({
     name: string;
   } | null>(null);
   const [deletingStageId, setDeletingStageId] = useState<string | null>(null);
+  // Task editing state
+  const [expandedEditStage, setExpandedEditStage] = useState<string | null>(null);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [renamingTask, setRenamingTask] = useState<{
+    taskId: string;
+    title: string;
+  } | null>(null);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
   const handleAddStage = async (templateId: string) => {
     if (!newStageName.trim()) return;
@@ -498,6 +510,26 @@ export function ApplyTemplateDialog({
     if (!renamingStage || !renamingStage.name.trim()) return;
     await renameStageInTemplate(stageId, renamingStage.name.trim());
     setRenamingStage(null);
+  };
+
+  const handleAddTask = async (templateId: string, stageId: string) => {
+    if (!newTaskName.trim()) return;
+    setAddingTask(true);
+    await addTaskToTemplateStage(templateId, stageId, newTaskName.trim());
+    setNewTaskName("");
+    setAddingTask(false);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setDeletingTaskId(taskId);
+    await deleteTaskFromTemplate(taskId);
+    setDeletingTaskId(null);
+  };
+
+  const handleRenameTask = async (taskId: string) => {
+    if (!renamingTask || !renamingTask.title.trim()) return;
+    await renameTaskInTemplate(taskId, renamingTask.title.trim());
+    setRenamingTask(null);
   };
 
   const filteredTemplates = templates.filter(
@@ -783,111 +815,261 @@ export function ApplyTemplateDialog({
 
                           {/* EDIT STAGES MODE */}
                           {editStagesMode === template.id ? (
-                            <div className="space-y-2 mb-3">
+                            <div className="space-y-2 mb-3 max-h-[350px] overflow-y-auto">
                               {(template.stages || []).map((stage) => {
                                 const StageIcon =
                                   STAGE_ICONS[stage.stage_icon] || FolderOpen;
                                 const isRenaming =
                                   renamingStage?.stageId === stage.id;
                                 const isDeleting = deletingStageId === stage.id;
+                                const isStageExpanded = expandedEditStage === stage.id;
 
                                 return (
                                   <div
                                     key={stage.id}
-                                    className="flex items-center gap-2 bg-background border rounded-lg px-3 py-2"
+                                    className="bg-background border rounded-lg overflow-hidden"
                                   >
-                                    <StageIcon className="h-4 w-4 text-primary flex-shrink-0" />
-                                    {isRenaming ? (
-                                      <>
-                                        <Input
-                                          value={renamingStage.name}
-                                          onChange={(e) =>
-                                            setRenamingStage({
-                                              stageId: stage.id,
-                                              name: e.target.value,
-                                            })
-                                          }
-                                          onKeyDown={(e) => {
-                                            if (e.key === "Enter")
-                                              handleRenameStage(stage.id);
-                                            if (e.key === "Escape")
-                                              setRenamingStage(null);
-                                          }}
-                                          autoFocus
-                                          className="h-7 flex-1 text-sm"
-                                          onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-7 w-7 text-green-600 hover:text-green-600"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleRenameStage(stage.id);
-                                          }}
-                                        >
-                                          <Check className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-7 w-7"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setRenamingStage(null);
-                                          }}
-                                        >
-                                          <X className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span className="flex-1 text-sm font-medium">
-                                          {stage.stage_name}
-                                        </span>
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[10px]"
-                                        >
-                                          {stage.tasks?.length || 0} משימות
-                                        </Badge>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-7 w-7"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setRenamingStage({
-                                              stageId: stage.id,
-                                              name: stage.stage_name,
-                                            });
-                                          }}
-                                        >
-                                          <Pencil className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <Button
-                                          size="icon"
-                                          variant="ghost"
-                                          className="h-7 w-7 text-destructive hover:text-destructive"
-                                          disabled={isDeleting}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (
-                                              confirm(
-                                                `למחוק את השלב "${stage.stage_name}"?`,
-                                              )
-                                            ) {
-                                              handleDeleteStage(stage.id);
+                                    {/* Stage header row */}
+                                    <div className="flex items-center gap-2 px-3 py-2">
+                                      <StageIcon className="h-4 w-4 text-primary flex-shrink-0" />
+                                      {isRenaming ? (
+                                        <>
+                                          <Input
+                                            value={renamingStage.name}
+                                            onChange={(e) =>
+                                              setRenamingStage({
+                                                stageId: stage.id,
+                                                name: e.target.value,
+                                              })
                                             }
-                                          }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                handleRenameStage(stage.id);
+                                              if (e.key === "Escape")
+                                                setRenamingStage(null);
+                                            }}
+                                            autoFocus
+                                            className="h-7 flex-1 text-sm"
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7 text-primary hover:text-primary"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRenameStage(stage.id);
+                                            }}
+                                          >
+                                            <Check className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setRenamingStage(null);
+                                            }}
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          {/* Expand/collapse tasks toggle */}
+                                          <button
+                                            className="flex-1 text-sm font-medium text-right flex items-center gap-1 hover:text-primary transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setExpandedEditStage(isStageExpanded ? null : stage.id);
+                                              setNewTaskName("");
+                                              setRenamingTask(null);
+                                            }}
+                                          >
+                                            {isStageExpanded ? (
+                                              <ChevronUp className="h-3.5 w-3.5 flex-shrink-0" />
+                                            ) : (
+                                              <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" />
+                                            )}
+                                            {stage.stage_name}
+                                          </button>
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px]"
+                                          >
+                                            {stage.tasks?.length || 0} משימות
+                                          </Badge>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setRenamingStage({
+                                                stageId: stage.id,
+                                                name: stage.stage_name,
+                                              });
+                                            }}
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7 text-destructive hover:text-destructive"
+                                            disabled={isDeleting}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (
+                                                confirm(
+                                                  `למחוק את השלב "${stage.stage_name}"?`,
+                                                )
+                                              ) {
+                                                handleDeleteStage(stage.id);
+                                              }
+                                            }}
+                                          >
+                                            {isDeleting ? (
+                                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="h-3.5 w-3.5" />
+                                            )}
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {/* Expanded tasks list */}
+                                    {isStageExpanded && (
+                                      <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
+                                        {(stage.tasks || []).map((task) => {
+                                          const isTaskRenaming = renamingTask?.taskId === task.id;
+                                          const isTaskDeleting = deletingTaskId === task.id;
+
+                                          return (
+                                            <div
+                                              key={task.id}
+                                              className="flex items-center gap-2 pr-4"
+                                            >
+                                              <CheckSquare className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                              {isTaskRenaming ? (
+                                                <>
+                                                  <Input
+                                                    value={renamingTask.title}
+                                                    onChange={(e) =>
+                                                      setRenamingTask({
+                                                        taskId: task.id,
+                                                        title: e.target.value,
+                                                      })
+                                                    }
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === "Enter") handleRenameTask(task.id);
+                                                      if (e.key === "Escape") setRenamingTask(null);
+                                                    }}
+                                                    autoFocus
+                                                    className="h-6 flex-1 text-xs"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  />
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 text-primary"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleRenameTask(task.id);
+                                                    }}
+                                                  >
+                                                    <Check className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setRenamingTask(null);
+                                                    }}
+                                                  >
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <span className="flex-1 text-xs text-foreground">
+                                                    {task.title}
+                                                  </span>
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:opacity-100"
+                                                    style={{ opacity: 1 }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setRenamingTask({
+                                                        taskId: task.id,
+                                                        title: task.title,
+                                                      });
+                                                    }}
+                                                  >
+                                                    <Pencil className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 text-destructive hover:text-destructive"
+                                                    disabled={isTaskDeleting}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleDeleteTask(task.id);
+                                                    }}
+                                                  >
+                                                    {isTaskDeleting ? (
+                                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                      <Trash2 className="h-3 w-3" />
+                                                    )}
+                                                  </Button>
+                                                </>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+
+                                        {/* Add new task */}
+                                        <div
+                                          className="flex items-center gap-2 pr-4 border-t border-dashed pt-1.5 mt-1.5"
+                                          onClick={(e) => e.stopPropagation()}
                                         >
-                                          {isDeleting ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                          ) : (
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                          )}
-                                        </Button>
-                                      </>
+                                          <Plus className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                          <Input
+                                            value={newTaskName}
+                                            onChange={(e) => setNewTaskName(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter")
+                                                handleAddTask(template.id, stage.id);
+                                            }}
+                                            placeholder="משימה חדשה..."
+                                            className="h-6 flex-1 text-xs border-0 bg-transparent focus-visible:ring-0"
+                                          />
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 text-[10px] text-primary px-2"
+                                            disabled={!newTaskName.trim() || addingTask}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleAddTask(template.id, stage.id);
+                                            }}
+                                          >
+                                            {addingTask ? (
+                                              <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : (
+                                              "הוסף"
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 );
