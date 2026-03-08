@@ -407,11 +407,11 @@ export function ClientInfoDialogContent({
         <div className="mt-4 flex items-center gap-3">
           <div className="flex-1 h-1.5 rounded-full bg-muted/60 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-l from-primary to-primary/60 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-l from-[#d8ac27] to-[#d8ac27]/60 transition-all duration-500"
               style={{ width: `${completionPct}%` }}
             />
           </div>
-          <span className="text-[11px] font-bold text-primary tabular-nums">{completionPct}%</span>
+          <span className="text-[11px] font-bold text-[#d8ac27] tabular-nums">{completionPct}%</span>
           <span className="text-[10px] text-muted-foreground">
             {filledCount}/{totalCount} שדות
           </span>
