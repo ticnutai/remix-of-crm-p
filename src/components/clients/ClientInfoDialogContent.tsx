@@ -394,11 +394,30 @@ export function ClientInfoDialogContent({
                         {s.label}
                       </div>
                       <Switch
-                        checked={sections[s.key as keyof typeof sections]}
+                        checked={sections[s.key] !== false}
                         onCheckedChange={() => toggleSection(s.key)}
                       />
                     </div>
                   ))}
+                  {/* Individual custom fields */}
+                  {customFieldDefs.length > 0 && (
+                    <>
+                      <Separator className="my-1.5 opacity-40" />
+                      <p className="text-[10px] font-semibold text-muted-foreground/70 mt-1">שדות מותאמים בודדים</p>
+                      {customFieldDefs.map((def) => (
+                        <div key={def.id} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Sparkles className="h-3 w-3 text-[#d8ac27]/60" />
+                            <span className="text-xs">{def.label}</span>
+                          </div>
+                          <Switch
+                            checked={isFieldVisible(def.field_key)}
+                            onCheckedChange={() => toggleSection(`field_${def.field_key}`)}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
