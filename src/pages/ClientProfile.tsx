@@ -930,8 +930,7 @@ export default function ClientProfile() {
           </CardContent>
         </Card>}
 
-        {displaySettings.showClientCard && (
-        {(() => {
+        {displaySettings.showClientCard && (() => {
           const clientCustomData = (client as any)?.custom_data;
           const customValues = parseCustomData(clientCustomData);
           const filledFields = customFieldDefs.filter(
@@ -962,7 +961,6 @@ export default function ClientProfile() {
             </Card>
           );
         })()}
-        )}
 
         {/* Stats Cards */}
         {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
