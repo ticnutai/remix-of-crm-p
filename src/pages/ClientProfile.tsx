@@ -114,6 +114,11 @@ import {
   User,
   Briefcase,
   BarChart3,
+  Trash2,
+  Check,
+  X,
+  PlusCircle,
+  Sparkles,
 } from "lucide-react";
 import {
   Popover,
