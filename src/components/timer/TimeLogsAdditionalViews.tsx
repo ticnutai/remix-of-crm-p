@@ -11,6 +11,19 @@ import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// Smart time formatting utility
+const formatDuration = (minutes: number) => {
+  if (!minutes || minutes === 0) return '0 דק\'';
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  // Under 1 hour: show minutes only
+  if (hours === 0) return `${mins} דק'`;
+  // Full hours: show H:00
+  if (mins === 0) return `${hours}:00`;
+  // Hours + minutes: show H:MM
+  return `${hours}:${mins.toString().padStart(2, '0')}`;
+};
+
 interface TimeEntry {
   id: string;
   start_time: string;
@@ -34,10 +47,18 @@ interface Project {
   name: string;
 }
 
+interface UserInfo {
+  id: string;
+  name: string;
+  email?: string;
+  avatar_url?: string;
+}
+
 // Kanban View - by status/week
 interface TimeLogsKanbanViewProps {
   timeEntries: TimeEntry[];
   clients: Client[];
+  users?: UserInfo[];
   getClientName: (clientId: string | null) => string;
   onEntryClick?: (entry: TimeEntry) => void;
 }
@@ -45,10 +66,17 @@ interface TimeLogsKanbanViewProps {
 export function TimeLogsKanbanView({
   timeEntries,
   clients,
+  users = [],
   getClientName,
   onEntryClick,
 }: TimeLogsKanbanViewProps) {
   const today = new Date();
+  
+  // Get user info helper
+  const getUserInfo = (userId: string | undefined) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
   
   const { thisWeek, lastWeek, older } = useMemo(() => {
     const thisWeekStart = startOfWeek(today, { weekStartsOn: 0 });
@@ -75,7 +103,7 @@ export function TimeLogsKanbanView({
   }, [timeEntries]);
 
   const KanbanColumn = ({ title, entries, color }: { title: string; entries: TimeEntry[]; color: string }) => {
-    const totalHours = entries.reduce((sum, e) => sum + (e.duration_minutes || 0) / 60, 0);
+    const totalMinutes = entries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
     
     return (
       <div className="flex-1 min-w-[280px]">
@@ -83,7 +111,7 @@ export function TimeLogsKanbanView({
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-white">{title}</h3>
             <Badge variant="secondary" className="bg-white/20 text-white">
-              {entries.length} רשומות | {totalHours.toFixed(1)} שעות
+              {entries.length} רשומות | {formatDuration(totalMinutes)}
             </Badge>
           </div>
         </div>
@@ -96,7 +124,21 @@ export function TimeLogsKanbanView({
                 onClick={() => onEntryClick?.(entry)}
               >
                 <CardContent className="p-3">
-                  <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                    {/* User avatar */}
+                    {(() => {
+                      const userInfo = getUserInfo(entry.user_id);
+                      if (!userInfo) return null;
+                      return userInfo.avatar_url ? (
+                        <img src={userInfo.avatar_url} alt={userInfo.name} className="h-5 w-5 rounded-full" title={userInfo.name} />
+                      ) : (
+                        <div className="h-5 w-5 rounded-full bg-purple-500/20 flex items-center justify-center text-[10px] font-bold text-purple-700" title={userInfo.name}>
+                          {userInfo.name.charAt(0)}
+                        </div>
+                      );
+                    })()}
+                  </div>
                   {entry.description && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                       {entry.description}
@@ -104,7 +146,7 @@ export function TimeLogsKanbanView({
                   )}
                   <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                     <span>{format(new Date(entry.start_time), 'dd/MM HH:mm')}</span>
-                    <span>{((entry.duration_minutes || 0) / 60).toFixed(1)} שעות</span>
+                    <span>{formatDuration(entry.duration_minutes || 0)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -116,7 +158,7 @@ export function TimeLogsKanbanView({
   };
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Kanban className="h-5 w-5" />
@@ -178,7 +220,7 @@ export function TimeLogsGroupedView({
   const totalMinutes = grouped.reduce((sum, g) => sum + g.totalMinutes, 0);
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />
@@ -258,7 +300,7 @@ export function TimeLogsInvoiceView({
   }), [billableData]);
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
@@ -315,17 +357,24 @@ export function TimeLogsInvoiceView({
 // Compact View - minimal list
 interface TimeLogsCompactViewProps {
   timeEntries: TimeEntry[];
+  users?: UserInfo[];
   getClientName: (clientId: string | null) => string;
   onEntryClick?: (entry: TimeEntry) => void;
 }
 
 export function TimeLogsCompactView({
   timeEntries,
+  users = [],
   getClientName,
   onEntryClick,
 }: TimeLogsCompactViewProps) {
+  // Get user info helper
+  const getUserInfo = (userId: string | undefined) => {
+    if (!userId) return null;
+    return users.find(u => u.id === userId);
+  };
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card" dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <List className="h-5 w-5" />
@@ -335,7 +384,9 @@ export function TimeLogsCompactView({
       <CardContent className="p-0">
         <ScrollArea className="h-[600px]">
           <div className="divide-y">
-            {timeEntries.map(entry => (
+            {timeEntries.map(entry => {
+              const userInfo = getUserInfo(entry.user_id);
+              return (
               <div
                 key={entry.id}
                 onClick={() => onEntryClick?.(entry)}
@@ -344,7 +395,22 @@ export function TimeLogsCompactView({
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <div className="font-medium text-sm">{getClientName(entry.client_id)}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{getClientName(entry.client_id)}</span>
+                      {/* User badge */}
+                      {userInfo && (
+                        <span className="flex items-center gap-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
+                          {userInfo.avatar_url ? (
+                            <img src={userInfo.avatar_url} alt="" className="h-3 w-3 rounded-full" />
+                          ) : (
+                            <span className="h-3 w-3 rounded-full bg-purple-500/20 flex items-center justify-center text-[8px] font-bold">
+                              {userInfo.name.charAt(0)}
+                            </span>
+                          )}
+                          {userInfo.name}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {format(new Date(entry.start_time), 'dd/MM/yyyy HH:mm')}
                     </div>
@@ -355,11 +421,12 @@ export function TimeLogsCompactView({
                     <DollarSign className="h-4 w-4 text-primary" />
                   )}
                   <Badge variant="secondary">
-                    {((entry.duration_minutes || 0) / 60).toFixed(1)}h
+                    {formatDuration(entry.duration_minutes || 0)}
                   </Badge>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {timeEntries.length === 0 && (
               <div className="text-center text-muted-foreground py-8">

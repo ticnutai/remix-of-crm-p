@@ -1,4 +1,4 @@
-// Performance Analyzer - e-control CRM Pro
+// Performance Analyzer - tenarch CRM Pro
 // כלי לבדיקת ביצועים, השוואה והמלצות
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';

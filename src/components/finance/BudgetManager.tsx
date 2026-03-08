@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Target, 
   Plus, 
-  Edit, 
+  Pencil, 
   Trash2,
   AlertTriangle,
   CheckCircle,
@@ -290,7 +290,7 @@ export default function BudgetManager({ expenses, year }: BudgetManagerProps) {
                         onClick={() => openEdit(budget)}
                         className="h-7 w-7 p-0"
                       >
-                        <Edit className="h-3 w-3" />
+                        <Pencil className="h-3 w-3" />
                       </Button>
                       <Button 
                         variant="ghost" 

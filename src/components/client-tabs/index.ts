@@ -10,9 +10,11 @@ export { ClientTimeLogsTab } from './ClientTimeLogsTab';
 export { ClientDeadlinesTab } from './ClientDeadlinesTab';
 export { ClientEmailsTab } from './ClientEmailsTab';
 export { AddDeadlineDialog } from './AddDeadlineDialog';
+export { ClientFoldersManager } from './ClientFoldersManager';
 export { 
   SaveAsTemplateDialog, 
   SaveAllStagesDialog, 
   ApplyTemplateDialog, 
   CopyStagesDialog 
 } from './StageTemplateDialogs';
+

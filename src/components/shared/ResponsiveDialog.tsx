@@ -79,7 +79,7 @@ export function ResponsiveDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(maxWidthClass, className)}>
+      <DialogContent dir="rtl" className={cn(maxWidthClass, className)}>
         {(title || description) && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
@@ -120,7 +120,7 @@ export function MobileFullScreenDialog({
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={cn('max-w-3xl max-h-[90vh]', className)}>
+        <DialogContent dir="rtl" className={cn('max-w-3xl max-h-[90vh]', className)}>
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
             {headerActions && <div className="mt-2">{headerActions}</div>}

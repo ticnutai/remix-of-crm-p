@@ -1,6 +1,6 @@
 import React from 'react';
-import { Task } from '@/hooks/useTasks';
-import { Meeting } from '@/hooks/useMeetings';
+import { Task } from '@/hooks/useTasksOptimized';
+import { Meeting } from '@/hooks/useMeetingsOptimized';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle2, Clock, AlertCircle, Calendar, TrendingUp } from 'lucide-react';
 import { isPast, parseISO, isToday, isTomorrow } from 'date-fns';

@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'archflow-cache-v1';
+const CACHE_NAME = 'archflow-cache-v4';
+const STATIC_CACHE_NAME = 'archflow-static-v2';
+const DATA_CACHE_NAME = 'archflow-data-v1';
 const OFFLINE_URL = '/offline.html';
 
 // Resources to pre-cache
@@ -10,6 +12,19 @@ const PRECACHE_URLS = [
   '/offline.html',
   '/manifest.json',
 ];
+
+// Static assets that change rarely (cache first strategy)
+const STATIC_EXTENSIONS = ['.woff', '.woff2', '.ttf', '.eot', '.ico', '.png', '.jpg', '.jpeg', '.svg', '.webp'];
+
+// Check if URL is a static asset
+function isStaticAsset(url) {
+  return STATIC_EXTENSIONS.some(ext => url.toLowerCase().endsWith(ext));
+}
+
+// Check if URL is a JS/CSS chunk (immutable with hash)
+function isImmutableChunk(url) {
+  return /\/assets\/[^\/]+\.[a-f0-9]{8}\.(js|css)$/.test(url);
+}
 
 // Install event - precache resources
 self.addEventListener('install', (event) => {
@@ -32,7 +47,7 @@ self.addEventListener('activate', (event) => {
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => name !== CACHE_NAME && name !== STATIC_CACHE_NAME)
           .map((name) => caches.delete(name))
       );
       // Take control of all clients
@@ -41,7 +56,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - network first, fallback to cache
+// Message event - handle skip waiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// Fetch event - different strategies based on resource type
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') {
@@ -58,45 +80,73 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  event.respondWith(
-    (async () => {
-      try {
-        // Try network first
-        const networkResponse = await fetch(event.request);
-        
-        // Cache successful responses
-        if (networkResponse.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(event.request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-      } catch (error) {
-        // Network failed, try cache
-        const cachedResponse = await caches.match(event.request);
-        
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // For navigation requests, show offline page
-        if (event.request.mode === 'navigate') {
-          const offlineResponse = await caches.match(OFFLINE_URL);
-          if (offlineResponse) {
-            return offlineResponse;
-          }
-        }
-        
-        // Return error response
-        return new Response('אין חיבור לאינטרנט', {
-          status: 503,
-          statusText: 'Service Unavailable',
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        });
-      }
-    })()
-  );
+  const url = event.request.url;
+
+  // Cache-first for immutable chunks (JS/CSS with hash)
+  if (isImmutableChunk(url)) {
+    event.respondWith(cacheFirst(event.request, STATIC_CACHE_NAME));
+    return;
+  }
+
+  // Cache-first for static assets (fonts, images)
+  if (isStaticAsset(url)) {
+    event.respondWith(cacheFirst(event.request, STATIC_CACHE_NAME));
+    return;
+  }
+
+  // Network-first for everything else (HTML, API-like requests)
+  event.respondWith(networkFirst(event.request, CACHE_NAME));
 });
+
+// Cache-first strategy (best for static assets)
+async function cacheFirst(request, cacheName) {
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    return new Response('Resource not available offline', { status: 503 });
+  }
+}
+
+// Network-first strategy (best for dynamic content)
+async function networkFirst(request, cacheName) {
+  try {
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+      const cache = await caches.open(cacheName);
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
+    // For navigation requests, show offline page
+    if (request.mode === 'navigate') {
+      const offlineResponse = await caches.match(OFFLINE_URL);
+      if (offlineResponse) {
+        return offlineResponse;
+      }
+    }
+
+    return new Response('אין חיבור לאינטרנט', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+}
 
 // Push notification handler
 self.addEventListener('push', (event) => {
@@ -159,9 +209,52 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOfflineData() {
-  // Get pending offline data from IndexedDB and sync to server
-  // This is a placeholder - implement based on your needs
-  console.log('Background sync: syncing offline data');
+  // Open IndexedDB to get pending sync items
+  try {
+    const db = await openDB('ncrm-offline-db', 1);
+    if (!db) {
+      console.log('Background sync: IndexedDB not available');
+      return;
+    }
+
+    const tx = db.transaction('sync_queue', 'readonly');
+    const store = tx.objectStore('sync_queue');
+    const pendingItems = await getAllFromStore(store);
+    
+    if (pendingItems.length === 0) {
+      console.log('Background sync: No pending items');
+      return;
+    }
+
+    console.log(`Background sync: syncing ${pendingItems.length} offline changes`);
+    
+    // Notify the app to handle the actual sync
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const client of clients) {
+      client.postMessage({
+        type: 'BACKGROUND_SYNC_TRIGGER',
+        pendingCount: pendingItems.length
+      });
+    }
+  } catch (error) {
+    console.error('Background sync error:', error);
+  }
+}
+
+function openDB(name, version) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function getAllFromStore(store) {
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(request.error);
+  });
 }
 
 // Message handler

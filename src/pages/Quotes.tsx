@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import {
@@ -20,6 +21,8 @@ import {
   Calendar,
   AlertCircle,
   PenTool,
+  Download,
+  Sparkles,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -66,8 +69,15 @@ import { QuotePaymentDialog } from '@/components/quotes/QuotePaymentDialog';
 import { ContractForm } from '@/components/contracts/ContractForm';
 import { ContractDetails } from '@/components/contracts/ContractDetails';
 import { ContractTemplatesManager } from '@/components/contracts/ContractTemplatesManager';
+import { TemplateGallery } from '@/components/contracts/TemplateGallery';
 import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
+import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
+import { NewAdvancedEditor } from '@/components/contracts/AdvancedContractEditor/NewAdvancedEditor';
 import { cn } from '@/lib/utils';
+import { ClipboardList, Settings2 } from 'lucide-react';
+import { exportQuoteToPDF } from '@/lib/pdf-export';
+import { SignatureDialog, SignatureData } from '@/components/signature';
+import { toast } from '@/hooks/use-toast';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
@@ -93,6 +103,8 @@ const contractStatusConfig: Record<string, { label: string; color: string; icon:
 };
 
 export default function Quotes() {
+  const navigate = useNavigate();
+  
   // Quotes hooks and state
   const { quotes, isLoading: quotesLoading, stats: quotesStats, createQuote, updateQuote, deleteQuote, sendQuote, addPayment, convertToInvoice } = useQuotes();
   
@@ -130,8 +142,15 @@ export default function Quotes() {
   const [convertToContractQuote, setConvertToContractQuote] = useState<Quote | null>(null);
   const [terminatingContractId, setTerminatingContractId] = useState<string | null>(null);
   const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState(false);
   const [advancedEditorQuote, setAdvancedEditorQuote] = useState<Quote | null>(null);
   const [isAdvancedEditorOpen, setIsAdvancedEditorOpen] = useState(false);
+  const [isNewAdvancedEditorOpen, setIsNewAdvancedEditorOpen] = useState(false);
+  const [newEditorContractDocument, setNewEditorContractDocument] = useState<any>(null);
+  
+  // Signature state
+  const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
+  const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
   // Save filters to localStorage
   React.useEffect(() => {
@@ -216,6 +235,51 @@ export default function Quotes() {
     setPaymentQuote(null);
   };
   
+  // PDF Export handler
+  const handleExportQuotePDF = (quote: Quote) => {
+    exportQuoteToPDF({
+      quote_number: quote.quote_number,
+      client_name: quote.clients?.name || 'לקוח',
+      items: (quote.items || []).map((item: any) => ({
+        description: item.name || item.description || '',
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0,
+        total: item.total || 0,
+      })),
+      subtotal: quote.subtotal || 0,
+      vat: (quote as any).vat || Math.round((quote.total_amount || 0) * 0.17 / 1.17),
+      total: quote.total_amount || 0,
+      notes: quote.notes,
+      valid_until: quote.valid_until,
+    }, {
+      companyName: 'tenarch CRM',
+    });
+    toast({
+      title: 'ייצוא PDF',
+      description: 'ההצעה מיוצאת ל-PDF...',
+    });
+  };
+  
+  // Signature handler
+  const handleSignQuote = async (signature: SignatureData) => {
+    if (!signatureQuote) return;
+    
+    // Update quote status to signed
+    await updateQuote.mutateAsync({
+      id: signatureQuote.id,
+      status: 'signed',
+      // Store signature data in metadata or a dedicated field
+    });
+    
+    toast({
+      title: 'הצעה נחתמה',
+      description: `ההצעה ${signatureQuote.quote_number} נחתמה בהצלחה`,
+    });
+    
+    setSignatureQuote(null);
+    setIsSignatureDialogOpen(false);
+  };
+  
   // Contract handlers
   const handleCreateContract = async (data: ContractFormData) => {
     await createContract.mutateAsync(data);
@@ -261,9 +325,9 @@ export default function Quotes() {
 
   return (
     <AppLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 w-full overflow-x-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-2xl font-bold text-foreground">הצעות מחיר וחוזים</h1>
             <p className="text-muted-foreground">ניהול הצעות מחיר, חוזים ולוחות תשלומים</p>
@@ -272,7 +336,7 @@ export default function Quotes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="quotes" className="gap-2">
               <FileText className="h-4 w-4" />
               הצעות מחיר
@@ -281,13 +345,21 @@ export default function Quotes() {
               <FileSignature className="h-4 w-4" />
               חוזים
             </TabsTrigger>
+            <TabsTrigger value="ready-templates" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              תבניות מוכנות
+            </TabsTrigger>
+            <TabsTrigger value="template-manager" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              ניהול תבניות
+            </TabsTrigger>
           </TabsList>
 
           {/* Quotes Tab */}
           <TabsContent value="quotes" className="space-y-6 mt-6">
             {/* Quotes Header */}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsAdvancedEditorOpen(true)}>
+              <Button variant="outline" onClick={() => navigate('/document-editor?type=quote')}>
                 <PenTool className="h-4 w-4 ml-2" />
                 עורך מתקדם
               </Button>
@@ -452,8 +524,7 @@ export default function Quotes() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => {
-                                    setAdvancedEditorQuote(quote);
-                                    setIsAdvancedEditorOpen(true);
+                                    navigate(`/document-editor?type=quote&id=${quote.id}&client=${quote.client_id}`);
                                   }}>
                                     <PenTool className="h-4 w-4 ml-2" />
                                     עורך מתקדם
@@ -462,6 +533,19 @@ export default function Quotes() {
                                     <Pencil className="h-4 w-4 ml-2" />
                                     עריכה מהירה
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleExportQuotePDF(quote)}>
+                                    <Download className="h-4 w-4 ml-2" />
+                                    ייצוא PDF
+                                  </DropdownMenuItem>
+                                  {quote.status !== 'signed' && quote.status !== 'cancelled' && (
+                                    <DropdownMenuItem onClick={() => {
+                                      setSignatureQuote(quote);
+                                      setIsSignatureDialogOpen(true);
+                                    }}>
+                                      <FileSignature className="h-4 w-4 ml-2" />
+                                      חתום על ההצעה
+                                    </DropdownMenuItem>
+                                  )}
                                   {quote.status === 'draft' && (
                                     <DropdownMenuItem onClick={() => sendQuote.mutate(quote.id)}>
                                       <Send className="h-4 w-4 ml-2" />
@@ -511,6 +595,37 @@ export default function Quotes() {
           <TabsContent value="contracts" className="space-y-6 mt-6">
             {/* Contracts Header */}
             <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => navigate('/document-editor?type=contract')}>
+                <PenTool className="h-4 w-4 ml-2" />
+                עורך מתקדם
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setNewEditorContractDocument({
+                    id: undefined,
+                    title: 'חוזה חדש',
+                    blocks: [],
+                    colorScheme: 'blue',
+                    designTemplate: 'modern',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                  });
+                  setIsNewAdvancedEditorOpen(true);
+                }}
+                className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border-blue-500/30 font-semibold"
+              >
+                <Sparkles className="h-4 w-4 ml-2 text-blue-600" />
+                עורך חוזים חדש ומשופר
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsTemplateGalleryOpen(true)} 
+                className="bg-gradient-to-r from-yellow-400/10 to-yellow-600/10 hover:from-yellow-400/20 hover:to-yellow-600/20 border-yellow-500/30 font-semibold"
+              >
+                <Sparkles className="h-4 w-4 ml-2 text-yellow-600" />
+                גלריית תבניות מתקדמות
+              </Button>
               <Button variant="outline" onClick={() => setIsTemplateManagerOpen(true)}>
                 <FileText className="h-4 w-4 ml-2" />
                 ניהול תבניות
@@ -672,6 +787,12 @@ export default function Quotes() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => {
+                                    navigate(`/document-editor?type=contract&id=${contract.id}&client=${contract.client_id}`);
+                                  }}>
+                                    <PenTool className="h-4 w-4 ml-2" />
+                                    עורך מתקדם
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => setViewingContract(contract)}>
                                     <Eye className="h-4 w-4 ml-2" />
                                     צפייה ולוח תשלומים
@@ -717,6 +838,38 @@ export default function Quotes() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Ready Templates Tab - תבניות מוכנות */}
+          <TabsContent value="ready-templates" className="space-y-6 mt-6">
+            <QuoteTemplatesManager />
+          </TabsContent>
+
+          {/* Template Manager Tab - ניהול תבניות */}
+          <TabsContent value="template-manager" className="space-y-6 mt-6">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">ניהול תבניות חוזים</h2>
+                  <p className="text-muted-foreground">עריכה והגדרת תבניות חוזים</p>
+                </div>
+                <Button onClick={() => setIsTemplateManagerOpen(true)}>
+                  <Settings2 className="h-4 w-4 ml-2" />
+                  פתח מנהל תבניות חוזים
+                </Button>
+              </div>
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Settings2 className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    לחץ על הכפתור למעלה לניהול תבניות חוזים
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    תבניות הצעות מחיר מנוהלות בטאב "תבניות מוכנות"
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -858,6 +1011,12 @@ export default function Quotes() {
         onOpenChange={setIsTemplateManagerOpen}
       />
 
+      {/* Template Gallery */}
+      <TemplateGallery
+        open={isTemplateGalleryOpen}
+        onOpenChange={setIsTemplateGalleryOpen}
+      />
+
       {/* Advanced Quote Editor Sheet */}
       <QuoteEditorSheet
         open={isAdvancedEditorOpen}
@@ -866,6 +1025,16 @@ export default function Quotes() {
         onSaved={() => {
           setAdvancedEditorQuote(null);
         }}
+      />
+      
+      {/* Digital Signature Dialog */}
+      <SignatureDialog
+        open={isSignatureDialogOpen}
+        onOpenChange={setIsSignatureDialogOpen}
+        onSign={handleSignQuote}
+        documentTitle={signatureQuote?.title || 'הצעת מחיר'}
+        signerName={signatureQuote?.clients?.name}
+        signerEmail={signatureQuote?.clients?.email}
       />
     </AppLayout>
   );

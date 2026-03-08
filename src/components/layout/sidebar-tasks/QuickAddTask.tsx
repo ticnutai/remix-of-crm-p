@@ -1,31 +1,31 @@
 // QuickAddTask - Quick Add Task Dialog for Sidebar
-import React, { useState, useEffect } from 'react';
-import { TaskInsert } from '@/hooks/useTasks';
+import React, { useState, useEffect, forwardRef } from "react";
+import { TaskInsert } from "@/hooks/useTasksOptimized";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import {
   CalendarIcon,
   ArrowUp,
@@ -33,26 +33,51 @@ import {
   ArrowDown,
   CheckSquare,
   Loader2,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { he } from 'date-fns/locale';
-import { NotificationOptions } from './NotificationOptions';
+  UserPlus,
+  X,
+  Search,
+} from "lucide-react";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
+import { NotificationOptions } from "./NotificationOptions";
+import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
 
 // Sidebar colors
 const sidebarColors = {
-  navy: '#162C58',
-  gold: '#D4A843',
-  goldLight: '#E8D1B4',
-  goldDark: '#B8923A',
-  navyLight: '#1E3A6E',
-  navyDark: '#0F1F3D',
+  navy: "#162C58",
+  gold: "#d8ac27",
+  goldLight: "#e8c85a",
+  goldDark: "#b8941f",
+  navyLight: "#1E3A6E",
+  navyDark: "#0F1F3D",
 };
 
 // Priority options
 const priorities = [
-  { value: 'low', label: 'נמוכה', icon: ArrowDown, color: 'text-green-500', bgColor: 'bg-green-500/20', borderColor: 'border-green-500' },
-  { value: 'medium', label: 'בינונית', icon: ArrowRight, color: 'text-yellow-500', bgColor: 'bg-yellow-500/20', borderColor: 'border-yellow-500' },
-  { value: 'high', label: 'גבוהה', icon: ArrowUp, color: 'text-red-500', bgColor: 'bg-red-500/20', borderColor: 'border-red-500' },
+  {
+    value: "low",
+    label: "נמוכה",
+    icon: ArrowDown,
+    color: "text-green-500",
+    bgColor: "bg-green-500/20",
+    borderColor: "border-green-500",
+  },
+  {
+    value: "medium",
+    label: "בינונית",
+    icon: ArrowRight,
+    color: "text-yellow-500",
+    bgColor: "bg-yellow-500/20",
+    borderColor: "border-yellow-500",
+  },
+  {
+    value: "high",
+    label: "גבוהה",
+    icon: ArrowUp,
+    color: "text-red-500",
+    bgColor: "bg-red-500/20",
+    borderColor: "border-red-500",
+  },
 ];
 
 interface Client {
@@ -77,274 +102,421 @@ interface QuickAddTaskProps {
   };
 }
 
-export function QuickAddTask({
-  open,
-  onOpenChange,
-  onSubmit,
-  clients = [],
-  initialData,
-}: QuickAddTaskProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<string>('medium');
-  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
-  const [clientId, setClientId] = useState<string>('');
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
+  function QuickAddTask(
+    { open, onOpenChange, onSubmit, clients = [], initialData },
+    _ref,
+  ) {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [priority, setPriority] = useState<string>("medium");
+    const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+    const [clientId, setClientId] = useState<string>("");
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
 
-  // Load initial data when dialog opens
-  useEffect(() => {
-    if (open && initialData) {
-      setTitle(initialData.title || '');
-      setDescription(initialData.description || '');
-      setPriority(initialData.priority || 'medium');
-      setDueDate(initialData.dueDate);
-      setClientId(initialData.clientId || '');
-    }
-  }, [open, initialData]);
+    // Load initial data when dialog opens
+    useEffect(() => {
+      if (open && initialData) {
+        setTitle(initialData.title || "");
+        setDescription(initialData.description || "");
+        setPriority(initialData.priority || "medium");
+        setDueDate(initialData.dueDate);
+        setClientId(initialData.clientId || "");
+      }
+    }, [open, initialData]);
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setPriority('medium');
-    setDueDate(undefined);
-    setClientId('');
-  };
+    const resetForm = () => {
+      setTitle("");
+      setDescription("");
+      setPriority("medium");
+      setDueDate(undefined);
+      setClientId("");
+    };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!title.trim()) return;
 
-    setIsSubmitting(true);
-    try {
-      await onSubmit({
-        title: title.trim(),
-        description: description.trim() || null,
-        priority,
-        due_date: dueDate ? dueDate.toISOString() : null,
-        client_id: clientId && clientId !== 'none' ? clientId : null,
-        status: 'pending',
-      });
-      resetForm();
-      onOpenChange(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      setIsSubmitting(true);
+      try {
+        await onSubmit({
+          title: title.trim(),
+          description: description.trim() || null,
+          priority,
+          due_date: dueDate ? dueDate.toISOString() : null,
+          client_id: clientId && clientId !== "none" ? clientId : null,
+          status: "pending",
+        });
+        resetForm();
+        onOpenChange(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="sm:max-w-[400px] p-0 overflow-hidden" 
-        dir="rtl"
-        style={{ 
-          background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
-          border: `1px solid ${sidebarColors.gold}40`,
-        }}
-      >
-        <DialogHeader 
-          className="px-5 pt-5 pb-3"
-          style={{ borderBottom: `1px solid ${sidebarColors.gold}30` }}
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="sm:max-w-[400px] p-0 overflow-hidden"
+          dir="rtl"
+          style={{
+            background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
+            border: `1px solid ${sidebarColors.gold}40`,
+          }}
         >
-          <div className="flex items-center gap-3">
-            <div 
-              className="flex items-center justify-center w-10 h-10 rounded-lg"
-              style={{ background: `${sidebarColors.gold}20` }}
-            >
-              <CheckSquare className="h-5 w-5" style={{ color: sidebarColors.gold }} />
-            </div>
-            <DialogTitle 
-              className="text-lg font-bold"
-              style={{ color: sidebarColors.goldLight }}
-            >
-              משימה חדשה
-            </DialogTitle>
-          </div>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit}>
-          <div className="px-5 py-4 space-y-4">
-            {/* Title */}
-            <div className="space-y-2">
-              <Label 
-                htmlFor="title" 
-                className="text-sm font-medium"
+          <DialogHeader
+            className="px-5 pt-5 pb-3"
+            style={{ borderBottom: `1px solid ${sidebarColors.gold}30` }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="flex items-center justify-center w-10 h-10 rounded-lg"
+                style={{ background: `${sidebarColors.gold}20` }}
+              >
+                <CheckSquare
+                  className="h-5 w-5"
+                  style={{ color: sidebarColors.gold }}
+                />
+              </div>
+              <DialogTitle
+                className="text-lg font-bold"
                 style={{ color: sidebarColors.goldLight }}
               >
-                כותרת המשימה *
-              </Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="מה צריך לעשות?"
-                className="text-right"
-                style={{ 
-                  background: `${sidebarColors.navyLight}50`,
-                  borderColor: `${sidebarColors.gold}40`,
-                  color: sidebarColors.goldLight,
-                }}
-                autoFocus
-              />
+                משימה חדשה
+              </DialogTitle>
             </div>
+          </DialogHeader>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <Label 
-                htmlFor="description" 
-                className="text-sm font-medium"
-                style={{ color: sidebarColors.goldLight }}
-              >
-                תיאור (אופציונלי)
-              </Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="פרטים נוספים..."
-                rows={2}
-                className="text-right resize-none"
-                style={{ 
-                  background: `${sidebarColors.navyLight}50`,
-                  borderColor: `${sidebarColors.gold}40`,
-                  color: sidebarColors.goldLight,
-                }}
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(80vh - 120px)' }}>
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+              {/* Title */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="title"
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  כותרת המשימה *
+                </Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="מה צריך לעשות?"
+                  className="text-right"
+                  style={{
+                    background: `${sidebarColors.navyLight}50`,
+                    borderColor: `${sidebarColors.gold}40`,
+                    color: sidebarColors.goldLight,
+                  }}
+                  autoFocus
+                />
+              </div>
 
-            {/* Priority Selection */}
-            <div className="space-y-2">
-              <Label 
-                className="text-sm font-medium"
-                style={{ color: sidebarColors.goldLight }}
-              >
-                עדיפות
-              </Label>
-              <div className="flex gap-2">
-                {priorities.map((p) => {
-                  const Icon = p.icon;
-                  const isSelected = priority === p.value;
-                  return (
-                    <button
-                      key={p.value}
+              {/* Description */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="description"
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  תיאור (אופציונלי)
+                </Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="פרטים נוספים..."
+                  rows={2}
+                  className="text-right resize-none"
+                  style={{
+                    background: `${sidebarColors.navyLight}50`,
+                    borderColor: `${sidebarColors.gold}40`,
+                    color: sidebarColors.goldLight,
+                  }}
+                />
+              </div>
+
+              {/* Priority Selection */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  עדיפות
+                </Label>
+                <div className="flex gap-2">
+                  {priorities.map((p) => {
+                    const Icon = p.icon;
+                    const isSelected = priority === p.value;
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setPriority(p.value)}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border-2 transition-all",
+                          isSelected ? p.borderColor : "border-transparent",
+                          isSelected
+                            ? p.bgColor
+                            : `bg-[${sidebarColors.navyLight}]50`,
+                          p.color,
+                        )}
+                        style={{
+                          background: isSelected
+                            ? undefined
+                            : `${sidebarColors.navyLight}50`,
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="text-xs font-medium">{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  תאריך יעד
+                </Label>
+                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
                       type="button"
-                      onClick={() => setPriority(p.value)}
+                      variant="outline"
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border-2 transition-all",
-                        isSelected ? p.borderColor : "border-transparent",
-                        isSelected ? p.bgColor : `bg-[${sidebarColors.navyLight}]50`,
-                        p.color
+                        "w-full justify-start text-right gap-2",
+                        !dueDate && "text-muted-foreground",
                       )}
                       style={{
-                        background: isSelected ? undefined : `${sidebarColors.navyLight}50`,
+                        background: `${sidebarColors.navyLight}50`,
+                        borderColor: `${sidebarColors.gold}40`,
+                        color: dueDate
+                          ? sidebarColors.goldLight
+                          : `${sidebarColors.goldLight}60`,
                       }}
                     >
-                      <Icon className="h-4 w-4" />
-                      <span className="text-xs font-medium">{p.label}</span>
-                    </button>
-                  );
-                })}
+                      <CalendarIcon
+                        className="h-4 w-4 ml-auto"
+                        style={{ color: sidebarColors.gold }}
+                      />
+                      {dueDate
+                        ? format(dueDate, "PPP", { locale: he })
+                        : "בחר תאריך"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={(date) => {
+                        setDueDate(date);
+                        setIsCalendarOpen(false);
+                      }}
+                      locale={he}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-            </div>
 
-            {/* Due Date */}
-            <div className="space-y-2">
-              <Label 
-                className="text-sm font-medium"
-                style={{ color: sidebarColors.goldLight }}
-              >
-                תאריך יעד
-              </Label>
-              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-right gap-2",
-                      !dueDate && "text-muted-foreground"
-                    )}
-                    style={{ 
-                      background: `${sidebarColors.navyLight}50`,
-                      borderColor: `${sidebarColors.gold}40`,
-                      color: dueDate ? sidebarColors.goldLight : `${sidebarColors.goldLight}60`,
+              {/* Client Assignment */}
+              <div className="space-y-2">
+                <Label
+                  className="text-sm font-medium"
+                  style={{ color: sidebarColors.goldLight }}
+                >
+                  שיוך ללקוח
+                </Label>
+                {clientId && clientId !== "none" ? (
+                  <div
+                    className="flex items-center justify-between px-3 py-2 rounded-lg border"
+                    style={{
+                      background: `${sidebarColors.gold}15`,
+                      borderColor: `${sidebarColors.gold}60`,
                     }}
                   >
-                    <CalendarIcon className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
-                    {dueDate ? format(dueDate, 'PPP', { locale: he }) : 'בחר תאריך'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={(date) => {
-                      setDueDate(date);
-                      setIsCalendarOpen(false);
-                    }}
-                    locale={he}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                    <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                      {clients.find(c => c.id === clientId)?.name || "לקוח"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setClientId("")}
+                      className="p-1 rounded hover:bg-white/10 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" style={{ color: sidebarColors.goldLight }} />
+                    </button>
+                  </div>
+                ) : (
+                  <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-start gap-2"
+                        style={{
+                          background: `${sidebarColors.navyLight}50`,
+                          borderColor: `${sidebarColors.gold}40`,
+                          color: `${sidebarColors.goldLight}60`,
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                        בחר לקוח או איש קשר
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-[320px] p-0 overflow-hidden"
+                      align="start"
+                      style={{
+                        background: sidebarColors.navy,
+                        border: `1px solid ${sidebarColors.gold}40`,
+                      }}
+                    >
+                      <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
+                        <div className="relative">
+                          <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                          <Input
+                            placeholder="חיפוש לקוח..."
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            className="pr-9 text-right text-sm"
+                            style={{
+                              background: `${sidebarColors.navyLight}50`,
+                              borderColor: `${sidebarColors.gold}30`,
+                              color: sidebarColors.goldLight,
+                            }}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto p-1">
+                        {clients
+                          .filter(c =>
+                            !clientSearch ||
+                            c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            c.email?.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                            c.phone?.includes(clientSearch)
+                          )
+                          .map(client => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => {
+                                setClientId(client.id);
+                                setIsClientPickerOpen(false);
+                                setClientSearch("");
+                              }}
+                              className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-white/10 flex items-center gap-2"
+                              style={{ color: sidebarColors.goldLight }}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                style={{
+                                  background: `${sidebarColors.gold}25`,
+                                  color: sidebarColors.gold,
+                                }}
+                              >
+                                {client.name.charAt(0)}
+                              </div>
+                              <div className="flex-1 text-right">
+                                <div className="font-medium">{client.name}</div>
+                                {client.email && (
+                                  <div className="text-xs opacity-60">{client.email}</div>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        {clients.filter(c =>
+                          !clientSearch ||
+                          c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                        ).length === 0 && (
+                          <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                            לא נמצאו לקוחות
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              {/* Reminder & Calendar Sync */}
+              <InlineReminderSection
+                entityType="task"
+                entityTitle={title}
+                entityDate={dueDate}
+                entityDescription={description}
+              />
+
+              {/* Notification Options */}
+              {clients.length > 0 && (
+                <NotificationOptions
+                  type="task"
+                  clients={clients}
+                  selectedClientId={
+                    clientId && clientId !== "none" ? clientId : undefined
+                  }
+                  onClientChange={setClientId}
+                  details={{
+                    title,
+                    description,
+                    date: dueDate
+                      ? format(dueDate, "PPP", { locale: he })
+                      : undefined,
+                    priority,
+                  }}
+                  disabled={isSubmitting}
+                />
+              )}
             </div>
 
-            {/* Notification Options */}
-            {clients.length > 0 && (
-              <NotificationOptions
-                type="task"
-                clients={clients}
-                selectedClientId={clientId && clientId !== 'none' ? clientId : undefined}
-                onClientChange={setClientId}
-                details={{
-                  title,
-                  description,
-                  date: dueDate ? format(dueDate, 'PPP', { locale: he }) : undefined,
-                  priority,
+            <DialogFooter
+              className="px-5 py-4 gap-2"
+              style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                style={{ color: sidebarColors.goldLight }}
+              >
+                ביטול
+              </Button>
+              <Button
+                type="submit"
+                disabled={!title.trim() || isSubmitting}
+                className="gap-2"
+                style={{
+                  background: sidebarColors.gold,
+                  color: sidebarColors.navy,
                 }}
-                disabled={isSubmitting}
-              />
-            )}
-          </div>
-
-          <DialogFooter 
-            className="px-5 py-4 gap-2"
-            style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              style={{ color: sidebarColors.goldLight }}
-            >
-              ביטול
-            </Button>
-            <Button
-              type="submit"
-              disabled={!title.trim() || isSubmitting}
-              className="gap-2"
-              style={{ 
-                background: sidebarColors.gold,
-                color: sidebarColors.navy,
-              }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  שומר...
-                </>
-              ) : (
-                <>
-                  <CheckSquare className="h-4 w-4" />
-                  צור משימה
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    שומר...
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="h-4 w-4" />
+                    צור משימה
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+);
 
 export default QuickAddTask;

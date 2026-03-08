@@ -142,7 +142,7 @@ export function FolderSystem({ onSelectFolder, currentFolder }: FolderSystemProp
           navigate('/finance');
           break;
         case 'reminders':
-          navigate('/reminders');
+          navigate('/tasks-meetings?tab=reminders');
           break;
       }
     }
@@ -163,7 +163,7 @@ export function FolderSystem({ onSelectFolder, currentFolder }: FolderSystemProp
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[400px] sm:w-[540px]">
+      <SheetContent side="right" className="w-[400px] sm:w-[540px]" dir="rtl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <FolderOpen className="h-5 w-5" />

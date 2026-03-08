@@ -13,7 +13,6 @@ import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { BankTransactionsImport } from './BankTransactionsImport';
-import * as XLSX from 'xlsx';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -173,7 +172,8 @@ export function BankTransactionsView() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
     const exportData = filteredTransactions.map(t => ({
       'תאריך': format(new Date(t.transaction_date), 'dd/MM/yyyy'),
       'תיאור': t.description,

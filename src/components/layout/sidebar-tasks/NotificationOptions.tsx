@@ -18,9 +18,9 @@ import { cn } from '@/lib/utils';
 // Sidebar colors
 const sidebarColors = {
   navy: '#162C58',
-  gold: '#D4A843',
-  goldLight: '#E8D1B4',
-  goldDark: '#B8923A',
+  gold: '#d8ac27',
+  goldLight: '#e8c85a',
+  goldDark: '#b8941f',
   navyLight: '#1E3A6E',
   navyDark: '#0F1F3D',
 };

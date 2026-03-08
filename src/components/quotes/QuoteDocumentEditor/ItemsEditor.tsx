@@ -1,5 +1,4 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +20,6 @@ import {
 import {
   Plus,
   Trash2,
-  GripVertical,
   ChevronUp,
   ChevronDown,
   Copy,
@@ -67,12 +65,15 @@ export function ItemsEditor({
 }: ItemsEditorProps) {
   return (
     <div className="space-y-3" dir="rtl">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h3 className="font-semibold text-sm">פריטים</h3>
-        <Button onClick={onAdd} size="sm" variant="default" className="shrink-0">
-          <Plus className="h-4 w-4 ml-1" />
-          הוסף פריט
-        </Button>
+      {/* Header with Add button */}
+      <div className="bg-card pb-3 pt-1 border-b">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-sm whitespace-nowrap">פריטים</h3>
+          <Button onClick={onAdd} size="sm" variant="default" className="shrink-0 whitespace-nowrap">
+            <Plus className="h-4 w-4 ml-1" />
+            הוסף פריט
+          </Button>
+        </div>
       </div>
 
       <div className="border rounded-lg overflow-x-auto">
@@ -162,7 +163,7 @@ export function ItemsEditor({
                     <Input
                       type="number"
                       value={item.quantity}
-                      onChange={(e) => onUpdate(item.id, { quantity: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => onUpdate(item.id, { quantity: Number.parseFloat(e.target.value) || 0 })}
                       min={0}
                       step={0.1}
                       className="text-center h-8"
@@ -193,7 +194,7 @@ export function ItemsEditor({
                     <Input
                       type="number"
                       value={item.unitPrice}
-                      onChange={(e) => onUpdate(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => onUpdate(item.id, { unitPrice: Number.parseFloat(e.target.value) || 0 })}
                       min={0}
                       className="text-left h-8"
                       dir="ltr"

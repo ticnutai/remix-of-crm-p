@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>הצעת מחיר להרחבה צפונית</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 40px;
+      direction: rtl;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    
+    .header {
+      background: linear-gradient(to left, #B8860B, #DAA520);
+      color: #FFFFFF;
+      padding: 40px;
+    }
+    
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    
+    .header .subtitle {
+      opacity: 0.8;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    
+    .header .location {
+      opacity: 0.7;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    
+    .header .price {
+      font-size: 42px;
+      font-weight: bold;
+    }
+    
+    .header .price .vat {
+      font-size: 16px;
+      font-weight: normal;
+      opacity: 0.7;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .section {
+      margin-bottom: 30px;
+    }
+    
+    .section-title {
+      background: #F5F5F5;
+      color: #333333;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      border-right: 4px solid #DAA520;
+    }
+    
+    .section-items {
+      padding-right: 20px;
+    }
+    
+    .item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    
+    .item .check {
+      color: #DAA520;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    
+    .item .text {
+      color: #555;
+      font-size: 14px;
+    }
+    
+    .item .upgrade-price {
+      color: #DAA520;
+      font-size: 12px;
+      background: rgba(218, 165, 32, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    
+    .pricing-tiers {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .tier {
+      background: #f9f9f9;
+      border-radius: 12px;
+      padding: 25px;
+      text-align: center;
+      position: relative;
+      border: 2px solid transparent;
+    }
+    
+    .tier.recommended {
+      border-color: #DAA520;
+      background: linear-gradient(135deg, rgba(218, 165, 32, 0.05), rgba(184, 134, 11, 0.1));
+    }
+    
+    .tier.recommended::before {
+      content: "★ מומלץ";
+      position: absolute;
+      top: -10px;
+      right: 20px;
+      background: #DAA520;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    
+    .tier h3 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .tier .tier-price {
+      font-size: 28px;
+      font-weight: bold;
+      color: #DAA520;
+      margin-bottom: 10px;
+    }
+    
+    .tier .tier-description {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 15px;
+    }
+    
+    .tier ul {
+      list-style: none;
+      text-align: right;
+    }
+    
+    .tier ul li {
+      color: #555;
+      font-size: 13px;
+      padding: 5px 0;
+    }
+    
+    .tier ul li::before {
+      content: "✓";
+      color: #DAA520;
+      margin-left: 8px;
+    }
+    
+    .upgrades {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .upgrade {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      border-right: 3px solid #DAA520;
+    }
+    
+    .upgrade h4 {
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .upgrade .upgrade-price {
+      color: #DAA520;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    
+    .upgrade p {
+      color: #666;
+      font-size: 13px;
+    }
+    
+    .payments {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    
+    .payment {
+      background: #f9f9f9;
+      border-radius: 12px;
+      padding: 25px;
+      text-align: center;
+      flex: 1;
+      min-width: 120px;
+    }
+    
+    .payment .percentage {
+      font-size: 32px;
+      font-weight: bold;
+      color: #DAA520;
+      margin-bottom: 8px;
+    }
+    
+    .payment .description {
+      color: #666;
+      font-size: 13px;
+    }
+    
+    .timeline {
+      margin-bottom: 30px;
+    }
+    
+    .timeline-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+    }
+    
+    .timeline-item .number {
+      background: rgba(218, 165, 32, 0.2);
+      color: #DAA520;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    
+    .timeline-item .text {
+      color: #555;
+      font-size: 14px;
+    }
+    
+    .notes {
+      margin-bottom: 30px;
+    }
+    
+    .note {
+      background: rgba(0,0,0,0.03);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      color: #666;
+      font-size: 13px;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid #eee;
+      color: #999;
+      font-size: 12px;
+    }
+    
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      
+      .container {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>הצעת מחיר להרחבה צפונית</h1>
+      <p class="subtitle">הוצאת היתר בניה ליחידת דיור אחת במגרש בהרחבה הצפונית - גוש 7311</p>
+      <p class="location">גוש 7311, חלקה A, מגרש B - כפר חב"ד (הרחבה צפונית)</p>
+      <p class="price">₪37,000 <span class="vat">+ מע״מ</span></p>
+    </div>
+    
+    <div class="content">
+      
+        <div class="section">
+          <div class="section-title">חבילות מחיר</div>
+          <div class="pricing-tiers">
+            
+              <div class="tier ">
+                <h3>בסיסי</h3>
+                <div class="tier-price">₪32,000</div>
+                <p class="tier-description">רישוי בסיסי ליחידה אחת</p>
+                <ul>
+                  <li>בדיקת היתכנות</li><li>רישוי בסיסי</li><li>פיקוח עליון</li>
+                </ul>
+              </div>
+            
+              <div class="tier recommended">
+                <h3>מתקדם</h3>
+                <div class="tier-price">₪37,000</div>
+                <p class="tier-description">חבילה מומלצת עם תכנון מלא</p>
+                <ul>
+                  <li>בדיקת היתכנות</li><li>רישוי מלא</li><li>תוכניות ביצוע</li><li>פיקוח עליון</li><li>3 חלופות תכנון</li>
+                </ul>
+              </div>
+            
+              <div class="tier ">
+                <h3>פרימיום</h3>
+                <div class="tier-price">₪48,000</div>
+                <p class="tier-description">ליווי מקיף מא׳ עד ת׳</p>
+                <ul>
+                  <li>כל מה שבמתקדם</li><li>פיקוח צמוד</li><li>ייעוץ אנרגטי</li><li>תכנון פנים</li><li>ליווי מול קבלנים</li>
+                </ul>
+              </div>
+            
+          </div>
+        </div>
+      
+      
+      
+        <div class="section">
+          <div class="section-title">שידרוגים ותוספות</div>
+          <div class="upgrades">
+            
+              <div class="upgrade">
+                <h4>יחידת דיור נוספת</h4>
+                <div class="upgrade-price">₪5,000</div>
+                <p>תכנון ורישוי ליחידה נוספת</p>
+              </div>
+            
+              <div class="upgrade">
+                <h4>מרתף/חניה תת קרקעית</h4>
+                <div class="upgrade-price">₪6,000</div>
+                <p>תכנון ורישוי מרתף או חניה</p>
+              </div>
+            
+          </div>
+        </div>
+      
+      
+      
+        <div class="section">
+          <div class="section-title">שלב ראשון - בדיקת היתכנות ותכנון</div>
+          <div class="section-items">
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">בירור תוכניות בנין עיר (תב"ע) החלות על המגרש</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">בדיקת סטטוס המגרש ובדיקת היתכנות</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">הזמנת תיק מידע מהרשויות ובחינת היתרי הבניה</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">השוואה למצב הקיים וגיבוש זכויות הבניה</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">הכנת פרוגרמה מפורטת עם המזמינים</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">עד 3 חלופות תכנון רעיוני למזמינים</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">תוכנית חלוקת החללים והעמדת ריהוט</span>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+        <div class="section">
+          <div class="section-title">רישוי</div>
+          <div class="section-items">
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">עריכת והגשת בקשה להיתר לוועדה לתכנון ובניה</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">תיאום בין היועצים השונים הנדרשים</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">השתתפות בפגישות ודיונים עם המוסדות המאשרים</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">חתימת הרשויות השונות לרבות רמ"י והג"א</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">קידום לקבלת היתר בניה (למעט החתמת שכנים ווועד)</span>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+        <div class="section">
+          <div class="section-title">שלב שני - תוכניות ביצוע</div>
+          <div class="section-items">
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">תוכניות עבודה אדריכליות מפורטות: תכנית הקומות, חתכים, חזיתות</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">תוכנית העמדת הבניין במגרש, תכנית מדרגות</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">פיתוח השטח: גדרות, שבילי כניסה וחניה, מפלסים, ריצוף חוץ וצמחייה</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">פגישה עם קבלן מבצע להסברת התוכנית ומתן הנחיות</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">פיקוח עליון לצורכי רישוי בלבד</span>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+        <div class="section">
+          <div class="section-title">כללי</div>
+          <div class="section-items">
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">המזמינים יזמינו על חשבונם את השירותים והיועצים הנדרשים</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">לעורכי הבקשה אין אחריות לתשלומים לוועדה לתכנון ובניה</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">המזמינים ידאגו למילוי הוראות הבטיחות באתר</span>
+                
+              </div>
+            
+              <div class="item">
+                <span class="check">✓</span>
+                <span class="text">מומלץ שירותי קבלנים רשומים ומפקח בניה צמוד</span>
+                
+              </div>
+            
+          </div>
+        </div>
+      
+      
+      <div class="section">
+        <div class="section-title">לוח תשלומים</div>
+        <div class="payments">
+          
+            <div class="payment">
+              <div class="percentage">25%</div>
+              <div class="description">חתימת חוזה</div>
+            </div>
+          
+            <div class="payment">
+              <div class="percentage">30%</div>
+              <div class="description">חתימה על תכנית הגשה</div>
+            </div>
+          
+            <div class="payment">
+              <div class="percentage">30%</div>
+              <div class="description">אישור מהוועדה (היתר בתנאים)</div>
+            </div>
+          
+            <div class="payment">
+              <div class="percentage">15%</div>
+              <div class="description">קבלת היתר</div>
+            </div>
+          
+        </div>
+      </div>
+      
+      
+        <div class="section">
+          <div class="section-title">לוח זמנים</div>
+          <div class="timeline">
+            
+              <div class="timeline-item">
+                <span class="number">1</span>
+                <span class="text">בדיקת היתכנות מול הרשויות - תיק מידע</span>
+              </div>
+            
+              <div class="timeline-item">
+                <span class="number">2</span>
+                <span class="text">מסירת סקיצה ראשונה למזמין - 25 י"ע מאישור וחתימה</span>
+              </div>
+            
+              <div class="timeline-item">
+                <span class="number">3</span>
+                <span class="text">עיבוד החלופה הנבחרת - 12 י"ע לאחר משוב המזמין</span>
+              </div>
+            
+              <div class="timeline-item">
+                <span class="number">4</span>
+                <span class="text">הגשת תוכניות לרשויות - 21 י"ע מאישור סופי של המזמין</span>
+              </div>
+            
+              <div class="timeline-item">
+                <span class="number">5</span>
+                <span class="text">הכנת תוכנית עבודה לביצוע - 45 י"ע מרגע קבלת היתר</span>
+              </div>
+            
+          </div>
+        </div>
+      
+      
+      <div class="section">
+        <div class="section-title">הערות חשובות</div>
+        <div class="notes">
+          
+            <div class="note">במקרה של ביטול הסכם - הסכום יוחזר למזמינים בטרם החלה בדיקת ההיתכנות</div>
+          
+            <div class="note">אם המזמינים הפסיקו ההתקשרות - ישלמו עבור כל השלבים שהוכנו</div>
+          
+            <div class="note">ההסכם אינו כולל תכניות שינוי תב"ע מקומית/מחוזית</div>
+          
+            <div class="note">לא יתוכננו חללים שאינם כלולים בהיתר והחורגים מהתוכניות</div>
+          
+            <div class="note">תוספת ליחידת דיור נוספת (אופציה עתידית): ₪5,000</div>
+          
+            <div class="note">שעת עבודה נוספת - ₪250 + מע"מ</div>
+          
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>תוקף הצעת המחיר: 30 יום | נוצר בתאריך: 4.2.2026</p>
+    </div>
+  </div>
+</body>
+</html>

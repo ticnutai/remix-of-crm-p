@@ -2,9 +2,25 @@ import { test, expect } from '@playwright/test';
 
 test('בדיקה ויזואלית של DataTable Pro עם המתנה', async ({ page }) => {
   // פתיחת העמוד
-  await page.goto('http://localhost:8080/datatable-pro');
+  await page.goto('/');
   
   // המתנה לטעינה מלאה
+  await page.waitForLoadState('networkidle');
+  
+  // בדיקה אם יש דף התחברות
+  const hasLoginForm = await page.locator('input[type="password"]').count() > 0;
+  
+  if (hasLoginForm) {
+    console.log('🔐 נמצא דף התחברות, מתחבר...');
+    await page.fill('input[type="email"]', 'jj1212t@gmail.com');
+    await page.fill('input[type="password"]', '543211');
+    await page.click('button[type="submit"]');
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    console.log('✅ התחברות הצליחה');
+  }
+  
+  // ניווט לעמוד DataTable Pro
+  await page.goto('/datatable-pro');
   await page.waitForLoadState('networkidle');
   
   // צילום מסך ראשוני

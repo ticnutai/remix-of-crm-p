@@ -1,8 +1,8 @@
 // SidebarTasksMeetings - Main Tasks & Meetings Widget for Sidebar
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
-import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
+import { useTasksOptimized as useTasks, Task, TaskInsert } from '@/hooks/useTasksOptimized';
+import { useMeetingsOptimized as useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetingsOptimized';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -98,11 +98,19 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
   
   // Fetch clients
   const fetchClients = useCallback(async () => {
-    const { data } = await supabase
-      .from('clients')
-      .select('id, name')
-      .order('name');
-    if (data) setClients(data);
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name');
+      if (error) {
+        console.error('Sidebar clients fetch error:', error);
+        return;
+      }
+      if (data) setClients(data);
+    } catch (e) {
+      console.error('Sidebar clients fetch failed:', e);
+    }
   }, []);
   
   // Save open state
@@ -110,12 +118,13 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
     localStorage.setItem('sidebar-tasks-open', String(isOpen));
   }, [isOpen]);
   
-  // Fetch data on mount
+  // Fetch data on mount (empty deps - React Query handles cache/refetch)
   useEffect(() => {
     fetchTasks();
     fetchMeetings();
     fetchClients();
-  }, [fetchTasks, fetchMeetings, fetchClients]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Check for upcoming meetings (within 15 minutes)
   useEffect(() => {

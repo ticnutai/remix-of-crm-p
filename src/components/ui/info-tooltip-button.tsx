@@ -22,6 +22,7 @@ interface InfoTooltipButtonProps {
   contentClassName?: string;
   side?: 'top' | 'right' | 'bottom' | 'left';
   align?: 'start' | 'center' | 'end';
+  triggerIcon?: React.ReactNode;
 }
 
 const variantStyles = {
@@ -45,6 +46,7 @@ export function InfoTooltipButton({
   contentClassName,
   side = 'top',
   align = 'end',
+  triggerIcon,
 }: InfoTooltipButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -61,7 +63,7 @@ export function InfoTooltipButton({
             buttonClassName
           )}
         >
-          <Info className="h-3.5 w-3.5" />
+          {triggerIcon || <Info className="h-3.5 w-3.5" />}
         </button>
       </PopoverTrigger>
       <PopoverContent

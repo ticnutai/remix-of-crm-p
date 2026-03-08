@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = process.env.PORT || 8081; // Server is running on 8081
-const BASE_URL = `http://localhost:${PORT}`;
+// Use port 8081 - Vite may switch to this if 8080 is busy
+const BASE_URL = 'http://localhost:8081';
 
 console.log(`\n🌐 Playwright Config: ${BASE_URL}\n`);
 
@@ -12,6 +12,14 @@ export default defineConfig({
   fullyParallel: false,
   retries: 1,
   workers: 1,
+  
+  // Start web server before tests
+  webServer: {
+    command: 'npm run dev',
+    url: BASE_URL,
+    reuseExistingServer: true,
+    timeout: 120000,
+  },
   
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],

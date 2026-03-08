@@ -243,10 +243,18 @@ export function useDataTableState<T>(props: DataTableProps<T>) {
 
   // Visible columns
   const visibleColumns = useMemo(() => {
-    return state.columnOrder
+    const result = state.columnOrder
       .filter(id => !state.hiddenColumns.has(id))
-      .map(id => columns.find(c => c.id === id)!)
+      .map(id => {
+        const found = columns.find(c => c.id === id);
+        if (!found) {
+          console.warn('[useDataTableState] Column not found for id:', id);
+        }
+        return found!;
+      })
       .filter(Boolean);
+    
+    return result;
   }, [columns, state.columnOrder, state.hiddenColumns]);
 
   // Total pages

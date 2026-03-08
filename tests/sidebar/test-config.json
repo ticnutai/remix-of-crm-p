@@ -1,0 +1,111 @@
+{
+  "sidebarTests": {
+    "description": "תצורת בדיקות לסיידבר",
+    "version": "1.0.0",
+    "testFiles": [
+      "tests/sidebar/mainNavItems.test.ts",
+      "tests/sidebar/systemNavItems.test.ts",
+      "tests/sidebar/customTables.test.ts",
+      "tests/sidebar/appSidebar.test.ts",
+      "tests/sidebar/index.test.ts"
+    ],
+    "coverage": {
+      "enabled": true,
+      "threshold": {
+        "lines": 90,
+        "branches": 85,
+        "functions": 90,
+        "statements": 90
+      }
+    },
+    "mainNavItems": {
+      "count": 20,
+      "items": [
+        { "title": "לוח בקרה", "url": "/", "testId": "nav-dashboard" },
+        { "title": "דשבורד מנהל", "url": "/dashboard", "testId": "nav-admin-dashboard" },
+        { "title": "היום שלי", "url": "/my-day", "testId": "nav-my-day" },
+        { "title": "לקוחות", "url": "/clients", "testId": "nav-clients" },
+        { "title": "טבלת לקוחות", "url": "/datatable-pro", "testId": "nav-datatable-pro" },
+        { "title": "עובדים", "url": "/employees", "testId": "nav-employees" },
+        { "title": "לוגי זמן", "url": "/time-logs", "testId": "nav-time-logs" },
+        { "title": "ניתוח זמנים", "url": "/time-analytics", "testId": "nav-time-analytics" },
+        { "title": "משימות ופגישות", "url": "/tasks-meetings", "testId": "nav-tasks-meetings" },
+        { "title": "לוח קנבן", "url": "/kanban", "testId": "nav-kanban" },
+        { "title": "תזכורות", "url": "/reminders", "testId": "nav-reminders" },
+        { "title": "הצעות מחיר", "url": "/quotes", "testId": "nav-quotes" },
+        { "title": "כספים", "url": "/finance", "testId": "nav-finance" },
+        { "title": "דוחות", "url": "/reports", "testId": "nav-reports" },
+        { "title": "דוחות מותאמים", "url": "/custom-reports", "testId": "nav-custom-reports" },
+        { "title": "לוח שנה", "url": "/calendar", "testId": "nav-calendar" },
+        { "title": "Gmail", "url": "/gmail", "testId": "nav-gmail" },
+        { "title": "קבצים", "url": "/files", "testId": "nav-files" },
+        { "title": "מסמכים", "url": "/documents", "testId": "nav-documents" },
+        { "title": "שיחות", "url": "/calls", "testId": "nav-calls" }
+      ]
+    },
+    "systemNavItems": {
+      "count": 8,
+      "items": [
+        { "title": "אוטומציות", "url": "/workflows", "testId": "nav-workflows" },
+        { "title": "אנליטיקס", "url": "/analytics", "testId": "nav-analytics" },
+        { "title": "לוג שינויים", "url": "/audit-log", "testId": "nav-audit-log" },
+        { "title": "תבניות הצעות", "url": "/quote-templates", "testId": "nav-quote-templates" },
+        { "title": "גיבויים וייבוא", "url": "/backups", "testId": "nav-backups" },
+        { "title": "היסטוריה", "url": "/history", "testId": "nav-history" },
+        { "title": "הגדרות", "url": "/settings", "testId": "nav-settings" },
+        { "title": "עזרה", "url": "/help", "testId": "nav-help" }
+      ]
+    },
+    "sidebarConfig": {
+      "minWidth": 240,
+      "maxWidth": 480,
+      "defaultWidth": 360,
+      "autoHideDelay": 1000,
+      "localStorage": {
+        "pinKey": "sidebar-pinned",
+        "widthKey": "sidebar-width",
+        "themeKey": "sidebar-theme",
+        "widgetKey": "widget-edit-mode"
+      }
+    },
+    "validIcons": [
+      "LayoutDashboard",
+      "Users",
+      "FolderKanban",
+      "FileSpreadsheet",
+      "Calendar",
+      "Settings",
+      "Database",
+      "History",
+      "HelpCircle",
+      "Building2",
+      "UserCog",
+      "Clock",
+      "Table",
+      "Pin",
+      "PinOff",
+      "Upload",
+      "Bell",
+      "Plus",
+      "Wallet",
+      "Link2",
+      "Palette",
+      "GripVertical",
+      "X",
+      "Hand",
+      "MousePointerClick",
+      "Mail",
+      "HardDrive",
+      "Zap",
+      "FileBarChart",
+      "Phone",
+      "Files",
+      "LayoutGrid",
+      "Gauge"
+    ],
+    "urlPatterns": {
+      "validPattern": "^/([a-z-]+)?$",
+      "customTablePattern": "^/custom/[a-z0-9-]+$"
+    }
+  }
+}

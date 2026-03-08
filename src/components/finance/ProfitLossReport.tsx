@@ -41,8 +41,6 @@ import {
   Area,
 } from 'recharts';
 import { ProfitLossData, formatCurrency, EXPENSE_CATEGORIES } from '@/hooks/useFinanceCalculations';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
 import { cn } from '@/lib/utils';
 import { Table as UITable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -195,7 +193,8 @@ export default function ProfitLossReport({ data, year, vatRate }: ProfitLossRepo
   
   const COLORS = COLOR_PALETTES[colorPalette];
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     
@@ -240,7 +239,8 @@ export default function ProfitLossReport({ data, year, vatRate }: ProfitLossRepo
     doc.save(`profit-loss-report${year ? `-${year}` : ''}.pdf`);
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     
     // Summary sheet

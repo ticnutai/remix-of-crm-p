@@ -393,7 +393,7 @@ export function ClientEmailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0">
+      <DialogContent dir="rtl" className="max-w-2xl h-[80vh] flex flex-col p-0">
         <DialogHeader className="p-4 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-[#D4A843]" />

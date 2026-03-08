@@ -1,0 +1,242 @@
+[
+  {
+    "id": "67095332-dbf2-4e9f-89a9-4597bc0a8a17",
+    "name": "אהרונסון",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "8bede2fd-a997-4f6d-932a-ce21849b088e",
+    "name": "אחיאלי עופר",
+    "backupStage": "נחשון",
+    "dbStage": null
+  },
+  {
+    "id": "aa57b6f7-2596-4da0-945e-b67a32b807da",
+    "name": "אשכנזי מענדי",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "48e7ce24-c215-465d-b460-83b442eb748c",
+    "name": "בדני רונן",
+    "backupStage": "קובי_פרץ",
+    "dbStage": null
+  },
+  {
+    "id": "dd8b377b-0650-4074-b3c8-311c335c95c1",
+    "name": "בורגן-גרודקא-הרשקוביץ",
+    "backupStage": "בדיקת_היתכנות",
+    "dbStage": null
+  },
+  {
+    "id": "602043b1-b78c-450f-8b21-7f72725341c2",
+    "name": "ברוד",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "f0308e6b-5dbb-4b8a-92de-c35cf99f29ad",
+    "name": "גופין",
+    "backupStage": "בקרת_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "b0006b86-fc05-4830-8b3a-038256964faf",
+    "name": "דוברסקין מנדי וחיה",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "a2d6c80a-1b0b-48aa-aed5-ac0ac28bce98",
+    "name": "הולצמן",
+    "backupStage": "קיים",
+    "dbStage": null
+  },
+  {
+    "id": "1cb08eb0-1324-4ee4-adb2-807a1910c47d",
+    "name": "חדאד שמוליק ורחל",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "4f8e32e0-043d-42b4-8c20-276170bf6eda",
+    "name": "חנונו",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "9a62fa8e-f3d3-49d0-9dfc-292619161234",
+    "name": "לאטר",
+    "backupStage": "קיים",
+    "dbStage": null
+  },
+  {
+    "id": "4cf5fb7b-32b4-4503-a1a8-bc965b7415a9",
+    "name": "כהן אברהם",
+    "backupStage": "בקרת_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "2d8d36cd-207e-417c-b620-dcd6037526f9",
+    "name": "קוזלובסקי נחמי ויהודה 58",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "ba6a73ea-6371-4693-bf13-0d66b1c743ed",
+    "name": "קולא",
+    "backupStage": "קיים",
+    "dbStage": null
+  },
+  {
+    "id": "4ef666ff-c39f-4d92-8a84-6d244be1ec86",
+    "name": "שקד גלית וחזי",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "6400c1a9-217e-4633-9316-0ddeee583d9f",
+    "name": "שטראוס",
+    "backupStage": "תוכניות_עבודה",
+    "dbStage": null
+  },
+  {
+    "id": "00f44d0b-a701-418d-9582-582ae3aa2dc7",
+    "name": "רסקין יהושוע",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "adf06936-f509-4a36-8b08-e05f1708b657",
+    "name": "וישצקי שמואל ופנחס",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "a3100dd1-2317-4889-bd00-4c82abfbff24",
+    "name": "גדז' אבי-מיכאל",
+    "backupStage": "עריכת_תכניות",
+    "dbStage": null
+  },
+  {
+    "id": "76983ce7-7e81-443b-95d6-a68c38506933",
+    "name": "כפלין-גדז'",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "76983ce7-7e81-443b-95d6-a68c38506933",
+    "name": "כפלין-גדז'",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "a3100dd1-2317-4889-bd00-4c82abfbff24",
+    "name": "גדז' אבי-מיכאל",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "adf06936-f509-4a36-8b08-e05f1708b657",
+    "name": "וישצקי שמואל ופנחס",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "530543c9-51ec-4534-b9f2-af8e3ed57931",
+    "name": "רסקין דובה ואיציק",
+    "backupStage": "ביצוע",
+    "dbStage": null
+  },
+  {
+    "id": "00f44d0b-a701-418d-9582-582ae3aa2dc7",
+    "name": "רסקין יהושוע",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "2d8d36cd-207e-417c-b620-dcd6037526f9",
+    "name": "קוזלובסקי נחמי ויהודה 58",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "4cf5fb7b-32b4-4503-a1a8-bc965b7415a9",
+    "name": "כהן אברהם",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "a626fbc9-3415-45aa-b273-5b7bb8e29b70",
+    "name": "הכהן יוסף יצחק",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "b0006b86-fc05-4830-8b3a-038256964faf",
+    "name": "דוברסקין מנדי וחיה",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "f0308e6b-5dbb-4b8a-92de-c35cf99f29ad",
+    "name": "גופין",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "e49e899d-5361-441c-8e46-6c8c8dafa9f2",
+    "name": "גבעוני",
+    "backupStage": "ברור_תכן",
+    "dbStage": null
+  },
+  {
+    "id": "602043b1-b78c-450f-8b21-7f72725341c2",
+    "name": "ברוד",
+    "backupStage": "סיום",
+    "dbStage": null
+  },
+  {
+    "id": "73ea66e1-272f-4d26-ba2c-5e55cd11970d",
+    "name": "בורובסקי לאה",
+    "backupStage": "תיק_מידע",
+    "dbStage": null
+  },
+  {
+    "id": "dd8b377b-0650-4074-b3c8-311c335c95c1",
+    "name": "בורגן-גרודקא-הרשקוביץ",
+    "backupStage": "תיק_מידע",
+    "dbStage": null
+  },
+  {
+    "id": "48e7ce24-c215-465d-b460-83b442eb748c",
+    "name": "בדני רונן",
+    "backupStage": "תיק_מידע",
+    "dbStage": null
+  },
+  {
+    "id": "d3ad4121-332d-4001-b529-a0299f195a65",
+    "name": "אשכנזי מענדי 58",
+    "backupStage": "ביצוע",
+    "dbStage": null
+  },
+  {
+    "id": "aa57b6f7-2596-4da0-945e-b67a32b807da",
+    "name": "אשכנזי מענדי",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "8bede2fd-a997-4f6d-932a-ce21849b088e",
+    "name": "אחיאלי עופר",
+    "backupStage": "היתרים",
+    "dbStage": null
+  },
+  {
+    "id": "67095332-dbf2-4e9f-89a9-4597bc0a8a17",
+    "name": "אהרונסון",
+    "backupStage": "סיום",
+    "dbStage": null
+  }
+]

@@ -194,6 +194,7 @@ export function DynamicStatsWidget({ widgetId = 'dynamic-stats' }: DynamicStatsW
       widgetId={widgetId as any}
       title={widgetId === 'dynamic-stats' ? 'סטטוס דינמי' : widgetId.replace('dynamic-stats-', 'סטטוס דינמי ')}
       titleIcon={<BarChart3 className="h-5 w-5" />}
+      className="h-full"
       headerActions={
         <Button
           variant="outline"
@@ -211,7 +212,7 @@ export function DynamicStatsWidget({ widgetId = 'dynamic-stats' }: DynamicStatsW
         </Button>
       }
     >
-      <div className="p-4" dir="rtl">
+      <div className="p-4 h-full flex flex-col" dir="rtl">
         {stats.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -259,7 +260,7 @@ export function DynamicStatsWidget({ widgetId = 'dynamic-stats' }: DynamicStatsW
               </div>
             </div>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 flex-1 auto-rows-min">
               {stats
                 .filter(stat => {
                   // Search filter

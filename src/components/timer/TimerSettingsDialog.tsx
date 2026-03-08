@@ -78,6 +78,10 @@ export interface TimerTheme {
   // Play/Pause button customization
   playButtonColor?: string; // Custom color for play button
   playButtonBgColor?: string; // Custom background color for play button
+  // Control buttons color (all action icons as a unit)
+  controlButtonsActiveColor?: string; // Color for active control buttons (when timer is running)
+  controlButtonsIdleColor?: string; // Color for idle control buttons (when timer is stopped)
+  controlButtonsHoverBgColor?: string; // Hover background color for control buttons
 }
 
 // Extended color mappings
@@ -217,6 +221,10 @@ const defaultTheme: TimerTheme = {
   // Play button defaults
   playButtonColor: '',
   playButtonBgColor: '',
+  // Control buttons defaults
+  controlButtonsActiveColor: 'hsl(45, 85%, 65%)',
+  controlButtonsIdleColor: 'hsl(45, 80%, 55%)',
+  controlButtonsHoverBgColor: 'hsl(45, 80%, 50%)',
 };
 
 // Extended color presets with categories
@@ -1269,10 +1277,72 @@ export function TimerSettingsDialog({
                           />
                         </div>
                       </div>
+
+                      {/* Control Buttons Colors (All Action Icons) */}
+                      <div className="space-y-2 pt-2 border-t">
+                        <Label className="text-xs font-medium">צבעי כפתורי פעולה (Play, Stop, Reset)</Label>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-xs">צבע במצב פעיל (טיימר רץ)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="color"
+                              value={localTheme.controlButtonsActiveColor || '#d4af37'}
+                              onChange={(e) => handleColorChange('controlButtonsActiveColor', e.target.value)}
+                              className="w-12 h-8 p-1 rounded cursor-pointer"
+                            />
+                            <Input
+                              type="text"
+                              value={localTheme.controlButtonsActiveColor || 'hsl(45, 85%, 65%)'}
+                              onChange={(e) => handleColorChange('controlButtonsActiveColor', e.target.value)}
+                              placeholder="hsl(45, 85%, 65%)"
+                              className="flex-1 text-xs h-8"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-xs">צבע במצב לא פעיל (טיימר עומד)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="color"
+                              value={localTheme.controlButtonsIdleColor || '#c9a962'}
+                              onChange={(e) => handleColorChange('controlButtonsIdleColor', e.target.value)}
+                              className="w-12 h-8 p-1 rounded cursor-pointer"
+                            />
+                            <Input
+                              type="text"
+                              value={localTheme.controlButtonsIdleColor || 'hsl(45, 80%, 55%)'}
+                              onChange={(e) => handleColorChange('controlButtonsIdleColor', e.target.value)}
+                              placeholder="hsl(45, 80%, 55%)"
+                              className="flex-1 text-xs h-8"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-xs">צבע רקע בהובר</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input
+                              type="color"
+                              value={localTheme.controlButtonsHoverBgColor || '#c9a962'}
+                              onChange={(e) => handleColorChange('controlButtonsHoverBgColor', e.target.value)}
+                              className="w-12 h-8 p-1 rounded cursor-pointer"
+                            />
+                            <Input
+                              type="text"
+                              value={localTheme.controlButtonsHoverBgColor || 'hsl(45, 80%, 50%)'}
+                              onChange={(e) => handleColorChange('controlButtonsHoverBgColor', e.target.value)}
+                              placeholder="hsl(45, 80%, 50%)"
+                              className="flex-1 text-xs h-8"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Tags Customization */}
-                    <div className="p-3 rounded-xl border bg-gradient-to-br from-amber-500/5 to-transparent space-y-3">
+                    <div className="p-3 rounded-xl border bg-muted/20 space-y-3">
                       <Label className="text-sm font-medium flex items-center gap-2">
                         <Tag className="h-4 w-4" />
                         תגיות (לקוח, פרויקט, קטגוריה)

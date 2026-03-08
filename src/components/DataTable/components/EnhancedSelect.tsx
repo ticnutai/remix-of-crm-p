@@ -17,9 +17,40 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2 } from 'lucide-react';
+import { 
+  Plus, 
+  Trash2, 
+  Circle, 
+  Square, 
+  Triangle, 
+  Star, 
+  Heart, 
+  Flag,
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Zap, 
+  Target,
+  type LucideIcon
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import * as LucideIcons from 'lucide-react';
+
+// Map of available icons - only imports what's needed (tree-shaking friendly)
+const ICON_MAP: Record<string, LucideIcon> = {
+  Circle,
+  Square,
+  Triangle,
+  Star,
+  Heart,
+  Flag,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Zap,
+  Target,
+};
 
 export interface SelectOption {
   value: string;
@@ -96,7 +127,7 @@ export function EnhancedSelect({
 
   const renderIcon = (iconName?: string) => {
     if (!iconName) return null;
-    const IconComponent = (LucideIcons as any)[iconName];
+    const IconComponent = ICON_MAP[iconName];
     if (!IconComponent) return null;
     return <IconComponent className="h-3 w-3" />;
   };
@@ -220,7 +251,7 @@ export function EnhancedSelect({
                   <span className="text-xs">✕</span>
                 </button>
                 {COMMON_ICONS.map((iconName) => {
-                  const IconComp = (LucideIcons as any)[iconName];
+                  const IconComp = ICON_MAP[iconName];
                   return (
                     <button
                       key={iconName}
@@ -284,7 +315,7 @@ export function EnhancedSelectCell({
 
   const renderIcon = (iconName?: string) => {
     if (!iconName) return null;
-    const IconComponent = (LucideIcons as any)[iconName];
+    const IconComponent = ICON_MAP[iconName];
     if (!IconComponent) return null;
     return <IconComponent className="h-3 w-3" />;
   };

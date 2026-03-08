@@ -1,7 +1,15 @@
-// Authentication Hook - e-control CRM Pro
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode, useMemo } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+// Authentication Hook - tenarch CRM Pro
+import {
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+  ReactNode,
+  useMemo,
+} from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Profile {
   id: string;
@@ -13,9 +21,10 @@ interface Profile {
   position?: string;
   hourly_rate?: number;
   is_active?: boolean;
+  role?: "admin" | "super_manager" | "manager" | "employee" | "client";
 }
 
-type AppRole = 'admin' | 'manager' | 'employee' | 'client';
+type AppRole = "admin" | "super_manager" | "manager" | "employee" | "client";
 
 interface AuthContextType {
   user: User | null;
@@ -24,15 +33,22 @@ interface AuthContextType {
   roles: AppRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isSuperManager: boolean;
   isManager: boolean;
   isClient: boolean;
   clientId: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<{ error: Error | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  updateProfile: (
+    updates: Partial<Profile>,
+  ) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,11 +63,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const fetchClientId = useCallback(async (userId: string) => {
     const { data } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('user_id', userId)
+      .from("clients")
+      .select("id")
+      .eq("user_id", userId)
       .maybeSingle();
-    
+
     if (data) {
       setClientId(data.id);
     }
@@ -59,16 +75,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching profile:', error);
+      console.error("Error fetching profile:", error);
       return;
     }
-    
+
     if (data) {
       setProfile(data as Profile);
     }
@@ -76,87 +92,219 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const fetchRoles = useCallback(async (userId: string) => {
     const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId);
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
 
     if (error) {
-      console.error('Error fetching roles:', error);
+      console.error("Error fetching roles:", error);
       return;
     }
-    
+
     if (data && data.length > 0) {
-      const userRoles = data.map(r => r.role as AppRole);
+      const userRoles = data.map((r) => r.role as AppRole);
       setRoles(userRoles);
+    } else {
+      // Default to employee if no roles found
+      setRoles(["employee"]);
     }
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile/roles fetch with setTimeout
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            fetchRoles(session.user.id);
-            fetchClientId(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
-          setClientId(null);
-        }
-        
-        setIsLoading(false);
-      }
-    );
+    let initialLoadDone = false;
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Set up auth state listener FIRST
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (import.meta.env.DEV)
+        console.log("[Auth] onAuthStateChange:", event, session?.user?.email);
+
+      // Handle auth errors (like invalid refresh token)
+      if (event === "TOKEN_REFRESHED") {
+        if (import.meta.env.DEV)
+          console.log("[Auth] Token refreshed successfully");
+      } else if (event === "SIGNED_OUT") {
+        if (import.meta.env.DEV)
+          console.log("[Auth] User signed out or session expired");
+        // Clear any stale data
+        localStorage.removeItem("supabase.auth.token");
+        setProfile(null);
+        setRoles([]);
+        setClientId(null);
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        fetchRoles(session.user.id);
-        fetchClientId(session.user.id);
+
+      // Defer profile/roles fetch with setTimeout
+      // Only fetch if this is a new event (not initial load)
+      if (session?.user && initialLoadDone) {
+        setTimeout(() => {
+          fetchProfile(session.user.id);
+          fetchRoles(session.user.id);
+          fetchClientId(session.user.id);
+        }, 0);
+      } else if (!session?.user) {
+        setProfile(null);
+        setRoles([]);
+        setClientId(null);
       }
-      
+
+      if (initialLoadDone) {
+        setIsLoading(false);
+      }
+    });
+
+    // THEN check for existing session (only once)
+    // Add timeout to prevent infinite loading
+    let fetchTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutId = setTimeout(() => {
+      console.warn(
+        "[Auth] Session check timed out, setting isLoading to false",
+      );
       setIsLoading(false);
+      initialLoadDone = true;
+    }, 10000); // 10 second timeout
+
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      clearTimeout(timeoutId);
+
+      if (error) {
+        console.error("[Auth] Error getting session:", error);
+        // If we have a refresh token error, clear storage
+        if (
+          error.message.includes("refresh") ||
+          error.message.includes("Refresh Token")
+        ) {
+          console.log("[Auth] Clearing invalid auth data");
+          localStorage.removeItem("supabase.auth.token");
+          supabase.auth.signOut({ scope: "local" });
+        }
+        setIsLoading(false);
+        initialLoadDone = true;
+        return;
+      }
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Fetch all user data in parallel with timeout
+        fetchTimeoutId = setTimeout(() => {
+          console.warn("[Auth] Profile/roles fetch timed out");
+          setIsLoading(false);
+          initialLoadDone = true;
+        }, 8000);
+
+        Promise.all([
+          fetchProfile(session.user.id),
+          fetchRoles(session.user.id),
+          fetchClientId(session.user.id),
+        ])
+          .then(() => {
+            clearTimeout(fetchTimeoutId);
+            setIsLoading(false);
+            initialLoadDone = true;
+          })
+          .catch((err) => {
+            console.error("[Auth] Error fetching user data:", err);
+            clearTimeout(fetchTimeoutId);
+            setIsLoading(false);
+            initialLoadDone = true;
+          });
+      } else {
+        setIsLoading(false);
+        initialLoadDone = true;
+      }
     });
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(timeoutId);
+      if (fetchTimeoutId) clearTimeout(fetchTimeoutId);
     };
   }, [fetchProfile, fetchRoles, fetchClientId]);
 
+  // Recover session when page becomes visible (after device sleep / tab background)
+  useEffect(() => {
+    let recoveryInFlight = false;
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== "visible" || recoveryInFlight) return;
+      recoveryInFlight = true;
+
+      try {
+        // Attempt to refresh the session – this covers:
+        //   • ERR_NETWORK_IO_SUSPENDED (stale requests after sleep)
+        //   • 400 on refresh_token (expired token)
+        //   • WebSocket disconnect (realtime reconnects automatically after new token)
+        const {
+          data: { session: freshSession },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error) {
+          // If the refresh itself fails, sign out cleanly
+          if (
+            error.message?.includes("refresh") ||
+            error.message?.includes("Refresh Token") ||
+            error.message?.includes("Invalid")
+          ) {
+            console.warn("[Auth] Session expired after resume – signing out");
+            localStorage.removeItem("supabase.auth.token");
+            await supabase.auth.signOut({ scope: "local" });
+          }
+        } else if (freshSession?.user && freshSession.user.id !== user?.id) {
+          // Edge case: session user changed
+          setSession(freshSession);
+          setUser(freshSession.user);
+          await Promise.all([
+            fetchProfile(freshSession.user.id),
+            fetchRoles(freshSession.user.id),
+            fetchClientId(freshSession.user.id),
+          ]);
+        }
+      } catch {
+        // Network still down – will retry on next visibility change
+      } finally {
+        recoveryInFlight = false;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [user?.id, fetchProfile, fetchRoles, fetchClientId]);
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     return { error: error ? new Error(error.message) : null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${globalThis.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: { full_name: fullName }
-      }
+        data: { full_name: fullName },
+      },
     });
-    
+
     return { error: error ? new Error(error.message) : null };
   };
 
   const requestPasswordReset = async (email: string) => {
     const redirectTo = `${globalThis.location.origin}/auth`;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
     return { error: error ? new Error(error.message) : null };
   };
 
@@ -173,23 +321,24 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return { error: new Error('Not authenticated') };
-    
+    if (!user) return { error: new Error("Not authenticated") };
+
     const { error } = await supabase
-      .from('profiles')
+      .from("profiles")
       .update(updates)
-      .eq('id', user.id);
-    
+      .eq("id", user.id);
+
     if (!error) {
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setProfile((prev) => (prev ? { ...prev, ...updates } : null));
     }
-    
+
     return { error: error ? new Error(error.message) : null };
   };
 
-  const isAdmin = roles.includes('admin');
-  const isManager = roles.includes('manager') || isAdmin;
-  const isClient = roles.includes('client');
+  const isAdmin = roles.includes("admin");
+  const isSuperManager = roles.includes("super_manager") || isAdmin;
+  const isManager = roles.includes("manager") || isSuperManager;
+  const isClient = roles.includes("client");
 
   const value = useMemo(
     () => ({
@@ -199,6 +348,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       roles,
       isLoading,
       isAdmin,
+      isSuperManager,
       isManager,
       isClient,
       clientId,
@@ -216,26 +366,23 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       roles,
       isLoading,
       isAdmin,
+      isSuperManager,
       isManager,
       isClient,
       clientId,
     ],
   );
 
-  return (
-    <AuthContext.Provider
-      value={value}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     // Return safe defaults instead of throwing during initial render
-    console.warn('useAuth was called outside of AuthProvider, returning defaults');
+    console.warn(
+      "useAuth was called outside of AuthProvider, returning defaults",
+    );
     return {
       user: null,
       session: null,
@@ -243,15 +390,22 @@ export function useAuth(): AuthContextType {
       roles: [],
       isLoading: true,
       isAdmin: false,
+      isSuperManager: false,
       isManager: false,
       isClient: false,
       clientId: null,
-      signIn: async () => ({ error: new Error('AuthProvider not mounted') }),
-      signUp: async () => ({ error: new Error('AuthProvider not mounted') }),
-      requestPasswordReset: async () => ({ error: new Error('AuthProvider not mounted') }),
-      updatePassword: async () => ({ error: new Error('AuthProvider not mounted') }),
+      signIn: async () => ({ error: new Error("AuthProvider not mounted") }),
+      signUp: async () => ({ error: new Error("AuthProvider not mounted") }),
+      requestPasswordReset: async () => ({
+        error: new Error("AuthProvider not mounted"),
+      }),
+      updatePassword: async () => ({
+        error: new Error("AuthProvider not mounted"),
+      }),
       signOut: async () => {},
-      updateProfile: async () => ({ error: new Error('AuthProvider not mounted') }),
+      updateProfile: async () => ({
+        error: new Error("AuthProvider not mounted"),
+      }),
     };
   }
   return context;

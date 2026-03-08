@@ -63,7 +63,7 @@ import {
   Table as TableIcon,
   Filter,
   Plus,
-  Edit,
+  Pencil,
   Trash2,
   MoreVertical,
   DollarSign,
@@ -178,6 +178,8 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
     project_id: '',
     description: '',
     log_date: new Date(),
+    start_hour: new Date().getHours(),
+    start_minute: new Date().getMinutes(),
     duration_hours: 0,
     duration_minutes: 0,
     is_billable: true,
@@ -438,7 +440,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
     if (!user) return;
     
     const startTime = new Date(formData.log_date);
-    startTime.setHours(9, 0, 0, 0);
+    startTime.setHours(formData.start_hour, formData.start_minute, 0, 0);
     
     const totalMinutes = formData.duration_hours * 60 + formData.duration_minutes;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60000);
@@ -478,7 +480,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
     if (!editingEntry) return;
     
     const startTime = new Date(formData.log_date);
-    startTime.setHours(9, 0, 0, 0);
+    startTime.setHours(formData.start_hour, formData.start_minute, 0, 0);
     
     const totalMinutes = formData.duration_hours * 60 + formData.duration_minutes;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60000);
@@ -565,10 +567,13 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
   };
   
   const resetForm = () => {
+    const now = new Date();
     setFormData({
       project_id: '',
       description: '',
-      log_date: new Date(),
+      log_date: now,
+      start_hour: now.getHours(),
+      start_minute: now.getMinutes(),
       duration_hours: 0,
       duration_minutes: 0,
       is_billable: true,
@@ -577,11 +582,14 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
   };
   
   const openEditDialog = (entry: TimeEntry) => {
+    const entryDate = parseISO(entry.start_time);
     setEditingEntry(entry);
     setFormData({
       project_id: entry.project_id || '',
       description: entry.description || '',
-      log_date: parseISO(entry.start_time),
+      log_date: entryDate,
+      start_hour: entryDate.getHours(),
+      start_minute: entryDate.getMinutes(),
       duration_hours: Math.floor((entry.duration_minutes || 0) / 60),
       duration_minutes: (entry.duration_minutes || 0) % 60,
       is_billable: entry.is_billable ?? true,
@@ -733,7 +741,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                     }
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent dir="rtl" className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
                     selected={{ from: customDateRange.from, to: customDateRange.to }}
@@ -939,7 +947,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditDialog(entry)} className="gap-2">
-                                    <Edit className="h-4 w-4" />
+                                    <Pencil className="h-4 w-4" />
                                     עריכה
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
@@ -1046,7 +1054,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                               <DropdownMenuItem onClick={() => openEditDialog(entry)} className="gap-2">
-                                                <Edit className="h-4 w-4" />
+                                                <Pencil className="h-4 w-4" />
                                                 עריכה
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
@@ -1224,7 +1232,7 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                     {format(formData.log_date, 'PPP', { locale: he })}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent dir="rtl" className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={formData.log_date}
@@ -1233,6 +1241,30 @@ export function ClientTimeLogsTab({ clientId, clientName }: ClientTimeLogsTabPro
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+            
+            {/* Start Time */}
+            <div className="space-y-2">
+              <Label>שעת התחלה</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="number"
+                  min={0}
+                  max={23}
+                  value={formData.start_hour}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_hour: parseInt(e.target.value) || 0 }))}
+                  className="w-16 text-center"
+                />
+                <span>:</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={formData.start_minute}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_minute: parseInt(e.target.value) || 0 }))}
+                  className="w-16 text-center"
+                />
+              </div>
             </div>
             
             {/* Duration */}

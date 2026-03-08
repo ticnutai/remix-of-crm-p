@@ -1,4 +1,4 @@
-// Time Analytics Page - e-control CRM Pro
+// Time Analytics Page - tenarch CRM Pro
 // Professional time log analysis with insights and recommendations
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -343,22 +343,22 @@ export default function TimeAnalytics() {
 
   return (
     <AppLayout title="ניתוח לוגי זמן">
-      <div className="p-6 md:p-8 space-y-8">
+      <div className="p-6 md:p-8 space-y-8" dir="rtl">
         {/* Header with filters */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:flex-row-reverse">
           <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2 flex-row-reverse">
               <BarChart3 className="h-7 w-7 text-[hsl(45,80%,45%)]" />
               ניתוח לוגי זמן
             </h1>
             <p className="text-muted-foreground">תובנות והמלצות מבוססות נתונים</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-row-reverse">
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-popover">
+              <SelectContent className="bg-popover" dir="rtl">
                 {periodOptions.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
@@ -369,7 +369,7 @@ export default function TimeAnalytics() {
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="כל העובדים" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover">
+                <SelectContent className="bg-popover" dir="rtl">
                   <SelectItem value="all">כל העובדים</SelectItem>
                   {employees.map(emp => (
                     <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
@@ -382,9 +382,9 @@ export default function TimeAnalytics() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-row-reverse">
                 <Clock className="h-5 w-5 text-primary" />
                 {analytics.weeklyChange !== 0 && (
                   <div className={cn(
@@ -401,9 +401,9 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-row-reverse">
                 <DollarSign className="h-5 w-5 text-success" />
                 <Badge variant="outline" className="text-xs">{analytics.billableRate.toFixed(0)}%</Badge>
               </div>
@@ -412,7 +412,7 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center mb-3">
                 <Target className="h-5 w-5 text-[hsl(45,80%,45%)]" />
@@ -422,7 +422,7 @@ export default function TimeAnalytics() {
             </CardContent>
           </Card>
 
-          <Card className="card-elegant">
+          <Card dir="rtl" className="card-elegant">
             <CardContent className="p-5">
               <div className="flex items-center mb-3">
                 <Activity className="h-5 w-5 text-secondary" />
@@ -434,7 +434,7 @@ export default function TimeAnalytics() {
         </div>
 
         {/* Insights */}
-        <Card className="border-2 border-[hsl(45,80%,45%)]">
+        <Card dir="rtl" className="border-2 border-[hsl(45,80%,45%)]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Lightbulb className="h-5 w-5 text-[hsl(45,80%,45%)]" />
@@ -464,7 +464,7 @@ export default function TimeAnalytics() {
         </Card>
 
         {/* Charts */}
-        <Tabs defaultValue="trend" className="space-y-6">
+        <Tabs defaultValue="trend" className="space-y-6" dir="rtl">
           <TabsList>
             <TabsTrigger value="trend" className="gap-2">
               <Activity className="h-4 w-4" />
@@ -527,12 +527,12 @@ export default function TimeAnalytics() {
                 <CardContent>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analytics.byProject.slice(0, 7)} layout="vertical">
+                      <BarChart data={analytics.byProject.slice(0, 7)} layout="vertical" margin={{ right: 100, left: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" fontSize={12} />
-                        <YAxis type="category" dataKey="name" width={100} fontSize={12} />
+                        <XAxis type="number" fontSize={12} reversed />
+                        <YAxis type="category" dataKey="name" width={100} fontSize={12} orientation="right" />
                         <Tooltip formatter={(value: number) => [formatMinutes(value), 'זמן']} />
-                        <Bar dataKey="minutes" fill="hsl(220, 60%, 25%)" radius={4} />
+                        <Bar dataKey="minutes" fill="hsl(220, 60%, 25%)" radius={[4, 0, 0, 4]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -578,10 +578,10 @@ export default function TimeAnalytics() {
               <CardContent>
                 <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics.byClient.slice(0, 10)}>
+                    <BarChart data={analytics.byClient.slice(0, 10)} margin={{ right: 20, left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" fontSize={12} angle={-45} textAnchor="end" height={80} />
-                      <YAxis fontSize={12} />
+                      <XAxis dataKey="name" fontSize={12} angle={-45} textAnchor="end" height={80} reversed />
+                      <YAxis fontSize={12} orientation="right" />
                       <Tooltip formatter={(value: number) => [formatMinutes(value), 'זמן']} />
                       <Bar dataKey="minutes" fill="hsl(45, 80%, 45%)" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -601,12 +601,12 @@ export default function TimeAnalytics() {
                   <CardContent>
                     <div className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={analytics.byEmployee} layout="vertical">
+                        <BarChart data={analytics.byEmployee} layout="vertical" margin={{ right: 100, left: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" fontSize={12} />
-                          <YAxis type="category" dataKey="name" width={100} fontSize={12} />
+                          <XAxis type="number" fontSize={12} reversed />
+                          <YAxis type="category" dataKey="name" width={100} fontSize={12} orientation="right" />
                           <Tooltip formatter={(value: number) => [formatMinutes(value), 'זמן']} />
-                          <Bar dataKey="minutes" fill="hsl(220, 60%, 35%)" radius={4} />
+                          <Bar dataKey="minutes" fill="hsl(220, 60%, 35%)" radius={[4, 0, 0, 4]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -620,8 +620,8 @@ export default function TimeAnalytics() {
                   <CardContent>
                     <div className="space-y-4">
                       {analytics.byEmployee.map((emp, i) => (
-                        <div key={i} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                        <div key={i} className="flex items-center justify-between flex-row-reverse">
+                          <div className="flex items-center gap-3 flex-row-reverse">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                               <User className="h-5 w-5 text-primary" />
                             </div>

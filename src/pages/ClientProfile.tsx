@@ -1,25 +1,60 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
-import { useClientData } from '@/hooks/useClientData';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useClientCustomTabs } from '@/hooks/useClientCustomTabs';
-import { 
-  AddCustomTabDialog, 
-  ClientCustomTableTab, 
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { AppLayout } from "@/components/layout";
+import { useClientData } from "@/hooks/useClientData";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { BulkFileUploader } from "@/components/files/BulkFileUploader";
+import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useClientCustomTabs } from "@/hooks/useClientCustomTabs";
+import {
+  useClientCustomFields,
+  CustomFieldValues,
+} from "@/hooks/useClientCustomFields";
+import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
+import CustomFieldsSection from "@/components/clients/CustomFieldsSection";
+import { ClientInfoDialogContent } from "@/components/clients/ClientInfoDialogContent";
+import {
+  AddCustomTabDialog,
+  ClientCustomTableTab,
   AddCustomTableTabDialog,
   ClientTabsGridView,
   ManageTabsDialog,
@@ -27,7 +62,11 @@ import {
   ClientStagesBoard,
   ClientTimeLogsTab,
   ClientDeadlinesTab,
-} from '@/components/client-tabs';
+} from "@/components/client-tabs";
+import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
+import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
+import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
+import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import {
   ArrowRight,
   Building,
@@ -47,7 +86,7 @@ import {
   Loader2,
   RefreshCw,
   Plus,
-  Edit,
+  Pencil,
   ExternalLink,
   Table,
   MessageCircle,
@@ -66,10 +105,30 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
   Timer,
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { he } from 'date-fns/locale';
+  KeyRound,
+  SlidersHorizontal,
+  Eye,
+  EyeOff,
+  Hash,
+  User,
+  Briefcase,
+  BarChart3,
+  Trash2,
+  Check,
+  X,
+  PlusCircle,
+  Sparkles,
+} from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
 
 // Icon mapping for custom tabs
 const TAB_ICON_MAP: Record<string, React.ElementType> = {
@@ -87,38 +146,61 @@ const TAB_ICON_MAP: Record<string, React.ElementType> = {
 // Status badge component
 const StatusBadge = ({ status }: { status: string | null }) => {
   const config: Record<string, { label: string; color: string }> = {
-    active: { label: 'פעיל', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    inactive: { label: 'לא פעיל', color: 'bg-slate-50 text-slate-600 border-slate-200' },
-    lead: { label: 'ליד', color: 'bg-sky-50 text-sky-700 border-sky-200' },
-    prospect: { label: 'פוטנציאלי', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+    active: {
+      label: "פעיל",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    inactive: {
+      label: "לא פעיל",
+      color: "bg-slate-50 text-slate-600 border-slate-200",
+    },
+    lead: { label: "ליד", color: "bg-sky-50 text-sky-700 border-sky-200" },
+    prospect: {
+      label: "פוטנציאלי",
+      color: "bg-violet-50 text-violet-700 border-violet-200",
+    },
   };
-  
-  const { label, color } = config[status || 'active'] || config.active;
-  
-  return (
-    <Badge className={`${color} border font-medium`}>{label}</Badge>
-  );
+
+  const { label, color } = config[status || "active"] || config.active;
+
+  return <Badge className={`${color} border font-medium`}>{label}</Badge>;
 };
 
 // Invoice status badge
 const InvoiceStatusBadge = ({ status }: { status: string | null }) => {
   const config: Record<string, { label: string; color: string }> = {
-    draft: { label: 'טיוטה', color: 'bg-slate-50 text-slate-600 border-slate-200' },
-    sent: { label: 'נשלח', color: 'bg-sky-50 text-sky-700 border-sky-200' },
-    paid: { label: 'שולם', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-    overdue: { label: 'באיחור', color: 'bg-rose-50 text-rose-700 border-rose-200' },
-    cancelled: { label: 'בוטל', color: 'bg-slate-50 text-slate-600 border-slate-200' },
+    draft: {
+      label: "טיוטה",
+      color: "bg-slate-50 text-slate-600 border-slate-200",
+    },
+    sent: { label: "נשלח", color: "bg-sky-50 text-sky-700 border-sky-200" },
+    paid: {
+      label: "שולם",
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    overdue: {
+      label: "באיחור",
+      color: "bg-rose-50 text-rose-700 border-rose-200",
+    },
+    cancelled: {
+      label: "בוטל",
+      color: "bg-slate-50 text-slate-600 border-slate-200",
+    },
   };
-  
-  const { label, color } = config[status || 'draft'] || config.draft;
-  
-  return (
-    <Badge className={`${color} border font-medium`}>{label}</Badge>
-  );
+
+  const { label, color } = config[status || "draft"] || config.draft;
+
+  return <Badge className={`${color} border font-medium`}>{label}</Badge>;
 };
 
 // Stats card component - elegant navy style
-const StatsCard = ({ title, value, icon: Icon, subtitle, color }: {
+const StatsCard = ({
+  title,
+  value,
+  icon: Icon,
+  subtitle,
+  color,
+}: {
   title: string;
   value: string | number;
   icon: React.ElementType;
@@ -130,8 +212,14 @@ const StatsCard = ({ title, value, icon: Icon, subtitle, color }: {
       <div className="flex items-center justify-between gap-4">
         <div className="text-right flex-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className={`text-2xl font-bold mt-1 ${color || 'text-foreground'}`}>{value}</p>
-          {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+          <p
+            className={`text-2xl font-bold mt-1 ${color || "text-foreground"}`}
+          >
+            {value}
+          </p>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          )}
         </div>
         <div className="p-3 rounded-xl bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] shadow-inner">
           <Icon className="h-5 w-5 text-[hsl(45,70%,55%)]" />
@@ -145,7 +233,7 @@ export default function ClientProfile() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
-  
+
   const {
     client,
     projects,
@@ -169,48 +257,61 @@ export default function ClientProfile() {
   } = useClientData(clientId);
 
   // Custom tabs hook
-  const { tabs: customTabs, canManage: canManageCustomTabs, refetch: refetchCustomTabs, fetchTabData, updateTab, deleteTab } = useClientCustomTabs(clientId);
-  const [isAddCustomTabDialogOpen, setIsAddCustomTabDialogOpen] = useState(false);
+  const {
+    tabs: customTabs,
+    canManage: canManageCustomTabs,
+    refetch: refetchCustomTabs,
+    fetchTabData,
+    updateTab,
+    deleteTab,
+  } = useClientCustomTabs(clientId);
+  const [isAddCustomTabDialogOpen, setIsAddCustomTabDialogOpen] =
+    useState(false);
   const [isAddTableTabDialogOpen, setIsAddTableTabDialogOpen] = useState(false);
   const [isManageTabsDialogOpen, setIsManageTabsDialogOpen] = useState(false);
-  
+
   // Expanded folders state for tabs
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Track which custom tabs have data for gold border
   const [tabsWithData, setTabsWithData] = useState<Set<string>>(new Set());
-  
+
   // Check which custom tabs have data
   const checkTabsData = useCallback(async () => {
     if (!customTabs.length || !clientId) return;
-    
+
     const tabsWithDataSet = new Set<string>();
-    
+
     for (const tab of customTabs) {
       const dataType = tab.data_type;
-      
+
       // For options-type data types (custom with no source_table)
-      if (dataType?.source_type === 'custom' && !dataType?.source_table) {
+      if (dataType?.source_type === "custom" && !dataType?.source_table) {
         // Check if there's a custom column for this data type
         const { data: customCols } = await supabase
-          .from('table_custom_columns')
-          .select('column_key')
-          .eq('data_type_id', tab.data_type_id)
-          .eq('table_name', 'clients')
+          .from("table_custom_columns")
+          .select("column_key")
+          .eq("data_type_id", tab.data_type_id)
+          .eq("table_name", "clients")
           .limit(1);
-        
+
         if (customCols && customCols.length > 0) {
           const columnKey = customCols[0].column_key;
-          
+
           // Fetch client's custom_data directly
           const { data: clientData } = await supabase
-            .from('clients')
-            .select('custom_data')
-            .eq('id', clientId)
+            .from("clients")
+            .select("custom_data")
+            .eq("id", clientId)
             .single();
-          
-          const customData = clientData?.custom_data as Record<string, any> | null;
-          
+
+          const customData = clientData?.custom_data as Record<
+            string,
+            any
+          > | null;
+
           if (customData && customData[columnKey]) {
             tabsWithDataSet.add(tab.id);
           }
@@ -223,136 +324,156 @@ export default function ClientProfile() {
         }
       }
     }
-    
+
     setTabsWithData(tabsWithDataSet);
   }, [customTabs, clientId, fetchTabData]);
-  
+
   // Check tabs data when customTabs or client changes
   useEffect(() => {
     checkTabsData();
   }, [checkTabsData]);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [showAllTabs, setShowAllTabs] = useState(() => {
+    const saved = localStorage.getItem(`client-tabs-expanded-${clientId}`);
+    return saved === 'true';
+  });
+
+  // Display settings for tab management elements
+  const [displaySettings, setDisplaySettings] = useState(() => {
+    const defaults = { showAddDataTab: true, showAddTableTab: true, showManageBtn: true, showActionButtons: true, showClientCard: true, showStatsCards: true };
+    try {
+      const saved = localStorage.getItem('client-display-settings');
+      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    } catch { return defaults; }
+  });
+
+  const updateDisplaySetting = (key: string, value: boolean) => {
+    const updated = { ...displaySettings, [key]: value };
+    setDisplaySettings(updated);
+    localStorage.setItem('client-display-settings', JSON.stringify(updated));
+  };
+
+  const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
+  const [isClientInfoDialogOpen, setIsClientInfoDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [isAddMeetingDialogOpen, setIsAddMeetingDialogOpen] = useState(false);
+  const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
+  const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
+  const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    address: '',
-    notes: '',
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    address: "",
+    notes: "",
     // שדות נדל"ן
-    id_number: '',
-    gush: '',
-    helka: '',
-    migrash: '',
-    taba: '',
+    id_number: "",
+    gush: "",
+    helka: "",
+    migrash: "",
+    taba: "",
   });
+  const [editCustomFieldValues, setEditCustomFieldValues] =
+    useState<CustomFieldValues>({});
+
+  // Custom fields hook
+  const {
+    definitions: customFieldDefs,
+    isLoading: customFieldsLoading,
+    addField: addCustomField,
+    deleteField: deleteCustomField,
+    updateField: updateCustomField,
+    parseCustomData,
+    buildCustomData,
+  } = useClientCustomFields();
+
+  const fieldConfig = useClientFieldConfig();
+
   const [invoiceForm, setInvoiceForm] = useState({
-    invoice_number: '',
-    amount: '',
-    issue_date: format(new Date(), 'yyyy-MM-dd'),
-    due_date: '',
-    description: '',
-    project_id: '',
+    invoice_number: "",
+    amount: "",
+    issue_date: format(new Date(), "yyyy-MM-dd"),
+    due_date: "",
+    description: "",
+    project_id: "",
   });
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [taskForm, setTaskForm] = useState({
+    title: "",
+    description: "",
+    priority: "medium",
+    status: "pending",
+    due_date: "",
+    project_id: "",
+  });
+  const [meetingForm, setMeetingForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    start_time: "",
+    end_time: "",
+  });
+  const [projectForm, setProjectForm] = useState({
+    name: "",
+    description: "",
+    status: "planning",
+    start_date: "",
+    budget: "",
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    invoice_id: "",
+    amount: "",
+    payment_method: "bank_transfer",
+    payment_date: format(new Date(), "yyyy-MM-dd"),
+    payer_name: "",
+    vat_rate: "17",
+    include_vat: false,
+    notes: "",
+  });
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesText, setNotesText] = useState("");
   const { toast } = useToast();
 
   // Open edit dialog
   const handleEditClick = () => {
     if (client) {
       setEditForm({
-        name: client.name || '',
-        email: client.email || '',
-        phone: client.phone || '',
-        company: client.company || '',
-        address: client.address || '',
-        notes: client.notes || '',
+        name: client.name || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        company: client.company || "",
+        address: client.address || "",
+        notes: client.notes || "",
         // שדות נדל"ן
-        id_number: client.id_number || '',
-        gush: client.gush || '',
-        helka: client.helka || '',
-        migrash: client.migrash || '',
-        taba: client.taba || '',
+        id_number: client.id_number || "",
+        gush: client.gush || "",
+        helka: client.helka || "",
+        migrash: client.migrash || "",
+        taba: client.taba || "",
       });
+      // Load custom field values from client's custom_data
+      setEditCustomFieldValues(parseCustomData((client as any).custom_data));
       setIsEditDialogOpen(true);
     }
   };
 
   // Save client edits
   const handleSaveEdit = async () => {
-    await updateClient(editForm);
+    const customData = buildCustomData(editCustomFieldValues);
+    await updateClient({
+      ...editForm,
+      ...(Object.keys(customData).length > 0 ? { custom_data: customData } as any : {}),
+    });
     setIsEditDialogOpen(false);
-  };
-
-  // Handle file upload
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = event.target.files;
-    if (!selectedFiles || selectedFiles.length === 0 || !clientId || !user) return;
-
-    setIsUploading(true);
-
-    try {
-      for (const file of Array.from(selectedFiles)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${clientId}/${Date.now()}-${file.name}`;
-
-        // Upload to Supabase storage
-        const { error: uploadError } = await supabase.storage
-          .from('client-files')
-          .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('client-files')
-          .getPublicUrl(fileName);
-
-        // Insert file record
-        const { error: insertError } = await supabase
-          .from('client_files')
-          .insert({
-            client_id: clientId,
-            file_name: file.name,
-            file_url: urlData.publicUrl,
-            file_size: file.size,
-            file_type: file.type || fileExt,
-            uploaded_by: user.id,
-            uploader_type: 'staff',
-          });
-
-        if (insertError) throw insertError;
-      }
-
-      toast({
-        title: 'הקבצים הועלו בהצלחה',
-      });
-      
-      refresh();
-    } catch (error: any) {
-      console.error('Error uploading file:', error);
-      toast({
-        title: 'שגיאה בהעלאת הקבצים',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
   };
 
   // Create invoice
   const handleCreateInvoice = async () => {
     if (!invoiceForm.invoice_number || !invoiceForm.amount) return;
-    
+
     await addInvoice({
       invoice_number: invoiceForm.invoice_number,
       amount: parseFloat(invoiceForm.amount),
@@ -361,20 +482,240 @@ export default function ClientProfile() {
       description: invoiceForm.description || undefined,
       project_id: invoiceForm.project_id || undefined,
     });
-    
+
     setInvoiceForm({
-      invoice_number: '',
-      amount: '',
-      issue_date: format(new Date(), 'yyyy-MM-dd'),
-      due_date: '',
-      description: '',
-      project_id: '',
+      invoice_number: "",
+      amount: "",
+      issue_date: format(new Date(), "yyyy-MM-dd"),
+      due_date: "",
+      description: "",
+      project_id: "",
     });
     setIsInvoiceDialogOpen(false);
   };
 
+  // Create task
+  const handleCreateTask = async () => {
+    if (!taskForm.title || !user) return;
+
+    console.log("🟢 [ClientProfile] handleCreateTask called");
+    const { user_id, ...cleanTaskForm } = taskForm as any; // strip user_id if present
+    const insertPayload = {
+      ...cleanTaskForm,
+      client_id: clientId,
+      created_by: user.id,
+      due_date: taskForm.due_date || undefined,
+      project_id: taskForm.project_id || undefined,
+    };
+    console.log(
+      "🟢 [ClientProfile] Task insert payload:",
+      JSON.stringify(insertPayload, null, 2),
+    );
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert(insertPayload)
+      .select();
+
+    console.log(
+      "🟢 [ClientProfile] Task response - data:",
+      data,
+      "error:",
+      error,
+    );
+    if (error) {
+      console.error(
+        "❌ [ClientProfile] Task creation FAILED:",
+        error.message,
+        error.details,
+        error.hint,
+        error.code,
+      );
+      toast({
+        title: "שגיאה ביצירת המשימה",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      console.log("✅ [ClientProfile] Task created successfully:", data);
+      toast({ title: "המשימה נוצרה בהצלחה" });
+      refresh();
+      setTaskForm({
+        title: "",
+        description: "",
+        priority: "medium",
+        status: "pending",
+        due_date: "",
+        project_id: "",
+      });
+      setIsAddTaskDialogOpen(false);
+    }
+  };
+
+  // Create meeting
+  const handleCreateMeeting = async () => {
+    if (
+      !meetingForm.title ||
+      !meetingForm.start_time ||
+      !meetingForm.end_time ||
+      !user
+    )
+      return;
+
+    console.log("🔵 [ClientProfile] Creating meeting with form:", meetingForm);
+
+    const { error } = await supabase.from("meetings").insert({
+      ...meetingForm,
+      client_id: clientId,
+      created_by: user.id,
+      status: "scheduled",
+    });
+
+    if (error) {
+      console.error(
+        "❌ [ClientProfile] Meeting creation error:",
+        error.message,
+        error.details,
+        error.hint,
+      );
+      toast({
+        title: "שגיאה ביצירת הפגישה",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      console.log("✅ [ClientProfile] Meeting created successfully");
+      toast({ title: "הפגישה נוצרה בהצלחה" });
+      refresh();
+      setMeetingForm({
+        title: "",
+        description: "",
+        location: "",
+        start_time: "",
+        end_time: "",
+      });
+      setIsAddMeetingDialogOpen(false);
+    }
+  };
+
+  // Create project
+  const handleCreateProject = async () => {
+    if (!projectForm.name || !user) return;
+
+    const { error } = await supabase.from("projects").insert({
+      ...projectForm,
+      client_id: clientId,
+      created_by: user.id,
+      budget: projectForm.budget ? parseFloat(projectForm.budget) : undefined,
+      start_date: projectForm.start_date || undefined,
+    });
+
+    if (error) {
+      toast({
+        title: "שגיאה ביצירת הפרויקט",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "הפרויקט נוצר בהצלחה" });
+      refresh();
+      setProjectForm({
+        name: "",
+        description: "",
+        status: "planning",
+        start_date: "",
+        budget: "",
+      });
+      setIsAddProjectDialogOpen(false);
+    }
+  };
+
+  // Create payment
+  const handleCreatePayment = async () => {
+    if (!paymentForm.invoice_id || !paymentForm.amount || !user) return;
+
+    const { error } = await supabase.from("invoice_payments").insert({
+      invoice_id: paymentForm.invoice_id,
+      amount: parseFloat(paymentForm.amount),
+      payment_method: paymentForm.payment_method,
+      payment_date: paymentForm.payment_date,
+      payer_name: paymentForm.payer_name || undefined,
+      vat_rate: parseFloat(paymentForm.vat_rate),
+      notes: paymentForm.notes || undefined,
+    });
+
+    if (error) {
+      toast({
+        title: "שגיאה בהוספת התשלום",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({ title: "התשלום נוסף בהצלחה" });
+
+      // Check if invoice is fully paid
+      const { data: invoice } = await supabase
+        .from("invoices")
+        .select("amount, invoice_payments(*)")
+        .eq("id", paymentForm.invoice_id)
+        .single();
+
+      if (invoice) {
+        const totalPaid = (invoice.invoice_payments || []).reduce(
+          (sum: number, p: any) => sum + Number(p.amount),
+          0,
+        );
+        if (totalPaid >= Number(invoice.amount)) {
+          await supabase
+            .from("invoices")
+            .update({ status: "paid", paid_date: paymentForm.payment_date })
+            .eq("id", paymentForm.invoice_id);
+        }
+      }
+
+      refresh();
+      setPaymentForm({
+        invoice_id: "",
+        amount: "",
+        payment_method: "bank_transfer",
+        payment_date: format(new Date(), "yyyy-MM-dd"),
+        payer_name: "",
+        vat_rate: "17",
+        include_vat: false,
+        notes: "",
+      });
+      setIsAddPaymentDialogOpen(false);
+    }
+  };
+
+  // Calculate VAT amounts for payment form
+  const calculatePaymentVatAmounts = () => {
+    const amount = parseFloat(paymentForm.amount) || 0;
+    const vatRate = parseFloat(paymentForm.vat_rate) || 0;
+
+    if (!paymentForm.include_vat) {
+      return {
+        netAmount: amount,
+        vatAmount: 0,
+        totalAmount: amount,
+      };
+    }
+
+    const vatMultiplier = vatRate / 100;
+    const netAmount = amount / (1 + vatMultiplier);
+    const vatAmount = amount - netAmount;
+
+    return {
+      netAmount: Math.round(netAmount * 100) / 100,
+      vatAmount: Math.round(vatAmount * 100) / 100,
+      totalAmount: amount,
+    };
+  };
+
+  const paymentVatAmounts = calculatePaymentVatAmounts();
+
   if (!user) {
-    navigate('/auth');
+    navigate("/auth");
     return null;
   }
 
@@ -394,9 +735,9 @@ export default function ClientProfile() {
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <AlertCircle className="h-12 w-12 text-muted-foreground" />
           <p className="text-muted-foreground">לקוח לא נמצא</p>
-          <Button onClick={() => navigate('/datatable-pro')}>
+          <Button onClick={() => navigate("/clients")}>
             <ArrowRight className="h-4 w-4 ml-2" />
-            חזרה לטבלאות
+            חזרה ללקוחות
           </Button>
         </div>
       </AppLayout>
@@ -404,25 +745,77 @@ export default function ClientProfile() {
   }
 
   return (
-    <AppLayout title={`פרופיל לקוח - ${client.name}`}>
-      <div className="space-y-6" dir="rtl">
+    <AppLayout title={client.name} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
+      <div className="space-y-8" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/datatable-pro')}
-              className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/clients")}
+              className="h-8 w-8 p-0"
+              title="חזרה"
             >
-              <ArrowRight className="h-4 w-4 ml-2" />
-              חזרה
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+          {displaySettings.showActionButtons && <div className="flex items-center gap-2">
+            {isValidPhone(client?.phone) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  import("@/utils/whatsapp").then(
+                    ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                      openWhatsApp(
+                        client!.phone!,
+                        WHATSAPP_TEMPLATES.greeting(client!.name),
+                      );
+                    },
+                  );
+                }}
+                className="border-green-500/50 text-green-600 hover:bg-green-500/10 hover:border-green-500"
+                title="WhatsApp"
+              >
+                <MessageCircle className="h-4 w-4 ml-2" />
+                WhatsApp
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const { exportClientProfileToPdf } =
+                    await import("@/utils/exportClientProfileToPdf");
+                  await exportClientProfileToPdf(
+                    client!,
+                    stats,
+                    projects,
+                    tasks,
+                    meetings,
+                    invoices,
+                  );
+                  toast({
+                    title: "PDF נוצר בהצלחה",
+                    description: `הקובץ הורד`,
+                  });
+                } catch (err) {
+                  console.error("PDF export error:", err);
+                  toast({ title: "שגיאה ביצוא PDF", variant: "destructive" });
+                }
+              }}
+              className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
+              title="ייצוא PDF"
+            >
+              <FileText className="h-4 w-4 ml-2" />
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={refresh}
               className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
             >
@@ -430,74 +823,161 @@ export default function ClientProfile() {
               רענן
             </Button>
             {(isAdmin || isManager) && (
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 onClick={handleEditClick}
                 className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] border border-[hsl(222,47%,35%)] text-white shadow-sm"
               >
-                <Edit className="h-4 w-4 ml-2" />
+                <Pencil className="h-4 w-4 ml-2" />
                 ערוך
               </Button>
             )}
-          </div>
+            {(isAdmin || isManager) && !client.user_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsCreateLoginDialogOpen(true)}
+                className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10"
+              >
+                <KeyRound className="h-4 w-4 ml-2" />
+                צור כניסה
+              </Button>
+            )}
+            {client.user_id && (
+              <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                יש גישה לפורטל
+              </Badge>
+            )}
+          </div>}
         </div>
 
         {/* Client Info Card - Elegant Navy Border */}
-        <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
+        {displaySettings.showClientCard && <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row-reverse items-start justify-between gap-6">
-              {/* Right side - Client info (appears first in RTL) */}
-              <div className="flex items-center gap-4 flex-row-reverse">
-                <div className="text-right">
-                  <h1 className="text-2xl font-bold text-foreground">{client.name}</h1>
+            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
+              {/* Right side - Client info */}
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
+                </div>
+                <div className="text-right flex-1">
+                  <h1 className="text-2xl font-bold text-foreground">
+                    {client.name}
+                  </h1>
                   {client.company && (
-                    <p className="text-muted-foreground font-medium">{client.company}</p>
+                    <p className="text-muted-foreground font-medium">
+                      {client.company}
+                    </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 justify-end flex-row-reverse">
+                  <div className="flex items-center gap-2 mt-2 justify-start">
                     <StatusBadge status={client.status} />
                     {client.stage && (
-                      <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10 text-foreground">{client.stage}</Badge>
+                      <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10 text-foreground">
+                        {client.stage}
+                      </Badge>
                     )}
                   </div>
                 </div>
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg">
-                  <Building className="h-8 w-8 text-[hsl(45,70%,55%)]" />
-                </div>
               </div>
-              
+
               {/* Left side - Contact details */}
-              <div className="flex flex-col items-start gap-3 text-sm bg-muted/30 rounded-xl p-4 border border-border/50">
+              <div className="flex flex-col items-end gap-3 text-sm bg-muted/30 rounded-xl p-4 border border-border/50 w-full md:w-auto">
                 {client.email && (
-                  <a href={`mailto:${client.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Mail className="h-4 w-4" />
+                  <a
+                    href={`mailto:${client.email}`}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
+                  >
                     <span>{client.email}</span>
+                    <Mail className="h-4 w-4" />
                   </a>
                 )}
-                {client.phone && (
-                  <a href={`tel:${client.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Phone className="h-4 w-4" />
-                    <span>{client.phone}</span>
-                  </a>
+                {isValidPhone(client.phone) && (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`tel:${client.phone}`}
+                      className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
+                    >
+                      <span dir="ltr" className="font-mono">
+                        {formatPhoneDisplay(client.phone)}
+                      </span>
+                      <Phone className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        import("@/utils/whatsapp").then(
+                          ({ openWhatsApp, WHATSAPP_TEMPLATES }) => {
+                            openWhatsApp(
+                              client.phone!,
+                              WHATSAPP_TEMPLATES.greeting(client.name),
+                            );
+                          },
+                        );
+                      }}
+                      className="p-1.5 rounded-full bg-green-500/10 text-green-600 hover:bg-green-500/20 hover:text-green-700 transition-all"
+                      title="שלח הודעת WhatsApp"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
                 {client.website && (
-                  <a href={client.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors flex-row-reverse">
-                    <Globe className="h-4 w-4" />
+                  <a
+                    href={client.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-muted-foreground hover:text-[hsl(222,47%,40%)] transition-colors"
+                  >
                     <span>{client.website}</span>
+                    <Globe className="h-4 w-4" />
                   </a>
                 )}
                 {client.address && (
-                  <div className="flex items-center gap-2 text-muted-foreground flex-row-reverse">
-                    <MapPin className="h-4 w-4" />
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <span>{client.address}</span>
+                    <MapPin className="h-4 w-4" />
                   </div>
                 )}
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
+
+        {displaySettings.showClientCard && (() => {
+          const clientCustomData = (client as any)?.custom_data;
+          const customValues = parseCustomData(clientCustomData);
+          const filledFields = customFieldDefs.filter(
+            (def) => customValues[def.field_key],
+          );
+          if (filledFields.length === 0) return null;
+          return (
+            <Card className="bg-card/95 backdrop-blur-sm border border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    שדות מותאמים
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {filledFields.map((def) => (
+                    <div key={def.id} className="text-sm">
+                      <span className="text-muted-foreground text-xs">
+                        {def.label}
+                      </span>
+                      <p className="font-medium text-foreground">
+                        {customValues[def.field_key]}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <StatsCard
             title="פרויקטים פעילים"
             value={stats.activeProjects}
@@ -523,121 +1003,144 @@ export default function ClientProfile() {
             icon={CheckSquare}
             subtitle={`${stats.upcomingMeetings} פגישות קרובות`}
           />
-        </div>
+        </div>}
 
         {/* Tabs - Elegant Navy Style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-end flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
-            <TabsTrigger 
-              value="all-data" 
+          <div className="flex items-start gap-2">
+          <TabsList className="flex-1 justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
+            {/* Primary tabs - most used first */}
+            <TabsTrigger
+              value="overview"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
+            >
+              <TrendingUp className="h-4 w-4" />
+              שלבי עבודה
+            </TabsTrigger>
+            <button
+              onClick={() => {
+                const newVal = !showAllTabs;
+                setShowAllTabs(newVal);
+                localStorage.setItem(`client-tabs-expanded-${clientId}`, String(newVal));
+                if (!newVal && activeTab !== 'overview') {
+                  setActiveTab('overview');
+                }
+              }}
+              className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                showAllTabs
+                  ? 'bg-gradient-to-r from-[hsl(45,70%,35%)] to-[hsl(45,70%,45%)] text-white border border-[hsl(45,70%,55%)]'
+                  : 'border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] bg-[hsl(45,70%,45%)]/5'
+              }`}
             >
               <Layers className="h-4 w-4" />
               כל הנתונים
-            </TabsTrigger>
-            <TabsTrigger 
-              value="overview" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <TrendingUp className="h-4 w-4" />
-              סקירה
-            </TabsTrigger>
-            <TabsTrigger 
-              value="projects" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <FolderKanban className="h-4 w-4" />
-              פרויקטים ({projects.length})
-            </TabsTrigger>
-            <TabsTrigger 
-              value="time" 
+              {showAllTabs ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+
+            {showAllTabs && (<>
+            <TabsTrigger
+              value="time"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <Clock className="h-4 w-4" />
               לוגי זמן ({timeEntries.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="deadlines" 
+            <TabsTrigger
+              value="deadlines"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <Timer className="h-4 w-4" />
               זמנים
             </TabsTrigger>
-            <TabsTrigger 
-              value="tasks" 
+            <TabsTrigger
+              value="tasks"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <CheckSquare className="h-4 w-4" />
               משימות ({tasks.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="meetings" 
+            <TabsTrigger
+              value="meetings"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <Calendar className="h-4 w-4" />
               פגישות ({meetings.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="files" 
+            <TabsTrigger
+              value="files"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <FileText className="h-4 w-4" />
               קבצים ({files.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="messages" 
+            <TabsTrigger
+              value="messages"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <MessageSquare className="h-4 w-4" />
               הודעות ({messages.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="reminders" 
+            <TabsTrigger
+              value="emails"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
-              <Bell className="h-4 w-4" />
-              תזכורות ({reminders.length})
+              <Mail className="h-4 w-4" />
+              מיילים
             </TabsTrigger>
-            <TabsTrigger 
-              value="whatsapp" 
-              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp ({whatsappMessages.length})
-            </TabsTrigger>
-            <TabsTrigger 
-              value="invoices" 
+            <TabsTrigger
+              value="invoices"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <Receipt className="h-4 w-4" />
               חשבוניות ({invoices.length})
             </TabsTrigger>
-            <TabsTrigger 
-              value="custom" 
+            <TabsTrigger
+              value="payments"
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(142,76%,36%)] data-[state=active]:to-[hsl(142,76%,46%)] data-[state=active]:text-white data-[state=active]:border-[hsl(142,76%,55%)] border border-[hsl(142,76%,45%)]/50 hover:border-[hsl(142,76%,45%)] transition-all bg-[hsl(142,76%,45%)]/5"
+            >
+              <DollarSign className="h-4 w-4" />
+              תשלומים
+            </TabsTrigger>
+            <TabsTrigger
+              value="custom"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
               <Table className="h-4 w-4" />
               טבלאות ({allClientTables.length})
             </TabsTrigger>
-            
+            <TabsTrigger
+              value="whatsapp"
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp ({whatsappMessages.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="reminders"
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
+            >
+              <Bell className="h-4 w-4" />
+              תזכורות ({reminders.length})
+            </TabsTrigger>
+
             {/* Grid View Tab - Shows all custom tabs in grid */}
             {customTabs.length > 0 && (
-              <TabsTrigger 
-                value="grid-view" 
+              <TabsTrigger
+                value="grid-view"
                 className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
               >
                 <LayoutGrid className="h-4 w-4" />
                 תצוגת רשת
               </TabsTrigger>
             )}
-            
+
             {/* Custom Data Type Tabs - Grouped by folder */}
             {(() => {
               // Group tabs by folder
               const tabsByFolder: Record<string, typeof customTabs> = {};
               const unfiledTabs: typeof customTabs = [];
-              
-              customTabs.forEach(tab => {
+
+              customTabs.forEach((tab) => {
                 const folderName = (tab as any).folder_name;
                 if (folderName) {
                   if (!tabsByFolder[folderName]) {
@@ -648,35 +1151,42 @@ export default function ClientProfile() {
                   unfiledTabs.push(tab);
                 }
               });
-              
+
               const folderNames = Object.keys(tabsByFolder).sort();
-              
-              const renderTab = (tab: typeof customTabs[0]) => {
-                const IconComponent = TAB_ICON_MAP[tab.icon || 'Database'] || Database;
+
+              const renderTab = (tab: (typeof customTabs)[0]) => {
+                const IconComponent =
+                  TAB_ICON_MAP[tab.icon || "Database"] || Database;
                 const hasData = tabsWithData.has(tab.id);
-                const isTableTab = (tab as any).tab_type === 'custom_table';
+                const isTableTab = (tab as any).tab_type === "custom_table";
                 return (
-                  <TabsTrigger 
-                    key={tab.id} 
-                    value={`custom-tab-${tab.id}`} 
+                  <TabsTrigger
+                    key={tab.id}
+                    value={`custom-tab-${tab.id}`}
                     className={`gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border transition-all ${
-                      hasData 
-                        ? 'border-[hsl(45,70%,50%)] ring-1 ring-[hsl(45,70%,50%)]/50 bg-[hsl(45,70%,50%)]/5' 
-                        : 'border-transparent hover:border-[hsl(222,47%,25%)]/50'
+                      hasData
+                        ? "border-[hsl(45,70%,50%)] ring-1 ring-[hsl(45,70%,50%)]/50 bg-[hsl(45,70%,50%)]/5"
+                        : "border-transparent hover:border-[hsl(222,47%,25%)]/50"
                     }`}
                   >
-                    {isTableTab && <TableProperties className="h-3 w-3 text-muted-foreground" />}
-                    <IconComponent 
-                      className="h-4 w-4" 
-                      style={{ color: hasData ? 'hsl(45,70%,50%)' : (tab.data_type?.color || undefined) }}
+                    {isTableTab && (
+                      <TableProperties className="h-3 w-3 text-muted-foreground" />
+                    )}
+                    <IconComponent
+                      className="h-4 w-4"
+                      style={{
+                        color: hasData
+                          ? "hsl(45,70%,50%)"
+                          : tab.data_type?.color || undefined,
+                      }}
                     />
                     {tab.display_name}
                   </TabsTrigger>
                 );
               };
-              
+
               const toggleFolder = (folderName: string) => {
-                setExpandedFolders(prev => {
+                setExpandedFolders((prev) => {
                   const next = new Set(prev);
                   if (next.has(folderName)) {
                     next.delete(folderName);
@@ -686,21 +1196,23 @@ export default function ClientProfile() {
                   return next;
                 });
               };
-              
+
               return (
                 <>
                   {/* Folders */}
-                  {folderNames.map(folderName => {
+                  {folderNames.map((folderName) => {
                     const isExpanded = expandedFolders.has(folderName);
                     const folderTabs = tabsByFolder[folderName];
-                    const hasDataInFolder = folderTabs.some(t => tabsWithData.has(t.id));
-                    
+                    const hasDataInFolder = folderTabs.some((t) =>
+                      tabsWithData.has(t.id),
+                    );
+
                     return (
                       <div key={folderName} className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`h-8 gap-1 px-2 ${hasDataInFolder ? 'text-[hsl(45,70%,50%)]' : 'text-muted-foreground'}`}
+                          className={`h-8 gap-1 px-2 ${hasDataInFolder ? "text-[hsl(45,70%,50%)]" : "text-muted-foreground"}`}
                           onClick={() => toggleFolder(folderName)}
                         >
                           {isExpanded ? (
@@ -710,7 +1222,10 @@ export default function ClientProfile() {
                           )}
                           <FolderOpen className="h-4 w-4" />
                           {folderName}
-                          <Badge variant="secondary" className="text-xs h-5 px-1.5">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs h-5 px-1.5"
+                          >
                             {folderTabs.length}
                           </Badge>
                         </Button>
@@ -718,16 +1233,17 @@ export default function ClientProfile() {
                       </div>
                     );
                   })}
-                  
+
                   {/* Unfiled tabs */}
                   {unfiledTabs.map(renderTab)}
                 </>
               );
             })()}
-            
+
             {/* Add Tab Buttons */}
             {canManageCustomTabs && (
               <div className="flex items-center gap-1">
+                {displaySettings.showAddDataTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -737,6 +1253,8 @@ export default function ClientProfile() {
                   <Plus className="h-4 w-4" />
                   טאב נתונים
                 </Button>
+                )}
+                {displaySettings.showAddTableTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -746,6 +1264,8 @@ export default function ClientProfile() {
                   <TableProperties className="h-4 w-4" />
                   טאב טבלה
                 </Button>
+                )}
+                {displaySettings.showManageBtn && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -755,10 +1275,78 @@ export default function ClientProfile() {
                   <Settings className="h-4 w-4" />
                   נהל
                 </Button>
+                )}
               </div>
             )}
+            </>)}
           </TabsList>
 
+          {/* Display Settings Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 flex-shrink-0 border-[hsl(222,47%,25%)]/30 hover:border-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)]/10 transition-all"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64" dir="rtl">
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  הגדרות תצוגה
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתורי פעולה</span>
+                    <Switch
+                      checked={displaySettings.showActionButtons}
+                      onCheckedChange={(v) => updateDisplaySetting('showActionButtons', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיס לקוח</span>
+                    <Switch
+                      checked={displaySettings.showClientCard}
+                      onCheckedChange={(v) => updateDisplaySetting('showClientCard', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיסי סטטיסטיקה</span>
+                    <Switch
+                      checked={displaySettings.showStatsCards}
+                      onCheckedChange={(v) => updateDisplaySetting('showStatsCards', v)}
+                    />
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב נתונים</span>
+                    <Switch
+                      checked={displaySettings.showAddDataTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddDataTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב טבלה</span>
+                    <Switch
+                      checked={displaySettings.showAddTableTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddTableTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתור נהל</span>
+                    <Switch
+                      checked={displaySettings.showManageBtn}
+                      onCheckedChange={(v) => updateDisplaySetting('showManageBtn', v)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
@@ -769,23 +1357,47 @@ export default function ClientProfile() {
               {/* Recent Projects */}
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                  <CardTitle className="text-lg">פרויקטים אחרונים</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsAddProjectDialogOpen(true)}
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      title="הוסף פרויקט"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <CardTitle className="text-lg">פרויקטים אחרונים</CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {projects.slice(0, 5).map(project => (
-                      <div key={project.id} className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    {projects.slice(0, 5).map((project) => (
+                      <div
+                        key={project.id}
+                        className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="text-right">
                           <p className="font-medium">{project.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {project.start_date ? format(new Date(project.start_date), 'dd/MM/yyyy', { locale: he }) : '-'}
+                            {project.start_date
+                              ? format(
+                                  new Date(project.start_date),
+                                  "dd/MM/yyyy",
+                                  { locale: he },
+                                )
+                              : "-"}
                           </p>
                         </div>
-                        <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">{project.status}</Badge>
+                        <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                          {project.status}
+                        </Badge>
                       </div>
                     ))}
                     {projects.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">אין פרויקטים</p>
+                      <p className="text-muted-foreground text-center py-4">
+                        אין פרויקטים
+                      </p>
                     )}
                   </ScrollArea>
                 </CardContent>
@@ -794,23 +1406,51 @@ export default function ClientProfile() {
               {/* Recent Tasks */}
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                  <CardTitle className="text-lg">משימות פתוחות</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsAddTaskDialogOpen(true)}
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      title="הוסף משימה"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <CardTitle className="text-lg">משימות פתוחות</CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {tasks.filter(t => t.status !== 'completed').slice(0, 5).map(task => (
-                      <div key={task.id} className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
-                        <div className="text-right">
-                          <p className="font-medium">{task.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {task.due_date ? format(new Date(task.due_date), 'dd/MM/yyyy', { locale: he }) : 'ללא תאריך יעד'}
-                          </p>
+                    {tasks
+                      .filter((t) => t.status !== "completed")
+                      .slice(0, 5)
+                      .map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="text-right">
+                            <p className="font-medium">{task.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {task.due_date
+                                ? format(
+                                    new Date(task.due_date),
+                                    "dd/MM/yyyy",
+                                    { locale: he },
+                                  )
+                                : "ללא תאריך יעד"}
+                            </p>
+                          </div>
+                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                            {task.priority}
+                          </Badge>
                         </div>
-                        <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">{task.priority}</Badge>
-                      </div>
-                    ))}
-                    {tasks.filter(t => t.status !== 'completed').length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">אין משימות פתוחות</p>
+                      ))}
+                    {tasks.filter((t) => t.status !== "completed").length ===
+                      0 && (
+                      <p className="text-muted-foreground text-center py-4">
+                        אין משימות פתוחות
+                      </p>
                     )}
                   </ScrollArea>
                 </CardContent>
@@ -819,25 +1459,52 @@ export default function ClientProfile() {
               {/* Upcoming Meetings */}
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                  <CardTitle className="text-lg">פגישות קרובות</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsAddMeetingDialogOpen(true)}
+                      className="h-8 w-8 p-0 hover:bg-primary/10"
+                      title="הוסף פגישה"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <CardTitle className="text-lg">פגישות קרובות</CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {meetings.filter(m => new Date(m.start_time) >= new Date()).slice(0, 5).map(meeting => (
-                      <div key={meeting.id} className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
-                        <div className="text-right">
-                          <p className="font-medium">{meeting.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(meeting.start_time), 'dd/MM/yyyy HH:mm', { locale: he })}
-                          </p>
+                    {meetings
+                      .filter((m) => new Date(m.start_time) >= new Date())
+                      .slice(0, 5)
+                      .map((meeting) => (
+                        <div
+                          key={meeting.id}
+                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="text-right">
+                            <p className="font-medium">{meeting.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(
+                                new Date(meeting.start_time),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: he },
+                              )}
+                            </p>
+                          </div>
+                          {meeting.location && (
+                            <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                              {meeting.location}
+                            </Badge>
+                          )}
                         </div>
-                        {meeting.location && (
-                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">{meeting.location}</Badge>
-                        )}
-                      </div>
-                    ))}
-                    {meetings.filter(m => new Date(m.start_time) >= new Date()).length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">אין פגישות קרובות</p>
+                      ))}
+                    {meetings.filter(
+                      (m) => new Date(m.start_time) >= new Date(),
+                    ).length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">
+                        אין פגישות קרובות
+                      </p>
                     )}
                   </ScrollArea>
                 </CardContent>
@@ -850,10 +1517,15 @@ export default function ClientProfile() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {invoices.slice(0, 5).map(invoice => (
-                      <div key={invoice.id} className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors">
+                    {invoices.slice(0, 5).map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="text-right">
-                          <p className="font-medium">#{invoice.invoice_number}</p>
+                          <p className="font-medium">
+                            #{invoice.invoice_number}
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             ₪{invoice.amount.toLocaleString()}
                           </p>
@@ -862,7 +1534,9 @@ export default function ClientProfile() {
                       </div>
                     ))}
                     {invoices.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">אין חשבוניות</p>
+                      <p className="text-muted-foreground text-center py-4">
+                        אין חשבוניות
+                      </p>
                     )}
                   </ScrollArea>
                 </CardContent>
@@ -870,56 +1544,80 @@ export default function ClientProfile() {
             </div>
 
             {/* Notes */}
-            {client.notes && (
-              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
-                <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                  <CardTitle className="text-lg">הערות</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <p className="whitespace-pre-wrap text-right">{client.notes}</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Projects Tab */}
-          <TabsContent value="projects">
-            <Card>
-              <CardHeader>
-                <CardTitle>פרויקטים</CardTitle>
+            <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">הערות</CardTitle>
+                <div className="flex items-center gap-1">
+                  {editingNotes ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={async () => {
+                          try {
+                            await updateClient({ notes: notesText || null });
+                            setEditingNotes(false);
+                            toast({ title: "הערות נשמרו" });
+                          } catch (err) {
+                            toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          setEditingNotes(false);
+                          setNotesText(client.notes || "");
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0 text-[#d8ac27] hover:text-[#b8922a] hover:bg-[#d8ac27]/10"
+                      onClick={() => {
+                        setNotesText(client.notes || "");
+                        setEditingNotes(true);
+                      }}
+                    >
+                      {client.notes ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {projects.map(project => (
-                      <div key={project.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold">{project.name}</h3>
-                          <Badge variant="outline">{project.status}</Badge>
-                        </div>
-                        {project.description && (
-                          <p className="text-sm text-muted-foreground mt-2">{project.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          {project.budget && <span>תקציב: ₪{project.budget.toLocaleString()}</span>}
-                          {project.start_date && <span>התחלה: {format(new Date(project.start_date), 'dd/MM/yyyy', { locale: he })}</span>}
-                        </div>
-                      </div>
-                    ))}
-                    {projects.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין פרויקטים</p>
-                    )}
-                  </div>
-                </ScrollArea>
+              <CardContent className="p-4">
+                {editingNotes ? (
+                  <Textarea
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="הוסף הערות..."
+                    className="text-right min-h-[100px] resize-none border-[#d8ac27]/30 focus:border-[#d8ac27]"
+                    autoFocus
+                  />
+                ) : client.notes ? (
+                  <p className="whitespace-pre-wrap text-right">
+                    {client.notes}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-center text-sm py-2">אין הערות - לחץ על + להוספה</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Time Entries Tab - Full Featured */}
           <TabsContent value="time">
-            <ClientTimeLogsTab 
-              clientId={clientId!} 
-              clientName={client?.name || 'לקוח'} 
+            <ClientTimeLogsTab
+              clientId={clientId!}
+              clientName={client?.name || "לקוח"}
             />
           </TabsContent>
 
@@ -929,38 +1627,56 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Tasks Tab */}
-          <TabsContent value="tasks">
-            <Card>
-              <CardHeader>
-                <CardTitle>משימות</CardTitle>
+          <TabsContent value="tasks" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">משימות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {tasks.map(task => (
-                      <div key={task.id} className="p-4 border rounded-lg">
+                  <div className="divide-y divide-border/30">
+                    {tasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="p-4 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="border-[hsl(222,47%,25%)]"
+                            >
+                              {task.status}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="border-[hsl(222,47%,25%)]"
+                            >
+                              {task.priority}
+                            </Badge>
+                          </div>
+                          <div className="text-right">
                             <p className="font-medium">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.project_name && `${task.project_name} • `}
-                              {task.assigned_to_name || 'לא משויך'}
+                              {task.assigned_to_name || "לא משויך"}
                             </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{task.priority}</Badge>
-                            <Badge variant="outline">{task.status}</Badge>
                           </div>
                         </div>
                         {task.due_date && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            יעד: {format(new Date(task.due_date), 'dd/MM/yyyy', { locale: he })}
+                          <p className="text-sm text-muted-foreground mt-2 text-right">
+                            יעד:{" "}
+                            {format(new Date(task.due_date), "dd/MM/yyyy", {
+                              locale: he,
+                            })}
                           </p>
                         )}
                       </div>
                     ))}
                     {tasks.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין משימות</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין משימות
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -969,35 +1685,53 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Meetings Tab */}
-          <TabsContent value="meetings">
-            <Card>
-              <CardHeader>
-                <CardTitle>פגישות</CardTitle>
+          <TabsContent value="meetings" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">פגישות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {meetings.map(meeting => (
-                      <div key={meeting.id} className="p-4 border rounded-lg">
+                  <div className="divide-y divide-border/30">
+                    {meetings.map((meeting) => (
+                      <div
+                        key={meeting.id}
+                        className="p-4 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="flex items-center justify-between">
-                          <div>
+                          <Badge
+                            variant="outline"
+                            className="border-[hsl(222,47%,25%)]"
+                          >
+                            {meeting.status}
+                          </Badge>
+                          <div className="text-right">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(new Date(meeting.start_time), 'dd/MM/yyyy HH:mm', { locale: he })} - {format(new Date(meeting.end_time), 'HH:mm', { locale: he })}
+                              {format(
+                                new Date(meeting.start_time),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: he },
+                              )}{" "}
+                              -{" "}
+                              {format(new Date(meeting.end_time), "HH:mm", {
+                                locale: he,
+                              })}
                             </p>
                           </div>
-                          <Badge variant="outline">{meeting.status}</Badge>
                         </div>
                         {meeting.location && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            <MapPin className="h-3 w-3 inline ml-1" />
+                          <p className="text-sm text-muted-foreground mt-2 text-right">
                             {meeting.location}
+                            <MapPin className="h-3 w-3 inline mr-1" />
                           </p>
                         )}
                       </div>
                     ))}
                     {meetings.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין פגישות</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין פגישות
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1006,85 +1740,113 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Files Tab */}
-          <TabsContent value="files">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>קבצים</CardTitle>
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    ) : (
-                      <Upload className="h-4 w-4 ml-2" />
-                    )}
-                    העלאת קובץ
-                  </Button>
-                </div>
+          <TabsContent value="files" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">קבצים</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {files.map(file => (
-                      <div key={file.id} className="p-4 border rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-8 w-8 text-primary" />
-                          <div>
-                            <p className="font-medium">{file.file_name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : ''} • {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: he })}
-                            </p>
+              <CardContent className="p-4 space-y-4">
+                {/* Bulk Uploader */}
+                {user && clientId && (
+                  <BulkFileUploader
+                    clientId={clientId}
+                    userId={user.id}
+                    onComplete={() => refresh()}
+                  />
+                )}
+
+                {/* Existing files list */}
+                <div className="border-t border-border/30 pt-4">
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3 text-right">
+                    קבצים שהועלו ({files.length})
+                  </h4>
+                  <ScrollArea className="h-72">
+                    <div className="divide-y divide-border/30">
+                      {files.map((file) => (
+                        <div
+                          key={file.id}
+                          className="p-3 flex items-center justify-between hover:bg-muted/30 transition-colors"
+                        >
+                          <Button variant="ghost" size="sm" asChild>
+                            <a
+                              href={file.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="font-medium text-sm">
+                                {file.file_name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {file.file_size
+                                  ? `${(file.file_size / 1024).toFixed(1)} KB`
+                                  : ""}{" "}
+                                •{" "}
+                                {format(
+                                  new Date(file.created_at),
+                                  "dd/MM/yyyy",
+                                  {
+                                    locale: he,
+                                  },
+                                )}
+                              </p>
+                            </div>
+                            <FileText className="h-6 w-6 text-[hsl(45,70%,55%)]" />
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={file.file_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
-                    ))}
-                    {files.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין קבצים</p>
-                    )}
-                  </div>
-                </ScrollArea>
+                      ))}
+                      {files.length === 0 && (
+                        <p className="text-muted-foreground text-center py-6 text-sm">
+                          אין קבצים
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* Messages Tab */}
-          <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <CardTitle>הודעות</CardTitle>
+          <TabsContent value="messages" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">הודעות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <ScrollArea className="h-96">
                   <div className="space-y-4">
-                    {messages.map(message => (
-                      <div key={message.id} className={`p-4 border rounded-lg ${message.sender_type === 'staff' ? 'bg-primary/5 mr-8' : 'ml-8'}`}>
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`p-4 border rounded-lg ${message.sender_type === "staff" ? "bg-[hsl(222,47%,20%)]/5 ml-8" : "mr-8"}`}
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">{message.sender_type === 'staff' ? 'צוות' : 'לקוח'}</Badge>
                           <span className="text-sm text-muted-foreground">
-                            {format(new Date(message.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+                            {format(
+                              new Date(message.created_at),
+                              "dd/MM/yyyy HH:mm",
+                              { locale: he },
+                            )}
                           </span>
+                          <Badge
+                            variant="outline"
+                            className="border-[hsl(222,47%,25%)]"
+                          >
+                            {message.sender_type === "staff" ? "צוות" : "לקוח"}
+                          </Badge>
                         </div>
-                        <p>{message.message}</p>
+                        <p className="text-right">{message.message}</p>
                       </div>
                     ))}
                     {messages.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין הודעות</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין הודעות
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1092,37 +1854,66 @@ export default function ClientProfile() {
             </Card>
           </TabsContent>
 
+          {/* Client Emails Tab */}
+          <TabsContent value="emails" dir="rtl">
+            <ClientEmailsTab
+              clientId={clientId!}
+              clientName={client?.name || "לקוח"}
+              clientEmail={client?.email || undefined}
+            />
+          </TabsContent>
+
           {/* Reminders Tab */}
-          <TabsContent value="reminders">
-            <Card>
-              <CardHeader>
-                <CardTitle>תזכורות</CardTitle>
+          <TabsContent value="reminders" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">תזכורות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {reminders.map(reminder => (
-                      <div key={reminder.id} className="p-4 border rounded-lg">
+                  <div className="divide-y divide-border/30">
+                    {reminders.map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        className="p-4 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{reminder.title}</p>
-                            {reminder.message && (
-                              <p className="text-sm text-muted-foreground">{reminder.message}</p>
-                            )}
-                          </div>
-                          <div className="text-end">
-                            <Badge variant={reminder.is_dismissed ? 'secondary' : 'default'}>
-                              {reminder.is_dismissed ? 'נדחה' : reminder.is_sent ? 'נשלח' : 'ממתין'}
+                          <div className="text-start">
+                            <Badge
+                              variant={
+                                reminder.is_dismissed ? "secondary" : "default"
+                              }
+                              className="border-[hsl(222,47%,25%)]"
+                            >
+                              {reminder.is_dismissed
+                                ? "נדחה"
+                                : reminder.is_sent
+                                  ? "נשלח"
+                                  : "ממתין"}
                             </Badge>
                             <p className="text-sm text-muted-foreground mt-1">
-                              {format(new Date(reminder.remind_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+                              {format(
+                                new Date(reminder.remind_at),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: he },
+                              )}
                             </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">{reminder.title}</p>
+                            {reminder.message && (
+                              <p className="text-sm text-muted-foreground">
+                                {reminder.message}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))}
                     {reminders.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין תזכורות</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין תזכורות
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1131,28 +1922,46 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* WhatsApp Tab */}
-          <TabsContent value="whatsapp">
-            <Card>
-              <CardHeader>
-                <CardTitle>הודעות WhatsApp</CardTitle>
+          <TabsContent value="whatsapp" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">הודעות WhatsApp</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 <ScrollArea className="h-96">
                   <div className="space-y-4">
-                    {whatsappMessages.map(msg => (
-                      <div key={msg.id} className={`p-4 border rounded-lg ${msg.direction === 'outgoing' ? 'bg-green-50 dark:bg-green-950/20 mr-8' : 'ml-8'}`}>
+                    {whatsappMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`p-4 border rounded-lg ${msg.direction === "outgoing" ? "bg-green-50 dark:bg-green-950/20 ml-8" : "mr-8"}`}
+                      >
                         <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline">{msg.direction === 'outgoing' ? 'יוצא' : 'נכנס'}</Badge>
                           <span className="text-sm text-muted-foreground">
-                            {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm', { locale: he })}
+                            {format(
+                              new Date(msg.created_at),
+                              "dd/MM/yyyy HH:mm",
+                              { locale: he },
+                            )}
                           </span>
+                          <Badge
+                            variant="outline"
+                            className="border-[hsl(222,47%,25%)]"
+                          >
+                            {msg.direction === "outgoing" ? "יוצא" : "נכנס"}
+                          </Badge>
                         </div>
-                        <p>{msg.message}</p>
-                        <p className="text-sm text-muted-foreground mt-1">{msg.phone_number}</p>
+                        <p className="text-right">{msg.message}</p>
+                        {msg.phone_number && (
+                          <p className="text-sm text-muted-foreground mt-1 text-right">
+                            {msg.phone_number}
+                          </p>
+                        )}
                       </div>
                     ))}
                     {whatsappMessages.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין הודעות WhatsApp</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין הודעות WhatsApp
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1161,13 +1970,18 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Invoices Tab */}
-          <TabsContent value="invoices">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>חשבוניות והכנסות</CardTitle>
-                <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+          <TabsContent value="invoices" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-border/50 bg-muted/30">
+                <Dialog
+                  open={isInvoiceDialogOpen}
+                  onOpenChange={setIsInvoiceDialogOpen}
+                >
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white"
+                    >
                       <Plus className="h-4 w-4 ml-2" />
                       חשבונית חדשה
                     </Button>
@@ -1182,7 +1996,12 @@ export default function ClientProfile() {
                           <Label>מספר חשבונית *</Label>
                           <Input
                             value={invoiceForm.invoice_number}
-                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, invoice_number: e.target.value }))}
+                            onChange={(e) =>
+                              setInvoiceForm((prev) => ({
+                                ...prev,
+                                invoice_number: e.target.value,
+                              }))
+                            }
                             placeholder="INV-001"
                           />
                         </div>
@@ -1191,7 +2010,12 @@ export default function ClientProfile() {
                           <Input
                             type="number"
                             value={invoiceForm.amount}
-                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, amount: e.target.value }))}
+                            onChange={(e) =>
+                              setInvoiceForm((prev) => ({
+                                ...prev,
+                                amount: e.target.value,
+                              }))
+                            }
                             placeholder="0"
                           />
                         </div>
@@ -1202,7 +2026,12 @@ export default function ClientProfile() {
                           <Input
                             type="date"
                             value={invoiceForm.issue_date}
-                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, issue_date: e.target.value }))}
+                            onChange={(e) =>
+                              setInvoiceForm((prev) => ({
+                                ...prev,
+                                issue_date: e.target.value,
+                              }))
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -1210,7 +2039,12 @@ export default function ClientProfile() {
                           <Input
                             type="date"
                             value={invoiceForm.due_date}
-                            onChange={(e) => setInvoiceForm(prev => ({ ...prev, due_date: e.target.value }))}
+                            onChange={(e) =>
+                              setInvoiceForm((prev) => ({
+                                ...prev,
+                                due_date: e.target.value,
+                              }))
+                            }
                           />
                         </div>
                       </div>
@@ -1218,13 +2052,18 @@ export default function ClientProfile() {
                         <Label>פרויקט</Label>
                         <Select
                           value={invoiceForm.project_id}
-                          onValueChange={(value) => setInvoiceForm(prev => ({ ...prev, project_id: value }))}
+                          onValueChange={(value) =>
+                            setInvoiceForm((prev) => ({
+                              ...prev,
+                              project_id: value,
+                            }))
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="בחר פרויקט (אופציונלי)" />
                           </SelectTrigger>
                           <SelectContent>
-                            {projects.map(project => (
+                            {projects.map((project) => (
                               <SelectItem key={project.id} value={project.id}>
                                 {project.name}
                               </SelectItem>
@@ -1236,48 +2075,83 @@ export default function ClientProfile() {
                         <Label>תיאור</Label>
                         <Textarea
                           value={invoiceForm.description}
-                          onChange={(e) => setInvoiceForm(prev => ({ ...prev, description: e.target.value }))}
+                          onChange={(e) =>
+                            setInvoiceForm((prev) => ({
+                              ...prev,
+                              description: e.target.value,
+                            }))
+                          }
                           placeholder="תיאור החשבונית..."
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsInvoiceDialogOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsInvoiceDialogOpen(false)}
+                      >
                         ביטול
                       </Button>
-                      <Button onClick={handleCreateInvoice} disabled={!invoiceForm.invoice_number || !invoiceForm.amount}>
+                      <Button
+                        onClick={handleCreateInvoice}
+                        disabled={
+                          !invoiceForm.invoice_number || !invoiceForm.amount
+                        }
+                      >
                         צור חשבונית
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
+                <CardTitle className="text-lg">חשבוניות והכנסות</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <ScrollArea className="h-96">
-                  <div className="space-y-4">
-                    {invoices.map(invoice => (
-                      <div key={invoice.id} className="p-4 border rounded-lg">
+                  <div className="divide-y divide-border/30">
+                    {invoices.map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className="p-4 hover:bg-muted/30 transition-colors"
+                      >
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">#{invoice.invoice_number}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {invoice.project_name && `${invoice.project_name} • `}
-                              {format(new Date(invoice.issue_date), 'dd/MM/yyyy', { locale: he })}
+                          <div className="text-start">
+                            <p className="font-semibold text-lg">
+                              ₪{invoice.amount.toLocaleString()}
                             </p>
-                          </div>
-                          <div className="text-end">
-                            <p className="font-semibold text-lg">₪{invoice.amount.toLocaleString()}</p>
                             <InvoiceStatusBadge status={invoice.status} />
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">
+                              #{invoice.invoice_number}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {invoice.project_name &&
+                                `${invoice.project_name} • `}
+                              {format(
+                                new Date(invoice.issue_date),
+                                "dd/MM/yyyy",
+                                { locale: he },
+                              )}
+                            </p>
                           </div>
                         </div>
                         {invoice.description && (
-                          <p className="text-sm text-muted-foreground mt-2">{invoice.description}</p>
+                          <p className="text-sm text-muted-foreground mt-2 text-right">
+                            {invoice.description}
+                          </p>
                         )}
-                        {invoice.status === 'sent' && (
-                          <div className="mt-3">
+                        {invoice.status === "sent" && (
+                          <div className="mt-3 text-right">
                             <Button
                               size="sm"
-                              onClick={() => updateInvoiceStatus(invoice.id, 'paid', format(new Date(), 'yyyy-MM-dd'))}
+                              onClick={() =>
+                                updateInvoiceStatus(
+                                  invoice.id,
+                                  "paid",
+                                  format(new Date(), "yyyy-MM-dd"),
+                                )
+                              }
+                              className="bg-gradient-to-r from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] hover:from-[hsl(222,47%,25%)] hover:to-[hsl(222,47%,35%)] text-white"
                             >
                               סמן כשולם
                             </Button>
@@ -1286,7 +2160,9 @@ export default function ClientProfile() {
                       </div>
                     ))}
                     {invoices.length === 0 && (
-                      <p className="text-muted-foreground text-center py-8">אין חשבוניות</p>
+                      <p className="text-muted-foreground text-center py-8">
+                        אין חשבוניות
+                      </p>
                     )}
                   </div>
                 </ScrollArea>
@@ -1294,48 +2170,84 @@ export default function ClientProfile() {
             </Card>
           </TabsContent>
 
+          {/* Payments Tab */}
+          <TabsContent value="payments" dir="rtl">
+            <div className="space-y-6">
+              <PaymentStagesManager
+                clientId={client.id}
+                clientName={client.name}
+              />
+              <ClientPaymentsTab
+                clientId={client.id}
+                clientName={client.name}
+              />
+            </div>
+          </TabsContent>
+
           {/* All Tables Tab */}
-          <TabsContent value="custom">
-            <Card>
-              <CardHeader>
-                <CardTitle>נתוני הלקוח בטבלאות</CardTitle>
-                <CardDescription>כל השורות שבהן הלקוח מופיע מכלל הטבלאות במערכת</CardDescription>
+          <TabsContent value="custom" dir="rtl">
+            <Card className="border border-[hsl(222,47%,25%)]/50">
+              <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                <CardTitle className="text-lg">נתוני הלקוח בטבלאות</CardTitle>
+                <CardDescription className="text-right">
+                  כל השורות שבהן הלקוח מופיע מכלל הטבלאות במערכת
+                </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4">
                 {allClientTables.length > 0 ? (
                   <div className="space-y-4">
                     {/* Table selection buttons */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 justify-end">
                       {allClientTables.map((table) => (
                         <Button
                           key={table.tableName}
-                          variant={activeTableTab === table.tableName ? 'default' : 'outline'}
+                          variant={
+                            activeTableTab === table.tableName
+                              ? "default"
+                              : "outline"
+                          }
                           size="sm"
-                          onClick={() => setActiveTableTab(
-                            activeTableTab === table.tableName ? null : table.tableName
-                          )}
+                          onClick={() =>
+                            setActiveTableTab(
+                              activeTableTab === table.tableName
+                                ? null
+                                : table.tableName,
+                            )
+                          }
                           className="gap-2"
                         >
-                          <Table className="h-4 w-4" />
-                          {table.tableDisplayName}
-                          <Badge variant="secondary" className="mr-1">
+                          <Badge variant="secondary" className="ml-1">
                             {table.rows.length}
                           </Badge>
+                          {table.tableDisplayName}
+                          <Table className="h-4 w-4" />
                         </Button>
                       ))}
                     </div>
-                    
+
                     {/* Show selected table or all tables */}
                     <div className="space-y-6">
                       {allClientTables
-                        .filter(table => !activeTableTab || activeTableTab === table.tableName)
+                        .filter(
+                          (table) =>
+                            !activeTableTab ||
+                            activeTableTab === table.tableName,
+                        )
                         .map((table) => (
-                          <div key={table.tableName} className="border rounded-lg overflow-hidden">
-                            <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                              <Badge variant="outline">{table.rows.length} שורות</Badge>
+                          <div
+                            key={table.tableName}
+                            className="border border-[hsl(222,47%,25%)]/30 rounded-lg overflow-hidden"
+                          >
+                            <div className="bg-muted/30 px-4 py-2 border-b border-border/50 flex items-center justify-between">
+                              <Badge
+                                variant="outline"
+                                className="border-[hsl(222,47%,25%)]"
+                              >
+                                {table.rows.length} שורות
+                              </Badge>
                               <h4 className="font-semibold flex items-center gap-2 text-right">
-                                <Table className="h-4 w-4" />
                                 {table.tableDisplayName}
+                                <Table className="h-4 w-4" />
                               </h4>
                             </div>
                             <ScrollArea className="max-h-96">
@@ -1344,7 +2256,10 @@ export default function ClientProfile() {
                                   <thead className="bg-muted/50">
                                     <tr>
                                       {table.columns.map((col) => (
-                                        <th key={col.key} className="px-4 py-2 text-right font-medium border-b">
+                                        <th
+                                          key={col.key}
+                                          className="px-4 py-2 text-right font-medium border-b border-border/30"
+                                        >
                                           {col.label}
                                         </th>
                                       ))}
@@ -1352,29 +2267,53 @@ export default function ClientProfile() {
                                   </thead>
                                   <tbody>
                                     {table.rows.map((row, rowIndex) => (
-                                      <tr key={row.id || rowIndex} className="border-b last:border-0 hover:bg-muted/30">
+                                      <tr
+                                        key={row.id || rowIndex}
+                                        className="border-b border-border/30 last:border-0 hover:bg-muted/30"
+                                      >
                                         {table.columns.map((col) => {
                                           let value = row[col.key];
-                                          
+
                                           // Format special values
-                                          if (value === null || value === undefined) {
-                                            value = '-';
-                                          } else if (typeof value === 'boolean') {
-                                            value = value ? 'כן' : 'לא';
-                                          } else if (col.key.includes('date') || col.key.includes('time')) {
+                                          if (
+                                            value === null ||
+                                            value === undefined
+                                          ) {
+                                            value = "-";
+                                          } else if (
+                                            typeof value === "boolean"
+                                          ) {
+                                            value = value ? "כן" : "לא";
+                                          } else if (
+                                            col.key.includes("date") ||
+                                            col.key.includes("time")
+                                          ) {
                                             try {
-                                              value = format(new Date(value), 'dd/MM/yyyy HH:mm', { locale: he });
+                                              value = format(
+                                                new Date(value),
+                                                "dd/MM/yyyy HH:mm",
+                                                { locale: he },
+                                              );
                                             } catch {
                                               // Keep original value
                                             }
-                                          } else if (typeof value === 'number' && col.key.includes('amount')) {
+                                          } else if (
+                                            typeof value === "number" &&
+                                            col.key.includes("amount")
+                                          ) {
                                             value = `₪${value.toLocaleString()}`;
-                                          } else if (typeof value === 'number' && col.key.includes('budget')) {
+                                          } else if (
+                                            typeof value === "number" &&
+                                            col.key.includes("budget")
+                                          ) {
                                             value = `₪${value.toLocaleString()}`;
                                           }
-                                          
+
                                           return (
-                                            <td key={col.key} className="px-4 py-2 text-right">
+                                            <td
+                                              key={col.key}
+                                              className="px-4 py-2 text-right"
+                                            >
                                               {String(value)}
                                             </td>
                                           );
@@ -1390,7 +2329,9 @@ export default function ClientProfile() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">אין נתונים להצגה</p>
+                  <p className="text-muted-foreground text-center py-8">
+                    אין נתונים להצגה
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -1406,12 +2347,9 @@ export default function ClientProfile() {
           </TabsContent>
 
           {/* Custom Data Type Tab Contents */}
-          {customTabs.map(tab => (
+          {customTabs.map((tab) => (
             <TabsContent key={tab.id} value={`custom-tab-${tab.id}`}>
-              <ClientCustomTableTab 
-                tab={tab} 
-                clientId={clientId!}
-              />
+              <ClientCustomTableTab tab={tab} clientId={clientId!} />
             </TabsContent>
           ))}
         </Tabs>
@@ -1432,6 +2370,16 @@ export default function ClientProfile() {
           onSuccess={refetchCustomTabs}
         />
 
+        {/* Create Client Login Dialog */}
+        <CreateClientLoginDialog
+          open={isCreateLoginDialogOpen}
+          onOpenChange={setIsCreateLoginDialogOpen}
+          clientId={clientId}
+          clientName={client.name}
+          clientEmail={client.email || ""}
+          onSuccess={refresh}
+        />
+
         {/* Edit Client Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent dir="rtl">
@@ -1443,106 +2391,195 @@ export default function ClientProfile() {
                 <Label>שם *</Label>
                 <Input
                   value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>אימייל</Label>
-                  <Input
-                    type="email"
-                    value={editForm.email}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                  />
+              {(fieldConfig.isVisible("email") ||
+                fieldConfig.isVisible("phone")) && (
+                <div className="grid grid-cols-2 gap-4">
+                  {fieldConfig.isVisible("email") && (
+                    <div className="space-y-2">
+                      <Label>אימייל</Label>
+                      <Input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            email: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
+                  {fieldConfig.isVisible("phone") && (
+                    <div className="space-y-2">
+                      <Label>טלפון</Label>
+                      <Input
+                        value={editForm.phone}
+                        onChange={(e) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label>טלפון</Label>
-                  <Input
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                </div>
-              </div>
+              )}
               <div className="space-y-2">
                 <Label>חברה</Label>
                 <Input
                   value={editForm.company}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, company: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      company: e.target.value,
+                    }))
+                  }
                 />
               </div>
-              <div className="space-y-2">
-                <Label>כתובת</Label>
-                <Input
-                  value={editForm.address}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
-                />
-              </div>
-              
+              {(fieldConfig.isVisible("street") ||
+                fieldConfig.isVisible("moshav")) && (
+                <div className="space-y-2">
+                  <Label>כתובת</Label>
+                  <Input
+                    value={editForm.address}
+                    onChange={(e) =>
+                      setEditForm((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              )}
+
               {/* שדות נדל"ן */}
-              <div className="border-t pt-4 mt-4">
-                <Label className="text-sm font-semibold mb-3 block">פרטי נדל"ן</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>ת.ז.</Label>
-                    <Input
-                      value={editForm.id_number}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, id_number: e.target.value }))}
-                      placeholder="תעודת זהות"
-                    />
+              {(fieldConfig.isVisible("idNumber") ||
+                fieldConfig.isVisible("taba") ||
+                fieldConfig.isVisible("gush") ||
+                fieldConfig.isVisible("helka") ||
+                fieldConfig.isVisible("migrash")) && (
+                <div className="border-t pt-4 mt-4">
+                  <Label className="text-sm font-semibold mb-3 block">
+                    פרטי נדל"ן
+                  </Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {fieldConfig.isVisible("idNumber") && (
+                      <div className="space-y-2">
+                        <Label>ת.ז.</Label>
+                        <Input
+                          value={editForm.id_number}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              id_number: e.target.value,
+                            }))
+                          }
+                          placeholder="תעודת זהות"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("taba") && (
+                      <div className="space-y-2">
+                        <Label>תב"ע</Label>
+                        <Input
+                          value={editForm.taba}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              taba: e.target.value,
+                            }))
+                          }
+                          placeholder="תב''ע"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label>תב"ע</Label>
-                    <Input
-                      value={editForm.taba}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, taba: e.target.value }))}
-                      placeholder="תב''ע"
-                    />
+                  <div className="grid grid-cols-3 gap-4 mt-3">
+                    {fieldConfig.isVisible("gush") && (
+                      <div className="space-y-2">
+                        <Label>גוש</Label>
+                        <Input
+                          value={editForm.gush}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              gush: e.target.value,
+                            }))
+                          }
+                          placeholder="גוש"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("helka") && (
+                      <div className="space-y-2">
+                        <Label>חלקה</Label>
+                        <Input
+                          value={editForm.helka}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              helka: e.target.value,
+                            }))
+                          }
+                          placeholder="חלקה"
+                        />
+                      </div>
+                    )}
+                    {fieldConfig.isVisible("migrash") && (
+                      <div className="space-y-2">
+                        <Label>מגרש</Label>
+                        <Input
+                          value={editForm.migrash}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              migrash: e.target.value,
+                            }))
+                          }
+                          placeholder="מגרש"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4 mt-3">
-                  <div className="space-y-2">
-                    <Label>גוש</Label>
-                    <Input
-                      value={editForm.gush}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, gush: e.target.value }))}
-                      placeholder="גוש"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>חלקה</Label>
-                    <Input
-                      value={editForm.helka}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, helka: e.target.value }))}
-                      placeholder="חלקה"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>מגרש</Label>
-                    <Input
-                      value={editForm.migrash}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, migrash: e.target.value }))}
-                      placeholder="מגרש"
-                    />
-                  </div>
-                </div>
-              </div>
-              
+              )}
+
+              {/* שדות מותאמים אישית */}
+              <CustomFieldsSection
+                definitions={customFieldDefs}
+                values={editCustomFieldValues}
+                onChange={setEditCustomFieldValues}
+                onAddField={addCustomField}
+                onDeleteField={deleteCustomField}
+                onUpdateField={updateCustomField}
+                isLoading={customFieldsLoading}
+              />
+
               <div className="space-y-2">
                 <Label>הערות</Label>
                 <Textarea
                   value={editForm.notes}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, notes: e.target.value }))
+                  }
                   rows={3}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
                 ביטול
               </Button>
-              <Button onClick={handleSaveEdit}>
-                שמור
-              </Button>
+              <Button onClick={handleSaveEdit}>שמור</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1556,6 +2593,575 @@ export default function ClientProfile() {
           onDeleteTab={deleteTab}
           onRefresh={refetchCustomTabs}
         />
+
+        {/* Add Task Dialog */}
+        <Dialog
+          open={isAddTaskDialogOpen}
+          onOpenChange={setIsAddTaskDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[500px]" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הוסף משימה חדשה</DialogTitle>
+              <DialogDescription>הוסף משימה חדשה ללקוח</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>כותרת *</Label>
+                <Input
+                  value={taskForm.title}
+                  onChange={(e) =>
+                    setTaskForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  placeholder="כותרת המשימה"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>תיאור</Label>
+                <Textarea
+                  value={taskForm.description}
+                  onChange={(e) =>
+                    setTaskForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="תיאור המשימה"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>עדיפות</Label>
+                  <Select
+                    value={taskForm.priority}
+                    onValueChange={(val) =>
+                      setTaskForm((prev) => ({ ...prev, priority: val }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">נמוכה</SelectItem>
+                      <SelectItem value="medium">בינונית</SelectItem>
+                      <SelectItem value="high">גבוהה</SelectItem>
+                      <SelectItem value="urgent">דחופה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>סטטוס</Label>
+                  <Select
+                    value={taskForm.status}
+                    onValueChange={(val) =>
+                      setTaskForm((prev) => ({ ...prev, status: val }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">ממתין</SelectItem>
+                      <SelectItem value="in_progress">בביצוע</SelectItem>
+                      <SelectItem value="completed">הושלם</SelectItem>
+                      <SelectItem value="cancelled">בוטל</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>תאריך יעד</Label>
+                  <Input
+                    type="date"
+                    value={taskForm.due_date}
+                    onChange={(e) =>
+                      setTaskForm((prev) => ({
+                        ...prev,
+                        due_date: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>פרויקט</Label>
+                  <Select
+                    value={taskForm.project_id}
+                    onValueChange={(val) =>
+                      setTaskForm((prev) => ({ ...prev, project_id: val }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר פרויקט" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">ללא פרויקט</SelectItem>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddTaskDialogOpen(false)}
+              >
+                ביטול
+              </Button>
+              <Button onClick={handleCreateTask} disabled={!taskForm.title}>
+                צור משימה
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Meeting Dialog */}
+        <Dialog
+          open={isAddMeetingDialogOpen}
+          onOpenChange={setIsAddMeetingDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[500px]" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הוסף פגישה חדשה</DialogTitle>
+              <DialogDescription>הוסף פגישה חדשה ללקוח</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>נושא *</Label>
+                <Input
+                  value={meetingForm.title}
+                  onChange={(e) =>
+                    setMeetingForm((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  placeholder="נושא הפגישה"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>תיאור</Label>
+                <Textarea
+                  value={meetingForm.description}
+                  onChange={(e) =>
+                    setMeetingForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="תיאור הפגישה"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>מיקום</Label>
+                <Input
+                  value={meetingForm.location}
+                  onChange={(e) =>
+                    setMeetingForm((prev) => ({
+                      ...prev,
+                      location: e.target.value,
+                    }))
+                  }
+                  placeholder="מיקום הפגישה"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>התחלה *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={meetingForm.start_time}
+                    onChange={(e) =>
+                      setMeetingForm((prev) => ({
+                        ...prev,
+                        start_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>סיום *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={meetingForm.end_time}
+                    onChange={(e) =>
+                      setMeetingForm((prev) => ({
+                        ...prev,
+                        end_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddMeetingDialogOpen(false)}
+              >
+                ביטול
+              </Button>
+              <Button
+                onClick={handleCreateMeeting}
+                disabled={
+                  !meetingForm.title ||
+                  !meetingForm.start_time ||
+                  !meetingForm.end_time
+                }
+              >
+                צור פגישה
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Project Dialog */}
+        <Dialog
+          open={isAddProjectDialogOpen}
+          onOpenChange={setIsAddProjectDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[500px]" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הוסף פרויקט חדש</DialogTitle>
+              <DialogDescription>הוסף פרויקט חדש ללקוח</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>שם הפרויקט *</Label>
+                <Input
+                  value={projectForm.name}
+                  onChange={(e) =>
+                    setProjectForm((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="שם הפרויקט"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>תיאור</Label>
+                <Textarea
+                  value={projectForm.description}
+                  onChange={(e) =>
+                    setProjectForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="תיאור הפרויקט"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>סטטוס</Label>
+                  <Select
+                    value={projectForm.status}
+                    onValueChange={(val) =>
+                      setProjectForm((prev) => ({ ...prev, status: val }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planning">תכנון</SelectItem>
+                      <SelectItem value="in_progress">בביצוע</SelectItem>
+                      <SelectItem value="on_hold">בהמתנה</SelectItem>
+                      <SelectItem value="completed">הושלם</SelectItem>
+                      <SelectItem value="cancelled">בוטל</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>תאריך התחלה</Label>
+                  <Input
+                    type="date"
+                    value={projectForm.start_date}
+                    onChange={(e) =>
+                      setProjectForm((prev) => ({
+                        ...prev,
+                        start_date: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>תקציב (₪)</Label>
+                <Input
+                  type="number"
+                  value={projectForm.budget}
+                  onChange={(e) =>
+                    setProjectForm((prev) => ({
+                      ...prev,
+                      budget: e.target.value,
+                    }))
+                  }
+                  placeholder="תקציב משוער"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddProjectDialogOpen(false)}
+              >
+                ביטול
+              </Button>
+              <Button
+                onClick={handleCreateProject}
+                disabled={!projectForm.name}
+              >
+                צור פרויקט
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Payment Dialog */}
+        <Dialog
+          open={isAddPaymentDialogOpen}
+          onOpenChange={setIsAddPaymentDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[500px]" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הוסף תשלום חדש</DialogTitle>
+              <DialogDescription>רישום תשלום ידני לחשבונית</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>חשבונית *</Label>
+                <Select
+                  value={paymentForm.invoice_id}
+                  onValueChange={(val) =>
+                    setPaymentForm((prev) => ({ ...prev, invoice_id: val }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="בחר חשבונית" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {invoices
+                      .filter(
+                        (inv: any) =>
+                          inv.status !== "paid" && inv.status !== "cancelled",
+                      )
+                      .map((invoice: any) => (
+                        <SelectItem key={invoice.id} value={invoice.id}>
+                          #{invoice.invoice_number} - ₪
+                          {invoice.amount.toLocaleString()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>סכום תשלום *</Label>
+                <div className="relative">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    ₪
+                  </span>
+                  <Input
+                    type="number"
+                    value={paymentForm.amount}
+                    onChange={(e) =>
+                      setPaymentForm((prev) => ({
+                        ...prev,
+                        amount: e.target.value,
+                      }))
+                    }
+                    className="pr-8"
+                    placeholder="סכום"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 py-2">
+                <input
+                  type="checkbox"
+                  id="payment-include-vat"
+                  checked={paymentForm.include_vat}
+                  onChange={(e) =>
+                    setPaymentForm((prev) => ({
+                      ...prev,
+                      include_vat: e.target.checked,
+                    }))
+                  }
+                  className="rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="payment-include-vat"
+                  className="cursor-pointer flex items-center gap-2"
+                >
+                  הסכום כולל מע"מ
+                  {paymentForm.include_vat && (
+                    <Input
+                      type="number"
+                      value={paymentForm.vat_rate}
+                      onChange={(e) =>
+                        setPaymentForm((prev) => ({
+                          ...prev,
+                          vat_rate: e.target.value,
+                        }))
+                      }
+                      className="w-20 h-7 text-sm"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                    />
+                  )}
+                  {paymentForm.include_vat && (
+                    <span className="text-sm text-muted-foreground">%</span>
+                  )}
+                </Label>
+              </div>
+
+              {paymentForm.include_vat &&
+                parseFloat(paymentForm.amount) > 0 && (
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        סכום לפני מע"מ:
+                      </span>
+                      <span className="font-medium">
+                        ₪{paymentVatAmounts.netAmount.toLocaleString("he-IL")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        מע"מ ({paymentForm.vat_rate}%):
+                      </span>
+                      <span className="font-medium">
+                        ₪{paymentVatAmounts.vatAmount.toLocaleString("he-IL")}
+                      </span>
+                    </div>
+                    <div className="flex justify-between pt-1.5 border-t border-blue-200 dark:border-blue-800">
+                      <span className="font-medium">סה"כ כולל מע"מ:</span>
+                      <span className="font-bold">
+                        ₪{paymentVatAmounts.totalAmount.toLocaleString("he-IL")}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>אמצעי תשלום *</Label>
+                  <Select
+                    value={paymentForm.payment_method}
+                    onValueChange={(val) =>
+                      setPaymentForm((prev) => ({
+                        ...prev,
+                        payment_method: val,
+                      }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bank_transfer">
+                        העברה בנקאית
+                      </SelectItem>
+                      <SelectItem value="credit_card">כרטיס אשראי</SelectItem>
+                      <SelectItem value="check">צ'ק</SelectItem>
+                      <SelectItem value="cash">מזומן</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>תאריך תשלום *</Label>
+                  <Input
+                    type="date"
+                    value={paymentForm.payment_date}
+                    onChange={(e) =>
+                      setPaymentForm((prev) => ({
+                        ...prev,
+                        payment_date: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>מי שילם</Label>
+                <Input
+                  value={paymentForm.payer_name}
+                  onChange={(e) =>
+                    setPaymentForm((prev) => ({
+                      ...prev,
+                      payer_name: e.target.value,
+                    }))
+                  }
+                  placeholder="שם המשלם"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>הערות</Label>
+                <Textarea
+                  value={paymentForm.notes}
+                  onChange={(e) =>
+                    setPaymentForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="הערות נוספות..."
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsAddPaymentDialogOpen(false)}
+              >
+                ביטול
+              </Button>
+              <Button
+                onClick={handleCreatePayment}
+                disabled={!paymentForm.invoice_id || !paymentForm.amount}
+              >
+                רשום תשלום
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Client Info Dialog - Non-modal */}
+        <Dialog open={isClientInfoDialogOpen} onOpenChange={setIsClientInfoDialogOpen} modal={false}>
+          <DialogContent className="max-w-2xl p-0 overflow-hidden border-[#d8ac27]/30 shadow-lg shadow-[#d8ac27]/10" dir="rtl">
+            <ClientInfoDialogContent
+              client={client}
+              stats={stats}
+              customFieldDefs={customFieldDefs}
+              parseCustomData={parseCustomData}
+              updateClient={updateClient}
+              buildCustomData={buildCustomData}
+              addCustomField={addCustomField}
+              deleteCustomField={deleteCustomField}
+              onClose={() => setIsClientInfoDialogOpen(false)}
+              onEdit={() => {
+                setIsClientInfoDialogOpen(false);
+                handleEditClick();
+              }}
+              refresh={refresh}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
@@ -1563,60 +3169,39 @@ export default function ClientProfile() {
 
 // Client Stages Section with View Toggle
 function ClientStagesSection({ clientId }: { clientId: string }) {
-  const [viewMode, setViewMode] = React.useState<'list' | 'board' | 'table'>('board');
+  const [viewMode, setViewMode] = React.useState<"list" | "board" | "table">(
+    "board",
+  );
 
   // Dynamically import ClientStagesTable
-  const ClientStagesTable = React.lazy(() => 
-    import('@/components/client-tabs/ClientStagesTable').then(m => ({ default: m.ClientStagesTable }))
+  const ClientStagesTable = React.lazy(() =>
+    import("@/components/client-tabs/ClientStagesTable").then((m) => ({
+      default: m.ClientStagesTable,
+    })),
   );
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
-        <div className="flex gap-1 border rounded-lg p-1">
-          <Button
-            size="sm"
-            variant={viewMode === 'board' ? 'default' : 'ghost'}
-            className="h-7 px-3"
-            onClick={() => setViewMode('board')}
-          >
-            <LayoutGrid className="h-4 w-4 ml-1" />
-            לוח
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            className="h-7 px-3"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="h-4 w-4 ml-1" />
-            רשימה
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            className="h-7 px-3"
-            onClick={() => setViewMode('table')}
-          >
-            <Table className="h-4 w-4 ml-1" />
-            טבלה
-          </Button>
-        </div>
       </div>
 
-      {viewMode === 'board' ? (
-        <ClientStagesBoard clientId={clientId} />
-      ) : viewMode === 'table' ? (
-        <React.Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
+      {viewMode === "board" ? (
+        <ClientStagesBoard clientId={clientId} viewMode={viewMode} onViewModeChange={setViewMode} />
+      ) : viewMode === "table" ? (
+        <React.Suspense
+          fallback={
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          }
+        >
           <ClientStagesTable clientId={clientId} />
         </React.Suspense>
       ) : (
-        <ClientStagesTracker 
+        <ClientStagesTracker
           clientId={clientId}
-          onTaskComplete={(stageId, taskId) => {
-            console.log(`Task ${taskId} completed in stage ${stageId}`);
-          }}
+          onTaskComplete={(stageId, taskId) => {}}
         />
       )}
     </div>

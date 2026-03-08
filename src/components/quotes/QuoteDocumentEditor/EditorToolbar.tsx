@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -26,16 +25,15 @@ import {
   ZoomOut,
   RotateCcw,
   Printer,
-  Send,
   ChevronDown,
   FileImage,
   FilePlus,
   FolderOpen,
-  Undo,
-  Redo,
-  Settings,
+  MessageCircle,
+  Share2,
 } from 'lucide-react';
-import { ViewMode } from './types';
+import { ViewMode, QuoteDocumentData } from './types';
+import { WhatsAppShareDialog } from './WhatsAppShareDialog';
 
 interface EditorToolbarProps {
   viewMode: ViewMode;
@@ -52,6 +50,7 @@ interface EditorToolbarProps {
   onLoadTemplate: () => void;
   onSaveAsTemplate: () => void;
   isSaving?: boolean;
+  document?: QuoteDocumentData;
 }
 
 export function EditorToolbar({
@@ -69,6 +68,7 @@ export function EditorToolbar({
   onLoadTemplate,
   onSaveAsTemplate,
   isSaving,
+  document,
 }: EditorToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -244,6 +244,11 @@ export function EditorToolbar({
 
         <ToolButton icon={Printer} label="הדפס" onClick={onPrint} />
         
+        {/* WhatsApp Share */}
+        {document && (
+          <WhatsAppShareDialog document={document} />
+        )}
+        
         <Button onClick={onSave} disabled={!isDirty || isSaving} size="sm" className="mr-2">
           {isSaving ? (
             <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin ml-2" />
@@ -254,13 +259,14 @@ export function EditorToolbar({
         </Button>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input for import */}
       <input
         ref={fileInputRef}
         type="file"
         accept=".docx,.doc,.pdf"
         onChange={handleFileSelect}
-        className="hidden"
+        className="sr-only"
+        tabIndex={-1}
       />
     </div>
   );

@@ -1,15 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/hooks/useAuth';
-import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
-import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
-import { supabase } from '@/integrations/supabase/client';
-import { Plus, CheckSquare, Calendar, Search, Filter, ClipboardList, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AppLayout } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  useTasksOptimized as useTasks,
+  Task,
+  TaskInsert,
+} from "@/hooks/useTasksOptimized";
+import {
+  useMeetingsOptimized as useMeetings,
+  Meeting,
+  MeetingInsert,
+} from "@/hooks/useMeetingsOptimized";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Plus,
+  CheckSquare,
+  Calendar,
+  Search,
+  Filter,
+  ClipboardList,
+  Loader2,
+  Bell,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import {
   TasksViewToggle,
   TasksListView,
@@ -19,67 +46,149 @@ import {
   TasksTimelineView,
   TasksStatsHeader,
   MeetingsListView,
+  RemindersTabContent,
   ViewType,
-} from '@/components/tasks-meetings';
-import { QuickAddTask } from '@/components/layout/sidebar-tasks/QuickAddTask';
-import { QuickAddMeeting } from '@/components/layout/sidebar-tasks/QuickAddMeeting';
-import { isPast, parseISO } from 'date-fns';
+} from "@/components/tasks-meetings";
+import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
+import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
+import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { isPast, parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
-  const { tasks, loading: tasksLoading, createTask, updateTask, deleteTask, fetchTasks } = useTasks();
-  const { meetings, loading: meetingsLoading, createMeeting, updateMeeting, deleteMeeting, fetchMeetings } = useMeetings();
-  
-  const [activeTab, setActiveTab] = useState('tasks');
-  const [taskView, setTaskView] = useState<ViewType>('list');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  
+  const {
+    tasks,
+    loading: tasksLoading,
+    createTask,
+    updateTask,
+    deleteTask,
+    fetchTasks,
+  } = useTasks();
+  const {
+    meetings,
+    loading: meetingsLoading,
+    createMeeting,
+    updateMeeting,
+    deleteMeeting,
+    fetchMeetings,
+  } = useMeetings();
+
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") || "tasks",
+  );
+  const [taskView, setTaskView] = useState<ViewType>("list");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<SortField>("event_date");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
-  
+
   // Shared data
-  const [clients, setClients] = useState<{ id: string; name: string; email?: string | null; phone?: string | null; whatsapp?: string | null }[]>([]);
+  const [clients, setClients] = useState<
+    {
+      id: string;
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      whatsapp?: string | null;
+    }[]
+  >([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/auth');
+      navigate("/auth");
     }
-  }, [user, authLoading, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading, navigate]);
 
   useEffect(() => {
     const fetchData = async () => {
       const [clientsRes, projectsRes] = await Promise.all([
-        supabase.from('clients').select('id, name, email, phone, whatsapp').order('name'),
-        supabase.from('projects').select('id, name').order('name'),
+        supabase
+          .from("clients")
+          .select("id, name, email, phone, whatsapp")
+          .order("name"),
+        supabase.from("projects").select("id, name").order("name"),
       ]);
       if (clientsRes.data) setClients(clientsRes.data);
       if (projectsRes.data) setProjects(projectsRes.data);
     };
     if (user) fetchData();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Filter tasks
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'overdue' ? (task.due_date && isPast(parseISO(task.due_date)) && task.status !== 'completed') : task.status === statusFilter);
-    const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "overdue"
+        ? task.due_date &&
+          isPast(parseISO(task.due_date)) &&
+          task.status !== "completed"
+        : task.status === statusFilter);
+    const matchesPriority =
+      priorityFilter === "all" || task.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
   // Filter meetings
-  const filteredMeetings = meetings.filter(meeting => {
-    return meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      meeting.description?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredMeetings = meetings.filter((meeting) => {
+    return (
+      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
+
+  // Sort tasks
+  const sortedTasks = sortItems(
+    filteredTasks,
+    sortBy,
+    sortOrder,
+    (task, field) => {
+      switch (field) {
+        case "created_at":
+          return task.created_at;
+        case "event_date":
+          return task.due_date;
+        case "title":
+          return task.title;
+        default:
+          return null;
+      }
+    },
+  );
+
+  // Sort meetings
+  const sortedMeetings = sortItems(
+    filteredMeetings,
+    sortBy,
+    sortOrder,
+    (meeting, field) => {
+      switch (field) {
+        case "created_at":
+          return meeting.created_at;
+        case "event_date":
+          return meeting.start_time;
+        case "title":
+          return meeting.title;
+        default:
+          return null;
+      }
+    },
+  );
 
   // Handlers
   const handleEditTask = (task: Task) => {
@@ -88,13 +197,13 @@ const TasksAndMeetings = () => {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (confirm('האם למחוק את המשימה?')) {
+    if (confirm("האם למחוק את המשימה?")) {
       await deleteTask(id);
     }
   };
 
   const handleToggleComplete = async (task: Task) => {
-    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    const newStatus = task.status === "completed" ? "pending" : "completed";
     await updateTask(task.id, { status: newStatus });
   };
 
@@ -108,7 +217,7 @@ const TasksAndMeetings = () => {
   };
 
   const handleDeleteMeeting = async (id: string) => {
-    if (confirm('האם למחוק את הפגישה?')) {
+    if (confirm("האם למחוק את הפגישה?")) {
       await deleteMeeting(id);
     }
   };
@@ -144,7 +253,7 @@ const TasksAndMeetings = () => {
   if (!user) return null;
 
   return (
-    <AppLayout title="משימות ופגישות">
+    <AppLayout title="משימות, פגישות ותזכורות">
       <div className="p-4 md:p-6 space-y-6" dir="rtl">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -153,30 +262,53 @@ const TasksAndMeetings = () => {
               <ClipboardList className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">משימות ופגישות</h1>
-              <p className="text-muted-foreground text-sm">ניהול משימות ופגישות במקום אחד</p>
+              <h1 className="text-2xl font-bold text-foreground">
+                משימות, פגישות ותזכורות
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                ניהול משימות, פגישות ותזכורות במקום אחד
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <DedupToggleButton />
             <Button className="gap-2" onClick={() => setTaskDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               משימה חדשה
             </Button>
-            <Button variant="outline" className="gap-2" onClick={() => setMeetingDialogOpen(true)}>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setMeetingDialogOpen(true)}
+            >
               <Calendar className="h-4 w-4" />
               פגישה חדשה
             </Button>
-            
+            <AddReminderDialog
+              trigger={
+                <Button variant="outline" className="gap-2">
+                  <Bell className="h-4 w-4" />
+                  תזכורת חדשה
+                </Button>
+              }
+            />
+
             <QuickAddTask
               open={taskDialogOpen}
-              onOpenChange={(open) => { setTaskDialogOpen(open); if (!open) setEditingTask(null); }}
+              onOpenChange={(open) => {
+                setTaskDialogOpen(open);
+                if (!open) setEditingTask(null);
+              }}
               onSubmit={handleCreateTask}
               clients={clients}
             />
             <QuickAddMeeting
               open={meetingDialogOpen}
-              onOpenChange={(open) => { setMeetingDialogOpen(open); if (!open) setEditingMeeting(null); }}
+              onOpenChange={(open) => {
+                setMeetingDialogOpen(open);
+                if (!open) setEditingMeeting(null);
+              }}
               onSubmit={handleCreateMeeting}
               clients={clients}
             />
@@ -187,7 +319,12 @@ const TasksAndMeetings = () => {
         <TasksStatsHeader tasks={tasks} meetings={meetings} />
 
         {/* Main Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4"
+          dir="rtl"
+        >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <TabsList className="w-fit">
               <TabsTrigger value="tasks" className="gap-2">
@@ -198,9 +335,13 @@ const TasksAndMeetings = () => {
                 <Calendar className="h-4 w-4" />
                 פגישות ({meetings.length})
               </TabsTrigger>
+              <TabsTrigger value="reminders" className="gap-2">
+                <Bell className="h-4 w-4" />
+                תזכורות
+              </TabsTrigger>
             </TabsList>
 
-            {activeTab === 'tasks' && (
+            {activeTab === "tasks" && (
               <TasksViewToggle view={taskView} onViewChange={setTaskView} />
             )}
           </div>
@@ -217,7 +358,7 @@ const TasksAndMeetings = () => {
               />
             </div>
 
-            {activeTab === 'tasks' && (
+            {activeTab === "tasks" && (
               <>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[140px]">
@@ -233,7 +374,10 @@ const TasksAndMeetings = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <Select
+                  value={priorityFilter}
+                  onValueChange={setPriorityFilter}
+                >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="עדיפות" />
                   </SelectTrigger>
@@ -246,6 +390,41 @@ const TasksAndMeetings = () => {
                 </Select>
               </>
             )}
+
+            {activeTab !== "reminders" && (
+              <>
+                <Select
+                  value={sortBy}
+                  onValueChange={(v) => setSortBy(v as SortField)}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <ArrowUpDown className="h-4 w-4 ml-2" />
+                    <SelectValue placeholder="מיון" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at">תאריך יצירה</SelectItem>
+                    <SelectItem value="event_date">
+                      {activeTab === "tasks" ? "תאריך יעד" : "מועד פגישה"}
+                    </SelectItem>
+                    <SelectItem value="title">שם</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                  }
+                  title={sortOrder === "asc" ? "סדר עולה" : "סדר יורד"}
+                >
+                  {sortOrder === "asc" ? (
+                    <ArrowUp className="h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Tasks Content */}
@@ -256,42 +435,42 @@ const TasksAndMeetings = () => {
               </div>
             ) : (
               <>
-                {taskView === 'list' && (
+                {taskView === "list" && (
                   <TasksListView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
                   />
                 )}
-                {taskView === 'grid' && (
+                {taskView === "grid" && (
                   <TasksGridView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onToggleComplete={handleToggleComplete}
                   />
                 )}
-                {taskView === 'kanban' && (
+                {taskView === "kanban" && (
                   <TasksKanbanView
-                    tasks={filteredTasks}
+                    tasks={sortedTasks}
                     onEdit={handleEditTask}
                     onDelete={handleDeleteTask}
                     onStatusChange={handleStatusChange}
                   />
                 )}
-                {taskView === 'calendar' && (
+                {taskView === "calendar" && (
                   <TasksCalendarView
-                    tasks={filteredTasks}
-                    meetings={filteredMeetings}
+                    tasks={sortedTasks}
+                    meetings={sortedMeetings}
                     onTaskClick={handleEditTask}
                     onMeetingClick={handleEditMeeting}
                   />
                 )}
-                {taskView === 'timeline' && (
+                {taskView === "timeline" && (
                   <TasksTimelineView
-                    tasks={filteredTasks}
-                    meetings={filteredMeetings}
+                    tasks={sortedTasks}
+                    meetings={sortedMeetings}
                     onTaskEdit={handleEditTask}
                     onTaskDelete={handleDeleteTask}
                     onMeetingEdit={handleEditMeeting}
@@ -310,11 +489,16 @@ const TasksAndMeetings = () => {
               </div>
             ) : (
               <MeetingsListView
-                meetings={filteredMeetings}
+                meetings={sortedMeetings}
                 onEdit={handleEditMeeting}
                 onDelete={handleDeleteMeeting}
               />
             )}
+          </TabsContent>
+
+          {/* Reminders Content */}
+          <TabsContent value="reminders" className="mt-4">
+            <RemindersTabContent />
           </TabsContent>
         </Tabs>
       </div>

@@ -8,8 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Building2, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+
+const REMEMBER_ME_KEY = 'econtrol_remember_email';
 
 const loginSchema = z.object({
   email: z.string().email('כתובת אימייל לא תקינה'),
@@ -33,8 +36,13 @@ export default function Auth() {
   const [authView, setAuthView] = useState<'auth' | 'forgot' | 'reset'>('auth');
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail, setLoginEmail] = useState(() => {
+    return localStorage.getItem(REMEMBER_ME_KEY) || '';
+  });
   const [loginPassword, setLoginPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return !!localStorage.getItem(REMEMBER_ME_KEY);
+  });
 
   // Signup form state
   const [signupEmail, setSignupEmail] = useState('');
@@ -88,6 +96,14 @@ export default function Auth() {
     }
 
     setIsSubmitting(true);
+    
+    // Save or remove email based on "remember me" checkbox
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_ME_KEY, loginEmail);
+    } else {
+      localStorage.removeItem(REMEMBER_ME_KEY);
+    }
+    
     const { error } = await signIn(loginEmail, loginPassword);
     setIsSubmitting(false);
 
@@ -150,7 +166,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'נרשמת בהצלחה!',
-        description: 'ברוך הבא למערכת e-control',
+        description: 'ברוך הבא למערכת tenarch',
       });
     }
   };
@@ -258,7 +274,10 @@ export default function Auth() {
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground shadow-lg mb-4">
             <Building2 className="h-8 w-8" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">e-control</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            <span className="bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">ten</span>
+            <span className="text-foreground">arch</span>
+          </h1>
           <p className="text-muted-foreground mt-1">טכנולוגיות מתקדמות</p>
         </div>
 
@@ -290,7 +309,7 @@ export default function Auth() {
                 </div>
 
                 <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                   שלח קישור לאיפוס סיסמה
                 </Button>
 
@@ -335,7 +354,7 @@ export default function Auth() {
                 </div>
 
                 <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin ml-2" /> : null}
+                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                   עדכן סיסמה
                 </Button>
 
@@ -387,10 +406,19 @@ export default function Auth() {
                     {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
                   </div>
 
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="remember-me"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(!!checked)}
+                    />
+                    <Label htmlFor="remember-me" className="text-sm cursor-pointer">
+                      זכור אותי במחשב זה
+                    </Label>
+                  </div>
+
                   <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : null}
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                     התחבר
                   </Button>
 
@@ -479,9 +507,7 @@ export default function Auth() {
                   </div>
 
                   <Button type="submit" className="w-full btn-gold" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : null}
+                    {isSubmitting && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
                     הירשם
                   </Button>
                 </form>
@@ -492,7 +518,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2024 טכנולוגיות מתקדמות e-control. כל הזכויות שמורות.
+          © 2026 טכנולוגיות מתקדמות tenarch. כל הזכויות שמורות.
         </p>
       </div>
     </div>

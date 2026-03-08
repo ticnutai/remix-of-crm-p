@@ -35,8 +35,6 @@ import {
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
 
 const EXPENSE_CATEGORIES = [
   { value: 'supplier', label: 'ספקים', color: 'hsl(217, 91%, 60%)' },
@@ -193,7 +191,8 @@ export const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({
   }, [monthlyTrend]);
 
   // Export to PDF
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     doc.setFont('helvetica');
     
@@ -221,7 +220,8 @@ export const ExpenseAnalytics: React.FC<ExpenseAnalyticsProps> = ({
   };
 
   // Export to Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     
     // Summary sheet

@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import React, { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Eye, Code, Save, Trash2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { EmailPreviewModal } from '@/components/email/EmailPreviewModal';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Eye, Code, Save, Trash2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { EmailPreviewModal } from "@/components/email/EmailPreviewModal";
 
 interface EmailTemplate {
   id: string;
@@ -38,20 +39,21 @@ export function EmailTemplateManager() {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<EmailTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [previewMode, setPreviewMode] = useState<'html' | 'code'>('html');
+  const [previewMode, setPreviewMode] = useState<"html" | "code">("html");
   const [showPreview, setShowPreview] = useState(false);
 
   const [form, setForm] = useState({
-    name: '',
-    description: '',
-    subject: '',
-    html_content: '',
-    text_content: '',
-    category: 'general',
+    name: "",
+    description: "",
+    subject: "",
+    html_content: "",
+    text_content: "",
+    category: "general",
     variables: [] as string[],
-    newVariable: '',
+    newVariable: "",
   });
 
   useEffect(() => {
@@ -61,24 +63,24 @@ export function EmailTemplateManager() {
   const fetchTemplates = async () => {
     try {
       const { data, error } = await supabase
-        .from('email_templates')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("email_templates")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      
+
       // Parse variables from JSONB to string array
       const parsedTemplates = (data || []).map((t: any) => ({
         ...t,
         variables: Array.isArray(t.variables) ? t.variables : [],
       }));
-      
+
       setTemplates(parsedTemplates);
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
-        description: 'לא הצלחנו לטעון את התבניות',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא הצלחנו לטעון את התבניות",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -88,9 +90,9 @@ export function EmailTemplateManager() {
   const handleSave = async () => {
     if (!form.name || !form.subject || !form.html_content) {
       toast({
-        title: 'שגיאה',
-        description: 'אנא מלא את כל השדות הנדרשים',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "אנא מלא את כל השדות הנדרשים",
+        variant: "destructive",
       });
       return;
     }
@@ -109,26 +111,26 @@ export function EmailTemplateManager() {
 
       if (selectedTemplate) {
         const { error } = await supabase
-          .from('email_templates')
+          .from("email_templates")
           .update(templateData)
-          .eq('id', selectedTemplate.id);
+          .eq("id", selectedTemplate.id);
 
         if (error) throw error;
 
         toast({
-          title: 'הצלחה',
-          description: 'התבנית עודכנה בהצלחה',
+          title: "הצלחה",
+          description: "התבנית עודכנה בהצלחה",
         });
       } else {
         const { error } = await supabase
-          .from('email_templates')
+          .from("email_templates")
           .insert(templateData);
 
         if (error) throw error;
 
         toast({
-          title: 'הצלחה',
-          description: 'התבנית נוצרה בהצלחה',
+          title: "הצלחה",
+          description: "התבנית נוצרה בהצלחה",
         });
       }
 
@@ -138,49 +140,49 @@ export function EmailTemplateManager() {
       fetchTemplates();
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק תבנית זו?')) return;
+    if (!confirm("האם אתה בטוח שברצונך למחוק תבנית זו?")) return;
 
     try {
       const { error } = await supabase
-        .from('email_templates')
+        .from("email_templates")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
       toast({
-        title: 'הצלחה',
-        description: 'התבנית נמחקה בהצלחה',
+        title: "הצלחה",
+        description: "התבנית נמחקה בהצלחה",
       });
 
       fetchTemplates();
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   const resetForm = () => {
     setForm({
-      name: '',
-      description: '',
-      subject: '',
-      html_content: '',
-      text_content: '',
-      category: 'general',
+      name: "",
+      description: "",
+      subject: "",
+      html_content: "",
+      text_content: "",
+      category: "general",
       variables: [],
-      newVariable: '',
+      newVariable: "",
     });
   };
 
@@ -188,13 +190,13 @@ export function EmailTemplateManager() {
     setSelectedTemplate(template);
     setForm({
       name: template.name,
-      description: template.description || '',
+      description: template.description || "",
       subject: template.subject,
       html_content: template.html_content,
-      text_content: template.text_content || '',
+      text_content: template.text_content || "",
       category: template.category,
       variables: template.variables,
-      newVariable: '',
+      newVariable: "",
     });
     setIsEditing(true);
   };
@@ -204,7 +206,7 @@ export function EmailTemplateManager() {
       setForm({
         ...form,
         variables: [...form.variables, form.newVariable],
-        newVariable: '',
+        newVariable: "",
       });
     }
   };
@@ -212,44 +214,50 @@ export function EmailTemplateManager() {
   const removeVariable = (variable: string) => {
     setForm({
       ...form,
-      variables: form.variables.filter(v => v !== variable),
+      variables: form.variables.filter((v) => v !== variable),
     });
   };
 
   const getPreviewHtml = () => {
     let html = form.html_content;
-    form.variables.forEach(variable => {
-      const regex = new RegExp(`{{${variable}}}`, 'g');
-      html = html.replace(regex, `<span style="background: #fef3c7; padding: 2px 4px; border-radius: 3px;">[${variable}]</span>`);
+    form.variables.forEach((variable) => {
+      const regex = new RegExp(`{{${variable}}}`, "g");
+      html = html.replace(
+        regex,
+        `<span style="background: #fef3c7; padding: 2px 4px; border-radius: 3px;">[${variable}]</span>`,
+      );
     });
     return html;
   };
 
   const handleSendTestEmail = async (testEmail: string) => {
     try {
-      const { error } = await supabase.functions.invoke('send-reminder-email', {
+      const { error } = await supabase.functions.invoke("send-reminder-email", {
         body: {
           to: testEmail,
           subject: form.subject,
           html: form.html_content,
-          variables: form.variables.reduce((acc, variable) => {
-            acc[variable] = `[${variable}]`;
-            return acc;
-          }, {} as Record<string, string>),
+          variables: form.variables.reduce(
+            (acc, variable) => {
+              acc[variable] = `[${variable}]`;
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
         },
       });
 
       if (error) throw error;
 
       toast({
-        title: 'הצלחה',
-        description: 'אימייל בדיקה נשלח בהצלחה',
+        title: "הצלחה",
+        description: "אימייל בדיקה נשלח בהצלחה",
       });
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -262,7 +270,13 @@ export function EmailTemplateManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">ניהול תבניות אימייל</h2>
-        <Button onClick={() => { resetForm(); setIsEditing(true); setSelectedTemplate(null); }}>
+        <Button
+          onClick={() => {
+            resetForm();
+            setIsEditing(true);
+            setSelectedTemplate(null);
+          }}
+        >
           <Plus className="h-4 w-4 ml-2" />
           תבנית חדשה
         </Button>
@@ -271,7 +285,9 @@ export function EmailTemplateManager() {
       {isEditing && (
         <Card>
           <CardHeader>
-            <CardTitle>{selectedTemplate ? 'עריכת תבנית' : 'תבנית חדשה'}</CardTitle>
+            <CardTitle>
+              {selectedTemplate ? "עריכת תבנית" : "תבנית חדשה"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -285,7 +301,12 @@ export function EmailTemplateManager() {
               </div>
               <div>
                 <Label>קטגוריה</Label>
-                <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value })}>
+                <Select
+                  value={form.category}
+                  onValueChange={(value) =>
+                    setForm({ ...form, category: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -303,7 +324,9 @@ export function EmailTemplateManager() {
               <Label>תיאור</Label>
               <Input
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
                 placeholder="תיאור קצר של התבנית"
               />
             </div>
@@ -322,25 +345,37 @@ export function EmailTemplateManager() {
               <div className="flex gap-2 mb-2">
                 <Input
                   value={form.newVariable}
-                  onChange={(e) => setForm({ ...form, newVariable: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, newVariable: e.target.value })
+                  }
                   placeholder="שם משתנה (לדוגמה: userName)"
-                  onKeyPress={(e) => e.key === 'Enter' && addVariable()}
+                  onKeyPress={(e) => e.key === "Enter" && addVariable()}
                 />
-                <Button onClick={addVariable} type="button">הוסף</Button>
+                <Button onClick={addVariable} type="button">
+                  הוסף
+                </Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {form.variables.map(variable => (
-                  <Badge key={variable} variant="secondary" className="cursor-pointer" onClick={() => removeVariable(variable)}>
+                {form.variables.map((variable) => (
+                  <Badge
+                    key={variable}
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => removeVariable(variable)}
+                  >
                     {variable} ×
                   </Badge>
                 ))}
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                השתמש במשתנים כך: {'{{variableName}}'}
+                השתמש במשתנים כך: {"{{variableName}}"}
               </p>
             </div>
 
-            <Tabs value={previewMode} onValueChange={(v) => setPreviewMode(v as 'html' | 'code')}>
+            <Tabs
+              value={previewMode}
+              onValueChange={(v) => setPreviewMode(v as "html" | "code")}
+            >
               <TabsList>
                 <TabsTrigger value="code">
                   <Code className="h-4 w-4 ml-2" />
@@ -357,7 +392,9 @@ export function EmailTemplateManager() {
                   <Label>תוכן HTML *</Label>
                   <Textarea
                     value={form.html_content}
-                    onChange={(e) => setForm({ ...form, html_content: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, html_content: e.target.value })
+                    }
                     placeholder="<!DOCTYPE html>..."
                     className="font-mono text-sm min-h-[400px]"
                   />
@@ -367,7 +404,9 @@ export function EmailTemplateManager() {
                   <Label>תוכן טקסט רגיל</Label>
                   <Textarea
                     value={form.text_content}
-                    onChange={(e) => setForm({ ...form, text_content: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, text_content: e.target.value })
+                    }
                     placeholder="גרסת טקסט פשוטה של האימייל"
                     className="min-h-[150px]"
                   />
@@ -376,13 +415,23 @@ export function EmailTemplateManager() {
 
               <TabsContent value="html">
                 <ScrollArea className="h-[500px] border rounded-md p-4 bg-white">
-                  <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(getPreviewHtml()),
+                    }}
+                  />
                 </ScrollArea>
               </TabsContent>
             </Tabs>
 
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setIsEditing(false); setSelectedTemplate(null); }}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditing(false);
+                  setSelectedTemplate(null);
+                }}
+              >
                 ביטול
               </Button>
               <Button variant="secondary" onClick={() => setShowPreview(true)}>
@@ -403,23 +452,31 @@ export function EmailTemplateManager() {
         onOpenChange={setShowPreview}
         htmlContent={form.html_content}
         subject={form.subject}
-        variables={form.variables.reduce((acc, variable) => {
-          acc[variable] = `[${variable}]`;
-          return acc;
-        }, {} as Record<string, string>)}
+        variables={form.variables.reduce(
+          (acc, variable) => {
+            acc[variable] = `[${variable}]`;
+            return acc;
+          },
+          {} as Record<string, string>,
+        )}
         onSendTest={handleSendTestEmail}
       />
 
       {!isEditing && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map(template => (
-            <Card key={template.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+          {templates.map((template) => (
+            <Card
+              key={template.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <CardTitle className="text-lg">{template.name}</CardTitle>
                     {template.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {template.description}
+                      </p>
                     )}
                   </div>
                   {template.is_default && (
@@ -435,15 +492,26 @@ export function EmailTemplateManager() {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <span className="font-medium">משתנים: </span>
-                    {template.variables.length > 0 ? template.variables.join(', ') : 'אין'}
+                    {template.variables.length > 0
+                      ? template.variables.join(", ")
+                      : "אין"}
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => loadTemplate(template)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => loadTemplate(template)}
+                    >
                       <Eye className="h-4 w-4 ml-2" />
                       ערוך
                     </Button>
                     {!template.is_default && (
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(template.id)}>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(template.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -184,7 +184,7 @@ const CHART_TYPE_OPTIONS: Record<ChartType, { label: string; icon: React.ReactNo
   gauge: { label: 'מד', icon: <Gauge className="h-4 w-4" /> },
 };
 
-export function DisplayOptions({
+export const DisplayOptions = forwardRef<HTMLDivElement, DisplayOptionsProps>(function DisplayOptions({
   viewType,
   onViewTypeChange,
   availableViewTypes = ['bar', 'pie', 'line', 'table'],
@@ -203,7 +203,7 @@ export function DisplayOptions({
   size = 'sm',
   className,
   iconOnly = false,
-}: DisplayOptionsProps) {
+}, _ref) {
   const [isOpen, setIsOpen] = useState(false);
 
   const hasViewTypes = viewType !== undefined && onViewTypeChange;
@@ -363,7 +363,7 @@ export function DisplayOptions({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
 
 // Hover Actions Component - Edit/Delete icons that appear on hover
 interface HoverActionsProps {

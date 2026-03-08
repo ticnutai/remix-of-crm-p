@@ -7,6 +7,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Backup folders (auto-generated)
+backup-*/
+backup_*.json
+*.backup.json
+
 node_modules
 dist
 dist-ssr
@@ -27,3 +32,10 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# OAuth and API secrets - NEVER commit these!
+client_secret*.json
+*client_secret*.json
+*.pem
+*.key
+credentials.json
+token.jsontest-results/

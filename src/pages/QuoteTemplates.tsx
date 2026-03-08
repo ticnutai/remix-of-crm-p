@@ -1,5 +1,5 @@
 // עמוד תבניות הצעות מחיר
-// ניהול תבניות מוכנות להצעות
+// ניהול תבניות מוכנות להצעות מחיר מתקדמות
 
 import React from 'react';
 import { AppLayout } from '@/components/layout';

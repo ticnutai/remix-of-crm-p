@@ -4,7 +4,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
 interface Invoice {
@@ -44,7 +45,8 @@ serve(async (req) => {
         // Get all overdue invoices
         const { data: invoices, error: invoicesError } = await supabase
           .from("invoices")
-          .select(`
+          .select(
+            `
             id,
             invoice_number,
             client_id,
@@ -53,7 +55,8 @@ serve(async (req) => {
             due_date,
             created_by,
             clients(name)
-          `)
+          `,
+          )
           .eq("status", "sent")
           .lt("due_date", new Date().toISOString().split("T")[0]);
 
@@ -69,7 +72,7 @@ serve(async (req) => {
 
         for (const invoice of invoices || []) {
           const clientName = (invoice.clients as any)?.name || "לקוח";
-          
+
           // Update invoice status to overdue
           await supabase
             .from("invoices")
@@ -106,7 +109,7 @@ serve(async (req) => {
             if (sendEmail && resendApiKey) {
               try {
                 const resend = new Resend(resendApiKey);
-                
+
                 // Get user email
                 const { data: profile } = await supabase
                   .from("profiles")
@@ -148,7 +151,7 @@ serve(async (req) => {
             alertsCreated,
             emailsSent,
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
@@ -170,8 +173,12 @@ serve(async (req) => {
 
         // Get current month stats
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+          .toISOString()
+          .split("T")[0];
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+          .toISOString()
+          .split("T")[0];
 
         // Get paid invoices this month
         const { data: paidInvoices } = await supabase
@@ -181,7 +188,8 @@ serve(async (req) => {
           .gte("paid_date", startOfMonth)
           .lte("paid_date", endOfMonth);
 
-        const totalIncome = paidInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
+        const totalIncome =
+          paidInvoices?.reduce((sum, inv) => sum + Number(inv.amount), 0) || 0;
 
         // Get expenses this month
         const { data: expenses } = await supabase
@@ -190,9 +198,10 @@ serve(async (req) => {
           .gte("expense_date", startOfMonth)
           .lte("expense_date", endOfMonth);
 
-        const totalExpenses = expenses?.reduce((sum, exp) => {
-          return sum + Number(exp.amount) * (exp.is_recurring ? 1 : 1);
-        }, 0) || 0;
+        const totalExpenses =
+          expenses?.reduce((sum, exp) => {
+            return sum + Number(exp.amount) * (exp.is_recurring ? 1 : 1);
+          }, 0) || 0;
 
         // Get overdue count
         const { count: overdueCount } = await supabase
@@ -221,7 +230,7 @@ serve(async (req) => {
         // Send email if Resend is configured
         if (resendApiKey) {
           const resend = new Resend(resendApiKey);
-          
+
           await resend.emails.send({
             from: "Financial Summary <alerts@resend.dev>",
             to: [profile.email],
@@ -267,13 +276,13 @@ serve(async (req) => {
               pendingCount,
             },
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
       case "send_collection_reminder": {
         const { invoiceId } = await req.json();
-        
+
         if (!invoiceId) {
           throw new Error("invoiceId is required");
         }
@@ -281,10 +290,12 @@ serve(async (req) => {
         // Get invoice details
         const { data: invoice, error } = await supabase
           .from("invoices")
-          .select(`
+          .select(
+            `
             *,
             clients(name, email, phone)
-          `)
+          `,
+          )
           .eq("id", invoiceId)
           .single();
 
@@ -293,7 +304,7 @@ serve(async (req) => {
         }
 
         const client = invoice.clients as any;
-        
+
         // Create alert
         await supabase.from("financial_alerts").insert({
           user_id: invoice.created_by,
@@ -308,7 +319,7 @@ serve(async (req) => {
         // Send email to client if available
         if (resendApiKey && client?.email) {
           const resend = new Resend(resendApiKey);
-          
+
           await resend.emails.send({
             from: "Payment Reminder <reminders@resend.dev>",
             to: [client.email],
@@ -337,21 +348,21 @@ serve(async (req) => {
             success: true,
             message: "Collection reminder sent",
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: "Invalid action" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Invalid action" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
     }
   } catch (error: any) {
     console.error("Error in financial-alerts function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

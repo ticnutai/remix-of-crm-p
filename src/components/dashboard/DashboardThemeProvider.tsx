@@ -201,10 +201,20 @@ export function DashboardThemeProvider({ children }: { children: ReactNode }) {
 
   const themeConfig = dashboardThemes[currentTheme];
 
+  // Listen for theme changes from cloud sync
+  useEffect(() => {
+    const handleThemeChange = (e: CustomEvent<string>) => {
+      if (e.detail && dashboardThemes[e.detail as DashboardTheme]) {
+        setCurrentTheme(e.detail as DashboardTheme);
+      }
+    };
+
+    window.addEventListener('dashboardThemeChanged', handleThemeChange as EventListener);
+    return () => window.removeEventListener('dashboardThemeChanged', handleThemeChange as EventListener);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(DASHBOARD_THEME_KEY, currentTheme);
-    // Trigger storage event for cloud sync
-    window.dispatchEvent(new StorageEvent('storage', { key: DASHBOARD_THEME_KEY }));
   }, [currentTheme]);
 
   const setTheme = (theme: DashboardTheme) => {

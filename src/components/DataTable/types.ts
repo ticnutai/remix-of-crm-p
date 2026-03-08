@@ -1,6 +1,29 @@
 // DataTable Matrix Pro - Type Definitions
 
-export type SortDirection = 'asc' | 'desc' | null;
+export type SortDirection = "asc" | "desc" | null;
+
+// Table style types
+export type TableDividers = "none" | "horizontal" | "vertical" | "both";
+export type TableHeaderOpacity = "transparent" | "semi" | "solid";
+
+export interface TableStyleConfig {
+  dividers: TableDividers;
+  headerSticky: boolean;
+  headerOpacity: TableHeaderOpacity;
+  rowGap: number;
+  cellPadding: number;
+  striped: boolean;
+  bordered: boolean;
+  compact: boolean;
+  // Color styling
+  headerBgColor?: string;
+  headerTextColor?: string;
+  rowBgColor?: string;
+  rowAltBgColor?: string;
+  dividerColor?: string;
+  hoverBgColor?: string;
+  accentColor?: string;
+}
 
 export interface SelectOption {
   value: string;
@@ -8,6 +31,16 @@ export interface SelectOption {
   color?: string;
   bgColor?: string;
   icon?: string;
+}
+
+// Header styling
+export interface HeaderStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  backgroundColor?: string;
+  align?: "left" | "center" | "right";
 }
 
 export interface ColumnDef<T = any> {
@@ -20,17 +53,25 @@ export interface ColumnDef<T = any> {
   filterable?: boolean;
   resizable?: boolean;
   hidden?: boolean;
+  hideable?: boolean; // Can this column be hidden via context menu?
+  deletable?: boolean; // Can this column be deleted via context menu?
   width?: number;
   minWidth?: number;
   maxWidth?: number;
-  align?: 'right' | 'center' | 'left';
-  sticky?: 'right' | 'left';
+  align?: "right" | "center" | "left";
+  sticky?: "right" | "left";
   groupable?: boolean;
   // For summary calculations
-  summary?: 'sum' | 'avg' | 'count' | 'min' | 'max' | ((values: any[]) => any);
+  summary?: "sum" | "avg" | "count" | "min" | "max" | ((values: any[]) => any);
   // Cell editing
   editable?: boolean;
-  editType?: 'text' | 'number' | 'select' | 'date' | 'checkbox' | 'enhanced-select';
+  editType?:
+    | "text"
+    | "number"
+    | "select"
+    | "date"
+    | "checkbox"
+    | "enhanced-select";
   editOptions?: SelectOption[];
   // Header editing
   headerEditable?: boolean;
@@ -48,7 +89,16 @@ export interface SortState {
 export interface FilterState {
   columnId: string;
   value: string | number | boolean | null;
-  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains' | 'startsWith' | 'endsWith';
+  operator:
+    | "eq"
+    | "neq"
+    | "gt"
+    | "gte"
+    | "lt"
+    | "lte"
+    | "contains"
+    | "startsWith"
+    | "endsWith";
 }
 
 // Cell formatting types
@@ -58,7 +108,7 @@ export interface CellStyle {
   underline?: boolean;
   color?: string;
   backgroundColor?: string;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
 }
 
 export interface CellNote {
@@ -94,8 +144,8 @@ export interface DataTableProps<T = any> {
   data: T[];
   columns: ColumnDef<T>[];
   // Styling
-  variant?: 'default' | 'gold' | 'navy' | 'minimal';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "default" | "gold" | "navy" | "minimal";
+  size?: "sm" | "md" | "lg";
   striped?: boolean;
   bordered?: boolean;
   // Features
@@ -140,13 +190,23 @@ export interface DataTableProps<T = any> {
   virtualScroll?: boolean;
   virtualScrollThreshold?: number;
   rowHeight?: number;
+
+  /**
+   * When `paginated` is false, the table body uses a max-height based on the viewport.
+   * This offset controls how much space to reserve for surrounding UI.
+   * Default is 400.
+   */
+  maxViewportHeightOffset?: number;
   // Keyboard navigation
   keyboardNavigation?: boolean;
   // Cell formatting
   cellFormatting?: CellFormatting;
   onCellStyleChange?: (cellId: string, style: CellStyle) => void;
   onCellNoteChange?: (cellId: string, note: CellNote | null) => void;
-  onCellReminderAdd?: (cellId: string, reminder: Omit<CellReminder, 'id'>) => void;
+  onCellReminderAdd?: (
+    cellId: string,
+    reminder: Omit<CellReminder, "id">,
+  ) => void;
   onCellReminderUpdate?: (cellId: string, reminder: CellReminder) => void;
   onCellReminderDelete?: (cellId: string, reminderId: string) => void;
   // Multi-cell selection
@@ -156,7 +216,13 @@ export interface DataTableProps<T = any> {
   frozenRows?: number;
   onFrozenRowsChange?: (count: number) => void;
   // Cell merging
-  mergedCells?: Array<{ id: string; startRow: number; endRow: number; startColumn: string; endColumn: string; }>;
+  mergedCells?: Array<{
+    id: string;
+    startRow: number;
+    endRow: number;
+    startColumn: string;
+    endColumn: string;
+  }>;
   onMergeCells?: (cells: Set<string>) => void;
   onUnmergeCells?: (mergeId: string) => void;
   // Column management callbacks
@@ -164,11 +230,27 @@ export interface DataTableProps<T = any> {
   onRenameColumn?: (columnId: string, newName: string) => void;
   onDeleteColumn?: (columnId: string) => void;
   onDeleteColumns?: (columnIds: string[]) => void;
+  onHideColumn?: (columnId: string) => void;
+  onFreezeColumn?: (columnId: string) => void;
+  onMoveColumnLeft?: (columnId: string) => void;
+  onMoveColumnRight?: (columnId: string) => void;
+  // Header styling
+  headerStyles?: Record<string, HeaderStyle>;
+  onHeaderStyleChange?: (columnId: string, style: HeaderStyle) => void;
+  // Table styling config
+  tableStyleConfig?: TableStyleConfig;
+  onTableStyleChange?: (config: TableStyleConfig) => void;
   // Quick add callbacks - these open dialogs, not handle data directly
   onQuickAddRows?: () => void;
   onQuickAddColumns?: () => void;
   // Field metadata for Ctrl+Click display
   rowFieldMetadata?: (row: T) => FieldMetadata | undefined;
+
+  /**
+   * Optional: render the table toolbar into an external DOM node (by id).
+   * Useful for placing all controls in a single page-level header row.
+   */
+  toolbarPortalId?: string;
 }
 
 export interface DataTableState<T = any> {

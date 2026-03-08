@@ -1,4 +1,4 @@
-// Empty State Component - e-control CRM Pro
+// Empty State Component - tenarch CRM Pro
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';

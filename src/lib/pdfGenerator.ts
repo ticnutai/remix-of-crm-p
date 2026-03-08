@@ -1,8 +1,14 @@
 // מודול ייצוא PDF לחוזים
 // תמיכה בעברית, RTL, לוגו וחתימות
+// html2pdf is dynamically imported to reduce bundle size
 
-import html2pdf from 'html2pdf.js';
 import { format } from 'date-fns';
+
+// Dynamic import helper for html2pdf (very large library ~200KB)
+const getHtml2Pdf = async () => {
+  const module = await import('html2pdf.js');
+  return module.default;
+};
 
 export interface PdfOptions {
   filename?: string;
@@ -26,6 +32,9 @@ export async function generatePdfFromHtml(
   options: PdfOptions = {}
 ): Promise<Blob> {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  
+  // Dynamically import html2pdf only when needed
+  const html2pdf = await getHtml2Pdf();
   
   // עטיפת התוכן עם סגנונות RTL
   const wrappedHtml = `

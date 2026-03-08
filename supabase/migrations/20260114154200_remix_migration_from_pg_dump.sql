@@ -1,3 +1,26 @@
+-- =============================================================================
+-- COMBINED MIGRATION: Drops existing objects first, then creates everything
+-- Safe to run on a fresh or existing Supabase project
+-- =============================================================================
+
+-- Drop types if they exist (to avoid "already exists" errors)
+DROP TYPE IF EXISTS public.app_role CASCADE;
+DROP TYPE IF EXISTS public.call_direction CASCADE;
+DROP TYPE IF EXISTS public.call_status CASCADE;
+DROP TYPE IF EXISTS public.custom_field_type CASCADE;
+
+-- Drop functions that might depend on types
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role) CASCADE;
+DROP FUNCTION IF EXISTS public.get_client_id(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_contract_number() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_invoice_number() CASCADE;
+DROP FUNCTION IF EXISTS public.generate_quote_number() CASCADE;
+DROP FUNCTION IF EXISTS public.update_client_stage_days() CASCADE;
+
+-- =============================================================================
+
 CREATE EXTENSION IF NOT EXISTS "pg_cron";
 CREATE EXTENSION IF NOT EXISTS "pg_graphql";
 CREATE EXTENSION IF NOT EXISTS "pg_net";

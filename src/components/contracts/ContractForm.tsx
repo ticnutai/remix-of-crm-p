@@ -9,7 +9,7 @@ import { TemplateSelectDialog, GeneratedContractData } from './TemplateSelectDia
 import { ContractTemplatesManager } from './ContractTemplatesManager';
 import { ContractPartiesEditor } from './ContractPartiesEditor';
 import { PaymentScheduleEditor, PaymentStep } from './PaymentScheduleEditor';
-import { ContractTemplate, useContractTemplates, ClientData, ContractParty } from '@/hooks/useContractTemplates';
+import { ContractTemplate, ClientData, ContractParty } from '@/hooks/useContractTemplates';
 import {
   Dialog,
   DialogContent,
@@ -466,7 +466,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
                         type="number" 
                         placeholder="0" 
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -647,7 +647,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
                           type="number" 
                           placeholder="סכום מקדמה" 
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -719,7 +719,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
                 ביטול
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'שומר...' : (initialData ? 'עדכן חוזה' : 'צור חוזה')}
+                {isLoading ? 'שומר...' : initialData ? 'עדכן חוזה' : 'צור חוזה'}
               </Button>
             </div>
           </form>
@@ -737,7 +737,7 @@ export function ContractForm({ open, onOpenChange, onSubmit, initialData, quoteD
       startDate={(() => {
         if (!watchedStartDate) return new Date();
         const parsed = new Date(watchedStartDate);
-        return isNaN(parsed.getTime()) ? new Date() : parsed;
+        return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
       })()}
     />
 

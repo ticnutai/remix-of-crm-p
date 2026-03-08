@@ -1,30 +1,53 @@
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Environment validation
+const requiredEnvVars = [
+  "VITE_SUPABASE_URL",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+] as const;
+const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
+
+if (missingEnvVars.length > 0 && import.meta.env.DEV) {
+  console.warn(
+    `⚠️ Missing environment variables: ${missingEnvVars.join(", ")}\n` +
+      "Using fallback values from vite.config.ts",
+  );
+}
+
 // Register Service Worker for PWA
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register("/sw.js")
       .then((registration) => {
-        console.log('SW registered:', registration.scope);
-        
+        // SW registered
+
         // Check for updates periodically
-        setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000); // Every hour
-        
+        setInterval(
+          () => {
+            registration.update();
+          },
+          60 * 60 * 1000,
+        ); // Every hour
+
         // Listen for updates
-        registration.addEventListener('updatefound', () => {
+        registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
                 // New version available
-                const shouldUpdate = window.confirm('גרסה חדשה זמינה! לרענן עכשיו?');
+                const shouldUpdate = window.confirm(
+                  "גרסה חדשה זמינה! לרענן עכשיו?",
+                );
                 if (shouldUpdate) {
-                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  newWorker.postMessage({ type: "SKIP_WAITING" });
                   window.location.reload();
                 }
               }
@@ -33,9 +56,13 @@ if ('serviceWorker' in navigator) {
         });
       })
       .catch((error) => {
-        console.error('SW registration failed:', error);
+        console.error("SW registration failed:", error);
       });
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

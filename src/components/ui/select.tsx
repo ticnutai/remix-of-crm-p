@@ -67,7 +67,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       dir="rtl"
       className={cn(
-        "relative z-[100] max-h-[80vh] min-w-[8rem] overflow-y-auto rounded-lg border border-primary/20 bg-white text-popover-foreground text-right shadow-xl",
+        "relative z-[500] max-h-[80vh] min-w-[8rem] overflow-y-auto rounded-lg border border-primary/20 bg-white text-popover-foreground text-right shadow-xl",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className,

@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import React, { useState, useEffect } from "react";
+import DOMPurify from "dompurify";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -16,9 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Check, Star } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
+} from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2, Check, Star } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Signature {
   id: string;
@@ -39,9 +46,9 @@ export function EmailSignatureManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    name: '',
-    html_content: '',
-    text_content: '',
+    name: "",
+    html_content: "",
+    text_content: "",
     is_default: false,
   });
 
@@ -52,18 +59,18 @@ export function EmailSignatureManager() {
   const fetchSignatures = async () => {
     try {
       const { data, error } = await supabase
-        .from('email_signatures')
-        .select('*')
+        .from("email_signatures")
+        .select("*")
         .or(`user_id.eq.${user?.id},is_company_wide.eq.true`)
-        .order('created_at', { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setSignatures(data || []);
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
-        description: 'לא הצלחנו לטעון את החתימות',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "לא הצלחנו לטעון את החתימות",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -73,9 +80,9 @@ export function EmailSignatureManager() {
   const handleSave = async () => {
     if (!form.name || !form.html_content) {
       toast({
-        title: 'שגיאה',
-        description: 'אנא מלא את כל השדות הנדרשים',
-        variant: 'destructive',
+        title: "שגיאה",
+        description: "אנא מלא את כל השדות הנדרשים",
+        variant: "destructive",
       });
       return;
     }
@@ -91,19 +98,19 @@ export function EmailSignatureManager() {
 
       if (editingId) {
         const { error } = await supabase
-          .from('email_signatures')
+          .from("email_signatures")
           .update(signatureData)
-          .eq('id', editingId);
+          .eq("id", editingId);
 
         if (error) throw error;
-        toast({ title: 'הצלחה', description: 'החתימה עודכנה בהצלחה' });
+        toast({ title: "הצלחה", description: "החתימה עודכנה בהצלחה" });
       } else {
         const { error } = await supabase
-          .from('email_signatures')
+          .from("email_signatures")
           .insert(signatureData);
 
         if (error) throw error;
-        toast({ title: 'הצלחה', description: 'החתימה נוצרה בהצלחה' });
+        toast({ title: "הצלחה", description: "החתימה נוצרה בהצלחה" });
       }
 
       resetForm();
@@ -111,9 +118,9 @@ export function EmailSignatureManager() {
       fetchSignatures();
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
@@ -123,39 +130,39 @@ export function EmailSignatureManager() {
     setForm({
       name: signature.name,
       html_content: signature.html_content,
-      text_content: signature.text_content || '',
+      text_content: signature.text_content || "",
       is_default: signature.is_default,
     });
     setOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק חתימה זו?')) return;
+    if (!confirm("האם אתה בטוח שברצונך למחוק חתימה זו?")) return;
 
     try {
       const { error } = await supabase
-        .from('email_signatures')
+        .from("email_signatures")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
-      toast({ title: 'הצלחה', description: 'החתימה נמחקה בהצלחה' });
+      toast({ title: "הצלחה", description: "החתימה נמחקה בהצלחה" });
       fetchSignatures();
     } catch (error: any) {
       toast({
-        title: 'שגיאה',
+        title: "שגיאה",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   const resetForm = () => {
     setForm({
-      name: '',
-      html_content: '',
-      text_content: '',
+      name: "",
+      html_content: "",
+      text_content: "",
       is_default: false,
     });
     setEditingId(null);
@@ -170,16 +177,24 @@ export function EmailSignatureManager() {
             נהל חתימות אוטומטיות לאימיילים שלך
           </p>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 ml-2" />
               חתימה חדשה
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent dir="rtl" className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingId ? 'ערוך חתימה' : 'חתימה חדשה'}</DialogTitle>
+              <DialogTitle>
+                {editingId ? "ערוך חתימה" : "חתימה חדשה"}
+              </DialogTitle>
               <DialogDescription>
                 צור חתימה אישית שתתווסף אוטומטית לאימיילים שלך
               </DialogDescription>
@@ -198,7 +213,9 @@ export function EmailSignatureManager() {
                 <Label>תוכן HTML</Label>
                 <Textarea
                   value={form.html_content}
-                  onChange={(e) => setForm({ ...form, html_content: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, html_content: e.target.value })
+                  }
                   placeholder="<p><strong>שמך</strong></p><p>תפקיד • חברה</p>"
                   className="min-h-[150px] font-mono text-sm"
                 />
@@ -208,7 +225,9 @@ export function EmailSignatureManager() {
                 <Label>תוכן טקסט רגיל (אופציונלי)</Label>
                 <Textarea
                   value={form.text_content}
-                  onChange={(e) => setForm({ ...form, text_content: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, text_content: e.target.value })
+                  }
                   placeholder="שמך\nתפקיד • חברה"
                   className="min-h-[100px]"
                 />
@@ -230,7 +249,11 @@ export function EmailSignatureManager() {
               {/* Preview */}
               <div className="border rounded-lg p-4 bg-muted/30">
                 <p className="text-sm font-medium mb-2">תצוגה מקדימה:</p>
-                <div dangerouslySetInnerHTML={{ __html: form.html_content }} />
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(form.html_content),
+                  }}
+                />
               </div>
 
               <div className="flex gap-2 justify-end">
@@ -281,7 +304,7 @@ export function EmailSignatureManager() {
                         size="icon"
                         onClick={() => handleEdit(signature)}
                       >
-                        <Edit className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -297,7 +320,11 @@ export function EmailSignatureManager() {
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-32 border rounded-lg p-3 bg-muted/30">
-                  <div dangerouslySetInnerHTML={{ __html: signature.html_content }} />
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(signature.html_content),
+                    }}
+                  />
                 </ScrollArea>
               </CardContent>
             </Card>

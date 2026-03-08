@@ -1,0 +1,2907 @@
+﻿diff --git a/package-lock.json b/package-lock.json
+index 1d2dcfa..22e6292 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -48,6 +48,8 @@
+         "date-fns": "^3.6.0",
+         "date-fns-tz": "^3.2.0",
+         "embla-carousel-react": "^8.6.0",
++        "framer-motion": "^12.29.0",
++        "html2canvas": "^1.4.1",
+         "html2pdf.js": "^0.14.0",
+         "input-otp": "^1.4.2",
+         "jspdf": "^3.0.4",
+@@ -96,7 +98,6 @@
+       "version": "5.2.0",
+       "resolved": "https://registry.npmjs.org/@alloc/quick-lru/-/quick-lru-5.2.0.tgz",
+       "integrity": "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=10"
+@@ -131,6 +132,7 @@
+       "resolved": "https://registry.npmjs.org/@dnd-kit/core/-/core-6.3.1.tgz",
+       "integrity": "sha512-xkGBRQQab4RLwgXxoqETICr6S5JlogafbhNsidmrkVv2YRs5MLwpjoF2qpiGjQt8S9AoxtIV603s0GIUpY5eYQ==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@dnd-kit/accessibility": "^3.1.1",
+         "@dnd-kit/utilities": "^3.2.2",
+@@ -863,7 +865,6 @@
+       "version": "8.0.2",
+       "resolved": "https://registry.npmjs.org/@isaacs/cliui/-/cliui-8.0.2.tgz",
+       "integrity": "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "string-width": "^5.1.2",
+@@ -881,7 +882,6 @@
+       "version": "0.3.5",
+       "resolved": "https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.5.tgz",
+       "integrity": "sha512-IzL8ZoEDIBRWEzlCcRhOaCupYyN5gdIK+Q6fbFdPDg6HqX6jpkItn7DFIpW9LQzXG6Df9sA7+OKnq0qlz/GaQg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@jridgewell/set-array": "^1.2.1",
+@@ -896,7 +896,6 @@
+       "version": "3.1.2",
+       "resolved": "https://registry.npmjs.org/@jridgewell/resolve-uri/-/resolve-uri-3.1.2.tgz",
+       "integrity": "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=6.0.0"
+@@ -906,7 +905,6 @@
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/@jridgewell/set-array/-/set-array-1.2.1.tgz",
+       "integrity": "sha512-R8gLRTZeyp03ymzP/6Lil/28tGeGEzhx1q2k703KGWRAI1VdvPIXdG70VJc2pAMw3NA6JKL5hhFu1sJX0Mnn/A==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=6.0.0"
+@@ -916,14 +914,12 @@
+       "version": "1.5.0",
+       "resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.0.tgz",
+       "integrity": "sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/@jridgewell/trace-mapping": {
+       "version": "0.3.25",
+       "resolved": "https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.25.tgz",
+       "integrity": "sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@jridgewell/resolve-uri": "^3.1.0",
+@@ -955,7 +951,6 @@
+       "version": "2.1.5",
+       "resolved": "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz",
+       "integrity": "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@nodelib/fs.stat": "2.0.5",
+@@ -969,7 +964,6 @@
+       "version": "2.0.5",
+       "resolved": "https://registry.npmjs.org/@nodelib/fs.stat/-/fs.stat-2.0.5.tgz",
+       "integrity": "sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 8"
+@@ -979,7 +973,6 @@
+       "version": "1.2.8",
+       "resolved": "https://registry.npmjs.org/@nodelib/fs.walk/-/fs.walk-1.2.8.tgz",
+       "integrity": "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@nodelib/fs.scandir": "2.1.5",
+@@ -993,7 +986,6 @@
+       "version": "0.11.0",
+       "resolved": "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz",
+       "integrity": "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==",
+-      "dev": true,
+       "license": "MIT",
+       "optional": true,
+       "engines": {
+@@ -3100,7 +3092,7 @@
+       "version": "15.7.13",
+       "resolved": "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.13.tgz",
+       "integrity": "sha512-hCZTSvwbzWGvhqxp/RqVqwU999pBf2vp7hzIjiYOsl8wqOmUxkQ6ddw1cV3l8811+kdUFus/q4d1Y3E3SyEifA==",
+-      "dev": true,
++      "devOptional": true,
+       "license": "MIT"
+     },
+     "node_modules/@types/raf": {
+@@ -3114,8 +3106,9 @@
+       "version": "18.3.23",
+       "resolved": "https://registry.npmjs.org/@types/react/-/react-18.3.23.tgz",
+       "integrity": "sha512-/LDXMQh55EzZQ0uVAZmKKhfENivEvWz6E+EYzh+/MCjMhNsotd+ZHhBGIjFDTi6+fz0OhQQQLbTgdQIxxCsC0w==",
+-      "dev": true,
++      "devOptional": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@types/prop-types": "*",
+         "csstype": "^3.0.2"
+@@ -3125,8 +3118,9 @@
+       "version": "18.3.7",
+       "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-18.3.7.tgz",
+       "integrity": "sha512-MEe3UeoENYVFXzoXEWsvcpg6ZvlrFNlOQ7EOsvhI3CfAXwzPfO8Qwuxd40nepsYKqyyVQnTdEfv68q91yLcKrQ==",
+-      "dev": true,
++      "devOptional": true,
+       "license": "MIT",
++      "peer": true,
+       "peerDependencies": {
+         "@types/react": "^18.0.0"
+       }
+@@ -3193,6 +3187,7 @@
+       "integrity": "sha512-Zhy8HCvBUEfBECzIl1PKqF4p11+d0aUJS1GeUiuqK9WmOug8YCmC4h4bjyBvMyAMI9sbRczmrYL5lKg/YMbrcQ==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@typescript-eslint/scope-manager": "8.38.0",
+         "@typescript-eslint/types": "8.38.0",
+@@ -3441,6 +3436,7 @@
+       "integrity": "sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "bin": {
+         "acorn": "bin/acorn"
+       },
+@@ -3501,7 +3497,6 @@
+       "version": "6.1.0",
+       "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-6.1.0.tgz",
+       "integrity": "sha512-7HSX4QQb4CspciLpVFwyRe79O3xsIZDDLER21kERQ71oaPodF8jL725AgJMFAYbooIqolJoRLuM81SpeUkpkvA==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=12"
+@@ -3514,7 +3509,6 @@
+       "version": "4.3.0",
+       "resolved": "https://registry.npmjs.org/ansi-styles/-/ansi-styles-4.3.0.tgz",
+       "integrity": "sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "color-convert": "^2.0.1"
+@@ -3530,14 +3524,12 @@
+       "version": "1.3.0",
+       "resolved": "https://registry.npmjs.org/any-promise/-/any-promise-1.3.0.tgz",
+       "integrity": "sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/anymatch": {
+       "version": "3.1.3",
+       "resolved": "https://registry.npmjs.org/anymatch/-/anymatch-3.1.3.tgz",
+       "integrity": "sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "normalize-path": "^3.0.0",
+@@ -3588,7 +3580,6 @@
+       "version": "5.0.2",
+       "resolved": "https://registry.npmjs.org/arg/-/arg-5.0.2.tgz",
+       "integrity": "sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/argparse": {
+@@ -3652,7 +3643,6 @@
+       "version": "1.0.2",
+       "resolved": "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz",
+       "integrity": "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==",
+-      "devOptional": true,
+       "license": "MIT"
+     },
+     "node_modules/base64-arraybuffer": {
+@@ -3688,7 +3678,6 @@
+       "version": "2.3.0",
+       "resolved": "https://registry.npmjs.org/binary-extensions/-/binary-extensions-2.3.0.tgz",
+       "integrity": "sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -3718,7 +3707,6 @@
+       "version": "3.0.3",
+       "resolved": "https://registry.npmjs.org/braces/-/braces-3.0.3.tgz",
+       "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "fill-range": "^7.1.1"
+@@ -3747,6 +3735,7 @@
+         }
+       ],
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "caniuse-lite": "^1.0.30001726",
+         "electron-to-chromium": "^1.5.173",
+@@ -3774,7 +3763,6 @@
+       "version": "2.0.1",
+       "resolved": "https://registry.npmjs.org/camelcase-css/-/camelcase-css-2.0.1.tgz",
+       "integrity": "sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 6"
+@@ -3871,7 +3859,6 @@
+       "version": "3.6.0",
+       "resolved": "https://registry.npmjs.org/chokidar/-/chokidar-3.6.0.tgz",
+       "integrity": "sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "anymatch": "~3.1.2",
+@@ -3896,7 +3883,6 @@
+       "version": "5.1.2",
+       "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz",
+       "integrity": "sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "is-glob": "^4.0.1"
+@@ -3964,7 +3950,6 @@
+       "version": "2.0.1",
+       "resolved": "https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz",
+       "integrity": "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "color-name": "~1.1.4"
+@@ -3977,7 +3962,6 @@
+       "version": "1.1.4",
+       "resolved": "https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz",
+       "integrity": "sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/color-support": {
+@@ -3994,7 +3978,6 @@
+       "version": "4.1.1",
+       "resolved": "https://registry.npmjs.org/commander/-/commander-4.1.1.tgz",
+       "integrity": "sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 6"
+@@ -4048,7 +4031,6 @@
+       "version": "7.0.6",
+       "resolved": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
+       "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
+-      "dev": true,
+       "dependencies": {
+         "path-key": "^3.1.0",
+         "shebang-command": "^2.0.0",
+@@ -4071,7 +4053,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/cssesc/-/cssesc-3.0.0.tgz",
+       "integrity": "sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==",
+-      "dev": true,
+       "license": "MIT",
+       "bin": {
+         "cssesc": "bin/cssesc"
+@@ -4212,6 +4193,7 @@
+       "resolved": "https://registry.npmjs.org/date-fns/-/date-fns-3.6.0.tgz",
+       "integrity": "sha512-fRHTG8g/Gif+kSh50gaGEdToemgfj74aRX3swtiouboip5JDLAyDE9F11nHMIcvOaXeOC6D7SpNhi7uFyB7Uww==",
+       "license": "MIT",
++      "peer": true,
+       "funding": {
+         "type": "github",
+         "url": "https://github.com/sponsors/kossnocorp"
+@@ -4297,7 +4279,6 @@
+       "version": "1.2.2",
+       "resolved": "https://registry.npmjs.org/didyoumean/-/didyoumean-1.2.2.tgz",
+       "integrity": "sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==",
+-      "dev": true,
+       "license": "Apache-2.0"
+     },
+     "node_modules/dingbat-to-unicode": {
+@@ -4310,7 +4291,6 @@
+       "version": "1.1.3",
+       "resolved": "https://registry.npmjs.org/dlv/-/dlv-1.1.3.tgz",
+       "integrity": "sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/dom-helpers": {
+@@ -4345,7 +4325,6 @@
+       "version": "0.2.0",
+       "resolved": "https://registry.npmjs.org/eastasianwidth/-/eastasianwidth-0.2.0.tgz",
+       "integrity": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/electron-to-chromium": {
+@@ -4359,7 +4338,8 @@
+       "version": "8.6.0",
+       "resolved": "https://registry.npmjs.org/embla-carousel/-/embla-carousel-8.6.0.tgz",
+       "integrity": "sha512-SjWyZBHJPbqxHOzckOfo8lHisEaJWmwd23XppYFYVh10bU66/Pn5tkVkbkCMZVdbUE5eTCI2nD8OyIP4Z+uwkA==",
+-      "license": "MIT"
++      "license": "MIT",
++      "peer": true
+     },
+     "node_modules/embla-carousel-react": {
+       "version": "8.6.0",
+@@ -4387,7 +4367,6 @@
+       "version": "9.2.2",
+       "resolved": "https://registry.npmjs.org/emoji-regex/-/emoji-regex-9.2.2.tgz",
+       "integrity": "sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/esbuild": {
+@@ -4458,6 +4437,7 @@
+       "integrity": "sha512-LSehfdpgMeWcTZkWZVIJl+tkZ2nuSkyyB9C27MZqFWXuph7DvaowgcTvKqxvpLW1JZIk8PN7hFY3Rj9LQ7m7lg==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@eslint-community/eslint-utils": "^4.2.0",
+         "@eslint-community/regexpp": "^4.12.1",
+@@ -4656,7 +4636,6 @@
+       "version": "3.3.2",
+       "resolved": "https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.2.tgz",
+       "integrity": "sha512-oX2ruAFQwf/Orj8m737Y5adxDQO0LAB7/S5MnxCdTNDd4p6BsyIVsv9JQsATbTSq8KHRpLwIHbVlUNatxd+1Ow==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@nodelib/fs.stat": "^2.0.2",
+@@ -4673,7 +4652,6 @@
+       "version": "5.1.2",
+       "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-5.1.2.tgz",
+       "integrity": "sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "is-glob": "^4.0.1"
+@@ -4711,7 +4689,6 @@
+       "version": "1.17.1",
+       "resolved": "https://registry.npmjs.org/fastq/-/fastq-1.17.1.tgz",
+       "integrity": "sha512-sRVD3lWVIXWg6By68ZN7vho9a1pQcN/WBFaAAsDDFzlJjvoGx0P8z7V1t72grFJfJhu3YPZBuu25f7Kaw2jN1w==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "reusify": "^1.0.4"
+@@ -4740,7 +4717,6 @@
+       "version": "7.1.1",
+       "resolved": "https://registry.npmjs.org/fill-range/-/fill-range-7.1.1.tgz",
+       "integrity": "sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "to-regex-range": "^5.0.1"
+@@ -4791,7 +4767,6 @@
+       "version": "3.3.0",
+       "resolved": "https://registry.npmjs.org/foreground-child/-/foreground-child-3.3.0.tgz",
+       "integrity": "sha512-Ld2g8rrAyMYFXBhEqMz8ZAHBi4J4uS1i/CxGMDnjyFWddMXLVcDp051DZfu+t7+ab7Wv6SMqpWmyFIj5UbfFvg==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "cross-spawn": "^7.0.0",
+@@ -4827,6 +4802,33 @@
+         "url": "https://github.com/sponsors/rawify"
+       }
+     },
++    "node_modules/framer-motion": {
++      "version": "12.29.0",
++      "resolved": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.29.0.tgz",
++      "integrity": "sha512-1gEFGXHYV2BD42ZPTFmSU9buehppU+bCuOnHU0AD18DKh9j4DuTx47MvqY5ax+NNWRtK32qIcJf1UxKo1WwjWg==",
++      "license": "MIT",
++      "dependencies": {
++        "motion-dom": "^12.29.0",
++        "motion-utils": "^12.27.2",
++        "tslib": "^2.4.0"
++      },
++      "peerDependencies": {
++        "@emotion/is-prop-valid": "*",
++        "react": "^18.0.0 || ^19.0.0",
++        "react-dom": "^18.0.0 || ^19.0.0"
++      },
++      "peerDependenciesMeta": {
++        "@emotion/is-prop-valid": {
++          "optional": true
++        },
++        "react": {
++          "optional": true
++        },
++        "react-dom": {
++          "optional": true
++        }
++      }
++    },
+     "node_modules/fs-minipass": {
+       "version": "2.1.0",
+       "resolved": "https://registry.npmjs.org/fs-minipass/-/fs-minipass-2.1.0.tgz",
+@@ -4864,7 +4866,6 @@
+       "version": "2.3.3",
+       "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+       "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+-      "dev": true,
+       "hasInstallScript": true,
+       "license": "MIT",
+       "optional": true,
+@@ -4879,7 +4880,6 @@
+       "version": "1.1.2",
+       "resolved": "https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz",
+       "integrity": "sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==",
+-      "dev": true,
+       "license": "MIT",
+       "funding": {
+         "url": "https://github.com/sponsors/ljharb"
+@@ -4972,7 +4972,6 @@
+       "version": "10.4.5",
+       "resolved": "https://registry.npmjs.org/glob/-/glob-10.4.5.tgz",
+       "integrity": "sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "foreground-child": "^3.1.0",
+@@ -4993,7 +4992,6 @@
+       "version": "6.0.2",
+       "resolved": "https://registry.npmjs.org/glob-parent/-/glob-parent-6.0.2.tgz",
+       "integrity": "sha512-XxwI8EOhVQgWp6iDL+3b0r86f4d6AX6zSU55HfB4ydCEuXLXc5FcYeOu+nnGftS4TEju/11rt4KJPTMgbfmv4A==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "is-glob": "^4.0.3"
+@@ -5006,7 +5004,6 @@
+       "version": "2.0.2",
+       "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-2.0.2.tgz",
+       "integrity": "sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "balanced-match": "^1.0.0"
+@@ -5016,7 +5013,6 @@
+       "version": "9.0.5",
+       "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-9.0.5.tgz",
+       "integrity": "sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "brace-expansion": "^2.0.1"
+@@ -5069,7 +5065,6 @@
+       "version": "2.0.2",
+       "resolved": "https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz",
+       "integrity": "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "function-bind": "^1.1.2"
+@@ -5232,7 +5227,6 @@
+       "version": "2.1.0",
+       "resolved": "https://registry.npmjs.org/is-binary-path/-/is-binary-path-2.1.0.tgz",
+       "integrity": "sha512-ZMERYes6pDydyuGidse7OsHxtbI7WVeUEozgR/g7rd0xUimYNlvZRE/K2MgZTjWy725IfelLeVcEM97mmtRGXw==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "binary-extensions": "^2.0.0"
+@@ -5245,7 +5239,6 @@
+       "version": "2.15.1",
+       "resolved": "https://registry.npmjs.org/is-core-module/-/is-core-module-2.15.1.tgz",
+       "integrity": "sha512-z0vtXSwucUJtANQWldhbtbt7BnL0vxiFjIdDLAatwhDYty2bad6s+rijD6Ri4YuYJubLzIJLUidCh09e1djEVQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "hasown": "^2.0.2"
+@@ -5261,7 +5254,6 @@
+       "version": "2.1.1",
+       "resolved": "https://registry.npmjs.org/is-extglob/-/is-extglob-2.1.1.tgz",
+       "integrity": "sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=0.10.0"
+@@ -5271,7 +5263,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/is-fullwidth-code-point/-/is-fullwidth-code-point-3.0.0.tgz",
+       "integrity": "sha512-zymm5+u+sCsSWyD9qNaejV3DFvhCKclKdizYaJUuHA83RLjb7nSuGnddCHGv0hk+KY7BMAlsWeK4Ueg6EV6XQg==",
+-      "devOptional": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -5281,7 +5272,6 @@
+       "version": "4.0.3",
+       "resolved": "https://registry.npmjs.org/is-glob/-/is-glob-4.0.3.tgz",
+       "integrity": "sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "is-extglob": "^2.1.1"
+@@ -5294,7 +5284,6 @@
+       "version": "7.0.0",
+       "resolved": "https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz",
+       "integrity": "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=0.12.0"
+@@ -5310,14 +5299,12 @@
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
+       "integrity": "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==",
+-      "dev": true,
+       "license": "ISC"
+     },
+     "node_modules/jackspeak": {
+       "version": "3.4.3",
+       "resolved": "https://registry.npmjs.org/jackspeak/-/jackspeak-3.4.3.tgz",
+       "integrity": "sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==",
+-      "dev": true,
+       "license": "BlueOak-1.0.0",
+       "dependencies": {
+         "@isaacs/cliui": "^8.0.2"
+@@ -5333,7 +5320,6 @@
+       "version": "1.21.6",
+       "resolved": "https://registry.npmjs.org/jiti/-/jiti-1.21.6.tgz",
+       "integrity": "sha512-2yTgeWTWzMWkHu6Jp9NKgePDaYHbntiwvYuuJLbbN9vl7DC9DvXKOB2BC3ZZ92D3cvV/aflH0osDfwpHepQ53w==",
+-      "dev": true,
+       "license": "MIT",
+       "bin": {
+         "jiti": "bin/jiti.js"
+@@ -5384,6 +5370,7 @@
+       "resolved": "https://registry.npmjs.org/jspdf/-/jspdf-3.0.4.tgz",
+       "integrity": "sha512-dc6oQ8y37rRcHn316s4ngz/nOjayLF/FFxBF4V9zamQKRqXxyiH1zagkCdktdWhtoQId5K20xt1lB90XzkB+hQ==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@babel/runtime": "^7.28.4",
+         "fast-png": "^6.2.0",
+@@ -5460,7 +5447,6 @@
+       "version": "3.1.3",
+       "resolved": "https://registry.npmjs.org/lilconfig/-/lilconfig-3.1.3.tgz",
+       "integrity": "sha512-/vlFKAoH5Cgt3Ie+JLhRbwOsCQePABiU3tJ1egGvyQ+33R/vcwM2Zl2QR/LzjsBeItPt3oSVXapn+m4nQDvpzw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=14"
+@@ -5473,7 +5459,6 @@
+       "version": "1.2.4",
+       "resolved": "https://registry.npmjs.org/lines-and-columns/-/lines-and-columns-1.2.4.tgz",
+       "integrity": "sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/locate-path": {
+@@ -5990,7 +5975,6 @@
+       "version": "10.4.3",
+       "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-10.4.3.tgz",
+       "integrity": "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==",
+-      "dev": true,
+       "license": "ISC"
+     },
+     "node_modules/lucide-react": {
+@@ -6064,7 +6048,6 @@
+       "version": "1.4.1",
+       "resolved": "https://registry.npmjs.org/merge2/-/merge2-1.4.1.tgz",
+       "integrity": "sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 8"
+@@ -6074,7 +6057,6 @@
+       "version": "4.0.8",
+       "resolved": "https://registry.npmjs.org/micromatch/-/micromatch-4.0.8.tgz",
+       "integrity": "sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "braces": "^3.0.3",
+@@ -6114,7 +6096,6 @@
+       "version": "7.1.2",
+       "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz",
+       "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==",
+-      "dev": true,
+       "license": "ISC",
+       "engines": {
+         "node": ">=16 || 14 >=14.17"
+@@ -6160,6 +6141,21 @@
+         "node": ">=10"
+       }
+     },
++    "node_modules/motion-dom": {
++      "version": "12.29.0",
++      "resolved": "https://registry.npmjs.org/motion-dom/-/motion-dom-12.29.0.tgz",
++      "integrity": "sha512-3eiz9bb32yvY8Q6XNM4AwkSOBPgU//EIKTZwsSWgA9uzbPBhZJeScCVcBuwwYVqhfamewpv7ZNmVKTGp5qnzkA==",
++      "license": "MIT",
++      "dependencies": {
++        "motion-utils": "^12.27.2"
++      }
++    },
++    "node_modules/motion-utils": {
++      "version": "12.27.2",
++      "resolved": "https://registry.npmjs.org/motion-utils/-/motion-utils-12.27.2.tgz",
++      "integrity": "sha512-B55gcoL85Mcdt2IEStY5EEAsrMSVE2sI14xQ/uAdPL+mfQxhKKFaEag9JmfxedJOR4vZpBGoPeC/Gm13I/4g5Q==",
++      "license": "MIT"
++    },
+     "node_modules/ms": {
+       "version": "2.1.3",
+       "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+@@ -6171,7 +6167,6 @@
+       "version": "2.7.0",
+       "resolved": "https://registry.npmjs.org/mz/-/mz-2.7.0.tgz",
+       "integrity": "sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "any-promise": "^1.0.0",
+@@ -6190,7 +6185,6 @@
+       "version": "3.3.11",
+       "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.11.tgz",
+       "integrity": "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "github",
+@@ -6270,7 +6264,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/normalize-path/-/normalize-path-3.0.0.tgz",
+       "integrity": "sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=0.10.0"
+@@ -6313,7 +6306,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/object-hash/-/object-hash-3.0.0.tgz",
+       "integrity": "sha512-RSn9F68PjH9HqtltsSnqYC1XXoWe9Bju5+213R98cNGttag9q9yAOTzdbsqvIa7aNm5WffBZFpWYr2aWrklWAw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 6"
+@@ -6389,7 +6381,6 @@
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/package-json-from-dist/-/package-json-from-dist-1.0.1.tgz",
+       "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==",
+-      "dev": true,
+       "license": "BlueOak-1.0.0"
+     },
+     "node_modules/pako": {
+@@ -6434,7 +6425,6 @@
+       "version": "3.1.1",
+       "resolved": "https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz",
+       "integrity": "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -6444,14 +6434,12 @@
+       "version": "1.0.7",
+       "resolved": "https://registry.npmjs.org/path-parse/-/path-parse-1.0.7.tgz",
+       "integrity": "sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/path-scurry": {
+       "version": "1.11.1",
+       "resolved": "https://registry.npmjs.org/path-scurry/-/path-scurry-1.11.1.tgz",
+       "integrity": "sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==",
+-      "dev": true,
+       "license": "BlueOak-1.0.0",
+       "dependencies": {
+         "lru-cache": "^10.2.0",
+@@ -6498,14 +6486,12 @@
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+-      "dev": true,
+       "license": "ISC"
+     },
+     "node_modules/picomatch": {
+       "version": "2.3.1",
+       "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-2.3.1.tgz",
+       "integrity": "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8.6"
+@@ -6518,7 +6504,6 @@
+       "version": "2.3.0",
+       "resolved": "https://registry.npmjs.org/pify/-/pify-2.3.0.tgz",
+       "integrity": "sha512-udgsAY+fTnvv7kI7aaxbqwWNb0AHiB0qBO89PZKPkoTmGOgdbrHDKD+0B2X4uTfJ/FT1R09r9gTsjUjNJotuog==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=0.10.0"
+@@ -6528,7 +6513,6 @@
+       "version": "4.0.6",
+       "resolved": "https://registry.npmjs.org/pirates/-/pirates-4.0.6.tgz",
+       "integrity": "sha512-saLsH7WeYYPiD25LDuLRRY/i+6HaPYr6G1OUlN39otzkSTxKnubR9RTxS3/Kk50s1g2JTgFwWQDQyplC5/SHZg==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 6"
+@@ -6585,7 +6569,6 @@
+       "version": "8.5.6",
+       "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.6.tgz",
+       "integrity": "sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -6601,6 +6584,7 @@
+         }
+       ],
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "nanoid": "^3.3.11",
+         "picocolors": "^1.1.1",
+@@ -6614,7 +6598,6 @@
+       "version": "15.1.0",
+       "resolved": "https://registry.npmjs.org/postcss-import/-/postcss-import-15.1.0.tgz",
+       "integrity": "sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "postcss-value-parser": "^4.0.0",
+@@ -6632,7 +6615,6 @@
+       "version": "4.0.1",
+       "resolved": "https://registry.npmjs.org/postcss-js/-/postcss-js-4.0.1.tgz",
+       "integrity": "sha512-dDLF8pEO191hJMtlHFPRa8xsizHaM82MLfNkUHdUtVEV3tgTp5oj+8qbEqYM57SLfc74KSbw//4SeJma2LRVIw==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "camelcase-css": "^2.0.1"
+@@ -6652,7 +6634,6 @@
+       "version": "4.0.2",
+       "resolved": "https://registry.npmjs.org/postcss-load-config/-/postcss-load-config-4.0.2.tgz",
+       "integrity": "sha512-bSVhyJGL00wMVoPUzAVAnbEoWyqRxkjv64tUl427SKnPrENtq6hJwUojroMz2VB+Q1edmi4IfrAPpami5VVgMQ==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -6688,7 +6669,6 @@
+       "version": "6.2.0",
+       "resolved": "https://registry.npmjs.org/postcss-nested/-/postcss-nested-6.2.0.tgz",
+       "integrity": "sha512-HQbt28KulC5AJzG+cZtj9kvKB93CFCdLvog1WFLf1D+xmMvPGlBstkpTEZfK5+AN9hfJocyBFCNiqyS48bpgzQ==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "opencollective",
+@@ -6714,7 +6694,6 @@
+       "version": "6.1.2",
+       "resolved": "https://registry.npmjs.org/postcss-selector-parser/-/postcss-selector-parser-6.1.2.tgz",
+       "integrity": "sha512-Q8qQfPiZ+THO/3ZrOrO0cJJKfpYCagtMUkXbnEfmgUjwXg6z/WBeOyS9APBBPCTSiDV+s4SwQGu8yFsiMRIudg==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "cssesc": "^3.0.0",
+@@ -6728,7 +6707,6 @@
+       "version": "4.2.0",
+       "resolved": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz",
+       "integrity": "sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/prelude-ls": {
+@@ -6778,7 +6756,6 @@
+       "version": "1.2.3",
+       "resolved": "https://registry.npmjs.org/queue-microtask/-/queue-microtask-1.2.3.tgz",
+       "integrity": "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "github",
+@@ -6810,6 +6787,7 @@
+       "resolved": "https://registry.npmjs.org/react/-/react-18.3.1.tgz",
+       "integrity": "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "loose-envify": "^1.1.0"
+       },
+@@ -6836,6 +6814,7 @@
+       "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.3.1.tgz",
+       "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "loose-envify": "^1.1.0",
+         "scheduler": "^0.23.2"
+@@ -6849,6 +6828,7 @@
+       "resolved": "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.61.1.tgz",
+       "integrity": "sha512-2vbXUFDYgqEgM2RcXcAT2PwDW/80QARi+PKmHy5q2KhuKvOlG8iIYgf7eIlIANR5trW9fJbP4r5aub3a4egsew==",
+       "license": "MIT",
++      "peer": true,
+       "engines": {
+         "node": ">=18.0.0"
+       },
+@@ -7012,7 +6992,6 @@
+       "version": "1.0.0",
+       "resolved": "https://registry.npmjs.org/read-cache/-/read-cache-1.0.0.tgz",
+       "integrity": "sha512-Owdv/Ft7IjOgm/i0xvNDZ1LrRANRfew4b2prF3OWMQLxLfu3bS8FVhCsrSCMK4lR56Y9ya+AThoTpDCTxCmpRA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "pify": "^2.3.0"
+@@ -7037,7 +7016,6 @@
+       "version": "3.6.0",
+       "resolved": "https://registry.npmjs.org/readdirp/-/readdirp-3.6.0.tgz",
+       "integrity": "sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "picomatch": "^2.2.1"
+@@ -7089,7 +7067,6 @@
+       "version": "1.22.8",
+       "resolved": "https://registry.npmjs.org/resolve/-/resolve-1.22.8.tgz",
+       "integrity": "sha512-oKWePCxqpd6FlLvGV1VU0x7bkPmmCNolxzjMf4NczoDnQcIWrAF+cPtZn5i6n+RfD2d9i0tzpKnG6Yk168yIyw==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "is-core-module": "^2.13.0",
+@@ -7117,7 +7094,6 @@
+       "version": "1.0.4",
+       "resolved": "https://registry.npmjs.org/reusify/-/reusify-1.0.4.tgz",
+       "integrity": "sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "iojs": ">=1.0.0",
+@@ -7213,7 +7189,6 @@
+       "version": "1.2.0",
+       "resolved": "https://registry.npmjs.org/run-parallel/-/run-parallel-1.2.0.tgz",
+       "integrity": "sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==",
+-      "dev": true,
+       "funding": [
+         {
+           "type": "github",
+@@ -7278,7 +7253,6 @@
+       "version": "2.0.0",
+       "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+       "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "shebang-regex": "^3.0.0"
+@@ -7291,7 +7265,6 @@
+       "version": "3.0.0",
+       "resolved": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz",
+       "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -7301,7 +7274,6 @@
+       "version": "4.1.0",
+       "resolved": "https://registry.npmjs.org/signal-exit/-/signal-exit-4.1.0.tgz",
+       "integrity": "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==",
+-      "dev": true,
+       "license": "ISC",
+       "engines": {
+         "node": ">=14"
+@@ -7357,7 +7329,6 @@
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+       "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
+-      "dev": true,
+       "license": "BSD-3-Clause",
+       "engines": {
+         "node": ">=0.10.0"
+@@ -7404,7 +7375,6 @@
+       "version": "5.1.2",
+       "resolved": "https://registry.npmjs.org/string-width/-/string-width-5.1.2.tgz",
+       "integrity": "sha512-HnLOCR3vjcY8beoNLtcjZ5/nxn2afmME6lhrDrebokqMap+XbeW8n9TXpPDOqdGK5qcI3oT0GKTW6wC7EMiVqA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "eastasianwidth": "^0.2.0",
+@@ -7423,7 +7393,6 @@
+       "version": "4.2.3",
+       "resolved": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+       "integrity": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "emoji-regex": "^8.0.0",
+@@ -7438,7 +7407,6 @@
+       "version": "5.0.1",
+       "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz",
+       "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -7448,14 +7416,12 @@
+       "version": "8.0.0",
+       "resolved": "https://registry.npmjs.org/emoji-regex/-/emoji-regex-8.0.0.tgz",
+       "integrity": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/string-width-cjs/node_modules/strip-ansi": {
+       "version": "6.0.1",
+       "resolved": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
+       "integrity": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-regex": "^5.0.1"
+@@ -7468,7 +7434,6 @@
+       "version": "7.1.0",
+       "resolved": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-7.1.0.tgz",
+       "integrity": "sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-regex": "^6.0.1"
+@@ -7485,7 +7450,6 @@
+       "version": "6.0.1",
+       "resolved": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
+       "integrity": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-regex": "^5.0.1"
+@@ -7498,7 +7462,6 @@
+       "version": "5.0.1",
+       "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz",
+       "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -7521,7 +7484,6 @@
+       "version": "3.35.0",
+       "resolved": "https://registry.npmjs.org/sucrase/-/sucrase-3.35.0.tgz",
+       "integrity": "sha512-8EbVDiu9iN/nESwxeSxDKe0dunta1GOlHufmSSXxMD2z2/tMZpDMpvXQGsc+ajGo8y2uYUmixaSRUc/QPoQ0GA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@jridgewell/gen-mapping": "^0.3.2",
+@@ -7557,7 +7519,6 @@
+       "version": "1.0.0",
+       "resolved": "https://registry.npmjs.org/supports-preserve-symlinks-flag/-/supports-preserve-symlinks-flag-1.0.0.tgz",
+       "integrity": "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">= 0.4"
+@@ -7590,8 +7551,8 @@
+       "version": "3.4.17",
+       "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-3.4.17.tgz",
+       "integrity": "sha512-w33E2aCvSDP0tW9RZuNXadXlkHXqFzSkQew/aIa2i/Sj8fThxwovwlXHSPXTbAHwEIhBFXAedUhP2tueAKP8Og==",
+-      "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "@alloc/quick-lru": "^5.2.0",
+         "arg": "^5.0.2",
+@@ -7675,7 +7636,6 @@
+       "version": "3.3.1",
+       "resolved": "https://registry.npmjs.org/thenify/-/thenify-3.3.1.tgz",
+       "integrity": "sha512-RVZSIV5IG10Hk3enotrhvz0T9em6cyHBLkH/YAZuKqd8hRkKhSfCGIcP2KUY0EPxndzANBmNllzWPwak+bheSw==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "any-promise": "^1.0.0"
+@@ -7685,7 +7645,6 @@
+       "version": "1.6.0",
+       "resolved": "https://registry.npmjs.org/thenify-all/-/thenify-all-1.6.0.tgz",
+       "integrity": "sha512-RNxQH/qI8/t3thXJDwcstUO4zeqo64+Uy/+sNVRBx4Xn2OX+OZ9oP+iJnNFqplFra2ZUVeKCSa2oVWi3T4uVmA==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "thenify": ">= 3.1.0 < 4"
+@@ -7704,7 +7663,6 @@
+       "version": "5.0.1",
+       "resolved": "https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz",
+       "integrity": "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "is-number": "^7.0.0"
+@@ -7737,7 +7695,6 @@
+       "version": "0.1.13",
+       "resolved": "https://registry.npmjs.org/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz",
+       "integrity": "sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==",
+-      "dev": true,
+       "license": "Apache-2.0"
+     },
+     "node_modules/tslib": {
+@@ -7765,6 +7722,7 @@
+       "integrity": "sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==",
+       "dev": true,
+       "license": "Apache-2.0",
++      "peer": true,
+       "bin": {
+         "tsc": "bin/tsc",
+         "tsserver": "bin/tsserver"
+@@ -7958,6 +7916,7 @@
+       "integrity": "sha512-qO3aKv3HoQC8QKiNSTuUM1l9o/XX3+c+VTgLHbJWHZGeTPVAg2XwazI9UWzoxjIJCGCV2zU60uqMzjeLZuULqA==",
+       "dev": true,
+       "license": "MIT",
++      "peer": true,
+       "dependencies": {
+         "esbuild": "^0.21.3",
+         "postcss": "^8.4.43",
+@@ -8034,7 +7993,6 @@
+       "version": "2.0.2",
+       "resolved": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
+       "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
+-      "dev": true,
+       "license": "ISC",
+       "dependencies": {
+         "isexe": "^2.0.0"
+@@ -8133,7 +8091,6 @@
+       "version": "8.1.0",
+       "resolved": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-8.1.0.tgz",
+       "integrity": "sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-styles": "^6.1.0",
+@@ -8152,7 +8109,6 @@
+       "version": "7.0.0",
+       "resolved": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
+       "integrity": "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-styles": "^4.0.0",
+@@ -8170,7 +8126,6 @@
+       "version": "5.0.1",
+       "resolved": "https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz",
+       "integrity": "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=8"
+@@ -8180,14 +8135,12 @@
+       "version": "8.0.0",
+       "resolved": "https://registry.npmjs.org/emoji-regex/-/emoji-regex-8.0.0.tgz",
+       "integrity": "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==",
+-      "dev": true,
+       "license": "MIT"
+     },
+     "node_modules/wrap-ansi-cjs/node_modules/string-width": {
+       "version": "4.2.3",
+       "resolved": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+       "integrity": "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "emoji-regex": "^8.0.0",
+@@ -8202,7 +8155,6 @@
+       "version": "6.0.1",
+       "resolved": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
+       "integrity": "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==",
+-      "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "ansi-regex": "^5.0.1"
+@@ -8215,7 +8167,6 @@
+       "version": "6.2.1",
+       "resolved": "https://registry.npmjs.org/ansi-styles/-/ansi-styles-6.2.1.tgz",
+       "integrity": "sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==",
+-      "dev": true,
+       "license": "MIT",
+       "engines": {
+         "node": ">=12"
+@@ -8293,7 +8244,6 @@
+       "version": "2.6.0",
+       "resolved": "https://registry.npmjs.org/yaml/-/yaml-2.6.0.tgz",
+       "integrity": "sha512-a6ae//JvKDEra2kdi1qzCyrJW/WZCgFi8ydDV+eXExl95t+5R+ijnqHJbz9tmMh8FUjx3iv2fCQ4dclAQlO2UQ==",
+-      "dev": true,
+       "license": "ISC",
+       "bin": {
+         "yaml": "bin.mjs"
+diff --git a/package.json b/package.json
+index 69de59a..513e921 100644
+--- a/package.json
++++ b/package.json
+@@ -53,6 +53,8 @@
+     "date-fns": "^3.6.0",
+     "date-fns-tz": "^3.2.0",
+     "embla-carousel-react": "^8.6.0",
++    "framer-motion": "^12.29.0",
++    "html2canvas": "^1.4.1",
+     "html2pdf.js": "^0.14.0",
+     "input-otp": "^1.4.2",
+     "jspdf": "^3.0.4",
+diff --git a/src/App.css b/src/App.css
+index df6e50a..1f53125 100644
+--- a/src/App.css
++++ b/src/App.css
+@@ -2,4 +2,14 @@
+ #root {
+   width: 100%;
+   min-height: 100vh;
++  background: #fff;
++  color: #001f4d;
++}
++
++/* All borders thin gold */
++* {
++  border-color: #ffd700 !important;
++  border-width: 1px !important;
++  border-style: solid !important;
++  color: #001f4d;
+ }
+diff --git a/src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx b/src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx
+index fedf53d..888bf0d 100644
+--- a/src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx
++++ b/src/components/quotes/QuoteDocumentEditor/QuoteEditorSheet.tsx
+@@ -11,10 +11,8 @@ import { ViewMode } from './types';
+ import { TooltipProvider } from '@/components/ui/tooltip';
+ import { X } from 'lucide-react';
+ import { Button } from '@/components/ui/button';
+-import {
+-  Sheet,
+-  SheetContent,
+-} from '@/components/ui/sheet';
++import * as DialogPrimitive from '@radix-ui/react-dialog';
++import { Dialog } from '@/components/ui/dialog';
+ import {
+   ResizablePanelGroup,
+   ResizablePanel,
+@@ -143,25 +141,13 @@ export function QuoteEditorSheet({
+   }, [isDirty, onOpenChange]);
+ 
+   return (
+-    <Sheet open={open} onOpenChange={handleClose}>
+-      <SheetContent 
+-        side="right" 
+-        hideClose
+-        className="flex flex-col gap-0 overflow-hidden border-0"
+-        style={{
+-          position: 'fixed',
+-          top: 0,
+-          left: 0,
+-          right: 0,
+-          bottom: 0,
+-          width: '100vw',
+-          height: '100vh',
+-          maxWidth: 'none',
+-          padding: 0,
+-          zIndex: 300,
+-        }}
+-        dir="rtl"
+-      >
++    <Dialog open={open} onOpenChange={handleClose}>
++      <DialogPrimitive.Portal>
++        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/20 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
++        <DialogPrimitive.Content 
++          className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] max-w-[85vw] w-[85vw] h-[85vh] border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg p-0 overflow-hidden"
++          dir="rtl"
++        >
+         <TooltipProvider>
+           <div className="h-full w-full flex flex-col bg-muted/30 overflow-hidden">
+             {/* Header with close button */}
+@@ -299,8 +285,9 @@ export function QuoteEditorSheet({
+             )}
+           </div>
+         </TooltipProvider>
+-      </SheetContent>
+-    </Sheet>
++        </DialogPrimitive.Content>
++      </DialogPrimitive.Portal>
++    </Dialog>
+   );
+ }
+ 
+diff --git a/src/components/settings/ContactsCSVImport.tsx b/src/components/settings/ContactsCSVImport.tsx
+index e224916..211f676 100644
+--- a/src/components/settings/ContactsCSVImport.tsx
++++ b/src/components/settings/ContactsCSVImport.tsx
+@@ -1,5 +1,5 @@
+ // CSV Contacts Import Component
+-import { useState, useRef, useMemo } from 'react';
++import { useEffect, useState, useRef, useMemo } from 'react';
+ import { Button } from '@/components/ui/button';
+ import { Input } from '@/components/ui/input';
+ import { Checkbox } from '@/components/ui/checkbox';
+@@ -50,8 +50,10 @@ import {
+   ArrowRight,
+   Eye,
+   Columns,
++  Calendar,
++  Loader2,
+ } from 'lucide-react';
+-import { useContactsImport, ParsedContact, ImportProgress, ColumnMapping } from '@/hooks/useContactsImport';
++import { useContactsImport, ParsedContact, ImportProgress, ColumnMapping, UploadPresetId } from '@/hooks/useContactsImport';
+ import { Alert, AlertDescription } from '@/components/ui/alert';
+ 
+ type ViewMode = 'cards' | 'list' | 'compact';
+@@ -65,11 +67,25 @@ interface ContactFilters {
+   hasOrganization: boolean;
+   hasDuplicate: boolean;
+   isNew: boolean;
++  // Smart filters
++  isEnglishName: boolean;
++  isHebrewName: boolean;
++  shortName: boolean; // < 3 characters
++  hasNumbers: boolean; // name contains numbers
++  missingEmail: boolean;
++  missingPhone: boolean;
++  hasCompleteData: boolean; // has name + email + phone
++  // Category filters
++  hasLabels: boolean; // has categories/labels
++  hasNotes: boolean; // has notes
++  hasTitle: boolean; // has job title
++  hasBirthday: boolean; // has birthday
+ }
+ 
+ // Field definitions for mapping
+ const MAPPING_FIELDS = [
+   { key: 'firstName', label: '╫⌐╫¥ ╫ñ╫¿╫ר╫ש', icon: User },
++  { key: 'middleName', label: '╫⌐╫¥ ╫á╫ץ╫í╫ú / ╫נ╫₧╫ª╫ó╫ש', icon: User },
+   { key: 'lastName', label: '╫⌐╫¥ ╫₧╫⌐╫ñ╫ק╫פ', icon: User },
+   { key: 'fullName', label: '╫⌐╫¥ ╫₧╫£╫נ', icon: User },
+   { key: 'email1', label: '╫₧╫ש╫ש╫£ ╫¿╫נ╫⌐╫ש', icon: Mail },
+@@ -78,6 +94,8 @@ const MAPPING_FIELDS = [
+   { key: 'phone2', label: '╫ר╫£╫ñ╫ץ╫ƒ ╫₧╫⌐╫á╫ש', icon: Phone },
+   { key: 'organization', label: '╫נ╫¿╫ע╫ץ╫ƒ / ╫ק╫ס╫¿╫פ', icon: Building2 },
+   { key: 'title', label: '╫¬╫ñ╫º╫ש╫ף', icon: Tag },
++  { key: 'department', label: '╫₧╫ק╫£╫º╫פ', icon: Hash },
++  { key: 'birthday', label: '╫ש╫ץ╫¥ ╫פ╫ץ╫£╫ף╫¬', icon: Calendar },
+   { key: 'notes', label: '╫פ╫ó╫¿╫ץ╫¬', icon: FileText },
+   { key: 'labels', label: '╫¬╫ץ╫ץ╫ש╫ץ╫¬', icon: Tag },
+ ] as const;
+@@ -92,6 +110,9 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+   const [showFilters, setShowFilters] = useState(false);
+   const [importStep, setImportStep] = useState<ImportStep>('upload');
++  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
++  const [renderLimit, setRenderLimit] = useState(200);
++  const [uploadPreset, setUploadPreset] = useState<UploadPresetId>('recommended');
+   const [filters, setFilters] = useState<ContactFilters>({
+     hasName: false,
+     hasEmail: false,
+@@ -99,6 +120,19 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+     hasOrganization: false,
+     hasDuplicate: false,
+     isNew: false,
++    // Smart filters
++    isEnglishName: false,
++    isHebrewName: false,
++    shortName: false,
++    hasNumbers: false,
++    missingEmail: false,
++    missingPhone: false,
++    hasCompleteData: false,
++    // Category filters
++    hasLabels: false,
++    hasNotes: false,
++    hasTitle: false,
++    hasBirthday: false,
+   });
+   const {
+     parsedContacts,
+@@ -117,6 +151,8 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+     toggleContactSelection,
+     setContactAction,
+     toggleSelectAll,
++    setSelectionForContactIds,
++    applyUploadPreset,
+     importContacts,
+     resumeImport,
+     restoreSavedState,
+@@ -156,6 +192,53 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+   const handleReset = () => {
+     reset();
+     setImportStep('upload');
++    setLastSelectedIndex(null);
++    setRenderLimit(200);
++  };
++
++  // Prevent UI freeze on large lists: start in lighter view + render only a slice
++  useEffect(() => {
++    if (importStep === 'preview' && parsedContacts.length > 600) {
++      setViewMode('list');
++    }
++  }, [importStep, parsedContacts.length]);
++
++  useEffect(() => {
++    // When filters/search change, go back to the first chunk
++    setRenderLimit(200);
++    setLastSelectedIndex(null);
++  }, [searchQuery, filters]);
++
++  // Handle contact selection with Shift+Click support
++  const handleContactClick = (contactId: string, index: number, event?: React.MouseEvent) => {
++    if (event?.shiftKey && lastSelectedIndex !== null) {
++      // Shift+Click: select range
++      const start = Math.min(lastSelectedIndex, index);
++      const end = Math.max(lastSelectedIndex, index);
++      const contactsInRange = filteredContacts.slice(start, end + 1);
++      
++      // Select all contacts in range that are not duplicates or already imported
++      contactsInRange.forEach(contact => {
++        if (!contact.isDuplicate && !contact.isImported && !contact.selected) {
++          toggleContactSelection(contact.id);
++        }
++      });
++    } else {
++      // Regular click - toggle single contact
++      toggleContactSelection(contactId);
++    }
++    setLastSelectedIndex(index);
++  };
++
++  // Deselect all contacts
++  const deselectAll = () => {
++    toggleSelectAll(false);
++    setLastSelectedIndex(null);
++  };
++
++  const applyPreset = () => {
++    applyUploadPreset(uploadPreset);
++    setLastSelectedIndex(null);
+   };
+ 
+   // Update a single column mapping
+@@ -166,6 +249,12 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+     });
+   };
+ 
++  // Helper functions for smart filtering
++  const isEnglishText = (text: string) => /^[A-Za-z\s\-'.]+$/.test(text);
++  const isHebrewText = (text: string) => /[\u0590-\u05FF]/.test(text);
++  const hasNumbersInText = (text: string) => /\d/.test(text);
++  const isShortName = (text: string) => text.replace(/\s/g, '').length < 3;
++
+   // Apply filters and search
+   const filteredContacts = useMemo(() => {
+     let result = parsedContacts;
+@@ -189,6 +278,32 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+               return contact.isDuplicate;
+             case 'isNew':
+               return !contact.isDuplicate && !contact.isImported;
++            // Smart filters
++            case 'isEnglishName':
++              return contact.fullName && isEnglishText(contact.fullName.trim());
++            case 'isHebrewName':
++              return contact.fullName && isHebrewText(contact.fullName);
++            case 'shortName':
++              return contact.fullName && isShortName(contact.fullName);
++            case 'hasNumbers':
++              return contact.fullName && hasNumbersInText(contact.fullName);
++            case 'missingEmail':
++              return !contact.email1 && !contact.email2;
++            case 'missingPhone':
++              return !contact.phone1 && !contact.phone2;
++            case 'hasCompleteData':
++              return contact.fullName && contact.fullName.trim().length > 0 &&
++                     (contact.email1 || contact.email2) &&
++                     (contact.phone1 || contact.phone2);
++            // Category filters
++            case 'hasLabels':
++              return contact.labels && contact.labels.trim().length > 0;
++            case 'hasNotes':
++              return contact.notes && contact.notes.trim().length > 0;
++            case 'hasTitle':
++              return contact.title && contact.title.trim().length > 0;
++            case 'hasBirthday':
++              return contact.birthday && contact.birthday.trim().length > 0;
+             default:
+               return true;
+           }
+@@ -212,12 +327,24 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+     return result;
+   }, [parsedContacts, searchQuery, filters]);
+ 
++  const eligibleFilteredContacts = useMemo(() => {
++    return filteredContacts.filter(c => !c.isDuplicate && !c.isImported);
++  }, [filteredContacts]);
++
++  const eligibleFilteredSelectedCount = useMemo(() => {
++    return eligibleFilteredContacts.filter(c => c.selected).length;
++  }, [eligibleFilteredContacts]);
++
++  const visibleContacts = useMemo(() => {
++    return filteredContacts.slice(0, renderLimit);
++  }, [filteredContacts, renderLimit]);
++
+   // Toggle a filter
+   const toggleFilter = (key: keyof ContactFilters) => {
+     setFilters(prev => ({ ...prev, [key]: !prev[key] }));
+   };
+ 
+-  // Count contacts matching each filter
++  // Count contacts matching each filter (including smart filters)
+   const filterCounts = useMemo(() => ({
+     hasName: parsedContacts.filter(c => c.fullName && c.fullName.trim().length > 0).length,
+     hasEmail: parsedContacts.filter(c => c.email1 || c.email2).length,
+@@ -225,6 +352,23 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+     hasOrganization: parsedContacts.filter(c => c.organization && c.organization.trim().length > 0).length,
+     hasDuplicate: parsedContacts.filter(c => c.isDuplicate).length,
+     isNew: parsedContacts.filter(c => !c.isDuplicate && !c.isImported).length,
++    // Smart filters
++    isEnglishName: parsedContacts.filter(c => c.fullName && isEnglishText(c.fullName.trim())).length,
++    isHebrewName: parsedContacts.filter(c => c.fullName && isHebrewText(c.fullName)).length,
++    shortName: parsedContacts.filter(c => c.fullName && isShortName(c.fullName)).length,
++    hasNumbers: parsedContacts.filter(c => c.fullName && hasNumbersInText(c.fullName)).length,
++    missingEmail: parsedContacts.filter(c => !c.email1 && !c.email2).length,
++    missingPhone: parsedContacts.filter(c => !c.phone1 && !c.phone2).length,
++    hasCompleteData: parsedContacts.filter(c => 
++      c.fullName && c.fullName.trim().length > 0 &&
++      (c.email1 || c.email2) &&
++      (c.phone1 || c.phone2)
++    ).length,
++    // Category filters
++    hasLabels: parsedContacts.filter(c => c.labels && c.labels.trim().length > 0).length,
++    hasNotes: parsedContacts.filter(c => c.notes && c.notes.trim().length > 0).length,
++    hasTitle: parsedContacts.filter(c => c.title && c.title.trim().length > 0).length,
++    hasBirthday: parsedContacts.filter(c => c.birthday && c.birthday.trim().length > 0).length,
+   }), [parsedContacts]);
+ 
+   // Active filter count
+@@ -580,13 +724,73 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+           </ToggleGroupItem>
+         </ToggleGroup>
+         
+-        <Button 
+-          variant="outline" 
+-          size="sm"
+-          onClick={() => toggleSelectAll(selectionStats.selected < selectionStats.total - selectionStats.duplicates)}
+-        >
+-          {selectionStats.selected === selectionStats.total - selectionStats.duplicates ? '╫ס╫ר╫£ ╫פ╫¢╫£' : '╫ס╫ק╫¿ ╫פ╫¢╫£'}
+-        </Button>
++        <div className="flex gap-1">
++          <div className="flex items-center gap-2">
++            <Select value={uploadPreset} onValueChange={(v) => setUploadPreset(v as UploadPresetId)}>
++              <SelectTrigger className="h-9 w-[220px] text-right">
++                <SelectValue placeholder="╫ס╫ק╫¿ ╫í╫ש╫ץ╫ץ╫ע ╫פ╫ó╫£╫נ╫פ..." />
++              </SelectTrigger>
++              <SelectContent>
++                <SelectItem value="recommended">╫₧╫ץ╫₧╫£╫Ñ (╫⌐╫¥ + ╫₧╫ש╫ש╫£/╫ר╫£╫ñ╫ץ╫ƒ, ╫ס╫£╫ש ╫ק╫⌐╫ץ╫ף╫ש╫¥)</SelectItem>
++                <SelectItem value="all">╫פ╫¢╫ץ╫£ (╫£╫₧╫ó╫ר ╫¢╫ñ╫ש╫£╫ץ╫ש╫ץ╫¬/╫₧╫ש╫ץ╫ס╫נ╫ש╫¥)</SelectItem>
++                <SelectItem value="hasEmailOrPhone">╫¿╫º ╫ó╫¥ ╫₧╫ש╫ש╫£ ╫נ╫ץ ╫ר╫£╫ñ╫ץ╫ƒ</SelectItem>
++                <SelectItem value="hasPhone">╫¿╫º ╫ó╫¥ ╫ר╫£╫ñ╫ץ╫ƒ</SelectItem>
++                <SelectItem value="hasEmail">╫¿╫º ╫ó╫¥ ╫₧╫ש╫ש╫£</SelectItem>
++                <SelectItem value="hebrewNames">╫¿╫º ╫⌐╫₧╫ץ╫¬ ╫ס╫ó╫ס╫¿╫ש╫¬</SelectItem>
++                <SelectItem value="englishNames">╫¿╫º ╫⌐╫₧╫ץ╫¬ ╫ס╫נ╫á╫ע╫£╫ש╫¬</SelectItem>
++              </SelectContent>
++            </Select>
++            <Button variant="outline" size="sm" onClick={applyPreset}>
++              ╫פ╫ק╫£ ╫í╫ש╫ץ╫ץ╫ע
++            </Button>
++          </div>
++
++          <Button 
++            variant="outline" 
++            size="sm"
++            onClick={() => toggleSelectAll(true)}
++            disabled={selectionStats.selected === selectionStats.total - selectionStats.duplicates}
++          >
++            ╫ס╫ק╫¿ ╫פ╫¢╫£
++          </Button>
++
++          <Button
++            variant="outline"
++            size="sm"
++            onClick={() => setSelectionForContactIds(eligibleFilteredContacts.map(c => c.id), true)}
++            disabled={eligibleFilteredContacts.length === 0 || eligibleFilteredSelectedCount === eligibleFilteredContacts.length}
++            title="╫₧╫í╫₧╫ƒ ╫¿╫º ╫נ╫¬ ╫פ╫¬╫ץ╫ª╫נ╫ץ╫¬ ╫פ╫₧╫ץ╫ª╫ע╫ץ╫¬ ╫נ╫ק╫¿╫ש ╫פ╫í╫ש╫ץ╫ץ╫ע/╫ק╫ש╫ñ╫ץ╫⌐/╫ñ╫ש╫£╫ר╫¿╫ש╫¥"
++          >
++            ╫ס╫ק╫¿ ╫¬╫ץ╫ª╫נ╫ץ╫¬
++          </Button>
++
++          <Button 
++            variant="outline" 
++            size="sm"
++            onClick={deselectAll}
++            disabled={selectionStats.selected === 0}
++          >
++            <X className="h-3 w-3 ml-1" />
++            ╫ס╫ר╫£ ╫פ╫¢╫£
++          </Button>
++
++          <Button
++            variant="outline"
++            size="sm"
++            onClick={() => setSelectionForContactIds(eligibleFilteredContacts.map(c => c.id), false)}
++            disabled={eligibleFilteredSelectedCount === 0}
++            title="╫₧╫ס╫ר╫£ ╫í╫ש╫₧╫ץ╫ƒ ╫¿╫º ╫⌐╫£ ╫פ╫¬╫ץ╫ª╫נ╫ץ╫¬ ╫פ╫₧╫ץ╫ª╫ע╫ץ╫¬ ╫נ╫ק╫¿╫ש ╫פ╫í╫ש╫ץ╫ץ╫ע/╫ק╫ש╫ñ╫ץ╫⌐/╫ñ╫ש╫£╫ר╫¿╫ש╫¥"
++          >
++            ╫ס╫ר╫£ ╫¬╫ץ╫ª╫נ╫ץ╫¬
++          </Button>
++        </div>
++        
++        {/* Shift+Click hint */}
++        {filteredContacts.length > 10 && (
++          <div className="text-xs text-muted-foreground flex items-center gap-1">
++            ≡ƒעí ╫ר╫ש╫ñ: ╫£╫ק╫Ñ ╫ó╫£ ╫נ╫ק╫ף, ╫פ╫ק╫צ╫º <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs border">Shift</kbd> ╫ץ╫£╫ק╫Ñ ╫ó╫£ ╫נ╫ק╫¿ ╫¢╫ף╫ש ╫£╫ס╫ק╫ץ╫¿ ╫ר╫ץ╫ץ╫ק
++          </div>
++        )}
+       </div>
+ 
+       {/* Smart Filters Panel */}
+@@ -608,6 +812,17 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+                   hasOrganization: false,
+                   hasDuplicate: false,
+                   isNew: false,
++                  isEnglishName: false,
++                  isHebrewName: false,
++                  shortName: false,
++                  hasNumbers: false,
++                  missingEmail: false,
++                  missingPhone: false,
++                  hasCompleteData: false,
++                  hasLabels: false,
++                  hasNotes: false,
++                  hasTitle: false,
++                  hasBirthday: false,
+                 })}
+                 className="h-7 text-xs"
+               >
+@@ -707,6 +922,155 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+             </Button>
+           </div>
+           
++          {/* Smart Classification Filters */}
++          <div className="pt-3 border-t">
++            <p className="text-xs text-muted-foreground mb-2 font-medium">≡ƒפם ╫í╫ש╫ץ╫ץ╫ע ╫ק╫¢╫¥</p>
++            <div className="flex flex-wrap gap-2">
++              {/* English Names */}
++              <Button
++                variant={filters.isEnglishName ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('isEnglishName')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒפñ ╫נ╫á╫ע╫£╫ש╫¬
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.isEnglishName}
++                </Badge>
++              </Button>
++              
++              {/* Hebrew Names */}
++              <Button
++                variant={filters.isHebrewName ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('isHebrewName')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒפá ╫ó╫ס╫¿╫ש╫¬
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.isHebrewName}
++                </Badge>
++              </Button>
++              
++              {/* Short Names (< 3 chars) */}
++              <Button
++                variant={filters.shortName ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('shortName')}
++                className="gap-1.5 text-xs h-7 border-orange-300 text-orange-700 hover:bg-orange-100"
++              >
++                Γתá∩╕ן ╫⌐╫¥ ╫º╫ª╫¿
++                <Badge variant="secondary" className="text-xs px-1.5 bg-orange-100 text-orange-700">
++                  {filterCounts.shortName}
++                </Badge>
++              </Button>
++              
++              {/* Has Numbers in Name */}
++              <Button
++                variant={filters.hasNumbers ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasNumbers')}
++                className="gap-1.5 text-xs h-7 border-red-300 text-red-700 hover:bg-red-100"
++              >
++                ≡ƒפó ╫₧╫í╫ñ╫¿╫ש╫¥ ╫ס╫⌐╫¥
++                <Badge variant="secondary" className="text-xs px-1.5 bg-red-100 text-red-700">
++                  {filterCounts.hasNumbers}
++                </Badge>
++              </Button>
++              
++              {/* Missing Email */}
++              <Button
++                variant={filters.missingEmail ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('missingEmail')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒףº ╫ק╫í╫¿ ╫₧╫ש╫ש╫£
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.missingEmail}
++                </Badge>
++              </Button>
++              
++              {/* Missing Phone */}
++              <Button
++                variant={filters.missingPhone ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('missingPhone')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒף▒ ╫ק╫í╫¿ ╫ר╫£╫ñ╫ץ╫ƒ
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.missingPhone}
++                </Badge>
++              </Button>
++              
++              {/* Has Complete Data */}
++              <Button
++                variant={filters.hasCompleteData ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasCompleteData')}
++                className="gap-1.5 text-xs h-7 border-green-300 text-green-700 hover:bg-green-100"
++              >
++                Γ£ו ╫á╫¬╫ץ╫á╫ש╫¥ ╫₧╫£╫נ╫ש╫¥
++                <Badge variant="secondary" className="text-xs px-1.5 bg-green-100 text-green-700">
++                  {filterCounts.hasCompleteData}
++                </Badge>
++              </Button>
++
++              {/* Has Labels */}
++              <Button
++                variant={filters.hasLabels ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasLabels')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒן╖∩╕ן ╫¬╫ץ╫ץ╫ש╫ץ╫¬
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.hasLabels}
++                </Badge>
++              </Button>
++
++              {/* Has Notes */}
++              <Button
++                variant={filters.hasNotes ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasNotes')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒף¥ ╫פ╫ó╫¿╫ץ╫¬
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.hasNotes}
++                </Badge>
++              </Button>
++
++              {/* Has Title */}
++              <Button
++                variant={filters.hasTitle ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasTitle')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒע╝ ╫¬╫ñ╫º╫ש╫ף
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.hasTitle}
++                </Badge>
++              </Button>
++
++              {/* Has Birthday */}
++              <Button
++                variant={filters.hasBirthday ? "default" : "outline"}
++                size="sm"
++                onClick={() => toggleFilter('hasBirthday')}
++                className="gap-1.5 text-xs h-7"
++              >
++                ≡ƒמג ╫ש╫ץ╫¥ ╫פ╫ץ╫£╫ף╫¬
++                <Badge variant="secondary" className="text-xs px-1.5">
++                  {filterCounts.hasBirthday}
++                </Badge>
++              </Button>
++            </div>
++          </div>
++          
+           {/* Active filters summary */}
+           {activeFilterCount > 0 && (
+             <div className="pt-2 border-t text-sm">
+@@ -720,26 +1084,56 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+         </div>
+       )}
+ 
+-      {/* Progress bar during import with percentage */}
++      {/* Progress bar during import with percentage and speed indicator */}
+       {isImporting && (
+         <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200">
+-          <div className="flex items-center justify-between text-sm">
+-            <span className="font-medium text-blue-700 dark:text-blue-300">
+-              ╫₧╫ש╫ש╫ס╫נ ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿...
+-            </span>
+-            <span className="font-bold text-blue-600 dark:text-blue-400 text-lg">
++          <div className="flex items-center justify-between">
++            <div className="flex items-center gap-3">
++              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
++              <span className="font-medium text-blue-700 dark:text-blue-300">
++                ╫₧╫ש╫ש╫ס╫נ ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿...
++              </span>
++            </div>
++            <span className="font-bold text-blue-600 dark:text-blue-400 text-2xl">
+               {importProgress.percentage}%
+             </span>
+           </div>
+           <Progress value={importProgress.percentage} className="h-3" />
+-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+-            <span>
++          <div className="grid grid-cols-2 gap-4 text-xs">
++            <div className="text-muted-foreground">
+               {importProgress.currentContactName && (
+-                <>╫₧╫ó╫ס╫ף: <span className="font-medium">{importProgress.currentContactName}</span></>
++                <div className="flex items-center gap-1">
++                  <span className="opacity-70">╫₧╫ó╫ס╫ף:</span>
++                  <span className="font-medium truncate">{importProgress.currentContactName}</span>
++                </div>
+               )}
+-            </span>
+-            <span>{importProgress.current} ╫₧╫¬╫ץ╫ת {importProgress.total}</span>
++            </div>
++            <div className="text-left text-muted-foreground">
++              <span className="font-semibold text-blue-600">{importProgress.current}</span>
++              <span> / </span>
++              <span>{importProgress.total}</span>
++              <span className="mr-2 opacity-70">╫נ╫á╫⌐╫ש ╫º╫⌐╫¿</span>
++            </div>
+           </div>
++          {importStats && (importStats.imported > 0 || importStats.updated > 0) && (
++            <div className="flex items-center gap-4 text-xs pt-2 border-t border-blue-200">
++              {importStats.imported > 0 && (
++                <span className="text-green-600 font-medium">
++                  Γ£ף {importStats.imported} ╫ש╫ץ╫ס╫נ╫ץ
++                </span>
++              )}
++              {importStats.updated > 0 && (
++                <span className="text-blue-600 font-medium">
++                  Γז╗ {importStats.updated} ╫ó╫ץ╫ף╫¢╫á╫ץ
++                </span>
++              )}
++              {importStats.errors > 0 && (
++                <span className="text-red-600 font-medium">
++                  Γ£ק {importStats.errors} ╫⌐╫ע╫ש╫נ╫ץ╫¬
++                </span>
++              )}
++            </div>
++          )}
+         </div>
+       )}
+ 
+@@ -767,11 +1161,11 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+       <ScrollArea className="h-[400px] border rounded-lg">
+         {viewMode === 'cards' && (
+           <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+-            {filteredContacts.map((contact) => (
++            {visibleContacts.map((contact, index) => (
+               <ContactCard
+                 key={contact.id}
+                 contact={contact}
+-                onToggle={() => toggleContactSelection(contact.id)}
++                onToggle={(e) => handleContactClick(contact.id, index, e)}
+                 onSetAction={(action) => setContactAction(contact.id, action)}
+               />
+             ))}
+@@ -780,11 +1174,11 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+         
+         {viewMode === 'list' && (
+           <div className="p-2 space-y-1">
+-            {filteredContacts.map((contact) => (
++            {visibleContacts.map((contact, index) => (
+               <ContactListItem
+                 key={contact.id}
+                 contact={contact}
+-                onToggle={() => toggleContactSelection(contact.id)}
++                onToggle={(e) => handleContactClick(contact.id, index, e)}
+                 onSetAction={(action) => setContactAction(contact.id, action)}
+               />
+             ))}
+@@ -803,11 +1197,11 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+               </tr>
+             </thead>
+             <tbody>
+-              {filteredContacts.map((contact) => (
++              {visibleContacts.map((contact, index) => (
+                 <ContactTableRow
+                   key={contact.id}
+                   contact={contact}
+-                  onToggle={() => toggleContactSelection(contact.id)}
++                  onToggle={(e) => handleContactClick(contact.id, index, e)}
+                 />
+               ))}
+             </tbody>
+@@ -815,6 +1209,32 @@ export function ContactsCSVImport({ onImportComplete }: ContactsCSVImportProps)
+         )}
+       </ScrollArea>
+ 
++      {filteredContacts.length > visibleContacts.length && (
++        <div className="flex items-center justify-between text-xs text-muted-foreground">
++          <span>
++            ╫₧╫ץ╫ª╫ע╫ש╫¥ {visibleContacts.length} ╫₧╫¬╫ץ╫ת {filteredContacts.length} (╫ר╫ó╫ש╫á╫פ ╫ó╫ª╫£╫פ ╫¢╫ף╫ש ╫£╫נ ╫£╫¬╫º╫ץ╫ó)
++          </span>
++          <div className="flex gap-2">
++            <Button
++              variant="outline"
++              size="sm"
++              onClick={() => setRenderLimit((prev) => Math.min(prev + 200, filteredContacts.length))}
++              className="h-7"
++            >
++              ╫ר╫ó╫ƒ ╫ó╫ץ╫ף
++            </Button>
++            <Button
++              variant="ghost"
++              size="sm"
++              onClick={() => setRenderLimit(filteredContacts.length)}
++              className="h-7"
++            >
++              ╫פ╫ª╫ע ╫פ╫¢╫£
++            </Button>
++          </div>
++        </div>
++      )}
++
+       {/* Import button */}
+       <div className="flex items-center justify-between pt-2 border-t">
+         <p className="text-sm text-muted-foreground">
+@@ -862,18 +1282,33 @@ function ContactCard({
+   onSetAction,
+ }: { 
+   contact: ParsedContact;
+-  onToggle: () => void;
++  onToggle: (e?: React.MouseEvent) => void;
+   onSetAction: (action: 'import' | 'update' | 'skip') => void;
+ }) {
+   const getDuplicateReasonText = () => {
++    // Check if it's an internal duplicate (within CSV file)
++    const isInternalDuplicate = contact.notes?.includes('╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬');
++    
++    if (isInternalDuplicate) {
++      switch (contact.duplicateReason) {
++        case 'email': return '╫¢╫ñ╫ש╫£╫ץ╫¬ ╫₧╫ש╫ש╫£ ╫ס╫º╫ץ╫ס╫Ñ';
++        case 'phone': return '╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ר╫£╫ñ╫ץ╫ƒ ╫ס╫º╫ץ╫ס╫Ñ';
++        case 'name': return '╫¢╫ñ╫ש╫£╫ץ╫¬ ╫⌐╫¥ ╫ס╫º╫ץ╫ס╫Ñ';
++        default: return '╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ס╫º╫ץ╫ס╫Ñ';
++      }
++    }
++    
++    // Database duplicate
+     switch (contact.duplicateReason) {
+-      case 'email': return '╫₧╫ש╫ש╫£ ╫¬╫ץ╫נ╫¥';
+-      case 'phone': return '╫ר╫£╫ñ╫ץ╫ƒ ╫¬╫ץ╫נ╫¥';
+-      case 'name': return '╫⌐╫¥ ╫¬╫ץ╫נ╫¥';
++      case 'email': return '╫₧╫ש╫ש╫£ ╫º╫ש╫ש╫¥ ╫ס╫₧╫ó╫¿╫¢╫¬';
++      case 'phone': return '╫ר╫£╫ñ╫ץ╫ƒ ╫º╫ש╫ש╫¥ ╫ס╫₧╫ó╫¿╫¢╫¬';
++      case 'name': return '╫⌐╫¥ ╫º╫ש╫ש╫¥ ╫ס╫₧╫ó╫¿╫¢╫¬';
+       default: return '╫º╫ש╫ש╫¥ ╫ס╫₧╫ó╫¿╫¢╫¬';
+     }
+   };
+ 
++  const isInternalDuplicate = contact.notes?.includes('╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬');
++
+   return (
+     <div
+       dir="rtl"
+@@ -890,20 +1325,29 @@ function ContactCard({
+       }`}
+     >
+       <div className="flex items-start gap-3 flex-row-reverse">
+-        <Checkbox
+-          checked={contact.selected}
+-          onCheckedChange={onToggle}
+-          disabled={contact.isImported}
+-          className="mt-1"
+-        />
++        <div onClick={(e) => !contact.isImported && onToggle(e)}>
++          <Checkbox
++            checked={contact.selected}
++            disabled={contact.isImported}
++            className="mt-1 cursor-pointer"
++          />
++        </div>
+ 
+         <div className="flex-1 min-w-0 space-y-2 text-right">
+           {/* Name and badges */}
+           <div className="flex items-center gap-2 flex-wrap justify-end flex-row-reverse">
+             <span className="font-semibold text-right">{contact.fullName}</span>
+             
+-            {contact.isDuplicate && contact.existingClient && (
+-              <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300">
++            {contact.isDuplicate && isInternalDuplicate && (
++              <Badge variant="outline" className="text-xs text-orange-600 border-orange-400 bg-orange-50 dark:bg-orange-900/20">
++                <AlertCircle className="h-3 w-3 ml-1" />
++                {getDuplicateReasonText()}
++              </Badge>
++            )}
++            
++            {contact.isDuplicate && !isInternalDuplicate && contact.existingClient && (
++              <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-300 bg-yellow-50 dark:bg-yellow-900/20">
++                <AlertCircle className="h-3 w-3 ml-1" />
+                 {getDuplicateReasonText()}
+               </Badge>
+             )}
+@@ -988,7 +1432,7 @@ function ContactListItem({
+   onSetAction,
+ }: { 
+   contact: ParsedContact;
+-  onToggle: () => void;
++  onToggle: (e?: React.MouseEvent) => void;
+   onSetAction: (action: 'import' | 'update' | 'skip') => void;
+ }) {
+   return (
+@@ -1004,11 +1448,13 @@ function ContactListItem({
+           : 'hover:bg-muted/50'
+       }`}
+     >
+-      <Checkbox
+-        checked={contact.selected}
+-        onCheckedChange={onToggle}
+-        disabled={contact.isImported}
+-      />
++      <div onClick={(e) => !contact.isImported && onToggle(e)}>
++        <Checkbox
++          checked={contact.selected}
++          disabled={contact.isImported}
++          className="cursor-pointer"
++        />
++      </div>
+       
+       <span className="font-medium w-32 truncate text-right">{contact.fullName}</span>
+       
+@@ -1050,7 +1496,7 @@ function ContactTableRow({
+   onToggle,
+ }: { 
+   contact: ParsedContact;
+-  onToggle: () => void;
++  onToggle: (e?: React.MouseEvent) => void;
+ }) {
+   return (
+     <tr className={`border-b text-right ${
+@@ -1059,11 +1505,13 @@ function ContactTableRow({
+       contact.isImported ? 'bg-green-50 dark:bg-green-900/10' : ''
+     }`}>
+       <td className="p-2 text-right">
+-        <Checkbox
+-          checked={contact.selected}
+-          onCheckedChange={onToggle}
+-          disabled={contact.isImported}
+-        />
++        <div onClick={(e) => !contact.isImported && onToggle(e)}>
++          <Checkbox
++            checked={contact.selected}
++            disabled={contact.isImported}
++            className="cursor-pointer"
++          />
++        </div>
+       </td>
+       <td className="p-2 font-medium text-right">{contact.fullName}</td>
+       <td className="p-2 text-muted-foreground text-center" dir="ltr">
+diff --git a/src/hooks/useContactsImport.ts b/src/hooks/useContactsImport.ts
+index fad5b43..96e0684 100644
+--- a/src/hooks/useContactsImport.ts
++++ b/src/hooks/useContactsImport.ts
+@@ -64,9 +64,19 @@ export interface ImportStats {
+   errors: number;
+ }
+ 
++export type UploadPresetId =
++  | 'all'
++  | 'hasEmailOrPhone'
++  | 'hasPhone'
++  | 'hasEmail'
++  | 'hebrewNames'
++  | 'englishNames'
++  | 'recommended';
++
+ // Column mapping interface - which CSV column maps to which field
+ export interface ColumnMapping {
+   firstName: string;
++  middleName: string;
+   lastName: string;
+   fullName: string;
+   email1: string;
+@@ -96,10 +106,89 @@ function normalizeName(name: string): string {
+   return name.toLowerCase().trim().replace(/\s+/g, ' ');
+ }
+ 
++function isEnglishNameText(text: string): boolean {
++  return /^[A-Za-z\s\-'.]+$/.test(text.trim());
++}
++
++function isSuspiciousName(text: string): boolean {
++  const compact = text.replace(/\s/g, '');
++  if (compact.length > 0 && compact.length < 3) return true;
++  if (/\d/.test(text)) return true;
++  return false;
++}
++
++function hasHebrew(text: string): boolean {
++  return /[\u0590-\u05FF]/.test(text);
++}
++
++function normalizeHeader(header: string): string {
++  return header
++    .trim()
++    .toLowerCase()
++    .replace(/[\u200e\u200f]/g, '')
++    .replace(/[\[\]\(\){}]/g, ' ')
++    .replace(/[\-_/\\.]+/g, ' ')
++    .replace(/\s+/g, ' ')
++    .trim();
++}
++
++function scoreHeader(header: string, required: string[], bonus: string[] = []): number {
++  const h = normalizeHeader(header);
++  let score = 0;
++  for (const token of required) {
++    if (h.includes(token)) score += 5;
++  }
++  for (const token of bonus) {
++    if (h.includes(token)) score += 2;
++  }
++  // Prefer Google Contacts "- value" columns over "- type" columns
++  if (h.includes(' value')) score += 2;
++  if (h.includes(' type')) score -= 2;
++  return score;
++}
++
++function splitFullNameSmart(fullNameRaw: string): { firstName: string; middleName: string; lastName: string; fullName: string } {
++  const fullName = fullNameRaw
++    .replace(/\s+/g, ' ')
++    .replace(/^\s+|\s+$/g, '')
++    .replace(/^["']|["']$/g, '')
++    .replace(/\s*\([^)]*\)\s*/g, ' ')
++    .replace(/\s+/g, ' ')
++    .trim();
++
++  if (!fullName) return { firstName: '', middleName: '', lastName: '', fullName: '' };
++
++  // Handle "Last, First Middle" style
++  if (fullName.includes(',')) {
++    const [left, right] = fullName.split(',').map(s => s.trim());
++    const rightParts = right ? right.split(' ').filter(Boolean) : [];
++    const firstName = rightParts[0] || '';
++    const middleName = rightParts.slice(1).join(' ');
++    const lastName = left || '';
++    const rebuilt = [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
++    return { firstName, middleName, lastName, fullName: rebuilt || fullName };
++  }
++
++  const parts = fullName.split(' ').filter(Boolean);
++  if (parts.length === 1) {
++    return { firstName: parts[0], middleName: '', lastName: '', fullName };
++  }
++  if (parts.length === 2) {
++    // Ambiguous in Hebrew/English; default: first last
++    return { firstName: parts[0], middleName: '', lastName: parts[1], fullName };
++  }
++
++  const firstName = parts[0];
++  const lastName = parts[parts.length - 1];
++  const middleName = parts.slice(1, -1).join(' ');
++  return { firstName, middleName, lastName, fullName };
++}
++
+ // Auto-detect column mapping based on common header names
+ function autoDetectColumnMapping(headers: string[]): ColumnMapping {
+   const mapping: ColumnMapping = {
+     firstName: '',
++    middleName: '',
+     lastName: '',
+     fullName: '',
+     email1: '',
+@@ -114,49 +203,75 @@ function autoDetectColumnMapping(headers: string[]): ColumnMapping {
+     labels: '',
+   };
+ 
+-  const patterns: Record<keyof ColumnMapping, RegExp[]> = {
+-    firstName: [/^(first\s*name|given\s*name|╫⌐╫¥\s*╫ñ╫¿╫ר╫ש)$/i],
+-    lastName: [/^(last\s*name|family\s*name|╫⌐╫¥\s*╫₧╫⌐╫ñ╫ק╫פ)$/i],
+-    fullName: [/^(full\s*name|name|╫⌐╫¥\s*╫₧╫£╫נ|╫⌐╫¥)$/i],
+-    email1: [/^(e-?mail\s*1?\s*-?\s*value|e-?mail|email|╫₧╫ש╫ש╫£)$/i],
+-    email2: [/^(e-?mail\s*2\s*-?\s*value)$/i],
+-    phone1: [/^(phone\s*1?\s*-?\s*value|phone|╫ר╫£╫ñ╫ץ╫ƒ|╫á╫ש╫ש╫ף)$/i],
+-    phone2: [/^(phone\s*2\s*-?\s*value)$/i],
+-    organization: [/^(organization\s*(name|1\s*-\s*name)?|company|╫ק╫ס╫¿╫פ|╫נ╫¿╫ע╫ץ╫ƒ)$/i],
+-    title: [/^(organization\s*(title|1\s*-\s*title)|job\s*title|title|╫¬╫ñ╫º╫ש╫ף)$/i],
+-    department: [/^(organization\s*(department|1\s*-\s*department)|department|╫₧╫ק╫£╫º╫פ)$/i],
+-    birthday: [/^(birthday|╫ש╫ץ╫¥\s*╫פ╫ץ╫£╫ף╫¬)$/i],
+-    notes: [/^(notes|╫פ╫ó╫¿╫ץ╫¬)$/i],
+-    labels: [/^(labels|group\s*membership|groups|╫¬╫ץ╫ץ╫ש╫ץ╫¬)$/i],
++  // Score-based mapping to support Hebrew/English variants and Google Contacts formats
++  const fieldScorers: Record<keyof ColumnMapping, (header: string) => number> = {
++    firstName: (h) => scoreHeader(h, ['given name'], ['first', '╫⌐╫¥ ╫ñ╫¿╫ר╫ש', '╫ñ╫¿╫ר╫ש']) + scoreHeader(h, ['╫⌐╫¥ ╫ñ╫¿╫ר╫ש'], ['╫⌐╫¥']) + scoreHeader(h, ['first name'], ['given']),
++    middleName: (h) => scoreHeader(h, ['additional name'], ['middle', '╫⌐╫¥ ╫á╫ץ╫í╫ú', '╫נ╫₧╫ª╫ó╫ש']) + scoreHeader(h, ['middle name'], ['additional']) + scoreHeader(h, ['╫⌐╫¥ ╫á╫ץ╫í╫ú'], ['╫נ╫₧╫ª╫ó╫ש']),
++    lastName: (h) => scoreHeader(h, ['family name'], ['last', 'surname', '╫⌐╫¥ ╫₧╫⌐╫ñ╫ק╫פ', '╫₧╫⌐╫ñ╫ק╫פ']) + scoreHeader(h, ['last name'], ['family']) + scoreHeader(h, ['╫⌐╫¥ ╫₧╫⌐╫ñ╫ק╫פ'], ['╫₧╫⌐╫ñ╫ק╫פ']),
++    fullName: (h) => scoreHeader(h, ['name'], ['full', 'display', '╫⌐╫¥', '╫⌐╫¥ ╫₧╫£╫נ']) + scoreHeader(h, ['full name'], ['name']) + scoreHeader(h, ['╫⌐╫¥ ╫₧╫£╫נ'], ['╫⌐╫¥']),
++    email1: (h) => scoreHeader(h, ['e mail 1', 'value'], ['email', 'mail']) + scoreHeader(h, ['email 1', 'value'], ['email']) + scoreHeader(h, ['╫₧╫ש╫ש╫£'], ['╫ף╫ץ╫נ', '╫ף╫ץ╫נ╫¿']),
++    email2: (h) => scoreHeader(h, ['e mail 2', 'value'], ['email', 'mail']) + scoreHeader(h, ['email 2', 'value'], ['email']),
++    phone1: (h) => scoreHeader(h, ['phone 1', 'value'], ['phone', 'mobile', 'cell']) + scoreHeader(h, ['╫ר╫£╫ñ╫ץ╫ƒ'], ['╫á╫ש╫ש╫ף', '╫ñ╫£╫נ╫ñ╫ץ╫ƒ']) + scoreHeader(h, ['╫á╫ש╫ש╫ף'], ['╫ר╫£╫ñ╫ץ╫ƒ']),
++    phone2: (h) => scoreHeader(h, ['phone 2', 'value'], ['phone']) + scoreHeader(h, ['phone 3', 'value'], ['phone']),
++    organization: (h) => scoreHeader(h, ['organization', 'name'], ['company', 'org', '╫ק╫ס╫¿╫פ', '╫נ╫¿╫ע╫ץ╫ƒ']) + scoreHeader(h, ['company'], ['organization']) + scoreHeader(h, ['╫נ╫¿╫ע╫ץ╫ƒ'], ['╫ק╫ס╫¿╫פ']),
++    title: (h) => scoreHeader(h, ['job title'], ['title', '╫¬╫ñ╫º╫ש╫ף']) + scoreHeader(h, ['organization', 'title'], ['title']) + scoreHeader(h, ['╫¬╫ñ╫º╫ש╫ף'], ['╫₧╫⌐╫¿╫פ']),
++    department: (h) => scoreHeader(h, ['department'], ['organization', '╫₧╫ק╫£╫º╫פ']) + scoreHeader(h, ['organization', 'department'], ['department']) + scoreHeader(h, ['╫₧╫ק╫£╫º╫פ'], ['╫נ╫¿╫ע╫ץ╫ƒ']),
++    birthday: (h) => scoreHeader(h, ['birthday'], ['bday', '╫ש╫ץ╫¥ ╫פ╫ץ╫£╫ף╫¬', '╫¬╫נ╫¿╫ש╫ת']) + scoreHeader(h, ['╫ש╫ץ╫¥ ╫פ╫ץ╫£╫ף╫¬'], ['╫¬╫נ╫¿╫ש╫ת']),
++    notes: (h) => scoreHeader(h, ['notes'], ['note', '╫פ╫ó╫¿╫ץ╫¬', '╫פ╫ó╫¿╫פ']) + scoreHeader(h, ['╫פ╫ó╫¿╫ץ╫¬'], ['╫פ╫ó╫¿╫פ']),
++    labels: (h) => scoreHeader(h, ['group membership'], ['groups', 'labels', '╫¬╫ץ╫ץ╫ש╫ץ╫¬', '╫º╫ס╫ץ╫ª╫ץ╫¬']) + scoreHeader(h, ['labels'], ['groups', '╫¬╫ץ╫ץ╫ש╫ץ╫¬']) + scoreHeader(h, ['╫¬╫ץ╫ץ╫ש╫ץ╫¬'], ['╫º╫ס╫ץ╫ª╫ץ╫¬']),
+   };
+ 
+-  headers.forEach(header => {
+-    const normalizedHeader = header.trim();
+-    for (const [field, regexList] of Object.entries(patterns)) {
+-      if (!mapping[field as keyof ColumnMapping]) {
+-        for (const regex of regexList) {
+-          if (regex.test(normalizedHeader)) {
+-            mapping[field as keyof ColumnMapping] = header;
+-            break;
+-          }
+-        }
++  const used = new Set<string>();
++  (Object.keys(fieldScorers) as Array<keyof ColumnMapping>).forEach((field) => {
++    let bestHeader = '';
++    let bestScore = 0;
++    for (const header of headers) {
++      if (used.has(header)) continue;
++      const score = fieldScorers[field](header);
++      if (score > bestScore) {
++        bestScore = score;
++        bestHeader = header;
+       }
+     }
++    if (bestHeader && bestScore >= 6) {
++      mapping[field] = bestHeader;
++      used.add(bestHeader);
++    }
+   });
+ 
++  // If we detected separate name parts, fullName is optional; keep it if it clearly matches
++  // Otherwise, allow fullName to be same as a name column (do not block mapping quality)
++
+   return mapping;
+ }
+ 
+ // Parse CSV to raw rows
++function detectDelimiter(headerLine: string): string {
++  const line = headerLine.replace(/^\uFEFF/, '');
++  const candidates = [',', ';', '\t'];
++  let best = ',';
++  let bestCount = -1;
++  for (const c of candidates) {
++    const count = (line.match(new RegExp(c === '\\t' ? '\\t' : `\\${c}`, 'g')) || []).length;
++    if (count > bestCount) {
++      bestCount = count;
++      best = c;
++    }
++  }
++  return best;
++}
++
+ function parseCSVToRows(csvContent: string): { headers: string[]; rows: RawCsvRow[] } {
+-  const lines = csvContent.split('\n').filter(line => line.trim());
++  const normalized = csvContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
++  const lines = normalized.split('\n').filter(line => line.trim());
+   if (lines.length < 1) return { headers: [], rows: [] };
+ 
+-  const headers = parseCSVLine(lines[0]);
++  const delimiter = detectDelimiter(lines[0]);
++  const headers = parseCSVLine(lines[0], delimiter);
+   const rows: RawCsvRow[] = [];
+ 
+   for (let i = 1; i < lines.length; i++) {
+-    const values = parseCSVLine(lines[i]);
++    const values = parseCSVLine(lines[i], delimiter);
+     const row: RawCsvRow = {};
+     headers.forEach((header, idx) => {
+       row[header] = values[idx] || '';
+@@ -178,19 +293,33 @@ function applyMappingToRows(rows: RawCsvRow[], mapping: ColumnMapping): ParsedCo
+       return (row[column] || '').trim();
+     };
+ 
+-    const firstName = getValue('firstName');
+-    const lastName = getValue('lastName');
++    let firstName = getValue('firstName');
++    let middleName = getValue('middleName');
++    let lastName = getValue('lastName');
+     let fullName = getValue('fullName');
+     const email1 = getValue('email1');
+     const email2 = getValue('email2');
+     const phone1 = getValue('phone1');
+     const phone2 = getValue('phone2');
+ 
++    // If we only have fullName, try to split it (including Hebrew)
++    if (fullName && (!firstName || !lastName)) {
++      const split = splitFullNameSmart(fullName);
++      if (!firstName) firstName = split.firstName;
++      if (!middleName) middleName = split.middleName;
++      if (!lastName) lastName = split.lastName;
++      if (!fullName) fullName = split.fullName;
++    }
++
+     // Build full name if not directly mapped
+     if (!fullName) {
+-      fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
++      fullName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
+     }
+ 
++    // If we have first/last but looks swapped in Hebrew "Last First" with comma already handled,
++    // keep as-is; user can fix in mapping step.
++    // (We avoid aggressive swapping heuristics to prevent wrong data.)
++
+     // Skip rows without name AND without email AND without phone
+     if (!fullName && !email1 && !email2 && !phone1 && !phone2) return;
+ 
+@@ -206,7 +335,7 @@ function applyMappingToRows(rows: RawCsvRow[], mapping: ColumnMapping): ParsedCo
+     contacts.push({
+       id: `contact-${i}-${Date.now()}`,
+       firstName,
+-      middleName: '',
++      middleName,
+       lastName,
+       fullName,
+       email1,
+@@ -239,11 +368,16 @@ function parseGoogleContactsCSV(csvContent: string): ParsedContact[] {
+ }
+ 
+ // Parse a single CSV line handling quoted fields
+-function parseCSVLine(line: string): string[] {
++function parseCSVLine(line: string, delimiter: string = ','): string[] {
+   const result: string[] = [];
+   let current = '';
+   let inQuotes = false;
+ 
++  // Strip BOM if exists
++  if (line.charCodeAt(0) === 0xfeff) {
++    line = line.slice(1);
++  }
++
+   for (let i = 0; i < line.length; i++) {
+     const char = line[i];
+     const nextChar = line[i + 1];
+@@ -255,14 +389,14 @@ function parseCSVLine(line: string): string[] {
+       } else {
+         inQuotes = !inQuotes;
+       }
+-    } else if (char === ',' && !inQuotes) {
++    } else if (char === delimiter && !inQuotes) {
+       result.push(current);
+       current = '';
+     } else {
+       current += char;
+     }
+   }
+-  result.push(current);
++  result.push(current.replace(/\r$/, ''));
+ 
+   return result;
+ }
+@@ -287,6 +421,7 @@ export function useContactsImport() {
+   const [rawCsvRows, setRawCsvRows] = useState<RawCsvRow[]>([]);
+   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({
+     firstName: '',
++    middleName: '',
+     lastName: '',
+     fullName: '',
+     email1: '',
+@@ -468,9 +603,36 @@ export function useContactsImport() {
+             }
+           });
+ 
+-          // Check each contact for duplicates
+-          contacts = contacts.map(contact => {
+-            // Check email match
++          // Build internal duplicate maps (within CSV file)
++          const csvEmailMap = new Map<string, number>();
++          const csvPhoneMap = new Map<string, number>();
++          const csvNameMap = new Map<string, number>();
++
++          contacts.forEach((contact, index) => {
++            // Track first occurrence of each unique value
++            if (contact.email1) {
++              const email = contact.email1.toLowerCase();
++              if (!csvEmailMap.has(email)) csvEmailMap.set(email, index);
++            }
++            if (contact.email2) {
++              const email = contact.email2.toLowerCase();
++              if (!csvEmailMap.has(email)) csvEmailMap.set(email, index);
++            }
++            if (contact.phone1) {
++              const phone = normalizePhone(contact.phone1);
++              if (!csvPhoneMap.has(phone)) csvPhoneMap.set(phone, index);
++            }
++            if (contact.phone2) {
++              const phone = normalizePhone(contact.phone2);
++              if (!csvPhoneMap.has(phone)) csvPhoneMap.set(phone, index);
++            }
++            const name = normalizeName(contact.fullName);
++            if (name && !csvNameMap.has(name)) csvNameMap.set(name, index);
++          });
++
++          // Check each contact for duplicates (both database and internal)
++          contacts = contacts.map((contact, index) => {
++            // First priority: Check database duplicates
+             const email1Lower = contact.email1?.toLowerCase();
+             const email2Lower = contact.email2?.toLowerCase();
+             
+@@ -499,7 +661,7 @@ export function useContactsImport() {
+               };
+             }
+ 
+-            // Check phone match
++            // Check phone match in database
+             const phone1Norm = contact.phone1 ? normalizePhone(contact.phone1) : '';
+             const phone2Norm = contact.phone2 ? normalizePhone(contact.phone2) : '';
+             
+@@ -528,7 +690,7 @@ export function useContactsImport() {
+               };
+             }
+ 
+-            // Check name match
++            // Check name match in database
+             const nameNorm = normalizeName(contact.fullName);
+             if (nameNorm && nameMap.has(nameNorm)) {
+               const existing = nameMap.get(nameNorm)!;
+@@ -543,6 +705,85 @@ export function useContactsImport() {
+               };
+             }
+ 
++            // Second priority: Check internal CSV duplicates
++            if (email1Lower) {
++              const firstIndex = csvEmailMap.get(email1Lower);
++              if (firstIndex !== undefined && firstIndex < index) {
++                return {
++                  ...contact,
++                  isDuplicate: true,
++                  duplicateReason: 'email' as const,
++                  selected: false,
++                  action: 'skip' as const,
++                  notes: contact.notes 
++                    ? `${contact.notes}\nΓתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`
++                    : `Γתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`,
++                };
++              }
++            }
++            if (email2Lower) {
++              const firstIndex = csvEmailMap.get(email2Lower);
++              if (firstIndex !== undefined && firstIndex < index) {
++                return {
++                  ...contact,
++                  isDuplicate: true,
++                  duplicateReason: 'email' as const,
++                  selected: false,
++                  action: 'skip' as const,
++                  notes: contact.notes 
++                    ? `${contact.notes}\nΓתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`
++                    : `Γתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`,
++                };
++              }
++            }
++
++            if (phone1Norm) {
++              const firstIndex = csvPhoneMap.get(phone1Norm);
++              if (firstIndex !== undefined && firstIndex < index) {
++                return {
++                  ...contact,
++                  isDuplicate: true,
++                  duplicateReason: 'phone' as const,
++                  selected: false,
++                  action: 'skip' as const,
++                  notes: contact.notes 
++                    ? `${contact.notes}\nΓתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`
++                    : `Γתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`,
++                };
++              }
++            }
++            if (phone2Norm) {
++              const firstIndex = csvPhoneMap.get(phone2Norm);
++              if (firstIndex !== undefined && firstIndex < index) {
++                return {
++                  ...contact,
++                  isDuplicate: true,
++                  duplicateReason: 'phone' as const,
++                  selected: false,
++                  action: 'skip' as const,
++                  notes: contact.notes 
++                    ? `${contact.notes}\nΓתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`
++                    : `Γתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`,
++                };
++              }
++            }
++
++            if (nameNorm) {
++              const firstIndex = csvNameMap.get(nameNorm);
++              if (firstIndex !== undefined && firstIndex < index) {
++                return {
++                  ...contact,
++                  isDuplicate: true,
++                  duplicateReason: 'name' as const,
++                  selected: false,
++                  action: 'skip' as const,
++                  notes: contact.notes 
++                    ? `${contact.notes}\nΓתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`
++                    : `Γתá∩╕ן ╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬ ╫ס╫º╫ץ╫ס╫Ñ (╫⌐╫ץ╫¿╫פ ${firstIndex + 2})`,
++                };
++              }
++            }
++
+             return contact;
+           });
+         }
+@@ -552,9 +793,13 @@ export function useContactsImport() {
+       setIsLoading(false);
+ 
+       const duplicateCount = contacts.filter(c => c.isDuplicate).length;
++      const internalDuplicates = contacts.filter(c => 
++        c.isDuplicate && !c.existingClientId && c.notes?.includes('╫¢╫ñ╫ש╫£╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫¬')
++      ).length;
++      
+       toast({
+         title: '╫פ╫₧╫ש╫ñ╫ץ╫ש ╫פ╫ץ╫ק╫£ ╫ס╫פ╫ª╫£╫ק╫פ',
+-        description: `╫á╫₧╫ª╫נ╫ץ ${contacts.length} ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿${duplicateCount > 0 ? `, ${duplicateCount} ╫¢╫ñ╫ש╫£╫ץ╫ש╫ץ╫¬ ╫צ╫ץ╫פ╫ץ` : ''}`,
++        description: `╫á╫₧╫ª╫נ╫ץ ${contacts.length} ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿${duplicateCount > 0 ? `, ${duplicateCount} ╫¢╫ñ╫ש╫£╫ץ╫ש╫ץ╫¬ ╫צ╫ץ╫פ╫ץ` : ''}${internalDuplicates > 0 ? ` (╫¢╫ץ╫£╫£ ${internalDuplicates} ╫¢╫ñ╫ש╫£╫ץ╫ש╫ץ╫¬ ╫ñ╫á╫ש╫₧╫ש╫ץ╫¬ ╫ס╫º╫ץ╫ס╫Ñ)` : ''}`,
+       });
+     } catch (error: any) {
+       console.error('Error applying mapping:', error);
+@@ -590,12 +835,81 @@ export function useContactsImport() {
+     setParsedContacts(prev => 
+       prev.map(c => ({ 
+         ...c, 
+-        selected: c.isDuplicate ? false : selected,
+-        action: c.isDuplicate ? 'skip' : (selected ? 'import' : 'skip'),
++        selected: (c.isDuplicate || c.isImported) ? false : selected,
++        action: (c.isDuplicate || c.isImported) ? 'skip' : (selected ? 'import' : 'skip'),
+       }))
+     );
+   }, []);
+ 
++  const setSelectionForContactIds = useCallback((contactIds: string[], selected: boolean) => {
++    const idSet = new Set(contactIds);
++    setParsedContacts(prev =>
++      prev.map(c => {
++        if (!idSet.has(c.id)) return c;
++        if (c.isDuplicate || c.isImported) {
++          return { ...c, selected: false, action: 'skip' as const };
++        }
++
++        if (!selected) {
++          return { ...c, selected: false, action: 'skip' as const };
++        }
++
++        // Selecting: keep update if already chosen, otherwise default to import
++        const nextAction = c.action === 'update' ? ('update' as const) : ('import' as const);
++        return { ...c, selected: true, action: nextAction };
++      })
++    );
++  }, []);
++
++  const applyUploadPreset = useCallback((preset: UploadPresetId) => {
++    setParsedContacts(prev =>
++      prev.map((c) => {
++        if (c.isDuplicate || c.isImported) {
++          return { ...c, selected: false, action: 'skip' as const };
++        }
++
++        const hasName = Boolean(c.fullName && c.fullName.trim().length > 0);
++        const hasEmail = Boolean(c.email1 || c.email2);
++        const hasPhone = Boolean(c.phone1 || c.phone2);
++        const isHeb = hasName ? hasHebrew(c.fullName) : false;
++        const isEng = hasName ? isEnglishNameText(c.fullName) : false;
++        const suspicious = hasName ? isSuspiciousName(c.fullName) : false;
++
++        let shouldSelect = true;
++        switch (preset) {
++          case 'all':
++            shouldSelect = true;
++            break;
++          case 'hasEmailOrPhone':
++            shouldSelect = hasEmail || hasPhone;
++            break;
++          case 'hasPhone':
++            shouldSelect = hasPhone;
++            break;
++          case 'hasEmail':
++            shouldSelect = hasEmail;
++            break;
++          case 'hebrewNames':
++            shouldSelect = hasName && isHeb;
++            break;
++          case 'englishNames':
++            shouldSelect = hasName && isEng;
++            break;
++          case 'recommended':
++            // Recommended: has name + at least one contact method, and not suspicious
++            shouldSelect = hasName && (hasEmail || hasPhone) && !suspicious;
++            break;
++        }
++
++        return {
++          ...c,
++          selected: shouldSelect,
++          action: shouldSelect ? ('import' as const) : ('skip' as const),
++        };
++      })
++    );
++  }, []);
++
+   // Update existing client with new info
+   const updateExistingClient = useCallback(async (contact: ParsedContact): Promise<boolean> => {
+     if (!contact.existingClientId) return false;
+@@ -638,7 +952,7 @@ export function useContactsImport() {
+     }
+   }, []);
+ 
+-  // Import selected contacts with progress tracking and resumable support
++  // Import selected contacts with OPTIMIZED BATCH processing
+   const importContacts = useCallback(async (resumeFromIndex = 0): Promise<ImportStats> => {
+     if (!user) {
+       return { total: 0, imported: 0, updated: 0, skipped: 0, duplicates: 0, errors: 0 };
+@@ -680,50 +994,63 @@ export function useContactsImport() {
+     let currentIndex = resumeFromIndex;
+     let updatedContacts = [...parsedContacts];
+ 
+-    for (let i = resumeFromIndex; i < contactsToProcess.length; i++) {
+-      const contact = contactsToProcess[i];
+-      currentIndex = i;
++    // OPTIMIZATION: Process in PARALLEL batches for EXTREME speed
++    const BATCH_SIZE = 100; // Increased from 50
++    const PARALLEL_BATCHES = 3; // Process 3 batches at once
++    
++    // Process multiple batches in parallel for maximum speed
++    for (let batchStart = resumeFromIndex; batchStart < contactsToProcess.length; batchStart += (BATCH_SIZE * PARALLEL_BATCHES)) {
++      // Prepare parallel batches
++      const parallelBatches = [];
++      for (let i = 0; i < PARALLEL_BATCHES; i++) {
++        const thisBatchStart = batchStart + (i * BATCH_SIZE);
++        const thisBatchEnd = Math.min(thisBatchStart + BATCH_SIZE, contactsToProcess.length);
++        if (thisBatchStart < contactsToProcess.length) {
++          parallelBatches.push({
++            start: thisBatchStart,
++            end: thisBatchEnd,
++            contacts: contactsToProcess.slice(thisBatchStart, thisBatchEnd)
++          });
++        }
++      }
++
++      // Process all batches in parallel
++      const batchPromises = parallelBatches.map(async ({ start, end, contacts: batch }) => {
+       
+-      // Update progress
+-      const percentage = Math.round(((i + 1) / totalToProcess) * 100);
+-      setImportProgress({
+-        current: i + 1,
+-        total: totalToProcess,
+-        percentage,
+-        currentContactName: contact.fullName,
+-        status: 'importing',
+-      });
++        // Update progress for this batch
++        const percentage = Math.round(((start) / totalToProcess) * 100);
++        setImportProgress({
++          current: start,
++          total: totalToProcess,
++          percentage,
++          currentContactName: `╫₧╫ó╫ס╫ף ${end - start} ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿ ╫ס╫₧╫º╫ס╫ש╫£...`,
++          status: 'importing',
++        });
+ 
+-      try {
++      // Prepare batch for insertion
++      const newContactsToInsert: any[] = [];
++      const contactsToUpdate: ParsedContact[] = [];
++      const contactsToSkip: ParsedContact[] = [];
++
++      for (const contact of batch) {
+         // Handle update action for duplicates
+         if (contact.action === 'update' && contact.isDuplicate) {
+-          const success = await updateExistingClient(contact);
+-          if (success) {
+-            stats.updated++;
+-            updatedContacts = updatedContacts.map(c => 
+-              c.id === contact.id ? { ...c, isImported: true, selected: false } : c
+-            );
+-            setParsedContacts(updatedContacts);
+-          } else {
+-            stats.errors++;
+-          }
+-          // Save state after each operation
+-          saveImportState(updatedContacts, i + 1, stats);
++          contactsToUpdate.push(contact);
+           continue;
+         }
+ 
+         // Skip duplicates without update action
+         if (contact.isDuplicate && contact.action !== 'import') {
++          contactsToSkip.push(contact);
+           stats.duplicates++;
+-          saveImportState(updatedContacts, i + 1, stats);
+           continue;
+         }
+ 
+-        // Import as new client
++        // Prepare for batch insert
+         const primaryEmail = contact.email1 || contact.email2 || null;
+         const primaryPhone = contact.phone1 || contact.phone2 || null;
+ 
+-        const { error } = await supabase.from('clients').insert({
++        newContactsToInsert.push({
+           name: contact.fullName,
+           name_clean: normalizeName(contact.fullName),
+           email: primaryEmail,
+@@ -737,29 +1064,83 @@ export function useContactsImport() {
+           user_id: user.id,
+           created_by: user.id,
+           tags: contact.labels ? [contact.labels.replace('* ', '').trim()] : null,
++          _contactId: contact.id, // Track for updating UI
+         });
++      }
+ 
+-        if (error) {
+-          console.error('Error importing contact:', error);
+-          stats.errors++;
+-        } else {
+-          stats.imported++;
+-          updatedContacts = updatedContacts.map(c => 
+-            c.id === contact.id ? { ...c, isImported: true, selected: false } : c
+-          );
+-          setParsedContacts(updatedContacts);
++        try {
++          // BATCH INSERT - much faster than individual inserts!
++          if (newContactsToInsert.length > 0) {
++          const insertData = newContactsToInsert.map(({ _contactId, ...data }) => data);
++          const { error, data: insertedData } = await supabase
++            .from('clients')
++            .insert(insertData)
++            .select('id');
++
++          if (error) {
++            console.error('Batch insert error:', error);
++            stats.errors += newContactsToInsert.length;
++          } else {
++            stats.imported += newContactsToInsert.length;
++            
++            // Mark as imported in UI
++            const insertedIds = new Set(newContactsToInsert.map(c => c._contactId));
++            updatedContacts = updatedContacts.map(c => 
++              insertedIds.has(c.id) ? { ...c, isImported: true, selected: false } : c
++            );
++          }
+         }
+-        
+-        // Save state after each operation for resume capability
+-        saveImportState(updatedContacts, i + 1, stats);
+-        
+-      } catch (error) {
+-        console.error('Error importing contact:', error);
+-        stats.errors++;
+-        // Save state on error for resume
+-        saveImportState(updatedContacts, i, stats);
+-        
+-        // Set progress to paused on error
++
++        // Handle updates (still individual as they need specific logic)
++        for (const contact of contactsToUpdate) {
++          const success = await updateExistingClient(contact);
++          if (success) {
++            stats.updated++;
++            updatedContacts = updatedContacts.map(c => 
++              c.id === contact.id ? { ...c, isImported: true, selected: false } : c
++            );
++          } else {
++            stats.errors++;
++          }
++        }
++
++          // Save state after each batch within parallel group
++          saveImportState(updatedContacts, end, stats);
++          
++          return { success: true, processed: batch.length };
++        } catch (error) {
++          console.error('Batch processing error:', error);
++          stats.errors += batch.length;
++          
++          saveImportState(updatedContacts, start, stats);
++          
++          return { success: false, processed: 0, error };
++        }
++      });
++
++      // Wait for all parallel batches to complete
++      const batchResults = await Promise.all(batchPromises);
++      
++      // Update UI after parallel batch completion
++      setParsedContacts(updatedContacts);
++      
++      // Calculate total end position
++      const lastBatch = parallelBatches[parallelBatches.length - 1];
++      const batchEnd = lastBatch.end;
++      
++      // Update progress after parallel batch completion
++      const newPercentage = Math.round((batchEnd / totalToProcess) * 100);
++      setImportProgress({
++        current: batchEnd,
++        total: totalToProcess,
++        percentage: newPercentage,
++        currentContactName: `╫פ╫ץ╫⌐╫£╫¥ ${batchEnd} ╫₧╫¬╫ץ╫ת ${totalToProcess}`,
++        status: 'importing',
++      });
++      
++      // Check if any batch had errors
++      const hasErrors = batchResults.some(r => !r.success);
++      if (hasErrors) {
+         setImportProgress(prev => ({
+           ...prev,
+           status: 'error',
+@@ -767,11 +1148,12 @@ export function useContactsImport() {
+         
+         toast({
+           title: '╫⌐╫ע╫ש╫נ╫פ ╫ס╫ש╫ש╫ס╫ץ╫נ',
+-          description: `╫נ╫ñ╫⌐╫¿ ╫£╫פ╫₧╫⌐╫ש╫ת ╫₧╫נ╫ש╫ñ╫פ ╫⌐╫ó╫ª╫¿╫¬ (╫¿╫⌐╫ץ╫₧╫פ ${i + 1})`,
++          description: `╫נ╫ñ╫⌐╫¿ ╫£╫פ╫₧╫⌐╫ש╫ת ╫₧╫נ╫ש╫ñ╫פ ╫⌐╫ó╫ª╫¿╫¬ (╫¿╫⌐╫ץ╫₧╫פ ${batchStart + 1})`,
+           variant: 'destructive',
+         });
+         
+         setIsImporting(false);
++        setImportStats(stats);
+         return stats;
+       }
+     }
+@@ -832,6 +1214,7 @@ export function useContactsImport() {
+     setRawCsvRows([]);
+     setColumnMapping({
+       firstName: '',
++      middleName: '',
+       lastName: '',
+       fullName: '',
+       email1: '',
+@@ -874,6 +1257,8 @@ export function useContactsImport() {
+     toggleContactSelection,
+     setContactAction,
+     toggleSelectAll,
++    setSelectionForContactIds,
++    applyUploadPreset,
+     importContacts,
+     resumeImport,
+     restoreSavedState,
+diff --git a/src/pages/Clients.tsx b/src/pages/Clients.tsx
+index cc6f53a..84a247e 100644
+--- a/src/pages/Clients.tsx
++++ b/src/pages/Clients.tsx
+@@ -577,12 +577,19 @@ export default function Clients() {
+     setIsDeleting(true);
+     try {
+       const idsToDelete = Array.from(selectedClients);
+-      const { error } = await supabase
+-        .from('clients')
+-        .delete()
+-        .in('id', idsToDelete);
+-      
+-      if (error) throw error;
++
++      // Supabase `.in()` is sent over HTTP query params; large arrays can exceed URL/query limits.
++      // Delete in chunks to support big selections (e.g. 1000+).
++      const CHUNK_SIZE = 50;
++      for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
++        const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
++        const { error } = await supabase
++          .from('clients')
++          .delete()
++          .in('id', chunk);
++
++        if (error) throw error;
++      }
+       
+       setClients(prev => prev.filter(c => !selectedClients.has(c.id)));
+       setFilteredClients(prev => prev.filter(c => !selectedClients.has(c.id)));
+@@ -592,7 +599,11 @@ export default function Clients() {
+       toast({ title: `${count} ╫£╫º╫ץ╫ק╫ץ╫¬ ╫á╫₧╫ק╫º╫ץ ╫ס╫פ╫ª╫£╫ק╫פ` });
+     } catch (error) {
+       console.error('Error bulk deleting clients:', error);
+-      toast({ title: '╫⌐╫ע╫ש╫נ╫פ ╫ס╫₧╫ק╫ש╫º╫¬ ╫פ╫£╫º╫ץ╫ק╫ץ╫¬', variant: 'destructive' });
++      toast({
++        title: '╫⌐╫ע╫ש╫נ╫פ ╫ס╫₧╫ק╫ש╫º╫¬ ╫פ╫£╫º╫ץ╫ק╫ץ╫¬',
++        description: error instanceof Error ? error.message : undefined,
++        variant: 'destructive',
++      });
+     } finally {
+       setIsDeleting(false);
+     }
+diff --git a/src/pages/DataImport.tsx b/src/pages/DataImport.tsx
+index 00ba2e4..0986460 100644
+--- a/src/pages/DataImport.tsx
++++ b/src/pages/DataImport.tsx
+@@ -11,10 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
+ import { Checkbox } from '@/components/ui/checkbox';
+ import { Label } from '@/components/ui/label';
+ import { Separator } from '@/components/ui/separator';
+-import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Loader2, Users, Clock, FolderKanban, Settings2, Database, Eye, FileSpreadsheet, Download } from 'lucide-react';
++import { Upload, FileText, CheckCircle, XCircle, AlertCircle, Loader2, Users, Clock, FolderKanban, Settings2, Database, Eye, FileSpreadsheet, Download, FileUp } from 'lucide-react';
+ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+ import * as XLSX from 'xlsx';
++import { ContactsCSVImport } from '@/components/settings/ContactsCSVImport';
+ 
+ interface ImportResult {
+   type: 'client' | 'time_entry' | 'project';
+@@ -1096,7 +1097,21 @@ export default function DataImport() {
+ 
+   return (
+     <AppLayout title="╫ש╫ש╫ס╫ץ╫נ ╫á╫¬╫ץ╫á╫ש╫¥">
+-      <div className="p-6 space-y-6">
++      <div className="p-6">
++        <Tabs defaultValue="backup" dir="rtl" className="space-y-6">
++          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
++            <TabsTrigger value="backup" className="gap-2">
++              <Database className="h-4 w-4" />
++              ╫ע╫ש╫ס╫ץ╫ש ╫₧╫£╫נ
++            </TabsTrigger>
++            <TabsTrigger value="csv" className="gap-2">
++              <FileUp className="h-4 w-4" />
++              ╫ש╫ש╫ס╫ץ╫נ ╫נ╫á╫⌐╫ש ╫º╫⌐╫¿
++            </TabsTrigger>
++          </TabsList>
++
++          {/* Backup Import Tab */}
++          <TabsContent value="backup" className="space-y-6">
+         {/* Upload Card */}
+         <Card>
+           <CardHeader>
+@@ -1493,6 +1508,13 @@ export default function DataImport() {
+             </CardContent>
+           </Card>
+         )}
++          </TabsContent>
++
++          {/* CSV Import Tab */}
++          <TabsContent value="csv" className="space-y-6">
++            <ContactsCSVImport />
++          </TabsContent>
++        </Tabs>
+       </div>
+     </AppLayout>
+   );
+diff --git a/src/pages/Quotes.tsx b/src/pages/Quotes.tsx
+index a52d1b0..c65b48f 100644
+--- a/src/pages/Quotes.tsx
++++ b/src/pages/Quotes.tsx
+@@ -68,6 +68,7 @@ import { ContractDetails } from '@/components/contracts/ContractDetails';
+ import { ContractTemplatesManager } from '@/components/contracts/ContractTemplatesManager';
+ import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteEditorSheet';
+ import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
++import DigitalContractsTab from '@/components/contracts/digital-contracts/DigitalContractsTab';
+ import { cn } from '@/lib/utils';
+ import { ClipboardList, Settings2 } from 'lucide-react';
+ 
+@@ -274,7 +275,7 @@ export default function Quotes() {
+ 
+         {/* Tabs */}
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
++          <TabsList className="grid w-full max-w-3xl grid-cols-5">
+             <TabsTrigger value="quotes" className="gap-2">
+               <FileText className="h-4 w-4" />
+               ╫פ╫ª╫ó╫ץ╫¬ ╫₧╫ק╫ש╫¿
+@@ -283,6 +284,10 @@ export default function Quotes() {
+               <FileSignature className="h-4 w-4" />
+               ╫ק╫ץ╫צ╫ש╫¥
+             </TabsTrigger>
++            <TabsTrigger value="digital-contracts" className="gap-2">
++              <Building2 className="h-4 w-4" />
++              ╫ק╫ץ╫צ╫ש╫¥ ╫ף╫ש╫ע╫ש╫ר╫£╫ש╫ש╫¥
++            </TabsTrigger>
+             <TabsTrigger value="ready-templates" className="gap-2">
+               <ClipboardList className="h-4 w-4" />
+               ╫¬╫ס╫á╫ש╫ץ╫¬ ╫₧╫ץ╫¢╫á╫ץ╫¬
+@@ -734,6 +739,11 @@ export default function Quotes() {
+             <QuoteTemplatesManager />
+           </TabsContent>
+ 
++          {/* Digital Contracts Tab - ╫ק╫ץ╫צ╫ש╫¥ ╫ף╫ש╫ע╫ש╫ר╫£╫ש╫ש╫¥ */}
++          <TabsContent value="digital-contracts" className="space-y-6 mt-6">
++            <DigitalContractsTab />
++          </TabsContent>
++
+           {/* Template Manager Tab - ╫á╫ש╫פ╫ץ╫£ ╫¬╫ס╫á╫ש╫ץ╫¬ */}
+           <TabsContent value="template-manager" className="space-y-6 mt-6">
+             <div className="space-y-6">
+diff --git a/vite.config.ts b/vite.config.ts
+index 2284169..24f7ac9 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
+   return {
+     server: {
+       host: "localhost",
+-      port: 8080,
++      port: 3000,
+       hmr: {
+         overlay: true,
+       },
