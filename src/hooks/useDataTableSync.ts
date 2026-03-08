@@ -50,14 +50,15 @@ const mapDbStatusToDemo = (status: string): SyncedProject["status"] => {
 };
 
 // Timeout wrapper utility to prevent operations from hanging indefinitely
-function withTimeout<T>(
-  promise: PromiseLike<T>,
+function withTimeout(
+  promiseOrBuilder: any,
   timeoutMs: number,
   operation: string,
-): Promise<T> {
+): Promise<any> {
+  const thenable = Promise.resolve(promiseOrBuilder);
   return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
+    thenable,
+    new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error(`${operation} timeout after ${timeoutMs}ms`)),
         timeoutMs,
