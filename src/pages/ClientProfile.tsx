@@ -983,6 +983,9 @@ export default function ClientProfile() {
                 const newVal = !showAllTabs;
                 setShowAllTabs(newVal);
                 localStorage.setItem(`client-tabs-expanded-${clientId}`, String(newVal));
+                if (!newVal && activeTab !== 'overview') {
+                  setActiveTab('overview');
+                }
               }}
               className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 showAllTabs
