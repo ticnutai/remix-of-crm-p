@@ -73,12 +73,12 @@ const SectionHeader = ({
   label: string;
   accentColor?: string;
 }) => (
-  <div className="flex items-center gap-2.5">
-    <div className={`h-6 w-6 rounded-md bg-${accentColor}/10 flex items-center justify-center`}>
-      <Icon className={`h-3.5 w-3.5 text-${accentColor}`} />
+  <div className="flex items-center gap-3 mb-1">
+    <div className="h-7 w-7 rounded-lg bg-[#d8ac27]/15 border border-[#d8ac27]/30 flex items-center justify-center">
+      <Icon className="h-4 w-4 text-[#d8ac27]" />
     </div>
-    <h4 className="text-xs font-extrabold text-foreground/80 tracking-wide">{label}</h4>
-    <div className="flex-1 h-px bg-gradient-to-l from-transparent to-border/60" />
+    <h4 className="text-sm font-black text-foreground tracking-wide">{label}</h4>
+    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#d8ac27]/25 to-[#d8ac27]/40" />
   </div>
 );
 
@@ -125,12 +125,12 @@ const FieldCard = ({
 
   if (isEditing) {
     return (
-      <div className={`flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border-2 border-primary/30 ${colSpan2 ? "col-span-2" : ""}`}>
-        <div className={`h-8 w-8 rounded-lg ${iconColor || "bg-primary/10"} flex items-center justify-center flex-shrink-0`}>
-          <Icon className={`h-4 w-4 ${iconColor ? "" : "text-primary"}`} />
+      <div className={`flex items-center gap-3 p-3.5 rounded-xl bg-[#d8ac27]/5 border-2 border-[#d8ac27]/40 ${colSpan2 ? "col-span-2" : ""}`}>
+        <div className="h-9 w-9 rounded-lg bg-[#d8ac27]/10 border border-[#d8ac27]/20 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-4 w-4 text-[#d8ac27]" />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] text-muted-foreground font-medium mb-0.5">{label}</p>
+          <p className="text-[11px] text-muted-foreground font-semibold mb-0.5">{label}</p>
           <Input
             value={editValue || ""}
             onChange={(e) => onEditChange?.(e.target.value)}
@@ -157,14 +157,14 @@ const FieldCard = ({
   return (
     <Wrapper
       {...(linkProps as any)}
-      className={`group/field relative flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 ${hoverColor || "hover:bg-primary/5 hover:border-primary/20"} transition-all ${colSpan2 ? "col-span-2" : ""} ${href ? "cursor-pointer" : ""}`}
+      className={`group/field relative flex items-center gap-3.5 p-3.5 rounded-xl bg-muted/20 border border-[#d8ac27]/25 ${hoverColor || "hover:bg-[#d8ac27]/5 hover:border-[#d8ac27]/40"} transition-all ${colSpan2 ? "col-span-2" : ""} ${href ? "cursor-pointer" : ""}`}
     >
-      <div className={`h-8 w-8 rounded-lg ${iconColor || "bg-primary/10"} flex items-center justify-center flex-shrink-0 transition-colors`}>
-        <Icon className={`h-4 w-4 ${iconColor ? "" : "text-primary"}`} />
+      <div className={`h-9 w-9 rounded-lg ${iconColor || "bg-[#d8ac27]/10"} border border-[#d8ac27]/20 flex items-center justify-center flex-shrink-0 transition-colors`}>
+        <Icon className={`h-4.5 w-4.5 ${iconColor ? "" : "text-[#d8ac27]"}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
-        <p className={`text-sm font-bold truncate ${mono ? "font-mono" : ""}`} dir={mono ? "ltr" : undefined}>{value}</p>
+        <p className="text-[11px] text-muted-foreground font-semibold mb-0.5">{label}</p>
+        <p className={`text-base font-bold truncate ${mono ? "font-mono" : ""}`} dir={mono ? "ltr" : undefined}>{value}</p>
       </div>
       {/* Hover actions */}
       {(onEdit || onDelete) && (
@@ -346,10 +346,10 @@ export function ClientInfoDialogContent({
   return (
     <>
       {/* Premium Header */}
-      <div className="relative bg-gradient-to-bl from-primary/15 via-primary/5 to-transparent px-6 pt-6 pb-4 border-b border-primary/10">
+      <div className="relative bg-gradient-to-bl from-[#d8ac27]/12 via-[#d8ac27]/5 to-transparent px-6 pt-6 pb-4 border-b border-[#d8ac27]/20">
         <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl font-black text-primary-foreground">{client.name?.charAt(0) || "?"}</span>
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[#d8ac27] to-[#b8922a] shadow-lg shadow-[#d8ac27]/30 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl font-black text-white">{client.name?.charAt(0) || "?"}</span>
           </div>
           <div className="flex-1 min-w-0">
             <DialogHeader className="p-0 space-y-0">
@@ -357,7 +357,7 @@ export function ClientInfoDialogContent({
               <DialogDescription className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <StatusBadge status={client.status} />
                 {client.stage && (
-                  <Badge variant="outline" className="text-[10px] border-primary/30">
+                  <Badge variant="outline" className="text-[10px] border-[#d8ac27]/30 text-[#d8ac27]">
                     {client.stage}
                   </Badge>
                 )}
@@ -368,7 +368,7 @@ export function ClientInfoDialogContent({
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <Popover>
               <PopoverTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-primary/10">
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-[#d8ac27]/10">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
@@ -397,7 +397,7 @@ export function ClientInfoDialogContent({
                 </div>
               </PopoverContent>
             </Popover>
-            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={onEdit}>
+            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-[#d8ac27]/10" onClick={onEdit}>
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
@@ -407,11 +407,11 @@ export function ClientInfoDialogContent({
         <div className="mt-4 flex items-center gap-3">
           <div className="flex-1 h-1.5 rounded-full bg-muted/60 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-l from-primary to-primary/60 transition-all duration-500"
+              className="h-full rounded-full bg-gradient-to-l from-[#d8ac27] to-[#d8ac27]/60 transition-all duration-500"
               style={{ width: `${completionPct}%` }}
             />
           </div>
-          <span className="text-[11px] font-bold text-primary tabular-nums">{completionPct}%</span>
+          <span className="text-[11px] font-bold text-[#d8ac27] tabular-nums">{completionPct}%</span>
           <span className="text-[10px] text-muted-foreground">
             {filledCount}/{totalCount} שדות
           </span>
