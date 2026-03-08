@@ -3098,7 +3098,7 @@ export default function ClientProfile() {
 
             <div className="space-y-5 py-2">
               {/* === Section: Identity === */}
-              {(client.id_number || client.company || client.position || client.industry) && (
+              {(client.id_number || client.company || client.source || client.budget_range) && (
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <Hash className="h-3.5 w-3.5" />
@@ -3123,21 +3123,21 @@ export default function ClientProfile() {
                         </div>
                       </div>
                     )}
-                    {client.position && (
+                    {client.source && (
                       <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
                         <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div>
-                          <p className="text-[11px] text-muted-foreground">תפקיד</p>
-                          <p className="text-sm font-medium">{client.position}</p>
+                          <p className="text-[11px] text-muted-foreground">מקור</p>
+                          <p className="text-sm font-medium">{client.source}</p>
                         </div>
                       </div>
                     )}
-                    {client.industry && (
+                    {client.budget_range && (
                       <div className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/40 border border-border/50">
                         <Briefcase className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <div>
-                          <p className="text-[11px] text-muted-foreground">תחום</p>
-                          <p className="text-sm font-medium">{client.industry}</p>
+                          <p className="text-[11px] text-muted-foreground">טווח תקציב</p>
+                          <p className="text-sm font-medium">{client.budget_range}</p>
                         </div>
                       </div>
                     )}
