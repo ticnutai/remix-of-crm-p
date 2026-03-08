@@ -107,7 +107,16 @@ import {
   ChevronUp,
   Timer,
   KeyRound,
+  SlidersHorizontal,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
