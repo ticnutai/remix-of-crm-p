@@ -69,6 +69,7 @@ import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginD
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import {
   ArrowRight,
   Building,
@@ -1355,7 +1356,7 @@ export default function ClientProfile() {
             {/* Client Stages Tracker - Above everything */}
             <ClientStagesSection clientId={clientId!} />
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Recent Projects */}
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
@@ -1543,76 +1544,138 @@ export default function ClientProfile() {
                   </ScrollArea>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Notes */}
-            <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
-              <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">הערות</CardTitle>
-                <div className="flex items-center gap-1">
-                  {editingNotes ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                        onClick={async () => {
-                          try {
-                            await updateClient({ notes: notesText || null });
+              {/* Recent Reminders */}
+              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+                <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <AddReminderDialog
+                      entityType="client"
+                      entityId={clientId}
+                      trigger={
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 hover:bg-primary/10"
+                          title="הוסף תזכורת"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <CardTitle className="text-lg">תזכורות אחרונות</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ScrollArea className="h-48">
+                    {reminders
+                      .slice(0, 5)
+                      .map((reminder) => (
+                        <div
+                          key={reminder.id}
+                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                        >
+                          <div className="text-right">
+                            <p className="font-medium">{reminder.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(
+                                new Date(reminder.remind_at),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: he },
+                              )}
+                            </p>
+                          </div>
+                          <Badge
+                            className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10"
+                          >
+                            {reminder.is_dismissed
+                              ? "נדחה"
+                              : reminder.is_sent
+                                ? "נשלח"
+                                : "ממתין"}
+                          </Badge>
+                        </div>
+                      ))}
+                    {reminders.length === 0 && (
+                      <p className="text-muted-foreground text-center py-4">
+                        אין תזכורות
+                      </p>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Notes */}
+              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+                <CardHeader className="text-right border-b border-border/50 bg-muted/30 flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">הערות</CardTitle>
+                  <div className="flex items-center gap-1">
+                    {editingNotes ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={async () => {
+                            try {
+                              await updateClient({ notes: notesText || null });
+                              setEditingNotes(false);
+                              toast({ title: "הערות נשמרו" });
+                            } catch (err) {
+                              toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
+                            }
+                          }}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
                             setEditingNotes(false);
-                            toast({ title: "הערות נשמרו" });
-                          } catch (err) {
-                            toast({ title: "שגיאה", description: "לא ניתן לשמור", variant: "destructive" });
-                          }
-                        }}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
+                            setNotesText(client.notes || "");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 p-0 text-[#d8ac27] hover:text-[#b8922a] hover:bg-[#d8ac27]/10"
                         onClick={() => {
-                          setEditingNotes(false);
                           setNotesText(client.notes || "");
+                          setEditingNotes(true);
                         }}
                       >
-                        <X className="h-4 w-4" />
+                        {client.notes ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                       </Button>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-[#d8ac27] hover:text-[#b8922a] hover:bg-[#d8ac27]/10"
-                      onClick={() => {
-                        setNotesText(client.notes || "");
-                        setEditingNotes(true);
-                      }}
-                    >
-                      {client.notes ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-4">
-                {editingNotes ? (
-                  <Textarea
-                    value={notesText}
-                    onChange={(e) => setNotesText(e.target.value)}
-                    placeholder="הוסף הערות..."
-                    className="text-right min-h-[100px] resize-none border-[#d8ac27]/30 focus:border-[#d8ac27]"
-                    autoFocus
-                  />
-                ) : client.notes ? (
-                  <p className="whitespace-pre-wrap text-right">
-                    {client.notes}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground text-center text-sm py-2">אין הערות - לחץ על + להוספה</p>
-                )}
-              </CardContent>
-            </Card>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <ScrollArea className="h-[136px]">
+                    {editingNotes ? (
+                      <Textarea
+                        value={notesText}
+                        onChange={(e) => setNotesText(e.target.value)}
+                        placeholder="הוסף הערות..."
+                        className="text-right min-h-[120px] resize-none border-[#d8ac27]/30 focus:border-[#d8ac27]"
+                        autoFocus
+                      />
+                    ) : client.notes ? (
+                      <p className="whitespace-pre-wrap text-right text-sm">
+                        {client.notes}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground text-center text-sm py-2">אין הערות - לחץ על + להוספה</p>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Time Entries Tab - Full Featured */}
