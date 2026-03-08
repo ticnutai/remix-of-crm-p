@@ -183,8 +183,20 @@ export function NotificationOptions({
 
   if (clients.length === 0) return null;
 
+  const notificationRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to notification section when client is selected
+  useEffect(() => {
+    if (selectedClient && notificationRef.current) {
+      setTimeout(() => {
+        notificationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  }, [selectedClient]);
+
   return (
     <div 
+      ref={notificationRef}
       className="space-y-3 p-3 rounded-lg border"
       style={{ 
         background: `${sidebarColors.navyLight}30`,
@@ -197,31 +209,36 @@ export function NotificationOptions({
       >
         <Send className="h-4 w-4" style={{ color: sidebarColors.gold }} />
         שלח הודעה ללקוח
+        {selectedClient && (
+          <span className="text-xs font-normal opacity-70">({selectedClient.name})</span>
+        )}
       </Label>
 
-      {/* Client Selection */}
-      <Select value={selectedClientId || ''} onValueChange={onClientChange}>
-        <SelectTrigger 
-          className="text-right"
-          style={{ 
-            background: `${sidebarColors.navyLight}50`,
-            borderColor: `${sidebarColors.gold}40`,
-            color: selectedClientId ? sidebarColors.goldLight : `${sidebarColors.goldLight}60`,
-          }}
-        >
-          <SelectValue placeholder="בחר לקוח לשליחה" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">ללא</SelectItem>
-          {clients.map((client) => (
-            <SelectItem key={client.id} value={client.id}>
-              {client.name}
-              {client.email && ' 📧'}
-              {client.phone && ' 📱'}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* Client Selection - only show if no client pre-selected */}
+      {!selectedClientId && (
+        <Select value={selectedClientId || ''} onValueChange={onClientChange}>
+          <SelectTrigger 
+            className="text-right"
+            style={{ 
+              background: `${sidebarColors.navyLight}50`,
+              borderColor: `${sidebarColors.gold}40`,
+              color: selectedClientId ? sidebarColors.goldLight : `${sidebarColors.goldLight}60`,
+            }}
+          >
+            <SelectValue placeholder="בחר לקוח לשליחה" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">ללא</SelectItem>
+            {clients.map((client) => (
+              <SelectItem key={client.id} value={client.id}>
+                {client.name}
+                {client.email && ' 📧'}
+                {client.phone && ' 📱'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       {/* Channel Selection */}
       {selectedClient && (
