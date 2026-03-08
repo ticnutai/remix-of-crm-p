@@ -327,6 +327,21 @@ export default function ClientProfile() {
     const saved = localStorage.getItem(`client-tabs-expanded-${clientId}`);
     return saved === 'true';
   });
+
+  // Display settings for tab management elements
+  const [displaySettings, setDisplaySettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('client-display-settings');
+      return saved ? JSON.parse(saved) : { showAddDataTab: true, showAddTableTab: true, showManageBtn: true };
+    } catch { return { showAddDataTab: true, showAddTableTab: true, showManageBtn: true }; }
+  });
+
+  const updateDisplaySetting = (key: string, value: boolean) => {
+    const updated = { ...displaySettings, [key]: value };
+    setDisplaySettings(updated);
+    localStorage.setItem('client-display-settings', JSON.stringify(updated));
+  };
+
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
