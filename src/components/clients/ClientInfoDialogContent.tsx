@@ -397,7 +397,7 @@ export function ClientInfoDialogContent({
                 </div>
               </PopoverContent>
             </Popover>
-            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={onEdit}>
+            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-[#d8ac27]/10" onClick={onEdit}>
               <Pencil className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
