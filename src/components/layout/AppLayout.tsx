@@ -126,7 +126,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
           isMobile={isMobile}
         />
         <main className="flex-1 relative z-0 overflow-x-hidden overflow-y-auto">
-          <div className="w-full h-full">
+          <div className="w-full h-full px-4 md:px-8 py-6">
             {children}
           </div>
         </main>

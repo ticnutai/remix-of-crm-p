@@ -746,7 +746,7 @@ export default function ClientProfile() {
 
   return (
     <AppLayout title={client.name} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-8" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -977,7 +977,7 @@ export default function ClientProfile() {
         })()}
 
         {/* Stats Cards */}
-        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <StatsCard
             title="פרויקטים פעילים"
             value={stats.activeProjects}
