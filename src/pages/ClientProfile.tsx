@@ -104,6 +104,7 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronDown,
+  ChevronUp,
   Timer,
   KeyRound,
 } from "lucide-react";
