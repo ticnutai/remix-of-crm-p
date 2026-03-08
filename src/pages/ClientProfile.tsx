@@ -977,7 +977,7 @@ export default function ClientProfile() {
         })()}
 
         {/* Stats Cards */}
-        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <StatsCard
             title="פרויקטים פעילים"
             value={stats.activeProjects}
