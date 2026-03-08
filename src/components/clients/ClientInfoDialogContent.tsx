@@ -125,12 +125,12 @@ const FieldCard = ({
 
   if (isEditing) {
     return (
-      <div className={`flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border-2 border-primary/30 ${colSpan2 ? "col-span-2" : ""}`}>
-        <div className={`h-8 w-8 rounded-lg ${iconColor || "bg-primary/10"} flex items-center justify-center flex-shrink-0`}>
-          <Icon className={`h-4 w-4 ${iconColor ? "" : "text-primary"}`} />
+      <div className={`flex items-center gap-3 p-3.5 rounded-xl bg-[#d8ac27]/5 border-2 border-[#d8ac27]/40 ${colSpan2 ? "col-span-2" : ""}`}>
+        <div className="h-9 w-9 rounded-lg bg-[#d8ac27]/10 border border-[#d8ac27]/20 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-4 w-4 text-[#d8ac27]" />
         </div>
         <div className="flex-1">
-          <p className="text-[10px] text-muted-foreground font-medium mb-0.5">{label}</p>
+          <p className="text-[11px] text-muted-foreground font-semibold mb-0.5">{label}</p>
           <Input
             value={editValue || ""}
             onChange={(e) => onEditChange?.(e.target.value)}
