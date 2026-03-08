@@ -330,10 +330,11 @@ export default function ClientProfile() {
 
   // Display settings for tab management elements
   const [displaySettings, setDisplaySettings] = useState(() => {
+    const defaults = { showAddDataTab: true, showAddTableTab: true, showManageBtn: true, showActionButtons: true, showClientCard: true, showStatsCards: true };
     try {
       const saved = localStorage.getItem('client-display-settings');
-      return saved ? JSON.parse(saved) : { showAddDataTab: true, showAddTableTab: true, showManageBtn: true };
-    } catch { return { showAddDataTab: true, showAddTableTab: true, showManageBtn: true }; }
+      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    } catch { return defaults; }
   });
 
   const updateDisplaySetting = (key: string, value: boolean) => {
@@ -746,7 +747,7 @@ export default function ClientProfile() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {displaySettings.showActionButtons && <div className="flex items-center gap-2">
             {isValidPhone(client?.phone) && (
               <Button
                 variant="outline"
@@ -833,11 +834,11 @@ export default function ClientProfile() {
                 יש גישה לפורטל
               </Badge>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Client Info Card - Elegant Navy Border */}
-        <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
+        {displaySettings.showClientCard && <Card className="bg-card/95 backdrop-blur-sm border-2 border-[hsl(222,47%,25%)] shadow-lg">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row items-start justify-between gap-6">
               {/* Right side - Client info */}
@@ -927,10 +928,9 @@ export default function ClientProfile() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
-        {/* Custom Fields Display */}
-        {(() => {
+        {displaySettings.showClientCard && (() => {
           const clientCustomData = (client as any)?.custom_data;
           const customValues = parseCustomData(clientCustomData);
           const filledFields = customFieldDefs.filter(
@@ -963,7 +963,7 @@ export default function ClientProfile() {
         })()}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {displaySettings.showStatsCards && <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatsCard
             title="פרויקטים פעילים"
             value={stats.activeProjects}
@@ -989,7 +989,7 @@ export default function ClientProfile() {
             icon={CheckSquare}
             subtitle={`${stats.upcomingMeetings} פגישות קרובות`}
           />
-        </div>
+        </div>}
 
         {/* Tabs - Elegant Navy Style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1285,6 +1285,28 @@ export default function ClientProfile() {
                   הגדרות תצוגה
                 </h4>
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתורי פעולה</span>
+                    <Switch
+                      checked={displaySettings.showActionButtons}
+                      onCheckedChange={(v) => updateDisplaySetting('showActionButtons', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיס לקוח</span>
+                    <Switch
+                      checked={displaySettings.showClientCard}
+                      onCheckedChange={(v) => updateDisplaySetting('showClientCard', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיסי סטטיסטיקה</span>
+                    <Switch
+                      checked={displaySettings.showStatsCards}
+                      onCheckedChange={(v) => updateDisplaySetting('showStatsCards', v)}
+                    />
+                  </div>
+                  <Separator className="my-2" />
                   <div className="flex items-center justify-between">
                     <span className="text-sm">טאב נתונים</span>
                     <Switch
