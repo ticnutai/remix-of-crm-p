@@ -834,7 +834,7 @@ export default function ClientProfile() {
                 יש גישה לפורטל
               </Badge>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Client Info Card - Elegant Navy Border */}
