@@ -234,8 +234,8 @@ export function ClientInfoDialogContent({
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState<CustomFieldDefinition["field_type"]>("text");
 
-  // Section visibility
-  const [sections, setSections] = useState(() => {
+  // Section visibility (supports dynamic keys for custom fields: "field_<field_key>")
+  const [sections, setSections] = useState<Record<string, boolean>>(() => {
     try {
       const s = localStorage.getItem("client-info-dialog-sections");
       return { identity: true, contact: true, location: true, notes: true, stats: true, custom: true, ...(s ? JSON.parse(s) : {}) };
@@ -244,8 +244,13 @@ export function ClientInfoDialogContent({
     }
   });
 
+  const isFieldVisible = (fieldKey: string) => {
+    const key = `field_${fieldKey}`;
+    return sections[key] !== false; // default visible
+  };
+
   const toggleSection = (key: string) => {
-    const updated = { ...sections, [key]: !sections[key as keyof typeof sections] };
+    const updated = { ...sections, [key]: sections[key] === false ? true : !sections[key] };
     setSections(updated);
     localStorage.setItem("client-info-dialog-sections", JSON.stringify(updated));
   };
