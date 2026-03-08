@@ -2031,21 +2031,59 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
       {/* Stage Management Buttons */}
       <div className="flex justify-start gap-2 flex-wrap">
+        {/* View Mode Toggle */}
+        {onViewModeChange && (
+          <>
+            <div className="flex gap-1 border rounded-lg p-1">
+              <Button
+                size="sm"
+                variant={viewMode === "board" ? "default" : "ghost"}
+                className="h-7 px-3"
+                onClick={() => onViewModeChange("board")}
+              >
+                <LayoutGrid className="h-4 w-4 ml-1" />
+                לוח
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "list" ? "default" : "ghost"}
+                className="h-7 px-3"
+                onClick={() => onViewModeChange("list")}
+              >
+                <List className="h-4 w-4 ml-1" />
+                רשימה
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "table" ? "default" : "ghost"}
+                className="h-7 px-3"
+                onClick={() => onViewModeChange("table")}
+              >
+                <Table className="h-4 w-4 ml-1" />
+                טבלה
+              </Button>
+            </div>
+            <div className="border-r border-border pr-2 mr-2" />
+          </>
+        )}
+
         <Button
           variant="outline"
+          size="sm"
           onClick={() => setAddStageDialog(true)}
-          className="gap-2"
+          className="h-8 w-8 p-0"
+          title="הוסף שלב חדש"
         >
           <Plus className="h-4 w-4" />
-          הוסף שלב חדש
         </Button>
         <Button
           variant="outline"
+          size="sm"
           onClick={() => setManageStagesDialog(true)}
-          className="gap-2"
+          className="h-8 w-8 p-0"
+          title="ניהול שלבים"
         >
           <Settings2 className="h-4 w-4" />
-          ניהול שלבים
         </Button>
 
         {/* Template Actions */}
@@ -2068,11 +2106,12 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
         </Button>
         <Button
           variant="outline"
+          size="sm"
           onClick={() => setCopyStagesDialog(true)}
-          className="gap-2"
+          className="h-8 w-8 p-0"
+          title="העתק מלקוח"
         >
           <Copy className="h-4 w-4" />
-          העתק מלקוח
         </Button>
 
         {/* Paste Stage Button */}
