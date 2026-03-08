@@ -1157,6 +1157,8 @@ export function ApplyTemplateDialog({
                                 </Button>
                               </div>
                             </div>
+                            </SortableContext>
+                            </DndContext>
                           ) : (
                             /* NORMAL VIEW MODE */
                             <>
