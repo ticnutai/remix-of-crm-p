@@ -357,7 +357,7 @@ export function ClientInfoDialogContent({
               <DialogDescription className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <StatusBadge status={client.status} />
                 {client.stage && (
-                  <Badge variant="outline" className="text-[10px] border-primary/30">
+                  <Badge variant="outline" className="text-[10px] border-[#d8ac27]/30 text-[#d8ac27]">
                     {client.stage}
                   </Badge>
                 )}
