@@ -433,6 +433,8 @@ export default function ClientProfile() {
     include_vat: false,
     notes: "",
   });
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesText, setNotesText] = useState("");
   const { toast } = useToast();
 
   // Open edit dialog
