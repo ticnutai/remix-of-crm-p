@@ -1196,6 +1196,7 @@ export default function ClientProfile() {
                 </>
               );
             })()}
+            </>)}
 
             {/* Add Tab Buttons */}
             {canManageCustomTabs && (
