@@ -456,8 +456,8 @@ export function RemindersTabContent() {
             }
             title={
               reminderSortOrder === "asc"
-                ? "\u05e1\u05d3\u05e8 \u05e2\u05d5\u05dc\u05d4"
-                : "\u05e1\u05d3\u05e8 \u05d9\u05d5\u05e8\u05d3"
+                ? "סדר עולה"
+                : "סדר יורד"
             }
           >
             {reminderSortOrder === "asc" ? (

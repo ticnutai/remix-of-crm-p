@@ -325,14 +325,13 @@ export function TasksListView({
                     {expandedDedupGroups.has(dupMap.get(task.id)!.key) ? (
                       <>
                         <ChevronUp className="h-3 w-3" />{" "}
-                        \u05d4\u05e1\u05ea\u05e8
-                        \u05db\u05e4\u05d5\u05dc\u05d9\u05dd
+                        הסתר כפולים
                       </>
                     ) : (
                       <>
-                        <ChevronDown className="h-3 w-3" /> \u05e2\u05d5\u05d3{" "}
+                        <ChevronDown className="h-3 w-3" /> עוד{" "}
                         {dupMap.get(task.id)!.count - 1}{" "}
-                        \u05db\u05e4\u05d5\u05dc\u05d9\u05dd
+                        כפולים
                       </>
                     )}
                   </Button>
