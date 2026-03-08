@@ -1286,6 +1286,28 @@ export default function ClientProfile() {
                 </h4>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתורי פעולה</span>
+                    <Switch
+                      checked={displaySettings.showActionButtons}
+                      onCheckedChange={(v) => updateDisplaySetting('showActionButtons', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיס לקוח</span>
+                    <Switch
+                      checked={displaySettings.showClientCard}
+                      onCheckedChange={(v) => updateDisplaySetting('showClientCard', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כרטיסי סטטיסטיקה</span>
+                    <Switch
+                      checked={displaySettings.showStatsCards}
+                      onCheckedChange={(v) => updateDisplaySetting('showStatsCards', v)}
+                    />
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="flex items-center justify-between">
                     <span className="text-sm">טאב נתונים</span>
                     <Switch
                       checked={displaySettings.showAddDataTab}
