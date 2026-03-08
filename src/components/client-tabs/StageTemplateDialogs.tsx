@@ -512,6 +512,26 @@ export function ApplyTemplateDialog({
     setRenamingStage(null);
   };
 
+  const handleAddTask = async (templateId: string, stageId: string) => {
+    if (!newTaskName.trim()) return;
+    setAddingTask(true);
+    await addTaskToTemplateStage(templateId, stageId, newTaskName.trim());
+    setNewTaskName("");
+    setAddingTask(false);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    setDeletingTaskId(taskId);
+    await deleteTaskFromTemplate(taskId);
+    setDeletingTaskId(null);
+  };
+
+  const handleRenameTask = async (taskId: string) => {
+    if (!renamingTask || !renamingTask.title.trim()) return;
+    await renameTaskInTemplate(taskId, renamingTask.title.trim());
+    setRenamingTask(null);
+  };
+
   const filteredTemplates = templates.filter(
     (t) =>
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
