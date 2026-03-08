@@ -3212,7 +3212,7 @@ export default function ClientProfile() {
               </div>
 
               {/* === Section: Address & Location === */}
-              {(client.address || client.street || client.moshav || client.gush) && (
+              {(client.address || client.gush) && (
                 <>
                   <Separator />
                   <div className="space-y-2">
