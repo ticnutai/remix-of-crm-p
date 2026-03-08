@@ -96,21 +96,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// IndexedDB persister — survives page refresh, 24h max age
-const idbPersister = createIDBPersister();
-const persistOptions = {
-  persister: idbPersister,
-  maxAge: PERSIST_MAX_AGE,
-  buster: "v1", // Bump to invalidate all cached data
-};
-
 const App = () => {
   return (
     <ErrorBoundary>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={persistOptions}
-      >
+      <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <TooltipProvider>
             <AuthProvider>
