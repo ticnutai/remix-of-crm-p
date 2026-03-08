@@ -673,6 +673,23 @@
     background: #d8ac2780;
   }
 
+  /* Navy dialog inputs - white text and gold borders */
+  .navy-gold-dialog input,
+  .navy-gold-dialog textarea,
+  .navy-gold-dialog select,
+  .navy-gold-dialog [role="combobox"] {
+    color: white !important;
+    border-color: #d8ac2760 !important;
+  }
+  .navy-gold-dialog input::placeholder,
+  .navy-gold-dialog textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4) !important;
+  }
+  .navy-gold-dialog input:focus,
+  .navy-gold-dialog textarea:focus {
+    border-color: #d8ac27 !important;
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
