@@ -302,7 +302,7 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
         dir="rtl"
         style={{
           background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
-          border: `1px solid ${sidebarColors.gold}40`,
+          border: `2px solid ${sidebarColors.gold}`,
         }}
       >
         <DialogHeader
