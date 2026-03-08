@@ -267,8 +267,8 @@ export function RemindersTabContent() {
               className="h-6 gap-1 text-xs text-amber-600 hover:text-amber-700 shrink-0"
               title={
                 expandedDedupGroups.has(dupInfo.key)
-                  ? "\u05d4\u05e1\u05ea\u05e8 \u05db\u05e4\u05d5\u05dc\u05d9\u05dd"
-                  : "\u05d4\u05e6\u05d2 \u05d4\u05db\u05dc"
+                  ? "הסתר כפולים"
+                  : "הצג הכל"
               }
             >
               <Layers className="h-3 w-3" />
@@ -380,11 +380,11 @@ export function RemindersTabContent() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>\u05db\u05d5\u05ea\u05e8\u05ea</TableHead>
-            <TableHead>\u05d6\u05de\u05df</TableHead>
-            <TableHead>\u05e1\u05d5\u05d2</TableHead>
-            <TableHead>\u05e1\u05d8\u05d8\u05d5\u05e1</TableHead>
-            <TableHead>\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea</TableHead>
+            <TableHead>כותרת</TableHead>
+            <TableHead>זמן</TableHead>
+            <TableHead>סוג</TableHead>
+            <TableHead>סטטוס</TableHead>
+            <TableHead>פעולות</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -394,7 +394,7 @@ export function RemindersTabContent() {
                 colSpan={5}
                 className="text-center text-muted-foreground py-8"
               >
-                \u05d0\u05d9\u05df \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea
+                אין תזכורות
               </TableCell>
             </TableRow>
           ) : (
@@ -428,7 +428,7 @@ export function RemindersTabContent() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="\u05d7\u05d9\u05e4\u05d5\u05e9 \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea..."
+              placeholder="חיפוש תזכורות..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-9"
@@ -440,16 +440,12 @@ export function RemindersTabContent() {
           >
             <SelectTrigger className="w-[150px]">
               <ArrowUpDown className="h-4 w-4 ml-2" />
-              <SelectValue placeholder="\u05de\u05d9\u05d5\u05df" />
+              <SelectValue placeholder="מיון" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created_at">
-                \u05ea\u05d0\u05e8\u05d9\u05da \u05d9\u05e6\u05d9\u05e8\u05d4
-              </SelectItem>
-              <SelectItem value="event_date">
-                \u05de\u05d5\u05e2\u05d3 \u05ea\u05d6\u05db\u05d5\u05e8\u05ea
-              </SelectItem>
-              <SelectItem value="title">\u05e9\u05dd</SelectItem>
+              <SelectItem value="created_at">תאריך יצירה</SelectItem>
+              <SelectItem value="event_date">מועד תזכורת</SelectItem>
+              <SelectItem value="title">שם</SelectItem>
             </SelectContent>
           </Select>
           <Button
@@ -460,8 +456,8 @@ export function RemindersTabContent() {
             }
             title={
               reminderSortOrder === "asc"
-                ? "\u05e1\u05d3\u05e8 \u05e2\u05d5\u05dc\u05d4"
-                : "\u05e1\u05d3\u05e8 \u05d9\u05d5\u05e8\u05d3"
+                ? "סדר עולה"
+                : "סדר יורד"
             }
           >
             {reminderSortOrder === "asc" ? (

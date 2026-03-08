@@ -183,8 +183,8 @@ export function MeetingsListView({
                                 expandedDedupGroups.has(
                                   dupMap.get(meeting.id)!.key,
                                 )
-                                  ? "\u05d4\u05e1\u05ea\u05e8 \u05db\u05e4\u05d5\u05dc\u05d9\u05dd"
-                                  : "\u05d4\u05e6\u05d2 \u05d4\u05db\u05dc"
+                                  ? "הסתר כפולים"
+                                  : "הצג הכל"
                               }
                             >
                               <Layers className="h-4 w-4" />
