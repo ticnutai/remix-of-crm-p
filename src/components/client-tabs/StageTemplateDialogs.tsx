@@ -850,6 +850,15 @@ export function ApplyTemplateDialog({
 
                           {/* EDIT STAGES MODE */}
                           {editStagesMode === template.id ? (
+                            <DndContext
+                              sensors={dndSensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(event) => handleStageDragEnd(event, template)}
+                            >
+                            <SortableContext
+                              items={(template.stages || []).map((s) => s.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
                             <div className="space-y-2 mb-3 max-h-[350px] overflow-y-auto">
                               {(template.stages || []).map((stage) => {
                                 const StageIcon =
