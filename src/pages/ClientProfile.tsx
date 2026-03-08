@@ -989,7 +989,7 @@ export default function ClientProfile() {
             icon={CheckSquare}
             subtitle={`${stats.upcomingMeetings} פגישות קרובות`}
           />
-        </div>
+        </div>}
 
         {/* Tabs - Elegant Navy Style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
