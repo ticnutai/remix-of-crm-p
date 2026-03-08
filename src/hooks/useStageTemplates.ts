@@ -1037,6 +1037,9 @@ export function useStageTemplates() {
     addStageToTemplate,
     deleteStageFromTemplate,
     renameStageInTemplate,
+    addTaskToTemplateStage,
+    deleteTaskFromTemplate,
+    renameTaskInTemplate,
     getClientsForCopy,
     getClientStages,
   };
