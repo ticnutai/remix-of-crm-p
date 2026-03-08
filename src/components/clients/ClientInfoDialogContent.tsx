@@ -368,7 +368,7 @@ export function ClientInfoDialogContent({
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <Popover>
               <PopoverTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-primary/10">
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg hover:bg-[#d8ac27]/10">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </PopoverTrigger>
