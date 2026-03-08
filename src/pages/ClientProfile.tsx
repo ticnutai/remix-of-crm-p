@@ -51,6 +51,7 @@ import {
 } from "@/hooks/useClientCustomFields";
 import { useClientFieldConfig } from "@/hooks/useClientFieldConfig";
 import CustomFieldsSection from "@/components/clients/CustomFieldsSection";
+import { ClientInfoDialogContent } from "@/components/clients/ClientInfoDialogContent";
 import {
   AddCustomTabDialog,
   ClientCustomTableTab,
