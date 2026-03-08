@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,11 +20,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search } from 'lucide-react';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2 } from 'lucide-react';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+
+// Sidebar colors - matching QuickAddTask
+const sidebarColors = {
+  navy: '#162C58',
+  gold: '#d8ac27',
+  goldLight: '#e8c85a',
+  goldDark: '#b8941f',
+  navyLight: '#1E3A6E',
+  navyDark: '#0F1F3D',
+};
 
 interface AddReminderDialogProps {
   entityType?: string;
@@ -32,10 +48,10 @@ interface AddReminderDialogProps {
 }
 
 const reminderTypes = [
-  { value: 'browser', label: '🔔 התראת דפדפן', icon: Bell },
-  { value: 'popup', label: '📢 חלון קופץ', icon: Bell },
+  { value: 'browser', label: '🔔 דפדפן', icon: Bell },
+  { value: 'popup', label: '📢 קופץ', icon: Bell },
   { value: 'email', label: '📧 אימייל', icon: Mail },
-  { value: 'voice', label: '🔊 הקראה קולית', icon: Volume2 },
+  { value: 'voice', label: '🔊 קולי', icon: Volume2 },
   { value: 'sms', label: '💬 SMS', icon: MessageSquare },
   { value: 'whatsapp', label: '📱 וואטסאפ', icon: Phone },
 ];
@@ -69,14 +85,15 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<{ id: string; name: string; email: string | null; phone: string | null; whatsapp: string | null }[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientIds, setClientIds] = useState<string[]>([]);
   const [clientSearch, setClientSearch] = useState('');
+  const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['browser']);
   const [selectedRingtone, setSelectedRingtone] = useState('default');
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Email template support
   const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
@@ -204,57 +221,74 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
     }
   };
 
+  const toggleClient = (id: string) => {
+    setClientIds(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+  };
+
+  const removeClient = (id: string) => {
+    setClientIds(prev => prev.filter(c => c !== id));
+  };
+
+  const selectedClients = clients.filter(c => clientIds.includes(c.id));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const reminderData: any = {
-      title: form.title,
-      message: form.message,
-      remind_at: new Date(form.remind_at).toISOString(),
-      reminder_type: selectedTypes[0] || 'browser',
-      reminder_types: selectedTypes,
-      entity_type: entityType || null,
-      entity_id: entityId || null,
-      client_id: selectedClientId || null,
-      is_recurring: form.is_recurring,
-      recurring_interval: form.recurring_interval !== 'none' ? form.recurring_interval : null,
-      recurring_count: form.recurring_count,
-      ringtone: selectedRingtone,
-      custom_ringtone_url: customRingtoneUrl,
-      recipient_emails: form.recipient_emails,
-      recipient_phones: form.recipient_phones,
-      send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
-      send_sms: form.send_sms || selectedTypes.includes('sms'),
-      email_template_id: selectedTemplate,
-    };
-    
-    await createReminder(reminderData);
-    
-    // Reset form
-    setForm({
-      title: '',
-      message: '',
-      remind_at: '',
-      is_recurring: false,
-      recurring_interval: 'none',
-      recurring_count: 1,
-      recipient_emails: [],
-      recipient_phones: [],
-      manual_email: '',
-      manual_phone: '',
-      send_whatsapp: false,
-      send_sms: false,
-    });
-    setSelectedTypes(['browser']);
-    setSelectedRingtone('default');
-    setCustomRingtoneUrl(null);
-    setSelectedClientId('');
-    setClientSearch('');
-    setOpen(false);
+    try {
+      const reminderData: any = {
+        title: form.title,
+        message: form.message,
+        remind_at: new Date(form.remind_at).toISOString(),
+        reminder_type: selectedTypes[0] || 'browser',
+        reminder_types: selectedTypes,
+        entity_type: entityType || null,
+        entity_id: entityId || null,
+        client_id: clientIds.length > 0 ? clientIds[0] : null,
+        is_recurring: form.is_recurring,
+        recurring_interval: form.recurring_interval !== 'none' ? form.recurring_interval : null,
+        recurring_count: form.recurring_count,
+        ringtone: selectedRingtone,
+        custom_ringtone_url: customRingtoneUrl,
+        recipient_emails: form.recipient_emails,
+        recipient_phones: form.recipient_phones,
+        send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
+        send_sms: form.send_sms || selectedTypes.includes('sms'),
+        email_template_id: selectedTemplate,
+      };
+      
+      await createReminder(reminderData);
+      
+      // Reset form
+      setForm({
+        title: '',
+        message: '',
+        remind_at: '',
+        is_recurring: false,
+        recurring_interval: 'none',
+        recurring_count: 1,
+        recipient_emails: [],
+        recipient_phones: [],
+        manual_email: '',
+        manual_phone: '',
+        send_whatsapp: false,
+        send_sms: false,
+      });
+      setSelectedTypes(['browser']);
+      setSelectedRingtone('default');
+      setCustomRingtoneUrl(null);
+      setClientIds([]);
+      setClientSearch('');
+      setOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" className="gap-2">
@@ -263,143 +297,253 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh]" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[hsl(45,80%,45%)]" />
-            תזכורת חדשה
-          </DialogTitle>
+      <DialogContent
+        className="sm:max-w-[500px] p-0 overflow-hidden"
+        dir="rtl"
+        style={{
+          background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
+          border: `1px solid ${sidebarColors.gold}40`,
+        }}
+      >
+        <DialogHeader
+          className="px-5 pt-5 pb-3"
+          style={{ borderBottom: `1px solid ${sidebarColors.gold}30` }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center w-10 h-10 rounded-lg"
+              style={{ background: `${sidebarColors.gold}20` }}
+            >
+              <Bell className="h-5 w-5" style={{ color: sidebarColors.gold }} />
+            </div>
+            <DialogTitle
+              className="text-lg font-bold"
+              style={{ color: sidebarColors.goldLight }}
+            >
+              תזכורת חדשה
+            </DialogTitle>
+          </div>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh] pr-4">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Basic Info */}
-            <div>
-              <Label>כותרת *</Label>
+
+        <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(85vh - 120px)' }}>
+          <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 gold-scrollbar">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                כותרת *
+              </Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="תזכורת לפגישה..."
                 required
+                className="text-right"
+                style={{
+                  background: `${sidebarColors.navyLight}50`,
+                  borderColor: `${sidebarColors.gold}40`,
+                  color: sidebarColors.goldLight,
+                }}
+                autoFocus
               />
             </div>
             
-            <div>
-              <Label>מתי להזכיר *</Label>
+            {/* Remind At */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                מתי להזכיר *
+              </Label>
               <Input
                 type="datetime-local"
                 value={form.remind_at}
                 onChange={(e) => setForm({ ...form, remind_at: e.target.value })}
                 required
+                style={{
+                  background: `${sidebarColors.navyLight}50`,
+                  borderColor: `${sidebarColors.gold}40`,
+                  color: sidebarColors.goldLight,
+                }}
               />
             </div>
 
-            {/* Client Assignment */}
+            {/* Client Assignment - Multi Select */}
             <div className="space-y-2">
-              <Label>שיוך ללקוח</Label>
-              {selectedClientId ? (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-primary/40 bg-primary/5">
-                  <span className="text-sm font-medium">
-                    {clients.find(c => c.id === selectedClientId)?.name || "לקוח"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedClientId('')}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                שיוך ללקוחות
+              </Label>
+              {selectedClients.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedClients.map(client => (
+                    <div
+                      key={client.id}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                      style={{
+                        background: `${sidebarColors.gold}20`,
+                        border: `1px solid ${sidebarColors.gold}50`,
+                        color: sidebarColors.goldLight,
+                      }}
+                    >
+                      <span>{client.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeClient(client.id)}
+                        className="p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="חיפוש לקוח..."
-                      value={clientSearch}
-                      onChange={(e) => setClientSearch(e.target.value)}
-                      className="pr-9 text-right text-sm"
-                    />
+              )}
+              <Popover open={isClientPickerOpen} onOpenChange={setIsClientPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-start gap-2"
+                    style={{
+                      background: `${sidebarColors.navyLight}50`,
+                      borderColor: `${sidebarColors.gold}40`,
+                      color: `${sidebarColors.goldLight}60`,
+                    }}
+                  >
+                    <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                    {selectedClients.length > 0 ? `${selectedClients.length} לקוחות נבחרו — הוסף עוד` : "בחר לקוח או איש קשר"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[320px] p-0 overflow-hidden"
+                  align="start"
+                  style={{
+                    background: sidebarColors.navy,
+                    border: `1px solid ${sidebarColors.gold}40`,
+                  }}
+                >
+                  <div className="p-2 border-b" style={{ borderColor: `${sidebarColors.gold}30` }}>
+                    <div className="relative">
+                      <Search className="absolute right-2.5 top-2.5 h-4 w-4" style={{ color: `${sidebarColors.goldLight}60` }} />
+                      <Input
+                        placeholder="חיפוש לקוח..."
+                        value={clientSearch}
+                        onChange={(e) => setClientSearch(e.target.value)}
+                        className="pr-9 text-right text-sm"
+                        style={{
+                          background: `${sidebarColors.navyLight}50`,
+                          borderColor: `${sidebarColors.gold}30`,
+                          color: sidebarColors.goldLight,
+                        }}
+                        autoFocus
+                      />
+                    </div>
                   </div>
-                  {(clientSearch || clients.length <= 8) && (
-                    <div className="max-h-[150px] overflow-y-auto border rounded-lg p-1 space-y-0.5">
-                      {clients
-                        .filter(c =>
-                          !clientSearch ||
-                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                          c.email?.toLowerCase().includes(clientSearch.toLowerCase())
-                        )
-                        .map(client => (
+                  <div className="max-h-[200px] overflow-y-auto p-1 gold-scrollbar">
+                    {clients
+                      .filter(c =>
+                        !clientSearch ||
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        c.email?.toLowerCase().includes(clientSearch.toLowerCase())
+                      )
+                      .map(client => {
+                        const isSelected = clientIds.includes(client.id);
+                        return (
                           <button
                             key={client.id}
                             type="button"
-                            onClick={() => {
-                              setSelectedClientId(client.id);
-                              setClientSearch('');
-                            }}
-                            className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted flex items-center gap-2"
+                            onClick={() => toggleClient(client.id)}
+                            className={cn(
+                              "w-full text-right px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2",
+                              isSelected ? "bg-white/15" : "hover:bg-white/10"
+                            )}
+                            style={{ color: sidebarColors.goldLight }}
                           >
-                            <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                              {client.name.charAt(0)}
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{
+                                background: isSelected ? `${sidebarColors.gold}40` : `${sidebarColors.gold}25`,
+                                color: sidebarColors.gold,
+                              }}
+                            >
+                              {isSelected ? "✓" : client.name.charAt(0)}
                             </div>
                             <div className="flex-1 text-right">
                               <div className="font-medium">{client.name}</div>
                               {client.email && (
-                                <div className="text-xs text-muted-foreground">{client.email}</div>
+                                <div className="text-xs opacity-60">{client.email}</div>
                               )}
                             </div>
                           </button>
-                        ))}
-                      {clients.filter(c =>
-                        !clientSearch ||
-                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
-                      ).length === 0 && (
-                        <div className="text-center py-3 text-sm text-muted-foreground">
-                          לא נמצאו לקוחות
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                        );
+                      })}
+                    {clients.filter(c =>
+                      !clientSearch ||
+                      c.name.toLowerCase().includes(clientSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="text-center py-4 text-sm" style={{ color: `${sidebarColors.goldLight}60` }}>
+                        לא נמצאו לקוחות
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
-            {/* Multiple Reminder Types */}
-            <div>
-              <Label className="mb-2 block">סוגי התראה (ניתן לבחור כמה)</Label>
+            {/* Reminder Types */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                סוגי התראה (ניתן לבחור כמה)
+              </Label>
               <div className="flex flex-wrap gap-2">
-                {reminderTypes.map(type => (
-                  <Badge
-                    key={type.value}
-                    variant={selectedTypes.includes(type.value) ? 'default' : 'outline'}
-                    className="cursor-pointer py-2 px-3 text-sm"
-                    onClick={() => toggleReminderType(type.value)}
-                  >
-                    {type.label}
-                  </Badge>
-                ))}
+                {reminderTypes.map(type => {
+                  const isSelected = selectedTypes.includes(type.value);
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => toggleReminderType(type.value)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+                        isSelected ? "border-current" : "border-transparent"
+                      )}
+                      style={{
+                        background: isSelected ? `${sidebarColors.gold}25` : `${sidebarColors.navyLight}50`,
+                        color: isSelected ? sidebarColors.gold : `${sidebarColors.goldLight}80`,
+                        borderColor: isSelected ? `${sidebarColors.gold}60` : 'transparent',
+                      }}
+                    >
+                      {type.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Recurring Options */}
-            <div className="space-y-3 rounded-lg border p-4">
+            <div className="space-y-3 rounded-lg border p-3" style={{ borderColor: `${sidebarColors.gold}30`, background: `${sidebarColors.navyLight}20` }}>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="recurring"
                   checked={form.is_recurring}
                   onCheckedChange={(checked) => setForm({ ...form, is_recurring: !!checked })}
                 />
-                <Label htmlFor="recurring">תזכורת חוזרת</Label>
+                <Label htmlFor="recurring" className="text-sm" style={{ color: sidebarColors.goldLight }}>
+                  תזכורת חוזרת
+                </Label>
               </div>
               
               {form.is_recurring && (
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div>
-                    <Label>תדירות</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs" style={{ color: `${sidebarColors.goldLight}80` }}>תדירות</Label>
                     <Select
                       value={form.recurring_interval}
                       onValueChange={(value) => setForm({ ...form, recurring_interval: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger
+                        style={{
+                          background: `${sidebarColors.navyLight}50`,
+                          borderColor: `${sidebarColors.gold}30`,
+                          color: sidebarColors.goldLight,
+                        }}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -411,14 +555,19 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>מספר פעמים</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs" style={{ color: `${sidebarColors.goldLight}80` }}>מספר פעמים</Label>
                     <Input
                       type="number"
                       min={1}
                       max={50}
                       value={form.recurring_count}
                       onChange={(e) => setForm({ ...form, recurring_count: parseInt(e.target.value) || 1 })}
+                      style={{
+                        background: `${sidebarColors.navyLight}50`,
+                        borderColor: `${sidebarColors.gold}30`,
+                        color: sidebarColors.goldLight,
+                      }}
                     />
                   </div>
                 </div>
@@ -426,57 +575,63 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
             </div>
 
             {/* Ringtone Selection */}
-            <div className="space-y-3 rounded-lg border p-4">
-              <Label className="block">בחר רינגטון</Label>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2 rounded-lg border p-3" style={{ borderColor: `${sidebarColors.gold}30`, background: `${sidebarColors.navyLight}20` }}>
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                בחר רינגטון
+              </Label>
+              <div className="grid grid-cols-2 gap-1.5">
                 {RINGTONES.map(ringtone => (
                   <div
                     key={ringtone.id}
-                    className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
-                      selectedRingtone === ringtone.id ? 'border-primary bg-primary/10' : 'hover:bg-muted'
-                    }`}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors text-xs",
+                    )}
+                    style={{
+                      background: selectedRingtone === ringtone.id ? `${sidebarColors.gold}20` : `${sidebarColors.navyLight}30`,
+                      borderColor: selectedRingtone === ringtone.id ? `${sidebarColors.gold}50` : `${sidebarColors.gold}20`,
+                      color: sidebarColors.goldLight,
+                    }}
                     onClick={() => setSelectedRingtone(ringtone.id)}
                   >
-                    <span className="text-sm">{ringtone.name}</span>
-                    <Button
+                    <span>{ringtone.name}</span>
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                      className="p-1 rounded hover:bg-white/10"
                       onClick={(e) => {
                         e.stopPropagation();
                         playRingtone(ringtone.url);
                       }}
                     >
-                      <Volume2 className="h-4 w-4" />
-                    </Button>
+                      <Volume2 className="h-3.5 w-3.5" style={{ color: sidebarColors.gold }} />
+                    </button>
                   </div>
                 ))}
                 
                 {/* Custom ringtone */}
                 <div
-                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
-                    selectedRingtone === 'custom' ? 'border-primary bg-primary/10' : 'hover:bg-muted'
-                  }`}
+                  className="flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors text-xs col-span-2"
+                  style={{
+                    background: selectedRingtone === 'custom' ? `${sidebarColors.gold}20` : `${sidebarColors.navyLight}30`,
+                    borderColor: selectedRingtone === 'custom' ? `${sidebarColors.gold}50` : `${sidebarColors.gold}20`,
+                    color: sidebarColors.goldLight,
+                  }}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span className="text-sm flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
+                  <span className="flex items-center gap-2">
+                    <Upload className="h-3.5 w-3.5" />
                     {customRingtoneUrl ? 'רינגטון מותאם' : 'העלה רינגטון'}
                   </span>
                   {customRingtoneUrl && (
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                      className="p-1 rounded hover:bg-white/10"
                       onClick={(e) => {
                         e.stopPropagation();
                         playRingtone(customRingtoneUrl);
                       }}
                     >
-                      <Volume2 className="h-4 w-4" />
-                    </Button>
+                      <Volume2 className="h-3.5 w-3.5" style={{ color: sidebarColors.gold }} />
+                    </button>
                   )}
                 </div>
               </div>
@@ -487,20 +642,19 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                 className="hidden"
                 onChange={handleUploadRingtone}
               />
-              {isUploading && <p className="text-sm text-muted-foreground">מעלה...</p>}
+              {isUploading && <p className="text-xs" style={{ color: `${sidebarColors.goldLight}60` }}>מעלה...</p>}
             </div>
 
             {/* Recipients - Email */}
             {(selectedTypes.includes('email')) && (
-              <div className="space-y-3 rounded-lg border p-4">
-                <Label className="block">נמענים לאימייל</Label>
+              <div className="space-y-2 rounded-lg border p-3" style={{ borderColor: `${sidebarColors.gold}30`, background: `${sidebarColors.navyLight}20` }}>
+                <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>נמענים לאימייל</Label>
                 
-                {/* Email Template Selection */}
                 {emailTemplates.length > 0 && (
                   <div>
-                    <Label className="text-sm mb-2 block">תבנית אימייל (אופציונלי)</Label>
+                    <Label className="text-xs mb-1 block" style={{ color: `${sidebarColors.goldLight}80` }}>תבנית אימייל (אופציונלי)</Label>
                     <Select value={selectedTemplate || 'none'} onValueChange={(value) => setSelectedTemplate(value === 'none' ? null : value)}>
-                      <SelectTrigger>
+                      <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
                         <SelectValue placeholder="בחר תבנית" />
                       </SelectTrigger>
                       <SelectContent>
@@ -515,19 +669,17 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                   </div>
                 )}
                 
-                {/* Selected emails */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {form.recipient_emails.map(email => (
-                    <Badge key={email} variant="secondary" className="gap-1">
+                    <div key={email} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ background: `${sidebarColors.gold}20`, color: sidebarColors.goldLight }}>
                       {email}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => removeRecipientEmail(email)} />
-                    </Badge>
+                    </div>
                   ))}
                 </div>
                 
-                {/* Client emails dropdown */}
                 <Select onValueChange={(value) => addRecipientEmail(value)}>
-                  <SelectTrigger>
+                  <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
                     <SelectValue placeholder="בחר מהלקוחות..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -539,7 +691,6 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                   </SelectContent>
                 </Select>
                 
-                {/* Manual email input */}
                 <div className="flex gap-2">
                   <Input
                     type="email"
@@ -547,8 +698,9 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                     onChange={(e) => setForm({ ...form, manual_email: e.target.value })}
                     placeholder="הזן אימייל ידנית..."
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addManualEmail())}
+                    style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}
                   />
-                  <Button type="button" variant="outline" onClick={addManualEmail}>
+                  <Button type="button" variant="outline" onClick={addManualEmail} style={{ borderColor: `${sidebarColors.gold}40`, color: sidebarColors.gold }}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -557,22 +709,20 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
 
             {/* Recipients - Phone (SMS/WhatsApp) */}
             {(selectedTypes.includes('sms') || selectedTypes.includes('whatsapp')) && (
-              <div className="space-y-3 rounded-lg border p-4">
-                <Label className="block">נמענים ל-SMS / וואטסאפ</Label>
+              <div className="space-y-2 rounded-lg border p-3" style={{ borderColor: `${sidebarColors.gold}30`, background: `${sidebarColors.navyLight}20` }}>
+                <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>נמענים ל-SMS / וואטסאפ</Label>
                 
-                {/* Selected phones */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {form.recipient_phones.map(phone => (
-                    <Badge key={phone} variant="secondary" className="gap-1">
+                    <div key={phone} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ background: `${sidebarColors.gold}20`, color: sidebarColors.goldLight }}>
                       {phone}
                       <X className="h-3 w-3 cursor-pointer" onClick={() => removeRecipientPhone(phone)} />
-                    </Badge>
+                    </div>
                   ))}
                 </div>
                 
-                {/* Client phones dropdown */}
                 <Select onValueChange={(value) => addRecipientPhone(value)}>
-                  <SelectTrigger>
+                  <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
                     <SelectValue placeholder="בחר מהלקוחות..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -584,7 +734,6 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                   </SelectContent>
                 </Select>
                 
-                {/* Manual phone input */}
                 <div className="flex gap-2">
                   <Input
                     type="tel"
@@ -592,35 +741,70 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                     onChange={(e) => setForm({ ...form, manual_phone: e.target.value })}
                     placeholder="הזן מספר טלפון ידנית..."
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addManualPhone())}
+                    style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}
                   />
-                  <Button type="button" variant="outline" onClick={addManualPhone}>
+                  <Button type="button" variant="outline" onClick={addManualPhone} style={{ borderColor: `${sidebarColors.gold}40`, color: sidebarColors.gold }}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             )}
 
-            <div>
-              <Label>הודעה (אופציונלי)</Label>
+            {/* Message */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                הודעה (אופציונלי)
+              </Label>
               <Textarea
                 value={form.message || ''}
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
                 placeholder="פרטים נוספים..."
                 rows={2}
+                className="text-right resize-none"
+                style={{
+                  background: `${sidebarColors.navyLight}50`,
+                  borderColor: `${sidebarColors.gold}40`,
+                  color: sidebarColors.goldLight,
+                }}
               />
             </div>
+          </div>
 
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" className="flex-1 gap-2">
-                <Plus className="h-4 w-4" />
-                צור תזכורת
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                ביטול
-              </Button>
-            </div>
-          </form>
-        </ScrollArea>
+          <DialogFooter
+            className="px-5 py-4 gap-2"
+            style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              style={{ color: sidebarColors.goldLight }}
+            >
+              ביטול
+            </Button>
+            <Button
+              type="submit"
+              disabled={!form.title || !form.remind_at || isSubmitting}
+              className="gap-2"
+              style={{
+                background: sidebarColors.gold,
+                color: sidebarColors.navy,
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  שומר...
+                </>
+              ) : (
+                <>
+                  <Bell className="h-4 w-4" />
+                  צור תזכורת
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
