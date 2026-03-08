@@ -3181,43 +3181,12 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
-        </div>
-        <div className="flex gap-1 border rounded-lg p-1">
-          <Button
-            size="sm"
-            variant={viewMode === "board" ? "default" : "ghost"}
-            className="h-7 px-3"
-            onClick={() => setViewMode("board")}
-          >
-            <LayoutGrid className="h-4 w-4 ml-1" />
-            לוח
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === "list" ? "default" : "ghost"}
-            className="h-7 px-3"
-            onClick={() => setViewMode("list")}
-          >
-            <List className="h-4 w-4 ml-1" />
-            רשימה
-          </Button>
-          <Button
-            size="sm"
-            variant={viewMode === "table" ? "default" : "ghost"}
-            className="h-7 px-3"
-            onClick={() => setViewMode("table")}
-          >
-            <Table className="h-4 w-4 ml-1" />
-            טבלה
-          </Button>
-        </div>
+      <div className="flex items-center">
+        <h3 className="text-lg font-semibold">מעקב שלבי לקוח</h3>
       </div>
 
       {viewMode === "board" ? (
-        <ClientStagesBoard clientId={clientId} />
+        <ClientStagesBoard clientId={clientId} viewMode={viewMode} onViewModeChange={setViewMode} />
       ) : viewMode === "table" ? (
         <React.Suspense
           fallback={
