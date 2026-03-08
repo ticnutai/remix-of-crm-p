@@ -267,8 +267,8 @@ export function RemindersTabContent() {
               className="h-6 gap-1 text-xs text-amber-600 hover:text-amber-700 shrink-0"
               title={
                 expandedDedupGroups.has(dupInfo.key)
-                  ? "\u05d4\u05e1\u05ea\u05e8 \u05db\u05e4\u05d5\u05dc\u05d9\u05dd"
-                  : "\u05d4\u05e6\u05d2 \u05d4\u05db\u05dc"
+                  ? "הסתר כפולים"
+                  : "הצג הכל"
               }
             >
               <Layers className="h-3 w-3" />
