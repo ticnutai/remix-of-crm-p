@@ -480,7 +480,14 @@ export function ApplyTemplateDialog({
     addTaskToTemplateStage,
     deleteTaskFromTemplate,
     renameTaskInTemplate,
+    reorderTemplateStages,
   } = useStageTemplates();
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const [applying, setApplying] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
