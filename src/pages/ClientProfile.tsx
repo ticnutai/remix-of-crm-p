@@ -330,10 +330,11 @@ export default function ClientProfile() {
 
   // Display settings for tab management elements
   const [displaySettings, setDisplaySettings] = useState(() => {
+    const defaults = { showAddDataTab: true, showAddTableTab: true, showManageBtn: true, showActionButtons: true, showClientCard: true, showStatsCards: true };
     try {
       const saved = localStorage.getItem('client-display-settings');
-      return saved ? JSON.parse(saved) : { showAddDataTab: true, showAddTableTab: true, showManageBtn: true };
-    } catch { return { showAddDataTab: true, showAddTableTab: true, showManageBtn: true }; }
+      return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+    } catch { return defaults; }
   });
 
   const updateDisplaySetting = (key: string, value: boolean) => {
