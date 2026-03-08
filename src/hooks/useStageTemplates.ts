@@ -705,6 +705,77 @@ export function useStageTemplates() {
     [toast, loadTemplates],
   );
 
+  // Add a task to a template stage
+  const addTaskToTemplateStage = useCallback(
+    async (templateId: string, stageId: string, title: string) => {
+      try {
+        // Get current max sort_order for this stage
+        const template = templates.find((t) => t.id === templateId);
+        const stage = template?.stages?.find((s) => s.id === stageId);
+        const nextOrder = (stage?.tasks?.length ?? 0);
+        
+        const { error } = await db
+          .from("stage_template_tasks")
+          .insert({
+            template_id: templateId,
+            template_stage_id: stageId,
+            title,
+            sort_order: nextOrder,
+          });
+        if (error) throw error;
+        toast({ title: "המשימה נוספה לתבנית" });
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error adding task to template:", error);
+        toast({ title: "שגיאה בהוספת המשימה", variant: "destructive" });
+        return false;
+      }
+    },
+    [templates, toast, loadTemplates],
+  );
+
+  // Delete a task from a template
+  const deleteTaskFromTemplate = useCallback(
+    async (taskId: string) => {
+      try {
+        const { error } = await db
+          .from("stage_template_tasks")
+          .delete()
+          .eq("id", taskId);
+        if (error) throw error;
+        toast({ title: "המשימה נמחקה" });
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error deleting task from template:", error);
+        toast({ title: "שגיאה במחיקת המשימה", variant: "destructive" });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
+  // Rename a task in a template
+  const renameTaskInTemplate = useCallback(
+    async (taskId: string, newTitle: string) => {
+      try {
+        const { error } = await db
+          .from("stage_template_tasks")
+          .update({ title: newTitle })
+          .eq("id", taskId);
+        if (error) throw error;
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error renaming task in template:", error);
+        toast({ title: "שגיאה בשינוי שם המשימה", variant: "destructive" });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
   // Delete template
   const deleteTemplate = useCallback(
     async (templateId: string) => {
