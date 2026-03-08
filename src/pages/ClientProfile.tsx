@@ -733,7 +733,7 @@ export default function ClientProfile() {
   }
 
   return (
-    <AppLayout title={<span className="cursor-pointer hover:text-[hsl(45,70%,55%)] transition-colors" onClick={() => setIsClientInfoDialogOpen(true)}>{`פרופיל לקוח - ${client.name}`}</span>}>
+    <AppLayout title={`פרופיל לקוח - ${client.name}`}>
       <div className="space-y-6" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
