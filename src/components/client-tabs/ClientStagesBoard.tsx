@@ -86,6 +86,9 @@ import {
   UserRound,
   Building2,
   Check,
+  LayoutGrid,
+  List,
+  Table,
 } from "lucide-react";
 import { TaskTitleWithConsultants } from "@/components/consultants/TaskTitleWithConsultants";
 import { format, parseISO } from "date-fns";
