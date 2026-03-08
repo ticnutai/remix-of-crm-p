@@ -313,6 +313,10 @@ export default function ClientProfile() {
     checkTabsData();
   }, [checkTabsData]);
 
+  const [showAllTabs, setShowAllTabs] = useState(() => {
+    const saved = localStorage.getItem(`client-tabs-expanded-${clientId}`);
+    return saved === 'true';
+  });
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
