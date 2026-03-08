@@ -440,16 +440,12 @@ export function RemindersTabContent() {
           >
             <SelectTrigger className="w-[150px]">
               <ArrowUpDown className="h-4 w-4 ml-2" />
-              <SelectValue placeholder="\u05de\u05d9\u05d5\u05df" />
+              <SelectValue placeholder="מיון" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="created_at">
-                \u05ea\u05d0\u05e8\u05d9\u05da \u05d9\u05e6\u05d9\u05e8\u05d4
-              </SelectItem>
-              <SelectItem value="event_date">
-                \u05de\u05d5\u05e2\u05d3 \u05ea\u05d6\u05db\u05d5\u05e8\u05ea
-              </SelectItem>
-              <SelectItem value="title">\u05e9\u05dd</SelectItem>
+              <SelectItem value="created_at">תאריך יצירה</SelectItem>
+              <SelectItem value="event_date">מועד תזכורת</SelectItem>
+              <SelectItem value="title">שם</SelectItem>
             </SelectContent>
           </Select>
           <Button
