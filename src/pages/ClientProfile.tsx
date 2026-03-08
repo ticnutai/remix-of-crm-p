@@ -745,18 +745,19 @@ export default function ClientProfile() {
   }
 
   return (
-    <AppLayout title={`פרופיל לקוח - ${client.name}`} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
+    <AppLayout title={client.name} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
       <div className="space-y-6" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => navigate("/clients")}
-              className="border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 hover:border-[hsl(222,47%,35%)]"
+              className="h-8 w-8 p-0"
+              title="חזרה"
             >
-              <ArrowRight className="h-4 w-4 ml-2" />
-              חזרה
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
 
