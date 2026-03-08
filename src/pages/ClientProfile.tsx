@@ -107,7 +107,16 @@ import {
   ChevronUp,
   Timer,
   KeyRound,
+  SlidersHorizontal,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -318,6 +327,21 @@ export default function ClientProfile() {
     const saved = localStorage.getItem(`client-tabs-expanded-${clientId}`);
     return saved === 'true';
   });
+
+  // Display settings for tab management elements
+  const [displaySettings, setDisplaySettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('client-display-settings');
+      return saved ? JSON.parse(saved) : { showAddDataTab: true, showAddTableTab: true, showManageBtn: true };
+    } catch { return { showAddDataTab: true, showAddTableTab: true, showManageBtn: true }; }
+  });
+
+  const updateDisplaySetting = (key: string, value: boolean) => {
+    const updated = { ...displaySettings, [key]: value };
+    setDisplaySettings(updated);
+    localStorage.setItem('client-display-settings', JSON.stringify(updated));
+  };
+
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -967,9 +991,10 @@ export default function ClientProfile() {
           />
         </div>
 
-        {/* Tabs - Elegant Navy Style - Ordered: Overview, Projects, Time, Tasks, Meetings, Files, Messages, Invoices, etc */}
+        {/* Tabs - Elegant Navy Style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
+          <div className="flex items-start gap-2">
+          <TabsList className="flex-1 justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
             {/* Primary tabs - most used first */}
             <TabsTrigger
               value="overview"
@@ -1204,6 +1229,7 @@ export default function ClientProfile() {
             {/* Add Tab Buttons */}
             {canManageCustomTabs && (
               <div className="flex items-center gap-1">
+                {displaySettings.showAddDataTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1213,6 +1239,8 @@ export default function ClientProfile() {
                   <Plus className="h-4 w-4" />
                   טאב נתונים
                 </Button>
+                )}
+                {displaySettings.showAddTableTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1222,6 +1250,8 @@ export default function ClientProfile() {
                   <TableProperties className="h-4 w-4" />
                   טאב טבלה
                 </Button>
+                )}
+                {displaySettings.showManageBtn && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1231,10 +1261,56 @@ export default function ClientProfile() {
                   <Settings className="h-4 w-4" />
                   נהל
                 </Button>
+                )}
               </div>
             )}
             </>)}
           </TabsList>
+
+          {/* Display Settings Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 flex-shrink-0 border-[hsl(222,47%,25%)]/30 hover:border-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)]/10 transition-all"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64" dir="rtl">
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  הגדרות תצוגה
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב נתונים</span>
+                    <Switch
+                      checked={displaySettings.showAddDataTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddDataTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב טבלה</span>
+                    <Switch
+                      checked={displaySettings.showAddTableTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddTableTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתור נהל</span>
+                    <Switch
+                      checked={displaySettings.showManageBtn}
+                      onCheckedChange={(v) => updateDisplaySetting('showManageBtn', v)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
