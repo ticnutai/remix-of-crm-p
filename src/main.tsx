@@ -1,68 +1,32 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
 
-// Environment validation
-const requiredEnvVars = [
-  "VITE_SUPABASE_URL",
-  "VITE_SUPABASE_PUBLISHABLE_KEY",
-] as const;
-const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
+// Minimal test to debug blank page
+console.log("🔥 main.tsx executing");
 
-if (missingEnvVars.length > 0 && import.meta.env.DEV) {
-  console.warn(
-    `⚠️ Missing environment variables: ${missingEnvVars.join(", ")}\n` +
-      "Using fallback values from vite.config.ts",
-  );
+const rootEl = document.getElementById("root");
+console.log("🔥 root element:", rootEl);
+
+if (rootEl) {
+  try {
+    console.log("🔥 About to import App...");
+    import("./App.tsx").then((mod) => {
+      console.log("🔥 App imported successfully");
+      const App = mod.default;
+      createRoot(rootEl).render(
+        <StrictMode>
+          <App />
+        </StrictMode>
+      );
+      console.log("🔥 render() called");
+    }).catch((err) => {
+      console.error("🔥 Failed to import App:", err);
+      rootEl.innerHTML = `<pre style="color:red;padding:20px;">Failed to load App:\n${err.message}\n${err.stack}</pre>`;
+    });
+  } catch (err: any) {
+    console.error("🔥 Sync error:", err);
+    rootEl.innerHTML = `<pre style="color:red;padding:20px;">Sync error:\n${err.message}</pre>`;
+  }
+} else {
+  console.error("🔥 No #root element found!");
 }
-
-// Register Service Worker for PWA
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((registration) => {
-        // SW registered
-
-        // Check for updates periodically
-        setInterval(
-          () => {
-            registration.update();
-          },
-          60 * 60 * 1000,
-        ); // Every hour
-
-        // Listen for updates
-        registration.addEventListener("updatefound", () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener("statechange", () => {
-              if (
-                newWorker.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                // New version available
-                const shouldUpdate = window.confirm(
-                  "גרסה חדשה זמינה! לרענן עכשיו?",
-                );
-                if (shouldUpdate) {
-                  newWorker.postMessage({ type: "SKIP_WAITING" });
-                  window.location.reload();
-                }
-              }
-            });
-          }
-        });
-      })
-      .catch((error) => {
-        console.error("SW registration failed:", error);
-      });
-  });
-}
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
