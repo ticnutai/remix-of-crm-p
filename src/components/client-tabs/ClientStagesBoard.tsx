@@ -1392,7 +1392,7 @@ function SortableStageItem({
     </div>
   );
 }
-export function ClientStagesBoard({ clientId }: ClientStagesBoardProps) {
+export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: ClientStagesBoardProps) {
   const {
     stages: allStages,
     loading,
