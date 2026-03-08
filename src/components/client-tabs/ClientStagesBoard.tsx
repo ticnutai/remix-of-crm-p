@@ -2178,47 +2178,48 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
             ))}
           </div>
         )}
-      </div>
 
-      {/* Multi-select Stage Actions */}
-      {sortedStages.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap p-2 bg-muted/30 rounded-lg">
-          <Checkbox
-            checked={
-              selectedStages.size === sortedStages.length &&
-              sortedStages.length > 0
-            }
-            onCheckedChange={(checked) => {
-              if (checked) {
-                selectAllStages();
-              } else {
-                clearStageSelection();
+        {/* Select All - inline */}
+        {sortedStages.length > 0 && (
+          <>
+            <div className="border-r border-border pr-2 mr-2" />
+            <Checkbox
+              checked={
+                selectedStages.size === sortedStages.length &&
+                sortedStages.length > 0
               }
-            }}
-          />
-          <span className="text-sm text-muted-foreground">בחר הכל</span>
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  selectAllStages();
+                } else {
+                  clearStageSelection();
+                }
+              }}
+            />
+            <span className="text-sm text-muted-foreground">בחר הכל</span>
 
-          {selectedStages.size > 0 && (
-            <>
-              <Badge variant="secondary">
-                {selectedStages.size} שלבים נבחרו
-              </Badge>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={handleBulkDeleteStages}
-                className="gap-1"
-              >
-                <Trash2 className="h-4 w-4" />
-                מחק נבחרים
-              </Button>
-              <Button size="sm" variant="outline" onClick={clearStageSelection}>
-                בטל בחירה
-              </Button>
-            </>
-          )}
-        </div>
-      )}
+            {selectedStages.size > 0 && (
+              <>
+                <Badge variant="secondary">
+                  {selectedStages.size} שלבים נבחרו
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleBulkDeleteStages}
+                  className="gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  מחק נבחרים
+                </Button>
+                <Button size="sm" variant="outline" onClick={clearStageSelection}>
+                  בטל בחירה
+                </Button>
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Stages Grid - RTL direction */}
       <div
