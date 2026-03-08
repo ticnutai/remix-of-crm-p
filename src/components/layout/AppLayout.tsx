@@ -66,9 +66,10 @@ const systemNavItems = [
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
+  onTitleClick?: () => void;
 }
 
-export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title }, ref) {
+export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title, onTitleClick }, ref) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -119,7 +120,8 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
         }}
       >
         <AppHeader 
-          title={title} 
+          title={title}
+          onTitleClick={onTitleClick}
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
           isMobile={isMobile}
         />

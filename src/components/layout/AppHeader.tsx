@@ -42,12 +42,14 @@ import { cn } from "@/lib/utils";
 
 interface AppHeaderProps {
   title?: string;
+  onTitleClick?: () => void;
   onMobileMenuToggle?: () => void;
   isMobile?: boolean;
 }
 
 export function AppHeader({
   title = "tenarch CRM Pro",
+  onTitleClick,
   onMobileMenuToggle,
   isMobile,
 }: AppHeaderProps) {
@@ -100,7 +102,10 @@ export function AppHeader({
       <div className="flex h-12 sm:h-14 md:h-16 items-center justify-between px-2 sm:px-3 md:px-6 gap-2">
         {/* Left Section - Title (visible on left in LTR layout) */}
         <div className="flex items-center min-w-0 flex-shrink">
-          <h1 className="text-xs sm:text-sm md:text-lg font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none">
+          <h1 
+            className={`text-xs sm:text-sm md:text-lg font-semibold text-foreground truncate max-w-[100px] sm:max-w-[150px] md:max-w-none ${onTitleClick ? 'cursor-pointer hover:text-primary transition-colors' : ''}`}
+            onClick={onTitleClick}
+          >
             {title}
           </h1>
         </div>

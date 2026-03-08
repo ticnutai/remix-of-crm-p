@@ -345,6 +345,7 @@ export default function ClientProfile() {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
+  const [isClientInfoDialogOpen, setIsClientInfoDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
@@ -732,7 +733,7 @@ export default function ClientProfile() {
   }
 
   return (
-    <AppLayout title={`פרופיל לקוח - ${client.name}`}>
+    <AppLayout title={`פרופיל לקוח - ${client.name}`} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
       <div className="space-y-6" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
@@ -3069,6 +3070,102 @@ export default function ClientProfile() {
                 רשום תשלום
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Client Info Dialog */}
+        <Dialog open={isClientInfoDialogOpen} onOpenChange={setIsClientInfoDialogOpen}>
+          <DialogContent className="max-w-lg" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(222,47%,20%)] to-[hsl(222,47%,30%)] flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Building className="h-6 w-6 text-[hsl(45,70%,55%)]" />
+                </div>
+                {client.name}
+              </DialogTitle>
+              <DialogDescription>פרטי לקוח</DialogDescription>
+            </DialogHeader>
+            <Separator />
+            <div className="space-y-4 py-2">
+              {/* Status */}
+              <div className="flex items-center gap-2">
+                <StatusBadge status={client.status} />
+                {client.stage && (
+                  <Badge variant="outline">{client.stage}</Badge>
+                )}
+              </div>
+
+              {/* Contact Details */}
+              <div className="grid gap-3">
+                {client.company && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">חברה:</span>
+                    <span>{client.company}</span>
+                  </div>
+                )}
+                {client.email && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">אימייל:</span>
+                    <a href={`mailto:${client.email}`} className="text-primary hover:underline">{client.email}</a>
+                  </div>
+                )}
+                {isValidPhone(client.phone) && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">טלפון:</span>
+                    <a href={`tel:${client.phone}`} dir="ltr" className="font-mono text-primary hover:underline">{formatPhoneDisplay(client.phone)}</a>
+                  </div>
+                )}
+                {client.address && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">כתובת:</span>
+                    <span>{client.address}</span>
+                  </div>
+                )}
+                {client.website && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <span className="font-medium">אתר:</span>
+                    <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{client.website}</a>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Info */}
+              {client.notes && (
+                <>
+                  <Separator />
+                  <div className="text-sm">
+                    <span className="font-medium text-muted-foreground">הערות:</span>
+                    <p className="mt-1 whitespace-pre-wrap">{client.notes}</p>
+                  </div>
+                </>
+              )}
+
+              {/* Stats Summary */}
+              <Separator />
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                  <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                  <span>{stats.activeProjects} פרויקטים פעילים</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{stats.thisMonthHours} שעות החודש</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <span>₪{stats.totalRevenue.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                  <span>{stats.openTasks} משימות פתוחות</span>
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
