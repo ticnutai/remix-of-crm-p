@@ -3093,6 +3093,18 @@ export default function ClientProfile() {
                     {client.source && <Badge variant="secondary" className="text-xs">{client.source}</Badge>}
                   </DialogDescription>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-shrink-0 gap-1.5 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
+                  onClick={() => {
+                    setIsClientInfoDialogOpen(false);
+                    handleEditClick();
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  עריכה
+                </Button>
               </div>
             </DialogHeader>
 
