@@ -66,6 +66,7 @@ const systemNavItems = [
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
+  onTitleClick?: () => void;
 }
 
 export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title }, ref) {
