@@ -67,6 +67,8 @@ import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
 import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
+import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
+import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import {
   ArrowRight,
   Building,
