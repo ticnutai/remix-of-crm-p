@@ -1356,7 +1356,7 @@ export default function ClientProfile() {
             {/* Client Stages Tracker - Above everything */}
             <ClientStagesSection clientId={clientId!} />
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Recent Projects */}
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
