@@ -345,7 +345,7 @@ const App = () => {
             </AuthProvider>
           </TooltipProvider>
         </ThemeProvider>
-      </PersistQueryClientProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };
