@@ -517,6 +517,16 @@ export function ApplyTemplateDialog({
   } | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
+  const handleStageDragEnd = async (event: DragEndEvent, template: StageTemplate) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !template.stages) return;
+    const oldIndex = template.stages.findIndex((s) => s.id === active.id);
+    const newIndex = template.stages.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(template.stages, oldIndex, newIndex);
+    await reorderTemplateStages(template.id, reordered.map((s) => s.id));
+  };
+
   const handleAddStage = async (templateId: string) => {
     if (!newStageName.trim()) return;
     setAddingStage(true);
