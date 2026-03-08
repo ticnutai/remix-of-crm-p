@@ -2625,106 +2625,33 @@ export default function ClientProfile() {
           }}
         />
 
-        {/* Add Meeting Dialog */}
-        <Dialog
+        {/* Add Meeting Dialog - Navy/Gold Styled */}
+        <QuickAddMeeting
           open={isAddMeetingDialogOpen}
           onOpenChange={setIsAddMeetingDialogOpen}
-        >
-          <DialogContent className="sm:max-w-[500px]" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>הוסף פגישה חדשה</DialogTitle>
-              <DialogDescription>הוסף פגישה חדשה ללקוח</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>נושא *</Label>
-                <Input
-                  value={meetingForm.title}
-                  onChange={(e) =>
-                    setMeetingForm((prev) => ({
-                      ...prev,
-                      title: e.target.value,
-                    }))
-                  }
-                  placeholder="נושא הפגישה"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>תיאור</Label>
-                <Textarea
-                  value={meetingForm.description}
-                  onChange={(e) =>
-                    setMeetingForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="תיאור הפגישה"
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>מיקום</Label>
-                <Input
-                  value={meetingForm.location}
-                  onChange={(e) =>
-                    setMeetingForm((prev) => ({
-                      ...prev,
-                      location: e.target.value,
-                    }))
-                  }
-                  placeholder="מיקום הפגישה"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>התחלה *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={meetingForm.start_time}
-                    onChange={(e) =>
-                      setMeetingForm((prev) => ({
-                        ...prev,
-                        start_time: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>סיום *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={meetingForm.end_time}
-                    onChange={(e) =>
-                      setMeetingForm((prev) => ({
-                        ...prev,
-                        end_time: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddMeetingDialogOpen(false)}
-              >
-                ביטול
-              </Button>
-              <Button
-                onClick={handleCreateMeeting}
-                disabled={
-                  !meetingForm.title ||
-                  !meetingForm.start_time ||
-                  !meetingForm.end_time
-                }
-              >
-                צור פגישה
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
+          initialData={{ clientId: clientId }}
+          onSubmit={async (meetingData) => {
+            if (!user) return;
+            const { error } = await supabase.from("meetings").insert({
+              title: meetingData.title,
+              description: meetingData.description || null,
+              meeting_type: meetingData.meeting_type || 'in_person',
+              start_time: meetingData.start_time,
+              end_time: meetingData.end_time,
+              location: meetingData.location || null,
+              client_id: clientId,
+              created_by: user.id,
+              status: 'scheduled',
+            });
+            if (error) {
+              toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
+              throw error;
+            }
+            toast({ title: "הפגישה נוצרה בהצלחה" });
+            refresh();
+          }}
+        />
 
         {/* Add Project Dialog */}
         <Dialog
