@@ -215,7 +215,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     return (
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent
-          className="sm:max-w-[500px] p-0 overflow-hidden"
+          className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
           dir="rtl"
           style={{
             background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
