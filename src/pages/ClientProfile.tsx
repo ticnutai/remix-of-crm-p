@@ -345,6 +345,7 @@ export default function ClientProfile() {
 
   const [activeTab, setActiveTab] = useState("overview");
   const [activeTableTab, setActiveTableTab] = useState<string | null>(null);
+  const [isClientInfoDialogOpen, setIsClientInfoDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
