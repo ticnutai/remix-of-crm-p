@@ -110,6 +110,10 @@ import {
   SlidersHorizontal,
   Eye,
   EyeOff,
+  Hash,
+  User,
+  Briefcase,
+  BarChart3,
 } from "lucide-react";
 import {
   Popover,
