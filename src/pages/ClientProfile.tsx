@@ -928,9 +928,9 @@ export default function ClientProfile() {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>}
 
-        {/* Custom Fields Display */}
+        {displaySettings.showClientCard && (
         {(() => {
           const clientCustomData = (client as any)?.custom_data;
           const customValues = parseCustomData(clientCustomData);
