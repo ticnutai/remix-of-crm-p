@@ -73,12 +73,12 @@ const SectionHeader = ({
   label: string;
   accentColor?: string;
 }) => (
-  <div className="flex items-center gap-2.5">
-    <div className={`h-6 w-6 rounded-md bg-${accentColor}/10 flex items-center justify-center`}>
-      <Icon className={`h-3.5 w-3.5 text-${accentColor}`} />
+  <div className="flex items-center gap-3 mb-1">
+    <div className="h-7 w-7 rounded-lg bg-[#d8ac27]/15 border border-[#d8ac27]/30 flex items-center justify-center">
+      <Icon className="h-4 w-4 text-[#d8ac27]" />
     </div>
-    <h4 className="text-xs font-extrabold text-foreground/80 tracking-wide">{label}</h4>
-    <div className="flex-1 h-px bg-gradient-to-l from-transparent to-border/60" />
+    <h4 className="text-sm font-black text-foreground tracking-wide">{label}</h4>
+    <div className="flex-1 h-px bg-gradient-to-l from-transparent via-[#d8ac27]/25 to-[#d8ac27]/40" />
   </div>
 );
 
