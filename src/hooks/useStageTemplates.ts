@@ -1022,6 +1022,29 @@ export function useStageTemplates() {
     loadTemplates();
   }, [loadTemplates]);
 
+  // Reorder stages in a template
+  const reorderTemplateStages = useCallback(
+    async (templateId: string, stageIds: string[]) => {
+      try {
+        // Update sort_order for each stage
+        const updates = stageIds.map((id, index) =>
+          db
+            .from("stage_template_stages")
+            .update({ sort_order: index })
+            .eq("id", id)
+        );
+        await Promise.all(updates);
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error reordering stages:", error);
+        toast({ title: "שגיאה בשינוי סדר השלבים", variant: "destructive" });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
   return {
     templates,
     loading,
@@ -1040,6 +1063,7 @@ export function useStageTemplates() {
     addTaskToTemplateStage,
     deleteTaskFromTemplate,
     renameTaskInTemplate,
+    reorderTemplateStages,
     getClientsForCopy,
     getClientStages,
   };
