@@ -157,14 +157,14 @@ const FieldCard = ({
   return (
     <Wrapper
       {...(linkProps as any)}
-      className={`group/field relative flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 ${hoverColor || "hover:bg-primary/5 hover:border-primary/20"} transition-all ${colSpan2 ? "col-span-2" : ""} ${href ? "cursor-pointer" : ""}`}
+      className={`group/field relative flex items-center gap-3.5 p-3.5 rounded-xl bg-muted/20 border border-[#d8ac27]/25 ${hoverColor || "hover:bg-[#d8ac27]/5 hover:border-[#d8ac27]/40"} transition-all ${colSpan2 ? "col-span-2" : ""} ${href ? "cursor-pointer" : ""}`}
     >
-      <div className={`h-8 w-8 rounded-lg ${iconColor || "bg-primary/10"} flex items-center justify-center flex-shrink-0 transition-colors`}>
-        <Icon className={`h-4 w-4 ${iconColor ? "" : "text-primary"}`} />
+      <div className={`h-9 w-9 rounded-lg ${iconColor || "bg-[#d8ac27]/10"} border border-[#d8ac27]/20 flex items-center justify-center flex-shrink-0 transition-colors`}>
+        <Icon className={`h-4.5 w-4.5 ${iconColor ? "" : "text-[#d8ac27]"}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
-        <p className={`text-sm font-bold truncate ${mono ? "font-mono" : ""}`} dir={mono ? "ltr" : undefined}>{value}</p>
+        <p className="text-[11px] text-muted-foreground font-semibold mb-0.5">{label}</p>
+        <p className={`text-base font-bold truncate ${mono ? "font-mono" : ""}`} dir={mono ? "ltr" : undefined}>{value}</p>
       </div>
       {/* Hover actions */}
       {(onEdit || onDelete) && (
