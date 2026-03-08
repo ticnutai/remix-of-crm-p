@@ -1229,6 +1229,7 @@ export default function ClientProfile() {
             {/* Add Tab Buttons */}
             {canManageCustomTabs && (
               <div className="flex items-center gap-1">
+                {displaySettings.showAddDataTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1238,6 +1239,8 @@ export default function ClientProfile() {
                   <Plus className="h-4 w-4" />
                   טאב נתונים
                 </Button>
+                )}
+                {displaySettings.showAddTableTab && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1247,6 +1250,8 @@ export default function ClientProfile() {
                   <TableProperties className="h-4 w-4" />
                   טאב טבלה
                 </Button>
+                )}
+                {displaySettings.showManageBtn && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1256,10 +1261,56 @@ export default function ClientProfile() {
                   <Settings className="h-4 w-4" />
                   נהל
                 </Button>
+                )}
               </div>
             )}
             </>)}
           </TabsList>
+
+          {/* Display Settings Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 flex-shrink-0 border-[hsl(222,47%,25%)]/30 hover:border-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)]/10 transition-all"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64" dir="rtl">
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  הגדרות תצוגה
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב נתונים</span>
+                    <Switch
+                      checked={displaySettings.showAddDataTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddDataTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">טאב טבלה</span>
+                    <Switch
+                      checked={displaySettings.showAddTableTab}
+                      onCheckedChange={(v) => updateDisplaySetting('showAddTableTab', v)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">כפתור נהל</span>
+                    <Switch
+                      checked={displaySettings.showManageBtn}
+                      onCheckedChange={(v) => updateDisplaySetting('showManageBtn', v)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
