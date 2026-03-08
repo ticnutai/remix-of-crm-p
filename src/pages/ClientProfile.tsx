@@ -3085,7 +3085,7 @@ export default function ClientProfile() {
 
         {/* Client Info Dialog - Non-modal */}
         <Dialog open={isClientInfoDialogOpen} onOpenChange={setIsClientInfoDialogOpen} modal={false}>
-          <DialogContent className="max-w-2xl p-0 overflow-hidden border-primary/20" dir="rtl">
+          <DialogContent className="max-w-2xl p-0 overflow-hidden border-[#d8ac27]/30 shadow-lg shadow-[#d8ac27]/10" dir="rtl">
             <ClientInfoDialogContent
               client={client}
               stats={stats}
