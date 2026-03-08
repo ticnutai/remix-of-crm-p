@@ -747,7 +747,7 @@ export default function ClientProfile() {
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          {displaySettings.showActionButtons && <div className="flex items-center gap-2">
             {isValidPhone(client?.phone) && (
               <Button
                 variant="outline"
