@@ -1200,7 +1200,6 @@ export default function ClientProfile() {
                 </>
               );
             })()}
-            </>)}
 
             {/* Add Tab Buttons */}
             {canManageCustomTabs && (
@@ -1234,6 +1233,7 @@ export default function ClientProfile() {
                 </Button>
               </div>
             )}
+            </>)}
           </TabsList>
 
           {/* Overview Tab */}
