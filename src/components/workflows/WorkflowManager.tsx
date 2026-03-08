@@ -16,7 +16,7 @@ import {
   Play,
   Pause,
   Trash2,
-  Pencil,
+  Edit,
   Settings2,
   ArrowRight,
   CheckCircle,
@@ -188,7 +188,7 @@ export function WorkflowManager() {
               אוטומציה חדשה
             </Button>
           </DialogTrigger>
-          <DialogContent dir="rtl" className="max-w-lg">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>יצירת אוטומציה חדשה</DialogTitle>
             </DialogHeader>

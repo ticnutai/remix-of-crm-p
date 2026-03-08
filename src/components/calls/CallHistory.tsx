@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { isValidPhoneForDisplay } from '@/lib/phone-utils';
 import { useClients } from '@/hooks/useClients';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -178,7 +177,7 @@ export function CallHistory() {
                   <SelectValue placeholder="בחר לקוח (אופציונלי)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">ללא לקוח</SelectItem>
+                  <SelectItem value="">ללא לקוח</SelectItem>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
@@ -362,7 +361,10 @@ export function CallHistory() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {(() => { const d = new Date(log.started_at); return `${d.getHours()}:${d.getMinutes()}`; })()}
+                          {new Date(log.started_at).toLocaleTimeString('he-IL', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
                         </span>
                         <span>{formatDuration(log.duration_seconds)}</span>
                       </div>
@@ -374,13 +376,11 @@ export function CallHistory() {
                       )}
                     </div>
                     
-                    {isValidPhoneForDisplay(log.phone_number) && (
-                      <Button variant="ghost" size="icon" asChild>
-                        <a href={`tel:${log.phone_number}`}>
-                          <Phone className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
+                    <Button variant="ghost" size="icon" asChild>
+                      <a href={`tel:${log.phone_number}`}>
+                        <Phone className="h-4 w-4" />
+                      </a>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

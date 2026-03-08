@@ -79,9 +79,7 @@ export const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t,
-        ),
+        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
       };
 
     case "DISMISS_TOAST": {
@@ -127,27 +125,11 @@ const listeners: Array<(state: State) => void> = [];
 
 let memoryState: State = { toasts: [] };
 
-// Deduplication flag: ensures only one microtask is queued at a time.
-// Multiple rapid dispatches (e.g. ADD then DISMISS) all update memoryState
-// synchronously, and the single deferred flush picks up the final state.
-let dispatchQueued = false;
-
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action);
-
-  // Defer listener notifications to after the current synchronous execution.
-  // This prevents "Cannot update a component (Toaster) while rendering
-  // a different component (Gmail)" by ensuring setState calls never
-  // happen during another component's render phase.
-  if (!dispatchQueued) {
-    dispatchQueued = true;
-    queueMicrotask(() => {
-      dispatchQueued = false;
-      listeners.forEach((listener) => {
-        listener(memoryState);
-      });
-    });
-  }
+  listeners.forEach((listener) => {
+    listener(memoryState);
+  });
 }
 
 type Toast = Omit<ToasterToast, "id">;
@@ -192,9 +174,7 @@ function useToast() {
         listeners.splice(index, 1);
       }
     };
-  }, []); // Subscribe once on mount, unsubscribe on unmount.
-  // setState is stable across renders so [state] dependency was unnecessary
-  // and caused the effect to re-subscribe on every state change.
+  }, [state]);
 
   return {
     ...state,

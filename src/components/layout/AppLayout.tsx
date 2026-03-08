@@ -1,5 +1,5 @@
 // App Layout - Full width content with overlay sidebar
-import React, { useState, useCallback, forwardRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,14 +24,13 @@ import {
   UserCog,
   Clock,
   Table,
+  Upload,
   Bell,
   FileSpreadsheet,
   Wallet,
   X,
   Mail,
   HardDrive,
-  Bot,
-  MapPinned,
 } from 'lucide-react';
 
 // Navigation items for mobile
@@ -43,21 +42,19 @@ const mainNavItems = [
   { title: 'עובדים', url: '/employees', icon: UserCog },
   { title: 'לוגי זמן', url: '/time-logs', icon: Clock },
   { title: 'ניתוח זמנים', url: '/time-analytics', icon: Clock },
-  { title: 'משימות, פגישות ותזכורות', url: '/tasks-meetings', icon: Calendar },
+  { title: 'משימות ופגישות', url: '/tasks-meetings', icon: Calendar },
+  { title: 'תזכורות', url: '/reminders', icon: Bell },
   { title: 'הצעות מחיר', url: '/quotes', icon: FileSpreadsheet },
   { title: 'כספים', url: '/finance', icon: Wallet },
-  { title: 'תשלומים', url: '/payments', icon: Wallet },
   { title: 'דוחות', url: '/reports', icon: FileSpreadsheet },
   { title: 'לוח שנה', url: '/calendar', icon: Calendar },
   { title: 'Gmail', url: '/gmail', icon: Mail },
-  { title: '📁 קבצים', url: '/files', icon: HardDrive },
-  { title: 'תכנון & GIS', url: '/planning-gis', icon: MapPinned },
-  { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
-  { title: '🏢 פורטל לקוחות', url: '/portal-management', icon: Users },
+  { title: 'קבצים', url: '/files', icon: HardDrive },
 ];
 
 const systemNavItems = [
-  { title: 'גיבויים וייבוא', url: '/backups', icon: Database },
+  { title: 'ייבוא נתונים', url: '/data-import', icon: Upload },
+  { title: 'גיבויים', url: '/backups', icon: Database },
   { title: 'היסטוריה', url: '/history', icon: History },
   { title: 'הגדרות', url: '/settings', icon: Settings },
   { title: 'עזרה', url: '/help', icon: HelpCircle },
@@ -66,10 +63,9 @@ const systemNavItems = [
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: string;
-  onTitleClick?: () => void;
 }
 
-export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function AppLayout({ children, title, onTitleClick }, ref) {
+export function AppLayout({ children, title }: AppLayoutProps) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
@@ -107,28 +103,23 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
     setMobileMenuOpen(false);
   };
 
-  // Sidebar visibility state
-  const sidebarVisible = !isMobile && (sidebarPinned || sidebarShowing);
+  // Content margin adjusts when sidebar is pinned OR showing
+  const contentMarginRight = !isMobile && (sidebarPinned || sidebarShowing) ? sidebarWidth : 0;
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden" dir="rtl">
-      {/* Main Content - Uses paddingRight instead of width calc to avoid scrollbar issues */}
+    <div className="min-h-screen w-full bg-background overflow-x-hidden">
+      {/* Main Content - Adjusts margin when sidebar is pinned */}
       <div 
-        className="flex flex-col min-h-screen transition-all duration-300 ease-out"
-        style={{ 
-          paddingRight: sidebarVisible ? sidebarWidth + 16 : 0,
-        }}
+        className="flex flex-col min-h-screen w-full max-w-full transition-all duration-300 ease-out"
+        style={{ marginRight: contentMarginRight }}
       >
         <AppHeader 
-          title={title}
-          onTitleClick={onTitleClick}
+          title={title} 
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
           isMobile={isMobile}
         />
-        <main className="flex-1 relative z-0 overflow-x-hidden overflow-y-auto">
-          <div className="w-full h-full px-4 md:px-8 py-6">
-            {children}
-          </div>
+        <main className="flex-1 overflow-auto relative w-full max-w-full z-0">
+          {children}
         </main>
       </div>
       
@@ -162,7 +153,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
                   </div>
                   <div className="flex flex-col items-end flex-1 min-w-0">
                     <SheetTitle className="font-bold tracking-tight text-base truncate">
-                      <span className="text-primary">ten</span><span>arch</span>
+                      e-control
                     </SheetTitle>
                     <span className="text-[10px] text-muted-foreground truncate">
                       CRM Pro Max
@@ -270,4 +261,4 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
       <FloatingTimer />
     </div>
   );
-});
+}

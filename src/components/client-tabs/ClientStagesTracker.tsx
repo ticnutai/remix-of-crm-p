@@ -11,7 +11,7 @@ import {
   FolderOpen, 
   Send, 
   MapPin,
-  Pencil,
+  Edit,
   Trash2,
   Plus,
   ListPlus,
@@ -237,7 +237,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                           variant="ghost"
                           onClick={() => setEditingTask({ stageId: stage.stage_id, taskId: task.id, title: task.title })}
                         >
-                          <Pencil className="h-3 w-3" />
+                          <Edit className="h-3 w-3" />
                         </Button>
                         <AddReminderDialog
                           entityType="client_stage_task"

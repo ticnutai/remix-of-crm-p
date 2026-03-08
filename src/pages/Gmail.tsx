@@ -1,59 +1,24 @@
 // Gmail Page - Email management with Google Gmail integration
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
-import ReactDOM from "react-dom";
-import DOMPurify from "dompurify";
-import { AppLayout } from "@/components/layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Mail,
-  RefreshCw,
-  Star,
+import React, { useState, useEffect, useMemo } from 'react';
+import { AppLayout } from '@/components/layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { 
+  Mail, 
+  RefreshCw, 
+  Star, 
   StarOff,
   ExternalLink,
   User,
@@ -81,7 +46,6 @@ import {
   MailOpen,
   MailPlus,
   FolderOpen,
-  Folder,
   Building2,
   Calendar,
   Clock4,
@@ -101,671 +65,174 @@ import {
   Maximize2,
   Minimize2,
   Grid3X3,
-  MessageSquare,
-  Sparkles,
-  Download,
-  File,
-  Image as ImageIcon,
-  Film,
-  Volume2,
-  FileSpreadsheet,
-  Printer,
-  ShieldAlert,
-  BellRing,
-  VolumeX,
-  Undo2,
-  Timer,
-  GripVertical,
-  Keyboard,
-  UserPlus,
-  LogOut,
-  CheckCircle2,
-} from "lucide-react";
-import {
-  useGmailIntegration,
-  GmailMessage,
-  EmailAttachment,
-} from "@/hooks/useGmailIntegration";
-import { useGoogleServices } from "@/hooks/useGoogleServices";
-import { useGmailAccounts, GmailAccount } from "@/hooks/useGmailAccounts";
-import { useEmailActionsOptimistic } from "@/hooks/useEmailActionsOptimistic";
-import { useGmailCache } from "@/hooks/useGmailCache";
-import { useEmailBodyCache } from "@/hooks/useEmailBodyCache";
-import { useGmailNotifications } from "@/hooks/useGmailNotifications";
-import { format, isToday, isYesterday, isThisWeek, isSameDay } from "date-fns";
-import { he } from "date-fns/locale";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useEmailMetadata } from "@/hooks/useEmailMetadata";
-import { useToast } from "@/hooks/use-toast";
-import { useTasksOptimized as useTasks } from "@/hooks/useTasksOptimized";
-import { useMeetingsOptimized as useMeetings } from "@/hooks/useMeetingsOptimized";
-import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
-import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
-import {
-  EmailQuickActions,
-  EmailSmartSuggestions,
-  ComposeEmailDialog,
+  MessageSquare
+} from 'lucide-react';
+import { useGmailIntegration, GmailMessage } from '@/hooks/useGmailIntegration';
+import { useGoogleServices } from '@/hooks/useGoogleServices';
+import { useEmailActions } from '@/hooks/useEmailActions';
+import { format, isToday, isYesterday, isThisWeek, isSameDay } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useEmailMetadata } from '@/hooks/useEmailMetadata';
+import { useTasks } from '@/hooks/useTasks';
+import { useMeetings } from '@/hooks/useMeetings';
+import { QuickAddTask } from '@/components/layout/sidebar-tasks/QuickAddTask';
+import { QuickAddMeeting } from '@/components/layout/sidebar-tasks/QuickAddMeeting';
+import { 
+  EmailQuickActions, 
+  EmailSmartSuggestions, 
+  ComposeEmailDialog, 
   EmailThreadChat,
   ClientEmailsDialog,
   EmailDateNavigator,
   FloatingDateIndicator,
   LoadMoreTrigger,
   DateSeparator,
-  useScrollDateTracker,
-  EmailFoldersPanel,
-  QuickClassifyButton,
-  GmailSidebar,
-  LabelManagerDialog,
-  EmailReminderDialog,
-  EmailNoteDialog,
-  KeyboardShortcutsDialog,
-  UndoSendBar,
-  BulkActionsBar,
-  EmailListItem,
-  EmailDetailView,
-  AdvancedSearchPanel,
-  EmailSenderChatView,
-  DEFAULT_LABELS as IMPORTED_DEFAULT_LABELS,
-  PRIORITY_CONFIG as IMPORTED_PRIORITY_CONFIG,
-  type Client,
-  type EmailLabel,
-  type Priority,
-} from "@/components/gmail";
-import { EmailDndProvider } from "@/components/gmail/EmailDndProvider";
-import { useEmailFolders } from "@/hooks/useEmailFolders";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useVirtualizer } from "@tanstack/react-virtual";
+  useScrollDateTracker
+} from '@/components/gmail';
 
-// Use shared types from gmail-types
-const DEFAULT_LABELS = IMPORTED_DEFAULT_LABELS;
-const PRIORITY_CONFIG = IMPORTED_PRIORITY_CONFIG;
+// Client interface for auto-tagging
+interface Client {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
+// Email Labels/Tags Configuration
+interface EmailLabel {
+  id: string;
+  name: string;
+  color: string;
+  icon?: React.ReactNode;
+}
+
+const DEFAULT_LABELS: EmailLabel[] = [
+  { id: 'client', name: 'לקוח', color: 'bg-blue-500' },
+  { id: 'project', name: 'פרויקט', color: 'bg-green-500' },
+  { id: 'urgent', name: 'דחוף', color: 'bg-red-500' },
+  { id: 'followup', name: 'מעקב', color: 'bg-orange-500' },
+  { id: 'invoice', name: 'חשבונית', color: 'bg-purple-500' },
+  { id: 'meeting', name: 'פגישה', color: 'bg-pink-500' },
+  { id: 'task', name: 'משימה', color: 'bg-yellow-500' },
+  { id: 'info', name: 'מידע', color: 'bg-gray-500' },
+];
+
+// Priority levels
+type Priority = 'high' | 'medium' | 'low' | 'none';
+
+const PRIORITY_CONFIG: Record<Priority, { label: string; color: string; icon: React.ReactNode }> = {
+  high: { label: 'גבוהה', color: 'text-red-600', icon: <Flag className="h-4 w-4 text-red-500 fill-red-500" /> },
+  medium: { label: 'בינונית', color: 'text-orange-600', icon: <Flag className="h-4 w-4 text-orange-500 fill-orange-500" /> },
+  low: { label: 'נמוכה', color: 'text-blue-600', icon: <Flag className="h-4 w-4 text-blue-500" /> },
+  none: { label: 'ללא', color: 'text-gray-400', icon: <Flag className="h-4 w-4 text-gray-300" /> },
+};
 
 export default function Gmail() {
-  const {
-    messages,
-    isLoading,
+  const { 
+    messages, 
+    isLoading, 
     isLoadingMore,
     hasMore,
-    fetchEmails,
+    fetchEmails, 
     loadMoreEmails,
     searchByDateRange,
-    sendEmail,
-    isSending,
-    getAttachment,
-    getFullMessage,
-    getThread,
-    extractHtmlBody,
-    reportSpam,
-    batchModify,
-    fetchEmailsWithToken,
-    sendEmailWithToken,
-    getFullMessageWithToken,
-    getAttachmentWithToken,
-    setMessages,
+    sendEmail, 
+    isSending 
   } = useGmailIntegration();
-  const { isConnected, getAccessToken } = useGoogleServices();
-  const gmailAccounts = useGmailAccounts();
+  const { isConnected } = useGoogleServices();
   const { user } = useAuth();
   const { createTask: createTaskOriginal } = useTasks();
   const { createMeeting: createMeetingOriginal } = useMeetings();
   const emailMetadata = useEmailMetadata();
-  const emailFolders = useEmailFolders();
-  const { toast } = useToast();
-  const { archiveEmail, deleteEmail, toggleStar, markAsRead } =
-    useEmailActionsOptimistic();
-  const gmailCache = useGmailCache();
-  const emailBodyCache = useEmailBodyCache();
+  const { archiveEmail, deleteEmail, toggleStar, markAsRead } = useEmailActions();
   const [hasLoaded, setHasLoaded] = useState(false);
-  const gmailNotifications = useGmailNotifications({
-    enabled: hasLoaded,
-    pollIntervalMs: 60000,
-    onNewEmails: (count) => {
-      if (count > 0) handleRefresh();
-    },
-  });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [serverSearchActive, setServerSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<GmailMessage | null>(null);
-  const [emailAttachments, setEmailAttachments] = useState<
-    Array<{ name: string; type: string; attachmentId: string; size: number }>
-  >([]);
-  const [loadingAttachments, setLoadingAttachments] = useState(false);
-  const [downloadingAtt, setDownloadingAtt] = useState<string | null>(null);
-
-  // Folder state
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [folderEmailIds, setFolderEmailIds] = useState<Set<string>>(new Set());
-  const [showFoldersPanel, setShowFoldersPanel] = useState(true);
-
+  
   // Date navigation state
-  const [selectedDateFilter, setSelectedDateFilter] = useState<Date | null>(
-    null,
-  );
+  const [selectedDateFilter, setSelectedDateFilter] = useState<Date | null>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const detailScrollRef = React.useRef<HTMLDivElement>(null);
   const { currentDate: scrollCurrentDate, isScrolling } = useScrollDateTracker(
     scrollContainerRef as React.RefObject<HTMLElement>,
     messages,
-    hasLoaded && !selectedEmail,
+    hasLoaded && !selectedEmail
   );
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [composeData, setComposeData] = useState<
-    | {
-        to: string;
-        subject: string;
-        quotedBody?: string;
-        mode?: "reply" | "forward" | "replyAll";
-        originalFrom?: string;
-        originalDate?: string;
-      }
-    | undefined
-  >(undefined);
-  const [activeTab, setActiveTab] = useState("inbox");
-
+  const [activeTab, setActiveTab] = useState('inbox');
+  
   // Chat view state
-  const [viewMode, setViewMode] = useState<"list" | "chat" | "sender-chat">(
-    "list",
-  );
+  const [viewMode, setViewMode] = useState<'list' | 'chat'>('list');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [threadMessages, setThreadMessages] = useState<GmailMessage[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
-
-  // Sender chat state
-  const [senderChatEmail, setSenderChatEmail] = useState<string>("");
-  const [senderChatName, setSenderChatName] = useState<string>("");
-
+  
   // Client emails dialog
-  const [isClientEmailsDialogOpen, setIsClientEmailsDialogOpen] =
-    useState(false);
-
-  // Undo send state
-  const [undoSendState, setUndoSendState] = useState<{
-    params: any;
-    timeoutId: ReturnType<typeof setTimeout>;
-    countdown: number;
-  } | null>(null);
-
-  // Snooze state
-  const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
-  const [snoozeEmailId, setSnoozeEmailId] = useState<string | null>(null);
-
-  // Full HTML body state
-  const [emailHtmlBody, setEmailHtmlBody] = useState<string>("");
-  const [loadingBody, setLoadingBody] = useState(false);
-
-  // Resolve inline cid: images in HTML body
-  const resolveInlineImages = useCallback(
-    async (html: string, messageId: string, payload: any): Promise<string> => {
-      if (!html || !payload) return html;
-      // Find all cid: references in the HTML
-      const cidMatches = html.match(/src=["']cid:([^"']+)["']/gi);
-      if (!cidMatches || cidMatches.length === 0) return html;
-
-      // Extract Content-ID to attachmentId mapping from MIME parts
-      const cidMap: Record<
-        string,
-        { attachmentId: string; mimeType: string; data?: string }
-      > = {};
-      const scanParts = (parts: any[]) => {
-        for (const part of parts) {
-          const headers = part.headers || [];
-          const contentId = headers.find(
-            (h: any) => h.name.toLowerCase() === "content-id",
-          )?.value;
-          if (contentId && part.body) {
-            // Remove angle brackets from Content-ID: <image001.png@...>
-            const cleanCid = contentId.replace(/^<|>$/g, "");
-            if (part.body.attachmentId) {
-              cidMap[cleanCid] = {
-                attachmentId: part.body.attachmentId,
-                mimeType: part.mimeType || "image/png",
-              };
-            } else if (part.body.data) {
-              // Inline data already present
-              const base64 = part.body.data
-                .replace(/-/g, "+")
-                .replace(/_/g, "/");
-              cidMap[cleanCid] = {
-                attachmentId: "",
-                mimeType: part.mimeType || "image/png",
-                data: base64,
-              };
-            }
-          }
-          if (part.parts) scanParts(part.parts);
-        }
-      };
-      if (payload.parts) scanParts(payload.parts);
-
-      // Replace cid: references with data: URIs
-      let resolvedHtml = html;
-      for (const [cid, info] of Object.entries(cidMap)) {
-        let base64Data = info.data;
-        if (!base64Data && info.attachmentId) {
-          base64Data =
-            (await getAttachment(messageId, info.attachmentId)) ?? undefined;
-        }
-        if (base64Data) {
-          const dataUri = `data:${info.mimeType};base64,${base64Data}`;
-          // Replace both cid:xxx and cid:xxx with possible URL encoding
-          resolvedHtml = resolvedHtml.replace(
-            new RegExp(
-              `cid:${cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
-              "gi",
-            ),
-            dataUri,
-          );
-        }
-      }
-      return resolvedHtml;
-    },
-    [getAttachment],
-  );
-
-  // Hover preview state
-  const [hoverPreviewId, setHoverPreviewId] = useState<string | null>(null);
-  const [hoverPreviewHtml, setHoverPreviewHtml] = useState<string | null>(null);
-  const [hoverPreviewLoading, setHoverPreviewLoading] = useState(false);
-  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
-  const [previewMessage, setPreviewMessage] = useState<GmailMessage | null>(
-    null,
-  );
-  const [previewY, setPreviewY] = useState(200);
-  const previewPanelRef = useRef<HTMLDivElement | null>(null);
-  const previewScrollRef = useRef<HTMLDivElement | null>(null);
-  const previewLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!showPreviewDialog) return;
-    const t = setTimeout(() => {
-      const panel = previewPanelRef.current;
-      const viewport = previewScrollRef.current;
-
-      if (!panel) return;
-
-      const panelStyles = getComputedStyle(panel);
-      const viewportStyles = viewport ? getComputedStyle(viewport) : null;
-
-      console.group("[Gmail Preview Debug] Layer diagnostics");
-      console.table({
-        panelBackground: panelStyles.backgroundColor,
-        panelOpacity: panelStyles.opacity,
-        panelIsolation: panelStyles.isolation,
-        viewportBackground: viewportStyles?.backgroundColor || "(missing)",
-        viewportOpacity: viewportStyles?.opacity || "(missing)",
-      });
-      console.groupEnd();
-    }, 60);
-
-    return () => clearTimeout(t);
-  }, [showPreviewDialog]);
-
-  // Draggable + Resizable preview panel state (persisted in localStorage)
-  const PREVIEW_STORAGE_KEY = "gmail_preview_panel";
-  const getStoredPreviewRect = () => {
-    try {
-      const s = localStorage.getItem(PREVIEW_STORAGE_KEY);
-      if (s) return JSON.parse(s);
-    } catch {}
-    return null;
-  };
-  const [previewRect, setPreviewRect] = useState<{
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  }>(() => {
-    const stored = getStoredPreviewRect();
-    return stored || { x: window.innerWidth * 0.05, y: 200, w: 620, h: 520 };
-  });
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    origX: number;
-    origY: number;
-  } | null>(null);
-  const resizeRef = useRef<{
-    startX: number;
-    startY: number;
-    origX: number;
-    origY: number;
-    origW: number;
-    origH: number;
-    dir: string;
-  } | null>(null);
-
-  // Save preview position/size to localStorage
-  const savePreviewRect = useCallback((rect: typeof previewRect) => {
-    try {
-      localStorage.setItem(PREVIEW_STORAGE_KEY, JSON.stringify(rect));
-    } catch {}
-  }, []);
-
-  // Close preview with cleanup
-  const closePreview = useCallback(() => {
-    if (previewLeaveTimerRef.current) {
-      clearTimeout(previewLeaveTimerRef.current);
-      previewLeaveTimerRef.current = null;
-    }
-    setShowPreviewDialog(false);
-  }, []);
-
-  // Delayed close — cancels if mouse re-enters
-  const schedulePreviewClose = useCallback(() => {
-    if (previewLeaveTimerRef.current)
-      clearTimeout(previewLeaveTimerRef.current);
-    previewLeaveTimerRef.current = setTimeout(() => {
-      setShowPreviewDialog(false);
-      previewLeaveTimerRef.current = null;
-    }, 500);
-  }, []);
-
-  const cancelPreviewClose = useCallback(() => {
-    if (previewLeaveTimerRef.current) {
-      clearTimeout(previewLeaveTimerRef.current);
-      previewLeaveTimerRef.current = null;
-    }
-  }, []);
-
-  // Drag handlers
-  const onDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      cancelPreviewClose();
-      dragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        origX: previewRect.x,
-        origY: previewRect.y,
-      };
-      const onMove = (ev: MouseEvent) => {
-        if (!dragRef.current) return;
-        const dx = ev.clientX - dragRef.current.startX;
-        const dy = ev.clientY - dragRef.current.startY;
-        const newX = Math.max(
-          4,
-          Math.min(
-            dragRef.current.origX + dx,
-            window.innerWidth - previewRect.w - 4,
-          ),
-        );
-        const newY = Math.max(
-          56,
-          Math.min(
-            dragRef.current.origY + dy,
-            window.innerHeight - previewRect.h - 4,
-          ),
-        );
-        setPreviewRect((prev) => ({ ...prev, x: newX, y: newY }));
-      };
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        setPreviewRect((prev) => {
-          savePreviewRect(prev);
-          return prev;
-        });
-        dragRef.current = null;
-      };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    },
-    [previewRect, savePreviewRect, cancelPreviewClose],
-  );
-
-  // Resize handlers - supports all edges and corners
-  const onEdgeResizeStart = useCallback(
-    (e: React.MouseEvent, dir: string) => {
-      e.preventDefault();
-      e.stopPropagation();
-      cancelPreviewClose();
-      resizeRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        origX: previewRect.x,
-        origY: previewRect.y,
-        origW: previewRect.w,
-        origH: previewRect.h,
-        dir,
-      };
-      const onMove = (ev: MouseEvent) => {
-        if (!resizeRef.current) return;
-        const r = resizeRef.current;
-        const dx = ev.clientX - r.startX;
-        const dy = ev.clientY - r.startY;
-        let { x, y, w, h } = { x: r.origX, y: r.origY, w: r.origW, h: r.origH };
-
-        if (r.dir.includes("r")) w = Math.max(300, r.origW + dx);
-        if (r.dir.includes("l")) {
-          w = Math.max(300, r.origW - dx);
-          x = r.origX + (r.origW - Math.max(300, r.origW - dx));
-        }
-        if (r.dir.includes("b")) h = Math.max(250, r.origH + dy);
-        if (r.dir.includes("t")) {
-          h = Math.max(250, r.origH - dy);
-          y = r.origY + (r.origH - Math.max(250, r.origH - dy));
-        }
-
-        w = Math.min(w, window.innerWidth - 40);
-        h = Math.min(h, window.innerHeight - 56);
-        y = Math.max(56, y);
-        setPreviewRect({ x, y, w, h });
-      };
-      const onUp = () => {
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-        setPreviewRect((prev) => {
-          savePreviewRect(prev);
-          return prev;
-        });
-        resizeRef.current = null;
-      };
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    },
-    [previewRect, savePreviewRect, cancelPreviewClose],
-  );
-
-  const handleHoverPreview = useCallback(
-    async (messageId: string, y: number) => {
-      setHoverPreviewId(messageId);
-      // Position: use stored rect position, or default near the hovered subject
-      const stored = getStoredPreviewRect();
-      if (!stored) {
-        const clampedY = Math.max(
-          40,
-          Math.min(y - 60, window.innerHeight - 500),
-        );
-        setPreviewRect((prev) => ({
-          ...prev,
-          y: clampedY,
-          x: window.innerWidth * 0.05,
-        }));
-      }
-      // Find the message and open the preview
-      const msg = messages.find((m) => m.id === messageId);
-      if (msg) {
-        setPreviewMessage(msg);
-        setShowPreviewDialog(true);
-      }
-      // Check persistent cache first (IndexedDB + memory)
-      const cachedBody = await emailBodyCache.getCachedBody(messageId);
-      if (cachedBody) {
-        setHoverPreviewHtml(cachedBody);
-        return;
-      }
-      setHoverPreviewHtml(null);
-      setHoverPreviewLoading(true);
-      try {
-        const fullMsg = await getFullMessage(messageId);
-        if (fullMsg?.payload) {
-          const rawHtml = extractHtmlBody(fullMsg.payload);
-          const html = await resolveInlineImages(
-            rawHtml,
-            messageId,
-            fullMsg.payload,
-          );
-          setHoverPreviewHtml(html);
-          if (html) {
-            await emailBodyCache.cacheBody(messageId, html);
-          }
-        } else {
-          setHoverPreviewHtml(null);
-        }
-      } catch (e) {
-        console.error("📧 [HoverPreview] Error:", e);
-        setHoverPreviewHtml(null);
-      }
-      setHoverPreviewLoading(false);
-    },
-    [
-      getFullMessage,
-      extractHtmlBody,
-      emailBodyCache,
-      resolveInlineImages,
-      messages,
-    ],
-  );
-
-  // Muted threads
-  const [mutedThreads, setMutedThreads] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("gmail_muted_threads");
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  // Keyboard shortcuts help dialog
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-
+  const [isClientEmailsDialogOpen, setIsClientEmailsDialogOpen] = useState(false);
+  
   // Task/Meeting dialogs
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddMeetingOpen, setIsAddMeetingOpen] = useState(false);
   const [taskInitialData, setTaskInitialData] = useState<any>(null);
   const [meetingInitialData, setMeetingInitialData] = useState<any>(null);
-
+  
   // Wrapper functions for QuickAddTask/QuickAddMeeting (they expect Promise<void>)
-  const handleCreateTask = useCallback(
-    async (task: Parameters<typeof createTaskOriginal>[0]): Promise<void> => {
-      await createTaskOriginal(task);
-    },
-    [createTaskOriginal],
-  );
-
-  const handleCreateMeeting = useCallback(
-    async (
-      meeting: Parameters<typeof createMeetingOriginal>[0],
-    ): Promise<void> => {
-      await createMeetingOriginal(meeting);
-    },
-    [createMeetingOriginal],
-  );
-
-  // New Enhanced Features State - persisted via useEmailMetadata
-  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(
-    new Set(),
-  );
-  const [actionLoading, setActionLoading] = useState<string | null>(null); // 'archive' | 'delete' | 'spam' | 'star' | null
+  const handleCreateTask = async (task: Parameters<typeof createTaskOriginal>[0]): Promise<void> => {
+    await createTaskOriginal(task);
+  };
+  
+  const handleCreateMeeting = async (meeting: Parameters<typeof createMeetingOriginal>[0]): Promise<void> => {
+    await createMeetingOriginal(meeting);
+  };
+  
+  // New Enhanced Features State
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const [emailLabels, setEmailLabels] = useState<Record<string, string[]>>({});
+  const [emailPriority, setEmailPriority] = useState<Record<string, Priority>>({});
+  const [emailReminders, setEmailReminders] = useState<Record<string, Date>>({});
+  const [emailNotes, setEmailNotes] = useState<Record<string, string>>({});
   const [showLabelManager, setShowLabelManager] = useState(false);
-  const [customLabels, setCustomLabels] =
-    useState<EmailLabel[]>(DEFAULT_LABELS);
+  const [customLabels, setCustomLabels] = useState<EmailLabel[]>(DEFAULT_LABELS);
   const [filterByLabel, setFilterByLabel] = useState<string | null>(null);
-  const [filterByPriority, setFilterByPriority] = useState<Priority | null>(
-    null,
-  );
+  const [filterByPriority, setFilterByPriority] = useState<Priority | null>(null);
   const [filterByClient, setFilterByClient] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"date" | "priority" | "sender">("date");
+  const [sortBy, setSortBy] = useState<'date' | 'priority' | 'sender'>('date');
   const [showFilters, setShowFilters] = useState(false);
-  const [displayDensity, setDisplayDensity] = useState<
-    "compact" | "comfortable" | "spacious"
-  >(() => {
-    return (
-      (localStorage.getItem("gmail_display_density") as any) || "comfortable"
-    );
-  });
-  const [showPreview, setShowPreview] = useState(() => {
-    const saved = localStorage.getItem("gmail_show_preview");
-    return saved !== null ? saved === "true" : true;
-  });
-
-  // Persist view preferences
-  useEffect(() => {
-    localStorage.setItem("gmail_display_density", displayDensity);
-  }, [displayDensity]);
-  useEffect(() => {
-    localStorage.setItem("gmail_show_preview", String(showPreview));
-  }, [showPreview]);
+  const [displayDensity, setDisplayDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
+  const [showPreview, setShowPreview] = useState(true);
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
-  const [selectedEmailForAction, setSelectedEmailForAction] =
-    useState<GmailMessage | null>(null);
-
+  const [selectedEmailForAction, setSelectedEmailForAction] = useState<GmailMessage | null>(null);
+  
   // Client auto-tagging state
   const [clients, setClients] = useState<Client[]>([]);
-  const [clientEmailMap, setClientEmailMap] = useState<Map<string, Client>>(
-    new Map(),
-  );
+  const [clientEmailMap, setClientEmailMap] = useState<Map<string, Client>>(new Map());
   const [autoTagEnabled, setAutoTagEnabled] = useState(true);
-
-  // Derived persistent data from useEmailMetadata
-  const emailLabels = useMemo(
-    () => emailMetadata.getAllLabels(),
-    [emailMetadata.metadata],
-  );
-  const emailPriority = useMemo(
-    () => emailMetadata.getAllPriorities() as Record<string, Priority>,
-    [emailMetadata.metadata],
-  );
-  const emailNotes = useMemo(
-    () => emailMetadata.getAllNotes(),
-    [emailMetadata.metadata],
-  );
-  const emailReminders = useMemo(
-    () => emailMetadata.getAllReminders(),
-    [emailMetadata.metadata],
-  );
-
+  
   // Load clients for auto-tagging
   useEffect(() => {
     const loadClients = async () => {
       if (!user) return;
-
-      // Load custom labels from localStorage
-      try {
-        const savedLabels = localStorage.getItem("gmail_custom_labels");
-        if (savedLabels) {
-          const parsed = JSON.parse(savedLabels) as EmailLabel[];
-          setCustomLabels((prev) => [...DEFAULT_LABELS, ...parsed]);
-        }
-      } catch (e) {
-        console.error("Error loading custom labels:", e);
-      }
-
+      
       try {
         const { data, error } = await supabase
-          .from("clients")
-          .select("id, name, email, phone")
-          .eq("user_id", user.id);
-
+          .from('clients')
+          .select('id, name, email, phone')
+          .eq('user_id', user.id);
+        
         if (error) throw error;
-
+        
         if (data) {
           setClients(data);
           // Create email -> client map for quick lookup
           const emailMap = new Map<string, Client>();
-          data.forEach((client) => {
+          data.forEach(client => {
             if (client.email) {
               // Handle multiple emails (comma separated or semicolon)
-              const emails = client.email
-                .split(/[,;]/)
-                .map((e) => e.trim().toLowerCase());
-              emails.forEach((email) => {
+              const emails = client.email.split(/[,;]/).map(e => e.trim().toLowerCase());
+              emails.forEach(email => {
                 if (email) {
                   emailMap.set(email, client);
                 }
@@ -773,869 +240,85 @@ export default function Gmail() {
             }
           });
           setClientEmailMap(emailMap);
-
-          // Add client-based labels dynamically - merge with custom labels from localStorage
-          const clientLabels: EmailLabel[] = data.map((client) => ({
+          
+          // Add client-based labels dynamically
+          const clientLabels: EmailLabel[] = data.map(client => ({
             id: `client_${client.id}`,
             name: client.name,
-            color: "bg-blue-500",
+            color: 'bg-blue-500',
             icon: <Building2 className="h-3 w-3" />,
           }));
-
-          // Merge: defaults + saved custom + client labels
-          let savedCustom: EmailLabel[] = [];
-          try {
-            const saved = localStorage.getItem("gmail_custom_labels");
-            if (saved) savedCustom = JSON.parse(saved);
-          } catch {}
-
-          setCustomLabels([...DEFAULT_LABELS, ...savedCustom, ...clientLabels]);
+          
+          setCustomLabels([...DEFAULT_LABELS, ...clientLabels]);
         }
       } catch (error) {
-        console.error("Error loading clients:", error);
+        console.error('Error loading clients:', error);
       }
     };
-
+    
     loadClients();
   }, [user]);
-
+  
   // Auto-tag emails based on client email addresses
   useEffect(() => {
-    if (!autoTagEnabled || messages.length === 0 || clientEmailMap.size === 0)
-      return;
-
-    messages.forEach((message) => {
+    if (!autoTagEnabled || messages.length === 0 || clientEmailMap.size === 0) return;
+    
+    const newLabels = { ...emailLabels };
+    let hasChanges = false;
+    
+    messages.forEach(message => {
+      // Get sender email (normalize to lowercase)
       const senderEmail = message.from?.toLowerCase().trim();
       if (!senderEmail) return;
-
+      
+      // Check if sender matches any client
       const matchedClient = clientEmailMap.get(senderEmail);
       if (matchedClient) {
         const labelId = `client_${matchedClient.id}`;
-        const meta = emailMetadata.getMetadata(message.id);
-        const currentLabels = meta?.labels || [];
-
+        const currentLabels = newLabels[message.id] || [];
+        
+        // Add client label if not already present
         if (!currentLabels.includes(labelId)) {
-          emailMetadata.addLabel(message.id, labelId);
+          newLabels[message.id] = [...currentLabels, labelId];
+          hasChanges = true;
         }
       }
     });
+    
+    if (hasChanges) {
+      setEmailLabels(newLabels);
+    }
   }, [messages, clientEmailMap, autoTagEnabled]);
-
+  
   // Get client info for a message (for display)
-  const getClientForMessage = useCallback(
-    (message: GmailMessage): Client | null => {
-      const senderEmail = message.from?.toLowerCase().trim();
-      if (!senderEmail) return null;
-      return clientEmailMap.get(senderEmail) || null;
-    },
-    [clientEmailMap],
-  );
+  const getClientForMessage = (message: GmailMessage): Client | null => {
+    const senderEmail = message.from?.toLowerCase().trim();
+    if (!senderEmail) return null;
+    return clientEmailMap.get(senderEmail) || null;
+  };
 
-  // Multi-account fetch helper: fetches from all active accounts and merges
-  const fetchFromAllAccounts = useCallback(
-    async (maxResults = 50, query?: string): Promise<GmailMessage[]> => {
-      const activeAccs = gmailAccounts.getActiveAccounts();
-      if (activeAccs.length === 0) {
-        // Fallback to single-account fetch
-        const msgs = await fetchEmails(maxResults, query);
-        return msgs || [];
-      }
-
-      const allMessages: GmailMessage[] = [];
-      const perAccountLimit = Math.max(
-        20,
-        Math.ceil(maxResults / activeAccs.length),
-      );
-
-      await Promise.all(
-        activeAccs.map(async (account) => {
-          try {
-            const token = await gmailAccounts.getValidToken(account);
-            if (!token) return;
-            const msgs = await fetchEmailsWithToken(
-              token,
-              account.email,
-              perAccountLimit,
-              query,
-            );
-            if (msgs) allMessages.push(...msgs);
-          } catch (err) {
-            console.error(`Failed to fetch from ${account.email}:`, err);
-          }
-        }),
-      );
-
-      // Sort by date descending
-      allMessages.sort((a, b) => {
-        const dateA = new Date(a.date).getTime() || 0;
-        const dateB = new Date(b.date).getTime() || 0;
-        return dateB - dateA;
-      });
-
-      // Update messages state with merged results
-      setMessages(allMessages);
-      return allMessages;
-    },
-    [gmailAccounts, fetchEmails, fetchEmailsWithToken, setMessages],
-  );
-
-  // Stable refs so the autoload effect doesn't need fetchEmails/fetchFromAllAccounts
-  // in its dependency array (their identity changes on every render due to toast recreation)
-  const fetchEmailsRef = useRef(fetchEmails);
-  useEffect(() => { fetchEmailsRef.current = fetchEmails; }, [fetchEmails]);
-  const fetchFromAllAccountsRef = useRef(fetchFromAllAccounts);
-  useEffect(() => { fetchFromAllAccountsRef.current = fetchFromAllAccounts; }, [fetchFromAllAccounts]);
-
-  // Guard ref: set to true the instant we begin loading — prevents concurrent calls
-  // even when React batches state updates or the effect re-fires before isLoading flips
-  const loadAttemptedRef = useRef(false);
-
-  // Auto-load emails if already connected (with cache)
+  // Auto-load emails if already connected
   useEffect(() => {
-    const hasMultiAccounts = gmailAccounts.accounts.length > 0;
-    const shouldLoad =
-      (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading && !loadAttemptedRef.current;
-
-    if (shouldLoad) {
-      // Mark as attempted immediately (before any async work) to prevent re-entry
-      loadAttemptedRef.current = true;
-
-      // Check cache first for instant display
-      const cached = gmailCache.getCachedMessages();
-      if (cached && cached.length > 0) {
-        // We have cached data, show it immediately and refresh in background
-        setHasLoaded(true);
-        if (hasMultiAccounts) {
-          fetchFromAllAccountsRef.current(50).then((freshMsgs) => {
-            if (freshMsgs && freshMsgs.length > 0) {
-              gmailCache.cacheMessages(freshMsgs);
-            }
-            // Allow future manual refreshes by re-enabling the ref
-            loadAttemptedRef.current = false;
-          });
-        } else {
-          fetchEmailsRef.current(50).then((freshMsgs) => {
-            if (freshMsgs && freshMsgs.length > 0) {
-              gmailCache.cacheMessages(freshMsgs);
-            }
-            loadAttemptedRef.current = false;
-          });
-        }
-      } else {
-        const fetchFn = hasMultiAccounts
-          ? fetchFromAllAccountsRef.current(50)
-          : fetchEmailsRef.current(50);
-        fetchFn.then((msgs) => {
-          if (msgs && msgs.length > 0) {
-            gmailCache.cacheMessages(msgs);
-          }
-          setHasLoaded(true);
-          loadAttemptedRef.current = false;
-        });
-      }
+    if (isConnected && !hasLoaded && !isLoading) {
+      fetchEmails(50).then(() => setHasLoaded(true));
     }
-  }, [
-    isConnected,
-    hasLoaded,
-    isLoading,
-    gmailCache,
-    gmailAccounts.accounts.length,
-    // fetchEmails and fetchFromAllAccounts intentionally omitted:
-    // their references change every render (toast identity instability).
-    // We use fetchEmailsRef / fetchFromAllAccountsRef for the actual calls.
-  ]);
+  }, [isConnected, hasLoaded, isLoading, fetchEmails]);
 
-  // Background pre-fetch email bodies after list loads
-  useEffect(() => {
-    if (!hasLoaded || messages.length === 0) return;
-
-    // Fetch body for a single message (for prefetch)
-    const fetchSingleBody = async (
-      messageId: string,
-    ): Promise<string | null> => {
-      try {
-        const fullMsg = await getFullMessage(messageId);
-        if (fullMsg?.payload) {
-          const rawHtml = extractHtmlBody(fullMsg.payload);
-          const html = await resolveInlineImages(
-            rawHtml,
-            messageId,
-            fullMsg.payload,
-          );
-          return html;
-        }
-        return null;
-      } catch {
-        return null;
-      }
-    };
-
-    // Pre-fetch the first 20 visible email bodies
-    const idsToFetch = messages.slice(0, 20).map((m) => m.id);
-    emailBodyCache.prefetchBodies(idsToFetch, fetchSingleBody);
-
-    return () => {
-      emailBodyCache.stopPrefetch();
-    };
-  }, [
-    hasLoaded,
-    messages,
-    getFullMessage,
-    extractHtmlBody,
-    resolveInlineImages,
-    emailBodyCache,
-  ]);
-
-  // Load folder emails when folder selected
-  useEffect(() => {
-    if (!selectedFolderId) {
-      setFolderEmailIds(new Set());
-      return;
-    }
-    emailFolders.getEmailsInFolder(selectedFolderId).then((items: any[]) => {
-      setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-    });
-  }, [selectedFolderId]);
-
-  // Reset detail scroll position when switching emails
-  useEffect(() => {
-    if (detailScrollRef.current) {
-      detailScrollRef.current.scrollTop = 0;
-    }
-  }, [selectedEmail?.id]);
-
-  // Load attachments + body in a single API call when an email is selected (with body cache)
-  useEffect(() => {
-    if (!selectedEmail) {
-      setEmailAttachments([]);
-      setEmailHtmlBody("");
-      return;
-    }
-    const loadEmailData = async () => {
-      // Check body cache first
-      const cachedBody = gmailCache.getCachedBody(selectedEmail.id);
-      if (cachedBody) {
-        setEmailHtmlBody(cachedBody);
-        setLoadingBody(false);
-      } else {
-        setLoadingBody(true);
-      }
-      setLoadingAttachments(true);
-      try {
-        const fullMsg = await getFullMessage(selectedEmail.id);
-        if (!fullMsg?.payload) {
-          setLoadingAttachments(false);
-          setLoadingBody(false);
-          return;
-        }
-
-        // Extract attachments
-        const attachments: Array<{
-          name: string;
-          type: string;
-          attachmentId: string;
-          size: number;
-        }> = [];
-        const extractParts = (parts: any[]) => {
-          for (const part of parts) {
-            if (part.filename && part.body?.attachmentId) {
-              attachments.push({
-                name: part.filename,
-                type: part.mimeType || "application/octet-stream",
-                attachmentId: part.body.attachmentId,
-                size: part.body.size || 0,
-              });
-            }
-            if (part.parts) extractParts(part.parts);
-          }
-        };
-        if (fullMsg.payload.parts) extractParts(fullMsg.payload.parts);
-        setEmailAttachments(attachments);
-
-        // Extract HTML body, resolve inline images, and cache it
-        const rawHtml = extractHtmlBody(fullMsg.payload);
-        const html = await resolveInlineImages(
-          rawHtml,
-          selectedEmail.id,
-          fullMsg.payload,
-        );
-        setEmailHtmlBody(html);
-        if (html) {
-          gmailCache.cacheBody(selectedEmail.id, html);
-        }
-      } catch (e) {
-        console.error("Error loading email data:", e);
-      }
-      setLoadingAttachments(false);
-      setLoadingBody(false);
-    };
-    loadEmailData();
-  }, [
-    selectedEmail?.id,
-    getFullMessage,
-    extractHtmlBody,
-    gmailCache,
-    resolveInlineImages,
-  ]);
-
-  // Scheduled send dispatcher - check every 30 seconds
-  useEffect(() => {
-    const checkScheduled = async () => {
-      try {
-        const scheduled = JSON.parse(
-          localStorage.getItem("scheduled_emails") || "[]",
-        );
-        const now = new Date();
-        const remaining: any[] = [];
-        const failed: any[] = [];
-        for (const item of scheduled) {
-          if (new Date(item.scheduledAt) <= now) {
-            try {
-              await sendEmail({ ...item, scheduledAt: undefined });
-              toast({
-                title: "מייל מתוזמן נשלח",
-                description: item.subject || "ללא נושא",
-              });
-            } catch (err) {
-              console.error("Failed to send scheduled email:", err);
-              failed.push(item);
-              toast({
-                title: "שגיאה בשליחת מייל מתוזמן",
-                description: item.subject || "ללא נושא",
-                variant: "destructive",
-              });
-            }
-          } else {
-            remaining.push(item);
-          }
-        }
-        // Keep failed ones for retry
-        const updated = [...remaining, ...failed];
-        if (updated.length !== scheduled.length || failed.length > 0) {
-          localStorage.setItem("scheduled_emails", JSON.stringify(updated));
-        }
-      } catch {}
-    };
-    checkScheduled();
-    const interval = setInterval(checkScheduled, 30000);
-    return () => clearInterval(interval);
-  }, [sendEmail, toast]);
-
-  // Snooze dispatcher - check every minute
-  useEffect(() => {
-    const checkSnooze = () => {
-      try {
-        const snoozed = JSON.parse(
-          localStorage.getItem("gmail_snoozed") || "[]",
-        );
-        const now = new Date();
-        const remaining = snoozed.filter((s: any) => new Date(s.until) > now);
-        if (remaining.length !== snoozed.length) {
-          localStorage.setItem("gmail_snoozed", JSON.stringify(remaining));
-          // Refresh to show un-snoozed emails
-          handleRefresh();
-        }
-      } catch {}
-    };
-    checkSnooze();
-    const interval = setInterval(checkSnooze, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Save muted threads
-  useEffect(() => {
-    localStorage.setItem(
-      "gmail_muted_threads",
-      JSON.stringify([...mutedThreads]),
-    );
-  }, [mutedThreads]);
-
-  // Filter and sort messages
-  const filteredMessages = useMemo(() => {
-    // When server search is active, skip local text filtering (results already filtered by Gmail API)
-    let result = serverSearchActive
-      ? [...messages]
-      : messages.filter((msg) => {
-          if (!searchQuery) return true;
-          const q = searchQuery.toLowerCase();
-          return (
-            msg.subject?.toLowerCase().includes(q) ||
-            msg.fromName?.toLowerCase().includes(q) ||
-            msg.from?.toLowerCase().includes(q) ||
-            msg.to?.some((t) => t.toLowerCase().includes(q)) ||
-            msg.snippet?.toLowerCase().includes(q)
-          );
-        });
-
-    // Filter by tab
-    if (activeTab === "starred") {
-      result = result.filter((msg) => msg.isStarred);
-    } else if (activeTab === "sent") {
-      result = result.filter(
-        (msg) =>
-          msg.labels?.includes("SENT") ||
-          msg.from?.toLowerCase() === user?.email?.toLowerCase(),
-      );
-    } else if (activeTab === "reminders") {
-      result = result.filter((msg) => emailReminders[msg.id]);
-    } else if (activeTab === "drafts") {
-      result = result.filter((msg) => msg.labels?.includes("DRAFT"));
-    } else if (activeTab === "spam") {
-      result = result.filter((msg) => msg.labels?.includes("SPAM"));
-    } else if (activeTab === "trash") {
-      result = result.filter((msg) => msg.labels?.includes("TRASH"));
-    } else if (activeTab === "archive") {
-      result = result.filter(
-        (msg) =>
-          !msg.labels?.includes("INBOX") &&
-          !msg.labels?.includes("TRASH") &&
-          !msg.labels?.includes("SPAM") &&
-          !msg.labels?.includes("DRAFT"),
-      );
-    }
-
-    // Filter by folder
-    if (selectedFolderId && folderEmailIds.size > 0) {
-      result = result.filter((msg) => folderEmailIds.has(msg.id));
-    }
-
-    // Filter by pinned first
-    const pinned = result.filter(
-      (msg) => emailMetadata.getMetadata(msg.id)?.is_pinned,
-    );
-    const unpinned = result.filter(
-      (msg) => !emailMetadata.getMetadata(msg.id)?.is_pinned,
-    );
-
-    // Filter by label
-    if (filterByLabel) {
-      const pinnedFiltered = pinned.filter((msg) =>
-        emailLabels[msg.id]?.includes(filterByLabel),
-      );
-      const unpinnedFiltered = unpinned.filter((msg) =>
-        emailLabels[msg.id]?.includes(filterByLabel),
-      );
-      result = [...pinnedFiltered, ...unpinnedFiltered];
-    } else {
-      result = [...pinned, ...unpinned];
-    }
-
-    // Filter by priority
-    if (filterByPriority) {
-      result = result.filter(
-        (msg) => emailPriority[msg.id] === filterByPriority,
-      );
-    }
-
-    // Filter by client
-    if (filterByClient) {
-      result = result.filter((msg) => {
-        const client = getClientForMessage(msg);
-        return client && client.id === filterByClient;
-      });
-    }
-
-    // Sort
-    switch (sortBy) {
-      case "priority":
-        const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
-        result.sort((a, b) => {
-          const aPriority = emailPriority[a.id] || "none";
-          const bPriority = emailPriority[b.id] || "none";
-          return priorityOrder[aPriority] - priorityOrder[bPriority];
-        });
-        break;
-      case "sender":
-        result.sort((a, b) =>
-          (a.fromName || "").localeCompare(b.fromName || "", "he"),
-        );
-        break;
-      case "date":
-      default:
-        result.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-        );
-    }
-
-    // Filter out snoozed emails (unless they've expired)
-    const snoozedIds = (() => {
-      try {
-        const snoozed = JSON.parse(
-          localStorage.getItem("gmail_snoozed") || "[]",
-        );
-        const now = new Date();
-        return new Set(
-          snoozed
-            .filter((s: any) => new Date(s.until) > now)
-            .map((s: any) => s.emailId),
-        );
-      } catch {
-        return new Set();
-      }
-    })();
-    if (snoozedIds.size > 0) {
-      result = result.filter((msg) => !snoozedIds.has(msg.id));
-    }
-
-    return result;
-  }, [
-    messages,
-    searchQuery,
-    serverSearchActive,
-    activeTab,
-    filterByLabel,
-    filterByPriority,
-    filterByClient,
-    sortBy,
-    emailLabels,
-    emailPriority,
-    clientEmailMap,
-    selectedFolderId,
-    folderEmailIds,
-    emailReminders,
-    emailMetadata,
-    user?.email,
-  ]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Don't trigger in inputs
-      const tag = (e.target as HTMLElement).tagName;
-      if (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        (e.target as HTMLElement).isContentEditable
-      )
-        return;
-
-      if (e.key === "c" && !e.ctrlKey && !e.metaKey) {
-        // c = compose
-        e.preventDefault();
-        setComposeData(undefined);
-        setIsComposeOpen(true);
-      }
-      if (e.key === "?" && e.shiftKey) {
-        // ? = shortcuts help
-        e.preventDefault();
-        setShowShortcutsHelp(true);
-      }
-      if (selectedEmail) {
-        if (e.key === "Escape") {
-          setSelectedEmail(null);
-        }
-        if (e.key === "r" && !e.ctrlKey) {
-          // r = reply
-          e.preventDefault();
-          const replySubject = selectedEmail.subject?.startsWith("Re:")
-            ? selectedEmail.subject
-            : `Re: ${selectedEmail.subject || ""}`;
-          setComposeData({
-            to: selectedEmail.from,
-            subject: replySubject,
-            quotedBody: buildQuotedBody(selectedEmail, "reply"),
-            mode: "reply",
-          });
-          setIsComposeOpen(true);
-        }
-        if (e.key === "a" && !e.ctrlKey) {
-          // a = reply all
-          e.preventDefault();
-          const replySubject = selectedEmail.subject?.startsWith("Re:")
-            ? selectedEmail.subject
-            : `Re: ${selectedEmail.subject || ""}`;
-          const allRecipients = [
-            selectedEmail.from,
-            ...(selectedEmail.to || []),
-          ]
-            .filter((em) => em !== user?.email)
-            .join(", ");
-          setComposeData({
-            to: allRecipients,
-            subject: replySubject,
-            quotedBody: buildQuotedBody(selectedEmail, "replyAll"),
-            mode: "replyAll",
-          });
-          setIsComposeOpen(true);
-        }
-        if (e.key === "f" && !e.ctrlKey) {
-          // f = forward
-          e.preventDefault();
-          const fwdSubject = selectedEmail.subject?.startsWith("Fwd:")
-            ? selectedEmail.subject
-            : `Fwd: ${selectedEmail.subject || ""}`;
-          setComposeData({
-            to: "",
-            subject: fwdSubject,
-            quotedBody: buildQuotedBody(selectedEmail, "forward"),
-            mode: "forward",
-          });
-          setIsComposeOpen(true);
-        }
-        if (e.key === "e" && !e.ctrlKey) {
-          // e = archive
-          e.preventDefault();
-          archiveEmail(selectedEmail.id).then(() => {
-            setSelectedEmail(null);
-            handleRefresh();
-          });
-        }
-        if (e.key === "#") {
-          // # = delete
-          e.preventDefault();
-          deleteEmail(selectedEmail.id).then(() => {
-            setSelectedEmail(null);
-            handleRefresh();
-          });
-        }
-        if (e.key === "s" && !e.ctrlKey) {
-          // s = star
-          e.preventDefault();
-          toggleStar(selectedEmail.id, selectedEmail.isStarred).then(() =>
-            handleRefresh(),
-          );
-        }
-        if (e.key === "p" && !e.ctrlKey && !e.metaKey) {
-          // p = print
-          e.preventDefault();
-          handlePrintEmail();
-        }
-      }
-      // j/k navigation in list
-      if (!selectedEmail && filteredMessages.length > 0) {
-        if (e.key === "j") {
-          e.preventDefault();
-          setSelectedEmail(filteredMessages[0]);
-        }
-      }
-      if (selectedEmail && filteredMessages.length > 0) {
-        const currentIdx = filteredMessages.findIndex(
-          (m) => m.id === selectedEmail.id,
-        );
-        if (e.key === "j" && currentIdx < filteredMessages.length - 1) {
-          e.preventDefault();
-          setSelectedEmail(filteredMessages[currentIdx + 1]);
-        }
-        if (e.key === "k" && currentIdx > 0) {
-          e.preventDefault();
-          setSelectedEmail(filteredMessages[currentIdx - 1]);
-        }
-        if (e.key === "o") {
-          e.preventDefault();
-          setSelectedThreadId(selectedEmail.threadId);
-          setViewMode("chat");
-          loadThreadMessages(selectedEmail.threadId);
-        }
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEmail, filteredMessages, user?.email]);
-
-  // Undo send countdown
-  useEffect(() => {
-    if (!undoSendState) return;
-    const interval = setInterval(() => {
-      setUndoSendState((prev) => {
-        if (!prev) return null;
-        if (prev.countdown <= 1) {
-          clearInterval(interval);
-          return null;
-        }
-        return { ...prev, countdown: prev.countdown - 1 };
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [undoSendState?.params]);
-
-  // Build quoted body for reply / forward
-  const buildQuotedBody = useCallback(
-    (email: typeof selectedEmail, mode: "reply" | "forward" | "replyAll") => {
-      const body = emailHtmlBody || email?.snippet || "";
-      const dateStr = email ? formatDate(email.date) : "";
-      const from = email?.fromName
-        ? `${email.fromName} &lt;${email.from}&gt;`
-        : email?.from || "";
-
-      if (mode === "forward") {
-        return `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${from}<br/>תאריך: ${dateStr}<br/>נושא: ${email?.subject || ""}<br/>אל: ${email?.to?.join(", ") || ""}</div><br/><div>${body}</div>`;
-      }
-      // reply / replyAll
-      return `<br/><br/><div style="border-right:2px solid #ccc;padding-right:10px;margin-top:16px;color:#666;font-size:13px"><div>ב-${dateStr}, ${from} כתב/ה:</div><br/><div>${body}</div></div>`;
-    },
-    [emailHtmlBody],
-  );
-
-  // Print email
-  const handlePrintEmail = useCallback(() => {
-    if (!selectedEmail) return;
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(`
-        <html dir="rtl"><head><title>${selectedEmail.subject || "מייל"}</title>
-        <style>body{font-family:Arial,sans-serif;padding:20px;direction:rtl}
-        .header{border-bottom:1px solid #ccc;padding-bottom:10px;margin-bottom:20px}
-        .meta{color:#666;font-size:14px}</style></head><body>
-        <div class="header"><h2>${selectedEmail.subject || "(ללא נושא)"}</h2>
-        <p class="meta">מאת: ${selectedEmail.fromName} &lt;${selectedEmail.from}&gt;</p>
-        <p class="meta">אל: ${selectedEmail.to?.join(", ") || ""}</p>
-        <p class="meta">תאריך: ${formatDate(selectedEmail.date)}</p></div>
-        <div>${DOMPurify.sanitize(emailHtmlBody || selectedEmail.snippet, { ALLOW_UNKNOWN_PROTOCOLS: true })}</div></body></html>
-      `);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  }, [selectedEmail, emailHtmlBody]);
-
-  // Snooze email
-  const handleSnooze = useCallback(
-    (emailId: string, until: Date) => {
-      const snoozed = JSON.parse(localStorage.getItem("gmail_snoozed") || "[]");
-      snoozed.push({ emailId, until: until.toISOString() });
-      localStorage.setItem("gmail_snoozed", JSON.stringify(snoozed));
-      toast({
-        title: "המייל נדחה",
-        description: `יופיע שוב ב-${until.toLocaleString("he-IL")}`,
-      });
-      setSnoozeDialogOpen(false);
-      setSnoozeEmailId(null);
-    },
-    [toast],
-  );
-
-  // Mute thread
-  const handleMuteThread = useCallback(
-    (threadId: string) => {
-      let wasMuted = false;
-      setMutedThreads((prev) => {
-        const next = new Set(prev);
-        if (next.has(threadId)) {
-          next.delete(threadId);
-          wasMuted = true;
-        } else {
-          next.add(threadId);
-          wasMuted = false;
-        }
-        return next;
-      });
-      // Toast after setState to avoid updating Toaster during render
-      if (wasMuted) {
-        toast({ title: "השרשור הופעל מחדש" });
-      } else {
-        toast({ title: "השרשור הושתק" });
-      }
-    },
-    [toast],
-  );
-
-  // Undo send wrapper
-  const sendWithUndo = useCallback(
-    async (params: any) => {
-      return new Promise<boolean>((resolve) => {
-        // Show undo bar for 5 seconds
-        const timeoutId = setTimeout(async () => {
-          setUndoSendState(null);
-          const success = await sendEmail(params);
-          resolve(success);
-        }, 5000);
-        setUndoSendState({ params, timeoutId, countdown: 5 });
-      });
-    },
-    [sendEmail],
-  );
-
-  // Cancel undo send
-  const cancelUndoSend = useCallback(() => {
-    if (undoSendState) {
-      clearTimeout(undoSendState.timeoutId);
-      setUndoSendState(null);
-      toast({ title: "השליחה בוטלה" });
-    }
-  }, [undoSendState, toast]);
-
-  // Download an attachment
-  const handleDownloadAttachment = useCallback(
-    async (
-      messageId: string,
-      attachmentId: string,
-      filename: string,
-      mimeType: string,
-    ) => {
-      setDownloadingAtt(attachmentId);
-      try {
-        const base64Data = await getAttachment(messageId, attachmentId);
-        if (!base64Data) throw new Error("Failed to get attachment data");
-
-        // Convert base64 to Blob and download
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: mimeType });
-
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error("Error downloading attachment:", error);
-      }
-      setDownloadingAtt(null);
-    },
-    [getAttachment],
-  );
-
-  const handleConnect = useCallback(async () => {
-    if (gmailAccounts.accounts.length > 0) {
-      // Multi-account mode: add another account (one OAuth popup)
-      const account = await gmailAccounts.addAccount();
-      if (account) {
-        const freshMsgs = await fetchFromAllAccounts(50);
-        if (freshMsgs && freshMsgs.length > 0) {
-          gmailCache.cacheMessages(freshMsgs);
-        }
-      }
-    } else {
-      // Single-account mode: addAccount does OAuth + saves token to localStorage
-      // Then fetchEmails uses that saved token - no second popup opened
-      const account = await gmailAccounts.addAccount();
-      if (account) {
-        await fetchEmails(50);
-      }
-    }
+  const handleConnect = async () => {
+    await fetchEmails(50);
     setHasLoaded(true);
-  }, [fetchEmails, gmailAccounts, fetchFromAllAccounts, gmailCache]);
+  };
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     setSelectedDateFilter(null);
-    if (gmailAccounts.accounts.length > 0) {
-      const freshMsgs = await fetchFromAllAccounts(50);
-      if (freshMsgs && freshMsgs.length > 0) {
-        gmailCache.cacheMessages(freshMsgs);
-      }
-    } else {
-      const freshMsgs = await fetchEmails(50);
-      if (freshMsgs && freshMsgs.length > 0) {
-        gmailCache.cacheMessages(freshMsgs);
-      }
-    }
-  }, [fetchEmails, fetchFromAllAccounts, gmailAccounts, gmailCache]);
+    await fetchEmails(50);
+  };
 
   // Handle date filter selection
-  const handleDateFilterSelect = useCallback(
-    async (date: Date) => {
-      setSelectedDateFilter(date);
-      await searchByDateRange(date);
-    },
-    [searchByDateRange],
-  );
+  const handleDateFilterSelect = async (date: Date) => {
+    setSelectedDateFilter(date);
+    await searchByDateRange(date);
+  };
 
   // Clear date filter
   const handleClearDateFilter = async () => {
@@ -1643,23 +326,17 @@ export default function Gmail() {
     await fetchEmails(50);
   };
 
-  // Load thread messages for chat view (from API)
+  // Load thread messages for chat view
   const loadThreadMessages = async (threadId: string) => {
     setIsLoadingThread(true);
     try {
-      const threadMsgs = await getThread(threadId);
-      threadMsgs.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
+      // Get all messages with this threadId
+      const threadMsgs = messages.filter(m => m.threadId === threadId);
+      // Sort by date ascending for chat view
+      threadMsgs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       setThreadMessages(threadMsgs);
     } catch (error) {
-      console.error("Error loading thread:", error);
-      // fallback to local filtering
-      const localMsgs = messages.filter((m) => m.threadId === threadId);
-      localMsgs.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
-      setThreadMessages(localMsgs);
+      console.error('Error loading thread:', error);
     }
     setIsLoadingThread(false);
   };
@@ -1667,171 +344,40 @@ export default function Gmail() {
   // Open chat view for a thread
   const openChatView = async (email: GmailMessage) => {
     setSelectedThreadId(email.threadId);
-    setViewMode("chat");
+    setViewMode('chat');
     await loadThreadMessages(email.threadId);
   };
 
-  // Fetch emails for a specific sender (independent of main email list state)
-  const fetchEmailsForSender = useCallback(
-    async (
-      email: string,
-      pageToken?: string,
-    ): Promise<{ messages: GmailMessage[]; nextPageToken: string | null }> => {
-      try {
-        const token = await getAccessToken(["gmail"]);
-        if (!token) return { messages: [], nextPageToken: null };
-
-        const query = `from:${email} OR to:${email}`;
-        let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=${encodeURIComponent(query)}`;
-        if (pageToken) {
-          url += `&pageToken=${pageToken}`;
-        }
-
-        const listResponse = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const listData = await listResponse.json();
-
-        if (!listData.messages) {
-          return { messages: [], nextPageToken: null };
-        }
-
-        // Use Gmail Batch API for fast fetch (single HTTP request for all messages)
-        const allMsgIds = listData.messages;
-        const boundary = "batch_sender_" + Date.now();
-        let messagesData: any[] = [];
-
-        try {
-          const batchBody =
-            allMsgIds
-              .map(
-                (msg: any, i: number) =>
-                  `--${boundary}\r\nContent-Type: application/http\r\nContent-ID: <item${i}>\r\n\r\nGET /gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date\r\n`,
-              )
-              .join("\r\n") + `\r\n--${boundary}--`;
-
-          const batchResponse = await fetch(
-            "https://www.googleapis.com/batch/gmail/v1",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": `multipart/mixed; boundary=${boundary}`,
-              },
-              body: batchBody,
-            },
-          );
-          const responseText = await batchResponse.text();
-          const responseBoundary = responseText
-            .split("\r\n")[0]
-            .trim()
-            .replace(/^--/, "");
-          const parts = responseText.split(`--${responseBoundary}`);
-          for (const part of parts) {
-            if (part.trim() === "" || part.trim() === "--") continue;
-            const jsonMatch = part.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              try {
-                const parsed = JSON.parse(jsonMatch[0]);
-                if (parsed.id) messagesData.push(parsed);
-              } catch {
-                /* skip */
-              }
-            }
-          }
-        } catch {
-          // Fallback to parallel individual fetches
-          const promises = allMsgIds.map(async (msg: any) => {
-            const r = await fetch(
-              `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,
-              { headers: { Authorization: `Bearer ${token}` } },
-            );
-            return r.json();
-          });
-          messagesData = await Promise.all(promises);
-        }
-
-        const formattedMessages: GmailMessage[] = messagesData.map(
-          (msg: any) => {
-            const headers = msg.payload?.headers || [];
-            const getHeader = (name: string) =>
-              headers.find((h: any) => h.name === name)?.value || "";
-            const fromHeader = getHeader("From");
-            const fromMatch = fromHeader.match(
-              /^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/,
-            );
-
-            return {
-              id: msg.id,
-              threadId: msg.threadId,
-              subject: getHeader("Subject"),
-              from: fromMatch?.[2] || fromHeader,
-              fromName: fromMatch?.[1] || fromMatch?.[2] || fromHeader,
-              to: getHeader("To")
-                .split(",")
-                .map((t: string) => t.trim()),
-              date: getHeader("Date"),
-              snippet: msg.snippet || "",
-              isRead: !msg.labelIds?.includes("UNREAD"),
-              isStarred: msg.labelIds?.includes("STARRED"),
-              labels: msg.labelIds || [],
-            };
-          },
-        );
-
-        return {
-          messages: formattedMessages,
-          nextPageToken: listData.nextPageToken || null,
-        };
-      } catch (error) {
-        console.error("Error fetching sender emails:", error);
-        return { messages: [], nextPageToken: null };
-      }
-    },
-    [getAccessToken],
-  );
-
-  // Open sender chat view
-  const openSenderChat = useCallback((email: string, name: string) => {
-    setSenderChatEmail(email);
-    setSenderChatName(name);
-    setViewMode("sender-chat");
-  }, []);
-
   // Handle send reply in chat view
-  const handleSendReply = async (
-    message: string,
-    attachments?: EmailAttachment[],
-  ): Promise<boolean> => {
+  const handleSendReply = async (message: string): Promise<boolean> => {
     if (!selectedThreadId || threadMessages.length === 0) return false;
-
+    
+    // Get the last message to reply to
     const lastMessage = threadMessages[threadMessages.length - 1];
-
-    const subject = lastMessage.subject.startsWith("Re:")
-      ? lastMessage.subject
+    
+    // Prepare reply subject
+    const subject = lastMessage.subject.startsWith('Re:') 
+      ? lastMessage.subject 
       : `Re: ${lastMessage.subject}`;
-
-    const replyTo =
-      lastMessage.from === user?.email ? lastMessage.to[0] : lastMessage.from;
-
-    // Get threading headers
-    const msgId = (lastMessage as any).messageId || "";
-
+    
+    // Determine who to reply to
+    const replyTo = lastMessage.from === user?.email 
+      ? lastMessage.to[0] 
+      : lastMessage.from;
+    
+    // Send the reply
     const success = await sendEmail({
       to: replyTo,
       subject,
       body: message,
-      attachments,
-      inReplyTo: msgId || undefined,
-      references: msgId || undefined,
     });
-
+    
     if (success) {
       // Refresh thread
       await handleRefresh();
       await loadThreadMessages(selectedThreadId);
     }
-
+    
     return success;
   };
 
@@ -1839,83 +385,65 @@ export default function Gmail() {
     try {
       const date = new Date(dateStr);
       const now = new Date();
-
+      
       if (isToday(date)) {
-        return format(date, "HH:mm", { locale: he });
+        return format(date, 'HH:mm', { locale: he });
       }
       if (isYesterday(date)) {
-        return "אתמול " + format(date, "HH:mm", { locale: he });
+        return 'אתמול ' + format(date, 'HH:mm', { locale: he });
       }
       if (isThisWeek(date)) {
-        return format(date, "EEEE HH:mm", { locale: he });
+        return format(date, 'EEEE HH:mm', { locale: he });
       }
-      return format(date, "dd/MM/yyyy", { locale: he });
+      return format(date, 'dd/MM/yyyy', { locale: he });
     } catch {
       return dateStr;
     }
   };
 
-  // Toggle label on email (persistent)
+  // Toggle label on email
   const toggleEmailLabel = (emailId: string, labelId: string) => {
-    const meta = emailMetadata.getMetadata(emailId);
-    const current = meta?.labels || [];
-    if (current.includes(labelId)) {
-      emailMetadata.removeLabel(emailId, labelId);
+    setEmailLabels(prev => {
+      const current = prev[emailId] || [];
+      if (current.includes(labelId)) {
+        return { ...prev, [emailId]: current.filter(l => l !== labelId) };
+      }
+      return { ...prev, [emailId]: [...current, labelId] };
+    });
+  };
+
+  // Set priority on email
+  const setEmailPriorityLevel = (emailId: string, priority: Priority) => {
+    setEmailPriority(prev => ({ ...prev, [emailId]: priority }));
+  };
+
+  // Set reminder on email
+  const setEmailReminder = (emailId: string, date: Date | null) => {
+    if (date) {
+      setEmailReminders(prev => ({ ...prev, [emailId]: date }));
     } else {
-      emailMetadata.addLabel(emailId, labelId);
+      setEmailReminders(prev => {
+        const newReminders = { ...prev };
+        delete newReminders[emailId];
+        return newReminders;
+      });
     }
   };
 
-  // Set priority on email (persistent)
-  const setEmailPriorityLevel = (emailId: string, priority: Priority) => {
-    emailMetadata.setPriority(emailId, priority === "none" ? null : priority);
+  // Save note on email
+  const saveEmailNote = (emailId: string, note: string) => {
+    setEmailNotes(prev => ({ ...prev, [emailId]: note }));
   };
 
-  // Set reminder on email (persistent)
-  const setEmailReminder = (emailId: string, date: Date | null) => {
-    emailMetadata.setReminder(emailId, date ? date.toISOString() : null);
-  };
-
-  // Save note on email (persistent) - debounced
-  const noteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveEmailNote = useCallback(
-    (emailId: string, note: string) => {
-      if (noteTimerRef.current) clearTimeout(noteTimerRef.current);
-      noteTimerRef.current = setTimeout(() => {
-        emailMetadata.setNotes(emailId, note || null);
-      }, 500);
-    },
-    [emailMetadata],
-  );
-
-  // Ref for shift+click selection
-  const lastClickedIndexRef = useRef<number | null>(null);
-
-  // Toggle message selection with shift support
-  const toggleMessageSelection = (
-    messageId: string,
-    index?: number,
-    shiftKey?: boolean,
-  ) => {
-    setSelectedMessages((prev) => {
+  // Toggle message selection
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages(prev => {
       const newSet = new Set(prev);
-      if (
-        shiftKey &&
-        lastClickedIndexRef.current !== null &&
-        index !== undefined
-      ) {
-        // Shift+click: select range
-        const start = Math.min(lastClickedIndexRef.current, index);
-        const end = Math.max(lastClickedIndexRef.current, index);
-        for (let i = start; i <= end; i++) {
-          if (filteredMessages[i]) newSet.add(filteredMessages[i].id);
-        }
-      } else if (newSet.has(messageId)) {
+      if (newSet.has(messageId)) {
         newSet.delete(messageId);
       } else {
         newSet.add(messageId);
       }
-      if (index !== undefined) lastClickedIndexRef.current = index;
       return newSet;
     });
   };
@@ -1925,64 +453,46 @@ export default function Gmail() {
     if (selectedMessages.size === filteredMessages.length) {
       setSelectedMessages(new Set());
     } else {
-      setSelectedMessages(new Set(filteredMessages.map((m) => m.id)));
+      setSelectedMessages(new Set(filteredMessages.map(m => m.id)));
     }
   };
 
   // Bulk actions
   const bulkAddLabel = (labelId: string) => {
-    selectedMessages.forEach((msgId) => {
-      const meta = emailMetadata.getMetadata(msgId);
-      const current = meta?.labels || [];
-      if (!current.includes(labelId)) {
-        emailMetadata.addLabel(msgId, labelId);
-      }
+    selectedMessages.forEach(msgId => {
+      setEmailLabels(prev => {
+        const current = prev[msgId] || [];
+        if (!current.includes(labelId)) {
+          return { ...prev, [msgId]: [...current, labelId] };
+        }
+        return prev;
+      });
     });
     setSelectedMessages(new Set());
   };
 
   const bulkSetPriority = (priority: Priority) => {
-    selectedMessages.forEach((msgId) => {
+    selectedMessages.forEach(msgId => {
       setEmailPriorityLevel(msgId, priority);
     });
     setSelectedMessages(new Set());
   };
 
-  // Bulk move to folder
-  const bulkMoveToFolder = async (folderId: string) => {
-    const selectedEmails = messages.filter((m) => selectedMessages.has(m.id));
-    if (selectedEmails.length > 0) {
-      await emailFolders.batchAddEmailsToFolder(folderId, selectedEmails);
-      // Refresh folder email list if we're viewing a folder
-      if (selectedFolderId) {
-        const items = await emailFolders.getEmailsInFolder(selectedFolderId);
-        setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-      }
-      setSelectedMessages(new Set());
-    }
-  };
-
   // Create task from email
-  const handleCreateTaskFromEmail = (
-    email: GmailMessage,
-    clientId?: string,
-  ) => {
+  const handleCreateTaskFromEmail = (email: GmailMessage, clientId?: string) => {
     setTaskInitialData({
-      title: email.subject || "משימה ממייל",
-      description: `תוכן מהמייל:\n\n${email.snippet || ""}\n\nמאת: ${email.fromName} (${email.from})`,
+      title: email.subject || 'משימה ממייל',
+      description: `תוכן מהמייל:\n\n${email.snippet || ''}\n\nמאת: ${email.fromName} (${email.from})`,
       clientId: clientId,
     });
     setIsAddTaskOpen(true);
   };
 
   // Create meeting from email
-  const handleCreateMeetingFromEmail = (
-    email: GmailMessage,
-    clientId?: string,
-  ) => {
+  const handleCreateMeetingFromEmail = (email: GmailMessage, clientId?: string) => {
     setMeetingInitialData({
-      title: "פגישה: " + (email.subject || "נושא המייל"),
-      description: `תוכן מהמייל:\n\n${email.snippet || ""}\n\nמאת: ${email.fromName} (${email.from})`,
+      title: 'פגישה: ' + (email.subject || 'נושא המייל'),
+      description: `תוכן מהמייל:\n\n${email.snippet || ''}\n\nמאת: ${email.fromName} (${email.from})`,
       clientId: clientId,
     });
     setIsAddMeetingOpen(true);
@@ -1996,71 +506,82 @@ export default function Gmail() {
 
   // Link client to email
   const handleLinkClient = async (emailId: string, clientId: string | null) => {
-    await emailMetadata.linkClient(emailId, clientId, {
-      from: selectedEmail?.from,
-      subject: selectedEmail?.subject,
-      date: selectedEmail?.date ? new Date(selectedEmail.date) : undefined,
-    });
+    await emailMetadata.linkClient(
+      emailId, 
+      clientId,
+      {
+        from: selectedEmail?.from,
+        subject: selectedEmail?.subject,
+        date: selectedEmail?.date ? new Date(selectedEmail.date) : undefined,
+      }
+    );
   };
 
-  // Pre-compute thread counts to avoid O(n²) in render loop
-  const threadCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const msg of messages) {
-      if (msg.threadId) {
-        counts[msg.threadId] = (counts[msg.threadId] || 0) + 1;
-      }
+  // Filter and sort messages
+  const filteredMessages = useMemo(() => {
+    let result = messages.filter(msg => 
+      msg.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      msg.fromName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      msg.from?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+    // Filter by tab
+    if (activeTab === 'starred') {
+      result = result.filter(msg => msg.isStarred);
     }
-    return counts;
-  }, [messages]);
+    
+    // Filter by label
+    if (filterByLabel) {
+      result = result.filter(msg => emailLabels[msg.id]?.includes(filterByLabel));
+    }
+    
+    // Filter by priority
+    if (filterByPriority) {
+      result = result.filter(msg => emailPriority[msg.id] === filterByPriority);
+    }
+    
+    // Filter by client
+    if (filterByClient) {
+      result = result.filter(msg => {
+        const client = getClientForMessage(msg);
+        return client && client.id === filterByClient;
+      });
+    }
+    
+    // Sort
+    switch (sortBy) {
+      case 'priority':
+        const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
+        result.sort((a, b) => {
+          const aPriority = emailPriority[a.id] || 'none';
+          const bPriority = emailPriority[b.id] || 'none';
+          return priorityOrder[aPriority] - priorityOrder[bPriority];
+        });
+        break;
+      case 'sender':
+        result.sort((a, b) => (a.fromName || '').localeCompare(b.fromName || '', 'he'));
+        break;
+      case 'date':
+      default:
+        result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    return result;
+  }, [messages, searchQuery, activeTab, filterByLabel, filterByPriority, filterByClient, sortBy, emailLabels, emailPriority, clientEmailMap]);
 
   // Count emails with reminders for today
   const remindersForToday = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return Object.entries(emailReminders).filter(([, dateStr]) => {
-      const reminderDate = new Date(dateStr);
+    return Object.entries(emailReminders).filter(([, date]) => {
+      const reminderDate = new Date(date);
       reminderDate.setHours(0, 0, 0, 0);
       return reminderDate.getTime() === today.getTime();
     }).length;
   }, [emailReminders]);
-
-  // Virtual list ref for performance
-  const virtualListRef = React.useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: filteredMessages.length,
-    getScrollElement: () => virtualListRef.current,
-    estimateSize: () =>
-      displayDensity === "compact"
-        ? 52
-        : displayDensity === "comfortable"
-          ? 72
-          : 96,
-    overscan: 15,
-  });
-
-  // Handle drag & drop email to folder
-  const handleDndMoveToFolder = useCallback(
-    async (message: GmailMessage, folderId: string) => {
-      await emailFolders.addEmailToFolder(folderId, message);
-      // Refresh folder if viewing it
-      if (selectedFolderId) {
-        const items = await emailFolders.getEmailsInFolder(selectedFolderId);
-        setFolderEmailIds(new Set(items.map((item: any) => item.email_id)));
-      }
-      toast({
-        title: "המייל הועבר לתיקייה",
-      });
-    },
-    [emailFolders, selectedFolderId, toast],
-  );
-
   return (
     <AppLayout>
-      <div
-        className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl"
-        dir="rtl"
-      >
+      <div className="container mx-auto py-4 px-2 md:py-6 md:px-4 max-w-7xl" dir="rtl">
         {/* Header */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -2069,266 +590,25 @@ export default function Gmail() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">Gmail</h1>
-              <p className="text-muted-foreground text-sm">
-                ניהול הדוא"ל שלך במקום אחד
-              </p>
+              <p className="text-muted-foreground text-sm">ניהול הדוא"ל שלך במקום אחד</p>
             </div>
           </div>
-
-          <div className="flex gap-2 w-full md:w-auto flex-wrap">
+          
+          <div className="flex gap-2 w-full md:w-auto">
             {hasLoaded ? (
               <>
-                <Button
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ml-2 ${isLoading ? "animate-spin" : ""}`}
-                  />
+                <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+                  <RefreshCw className={`h-4 w-4 ml-2 ${isLoading ? 'animate-spin' : ''}`} />
                   רענון
                 </Button>
-
-                {/* Multi-Account Picker */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="default" className="gap-1">
-                      <Mail className="h-4 w-4 ml-1" />
-                      {gmailAccounts.accounts.length > 0 ? (
-                        <span className="max-w-[120px] truncate text-xs">
-                          {gmailAccounts.activeFilter === "all"
-                            ? `כל החשבונות (${gmailAccounts.accounts.length})`
-                            : gmailAccounts.accounts.find(
-                                (a) => a.id === gmailAccounts.activeFilter,
-                              )?.email || "חשבון"}
-                        </span>
-                      ) : (
-                        <span className="text-xs">חשבון</span>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rtl w-72">
-                    <DropdownMenuLabel>חשבונות Gmail</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-
-                    {gmailAccounts.accounts.length > 0 && (
-                      <>
-                        <DropdownMenuRadioGroup
-                          value={gmailAccounts.activeFilter}
-                          onValueChange={(v) => {
-                            gmailAccounts.setActiveFilter(v);
-                            // Re-fetch with new filter
-                            setTimeout(() => handleRefresh(), 100);
-                          }}
-                        >
-                          <DropdownMenuRadioItem value="all" className="gap-2">
-                            <Inbox className="h-4 w-4" />
-                            <span>כל החשבונות</span>
-                            <Badge
-                              variant="secondary"
-                              className="mr-auto text-xs"
-                            >
-                              {gmailAccounts.accounts.length}
-                            </Badge>
-                          </DropdownMenuRadioItem>
-                          <DropdownMenuSeparator />
-                          {gmailAccounts.accounts.map((account) => (
-                            <DropdownMenuRadioItem
-                              key={account.id}
-                              value={account.id}
-                              className="gap-2"
-                            >
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {account.avatarUrl ? (
-                                  <img
-                                    src={account.avatarUrl}
-                                    alt=""
-                                    className="h-5 w-5 rounded-full flex-shrink-0"
-                                  />
-                                ) : (
-                                  <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                    <User className="h-3 w-3" />
-                                  </div>
-                                )}
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-medium truncate">
-                                    {account.displayName || account.email}
-                                  </span>
-                                  {account.displayName && (
-                                    <span className="text-[10px] text-muted-foreground truncate">
-                                      {account.email}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
-                        <DropdownMenuSeparator />
-                      </>
-                    )}
-
-                    {/* Add Account Button */}
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        await gmailAccounts.addAccount();
-                        const freshMsgs = await fetchFromAllAccounts(50);
-                        if (freshMsgs && freshMsgs.length > 0) {
-                          gmailCache.cacheMessages(freshMsgs);
-                        }
-                        setHasLoaded(true);
-                      }}
-                      disabled={gmailAccounts.isAdding}
-                      className="gap-2"
-                    >
-                      {gmailAccounts.isAdding ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <UserPlus className="h-4 w-4" />
-                      )}
-                      <span>הוסף חשבון Gmail</span>
-                    </DropdownMenuItem>
-
-                    {/* Remove Account Options */}
-                    {gmailAccounts.accounts.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">
-                          הסרת חשבון
-                        </DropdownMenuLabel>
-                        {gmailAccounts.accounts.map((account) => (
-                          <DropdownMenuItem
-                            key={`remove-${account.id}`}
-                            onClick={() => {
-                              gmailAccounts.removeAccount(account.id);
-                              handleRefresh();
-                            }}
-                            className="gap-2 text-destructive focus:text-destructive"
-                          >
-                            <LogOut className="h-3 w-3" />
-                            <span className="text-xs truncate">
-                              {account.email}
-                            </span>
-                          </DropdownMenuItem>
-                        ))}
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
                 <Button onClick={() => setIsComposeOpen(true)}>
                   <PenSquare className="h-4 w-4 ml-2" />
                   כתיבת הודעה
                 </Button>
-
-                {/* Contacts Link */}
-                <Button
-                  variant="outline"
-                  onClick={() => (window.location.href = "/contacts")}
-                >
-                  <Users className="h-4 w-4 ml-2" />
-                  אנשי קשר
-                </Button>
-
-                {/* View Mode Toggle */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="default">
-                      {viewMode === "list" && (
-                        <>
-                          <LayoutList className="h-4 w-4 ml-2" />
-                          רגיל
-                        </>
-                      )}
-                      {viewMode === "chat" && (
-                        <>
-                          <MessageSquare className="h-4 w-4 ml-2" />
-                          צ'אט
-                        </>
-                      )}
-                      {viewMode === "sender-chat" && (
-                        <>
-                          <Users className="h-4 w-4 ml-2" />
-                          צ'אט מתמשך
-                        </>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rtl w-48">
-                    <DropdownMenuLabel>תצוגת מייל</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup
-                      value={viewMode}
-                      onValueChange={(v) => {
-                        if (v === "list") {
-                          setViewMode("list");
-                          setSelectedEmail(null);
-                        } else if (v === "chat") {
-                          // If we have a selected email, open its thread as chat
-                          if (selectedEmail) {
-                            openChatView(selectedEmail);
-                          } else if (filteredMessages.length > 0) {
-                            openChatView(filteredMessages[0]);
-                          } else {
-                            setViewMode("chat");
-                          }
-                        } else if (v === "sender-chat") {
-                          // If we have a selected email, open sender-chat for that sender
-                          if (selectedEmail) {
-                            openSenderChat(
-                              selectedEmail.from,
-                              selectedEmail.fromName || selectedEmail.from,
-                            );
-                          } else if (filteredMessages.length > 0) {
-                            const first = filteredMessages[0];
-                            openSenderChat(
-                              first.from,
-                              first.fromName || first.from,
-                            );
-                          } else {
-                            setViewMode("sender-chat");
-                          }
-                        }
-                      }}
-                    >
-                      <DropdownMenuRadioItem value="list">
-                        <LayoutList className="h-4 w-4 ml-2" />
-                        רגיל
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="chat">
-                        <MessageSquare className="h-4 w-4 ml-2" />
-                        צ'אט
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="sender-chat">
-                        <Users className="h-4 w-4 ml-2" />
-                        צ'אט מתמשך
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowShortcutsHelp(true)}
-                      >
-                        <Keyboard className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>קיצורי מקשים (?)</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </>
             ) : (
-              <Button
-                onClick={handleConnect}
-                disabled={isLoading || gmailAccounts.isAdding}
-                className="w-full md:w-auto"
-              >
-                {isLoading || gmailAccounts.isAdding ? (
+              <Button onClick={handleConnect} disabled={isLoading} className="w-full md:w-auto">
+                {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 ml-2 animate-spin" />
                     מתחבר...
@@ -2345,23 +625,15 @@ export default function Gmail() {
         </div>
 
         {/* Not Connected State */}
-        {!hasLoaded && !isLoading && !gmailAccounts.isAdding && (
+        {!hasLoaded && !isLoading && (
           <Card className="text-center py-16">
             <CardContent>
               <Mail className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h2 className="text-xl font-semibold mb-2">
-                התחבר לחשבון Gmail שלך
-              </h2>
+              <h2 className="text-xl font-semibold mb-2">התחבר לחשבון Gmail שלך</h2>
               <p className="text-muted-foreground mb-6">
                 לחץ על "התחבר ל-Gmail" כדי לצפות ולנהל את הדוא"ל שלך
-                <br />
-                <span className="text-xs">ניתן להוסיף מספר חשבונות Gmail</span>
               </p>
-              <Button
-                onClick={handleConnect}
-                size="lg"
-                disabled={gmailAccounts.isAdding}
-              >
+              <Button onClick={handleConnect} size="lg">
                 <Mail className="h-5 w-5 ml-2" />
                 התחבר עכשיו
               </Button>
@@ -2369,12 +641,12 @@ export default function Gmail() {
           </Card>
         )}
 
-        {/* Loading State - fetchEmails */}
+        {/* Loading State */}
         {isLoading && !hasLoaded && (
           <Card>
             <CardContent className="py-8">
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {[1, 2, 3, 4, 5].map(i => (
                   <div key={i} className="flex gap-4">
                     <Skeleton className="h-10 w-10 rounded-full" />
                     <div className="flex-1 space-y-2">
@@ -2388,31 +660,21 @@ export default function Gmail() {
           </Card>
         )}
 
-        {/* Loading State - OAuth addAccount */}
-        {gmailAccounts.isAdding && !hasLoaded && (
-          <Card className="text-center py-16">
-            <CardContent>
-              <Loader2 className="h-10 w-10 mx-auto mb-4 animate-spin text-primary" />
-              <p className="text-muted-foreground">מחבר לחשבון Gmail...</p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Main Content */}
-        {hasLoaded && viewMode === "chat" && selectedThreadId && (
+        {hasLoaded && viewMode === 'chat' && selectedThreadId && (
           <Card className="h-[calc(100vh-180px)]">
             <EmailThreadChat
               threadId={selectedThreadId}
-              messages={threadMessages.map((m) => ({
+              messages={threadMessages.map(m => ({
                 ...m,
                 isSent: m.from === user?.email,
               }))}
-              currentUserEmail={user?.email || ""}
-              subject={threadMessages[0]?.subject || ""}
+              currentUserEmail={user?.email || ''}
+              subject={threadMessages[0]?.subject || ''}
               isLoading={isLoadingThread}
               isSending={isSending}
               onBack={() => {
-                setViewMode("list");
+                setViewMode('list');
                 setSelectedThreadId(null);
                 setThreadMessages([]);
               }}
@@ -2429,857 +691,856 @@ export default function Gmail() {
                 await toggleStar(msgId, isStarred);
                 await loadThreadMessages(selectedThreadId);
               }}
-              onMarkUnread={async (msgId) => {
-                await markAsRead(msgId, false);
-                await loadThreadMessages(selectedThreadId);
-              }}
-              onSetReminder={(msg) => {
-                const target = threadMessages.find((m) => m.id === msg.id);
-                if (target) {
-                  setSelectedEmailForAction(target);
-                  setIsReminderDialogOpen(true);
-                }
-              }}
-              onReplyAll={(msg) => {
-                const target = threadMessages.find((m) => m.id === msg.id);
-                if (!target) return;
-                const replySubject = target.subject?.startsWith("Re:")
-                  ? target.subject
-                  : `Re: ${target.subject || ""}`;
-                const allRecipients = [target.from, ...(target.to || [])]
-                  .filter((e) => e && e !== user?.email)
-                  .join(", ");
-                setComposeData({
-                  to: allRecipients,
-                  subject: replySubject,
-                  quotedBody: buildQuotedBody(target, "replyAll"),
-                  mode: "replyAll",
-                  originalFrom: target.from,
-                  originalDate: formatDate(target.date),
-                });
-                setIsComposeOpen(true);
-              }}
-              onForward={(msg) => {
-                const fwdSubject = (msg as any).subject?.startsWith("Fwd:")
-                  ? (msg as any).subject
-                  : `Fwd: ${(msg as any).subject || ""}`;
-                const fwdBody = `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${msg.fromName || msg.from}<br/>נושא: ${(msg as any).subject || ""}</div><br/><div>${msg.snippet || ""}</div>`;
-                setComposeData({
-                  to: "",
-                  subject: fwdSubject,
-                  quotedBody: fwdBody,
-                  mode: "forward",
-                });
-                setIsComposeOpen(true);
-              }}
             />
           </Card>
         )}
 
-        {/* Sender Chat View */}
-        {hasLoaded && viewMode === "sender-chat" && senderChatEmail && (
-          <Card className="h-[calc(100vh-180px)]">
-            <EmailSenderChatView
-              senderEmail={senderChatEmail}
-              senderName={senderChatName}
-              currentUserEmail={user?.email || ""}
-              fetchEmailsForSender={fetchEmailsForSender}
-              getFullMessage={getFullMessage}
-              extractHtmlBody={extractHtmlBody}
-              resolveInlineImages={resolveInlineImages}
-              onBack={() => {
-                setViewMode("list");
-                setSenderChatEmail("");
-                setSenderChatName("");
-              }}
-              onReply={(msg) => {
-                const replyTo = msg.from === user?.email ? msg.to[0] : msg.from;
-                setComposeData({
-                  to: replyTo,
-                  subject: msg.subject?.startsWith("Re:")
-                    ? msg.subject
-                    : `Re: ${msg.subject}`,
-                  quotedBody: `<br/><br/><div style="color:#666;font-size:13px">ב-${msg.date}, ${msg.fromName || msg.from} כתב/ה:</div><blockquote style="border-right:2px solid #ccc;padding-right:10px;color:#666">${msg.snippet || ""}</blockquote>`,
-                  mode: "reply",
-                  originalFrom: msg.from,
-                  originalDate: msg.date,
-                });
-                setIsComposeOpen(true);
-              }}
-              onReplyAll={(msg) => {
-                const replySubject = msg.subject?.startsWith("Re:")
-                  ? msg.subject
-                  : `Re: ${msg.subject || ""}`;
-                const allRecipients = [msg.from, ...(msg.to || [])]
-                  .filter((e) => e && e !== user?.email)
-                  .join(", ");
-                setComposeData({
-                  to: allRecipients,
-                  subject: replySubject,
-                  quotedBody: buildQuotedBody(msg, "replyAll"),
-                  mode: "replyAll",
-                  originalFrom: msg.from,
-                  originalDate: formatDate(msg.date),
-                });
-                setIsComposeOpen(true);
-              }}
-              onForward={(msg) => {
-                setComposeData({
-                  to: "",
-                  subject: msg.subject?.startsWith("Fwd:")
-                    ? msg.subject
-                    : `Fwd: ${msg.subject}`,
-                  quotedBody: `<br/><br/><div style="color:#666;font-size:13px">---------- הודעה שהועברה ----------<br/>מאת: ${msg.fromName || msg.from}<br/>נושא: ${msg.subject || ""}</div><br/><div>${msg.snippet || ""}</div>`,
-                  mode: "forward",
-                });
-                setIsComposeOpen(true);
-              }}
-              onCompose={(to) => {
-                setComposeData({
-                  to,
-                  subject: "",
-                });
-                setIsComposeOpen(true);
-              }}
-              onArchive={archiveEmail}
-              onDelete={deleteEmail}
-              onToggleStar={toggleStar}
-              onMarkUnread={async (msgId) => {
-                await markAsRead(msgId, false);
-              }}
-              onSetReminder={(msg) => {
-                setSelectedEmailForAction(msg);
-                setIsReminderDialogOpen(true);
-              }}
-            />
-          </Card>
-        )}
-
-        {hasLoaded && viewMode === "list" && (
-          <EmailDndProvider
-            messages={messages}
-            onMoveToFolder={handleDndMoveToFolder}
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Sidebar */}
-              <ErrorBoundary
-                fallback={
-                  <Card className="lg:col-span-3 p-4 text-center text-muted-foreground">
-                    שגיאה בטעינת הסייד-בר
-                  </Card>
-                }
-              >
-                <GmailSidebar
-                  activeTab={activeTab}
-                  onSetActiveTab={setActiveTab}
-                  filterByLabel={filterByLabel}
-                  onSetFilterByLabel={setFilterByLabel}
-                  filterByPriority={filterByPriority}
-                  onSetFilterByPriority={setFilterByPriority}
-                  filterByClient={filterByClient}
-                  onSetFilterByClient={setFilterByClient}
-                  customLabels={customLabels}
-                  emailLabels={emailLabels}
-                  emailPriority={emailPriority}
-                  remindersForToday={remindersForToday}
-                  unreadCount={messages.filter((m) => !m.isRead).length}
-                  clients={clients}
-                  messages={messages}
-                  autoTagEnabled={autoTagEnabled}
-                  onSetAutoTagEnabled={setAutoTagEnabled}
-                  onShowLabelManager={() => setShowLabelManager(true)}
-                  onCompose={() => setIsComposeOpen(true)}
-                  onOpenClientEmails={() => setIsClientEmailsDialogOpen(true)}
-                  onBatchAutoClassify={async () => {
-                    const count =
-                      await emailFolders.batchAutoClassify(messages);
-                    toast({
-                      title: `סיווג אוטומטי הושלם`,
-                      description: `${count || 0} מיילים סווגו לתיקיות`,
-                    });
-                  }}
-                  selectedFolderId={selectedFolderId}
-                  onSelectFolder={(folderId) => {
-                    setSelectedFolderId(
-                      folderId === selectedFolderId ? null : folderId,
+        {hasLoaded && viewMode === 'list' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Sidebar */}
+            <Card className="lg:col-span-3 h-fit max-h-[calc(100vh-180px)] overflow-hidden">
+              <ScrollArea className="h-full">
+                <CardContent className="p-4 text-right">
+                  <Button 
+                    onClick={() => setIsComposeOpen(true)} 
+                    className="w-full mb-4"
+                    size="lg"
+                  >
+                    <PenSquare className="h-4 w-4 ml-2" />
+                    כתיבת הודעה
+                  </Button>
+                
+                <nav className="space-y-1">
+                  <Button 
+                    variant={activeTab === 'inbox' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start text-right"
+                    onClick={() => { setActiveTab('inbox'); setFilterByLabel(null); }}
+                  >
+                    <Inbox className="h-4 w-4 ml-2" />
+                    דואר נכנס
+                    {messages.filter(m => !m.isRead).length > 0 && (
+                      <Badge variant="secondary" className="mr-auto">
+                        {messages.filter(m => !m.isRead).length}
+                      </Badge>
+                    )}
+                  </Button>
+                  <Button 
+                    variant={activeTab === 'starred' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start text-right"
+                    onClick={() => { setActiveTab('starred'); setFilterByLabel(null); }}
+                  >
+                    <Star className="h-4 w-4 ml-2" />
+                    מסומנים בכוכב
+                  </Button>
+                  <Button 
+                    variant={activeTab === 'sent' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start text-right"
+                    onClick={() => { setActiveTab('sent'); setFilterByLabel(null); }}
+                  >
+                    <Send className="h-4 w-4 ml-2" />
+                    נשלחו
+                  </Button>
+                  
+                  {/* Reminders */}
+                  {remindersForToday > 0 && (
+                    <Button 
+                      variant={activeTab === 'reminders' ? 'secondary' : 'ghost'} 
+                      className="w-full justify-start text-right"
+                      onClick={() => setActiveTab('reminders')}
+                    >
+                      <Bell className="h-4 w-4 ml-2 text-orange-500" />
+                      תזכורות להיום
+                      <Badge variant="destructive" className="mr-auto">
+                        {remindersForToday}
+                      </Badge>
+                    </Button>
+                  )}
+                </nav>
+                
+                <Separator className="my-4" />
+                
+                {/* Labels Section */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-muted-foreground">תוויות</h3>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowLabelManager(true)}>
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {customLabels.map(label => {
+                    const count = Object.values(emailLabels).filter(labels => labels.includes(label.id)).length;
+                    return (
+                      <Button 
+                        key={label.id}
+                        variant={filterByLabel === label.id ? 'secondary' : 'ghost'} 
+                        className="w-full justify-start text-right h-8"
+                        onClick={() => setFilterByLabel(filterByLabel === label.id ? null : label.id)}
+                      >
+                        <div className={cn('h-3 w-3 rounded-full ml-2', label.color)} />
+                        {label.name}
+                        {count > 0 && (
+                          <span className="mr-auto text-xs text-muted-foreground">{count}</span>
+                        )}
+                      </Button>
                     );
-                    setActiveTab("inbox");
-                  }}
-                  selectedEmail={selectedEmail}
-                  onAddEmailToFolder={async (email, folderId) => {
-                    if (email && folderId) {
-                      await emailFolders.addEmailToFolder(folderId, email);
-                    }
-                  }}
-                  getClientForMessage={getClientForMessage}
-                />
-              </ErrorBoundary>
-
-              {/* Email List & Content */}
-              <ErrorBoundary
-                fallback={
-                  <Card className="lg:col-span-9 p-8 text-center text-muted-foreground">
-                    שגיאה בטעינת המיילים. נסה לרענן את הדף.
-                  </Card>
-                }
-              >
-                <Card className="lg:col-span-9 overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <div className="flex flex-col gap-3">
-                      {/* Search and Filters Row */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="relative flex-1 min-w-[200px]">
-                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="חיפוש במיילים... (Enter לחיפוש בשרת)"
-                            value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              if (!e.target.value) {
-                                setServerSearchActive(false);
-                              }
-                            }}
-                            onKeyDown={async (e) => {
-                              if (
-                                e.key === "Enter" &&
-                                searchQuery.trim().length >= 2
-                              ) {
-                                e.preventDefault();
-                                setServerSearchActive(true);
-                                await fetchEmails(
-                                  50,
-                                  undefined,
-                                  searchQuery.trim(),
-                                );
-                              }
-                            }}
-                            className="pr-9 text-right"
-                            dir="rtl"
-                          />
-                          {serverSearchActive && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                              onClick={() => {
-                                setSearchQuery("");
-                                setServerSearchActive(false);
-                                handleRefresh();
-                              }}
+                  })}
+                </div>
+                
+                <Separator className="my-4" />
+                
+                {/* Priority Filter */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">סינון לפי עדיפות</h3>
+                  {Object.entries(PRIORITY_CONFIG).filter(([key]) => key !== 'none').map(([key, config]) => {
+                    const count = Object.values(emailPriority).filter(p => p === key).length;
+                    return (
+                      <Button 
+                        key={key}
+                        variant={filterByPriority === key ? 'secondary' : 'ghost'} 
+                        className="w-full justify-start text-right h-8"
+                        onClick={() => setFilterByPriority(filterByPriority === key ? null : key as Priority)}
+                      >
+                        {config.icon}
+                        <span className="mr-2">{config.label}</span>
+                        {count > 0 && (
+                          <span className="mr-auto text-xs text-muted-foreground">{count}</span>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                {/* Clients Filter */}
+                {clients.length > 0 && (
+                  <>
+                    <Separator className="my-4" />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-medium text-muted-foreground">סינון לפי לקוח</h3>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setAutoTagEnabled(!autoTagEnabled)}
+                              >
+                                {autoTagEnabled ? (
+                                  <Tag className="h-3.5 w-3.5 text-green-500" />
+                                ) : (
+                                  <Tag className="h-3.5 w-3.5 text-gray-400" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">
+                              {autoTagEnabled ? 'תיוג אוטומטי פעיל' : 'תיוג אוטומטי כבוי'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <ScrollArea className="h-32">
+                        {clients.slice(0, 10).map((client) => {
+                          const count = messages.filter(msg => {
+                            const c = getClientForMessage(msg);
+                            return c && c.id === client.id;
+                          }).length;
+                          return (
+                            <Button 
+                              key={client.id}
+                              variant={filterByClient === client.id ? 'secondary' : 'ghost'} 
+                              className="w-full justify-start text-right h-8"
+                              onClick={() => setFilterByClient(filterByClient === client.id ? null : client.id)}
                             >
-                              <X className="h-3 w-3" />
+                              <Building2 className="h-4 w-4 text-blue-500" />
+                              <span className="mr-2 truncate">{client.name}</span>
+                              {count > 0 && (
+                                <span className="mr-auto text-xs text-muted-foreground">{count}</span>
+                              )}
                             </Button>
-                          )}
-                        </div>
+                          );
+                        })}
+                      </ScrollArea>
+                      
+                      {/* Button to open client emails dialog */}
+                      <Button
+                        variant="outline"
+                        className="w-full mt-2 text-sm"
+                        onClick={() => setIsClientEmailsDialogOpen(true)}
+                      >
+                        <Users className="h-4 w-4 ml-2" />
+                        זיהוי מיילים לפי לקוחות
+                      </Button>
+                    </div>
+                  </>
+                )}
+                </CardContent>
+              </ScrollArea>
+            </Card>
 
-                        {/* Date Navigator */}
-                        <EmailDateNavigator
-                          selectedDate={selectedDateFilter}
-                          onDateSelect={handleDateFilterSelect}
-                          onClearDateFilter={handleClearDateFilter}
-                          isLoading={isLoading}
-                        />
-
-                        {/* Advanced Search */}
-                        <AdvancedSearchPanel
-                          onSearch={async (query) => {
-                            setServerSearchActive(true);
-                            await fetchEmails(50, undefined, query);
-                          }}
-                          onClear={() => {
-                            setServerSearchActive(false);
-                            handleRefresh();
-                          }}
-                          isSearching={isLoading}
-                        />
-
-                        {/* Notifications Toggle */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant={
-                                  gmailNotifications.notificationsEnabled
-                                    ? "default"
-                                    : "outline"
-                                }
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={gmailNotifications.toggleNotifications}
-                              >
-                                {gmailNotifications.notificationsEnabled ? (
-                                  <BellRing className="h-4 w-4" />
-                                ) : (
-                                  <BellOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {gmailNotifications.notificationsEnabled
-                                ? "התראות דסקטופ פעילות"
-                                : "הפעל התראות דסקטופ"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Preview Toggle */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant={showPreview ? "default" : "outline"}
-                                size="icon"
-                                className="h-9 w-9"
-                                onClick={() => setShowPreview((prev) => !prev)}
-                              >
-                                {showPreview ? (
-                                  <Eye className="h-4 w-4" />
-                                ) : (
-                                  <EyeOff className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {showPreview
-                                ? "תצוגה מקדימה פעילה"
-                                : "הצג תצוגה מקדימה"}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Sort Dropdown */}
+            {/* Email List & Content */}
+            <Card className="lg:col-span-9">
+              <CardHeader className="pb-2">
+                <div className="flex flex-col gap-3">
+                  {/* Search and Filters Row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="חיפוש במיילים..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pr-9 text-right"
+                        dir="rtl"
+                      />
+                    </div>
+                    
+                    {/* Date Navigator */}
+                    <EmailDateNavigator
+                      selectedDate={selectedDateFilter}
+                      onDateSelect={handleDateFilterSelect}
+                      onClearDateFilter={handleClearDateFilter}
+                      isLoading={isLoading}
+                    />
+                    
+                    {/* Sort Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <Filter className="h-4 w-4" />
+                          מיון
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rtl">
+                        <DropdownMenuCheckboxItem 
+                          checked={sortBy === 'date'}
+                          onCheckedChange={() => setSortBy('date')}
+                        >
+                          לפי תאריך
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem 
+                          checked={sortBy === 'priority'}
+                          onCheckedChange={() => setSortBy('priority')}
+                        >
+                          לפי עדיפות
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem 
+                          checked={sortBy === 'sender'}
+                          onCheckedChange={() => setSortBy('sender')}
+                        >
+                          לפי שולח
+                        </DropdownMenuCheckboxItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    {/* View Mode Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                          <LayoutList className="h-4 w-4" />
+                          תצוגה
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 rtl">
+                        <div className="px-2 py-1.5 text-sm font-medium border-b mb-1">סגנון תצוגה</div>
+                        <DropdownMenuCheckboxItem 
+                          checked={displayDensity === 'compact'}
+                          onCheckedChange={() => setDisplayDensity('compact')}
+                          className="gap-2"
+                        >
+                          <Rows3 className="h-4 w-4" />
+                          צפוף - יותר הודעות
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem 
+                          checked={displayDensity === 'comfortable'}
+                          onCheckedChange={() => setDisplayDensity('comfortable')}
+                          className="gap-2"
+                        >
+                          <LayoutList className="h-4 w-4" />
+                          נוח - מאוזן
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem 
+                          checked={displayDensity === 'spacious'}
+                          onCheckedChange={() => setDisplayDensity('spacious')}
+                          className="gap-2"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                          מרווח - קריאות מקסימלית
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-sm font-medium">אפשרויות נוספות</div>
+                        <DropdownMenuCheckboxItem 
+                          checked={showPreview}
+                          onCheckedChange={(checked) => setShowPreview(checked)}
+                          className="gap-2"
+                        >
+                          <Eye className="h-4 w-4" />
+                          הצג תצוגה מקדימה
+                        </DropdownMenuCheckboxItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Bulk Actions (when messages are selected) */}
+                  {selectedMessages.size > 0 && (
+                    <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                      <Checkbox 
+                        checked={selectedMessages.size === filteredMessages.length}
+                        onCheckedChange={selectAllMessages}
+                      />
+                      <span className="text-sm font-medium mr-2">{selectedMessages.size} נבחרו</span>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Tag className="h-4 w-4 ml-2" />
+                            הוסף תווית
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="rtl">
+                          {customLabels.map(label => (
+                            <DropdownMenuItem key={label.id} onClick={() => bulkAddLabel(label.id)}>
+                              <div className={cn('h-3 w-3 rounded-full ml-2', label.color)} />
+                              {label.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Flag className="h-4 w-4 ml-2" />
+                            קבע עדיפות
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="rtl">
+                          {Object.entries(PRIORITY_CONFIG).map(([key, config]) => (
+                            <DropdownMenuItem key={key} onClick={() => bulkSetPriority(key as Priority)}>
+                              {config.icon}
+                              <span className="mr-2">{config.label}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedMessages(new Set())}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Active Filters Display */}
+                  {(filterByLabel || filterByPriority) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-muted-foreground">מסננים פעילים:</span>
+                      {filterByLabel && (
+                        <Badge 
+                          variant="secondary" 
+                          className="gap-1 cursor-pointer"
+                          onClick={() => setFilterByLabel(null)}
+                        >
+                          <div className={cn('h-2 w-2 rounded-full', customLabels.find(l => l.id === filterByLabel)?.color)} />
+                          {customLabels.find(l => l.id === filterByLabel)?.name}
+                          <X className="h-3 w-3 mr-1" />
+                        </Badge>
+                      )}
+                      {filterByPriority && (
+                        <Badge 
+                          variant="secondary" 
+                          className="gap-1 cursor-pointer"
+                          onClick={() => setFilterByPriority(null)}
+                        >
+                          {PRIORITY_CONFIG[filterByPriority].icon}
+                          {PRIORITY_CONFIG[filterByPriority].label}
+                          <X className="h-3 w-3 mr-1" />
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardHeader>
+              
+              <CardContent className="p-0">
+                {selectedEmail ? (
+                  /* Email Detail View */
+                  <div className="p-4" dir="rtl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => setSelectedEmail(null)}
+                        >
+                          <ChevronLeft className="h-4 w-4 ml-2" />
+                          חזרה לרשימה
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openChatView(selectedEmail)}
+                          className="gap-2"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          תצוגת שיחה
+                        </Button>
+                      </div>
+                      
+                      {/* Email Actions */}
+                      <div className="flex items-center gap-1">
+                        {/* Labels */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                            >
-                              <Filter className="h-4 w-4" />
-                              מיון
+                            <Button variant="ghost" size="icon">
+                              <Tag className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rtl">
-                            <DropdownMenuCheckboxItem
-                              checked={sortBy === "date"}
-                              onCheckedChange={() => setSortBy("date")}
-                            >
-                              לפי תאריך
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                              checked={sortBy === "priority"}
-                              onCheckedChange={() => setSortBy("priority")}
-                            >
-                              לפי עדיפות
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                              checked={sortBy === "sender"}
-                              onCheckedChange={() => setSortBy("sender")}
-                            >
-                              לפי שולח
-                            </DropdownMenuCheckboxItem>
+                            <div className="px-2 py-1.5 text-sm font-medium">תוויות</div>
+                            {customLabels.map(label => (
+                              <DropdownMenuCheckboxItem 
+                                key={label.id}
+                                checked={emailLabels[selectedEmail.id]?.includes(label.id)}
+                                onCheckedChange={() => toggleEmailLabel(selectedEmail.id, label.id)}
+                              >
+                                <div className={cn('h-3 w-3 rounded-full ml-2', label.color)} />
+                                {label.name}
+                              </DropdownMenuCheckboxItem>
+                            ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
-
-                        {/* View Mode Dropdown */}
+                        
+                        {/* Priority */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                            >
-                              <LayoutList className="h-4 w-4" />
-                              תצוגה
+                            <Button variant="ghost" size="icon">
+                              {PRIORITY_CONFIG[emailPriority[selectedEmail.id] || 'none'].icon}
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 rtl">
-                            <div className="px-2 py-1.5 text-sm font-medium border-b mb-1">
-                              סגנון תצוגה
-                            </div>
-                            <DropdownMenuCheckboxItem
-                              checked={displayDensity === "compact"}
-                              onCheckedChange={() =>
-                                setDisplayDensity("compact")
-                              }
-                              className="gap-2"
-                            >
-                              <Rows3 className="h-4 w-4" />
-                              צפוף - יותר הודעות
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                              checked={displayDensity === "comfortable"}
-                              onCheckedChange={() =>
-                                setDisplayDensity("comfortable")
-                              }
-                              className="gap-2"
-                            >
-                              <LayoutList className="h-4 w-4" />
-                              נוח - מאוזן
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                              checked={displayDensity === "spacious"}
-                              onCheckedChange={() =>
-                                setDisplayDensity("spacious")
-                              }
-                              className="gap-2"
-                            >
-                              <Maximize2 className="h-4 w-4" />
-                              מרווח - קריאות מקסימלית
-                            </DropdownMenuCheckboxItem>
-                            <DropdownMenuSeparator />
-                            <div className="px-2 py-1.5 text-sm font-medium">
-                              אפשרויות נוספות
-                            </div>
-                            <DropdownMenuCheckboxItem
-                              checked={showPreview}
-                              onCheckedChange={(checked) =>
-                                setShowPreview(checked)
-                              }
-                              className="gap-2"
-                            >
-                              <Eye className="h-4 w-4" />
-                              הצג תצוגה מקדימה
-                            </DropdownMenuCheckboxItem>
+                          <DropdownMenuContent align="end" className="rtl">
+                            <div className="px-2 py-1.5 text-sm font-medium">עדיפות</div>
+                            {Object.entries(PRIORITY_CONFIG).map(([key, config]) => (
+                              <DropdownMenuCheckboxItem 
+                                key={key}
+                                checked={emailPriority[selectedEmail.id] === key}
+                                onCheckedChange={() => setEmailPriorityLevel(selectedEmail.id, key as Priority)}
+                              >
+                                {config.icon}
+                                <span className="mr-2">{config.label}</span>
+                              </DropdownMenuCheckboxItem>
+                            ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
-
-                      {/* Email count */}
-                      <div className="text-xs text-muted-foreground px-2 py-1">
-                        {serverSearchActive
-                          ? `${filteredMessages.length} תוצאות חיפוש`
-                          : `מציג ${filteredMessages.length} מתוך ${messages.length} הודעות`}
-                      </div>
-
-                      {/* Bulk Actions (when messages are selected) */}
-                      {selectedMessages.size > 0 && (
-                        <BulkActionsBar
-                          selectedCount={selectedMessages.size}
-                          totalCount={filteredMessages.length}
-                          onSelectAll={selectAllMessages}
-                          onClearSelection={() =>
-                            setSelectedMessages(new Set())
-                          }
-                          customLabels={customLabels}
-                          onBulkAddLabel={bulkAddLabel}
-                          onBulkSetPriority={bulkSetPriority}
-                          folders={emailFolders.folders as any}
-                          onBulkMoveToFolder={bulkMoveToFolder}
-                          onBulkArchive={async () => {
-                            const ids = [...selectedMessages];
-                            const success = await batchModify(
-                              ids,
-                              [],
-                              ["INBOX"],
-                            );
-                            if (success) {
-                              setSelectedMessages(new Set());
-                              handleRefresh();
-                              toast({
-                                title: `${ids.length} מיילים הועברו לארכיון`,
-                              });
-                            }
-                          }}
-                          onBulkMarkRead={async () => {
-                            const ids = [...selectedMessages];
-                            const success = await batchModify(
-                              ids,
-                              [],
-                              ["UNREAD"],
-                            );
-                            if (success) {
-                              setSelectedMessages(new Set());
-                              handleRefresh();
-                              toast({
-                                title: `${ids.length} מיילים סומנו כנקראו`,
-                              });
-                            }
-                          }}
-                          onBulkSpam={async () => {
-                            const ids = [...selectedMessages];
-                            const success = await batchModify(
-                              ids,
-                              ["SPAM"],
-                              ["INBOX"],
-                            );
-                            if (success) {
-                              setSelectedMessages(new Set());
-                              handleRefresh();
-                              toast({
-                                title: `${ids.length} מיילים דווחו כספאם`,
-                              });
-                            }
-                          }}
-                        />
-                      )}
-
-                      {/* Active Filters Display */}
-                      {(filterByLabel || filterByPriority) && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-muted-foreground">
-                            מסננים פעילים:
-                          </span>
-                          {filterByLabel && (
-                            <Badge
-                              variant="secondary"
-                              className="gap-1 cursor-pointer"
-                              onClick={() => setFilterByLabel(null)}
-                            >
-                              <div
-                                className={cn(
-                                  "h-2 w-2 rounded-full",
-                                  customLabels.find(
-                                    (l) => l.id === filterByLabel,
-                                  )?.color,
-                                )}
-                              />
-                              {
-                                customLabels.find((l) => l.id === filterByLabel)
-                                  ?.name
-                              }
-                              <X className="h-3 w-3 mr-1" />
-                            </Badge>
-                          )}
-                          {filterByPriority && (
-                            <Badge
-                              variant="secondary"
-                              className="gap-1 cursor-pointer"
-                              onClick={() => setFilterByPriority(null)}
-                            >
-                              {PRIORITY_CONFIG[filterByPriority].icon}
-                              {PRIORITY_CONFIG[filterByPriority].label}
-                              <X className="h-3 w-3 mr-1" />
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="p-0 relative overflow-hidden">
-                    {selectedEmail ? (
-                      /* Email Detail View - full overlay so no list bleeds through */
-                      <div
-                        ref={detailScrollRef}
-                        className="bg-background min-h-[600px] max-h-[calc(100vh-250px)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
-                        style={{
-                          contain: "layout style",
-                          overflowAnchor: "none",
-                        }}
-                      >
-                        <EmailDetailView
-                          selectedEmail={selectedEmail}
-                          emailHtmlBody={emailHtmlBody}
-                          loadingBody={loadingBody}
-                          emailAttachments={emailAttachments}
-                          loadingAttachments={loadingAttachments}
-                          downloadingAtt={downloadingAtt}
-                          emailPriority={emailPriority}
-                          emailLabels={emailLabels}
-                          emailReminders={emailReminders}
-                          emailNotes={emailNotes}
-                          customLabels={customLabels}
-                          mutedThreads={mutedThreads}
-                          clients={clients}
-                          user={user}
-                          getMetadata={(id) => emailMetadata.getMetadata(id)}
-                          setPin={(id, val) => emailMetadata.setPin(id, val)}
-                          getLinkedClientId={(id) =>
-                            emailMetadata.getMetadata(id)?.linked_client_id ||
-                            null
-                          }
-                          actionLoading={actionLoading}
-                          onBack={() => setSelectedEmail(null)}
-                          onOpenChatView={openChatView}
-                          onCompose={(data) => {
-                            setComposeData(data);
-                            setIsComposeOpen(true);
-                          }}
-                          onMarkAsRead={markAsRead}
-                          onArchive={archiveEmail}
-                          onDelete={deleteEmail}
-                          onReportSpam={reportSpam}
-                          onRefresh={handleRefresh}
-                          onSnooze={handleSnooze}
-                          onMuteThread={handleMuteThread}
-                          onPrint={handlePrintEmail}
-                          onDownloadAttachment={handleDownloadAttachment}
-                          setActionLoading={setActionLoading}
-                          setSelectedEmailForAction={setSelectedEmailForAction}
-                          setIsReminderDialogOpen={setIsReminderDialogOpen}
-                          setIsNoteDialogOpen={setIsNoteDialogOpen}
-                          toggleEmailLabel={toggleEmailLabel}
-                          setEmailPriorityLevel={setEmailPriorityLevel}
-                          buildQuotedBody={buildQuotedBody}
-                          formatDate={formatDate}
-                          getClientForMessage={getClientForMessage}
-                          onCreateTask={handleCreateTaskFromEmail}
-                          onCreateMeeting={handleCreateMeetingFromEmail}
-                          onCreateReminder={handleCreateReminderFromEmail}
-                          onLinkClient={handleLinkClient}
-                        />
-                      </div>
-                    ) : (
-                      /* Email List View */
-                      <div className="relative">
-                        {/* Floating Date Indicator */}
-                        <FloatingDateIndicator
-                          currentDate={scrollCurrentDate}
-                          isVisible={isScrolling}
-                        />
-
-                        <div
-                          className="h-[600px] overflow-auto"
-                          ref={(el) => {
-                            virtualListRef.current = el;
-                            (scrollContainerRef as any).current = el;
-                          }}
-                        >
-                          {filteredMessages.length === 0 ? (
-                            <div className="text-center py-16 text-muted-foreground">
-                              <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                              <p>לא נמצאו הודעות</p>
-                              {selectedDateFilter && (
-                                <Button
-                                  variant="link"
-                                  onClick={handleClearDateFilter}
-                                  className="mt-2"
-                                >
-                                  נקה סינון תאריך
-                                </Button>
-                              )}
-                            </div>
-                          ) : (
-                            <div
-                              className="divide-y relative"
-                              dir="rtl"
-                              style={{
-                                height: `${rowVirtualizer.getTotalSize()}px`,
-                              }}
-                            >
-                              {rowVirtualizer
-                                .getVirtualItems()
-                                .map((virtualRow) => {
-                                  const index = virtualRow.index;
-                                  const message = filteredMessages[index];
-                                  const prevMessage =
-                                    index > 0
-                                      ? filteredMessages[index - 1]
-                                      : null;
-                                  const showDateSeparator =
-                                    !prevMessage ||
-                                    !isSameDay(
-                                      new Date(message.date),
-                                      new Date(prevMessage.date),
-                                    );
-
-                                  return (
-                                    <div
-                                      key={virtualRow.key}
-                                      data-index={virtualRow.index}
-                                      style={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        width: "100%",
-                                        transform: `translateY(${virtualRow.start}px)`,
-                                      }}
-                                      ref={rowVirtualizer.measureElement}
-                                    >
-                                      {showDateSeparator && (
-                                        <DateSeparator date={message.date} />
-                                      )}
-                                      <EmailListItem
-                                        message={message}
-                                        index={index}
-                                        isSelected={selectedMessages.has(
-                                          message.id,
-                                        )}
-                                        displayDensity={displayDensity}
-                                        showPreview={showPreview}
-                                        threadCount={
-                                          threadCounts[message.threadId] || 0
-                                        }
-                                        emailPriority={
-                                          emailPriority[message.id]
-                                        }
-                                        emailLabels={emailLabels[message.id]}
-                                        hasReminder={
-                                          !!emailReminders[message.id]
-                                        }
-                                        hasNote={!!emailNotes[message.id]}
-                                        isPinned={
-                                          emailMetadata.getMetadata(message.id)
-                                            ?.is_pinned || false
-                                        }
-                                        client={getClientForMessage(message)}
-                                        customLabels={customLabels}
-                                        mutedThreads={mutedThreads}
-                                        folders={emailFolders.folders}
-                                        activeFolderId={selectedFolderId}
-                                        activeFolderName={
-                                          emailFolders.folders.find(
-                                            (f: any) =>
-                                              f.id === selectedFolderId,
-                                          )?.name
-                                        }
-                                        onRemoveFromFolder={async (
-                                          folderId,
-                                          emailId,
-                                        ) => {
-                                          await emailFolders.removeEmailFromFolder(
-                                            folderId,
-                                            emailId,
-                                          );
-                                          // Refresh folder view
-                                          const items =
-                                            await emailFolders.getEmailsInFolder(
-                                              folderId,
-                                            );
-                                          setFolderEmailIds(
-                                            new Set(
-                                              items.map(
-                                                (item: any) => item.email_id,
-                                              ),
-                                            ),
-                                          );
-                                          toast({
-                                            title: "המייל הוסר מהתיקייה",
-                                          });
-                                        }}
-                                        onSelect={() => {
-                                          setSelectedEmail(message);
-                                          if (!message.isRead) {
-                                            markAsRead(message.id, true);
-                                          }
-                                        }}
-                                        onToggleSelection={
-                                          toggleMessageSelection
-                                        }
-                                        onToggleStar={toggleStar as any}
-                                        onOpenChat={openChatView}
-                                        onOpenSenderChat={openSenderChat}
-                                        onSetReminder={(msg) => {
-                                          setSelectedEmailForAction(msg);
-                                          setIsReminderDialogOpen(true);
-                                        }}
-                                        onSetNote={(msg) => {
-                                          setSelectedEmailForAction(msg);
-                                          setIsNoteDialogOpen(true);
-                                        }}
-                                        onMarkAsRead={markAsRead as any}
-                                        onTogglePin={(messageId, isPinned) => {
-                                          emailMetadata.setPin(
-                                            messageId,
-                                            !isPinned,
-                                          );
-                                        }}
-                                        onReply={(msg) => {
-                                          const replySubject =
-                                            msg.subject?.startsWith("Re:")
-                                              ? msg.subject
-                                              : `Re: ${msg.subject || ""}`;
-                                          setComposeData({
-                                            to: msg.from,
-                                            subject: replySubject,
-                                          });
-                                          setIsComposeOpen(true);
-                                        }}
-                                        onForward={(msg) => {
-                                          const fwdSubject =
-                                            msg.subject?.startsWith("Fwd:")
-                                              ? msg.subject
-                                              : `Fwd: ${msg.subject || ""}`;
-                                          setComposeData({
-                                            to: "",
-                                            subject: fwdSubject,
-                                          });
-                                          setIsComposeOpen(true);
-                                        }}
-                                        onMoveToFolder={async (
-                                          folderId,
-                                          msg,
-                                        ) => {
-                                          await emailFolders.addEmailToFolder(
-                                            folderId,
-                                            msg,
-                                          );
-                                          if (selectedFolderId) {
-                                            const items =
-                                              await emailFolders.getEmailsInFolder(
-                                                selectedFolderId,
-                                              );
-                                            setFolderEmailIds(
-                                              new Set(
-                                                items.map(
-                                                  (item: any) => item.email_id,
-                                                ),
-                                              ),
-                                            );
-                                          }
-                                          const folderName =
-                                            emailFolders.folders.find(
-                                              (f: any) => f.id === folderId,
-                                            )?.name || "תיקייה";
-                                          toast({
-                                            title: `תויג בתיקייה "${folderName}"`,
-                                          });
-                                        }}
-                                        onArchive={archiveEmail}
-                                        onDelete={deleteEmail}
-                                        onReportSpam={reportSpam as any}
-                                        onMuteThread={handleMuteThread}
-                                        onSnooze={handleSnooze}
-                                        onRefresh={handleRefresh}
-                                        formatDate={formatDate}
-                                        onHoverPreview={handleHoverPreview}
-                                      />
-                                    </div>
-                                  );
-                                })}
-
-                              {/* Load More Trigger */}
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  bottom: 0,
-                                  width: "100%",
+                        
+                        {/* Reminder */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className={emailReminders[selectedEmail.id] ? 'text-orange-500' : ''}
+                                onClick={() => {
+                                  setSelectedEmailForAction(selectedEmail);
+                                  setIsReminderDialogOpen(true);
                                 }}
                               >
-                                <LoadMoreTrigger
-                                  onLoadMore={loadMoreEmails}
-                                  isLoading={isLoadingMore}
-                                  hasMore={hasMore && !selectedDateFilter}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                                <Bell className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {emailReminders[selectedEmail.id] 
+                                ? `תזכורת: ${format(new Date(emailReminders[selectedEmail.id]), 'dd/MM/yyyy HH:mm')}`
+                                : 'הוסף תזכורת'
+                              }
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        {/* Note */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className={emailNotes[selectedEmail.id] ? 'text-blue-500' : ''}
+                                onClick={() => {
+                                  setSelectedEmailForAction(selectedEmail);
+                                  setIsNoteDialogOpen(true);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {emailNotes[selectedEmail.id] ? 'ערוך הערה' : 'הוסף הערה'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <Button variant="ghost" size="icon">
+                          <Reply className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Forward className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {/* Labels Display */}
+                    {emailLabels[selectedEmail.id]?.length > 0 && (
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        {emailLabels[selectedEmail.id].map(labelId => {
+                          const label = customLabels.find(l => l.id === labelId);
+                          return label && (
+                            <Badge 
+                              key={labelId} 
+                              variant="secondary"
+                              className="gap-1"
+                            >
+                              <div className={cn('h-2 w-2 rounded-full', label.color)} />
+                              {label.name}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </ErrorBoundary>
-            </div>
-          </EmailDndProvider>
+                    
+                    {/* Note Display */}
+                    {emailNotes[selectedEmail.id] && (
+                      <Card className="mb-4 bg-blue-50 dark:bg-blue-950/30 border-blue-200">
+                        <CardContent className="py-2 px-3 text-sm">
+                          <div className="flex items-start gap-2">
+                            <FileText className="h-4 w-4 text-blue-600 mt-0.5" />
+                            <p className="text-blue-800 dark:text-blue-200">{emailNotes[selectedEmail.id]}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    <div className="space-y-4 text-right">
+                      <div>
+                        <h2 className="text-xl font-semibold">{selectedEmail.subject || '(ללא נושא)'}</h2>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                          <User className="h-4 w-4" />
+                          <span className="font-medium">{selectedEmail.fromName}</span>
+                          <span className="text-xs" dir="ltr">&lt;{selectedEmail.from}&gt;</span>
+                          
+                          {/* Client Badge in detail view */}
+                          {(() => {
+                            const client = getClientForMessage(selectedEmail);
+                            if (client) {
+                              return (
+                                <Badge 
+                                  variant="secondary" 
+                                  className="h-6 gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                >
+                                  <Building2 className="h-3 w-3" />
+                                  לקוח: {client.name}
+                                </Badge>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDate(selectedEmail.date)}</span>
+                        </div>
+                      </div>
+                      
+                      {/* Email Quick Actions */}
+                      <EmailQuickActions
+                        email={selectedEmail}
+                        clients={clients}
+                        linkedClientId={emailMetadata.getMetadata(selectedEmail.id)?.linked_client_id || null}
+                        autoDetectedClient={getClientForMessage(selectedEmail)}
+                        onCreateTask={handleCreateTaskFromEmail}
+                        onCreateMeeting={handleCreateMeetingFromEmail}
+                        onCreateReminder={handleCreateReminderFromEmail}
+                        onLinkClient={handleLinkClient}
+                      />
+
+                      {/* Smart Suggestions */}
+                      <EmailSmartSuggestions
+                        email={selectedEmail}
+                        clients={clients}
+                        onCreateTask={handleCreateTaskFromEmail}
+                        onCreateMeeting={handleCreateMeetingFromEmail}
+                        onLinkClient={handleLinkClient}
+                      />
+                      
+                      <Separator />
+                      
+                      <div className="prose dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
+                        {selectedEmail.snippet}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Email List View */
+                  <div className="relative">
+                    {/* Floating Date Indicator */}
+                    <FloatingDateIndicator
+                      currentDate={scrollCurrentDate}
+                      isVisible={isScrolling}
+                    />
+                    
+                    <ScrollArea className="h-[600px]" ref={scrollContainerRef as any}>
+                      {filteredMessages.length === 0 ? (
+                        <div className="text-center py-16 text-muted-foreground">
+                          <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>לא נמצאו הודעות</p>
+                          {selectedDateFilter && (
+                            <Button
+                              variant="link"
+                              onClick={handleClearDateFilter}
+                              className="mt-2"
+                            >
+                              נקה סינון תאריך
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="divide-y" dir="rtl">
+                          {filteredMessages.map((message, index) => {
+                            // Show date separator when date changes
+                            const prevMessage = index > 0 ? filteredMessages[index - 1] : null;
+                            const showDateSeparator = !prevMessage || 
+                              !isSameDay(new Date(message.date), new Date(prevMessage.date));
+                            
+                            return (
+                              <React.Fragment key={message.id}>
+                                {showDateSeparator && (
+                                  <DateSeparator date={message.date} />
+                                )}
+                                <div
+                                  data-message-id={message.id}
+                                  className={cn(
+                                    'flex items-start gap-3 hover:bg-muted/50 transition-colors cursor-pointer group',
+                                    !message.isRead && 'bg-primary/5',
+                                    selectedMessages.has(message.id) && 'bg-primary/10',
+                                    displayDensity === 'compact' && 'p-2',
+                                    displayDensity === 'comfortable' && 'p-3',
+                                    displayDensity === 'spacious' && 'p-4'
+                                  )}
+                                >
+                                  {/* Checkbox */}
+                                  <Checkbox 
+                                    checked={selectedMessages.has(message.id)}
+                              onCheckedChange={() => toggleMessageSelection(message.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1"
+                            />
+                            
+                            {/* Star */}
+                            <div 
+                              className="flex-shrink-0 mt-1 cursor-pointer"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await toggleStar(message.id, message.isStarred);
+                                await handleRefresh();
+                              }}
+                            >
+                              {message.isStarred ? (
+                                <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                              ) : (
+                                <StarOff className="h-4 w-4 text-muted-foreground/30 hover:text-yellow-500 transition-colors" />
+                              )}
+                            </div>
+                            
+                            {/* Priority Icon */}
+                            {emailPriority[message.id] && emailPriority[message.id] !== 'none' && (
+                              <div className="flex-shrink-0 mt-1">
+                                {PRIORITY_CONFIG[emailPriority[message.id]].icon}
+                              </div>
+                            )}
+                            
+                            {/* Main Content */}
+                            <div 
+                              className="flex-1 min-w-0"
+                              onClick={async () => {
+                                setSelectedEmail(message);
+                                if (!message.isRead) {
+                                  await markAsRead(message.id, true);
+                                  await handleRefresh();
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={cn('font-medium truncate', !message.isRead && 'font-bold')}>
+                                  {message.fromName}
+                                </span>
+                                
+                                {/* Thread count badge */}
+                                {(() => {
+                                  const threadCount = messages.filter(m => m.threadId === message.threadId).length;
+                                  if (threadCount > 1) {
+                                    return (
+                                      <Badge 
+                                        variant="outline" 
+                                        className="h-5 gap-1 text-xs cursor-pointer hover:bg-primary/10"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openChatView(message);
+                                        }}
+                                      >
+                                        <MessageSquare className="h-3 w-3" />
+                                        {threadCount}
+                                      </Badge>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                
+                                {/* Client Badge - Auto detected */}
+                                {(() => {
+                                  const client = getClientForMessage(message);
+                                  if (client) {
+                                    return (
+                                      <Badge 
+                                        variant="secondary" 
+                                        className="h-5 gap-1 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                      >
+                                        <Building2 className="h-3 w-3" />
+                                        {client.name}
+                                      </Badge>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                
+                                {/* Labels */}
+                                {emailLabels[message.id]?.filter(l => !l.startsWith('client_')).slice(0, 2).map(labelId => {
+                                  const label = customLabels.find(l => l.id === labelId);
+                                  return label && (
+                                    <div 
+                                      key={labelId}
+                                      className={cn('h-2 w-2 rounded-full', label.color)}
+                                      title={label.name}
+                                    />
+                                  );
+                                })}
+                                {emailLabels[message.id]?.filter(l => !l.startsWith('client_')).length > 2 && (
+                                  <span className="text-xs text-muted-foreground">+{emailLabels[message.id].filter(l => !l.startsWith('client_')).length - 2}</span>
+                                )}
+                                
+                                {/* Reminder indicator */}
+                                {emailReminders[message.id] && (
+                                  <Bell className="h-3 w-3 text-orange-500" />
+                                )}
+                                
+                                {/* Note indicator */}
+                                {emailNotes[message.id] && (
+                                  <FileText className="h-3 w-3 text-blue-500" />
+                                )}
+                                
+                                <span className="text-xs text-muted-foreground mr-auto flex-shrink-0">
+                                  {formatDate(message.date)}
+                                </span>
+                              </div>
+                              <p className={cn(
+                                'text-sm', 
+                                !message.isRead && 'font-semibold',
+                                displayDensity === 'compact' && 'text-xs truncate',
+                                displayDensity === 'comfortable' && 'line-clamp-1',
+                                displayDensity === 'spacious' && 'line-clamp-2'
+                              )}>
+                                {message.subject || '(ללא נושא)'}
+                              </p>
+                              {showPreview && displayDensity !== 'compact' && (
+                                <p className={cn(
+                                  'text-muted-foreground mt-1',
+                                  displayDensity === 'spacious' ? 'text-sm line-clamp-2' : 'text-xs line-clamp-1'
+                                )}>
+                                  {message.snippet}
+                                </p>
+                              )}
+                            </div>
+                            
+                            {/* Quick Actions */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rtl">
+                                <DropdownMenuItem onClick={() => openChatView(message)}>
+                                  <MessageSquare className="h-4 w-4 ml-2" />
+                                  פתח כשיחה
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedEmailForAction(message);
+                                  setIsReminderDialogOpen(true);
+                                }}>
+                                  <Bell className="h-4 w-4 ml-2" />
+                                  הוסף תזכורת
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                  setSelectedEmailForAction(message);
+                                  setIsNoteDialogOpen(true);
+                                }}>
+                                  <FileText className="h-4 w-4 ml-2" />
+                                  הוסף הערה
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={async () => {
+                                  const success = await archiveEmail(message.id);
+                                  if (success) handleRefresh();
+                                }}>
+                                  <Archive className="h-4 w-4 ml-2" />
+                                  העבר לארכיון
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-red-600"
+                                  onClick={async () => {
+                                    const success = await deleteEmail(message.id);
+                                    if (success) handleRefresh();
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 ml-2" />
+                                  מחק
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
+                          
+                          {/* Load More Trigger */}
+                          <LoadMoreTrigger
+                            onLoadMore={loadMoreEmails}
+                            isLoading={isLoadingMore}
+                            hasMore={hasMore && !selectedDateFilter}
+                          />
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Compose Dialog */}
-        <ComposeEmailDialog
-          open={isComposeOpen}
-          onOpenChange={(open) => {
-            setIsComposeOpen(open);
-            if (!open) setComposeData(undefined);
-          }}
-          replyTo={composeData}
+        <ComposeEmailDialog 
+          open={isComposeOpen} 
+          onOpenChange={setIsComposeOpen}
           onSendSuccess={() => {
             setIsComposeOpen(false);
-            setComposeData(undefined);
             handleRefresh();
           }}
         />
-
+        
         {/* Client Emails Dialog */}
         <ClientEmailsDialog
           open={isClientEmailsDialogOpen}
@@ -3290,25 +1551,142 @@ export default function Gmail() {
             setIsClientEmailsDialogOpen(false);
           }}
         />
-
+        
         {/* Reminder Dialog */}
-        <EmailReminderDialog
-          open={isReminderDialogOpen}
-          onOpenChange={setIsReminderDialogOpen}
-          selectedEmail={selectedEmailForAction}
-          emailReminders={emailReminders}
-          onSetReminder={setEmailReminder}
-        />
-
+        <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הגדרת תזכורת</DialogTitle>
+              <DialogDescription>
+                {selectedEmailForAction?.subject || 'ללא נושא'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const date = new Date();
+                    date.setHours(date.getHours() + 1);
+                    if (selectedEmailForAction) {
+                      setEmailReminder(selectedEmailForAction.id, date);
+                    }
+                    setIsReminderDialogOpen(false);
+                  }}
+                >
+                  <Clock4 className="h-4 w-4 ml-2" />
+                  בעוד שעה
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const date = new Date();
+                    date.setHours(date.getHours() + 3);
+                    if (selectedEmailForAction) {
+                      setEmailReminder(selectedEmailForAction.id, date);
+                    }
+                    setIsReminderDialogOpen(false);
+                  }}
+                >
+                  <Clock4 className="h-4 w-4 ml-2" />
+                  בעוד 3 שעות
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(9, 0, 0, 0);
+                    if (selectedEmailForAction) {
+                      setEmailReminder(selectedEmailForAction.id, date);
+                    }
+                    setIsReminderDialogOpen(false);
+                  }}
+                >
+                  <Calendar className="h-4 w-4 ml-2" />
+                  מחר בבוקר
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 7);
+                    date.setHours(9, 0, 0, 0);
+                    if (selectedEmailForAction) {
+                      setEmailReminder(selectedEmailForAction.id, date);
+                    }
+                    setIsReminderDialogOpen(false);
+                  }}
+                >
+                  <Calendar className="h-4 w-4 ml-2" />
+                  בעוד שבוע
+                </Button>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>תאריך ושעה מותאמים אישית</Label>
+                <Input 
+                  type="datetime-local" 
+                  dir="ltr"
+                  onChange={(e) => {
+                    if (selectedEmailForAction && e.target.value) {
+                      setEmailReminder(selectedEmailForAction.id, new Date(e.target.value));
+                      setIsReminderDialogOpen(false);
+                    }
+                  }}
+                />
+              </div>
+              {selectedEmailForAction && emailReminders[selectedEmailForAction.id] && (
+                <Button 
+                  variant="destructive" 
+                  className="w-full"
+                  onClick={() => {
+                    if (selectedEmailForAction) {
+                      setEmailReminder(selectedEmailForAction.id, null);
+                    }
+                    setIsReminderDialogOpen(false);
+                  }}
+                >
+                  <BellOff className="h-4 w-4 ml-2" />
+                  הסר תזכורת
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+        
         {/* Note Dialog */}
-        <EmailNoteDialog
-          open={isNoteDialogOpen}
-          onOpenChange={setIsNoteDialogOpen}
-          selectedEmail={selectedEmailForAction}
-          emailNotes={emailNotes}
-          onSaveNote={saveEmailNote}
-        />
-
+        <Dialog open={isNoteDialogOpen} onOpenChange={setIsNoteDialogOpen}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>הוספת הערה</DialogTitle>
+              <DialogDescription>
+                {selectedEmailForAction?.subject || 'ללא נושא'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Textarea 
+                placeholder="כתוב הערה..."
+                rows={5}
+                defaultValue={selectedEmailForAction ? emailNotes[selectedEmailForAction.id] || '' : ''}
+                onChange={(e) => {
+                  if (selectedEmailForAction) {
+                    saveEmailNote(selectedEmailForAction.id, e.target.value);
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <Button onClick={() => setIsNoteDialogOpen(false)}>
+                  שמור
+                </Button>
+                <Button variant="outline" onClick={() => setIsNoteDialogOpen(false)}>
+                  סגור
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
         {/* Quick Add Task Dialog */}
         <QuickAddTask
           open={isAddTaskOpen}
@@ -3326,462 +1704,40 @@ export default function Gmail() {
           clients={clients}
           initialData={meetingInitialData}
         />
-
+        
         {/* Label Manager Dialog */}
-        <LabelManagerDialog
-          open={showLabelManager}
-          onOpenChange={setShowLabelManager}
-          customLabels={customLabels}
-          onSetCustomLabels={setCustomLabels}
-          emailLabels={emailLabels}
-        />
-
-        {/* Undo Send Bar */}
-        {undoSendState && (
-          <UndoSendBar
-            countdown={undoSendState.countdown}
-            onCancel={cancelUndoSend}
-          />
-        )}
-
-        {/* ═══════════════════════════════════════════════════════════════
-            PREVIEW PANEL v2 — Rebuilt from scratch
-            Features: draggable, resizable (8 handles), delayed close,
-            ScrollArea for reliable scroll, fade-in, all original buttons
-        ═══════════════════════════════════════════════════════════════ */}
-        {showPreviewDialog &&
-          previewMessage &&
-          ReactDOM.createPortal(
-            <>
-              <div
-                ref={previewPanelRef}
-                className="fixed z-[9999] rounded-xl flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
-                style={{
-                  position: "fixed",
-                  top: Math.max(
-                    56,
-                    Math.min(
-                      previewRect.y,
-                      window.innerHeight - previewRect.h - 4,
-                    ),
-                  ),
-                  left: Math.max(
-                    4,
-                    Math.min(
-                      previewRect.x,
-                      window.innerWidth - previewRect.w - 4,
-                    ),
-                  ),
-                  width: Math.min(previewRect.w, window.innerWidth - 8),
-                  height: Math.min(previewRect.h, window.innerHeight - 56),
-                  display: "flex",
-                  flexDirection: "column",
-                  border: "3px solid #d4a843",
-                  borderRadius: "12px",
-                  background: "#ffffff",
-                  opacity: 1,
-                  isolation: "isolate",
-                  boxShadow:
-                    "0 0 0 1px #b8962e, 0 25px 50px -12px rgba(0,0,0,0.45), 0 0 30px rgba(212,168,67,0.15)",
-                }}
-                dir="rtl"
-                onMouseEnter={cancelPreviewClose}
-                onMouseLeave={schedulePreviewClose}
-              >
-                {/* ── Draggable Header ────────────────────────────── */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    padding: "10px 14px",
-                    borderBottom: "2px solid #d4a843",
-                    cursor: "move",
-                    userSelect: "none",
-                    flexShrink: 0,
-                    background: "#ffffff",
-                    borderTopLeftRadius: "9px",
-                    borderTopRightRadius: "9px",
-                  }}
-                  onMouseDown={onDragStart}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
-                    <GripVertical
-                      className="h-4 w-4 text-muted-foreground flex-shrink-0"
-                      style={{ opacity: 0.4 }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <h3
-                        style={{
-                          fontWeight: 700,
-                          fontSize: "0.95rem",
-                          lineHeight: 1.3,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          textAlign: "right",
-                          margin: 0,
-                        }}
-                      >
-                        {previewMessage.subject || "(ללא נושא)"}
-                      </h3>
-                      <p
-                        style={{
-                          fontSize: "0.82rem",
-                          color: "var(--muted-foreground, #888)",
-                          margin: "2px 0 0 0",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          textAlign: "right",
-                        }}
-                      >
-                        {previewMessage.fromName} &lt;{previewMessage.from}&gt;
-                      </p>
-                      <p
-                        style={{
-                          fontSize: "0.72rem",
-                          color: "var(--muted-foreground, #888)",
-                          margin: "1px 0 0 0",
-                          textAlign: "right",
-                        }}
-                      >
-                        {formatDate(previewMessage.date)}
-                        {!previewMessage.isRead && (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              width: 7,
-                              height: 7,
-                              borderRadius: "50%",
-                              backgroundColor: "#3b82f6",
-                              marginRight: 6,
-                              verticalAlign: "middle",
-                            }}
-                            title="לא נקרא"
-                          />
-                        )}
-                        {(previewMessage as any).hasAttachments && (
-                          <span
-                            style={{ marginRight: 6, fontSize: "0.72rem" }}
-                            title="קבצים מצורפים"
-                          >
-                            📎
-                          </span>
-                        )}
-                      </p>
+        <Dialog open={showLabelManager} onOpenChange={setShowLabelManager}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>ניהול תוויות</DialogTitle>
+              <DialogDescription>
+                צור ונהל תוויות לסיווג המיילים שלך
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {customLabels.map(label => (
+                    <div key={label.id} className="flex items-center gap-3 p-2 border rounded-lg">
+                      <div className={cn('h-4 w-4 rounded-full', label.color)} />
+                      <span className="flex-1">{label.name}</span>
+                      <Badge variant="secondary">
+                        {Object.values(emailLabels).filter(labels => labels.includes(label.id)).length}
+                      </Badge>
                     </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closePreview();
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    style={{
-                      padding: 4,
-                      borderRadius: 4,
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      opacity: 0.6,
-                      transition: "opacity 0.2s",
-                      marginRight: 4,
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.opacity =
-                        "1";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.opacity =
-                        "0.6";
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  ))}
                 </div>
-
-                {/* ── Scrollable Body ─────────────────────────────── */}
-                <div
-                  ref={previewScrollRef}
-                  style={{
-                    flex: 1,
-                    minHeight: 0,
-                    background: "#ffffff",
-                    overflowY: "auto",
-                    overflowX: "hidden",
-                    overscrollBehavior: "contain",
-                    scrollBehavior: "auto",
-                    WebkitOverflowScrolling: "touch",
-                    scrollbarGutter: "stable",
-                  }}
-                  dir="rtl"
-                  onWheel={(e) => e.stopPropagation()}
-                >
-                  <div
-                    style={{
-                      padding: "14px 16px",
-                      direction: "rtl",
-                      background: "#ffffff",
-                      opacity: 1,
-                      minHeight: "100%",
-                      overflowAnchor: "none",
-                    }}
-                  >
-                    {hoverPreviewLoading ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "32px 0",
-                          gap: 8,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            border: "3px solid #d4a843",
-                            borderTopColor: "transparent",
-                            borderRadius: "50%",
-                            animation: "spin 0.7s linear infinite",
-                          }}
-                        />
-                        <span
-                          style={{
-                            fontSize: "0.78rem",
-                            color: "var(--muted-foreground, #888)",
-                          }}
-                        >
-                          טוען תוכן...
-                        </span>
-                      </div>
-                    ) : hoverPreviewHtml ? (
-                      <div
-                        className="prose prose-sm max-w-none dark:prose-invert"
-                        style={{
-                          overflowX: "hidden",
-                          wordBreak: "break-word",
-                          lineHeight: 1.6,
-                        }}
-                        dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                            ALLOW_UNKNOWN_PROTOCOLS: true,
-                          }),
-                        }}
-                      />
-                    ) : (
-                      <p
-                        style={{
-                          whiteSpace: "pre-wrap",
-                          color: "var(--muted-foreground, #888)",
-                          fontSize: "0.88rem",
-                          lineHeight: 1.7,
-                          margin: 0,
-                        }}
-                      >
-                        {previewMessage.snippet || "אין תוכן לתצוגה"}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* ── Footer Actions ──────────────────────────────── */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 12px",
-                    borderTop: "2px solid #d4a843",
-                    flexShrink: 0,
-                    background:
-                      "linear-gradient(135deg, rgba(212,168,67,0.05), transparent)",
-                    borderBottomLeftRadius: "9px",
-                    borderBottomRightRadius: "9px",
-                  }}
-                  dir="rtl"
-                >
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                    onClick={() => {
-                      closePreview();
-                      setSelectedEmail(previewMessage);
-                      if (!previewMessage.isRead) {
-                        markAsRead(previewMessage.id, true).then(() =>
-                          handleRefresh(),
-                        );
-                      }
-                    }}
-                  >
-                    פתח מייל מלא
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                    onClick={() => {
-                      closePreview();
-                      const replySubject = previewMessage.subject?.startsWith(
-                        "Re:",
-                      )
-                        ? previewMessage.subject
-                        : `Re: ${previewMessage.subject}`;
-                      setComposeData({
-                        to: previewMessage.from,
-                        subject: replySubject,
-                      });
-                      setIsComposeOpen(true);
-                    }}
-                  >
-                    <Reply className="h-3 w-3 ml-1" />
-                    השב
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-[#d4a843] hover:bg-[#f8f3e6] text-xs"
-                    onClick={() => {
-                      closePreview();
-                      const fwdSubject = previewMessage.subject?.startsWith(
-                        "Fwd:",
-                      )
-                        ? previewMessage.subject
-                        : `Fwd: ${previewMessage.subject}`;
-                      setComposeData({ to: "", subject: fwdSubject });
-                      setIsComposeOpen(true);
-                    }}
-                  >
-                    <Forward className="h-3 w-3 ml-1" />
-                    העבר
-                  </Button>
-                </div>
-
-                {/* ── Resize Handles (8 directions) ───────────────── */}
-                {/* Edges */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 12,
-                    right: 12,
-                    height: 5,
-                    cursor: "n-resize",
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "t")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 12,
-                    right: 12,
-                    height: 5,
-                    cursor: "s-resize",
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "b")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 12,
-                    bottom: 12,
-                    width: 5,
-                    cursor: "w-resize",
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "l")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: 12,
-                    bottom: 12,
-                    width: 5,
-                    cursor: "e-resize",
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "r")}
-                />
-                {/* Corners */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: 14,
-                    height: 14,
-                    cursor: "nw-resize",
-                    borderLeft: "3px solid #d4a843",
-                    borderTop: "3px solid #d4a843",
-                    borderTopLeftRadius: 8,
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "tl")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: 14,
-                    height: 14,
-                    cursor: "ne-resize",
-                    borderRight: "3px solid #d4a843",
-                    borderTop: "3px solid #d4a843",
-                    borderTopRightRadius: 8,
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "tr")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    width: 14,
-                    height: 14,
-                    cursor: "sw-resize",
-                    borderLeft: "3px solid #d4a843",
-                    borderBottom: "3px solid #d4a843",
-                    borderBottomLeftRadius: 8,
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "bl")}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    right: 0,
-                    width: 14,
-                    height: 14,
-                    cursor: "se-resize",
-                    borderRight: "3px solid #d4a843",
-                    borderBottom: "3px solid #d4a843",
-                    borderBottomRightRadius: 8,
-                  }}
-                  onMouseDown={(e) => onEdgeResizeStart(e, "br")}
-                />
+              </ScrollArea>
+              <Separator />
+              <div className="flex gap-2">
+                <Input placeholder="שם תווית חדשה..." className="flex-1" />
+                <Button size="icon">
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
-            </>,
-            document.body,
-          )}
-
-        {/* Keyboard Shortcuts Help */}
-        <KeyboardShortcutsDialog
-          open={showShortcutsHelp}
-          onOpenChange={setShowShortcutsHelp}
-        />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

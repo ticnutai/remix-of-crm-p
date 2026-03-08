@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -31,21 +30,7 @@ import {
   AlertTriangle,
   Calendar,
   Briefcase,
-  Bell,
-  BarChart3,
-  LayoutGrid,
-  LayoutList,
 } from 'lucide-react';
-import { InactiveClientsAlert, InactiveClientsWidget } from '@/components/alerts';
-import { RevenueForecastChart } from '@/components/analytics';
-import { usePushNotifications } from '@/lib/push-notifications';
-import {
-  WeeklyGoalsWidget,
-  QuickActionsWidget,
-  CalendarPreviewWidget,
-  RecentActivityWidget,
-  PerformanceMetricsWidget,
-} from './widgets';
 
 const COLORS = ['#667eea', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -216,9 +201,6 @@ function useRevenueChart() {
 export function ManagerDashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: revenueData = [] } = useRevenueChart();
-  const { isSupported, subscribe } = usePushNotifications(undefined);
-  const [showForecast, setShowForecast] = useState(false);
-  const [dashboardView, setDashboardView] = useState<'full' | 'compact'>('full');
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -228,12 +210,6 @@ export function ManagerDashboard() {
     }).format(value);
   };
   
-  // Convert revenue data for forecast
-  const revenueHistoryForForecast = revenueData.map((item, index) => ({
-    date: new Date(new Date().setMonth(new Date().getMonth() - (revenueData.length - 1 - index))),
-    revenue: item.revenue,
-  }));
-  
   if (statsLoading) {
     return <div className="flex justify-center p-8">טוען...</div>;
   }
@@ -242,52 +218,15 @@ export function ManagerDashboard() {
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">דשבורד מנהל</h1>
-        <div className="flex items-center gap-4">
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 border rounded-lg p-1">
-            <Button
-              variant={dashboardView === 'full' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setDashboardView('full')}
-              className="h-8 px-2"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={dashboardView === 'compact' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setDashboardView('compact')}
-              className="h-8 px-2"
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
-          </div>
-          {/* Push Notifications Enable Button */}
-          {isSupported && (
-            <Button variant="outline" size="sm" onClick={() => subscribe()} className="gap-2">
-              <Bell className="h-4 w-4" />
-              הפעל התראות
-            </Button>
-          )}
-          <div className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString('he-IL', { 
-              weekday: 'long',
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </div>
+        <div className="text-sm text-muted-foreground">
+          {new Date().toLocaleDateString('he-IL', { 
+            weekday: 'long',
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}
         </div>
       </div>
-      
-      {/* Quick Actions - Always visible */}
-      <QuickActionsWidget />
-      
-      {/* Performance Metrics */}
-      <PerformanceMetricsWidget />
-      
-      {/* Inactive Clients Alert Widget */}
-      <InactiveClientsWidget />
       
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -408,67 +347,20 @@ export function ManagerDashboard() {
         </Card>
       </div>
       
-      {/* Revenue Forecast Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Contracts Value */}
-        <Card>
-          <CardHeader>
-            <CardTitle>שווי חוזים פעילים</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-primary">
-              {formatCurrency(stats?.contractsValue || 0)}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              סה"כ {stats?.activeContracts || 0} חוזים פעילים
-            </p>
-          </CardContent>
-        </Card>
-        
-        {/* Revenue Forecast Toggle */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              תחזית הכנסות
-            </CardTitle>
-            <Button 
-              variant={showForecast ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowForecast(!showForecast)}
-            >
-              {showForecast ? 'הסתר' : 'הצג'}
-            </Button>
-          </CardHeader>
-          {!showForecast && (
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                לחץ להצגת תחזית הכנסות עתידיות מבוססת נתונים היסטוריים
-              </p>
-            </CardContent>
-          )}
-        </Card>
-      </div>
-      
-      {/* Revenue Forecast Full Component */}
-      {showForecast && revenueHistoryForForecast.length > 0 && (
-        <RevenueForecastChart 
-          historicalData={revenueHistoryForForecast}
-          forecastMonths={6}
-        />
-      )}
-      
-      {/* New Dashboard Widgets Grid */}
-      {dashboardView === 'full' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <WeeklyGoalsWidget />
-          <CalendarPreviewWidget />
-          <RecentActivityWidget />
-        </div>
-      )}
-      
-      {/* Inactive Clients Full List */}
-      <InactiveClientsAlert maxItems={5} daysThreshold={30} />
+      {/* Quick Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle>שווי חוזים פעילים</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-3xl font-bold text-primary">
+            {formatCurrency(stats?.contractsValue || 0)}
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            סה"כ {stats?.activeContracts || 0} חוזים פעילים
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

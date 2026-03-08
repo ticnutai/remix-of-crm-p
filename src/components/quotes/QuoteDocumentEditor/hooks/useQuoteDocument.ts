@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { QuoteDocumentData, QuoteDocumentItem } from '../types';
 import { format, addDays } from 'date-fns';
 import { Quote, QuoteItem } from '@/hooks/useQuotes';
-import { ImportedContent } from '@/utils/fileImporter';
 
 const generateQuoteNumber = () => {
   const date = new Date();
@@ -240,31 +239,6 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     setIsDirty(false);
   }, []);
 
-  // Load imported content from file
-  const loadImportedContent = useCallback((imported: ImportedContent) => {
-    const items: QuoteDocumentItem[] = imported.items.map((item, index) => ({
-      id: crypto.randomUUID(),
-      number: index + 1,
-      description: item.description,
-      details: item.details || '',
-      quantity: item.quantity,
-      unit: 'יח\'',
-      unitPrice: item.unitPrice,
-      total: item.quantity * item.unitPrice,
-    }));
-
-    setDocument(prev => ({
-      ...prev,
-      title: imported.title || prev.title,
-      items,
-      quoteNumber: generateQuoteNumber(),
-      date: format(new Date(), 'yyyy-MM-dd'),
-      validUntil: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
-    }));
-    setOriginalQuoteId(undefined);
-    setIsDirty(true);
-  }, []);
-
   return {
     document,
     originalQuoteId,
@@ -278,6 +252,5 @@ export function useQuoteDocument(initialData?: Partial<QuoteDocumentData>) {
     resetDocument,
     loadTemplate,
     loadQuote,
-    loadImportedContent,
   };
 }

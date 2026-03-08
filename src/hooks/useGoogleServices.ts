@@ -1,15 +1,10 @@
 // Unified hook for all Google services
-import { useState, useCallback, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useCallback, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
-export type GoogleService =
-  | "calendar"
-  | "gmail"
-  | "drive"
-  | "contacts"
-  | "sheets";
+export type GoogleService = 'calendar' | 'gmail' | 'drive' | 'contacts' | 'sheets';
 
 export interface GoogleAccountWithScopes {
   id: string;
@@ -24,89 +19,51 @@ export interface GoogleAccountWithScopes {
 }
 
 const SCOPES_MAP: Record<GoogleService, string[]> = {
-  calendar: ["https://www.googleapis.com/auth/calendar"],
+  calendar: ['https://www.googleapis.com/auth/calendar'],
   gmail: [
-    "https://www.googleapis.com/auth/gmail.readonly",
-    "https://www.googleapis.com/auth/gmail.send",
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.send',
   ],
   drive: [
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.readonly",
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly',
   ],
-  contacts: ["https://www.googleapis.com/auth/contacts.readonly"],
-  sheets: ["https://www.googleapis.com/auth/spreadsheets"],
+  contacts: ['https://www.googleapis.com/auth/contacts.readonly'],
+  sheets: ['https://www.googleapis.com/auth/spreadsheets'],
 };
 
-const DEFAULT_CLIENT_ID =
-  "203713636858-0bn66n8rd2gpkkvmhg233hs6ufeaml2s.apps.googleusercontent.com";
-const TOKEN_STORAGE_KEY = "google_services_token";
-const TOKEN_EXPIRY_KEY = "google_services_token_expiry";
-const EMAIL_STORAGE_KEY = "google_services_email";
-const SCOPES_STORAGE_KEY = "google_services_scopes";
-
-// Global lock to prevent multiple instances from doing silent re-auth simultaneously
-let silentReauthInProgress = false;
-let silentReauthPromise: Promise<string | null> | null = null;
+const DEFAULT_CLIENT_ID = '203713636858-0bn66n8rd2gpkkvmhg233hs6ufeaml2s.apps.googleusercontent.com';
+const TOKEN_STORAGE_KEY = 'google_services_token';
+const TOKEN_EXPIRY_KEY = 'google_services_token_expiry';
 
 // Token storage utilities
-const saveTokenToStorage = (
-  token: string,
-  expiresIn: number,
-  email?: string,
-  scopes?: string,
-) => {
+const saveTokenToStorage = (token: string, expiresIn: number) => {
   localStorage.setItem(TOKEN_STORAGE_KEY, token);
   // Save expiry time (current time + expires_in seconds - 5 minute buffer)
   const expiryTime = Date.now() + (expiresIn - 300) * 1000;
   localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-  // Save email for future silent re-auth
-  if (email) {
-    localStorage.setItem(EMAIL_STORAGE_KEY, email);
-  }
-  // Save granted scopes
-  if (scopes) {
-    localStorage.setItem(SCOPES_STORAGE_KEY, scopes);
-  }
 };
 
 const loadTokenFromStorage = (): string | null => {
   const token = localStorage.getItem(TOKEN_STORAGE_KEY);
   const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
-
+  
   if (!token || !expiry) return null;
-
+  
   // Check if token is still valid
   if (Date.now() > parseInt(expiry)) {
-    // Token expired, clear it but keep the email for hint
+    // Token expired, clear it
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
     return null;
   }
-
+  
   return token;
-};
-
-const loadSavedEmail = (): string | null => {
-  return localStorage.getItem(EMAIL_STORAGE_KEY);
-};
-
-const loadSavedScopes = (): string[] => {
-  const scopes = localStorage.getItem(SCOPES_STORAGE_KEY);
-  return scopes ? scopes.split(" ") : [];
-};
-
-const hasRequiredScopes = (services: GoogleService[]): boolean => {
-  const savedScopes = loadSavedScopes();
-  if (savedScopes.length === 0) return false;
-  const required = services.flatMap((s) => SCOPES_MAP[s]);
-  return required.every((scope) => savedScopes.includes(scope));
 };
 
 const clearTokenFromStorage = () => {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
-  localStorage.removeItem(SCOPES_STORAGE_KEY);
-  // Keep email for next silent re-auth
 };
 
 // Load Google Identity Services script
@@ -116,12 +73,11 @@ const loadGisScript = (): Promise<void> => {
       resolve();
       return;
     }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
+    
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
     script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error("Failed to load Google Identity Services"));
+    script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
     document.head.appendChild(script);
   });
 };
@@ -131,15 +87,10 @@ export function useGoogleServices() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [accessToken, setAccessToken] = useState<string | null>(() =>
-    loadTokenFromStorage(),
-  );
-  const [isConnected, setIsConnected] = useState(
-    () => !!loadTokenFromStorage(),
-  );
+  const [accessToken, setAccessToken] = useState<string | null>(() => loadTokenFromStorage());
+  const [isConnected, setIsConnected] = useState(() => !!loadTokenFromStorage());
 
   // Check token validity on mount and when user changes
-  // Also try silent re-auth if token expired but we have saved email
   useEffect(() => {
     const savedToken = loadTokenFromStorage();
     if (savedToken) {
@@ -148,277 +99,97 @@ export function useGoogleServices() {
     } else {
       setAccessToken(null);
       setIsConnected(false);
-
-      // If we have a saved email, try silent re-auth on mount
-      // Use global lock to prevent multiple instances from doing this simultaneously
-      const savedEmail = loadSavedEmail();
-      if (savedEmail && user && !silentReauthInProgress) {
-        silentReauthInProgress = true;
-        silentReauthPromise = new Promise<string | null>((resolveReauth) => {
-          // Timeout: if silent re-auth doesn't complete within 8 seconds
-          // (e.g. popup blocked), give up gracefully so the app doesn't freeze
-          let resolved = false;
-          const timeoutId = setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              silentReauthInProgress = false;
-              console.warn(
-                "[GoogleServices] Silent re-auth timed out (popup likely blocked). Continuing without connection.",
-              );
-              resolveReauth(null);
-            }
-          }, 8000);
-
-          (async () => {
-            try {
-              await loadGisScript();
-              const tokenClient = window.google.accounts.oauth2.initTokenClient(
-                {
-                  client_id: DEFAULT_CLIENT_ID,
-                  scope: [
-                    "https://www.googleapis.com/auth/userinfo.email",
-                    "https://www.googleapis.com/auth/userinfo.profile",
-                    ...SCOPES_MAP.gmail,
-                    ...SCOPES_MAP.contacts,
-                  ].join(" "),
-                  callback: async (response: any) => {
-                    if (resolved) return; // timed out already
-                    resolved = true;
-                    clearTimeout(timeoutId);
-                    silentReauthInProgress = false;
-                    if (response.error) {
-                      console.log(
-                        "[GoogleServices] Silent re-auth failed, user will need to click connect",
-                      );
-                      resolveReauth(null);
-                      return;
-                    }
-                    const expiresIn = response.expires_in || 3600;
-                    const grantedScopes = response.scope || "";
-                    saveTokenToStorage(
-                      response.access_token,
-                      expiresIn,
-                      savedEmail,
-                      grantedScopes,
-                    );
-                    setAccessToken(response.access_token);
-                    setIsConnected(true);
-                    console.log(
-                      "[GoogleServices] Silent re-auth successful for",
-                      savedEmail,
-                    );
-                    resolveReauth(response.access_token);
-                  },
-                  error_callback: (error: any) => {
-                    // Called when popup is blocked or other errors
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeoutId);
-                    silentReauthInProgress = false;
-                    console.warn(
-                      "[GoogleServices] Silent re-auth error (popup blocked?):",
-                      error,
-                    );
-                    resolveReauth(null);
-                  },
-                },
-              );
-              // Try silent auth with login_hint
-              tokenClient.requestAccessToken({
-                prompt: "",
-                login_hint: savedEmail,
-              });
-            } catch (e) {
-              if (resolved) return;
-              resolved = true;
-              clearTimeout(timeoutId);
-              console.log("[GoogleServices] Silent re-auth setup failed:", e);
-              silentReauthInProgress = false;
-              resolveReauth(null);
-            }
-          })();
-        });
-      } else if (
-        savedEmail &&
-        user &&
-        silentReauthInProgress &&
-        silentReauthPromise
-      ) {
-        // Another instance is already doing silent re-auth, wait for it
-        silentReauthPromise
-          .then((token) => {
-            if (token) {
-              setAccessToken(token);
-              setIsConnected(true);
-            }
-          })
-          .catch(() => {});
-      }
     }
   }, [user]);
 
-  const getAccessToken = useCallback(
-    async (
-      services: GoogleService[],
-      forceRefresh = false,
-    ): Promise<string | null> => {
-      if (!user) {
-        toast({
-          title: "שגיאה",
-          description: "יש להתחבר למערכת תחילה",
-          variant: "destructive",
-        });
-        return null;
+  const getAccessToken = useCallback(async (services: GoogleService[], forceRefresh = false): Promise<string | null> => {
+    if (!user) {
+      toast({
+        title: 'שגיאה',
+        description: 'יש להתחבר למערכת תחילה',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    // Try to use saved token first (unless force refresh)
+    if (!forceRefresh) {
+      const savedToken = loadTokenFromStorage();
+      if (savedToken) {
+        setAccessToken(savedToken);
+        setIsConnected(true);
+        return savedToken;
       }
+    }
 
-      // Try to use saved token first (unless force refresh)
-      // Also check that saved token has the required scopes
-      if (!forceRefresh) {
-        const savedToken = loadTokenFromStorage();
-        if (savedToken && hasRequiredScopes(services)) {
-          setAccessToken(savedToken);
-          setIsConnected(true);
-          return savedToken;
-        }
-        // Token exists but missing scopes — need re-auth with broader scopes
-        if (savedToken && !hasRequiredScopes(services)) {
-          console.log(
-            "[GoogleServices] Token exists but missing scopes for:",
-            services,
-          );
-        }
-      }
+    setIsLoading(true);
+    try {
+      await loadGisScript();
 
-      setIsLoading(true);
-      try {
-        await loadGisScript();
+      // Build scopes from requested services
+      const requestedScopes = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        ...services.flatMap(s => SCOPES_MAP[s]),
+      ].join(' ');
 
-        // Build scopes from requested services
-        const requestedScopes = [
-          "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile",
-          ...services.flatMap((s) => SCOPES_MAP[s]),
-        ].join(" ");
-
-        return new Promise((resolve) => {
-          const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: DEFAULT_CLIENT_ID,
-            scope: requestedScopes,
-            callback: async (response: any) => {
-              if (response.error) {
-                console.error("OAuth error:", response);
-                toast({
-                  title: "שגיאה בהתחברות",
-                  description: "לא ניתן להתחבר לחשבון Google",
-                  variant: "destructive",
-                });
-                setIsLoading(false);
-                setIsConnected(false);
-                resolve(null);
-                return;
-              }
-
-              // Get user email for future silent re-auth
-              let userEmail: string | undefined;
-              try {
-                const userInfoResponse = await fetch(
-                  "https://www.googleapis.com/oauth2/v2/userinfo",
-                  {
-                    headers: {
-                      Authorization: `Bearer ${response.access_token}`,
-                    },
-                  },
-                );
-                if (userInfoResponse.ok) {
-                  const userInfo = await userInfoResponse.json();
-                  userEmail = userInfo.email;
-                }
-              } catch (e) {
-                console.log("[GoogleServices] Could not fetch user email:", e);
-              }
-
-              // Save token to localStorage (with email for future silent re-auth)
-              const expiresIn = response.expires_in || 3600; // Default 1 hour
-              const grantedScopes = response.scope || "";
-              console.log(
-                "[GoogleServices] OAuth granted scopes:",
-                grantedScopes,
-              );
-              console.log(
-                "[GoogleServices] Has contacts.readonly:",
-                grantedScopes.includes("contacts.readonly"),
-              );
-              console.log(
-                "[GoogleServices] Has gmail.readonly:",
-                grantedScopes.includes("gmail.readonly"),
-              );
-              saveTokenToStorage(
-                response.access_token,
-                expiresIn,
-                userEmail,
-                grantedScopes,
-              );
-
-              setAccessToken(response.access_token);
-              setIsConnected(true);
-              setIsLoading(false);
-
+      return new Promise((resolve) => {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: DEFAULT_CLIENT_ID,
+          scope: requestedScopes,
+          callback: async (response: any) => {
+            if (response.error) {
+              console.error('OAuth error:', response);
               toast({
-                title: "התחברת בהצלחה",
-                description: userEmail
-                  ? `מחובר כ-${userEmail}`
-                  : "חשבון Google מחובר",
+                title: 'שגיאה בהתחברות',
+                description: 'לא ניתן להתחבר לחשבון Google',
+                variant: 'destructive',
               });
-
-              resolve(response.access_token);
-            },
-            error_callback: (error: any) => {
-              // Called when popup is blocked or closed by user
-              console.warn("[GoogleServices] OAuth error callback:", error);
               setIsLoading(false);
               setIsConnected(false);
-              toast({
-                title: "שגיאה בהתחברות",
-                description: "החלון נחסם או נסגר. נסה שוב.",
-                variant: "destructive",
-              });
               resolve(null);
-            },
-          });
+              return;
+            }
 
-          // Use login_hint with saved email for seamless re-auth (no account chooser)
-          const savedEmail = loadSavedEmail();
-          if (savedEmail) {
-            tokenClient.requestAccessToken({
-              prompt: "",
-              login_hint: savedEmail,
+            // Save token to localStorage
+            const expiresIn = response.expires_in || 3600; // Default 1 hour
+            saveTokenToStorage(response.access_token, expiresIn);
+            
+            setAccessToken(response.access_token);
+            setIsConnected(true);
+            setIsLoading(false);
+            
+            toast({
+              title: 'התחברת בהצלחה',
+              description: 'חשבון Google מחובר',
             });
-          } else {
-            // First time - will show account chooser
-            tokenClient.requestAccessToken({ prompt: "" });
-          }
+            
+            resolve(response.access_token);
+          },
         });
-      } catch (error: any) {
-        console.error("Error getting access token:", error);
-        toast({
-          title: "שגיאה",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return null;
-      }
-    },
-    [user, toast],
-  );
+
+        // Use empty prompt to try silent auth first, will prompt if needed
+        tokenClient.requestAccessToken({ prompt: '' });
+      });
+    } catch (error: any) {
+      console.error('Error getting access token:', error);
+      toast({
+        title: 'שגיאה',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return null;
+    }
+  }, [user, toast]);
 
   const disconnect = useCallback(() => {
     clearTokenFromStorage();
     setAccessToken(null);
     setIsConnected(false);
     toast({
-      title: "התנתקת",
-      description: "חשבון Google נותק",
+      title: 'התנתקת',
+      description: 'חשבון Google נותק',
     });
   }, [toast]);
 

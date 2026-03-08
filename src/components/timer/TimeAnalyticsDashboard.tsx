@@ -320,29 +320,15 @@ export function TimeAnalyticsDashboard({
     return Array.from(groups.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
   }, [filteredEntries, groupBy, users, clients, projects, defaultHourlyRate]);
 
-  // Format helpers - smart formatting
+  // Format helpers
   const formatDuration = (minutes: number) => {
-    if (!minutes || minutes === 0) return '0 דק\'';
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    // Under 1 hour: show minutes only
-    if (hours === 0) return `${mins} דק'`;
-    // Full hours: show H:00
-    if (mins === 0) return `${hours}:00`;
-    // Hours + minutes: show H:MM
     return `${hours}:${mins.toString().padStart(2, '0')}`;
   };
 
   const formatHours = (minutes: number) => {
-    if (!minutes || minutes === 0) return '0 דק\'';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    // Under 1 hour: show minutes only
-    if (hours === 0) return `${mins} דק'`;
-    // Full hours: show H:00 
-    if (mins === 0) return `${hours}:00`;
-    // Hours + minutes: show H:MM
-    return `${hours}:${mins.toString().padStart(2, '0')}`;
+    return (minutes / 60).toFixed(1);
   };
 
   const formatMoney = (amount: number) => {
@@ -835,7 +821,7 @@ export function TimeAnalyticsDashboard({
                   {format(timelineDate, 'd בMMMM yyyy', { locale: he })}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent dir="rtl" className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0" align="start">
                 <CalendarComponent
                   mode="single"
                   selected={timelineDate}

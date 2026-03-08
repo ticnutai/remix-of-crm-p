@@ -1,20 +1,19 @@
-import React, { useState } from "react";
-import DOMPurify from "dompurify";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Eye, Send, Monitor, Smartphone, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Eye, Send, Monitor, Smartphone, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface EmailPreviewModalProps {
   open: boolean;
@@ -34,15 +33,15 @@ export function EmailPreviewModal({
   onSendTest,
 }: EmailPreviewModalProps) {
   const { toast } = useToast();
-  const [testEmail, setTestEmail] = useState("");
+  const [testEmail, setTestEmail] = useState('');
   const [sending, setSending] = useState(false);
-  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
 
   // Replace variables in content
   const renderContent = () => {
     let rendered = htmlContent;
     Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, "g");
+      const regex = new RegExp(`{{${key}}}`, 'g');
       rendered = rendered.replace(regex, String(value));
     });
     return rendered;
@@ -51,9 +50,9 @@ export function EmailPreviewModal({
   const handleSendTest = async () => {
     if (!testEmail) {
       toast({
-        title: "שגיאה",
-        description: "אנא הזן כתובת אימייל",
-        variant: "destructive",
+        title: 'שגיאה',
+        description: 'אנא הזן כתובת אימייל',
+        variant: 'destructive',
       });
       return;
     }
@@ -64,15 +63,15 @@ export function EmailPreviewModal({
     try {
       await onSendTest(testEmail);
       toast({
-        title: "נשלח בהצלחה",
+        title: 'נשלח בהצלחה',
         description: `אימייל הבדיקה נשלח ל-${testEmail}`,
       });
-      setTestEmail("");
+      setTestEmail('');
     } catch (error: any) {
       toast({
-        title: "שגיאה",
-        description: error.message || "לא הצלחנו לשלוח את האימייל",
-        variant: "destructive",
+        title: 'שגיאה',
+        description: error.message || 'לא הצלחנו לשלוח את האימייל',
+        variant: 'destructive',
       });
     } finally {
       setSending(false);
@@ -81,26 +80,28 @@ export function EmailPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <div className="flex justify-between items-start">
             <div>
               <DialogTitle>תצוגה מקדימה</DialogTitle>
-              <DialogDescription className="mt-1">{subject}</DialogDescription>
+              <DialogDescription className="mt-1">
+                {subject}
+              </DialogDescription>
             </div>
             <div className="flex gap-2">
               <Button
-                variant={viewMode === "desktop" ? "default" : "outline"}
+                variant={viewMode === 'desktop' ? 'default' : 'outline'}
                 size="icon"
-                onClick={() => setViewMode("desktop")}
+                onClick={() => setViewMode('desktop')}
                 title="תצוגת דסקטופ"
               >
                 <Monitor className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === "mobile" ? "default" : "outline"}
+                variant={viewMode === 'mobile' ? 'default' : 'outline'}
                 size="icon"
-                onClick={() => setViewMode("mobile")}
+                onClick={() => setViewMode('mobile')}
                 title="תצוגת מובייל"
               >
                 <Smartphone className="h-4 w-4" />
@@ -144,14 +145,12 @@ export function EmailPreviewModal({
               </div>
               <ScrollArea
                 className={`${
-                  viewMode === "mobile" ? "max-w-[375px] mx-auto" : ""
+                  viewMode === 'mobile' ? 'max-w-[375px] mx-auto' : ''
                 } h-[500px]`}
               >
                 <div
                   className="p-4"
-                  dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(renderContent()),
-                  }}
+                  dangerouslySetInnerHTML={{ __html: renderContent() }}
                 />
               </ScrollArea>
             </div>
@@ -166,7 +165,7 @@ export function EmailPreviewModal({
                   placeholder="your@email.com"
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendTest()}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendTest()}
                 />
                 <p className="text-sm text-muted-foreground">
                   האימייל יישלח עם כל המשתנים והעיצוב המוגדר
@@ -195,8 +194,8 @@ export function EmailPreviewModal({
             {/* Info box */}
             <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>💡 טיפ:</strong> בדוק את האימייל במגוון לקוחות אימייל
-                (Gmail, Outlook וכו') כדי לוודא שהוא נראה טוב בכולם.
+                <strong>💡 טיפ:</strong> בדוק את האימייל במגוון לקוחות אימייל (Gmail,
+                Outlook וכו') כדי לוודא שהוא נראה טוב בכולם.
               </p>
             </div>
           </TabsContent>

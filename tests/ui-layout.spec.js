@@ -45,12 +45,12 @@ test.describe('🔍 בדיקות Layout - Sidebar וגלילה אופקית', ()
         
         for (const selector of usernameSelectors) {
           if (await page.locator(selector).count() > 0) {
-            await page.fill(selector, 'jj1212t@gmail.com');
+            await page.fill(selector, 'admin');
             break;
           }
         }
         
-        await page.fill('input[type="password"]', '543211');
+        await page.fill('input[type="password"]', 'password');
         await page.click('button[type="submit"]');
         await page.waitForLoadState('networkidle', { timeout: 10000 });
         console.log('✅ התחברות הצליחה');

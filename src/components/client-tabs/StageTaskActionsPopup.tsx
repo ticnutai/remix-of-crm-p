@@ -21,7 +21,7 @@ import {
   Calendar,
   Plus,
   Trash2,
-  Pencil,
+  Edit,
   Clock,
   AlertCircle,
   CheckCircle2,
@@ -34,8 +34,8 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useTasksOptimized as useTasks, Task, TaskInsert } from '@/hooks/useTasksOptimized';
-import { useMeetingsOptimized as useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetingsOptimized';
+import { useTasks, Task, TaskInsert } from '@/hooks/useTasks';
+import { useMeetings, Meeting, MeetingInsert } from '@/hooks/useMeetings';
 import { useReminders, Reminder, ReminderInsert } from '@/hooks/useReminders';
 import { format, parseISO, isPast, isToday, isTomorrow } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -205,6 +205,7 @@ export function StageTaskActionsPopup({
       location: meetingForm.location || '',
       client_id: clientId,
       project_id: null,
+      attendees: [],
     });
 
     setMeetingForm({

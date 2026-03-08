@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search } from 'lucide-react';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone } from 'lucide-react';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -69,8 +69,6 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<{ id: string; name: string; email: string | null; phone: string | null; whatsapp: string | null }[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [clientSearch, setClientSearch] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['browser']);
   const [selectedRingtone, setSelectedRingtone] = useState('default');
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
@@ -211,11 +209,10 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
       title: form.title,
       message: form.message,
       remind_at: new Date(form.remind_at).toISOString(),
-      reminder_type: selectedTypes[0] || 'browser',
+      reminder_type: selectedTypes[0] || 'browser', // Keep for backward compatibility
       reminder_types: selectedTypes,
       entity_type: entityType || null,
       entity_id: entityId || null,
-      client_id: selectedClientId || null,
       is_recurring: form.is_recurring,
       recurring_interval: form.recurring_interval !== 'none' ? form.recurring_interval : null,
       recurring_count: form.recurring_count,
@@ -225,7 +222,7 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
       recipient_phones: form.recipient_phones,
       send_whatsapp: form.send_whatsapp || selectedTypes.includes('whatsapp'),
       send_sms: form.send_sms || selectedTypes.includes('sms'),
-      email_template_id: selectedTemplate,
+      email_template_id: selectedTemplate, // Add template support
     };
     
     await createReminder(reminderData);
@@ -248,8 +245,6 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
     setSelectedTypes(['browser']);
     setSelectedRingtone('default');
     setCustomRingtoneUrl(null);
-    setSelectedClientId('');
-    setClientSearch('');
     setOpen(false);
   };
 
@@ -291,76 +286,6 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
                 onChange={(e) => setForm({ ...form, remind_at: e.target.value })}
                 required
               />
-            </div>
-
-            {/* Client Assignment */}
-            <div className="space-y-2">
-              <Label>שיוך ללקוח</Label>
-              {selectedClientId ? (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-primary/40 bg-primary/5">
-                  <span className="text-sm font-medium">
-                    {clients.find(c => c.id === selectedClientId)?.name || "לקוח"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedClientId('')}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="חיפוש לקוח..."
-                      value={clientSearch}
-                      onChange={(e) => setClientSearch(e.target.value)}
-                      className="pr-9 text-right text-sm"
-                    />
-                  </div>
-                  {(clientSearch || clients.length <= 8) && (
-                    <div className="max-h-[150px] overflow-y-auto border rounded-lg p-1 space-y-0.5">
-                      {clients
-                        .filter(c =>
-                          !clientSearch ||
-                          c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-                          c.email?.toLowerCase().includes(clientSearch.toLowerCase())
-                        )
-                        .map(client => (
-                          <button
-                            key={client.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedClientId(client.id);
-                              setClientSearch('');
-                            }}
-                            className="w-full text-right px-3 py-2 rounded-md text-sm transition-colors hover:bg-muted flex items-center gap-2"
-                          >
-                            <div className="w-7 h-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                              {client.name.charAt(0)}
-                            </div>
-                            <div className="flex-1 text-right">
-                              <div className="font-medium">{client.name}</div>
-                              {client.email && (
-                                <div className="text-xs text-muted-foreground">{client.email}</div>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      {clients.filter(c =>
-                        !clientSearch ||
-                        c.name.toLowerCase().includes(clientSearch.toLowerCase())
-                      ).length === 0 && (
-                        <div className="text-center py-3 text-sm text-muted-foreground">
-                          לא נמצאו לקוחות
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Multiple Reminder Types */}

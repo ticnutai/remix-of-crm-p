@@ -1,0 +1,425 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\jj121\\Desktop\\n\\playwright.config.js",
+    "rootDir": "C:/Users/jj121/Desktop/n/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/jj121/Desktop/n/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/jj121/Desktop/n/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "ui-layout.spec.js",
+      "file": "ui-layout.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "🔍 בדיקות Layout - Sidebar וגלילה אופקית",
+          "file": "ui-layout.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "✅ Sidebar לא חופף לתוכן בכל הדפים",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11317,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "🔐 נמצא דף התחברות\n"
+                        },
+                        {
+                          "text": "📝 ממלא פרטי התחברות...\n"
+                        },
+                        {
+                          "text": "✅ התחברות הצליחה\n"
+                        },
+                        {
+                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        },
+                        {
+                          "text": "🔍 בדיקת חפיפת Sidebar\n"
+                        },
+                        {
+                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        },
+                        {
+                          "text": "\n📄 בודק דף: home (/)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "  📸 צילום מסך נשמר: screenshots/home-layout.png\n"
+                        },
+                        {
+                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
+                        },
+                        {
+                          "text": "\n📄 בודק דף: customers (/customers)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "  📸 צילום מסך נשמר: screenshots/customers-layout.png\n"
+                        },
+                        {
+                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
+                        },
+                        {
+                          "text": "\n📄 בודק דף: dashboard (/dashboard)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "  📸 צילום מסך נשמר: screenshots/dashboard-layout.png\n"
+                        },
+                        {
+                          "text": "  ⚠️  אין Sidebar בדף זה - מדלג\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-01-14T22:40:43.462Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-ad7b4-bar-לא-חופף-לתוכן-בכל-הדפים-chromium\\test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "963fbe0a478353c78f96-82584515ff24b77903db",
+              "file": "ui-layout.spec.js",
+              "line": 63,
+              "column": 3
+            },
+            {
+              "title": "✅ עמוד לקוחות - אין גלילה אופקית בעמוד",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5094,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "🔐 נמצא דף התחברות\n"
+                        },
+                        {
+                          "text": "📝 ממלא פרטי התחברות...\n"
+                        },
+                        {
+                          "text": "✅ התחברות הצליחה\n"
+                        },
+                        {
+                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        },
+                        {
+                          "text": "🔍 בדיקת גלילה אופקית - עמוד לקוחות\n"
+                        },
+                        {
+                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        },
+                        {
+                          "text": "📸 צילום מסך נשמר: screenshots/customers-scroll-check.png\n\n"
+                        },
+                        {
+                          "text": "📊 מידע גלילה של העמוד:\n"
+                        },
+                        {
+                          "text": "   Body: 1920px scroll vs 1920px client\n"
+                        },
+                        {
+                          "text": "   HTML: 1920px scroll vs 1920px client\n"
+                        },
+                        {
+                          "text": "   Window: 1920px\n"
+                        },
+                        {
+                          "text": "   Body overflow-x: hidden\n"
+                        },
+                        {
+                          "text": "   HTML overflow-x: visible\n"
+                        },
+                        {
+                          "text": "\n   ✅ אין גלילה אופקית בעמוד\n\n"
+                        },
+                        {
+                          "text": "✅ אין אלמנטים חורגים\n\n"
+                        },
+                        {
+                          "text": "✅ עמוד לקוחות עבר את בדיקת הגלילה!\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-01-14T22:40:55.193Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-f07fd-ות---אין-גלילה-אופקית-בעמוד-chromium\\test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "963fbe0a478353c78f96-35f046c1775010f0b0e8",
+              "file": "ui-layout.spec.js",
+              "line": 254,
+              "column": 3
+            },
+            {
+              "title": "✅ בדיקה ברזולוציות שונות",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10984,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n🚀 מתחבר למערכת...\n"
+                        },
+                        {
+                          "text": "🔐 נמצא דף התחברות\n"
+                        },
+                        {
+                          "text": "📝 ממלא פרטי התחברות...\n"
+                        },
+                        {
+                          "text": "✅ התחברות הצליחה\n"
+                        },
+                        {
+                          "text": "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        },
+                        {
+                          "text": "🔍 בדיקה ברזולוציות מסך שונות\n"
+                        },
+                        {
+                          "text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        },
+                        {
+                          "text": "📱 בודק ב-Full-HD (1920x1080)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "   1920px scroll vs 1920px client\n"
+                        },
+                        {
+                          "text": "   ✅ אין גלילה\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "📱 בודק ב-Desktop-Wide (1680x1050)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "   1680px scroll vs 1680px client\n"
+                        },
+                        {
+                          "text": "   ✅ אין גלילה\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "📱 בודק ב-MacBook-Pro (1440x900)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "   1440px scroll vs 1440px client\n"
+                        },
+                        {
+                          "text": "   ✅ אין גלילה\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "📱 בודק ב-Laptop (1366x768)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "   1366px scroll vs 1366px client\n"
+                        },
+                        {
+                          "text": "   ✅ אין גלילה\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "📱 בודק ב-HD (1280x720)\n"
+                        },
+                        {
+                          "text": "──────────────────────────────────────────────────\n"
+                        },
+                        {
+                          "text": "   1280px scroll vs 1280px client\n"
+                        },
+                        {
+                          "text": "   ✅ אין גלילה\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "✅ כל הרזולוציות עברו!\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-01-14T22:41:00.306Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\jj121\\Desktop\\n\\test-results\\ui-layout-🔍-בדיקות-Layout-4f2e6-ית-✅-בדיקה-ברזולוציות-שונות-chromium\\test-finished-1.png"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "963fbe0a478353c78f96-d3f863a0bbc9b5ec43c6",
+              "file": "ui-layout.spec.js",
+              "line": 392,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-01-14T22:40:41.875Z",
+    "duration": 29773.433,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
