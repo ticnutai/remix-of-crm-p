@@ -120,7 +120,8 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
         }}
       >
         <AppHeader 
-          title={title} 
+          title={title}
+          onTitleClick={onTitleClick}
           onMobileMenuToggle={() => setMobileMenuOpen(true)}
           isMobile={isMobile}
         />
