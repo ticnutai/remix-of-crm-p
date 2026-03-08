@@ -380,11 +380,11 @@ export function RemindersTabContent() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>\u05db\u05d5\u05ea\u05e8\u05ea</TableHead>
-            <TableHead>\u05d6\u05de\u05df</TableHead>
-            <TableHead>\u05e1\u05d5\u05d2</TableHead>
-            <TableHead>\u05e1\u05d8\u05d8\u05d5\u05e1</TableHead>
-            <TableHead>\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea</TableHead>
+            <TableHead>כותרת</TableHead>
+            <TableHead>זמן</TableHead>
+            <TableHead>סוג</TableHead>
+            <TableHead>סטטוס</TableHead>
+            <TableHead>פעולות</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
