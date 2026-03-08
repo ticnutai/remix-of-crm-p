@@ -394,7 +394,7 @@ export function RemindersTabContent() {
                 colSpan={5}
                 className="text-center text-muted-foreground py-8"
               >
-                \u05d0\u05d9\u05df \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea
+                אין תזכורות
               </TableCell>
             </TableRow>
           ) : (
