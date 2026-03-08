@@ -869,14 +869,31 @@ export function ApplyTemplateDialog({
                                 const isStageExpanded = expandedEditStage === stage.id;
 
                                 return (
-                                  <div
+                                  <SortableStageItem
                                     key={stage.id}
-                                    className="bg-background border rounded-lg overflow-hidden"
-                                  >
-                                    {/* Stage header row */}
-                                    <div className="flex items-center gap-2 px-3 py-2">
-                                      <StageIcon className="h-4 w-4 text-primary flex-shrink-0" />
-                                      {isRenaming ? (
+                                    stage={stage}
+                                    isRenaming={isRenaming}
+                                    isDeleting={isDeleting}
+                                    isStageExpanded={isStageExpanded}
+                                    renamingStage={renamingStage}
+                                    setRenamingStage={setRenamingStage}
+                                    handleRenameStage={() => handleRenameStage(stage.id)}
+                                    handleDeleteStage={() => handleDeleteStage(stage.id)}
+                                    deletingStageId={deletingStageId}
+                                    expandedEditStage={expandedEditStage}
+                                    setExpandedEditStage={setExpandedEditStage}
+                                    newTaskName={newTaskName}
+                                    setNewTaskName={setNewTaskName}
+                                    addingTask={addingTask}
+                                    renamingTask={renamingTask}
+                                    setRenamingTask={setRenamingTask}
+                                    deletingTaskId={deletingTaskId}
+                                    handleAddTask={(stageId: string) => handleAddTask(template.id, stageId)}
+                                    handleRenameTask={handleRenameTask}
+                                    handleDeleteTask={handleDeleteTask}
+                                  />
+                                );
+                              })}
                                         <>
                                           <Input
                                             value={renamingStage.name}
