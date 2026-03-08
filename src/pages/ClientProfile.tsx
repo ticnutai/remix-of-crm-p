@@ -991,9 +991,10 @@ export default function ClientProfile() {
           />
         </div>
 
-        {/* Tabs - Elegant Navy Style - Ordered: Overview, Projects, Time, Tasks, Meetings, Files, Messages, Invoices, etc */}
+        {/* Tabs - Elegant Navy Style */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
+          <div className="flex items-start gap-2">
+          <TabsList className="flex-1 justify-start flex-wrap h-auto p-2 gap-1 bg-muted/50 border border-[hsl(222,47%,25%)]/30 rounded-xl">
             {/* Primary tabs - most used first */}
             <TabsTrigger
               value="overview"
