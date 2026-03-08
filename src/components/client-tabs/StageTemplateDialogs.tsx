@@ -44,6 +44,7 @@ import {
   Settings2,
   X,
   Check,
+  GripVertical,
 } from "lucide-react";
 import {
   useStageTemplates,
@@ -54,6 +55,23 @@ import { useClientFolders, ClientFolder } from "@/hooks/useClientFolders";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Folder, CheckCircle } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Icon mapping
 const STAGE_ICONS: Record<string, React.ElementType> = {
