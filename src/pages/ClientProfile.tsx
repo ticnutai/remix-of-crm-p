@@ -746,7 +746,7 @@ export default function ClientProfile() {
 
   return (
     <AppLayout title={client.name} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
-      <div className="space-y-6" dir="rtl">
+      <div className="space-y-8" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
