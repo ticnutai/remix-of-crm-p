@@ -733,7 +733,7 @@ export default function ClientProfile() {
   }
 
   return (
-    <AppLayout title={`פרופיל לקוח - ${client.name}`}>
+    <AppLayout title={`פרופיל לקוח - ${client.name}`} onTitleClick={() => setIsClientInfoDialogOpen(true)}>
       <div className="space-y-6" dir="rtl">
         {/* Header - Right aligned */}
         <div className="flex items-center justify-between">
