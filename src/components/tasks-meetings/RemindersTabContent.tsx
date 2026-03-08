@@ -428,7 +428,7 @@ export function RemindersTabContent() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="\u05d7\u05d9\u05e4\u05d5\u05e9 \u05ea\u05d6\u05db\u05d5\u05e8\u05d5\u05ea..."
+              placeholder="חיפוש תזכורות..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-9"
