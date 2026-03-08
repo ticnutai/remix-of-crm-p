@@ -2596,131 +2596,34 @@ export default function ClientProfile() {
           onRefresh={refetchCustomTabs}
         />
 
-        {/* Add Task Dialog */}
-        <Dialog
+        {/* Add Task Dialog - Navy/Gold Styled */}
+        <QuickAddTask
           open={isAddTaskDialogOpen}
           onOpenChange={setIsAddTaskDialogOpen}
-        >
-          <DialogContent className="sm:max-w-[500px]" dir="rtl">
-            <DialogHeader>
-              <DialogTitle>הוסף משימה חדשה</DialogTitle>
-              <DialogDescription>הוסף משימה חדשה ללקוח</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>כותרת *</Label>
-                <Input
-                  value={taskForm.title}
-                  onChange={(e) =>
-                    setTaskForm((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  placeholder="כותרת המשימה"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>תיאור</Label>
-                <Textarea
-                  value={taskForm.description}
-                  onChange={(e) =>
-                    setTaskForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="תיאור המשימה"
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>עדיפות</Label>
-                  <Select
-                    value={taskForm.priority}
-                    onValueChange={(val) =>
-                      setTaskForm((prev) => ({ ...prev, priority: val }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">נמוכה</SelectItem>
-                      <SelectItem value="medium">בינונית</SelectItem>
-                      <SelectItem value="high">גבוהה</SelectItem>
-                      <SelectItem value="urgent">דחופה</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>סטטוס</Label>
-                  <Select
-                    value={taskForm.status}
-                    onValueChange={(val) =>
-                      setTaskForm((prev) => ({ ...prev, status: val }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">ממתין</SelectItem>
-                      <SelectItem value="in_progress">בביצוע</SelectItem>
-                      <SelectItem value="completed">הושלם</SelectItem>
-                      <SelectItem value="cancelled">בוטל</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>תאריך יעד</Label>
-                  <Input
-                    type="date"
-                    value={taskForm.due_date}
-                    onChange={(e) =>
-                      setTaskForm((prev) => ({
-                        ...prev,
-                        due_date: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>פרויקט</Label>
-                  <Select
-                    value={taskForm.project_id}
-                    onValueChange={(val) =>
-                      setTaskForm((prev) => ({ ...prev, project_id: val }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="בחר פרויקט" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">ללא פרויקט</SelectItem>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddTaskDialogOpen(false)}
-              >
-                ביטול
-              </Button>
-              <Button onClick={handleCreateTask} disabled={!taskForm.title}>
-                צור משימה
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
+          initialData={{ clientId: clientId }}
+          onSubmit={async (taskData) => {
+            if (!user) return;
+            const { data, error } = await supabase
+              .from("tasks")
+              .insert({
+                title: taskData.title,
+                description: taskData.description || null,
+                priority: taskData.priority || 'medium',
+                status: taskData.status || 'pending',
+                due_date: taskData.due_date || null,
+                client_id: clientId,
+                created_by: user.id,
+              })
+              .select();
+            if (error) {
+              toast({ title: "שגיאה ביצירת המשימה", description: error.message, variant: "destructive" });
+              throw error;
+            }
+            toast({ title: "המשימה נוצרה בהצלחה" });
+            refresh();
+          }}
+        />
 
         {/* Add Meeting Dialog */}
         <Dialog
