@@ -124,6 +124,8 @@ import {
 
 interface ClientStagesBoardProps {
   clientId: string;
+  viewMode?: "board" | "list" | "table";
+  onViewModeChange?: (mode: "board" | "list" | "table") => void;
 }
 
 // Icon mapping
