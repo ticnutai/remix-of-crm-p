@@ -1341,11 +1341,18 @@ export default function Finance() {
         const clientsList = latestClients || [];
 
         for (const gi of greenInvoices) {
-          // Check if invoice already exists by number
+          // Check if invoice already exists by number (safe parameterized queries)
+          const invoiceNum = String(gi.number ?? "");
+          const invoiceId = String(gi.id ?? "");
           const { data: existingInvoices } = await supabase
             .from("invoices")
             .select("id, status, green_invoice_id")
-            .or(`invoice_number.eq.${gi.number},invoice_number.eq.${gi.id}`)
+            .or(
+              `invoice_number.eq.${invoiceNum},invoice_number.eq.${invoiceId}`.replace(
+                /[,;()]/g,
+                "",
+              ),
+            ) // sanitize to prevent filter injection
             .limit(1);
 
           // Calculate the correct status

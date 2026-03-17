@@ -36,7 +36,9 @@ export function PaymentReminders({
       paymentIndex: index,
       description: payment.description,
       percentage: payment.percentage,
-      reminderDate: new Date(Date.now() + (index + 1) * 7 * 24 * 60 * 60 * 1000), // Each week
+      reminderDate: new Date(
+        Date.now() + (index + 1) * 7 * 24 * 60 * 60 * 1000,
+      ), // Each week
       sent: false,
     }));
     setReminders(initialReminders);
@@ -46,7 +48,7 @@ export function PaymentReminders({
     if (!clientEmail) {
       toast({
         title: "שגיאה",
-        description: "לא נמצאה כתובת דוא\"ל ללקוח",
+        description: 'לא נמצאה כתובת דוא"ל ללקוח',
         variant: "destructive",
       });
       return;
@@ -55,8 +57,8 @@ export function PaymentReminders({
     // Mark as sent
     setReminders((prev) =>
       prev.map((r) =>
-        r.paymentIndex === reminder.paymentIndex ? { ...r, sent: true } : r
-      )
+        r.paymentIndex === reminder.paymentIndex ? { ...r, sent: true } : r,
+      ),
     );
 
     toast({
@@ -65,18 +67,19 @@ export function PaymentReminders({
     });
 
     // Here you would integrate with the actual email sending system
-    console.log("Sending reminder:", {
-      to: clientEmail,
-      subject: `תזכורת תשלום - ${contractTitle}`,
-      body: `שלום,\n\nתזכורת לתשלום: ${reminder.description} (${reminder.percentage})\n\nבברכה`,
-    });
+    if (import.meta.env.DEV)
+      console.log("Sending reminder:", {
+        to: clientEmail,
+        subject: `תזכורת תשלום - ${contractTitle}`,
+        body: `שלום,\n\nתזכורת לתשלום: ${reminder.description} (${reminder.percentage})\n\nבברכה`,
+      });
   };
 
   const dismissReminder = (paymentIndex: number) => {
     setReminders((prev) =>
       prev.map((r) =>
-        r.paymentIndex === paymentIndex ? { ...r, sent: true } : r
-      )
+        r.paymentIndex === paymentIndex ? { ...r, sent: true } : r,
+      ),
     );
   };
 

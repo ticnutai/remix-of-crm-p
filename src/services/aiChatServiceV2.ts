@@ -111,7 +111,7 @@ class AIChatServiceV2 {
     if (this.initialized) return;
 
     try {
-      console.log("🤖 AI Chat V2 - Loading data...");
+      if (import.meta.env.DEV) console.log("🤖 AI Chat V2 - Loading data...");
 
       const [
         clientsData,
@@ -180,11 +180,12 @@ class AIChatServiceV2 {
       };
 
       this.initialized = true;
-      console.log("✅ AI Chat V2 ready!", {
-        clients: this.context.clients?.length,
-        projects: this.context.projects?.length,
-        tasks: this.context.tasks?.length,
-      });
+      if (import.meta.env.DEV)
+        console.log("✅ AI Chat V2 ready!", {
+          clients: this.context.clients?.length,
+          projects: this.context.projects?.length,
+          tasks: this.context.tasks?.length,
+        });
     } catch (error) {
       console.error("❌ AI Chat V2 init failed:", error);
     }
@@ -223,7 +224,7 @@ class AIChatServiceV2 {
     const normalizedQuery = this.normalizeQuery(query);
     const intent = this.detectIntent(normalizedQuery);
 
-    console.log("🎯 Detected intent:", intent);
+    if (import.meta.env.DEV) console.log("🎯 Detected intent:", intent);
 
     let response: string;
     let suggestions: string[] = [];
@@ -440,7 +441,8 @@ class AIChatServiceV2 {
     actionType: string,
     params: any,
   ): Promise<ActionResult> {
-    console.log("🤖 Executing action:", actionType, params);
+    if (import.meta.env.DEV)
+      console.log("🤖 Executing action:", actionType, params);
 
     try {
       switch (actionType) {

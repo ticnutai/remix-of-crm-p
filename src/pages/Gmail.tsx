@@ -882,9 +882,13 @@ export default function Gmail() {
   // Stable refs so the autoload effect doesn't need fetchEmails/fetchFromAllAccounts
   // in its dependency array (their identity changes on every render due to toast recreation)
   const fetchEmailsRef = useRef(fetchEmails);
-  useEffect(() => { fetchEmailsRef.current = fetchEmails; }, [fetchEmails]);
+  useEffect(() => {
+    fetchEmailsRef.current = fetchEmails;
+  }, [fetchEmails]);
   const fetchFromAllAccountsRef = useRef(fetchFromAllAccounts);
-  useEffect(() => { fetchFromAllAccountsRef.current = fetchFromAllAccounts; }, [fetchFromAllAccounts]);
+  useEffect(() => {
+    fetchFromAllAccountsRef.current = fetchFromAllAccounts;
+  }, [fetchFromAllAccounts]);
 
   // Guard ref: set to true the instant we begin loading — prevents concurrent calls
   // even when React batches state updates or the effect re-fires before isLoading flips
@@ -894,7 +898,10 @@ export default function Gmail() {
   useEffect(() => {
     const hasMultiAccounts = gmailAccounts.accounts.length > 0;
     const shouldLoad =
-      (isConnected || hasMultiAccounts) && !hasLoaded && !isLoading && !loadAttemptedRef.current;
+      (isConnected || hasMultiAccounts) &&
+      !hasLoaded &&
+      !isLoading &&
+      !loadAttemptedRef.current;
 
     if (shouldLoad) {
       // Mark as attempted immediately (before any async work) to prevent re-entry
@@ -1481,7 +1488,7 @@ export default function Gmail() {
         <p class="meta">מאת: ${selectedEmail.fromName} &lt;${selectedEmail.from}&gt;</p>
         <p class="meta">אל: ${selectedEmail.to?.join(", ") || ""}</p>
         <p class="meta">תאריך: ${formatDate(selectedEmail.date)}</p></div>
-        <div>${DOMPurify.sanitize(emailHtmlBody || selectedEmail.snippet, { ALLOW_UNKNOWN_PROTOCOLS: true })}</div></body></html>
+        <div>${DOMPurify.sanitize(emailHtmlBody || selectedEmail.snippet, { ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i })}</div></body></html>
       `);
       printWindow.document.close();
       printWindow.print();
@@ -3576,7 +3583,8 @@ export default function Gmail() {
                         }}
                         dangerouslySetInnerHTML={{
                           __html: DOMPurify.sanitize(hoverPreviewHtml, {
-                            ALLOW_UNKNOWN_PROTOCOLS: true,
+                            ALLOWED_URI_REGEXP:
+                              /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
                           }),
                         }}
                       />

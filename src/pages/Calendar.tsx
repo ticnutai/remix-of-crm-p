@@ -196,7 +196,10 @@ const Calendar = () => {
           setViewType(saved as CalendarViewType);
           localStorage.setItem("calendar-view-type", saved);
         }
-      } catch {}
+      } catch (e) {
+        // Non-critical: cloud view preference load failed
+        if (import.meta.env.DEV) console.warn("[Calendar] Failed to load cloud view", e);
+      }
     };
     loadCloudView();
   }, [user]);
@@ -215,7 +218,10 @@ const Calendar = () => {
           { onConflict: "user_id" },
         );
         if (error) markTableUnavailable("user_preferences");
-      } catch {}
+      } catch (e) {
+        // Non-critical: cloud view save failed
+        if (import.meta.env.DEV) console.warn("[Calendar] Failed to save cloud view", e);
+      }
     }, 800);
     return () => clearTimeout(timer);
   }, [viewType, user]);

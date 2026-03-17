@@ -128,7 +128,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         if (import.meta.env.DEV)
           console.log("[Auth] User signed out or session expired");
         // Clear any stale data
-        localStorage.removeItem("supabase.auth.token");
+        try {
+          localStorage.removeItem("supabase.auth.token");
+        } catch {}
         setProfile(null);
         setRoles([]);
         setClientId(null);
@@ -177,8 +179,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
           error.message.includes("refresh") ||
           error.message.includes("Refresh Token")
         ) {
-          console.log("[Auth] Clearing invalid auth data");
-          localStorage.removeItem("supabase.auth.token");
+          if (import.meta.env.DEV)
+            console.log("[Auth] Clearing invalid auth data");
+          try {
+            localStorage.removeItem("supabase.auth.token");
+          } catch {}
           supabase.auth.signOut({ scope: "local" });
         }
         setIsLoading(false);
@@ -252,7 +257,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
             error.message?.includes("Invalid")
           ) {
             console.warn("[Auth] Session expired after resume – signing out");
-            localStorage.removeItem("supabase.auth.token");
+            try {
+              localStorage.removeItem("supabase.auth.token");
+            } catch {}
             await supabase.auth.signOut({ scope: "local" });
           }
         } else if (freshSession?.user && freshSession.user.id !== user?.id) {

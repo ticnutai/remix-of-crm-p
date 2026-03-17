@@ -825,43 +825,57 @@ export default function Clients() {
     phone: string | null,
     idNumber: string | null,
   ) => {
-    const conditions = [];
+    // Run separate safe queries for each field to avoid filter injection
+    const results: Client[] = [];
 
     // Check by name (fuzzy match)
     if (name.trim()) {
-      conditions.push(`name.ilike.%${name.trim()}%`);
+      const { data } = await supabase
+        .from("clients")
+        .select("*")
+        .ilike("name", `%${name.trim()}%`);
+      if (data?.length) results.push(...(data as Client[]));
     }
 
     // Check by email (exact match)
     if (email && email.trim()) {
-      conditions.push(`email.eq.${email.trim()}`);
+      const { data } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("email", email.trim());
+      if (data?.length) results.push(...(data as Client[]));
     }
 
     // Check by phone (exact match)
     if (phone && phone.trim()) {
-      conditions.push(`phone.eq.${phone.trim()}`);
+      const { data } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("phone", phone.trim());
+      if (data?.length) results.push(...(data as Client[]));
     }
 
     // Check by ID number (exact match)
     if (idNumber && idNumber.trim()) {
-      conditions.push(`id_number.eq.${idNumber.trim()}`);
+      const { data } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("id_number", idNumber.trim());
+      if (data?.length) results.push(...(data as Client[]));
     }
 
-    if (conditions.length === 0) return null;
+    if (results.length === 0) return null;
 
-    // Build OR query
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .or(conditions.join(","));
-
-    if (error) {
-      console.error("Error checking duplicates:", error);
-      return null;
-    }
+    // Deduplicate by id and return first match
+    const seen = new Set<string>();
+    const unique = results.filter((r) => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
 
     // Return first matching duplicate
-    return data && data.length > 0 ? (data[0] as Client) : null;
+    return unique.length > 0 ? unique[0] : null;
   };
 
   // Helper to build client data object from form
