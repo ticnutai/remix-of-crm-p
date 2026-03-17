@@ -80,7 +80,9 @@ function loadConfig(): ReminderConfig {
 }
 
 function saveConfig(config: ReminderConfig) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch {}
 }
 
 function loadNotified(): Record<string, number> {
@@ -94,7 +96,9 @@ function loadNotified(): Record<string, number> {
 }
 
 function saveNotified(notified: Record<string, number>) {
-  localStorage.setItem(NOTIFIED_KEY, JSON.stringify(notified));
+  try {
+    localStorage.setItem(NOTIFIED_KEY, JSON.stringify(notified));
+  } catch {}
 }
 
 export function useAutoReminders() {

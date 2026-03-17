@@ -286,7 +286,9 @@ function loadConfig(): FieldVisibilityMap {
 }
 
 function saveConfig(config: FieldVisibilityMap) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch {}
 }
 
 function loadProfiles(): FieldProfile[] {
@@ -298,7 +300,9 @@ function loadProfiles(): FieldProfile[] {
 }
 
 function saveProfiles(profiles: FieldProfile[]) {
-  localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+  try {
+    localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+  } catch {}
 }
 
 function loadFieldOrder(): FieldOrderMap {
@@ -310,7 +314,9 @@ function loadFieldOrder(): FieldOrderMap {
 }
 
 function saveFieldOrder(order: FieldOrderMap) {
-  localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+  } catch {}
 }
 
 function loadConditions(): FieldCondition[] {
@@ -322,7 +328,9 @@ function loadConditions(): FieldCondition[] {
 }
 
 function saveConditions(conditions: FieldCondition[]) {
-  localStorage.setItem(CONDITIONS_KEY, JSON.stringify(conditions));
+  try {
+    localStorage.setItem(CONDITIONS_KEY, JSON.stringify(conditions));
+  } catch {}
 }
 
 function loadCustomSections(): CustomSection[] {
@@ -334,7 +342,9 @@ function loadCustomSections(): CustomSection[] {
 }
 
 function saveCustomSections(sections: CustomSection[]) {
-  localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(sections));
+  try {
+    localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(sections));
+  } catch {}
 }
 
 // ============ Main Hook ============
@@ -452,8 +462,10 @@ export function useClientFieldConfig() {
   }, []);
 
   const resetDefaults = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(ORDER_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ORDER_KEY);
+    } catch {}
     setVisibilityOverrides({});
     setFieldOrderOverrides({});
     setActiveProfileId(null);

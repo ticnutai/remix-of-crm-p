@@ -81,13 +81,17 @@ export function useGmailAccounts() {
   // Persist accounts to localStorage
   const saveAccounts = useCallback((accs: GmailAccount[]) => {
     setAccounts(accs);
-    localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(accs));
+    try {
+      localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(accs));
+    } catch {}
   }, []);
 
   // Persist active filter
   const setActiveFilterAndSave = useCallback((filter: "all" | string) => {
     setActiveFilter(filter);
-    localStorage.setItem(GMAIL_ACTIVE_FILTER_KEY, filter);
+    try {
+      localStorage.setItem(GMAIL_ACTIVE_FILTER_KEY, filter);
+    } catch {}
   }, []);
 
   // Add a new Gmail account (always shows account chooser)
@@ -181,7 +185,9 @@ export function useGmailAccounts() {
               } else {
                 updated = [...prev, newAccount];
               }
-              localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
+              try {
+                localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
+              } catch {}
               return updated;
             });
             // Toast after setState to avoid updating Toaster during render
@@ -200,22 +206,27 @@ export function useGmailAccounts() {
 
             // Also save as the primary token if it's the first account
             // (keeps backward compat with useGoogleServices)
-            const stored = localStorage.getItem(GMAIL_ACCOUNTS_KEY);
+            let stored: string | null = null;
+            try {
+              stored = localStorage.getItem(GMAIL_ACCOUNTS_KEY);
+            } catch {}
             const existingAccounts = stored ? JSON.parse(stored) : [];
             if (existingAccounts.length === 0) {
-              localStorage.setItem(
-                "google_services_token",
-                response.access_token,
-              );
-              localStorage.setItem(
-                "google_services_token_expiry",
-                expiry.toString(),
-              );
-              localStorage.setItem("google_services_email", email);
-              localStorage.setItem(
-                "google_services_scopes",
-                response.scope || "",
-              );
+              try {
+                localStorage.setItem(
+                  "google_services_token",
+                  response.access_token,
+                );
+                localStorage.setItem(
+                  "google_services_token_expiry",
+                  expiry.toString(),
+                );
+                localStorage.setItem("google_services_email", email);
+                localStorage.setItem(
+                  "google_services_scopes",
+                  response.scope || "",
+                );
+              } catch {}
             }
 
             resolve(newAccount);
@@ -242,7 +253,9 @@ export function useGmailAccounts() {
     (accountId: string) => {
       setAccounts((prev) => {
         const updated = prev.filter((a) => a.id !== accountId);
-        localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
+        try {
+          localStorage.setItem(GMAIL_ACCOUNTS_KEY, JSON.stringify(updated));
+        } catch {}
         return updated;
       });
       // If the removed account was active, switch to "all"
@@ -289,10 +302,12 @@ export function useGmailAccounts() {
                       }
                     : a,
                 );
-                localStorage.setItem(
-                  GMAIL_ACCOUNTS_KEY,
-                  JSON.stringify(updated),
-                );
+                try {
+                  localStorage.setItem(
+                    GMAIL_ACCOUNTS_KEY,
+                    JSON.stringify(updated),
+                  );
+                } catch {}
                 return updated;
               });
 
