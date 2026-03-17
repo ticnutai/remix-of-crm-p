@@ -43,6 +43,7 @@ import { format, setHours, setMinutes } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import { LocationPicker } from "@/components/location/LocationPicker";
 
 // Sidebar colors
 const sidebarColors = {
