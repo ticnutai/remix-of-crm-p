@@ -41,12 +41,14 @@ interface MeetingsListViewProps {
   meetings: Meeting[];
   onEdit: (meeting: Meeting) => void;
   onDelete: (id: string) => void;
+  sortOrder?: "asc" | "desc";
 }
 
 export function MeetingsListView({
   meetings,
   onEdit,
   onDelete,
+  sortOrder = "desc",
 }: MeetingsListViewProps) {
   const { showDuplicates, setDuplicateCount } = useDedup();
   const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
@@ -109,8 +111,10 @@ export function MeetingsListView({
     groupedMeetings[dateKey].push(meeting);
   });
 
-  // Sort keys
-  const sortedDates = Object.keys(groupedMeetings).sort();
+  // Sort keys respecting the user's chosen sort order
+  const sortedDates = Object.keys(groupedMeetings).sort((a, b) =>
+    sortOrder === "asc" ? a.localeCompare(b) : b.localeCompare(a),
+  );
 
   const getDateLabel = (dateStr: string) => {
     const date = parseISO(dateStr);

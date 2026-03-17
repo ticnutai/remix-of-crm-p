@@ -492,6 +492,7 @@ const TasksAndMeetings = () => {
                 meetings={sortedMeetings}
                 onEdit={handleEditMeeting}
                 onDelete={handleDeleteMeeting}
+                sortOrder={sortOrder}
               />
             )}
           </TabsContent>
