@@ -43,6 +43,7 @@ import { format, setHours, setMinutes } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import { LocationPicker } from "@/components/location/LocationPicker";
 
 // Sidebar colors
 const sidebarColors = {
@@ -440,30 +441,43 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                       ? "מספר טלפון"
                       : "מיקום"}
                 </Label>
-                <div className="relative">
-                  <MapPin
-                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4"
-                    style={{ color: sidebarColors.gold }}
-                  />
-                  <Input
-                    id="location"
+                {meetingType === "in_person" ? (
+                  <LocationPicker
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder={
-                      meetingType === "video"
-                        ? "https://meet.google.com/..."
-                        : meetingType === "phone"
-                          ? "050-000-0000"
-                          : "כתובת או חדר"
-                    }
-                    className="text-right pr-10"
-                    style={{
+                    onChange={setLocation}
+                    clientIds={clientIds}
+                    placeholder="בחר או הקלד מיקום"
+                    iconColor={sidebarColors.gold}
+                    inputStyle={{
                       background: `${sidebarColors.navyLight}50`,
                       borderColor: `${sidebarColors.gold}40`,
                       color: sidebarColors.goldLight,
                     }}
                   />
-                </div>
+                ) : (
+                  <div className="relative">
+                    <MapPin
+                      className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                      style={{ color: sidebarColors.gold }}
+                    />
+                    <Input
+                      id="location"
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder={
+                        meetingType === "video"
+                          ? "https://meet.google.com/..."
+                          : "050-000-0000"
+                      }
+                      className="text-right pr-10"
+                      style={{
+                        background: `${sidebarColors.navyLight}50`,
+                        borderColor: `${sidebarColors.gold}40`,
+                        color: sidebarColors.goldLight,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Client Assignment - Multi Select */}

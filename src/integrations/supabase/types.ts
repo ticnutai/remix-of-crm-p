@@ -6536,6 +6536,42 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_locations: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_favorite: boolean
+          last_used_at: string | null
+          name: string
+          updated_at: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string | null
+          name: string
+          updated_at?: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string | null
+          name?: string
+          updated_at?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       signatures: {
         Row: {
           document_id: string
