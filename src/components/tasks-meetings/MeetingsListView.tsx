@@ -249,7 +249,7 @@ export function MeetingsListView({
                                 {meeting.location}
                                 <LocationShareButtons
                                   location={meeting.location}
-                                  clientPhone={meeting.client?.phone}
+                                  clientName={meeting.client?.name}
                                   clientName={meeting.client?.name}
                                   meetingTitle={meeting.title}
                                   size="sm"
