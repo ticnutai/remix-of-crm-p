@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Navigation, Map, MessageCircle, Share2, ExternalLink } from "lucide-react";
+import { Compass, Map, MessageCircle, Share2, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
