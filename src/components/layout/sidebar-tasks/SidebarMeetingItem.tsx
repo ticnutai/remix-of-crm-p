@@ -30,6 +30,8 @@ import {
   Bell,
   CheckCircle,
   XCircle,
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import {
   format,
@@ -312,6 +314,30 @@ export function SidebarMeetingItem({
                   <ExternalLink className="h-3.5 w-3.5" />
                   <span>הצטרף לפגישה</span>
                 </DropdownMenuItem>
+              )}
+              {/* Share location */}
+              {meeting.location && meeting.meeting_type !== "video" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => window.open(`https://waze.com/ul?q=${encodeURIComponent(meeting.location!)}&navigate=yes`, "_blank")}
+                    className="gap-2 cursor-pointer text-blue-400"
+                  >
+                    <Compass className="h-3.5 w-3.5" />
+                    <span>נווט עם Waze</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const wazeLink = `https://waze.com/ul?q=${encodeURIComponent(meeting.location!)}&navigate=yes`;
+                      const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meeting.location!)}`;
+                      const msg = `📍 מיקום הפגישה: ${meeting.location}\n\n🗺️ Waze:\n${wazeLink}\n\n📍 Maps:\n${mapsLink}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+                    }}
+                    className="gap-2 cursor-pointer text-green-400"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span>שלח מיקום בוואטסאפ</span>
+                  </DropdownMenuItem>
+                </>
               )}
               {/* Mark as complete */}
               {!isCompleted && !isCancelled && onMarkComplete && (

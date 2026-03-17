@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { LocationShareButtons } from "@/components/location/LocationShareButtons";
 import { Meeting } from "@/hooks/useMeetingsOptimized";
 import { cleanTitle, cleanDescription } from "@/utils/cleanDisplayText";
 import { processDedup, getDedupKey } from "@/utils/sortAndDedup";
@@ -246,6 +247,13 @@ export function MeetingsListView({
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {meeting.location}
+                                <LocationShareButtons
+                                  location={meeting.location}
+                                  clientName={meeting.client?.name}
+                                  meetingTitle={meeting.title}
+                                  size="sm"
+                                  variant="dropdown"
+                                />
                               </span>
                             )}
                           </div>
