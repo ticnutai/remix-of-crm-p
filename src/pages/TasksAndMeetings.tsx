@@ -78,7 +78,7 @@ const TasksAndMeetings = () => {
   } = useMeetings();
 
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "tasks",
+    searchParams.get("tab") || "all",
   );
   const [taskView, setTaskView] = useState<ViewType>("list");
   const [searchQuery, setSearchQuery] = useState("");
