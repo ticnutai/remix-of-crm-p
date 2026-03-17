@@ -657,7 +657,8 @@ export function EmailSenderChatView({
                                     )}
                                     dangerouslySetInnerHTML={{
                                       __html: DOMPurify.sanitize(msg.htmlBody, {
-                                        ALLOW_UNKNOWN_PROTOCOLS: true,
+                                        ALLOWED_URI_REGEXP:
+                                          /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
                                       }),
                                     }}
                                   />

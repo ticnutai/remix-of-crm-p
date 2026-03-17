@@ -151,7 +151,8 @@ export const RichTextEditor = forwardRef<
 
       if (html) {
         const clean = DOMPurify.sanitize(html, {
-          ALLOW_UNKNOWN_PROTOCOLS: true,
+          ALLOWED_URI_REGEXP:
+            /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
         });
         document.execCommand("insertHTML", false, clean);
       } else {

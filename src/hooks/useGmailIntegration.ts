@@ -161,9 +161,11 @@ export function useGmailIntegration() {
         // hammering the API with an invalid/insufficient-scopes token
         if (listResponse.status === 401 || listResponse.status === 403) {
           console.warn(`📧 Gmail auth error ${listResponse.status} — clearing stored token`);
-          localStorage.removeItem("google_services_token");
-          localStorage.removeItem("google_services_token_expiry");
-          localStorage.removeItem("google_services_scopes");
+          try {
+            localStorage.removeItem("google_services_token");
+            localStorage.removeItem("google_services_token_expiry");
+            localStorage.removeItem("google_services_scopes");
+          } catch {}
           setIsLoading(false);
           setIsLoadingMore(false);
           return [];
@@ -343,14 +345,17 @@ export function useGmailIntegration() {
 
       // Handle scheduled send
       if (params.scheduledAt && params.scheduledAt > new Date()) {
-        const scheduled = JSON.parse(
-          localStorage.getItem("scheduled_emails") || "[]",
-        );
+        let scheduled: Array<SendEmailParams & { scheduledAt: string }> = [];
+        try {
+          scheduled = JSON.parse(localStorage.getItem("scheduled_emails") || "[]");
+        } catch {}
         scheduled.push({
           ...params,
           scheduledAt: params.scheduledAt.toISOString(),
         });
-        localStorage.setItem("scheduled_emails", JSON.stringify(scheduled));
+        try {
+          localStorage.setItem("scheduled_emails", JSON.stringify(scheduled));
+        } catch {}
         toast({
           title: "המייל תוזמן בהצלחה",
           description: `ישלח ב-${params.scheduledAt.toLocaleString("he-IL")}`,

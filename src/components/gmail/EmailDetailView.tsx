@@ -232,7 +232,8 @@ export const EmailDetailView = memo(function EmailDetailView({
   const sanitizedEmailHtml = useMemo(() => {
     if (!emailHtmlBody) return "";
     return DOMPurify.sanitize(emailHtmlBody, {
-      ALLOW_UNKNOWN_PROTOCOLS: true,
+      ALLOWED_URI_REGEXP:
+        /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
     });
   }, [emailHtmlBody]);
 
