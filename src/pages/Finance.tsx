@@ -1341,19 +1341,30 @@ export default function Finance() {
         const clientsList = latestClients || [];
 
         for (const gi of greenInvoices) {
-          // Check if invoice already exists by number (safe parameterized queries)
-          const invoiceNum = String(gi.number ?? "");
-          const invoiceId = String(gi.id ?? "");
-          const { data: existingInvoices } = await supabase
-            .from("invoices")
-            .select("id, status, green_invoice_id")
-            .or(
-              `invoice_number.eq.${invoiceNum},invoice_number.eq.${invoiceId}`.replace(
-                /[,;()]/g,
-                "",
-              ),
-            ) // sanitize to prevent filter injection
-            .limit(1);
+          // Check if invoice already exists by number using safe parameterized queries
+          const invoiceNum = String(gi.number ?? "").trim();
+          const invoiceId = String(gi.id ?? "").trim();
+          let existingInvoices:
+            | Array<{ id: string; status: string | null; green_invoice_id: string | null }>
+            | null = null;
+
+          if (invoiceNum) {
+            const { data } = await supabase
+              .from("invoices")
+              .select("id, status, green_invoice_id")
+              .eq("invoice_number", invoiceNum)
+              .limit(1);
+            existingInvoices = data;
+          }
+
+          if ((!existingInvoices || existingInvoices.length === 0) && invoiceId && invoiceId !== invoiceNum) {
+            const { data } = await supabase
+              .from("invoices")
+              .select("id, status, green_invoice_id")
+              .eq("invoice_number", invoiceId)
+              .limit(1);
+            existingInvoices = data;
+          }
 
           // Calculate the correct status
           const amountOpened = gi.amountOpened ?? gi.amount ?? 1;
