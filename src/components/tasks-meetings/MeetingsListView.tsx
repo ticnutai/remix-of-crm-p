@@ -111,8 +111,10 @@ export function MeetingsListView({
     groupedMeetings[dateKey].push(meeting);
   });
 
-  // Sort keys
-  const sortedDates = Object.keys(groupedMeetings).sort();
+  // Sort keys respecting the user's chosen sort order
+  const sortedDates = Object.keys(groupedMeetings).sort((a, b) =>
+    sortOrder === "asc" ? a.localeCompare(b) : b.localeCompare(a),
+  );
 
   const getDateLabel = (dateStr: string) => {
     const date = parseISO(dateStr);
