@@ -35,6 +35,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  LayoutGrid,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import {
@@ -77,7 +78,7 @@ const TasksAndMeetings = () => {
   } = useMeetings();
 
   const [activeTab, setActiveTab] = useState(
-    searchParams.get("tab") || "tasks",
+    searchParams.get("tab") || "all",
   );
   const [taskView, setTaskView] = useState<ViewType>("list");
   const [searchQuery, setSearchQuery] = useState("");
@@ -326,7 +327,11 @@ const TasksAndMeetings = () => {
           dir="rtl"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <TabsList className="w-fit">
+            <TabsList className="w-fit mr-auto">
+              <TabsTrigger value="all" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                הכול
+              </TabsTrigger>
               <TabsTrigger value="tasks" className="gap-2">
                 <CheckSquare className="h-4 w-4" />
                 משימות ({tasks.length})
@@ -346,86 +351,225 @@ const TasksAndMeetings = () => {
             )}
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="חיפוש..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-9"
-              />
+          {/* Filters - hide on "all" tab */}
+          {activeTab !== "all" && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="חיפוש..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-9"
+                />
+              </div>
+
+              {activeTab === "tasks" && (
+                <>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[140px]">
+                      <Filter className="h-4 w-4 ml-2" />
+                      <SelectValue placeholder="סטטוס" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">הכל</SelectItem>
+                      <SelectItem value="pending">ממתין</SelectItem>
+                      <SelectItem value="in_progress">בביצוע</SelectItem>
+                      <SelectItem value="completed">הושלם</SelectItem>
+                      <SelectItem value="overdue">באיחור</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={priorityFilter}
+                    onValueChange={setPriorityFilter}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="עדיפות" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">הכל</SelectItem>
+                      <SelectItem value="high">גבוהה</SelectItem>
+                      <SelectItem value="medium">בינונית</SelectItem>
+                      <SelectItem value="low">נמוכה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+
+              {activeTab !== "reminders" && (
+                <>
+                  <Select
+                    value={sortBy}
+                    onValueChange={(v) => setSortBy(v as SortField)}
+                  >
+                    <SelectTrigger className="w-[150px]">
+                      <ArrowUpDown className="h-4 w-4 ml-2" />
+                      <SelectValue placeholder="מיון" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created_at">תאריך יצירה</SelectItem>
+                      <SelectItem value="event_date">
+                        {activeTab === "tasks" ? "תאריך יעד" : "מועד פגישה"}
+                      </SelectItem>
+                      <SelectItem value="title">שם</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+                    }
+                    title={sortOrder === "asc" ? "סדר עולה (א → ת)" : "סדר יורד (ת → א)"}
+                  >
+                    {sortOrder === "asc" ? (
+                      <ArrowUp className="h-4 w-4" />
+                    ) : (
+                      <ArrowDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
+          )}
 
-            {activeTab === "tasks" && (
-              <>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px]">
-                    <Filter className="h-4 w-4 ml-2" />
-                    <SelectValue placeholder="סטטוס" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">הכל</SelectItem>
-                    <SelectItem value="pending">ממתין</SelectItem>
-                    <SelectItem value="in_progress">בביצוע</SelectItem>
-                    <SelectItem value="completed">הושלם</SelectItem>
-                    <SelectItem value="overdue">באיחור</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={priorityFilter}
-                  onValueChange={setPriorityFilter}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="עדיפות" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">הכל</SelectItem>
-                    <SelectItem value="high">גבוהה</SelectItem>
-                    <SelectItem value="medium">בינונית</SelectItem>
-                    <SelectItem value="low">נמוכה</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-
-            {activeTab !== "reminders" && (
-              <>
-                <Select
-                  value={sortBy}
-                  onValueChange={(v) => setSortBy(v as SortField)}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <ArrowUpDown className="h-4 w-4 ml-2" />
-                    <SelectValue placeholder="מיון" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="created_at">תאריך יצירה</SelectItem>
-                    <SelectItem value="event_date">
-                      {activeTab === "tasks" ? "תאריך יעד" : "מועד פגישה"}
-                    </SelectItem>
-                    <SelectItem value="title">שם</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-                  }
-                  title={sortOrder === "asc" ? "סדר עולה" : "סדר יורד"}
-                >
-                  {sortOrder === "asc" ? (
-                    <ArrowUp className="h-4 w-4" />
+          {/* ALL Content - 3 columns */}
+          <TabsContent value="all" className="mt-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Tasks Column */}
+              <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-primary/10 to-primary/5 border-b">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <h3 className="font-bold text-sm text-foreground">משימות</h3>
+                    <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">{tasks.length}</span>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTaskDialogOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto p-2 space-y-1.5">
+                  {tasksLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : sortedTasks.length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-8">אין משימות</p>
                   ) : (
-                    <ArrowDown className="h-4 w-4" />
+                    sortedTasks.slice(0, 20).map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group text-right"
+                        onClick={() => handleEditTask(task)}
+                      >
+                        <button
+                          className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
+                            task.status === "completed"
+                              ? "bg-green-500 border-green-500 text-white"
+                              : "border-muted-foreground/40 hover:border-primary"
+                          }`}
+                          onClick={(e) => { e.stopPropagation(); handleToggleComplete(task); }}
+                        >
+                          {task.status === "completed" && <span className="text-[10px]">✓</span>}
+                        </button>
+                        <div className="flex-1 min-w-0 text-right">
+                          <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                            {task.title}
+                          </p>
+                          {task.due_date && (
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(task.due_date).toLocaleDateString("he-IL")}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`shrink-0 h-2 w-2 rounded-full ${
+                          task.priority === "high" ? "bg-red-500" :
+                          task.priority === "medium" ? "bg-yellow-500" : "bg-green-400"
+                        }`} />
+                      </div>
+                    ))
                   )}
-                </Button>
-              </>
-            )}
-          </div>
+                </div>
+                {tasks.length > 20 && (
+                  <div className="border-t px-3 py-2">
+                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("tasks")}>
+                      הצג את כל {tasks.length} המשימות
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Meetings Column */}
+              <div className="rounded-xl border-2 border-blue-500/20 bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-blue-500/10 to-blue-500/5 border-b">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-blue-500" />
+                    <h3 className="font-bold text-sm text-foreground">פגישות</h3>
+                    <span className="text-xs bg-blue-500/15 text-blue-600 px-2 py-0.5 rounded-full font-medium">{meetings.length}</span>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setMeetingDialogOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto p-2 space-y-1.5">
+                  {meetingsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  ) : sortedMeetings.length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-8">אין פגישות</p>
+                  ) : (
+                    sortedMeetings.slice(0, 20).map((meeting) => (
+                      <div
+                        key={meeting.id}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group text-right"
+                        onClick={() => handleEditMeeting(meeting)}
+                      >
+                        <Calendar className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                        <div className="flex-1 min-w-0 text-right">
+                          <p className="text-xs font-medium truncate">{meeting.title}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        {meeting.location && (
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{meeting.location}</span>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+                {meetings.length > 20 && (
+                  <div className="border-t px-3 py-2">
+                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("meetings")}>
+                      הצג את כל {meetings.length} הפגישות
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Reminders Column */}
+              <div className="rounded-xl border-2 border-amber-500/20 bg-card shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-amber-500/10 to-amber-500/5 border-b">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-amber-500" />
+                    <h3 className="font-bold text-sm text-foreground">תזכורות</h3>
+                  </div>
+                  <AddReminderDialog
+                    trigger={
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    }
+                  />
+                </div>
+                <div className="max-h-[500px] overflow-y-auto">
+                  <RemindersTabContent />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
           {/* Tasks Content */}
           <TabsContent value="tasks" className="mt-4">
