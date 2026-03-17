@@ -48,6 +48,7 @@ export function MeetingsListView({
   meetings,
   onEdit,
   onDelete,
+  sortOrder = "desc",
 }: MeetingsListViewProps) {
   const { showDuplicates, setDuplicateCount } = useDedup();
   const [expandedDedupGroups, setExpandedDedupGroups] = useState<Set<string>>(
