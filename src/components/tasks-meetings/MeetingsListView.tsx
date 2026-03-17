@@ -246,6 +246,14 @@ export function MeetingsListView({
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
                                 {meeting.location}
+                                <LocationShareButtons
+                                  location={meeting.location}
+                                  clientPhone={meeting.client?.phone}
+                                  clientName={meeting.client?.name}
+                                  meetingTitle={meeting.title}
+                                  size="sm"
+                                  variant="dropdown"
+                                />
                               </span>
                             )}
                           </div>
