@@ -153,7 +153,7 @@ export function LocationShareButtons({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={openWaze} className="gap-2 cursor-pointer">
-          <Navigation className="h-4 w-4 text-blue-500" />
+          <Compass className="h-4 w-4 text-blue-500" />
           <span>נווט עם Waze</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={openMaps} className="gap-2 cursor-pointer">
