@@ -322,7 +322,7 @@ export function SidebarMeetingItem({
                     onClick={() => window.open(`https://waze.com/ul?q=${encodeURIComponent(meeting.location!)}&navigate=yes`, "_blank")}
                     className="gap-2 cursor-pointer text-blue-400"
                   >
-                    <Navigation className="h-3.5 w-3.5" />
+                    <Compass className="h-3.5 w-3.5" />
                     <span>נווט עם Waze</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
