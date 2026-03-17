@@ -250,7 +250,6 @@ export function MeetingsListView({
                                 <LocationShareButtons
                                   location={meeting.location}
                                   clientName={meeting.client?.name}
-                                  clientName={meeting.client?.name}
                                   meetingTitle={meeting.title}
                                   size="sm"
                                   variant="dropdown"
