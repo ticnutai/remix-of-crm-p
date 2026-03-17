@@ -41,6 +41,7 @@ interface MeetingsListViewProps {
   meetings: Meeting[];
   onEdit: (meeting: Meeting) => void;
   onDelete: (id: string) => void;
+  sortOrder?: "asc" | "desc";
 }
 
 export function MeetingsListView({
