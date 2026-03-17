@@ -156,42 +156,68 @@ export function useContracts() {
     return `C${year}-${String(number).padStart(4, '0')}`;
   };
 
+  const isContractNumberConflict = (error: unknown): boolean => {
+    const err = error as { code?: string; message?: string } | null;
+    return (
+      !!err &&
+      err.code === '23505' &&
+      (err.message?.includes('contract_number') || false)
+    );
+  };
+
+  const insertContractWithRetry = async (
+    payloadBuilder: (contractNumber: string) => Record<string, unknown>,
+  ) => {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const contractNumber = await generateContractNumber();
+      const payload = payloadBuilder(contractNumber);
+
+      const { data, error } = await supabase
+        .from('contracts')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (!error) return data;
+      if (!isContractNumberConflict(error)) throw error;
+
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 75 * (attempt + 1)));
+    }
+
+    throw (lastError as Error) || new Error('Failed to generate unique contract number');
+  };
+
   // Create contract
   const createContract = useMutation({
     mutationFn: async (formData: ContractFormData) => {
       if (!user) throw new Error('Not authenticated');
-      
-      const contractNumber = await generateContractNumber();
 
-      const { data, error } = await supabase
-        .from('contracts')
-        .insert([{
-          contract_number: contractNumber,
-          client_id: formData.client_id,
-          project_id: formData.project_id || null,
-          quote_id: formData.quote_id || null,
-          template_id: formData.template_id || null,
-          title: formData.title,
-          description: formData.description,
-          contract_type: formData.contract_type,
-          contract_value: formData.contract_value,
-          start_date: formData.start_date,
-          end_date: formData.end_date || null,
-          signed_date: formData.signed_date,
-          payment_terms: formData.payment_terms,
-          payment_method: formData.payment_method || 'bank_transfer',
-          advance_payment_required: formData.advance_payment_required || false,
-          advance_payment_amount: formData.advance_payment_amount || null,
-          terms_and_conditions: formData.terms_and_conditions,
-          special_clauses: formData.special_clauses,
-          notes: formData.notes,
-          created_by: user.id,
-          status: 'active',
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
+      const data = await insertContractWithRetry((contractNumber) => ({
+        contract_number: contractNumber,
+        client_id: formData.client_id,
+        project_id: formData.project_id || null,
+        quote_id: formData.quote_id || null,
+        template_id: formData.template_id || null,
+        title: formData.title,
+        description: formData.description,
+        contract_type: formData.contract_type,
+        contract_value: formData.contract_value,
+        start_date: formData.start_date,
+        end_date: formData.end_date || null,
+        signed_date: formData.signed_date,
+        payment_terms: formData.payment_terms,
+        payment_method: formData.payment_method || 'bank_transfer',
+        advance_payment_required: formData.advance_payment_required || false,
+        advance_payment_amount: formData.advance_payment_amount || null,
+        terms_and_conditions: formData.terms_and_conditions,
+        special_clauses: formData.special_clauses,
+        notes: formData.notes,
+        created_by: user.id,
+        status: 'active',
+      }));
 
       // יצירת שלבי תשלום מתבנית אם קיימים
       if (formData.generated_payment_schedule && formData.generated_payment_schedule.length > 0) {
@@ -337,38 +363,30 @@ export function useContracts() {
       contractData: Omit<ContractFormData, 'quote_id'> 
     }) => {
       if (!user) throw new Error('Not authenticated');
-      
-      const contractNumber = await generateContractNumber();
 
       // Create the contract
-      const { data: contract, error: contractError } = await supabase
-        .from('contracts')
-        .insert([{
-          contract_number: contractNumber,
-          quote_id: quoteId,
-          client_id: contractData.client_id,
-          project_id: contractData.project_id || null,
-          title: contractData.title,
-          description: contractData.description,
-          contract_type: contractData.contract_type,
-          contract_value: contractData.contract_value,
-          start_date: contractData.start_date,
-          end_date: contractData.end_date || null,
-          signed_date: contractData.signed_date,
-          payment_terms: contractData.payment_terms,
-          payment_method: contractData.payment_method || 'bank_transfer',
-          advance_payment_required: contractData.advance_payment_required || false,
-          advance_payment_amount: contractData.advance_payment_amount || null,
-          terms_and_conditions: contractData.terms_and_conditions,
-          special_clauses: contractData.special_clauses,
-          notes: contractData.notes,
-          created_by: user.id,
-          status: 'active',
-        }])
-        .select()
-        .single();
-      
-      if (contractError) throw contractError;
+      const contract = await insertContractWithRetry((contractNumber) => ({
+        contract_number: contractNumber,
+        quote_id: quoteId,
+        client_id: contractData.client_id,
+        project_id: contractData.project_id || null,
+        title: contractData.title,
+        description: contractData.description,
+        contract_type: contractData.contract_type,
+        contract_value: contractData.contract_value,
+        start_date: contractData.start_date,
+        end_date: contractData.end_date || null,
+        signed_date: contractData.signed_date,
+        payment_terms: contractData.payment_terms,
+        payment_method: contractData.payment_method || 'bank_transfer',
+        advance_payment_required: contractData.advance_payment_required || false,
+        advance_payment_amount: contractData.advance_payment_amount || null,
+        terms_and_conditions: contractData.terms_and_conditions,
+        special_clauses: contractData.special_clauses,
+        notes: contractData.notes,
+        created_by: user.id,
+        status: 'active',
+      }));
 
       // Update the quote to mark it as converted to contract
       await supabase
