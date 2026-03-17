@@ -30,6 +30,8 @@ import {
   Bell,
   CheckCircle,
   XCircle,
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import {
   format,
