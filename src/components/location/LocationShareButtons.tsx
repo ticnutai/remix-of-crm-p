@@ -106,7 +106,7 @@ export function LocationShareButtons({
               className={btnSize}
               onClick={openWaze}
             >
-              <Navigation className={`${iconSize} text-blue-500`} />
+              <Compass className={`${iconSize} text-blue-500`} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>נווט עם Waze</TooltipContent>
