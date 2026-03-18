@@ -35,7 +35,9 @@ export function useAutoSync(onSync: () => Promise<void>) {
   // Save settings to localStorage
   const saveSettings = useCallback((newSettings: AutoSyncSettings) => {
     setSettings(newSettings);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+    } catch {}
   }, []);
 
   // Update settings

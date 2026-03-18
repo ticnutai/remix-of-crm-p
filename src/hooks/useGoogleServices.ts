@@ -55,31 +55,41 @@ const saveTokenToStorage = (
   email?: string,
   scopes?: string,
 ) => {
-  localStorage.setItem(TOKEN_STORAGE_KEY, token);
-  // Save expiry time (current time + expires_in seconds - 5 minute buffer)
-  const expiryTime = Date.now() + (expiresIn - 300) * 1000;
-  localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-  // Save email for future silent re-auth
-  if (email) {
-    localStorage.setItem(EMAIL_STORAGE_KEY, email);
-  }
-  // Save granted scopes
-  if (scopes) {
-    localStorage.setItem(SCOPES_STORAGE_KEY, scopes);
-  }
+  try {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    // Save expiry time (current time + expires_in seconds - 5 minute buffer)
+    const expiryTime = Date.now() + (expiresIn - 300) * 1000;
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    // Save email for future silent re-auth
+    if (email) {
+      localStorage.setItem(EMAIL_STORAGE_KEY, email);
+    }
+    // Save granted scopes
+    if (scopes) {
+      localStorage.setItem(SCOPES_STORAGE_KEY, scopes);
+    }
+  } catch {}
 };
 
 const loadTokenFromStorage = (): string | null => {
-  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-  const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+  let token: string | null = null;
+  let expiry: string | null = null;
+  try {
+    token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+  } catch {
+    return null;
+  }
 
   if (!token || !expiry) return null;
 
   // Check if token is still valid
   if (Date.now() > parseInt(expiry)) {
     // Token expired, clear it but keep the email for hint
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    } catch {}
     return null;
   }
 
@@ -87,11 +97,20 @@ const loadTokenFromStorage = (): string | null => {
 };
 
 const loadSavedEmail = (): string | null => {
-  return localStorage.getItem(EMAIL_STORAGE_KEY);
+  try {
+    return localStorage.getItem(EMAIL_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 };
 
 const loadSavedScopes = (): string[] => {
-  const scopes = localStorage.getItem(SCOPES_STORAGE_KEY);
+  let scopes: string | null = null;
+  try {
+    scopes = localStorage.getItem(SCOPES_STORAGE_KEY);
+  } catch {
+    return [];
+  }
   return scopes ? scopes.split(" ") : [];
 };
 
@@ -103,9 +122,11 @@ const hasRequiredScopes = (services: GoogleService[]): boolean => {
 };
 
 const clearTokenFromStorage = () => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
-  localStorage.removeItem(TOKEN_EXPIRY_KEY);
-  localStorage.removeItem(SCOPES_STORAGE_KEY);
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    localStorage.removeItem(SCOPES_STORAGE_KEY);
+  } catch {}
   // Keep email for next silent re-auth
 };
 

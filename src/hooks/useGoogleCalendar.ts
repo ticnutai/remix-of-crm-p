@@ -60,10 +60,12 @@ const saveTokenToStorage = (token: any, email?: string) => {
       ...token,
       saved_at: Date.now(),
     };
-    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokenData));
-    if (email) {
-      localStorage.setItem(EMAIL_STORAGE_KEY, email);
-    }
+    try {
+      localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokenData));
+      if (email) {
+        localStorage.setItem(EMAIL_STORAGE_KEY, email);
+      }
+    } catch {}
   }
 };
 
@@ -89,11 +91,17 @@ const loadTokenFromStorage = (): any | null => {
 };
 
 const loadSavedEmail = (): string | null => {
-  return localStorage.getItem(EMAIL_STORAGE_KEY);
+  try {
+    return localStorage.getItem(EMAIL_STORAGE_KEY);
+  } catch {
+    return null;
+  }
 };
 
 const clearTokenFromStorage = () => {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  } catch {}
   // Note: We keep the email for next time user connects
 };
 
@@ -893,7 +901,9 @@ export function useGoogleCalendar() {
   // Save config
   const saveConfig = useCallback((newConfig: GoogleCalendarConfig) => {
     setConfig(newConfig);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
+    } catch {}
 
     // Re-initialize with new config
     setGapiInited(false);
