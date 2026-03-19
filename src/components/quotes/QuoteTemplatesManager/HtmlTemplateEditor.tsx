@@ -8595,12 +8595,19 @@ export function HtmlTemplateEditor({
                                       %
                                     </td>
                                     <td className="p-2 text-left">
-                                      ₪
-                                      {Math.round(
-                                        ((editedTemplate.base_price || 35000) *
-                                          step.percentage) /
-                                          100,
-                                      ).toLocaleString()}
+                                      <div>
+                                        ₪
+                                        {Math.round(
+                                          ((editedTemplate.base_price || 35000) *
+                                            step.percentage) /
+                                            100,
+                                        ).toLocaleString()}
+                                      </div>
+                                      {designSettings.vatDisplayMode === "breakdown" && (
+                                        <div className="text-xs text-muted-foreground">
+                                          + ₪{Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * (editedTemplate.vat_rate || 17) / 100).toLocaleString()} מע״מ
+                                        </div>
+                                      )}
                                     </td>
                                   </tr>
                                 ))}
@@ -8638,6 +8645,25 @@ export function HtmlTemplateEditor({
                                     </span>
                                   </td>
                                 </tr>
+                                {designSettings.vatDisplayMode === "breakdown" && (() => {
+                                  const bp = editedTemplate.base_price || 35000;
+                                  const vr = editedTemplate.vat_rate || 17;
+                                  const vatAmt = Math.round(bp * vr / 100);
+                                  return (
+                                    <>
+                                      <tr className="bg-gray-50 text-muted-foreground">
+                                        <td className="p-2">מע״מ {vr}%</td>
+                                        <td className="p-2"></td>
+                                        <td className="p-2 text-left">₪{vatAmt.toLocaleString()}</td>
+                                      </tr>
+                                      <tr className="font-bold bg-gray-200 text-lg">
+                                        <td className="p-2">סה"כ כולל מע״מ</td>
+                                        <td className="p-2"></td>
+                                        <td className="p-2 text-left">₪{(bp + vatAmt).toLocaleString()}</td>
+                                      </tr>
+                                    </>
+                                  );
+                                })()}
                               </tbody>
                             </table>
                           </div>
