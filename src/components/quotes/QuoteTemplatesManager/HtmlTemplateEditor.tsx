@@ -2656,11 +2656,21 @@ export function HtmlTemplateEditor({
       )
       .join("");
 
+    const vatRate = editedTemplate.vat_rate || 17;
+    const isVatBreakdown = designSettings.vatDisplayMode === "breakdown";
+    
     const payments = paymentSteps
       .map(
-        (step) => `
-      <tr><td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td><td style="padding: 10px; text-align: center;">${step.percentage}%</td><td style="padding: 10px; text-align: left;">₪${Math.round(((editedTemplate.base_price || 35000) * step.percentage) / 100).toLocaleString()}</td></tr>
-    `,
+        (step) => {
+          const stepAmount = Math.round(((editedTemplate.base_price || 35000) * step.percentage) / 100);
+          const stepVat = Math.round(stepAmount * vatRate / 100);
+          return `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
+        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
+        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}${isVatBreakdown ? `<br><span style="font-size: 11px; color: #888;">+ ₪${stepVat.toLocaleString()} מע״מ</span>` : ""}</td>
+      </tr>`;
+        },
       )
       .join("");
 
