@@ -4683,6 +4683,137 @@ export function HtmlTemplateEditor({
                           />
                         </div>
                       )}
+
+                      {/* Custom Strip Settings */}
+                      {designSettings.logoPosition === "custom-strip" && (
+                        <div className="space-y-3 mt-3 p-3 border rounded-lg bg-muted/30">
+                          <p className="text-xs text-muted-foreground font-medium">הגדרות סטריפ מותאם</p>
+                          
+                          <div>
+                            <Label className="text-sm text-gray-600">צבע רקע</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: e.target.value,
+                                  })
+                                }
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: e.target.value,
+                                  })
+                                }
+                                className="flex-1 h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripLineColor || "#d4af37"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripLineColor: e.target.value,
+                                  })
+                                }
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripLineColor || "#d4af37"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripLineColor: e.target.value,
+                                  })
+                                }
+                                className="flex-1 h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">
+                              שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
+                            </Label>
+                            <Slider
+                              value={[designSettings.stripLineOpacity ?? 100]}
+                              onValueChange={([v]) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  stripLineOpacity: v,
+                                })
+                              }
+                              min={10}
+                              max={100}
+                              step={5}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">
+                              גובה סטריפ: {designSettings.headerStripHeight || 150}px
+                            </Label>
+                            <Slider
+                              value={[designSettings.headerStripHeight || 150]}
+                              onValueChange={([v]) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  headerStripHeight: v,
+                                })
+                              }
+                              min={80}
+                              max={300}
+                              step={10}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div className="flex gap-2 flex-wrap">
+                            {[
+                              { bg: "#1a1a2e", line: "#d4af37", label: "כחול-זהב" },
+                              { bg: "#ffffff", line: "#B8860B", label: "לבן-זהב" },
+                              { bg: "#0a0a0a", line: "#ffffff", label: "שחור-לבן" },
+                              { bg: "#1e3a5f", line: "#c0c0c0", label: "כחול-כסף" },
+                              { bg: "#2d1b0e", line: "#d4af37", label: "חום-זהב" },
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-accent transition-colors"
+                                onClick={() =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: preset.bg,
+                                    stripLineColor: preset.line,
+                                  })
+                                }
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border"
+                                  style={{ background: preset.bg }}
+                                />
+                                <span
+                                  className="w-3 h-3 rounded-full border"
+                                  style={{ background: preset.line }}
+                                />
+                                <span>{preset.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
