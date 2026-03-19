@@ -351,7 +351,7 @@ export function useGmailIntegration() {
         } catch {}
         scheduled.push({
           ...params,
-          scheduledAt: params.scheduledAt.toISOString(),
+          scheduledAt: params.scheduledAt.toISOString() as any,
         });
         try {
           localStorage.setItem("scheduled_emails", JSON.stringify(scheduled));

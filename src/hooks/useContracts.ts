@@ -166,7 +166,7 @@ export function useContracts() {
   };
 
   const insertContractWithRetry = async (
-    payloadBuilder: (contractNumber: string) => Record<string, unknown>,
+    payloadBuilder: (contractNumber: string) => any,
   ) => {
     let lastError: unknown;
 
