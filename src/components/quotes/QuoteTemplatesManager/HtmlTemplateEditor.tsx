@@ -96,6 +96,9 @@ import {
   ZoomOut,
   RotateCw,
   Move,
+  FolderPlus,
+  UserPlus,
+  ExternalLink,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
@@ -3177,6 +3180,8 @@ export function HtmlTemplateEditor({
   const [selectedPricingOption, setSelectedPricingOption] = useState("basic");
   const [showSMSDialog, setShowSMSDialog] = useState(false);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [calculationResult, setCalculationResult] =
     useState<CalculationResult | null>(null);
 
@@ -3573,6 +3578,111 @@ export function HtmlTemplateEditor({
     } finally {
       setIsGeneratingLogo(false);
       setShowAILogoDialog(false);
+    }
+  };
+
+  // Create Client File from quote data
+  const handleCreateClientFile = async (linkExisting: string | null) => {
+    setIsCreatingClient(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("לא מחובר");
+
+      let clientId = linkExisting;
+
+      if (!clientId) {
+        // Create new client with all project details
+        if (!projectDetails.clientName?.trim()) {
+          toast({ title: "חסר שם לקוח", description: "הזן שם לקוח בפרטי הפרויקט", variant: "destructive" });
+          setIsCreatingClient(false);
+          return;
+        }
+
+        const { data: newClient, error: clientError } = await (supabase as any)
+          .from("clients")
+          .insert({
+            name: projectDetails.clientName,
+            gush: projectDetails.gush || null,
+            helka: projectDetails.helka || null,
+            migrash: projectDetails.migrash || null,
+            taba: projectDetails.taba || null,
+            address: projectDetails.address || null,
+            phone: (projectDetails as any).phone || null,
+            email: (projectDetails as any).email || null,
+            user_id: user.id,
+            created_by: user.id,
+            source: "הצעת מחיר",
+            status: "active",
+            notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
+          })
+          .select("id")
+          .single();
+
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      } else {
+        // Update existing client with project details
+        const updateData: any = {};
+        if (projectDetails.gush) updateData.gush = projectDetails.gush;
+        if (projectDetails.helka) updateData.helka = projectDetails.helka;
+        if (projectDetails.migrash) updateData.migrash = projectDetails.migrash;
+        if (projectDetails.taba) updateData.taba = projectDetails.taba;
+        if (projectDetails.address) updateData.address = projectDetails.address;
+        
+        if (Object.keys(updateData).length > 0) {
+          await (supabase as any).from("clients").update(updateData).eq("id", clientId);
+        }
+      }
+
+      // Create contract from the quote
+      const basePrice = editedTemplate.base_price || 0;
+      const vatRate = editedTemplate.vat_rate || 17;
+      const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
+
+      // Generate contract number
+      const year = new Date().getFullYear();
+      const { count } = await (supabase as any)
+        .from("contracts")
+        .select("id", { count: "exact", head: true });
+      const contractNumber = `C${year}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+      const { error: contractError } = await (supabase as any)
+        .from("contracts")
+        .insert({
+          contract_number: contractNumber,
+          client_id: clientId,
+          title: editedTemplate.name || "חוזה מהצעת מחיר",
+          description: editedTemplate.description || "",
+          contract_type: projectDetails.projectType || "general",
+          contract_value: totalWithVat,
+          start_date: new Date().toISOString().split("T")[0],
+          payment_terms: editedTemplate.terms || "",
+          terms_and_conditions: editedTemplate.notes || "",
+          notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nמחיר בסיס: ₪${basePrice.toLocaleString()}\nמע״מ ${vatRate}%: ₪${Math.round(basePrice * vatRate / 100).toLocaleString()}\nסה״כ: ₪${totalWithVat.toLocaleString()}`,
+          created_by: user.id,
+          status: "active",
+        });
+
+      if (contractError) throw contractError;
+
+      setShowCreateClientDialog(false);
+      toast({
+        title: "✅ תיק לקוח נוצר בהצלחה!",
+        description: `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
+      });
+
+      // Open client profile in new tab
+      window.open(`/clients/${clientId}`, "_blank");
+    } catch (err: any) {
+      console.error("Create client file error:", err);
+      toast({
+        title: "שגיאה ביצירת תיק לקוח",
+        description: err?.message || "נסה שוב",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingClient(false);
     }
   };
 
@@ -8174,9 +8284,110 @@ export function HtmlTemplateEditor({
                 <MessageCircle className="h-4 w-4 ml-1" />
                 וואטסאפ
               </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+                onClick={() => setShowCreateClientDialog(true)}
+                disabled={isCreatingClient}
+              >
+                {isCreatingClient ? (
+                  <span className="animate-spin">⏳</span>
+                ) : (
+                  <FolderPlus className="h-4 w-4 ml-1" />
+                )}
+                {isCreatingClient ? "יוצר..." : "צור תיק לקוח"}
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Create Client File Dialog */}
+        <Dialog open={showCreateClientDialog} onOpenChange={setShowCreateClientDialog}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderPlus className="h-5 w-5 text-blue-600" />
+                צור תיק לקוח מההצעה
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Summary of what will be created */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <h4 className="font-semibold text-sm text-blue-800">מה ייווצר:</h4>
+                <div className="text-sm space-y-1 text-blue-700">
+                  <p>📋 <strong>תיק לקוח</strong> עם הפרטים:</p>
+                  <ul className="mr-5 space-y-0.5 text-xs">
+                    {projectDetails.clientName && <li>👤 שם: {projectDetails.clientName}</li>}
+                    {projectDetails.gush && <li>📍 גוש: {projectDetails.gush}</li>}
+                    {projectDetails.helka && <li>📍 חלקה: {projectDetails.helka}</li>}
+                    {projectDetails.migrash && <li>📍 מגרש: {projectDetails.migrash}</li>}
+                    {projectDetails.taba && <li>📄 תב"ע: {projectDetails.taba}</li>}
+                    {projectDetails.address && <li>🏠 כתובת: {projectDetails.address}</li>}
+                    {projectDetails.projectType && <li>🏗️ סוג: {projectDetails.projectType}</li>}
+                  </ul>
+                  <p className="mt-2">📝 <strong>חוזה</strong> על סך ₪{(() => {
+                    const bp = editedTemplate.base_price || 0;
+                    const vr = editedTemplate.vat_rate || 17;
+                    return Math.round(bp * (1 + vr / 100)).toLocaleString();
+                  })()} (כולל מע״מ)</p>
+                </div>
+              </div>
+
+              {/* Check if client exists */}
+              {allClients.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">לקוח קיים במערכת?</Label>
+                  <div className="border rounded-lg max-h-32 overflow-y-auto">
+                    {allClients
+                      .filter(c => 
+                        projectDetails.clientName && 
+                        c.name?.toLowerCase().includes(projectDetails.clientName.toLowerCase())
+                      )
+                      .map((client: any) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => handleCreateClientFile(client.id)}
+                          disabled={isCreatingClient}
+                          className="w-full text-right px-3 py-2 text-sm hover:bg-blue-50 transition-colors border-b last:border-0 flex items-center justify-between"
+                        >
+                          <div>
+                            <span className="font-medium">{client.name}</span>
+                            {client.phone && <span className="text-xs text-gray-400 mr-2">{client.phone}</span>}
+                          </div>
+                          <ExternalLink className="h-3 w-3 text-gray-400" />
+                        </button>
+                      ))
+                    }
+                    {allClients.filter(c => 
+                      projectDetails.clientName && 
+                      c.name?.toLowerCase().includes(projectDetails.clientName.toLowerCase())
+                    ).length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-2">לא נמצא לקוח תואם</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowCreateClientDialog(false)}>
+                ביטול
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleCreateClientFile(null)}
+                disabled={isCreatingClient || !projectDetails.clientName?.trim()}
+              >
+                {isCreatingClient ? (
+                  <span className="animate-spin ml-1">⏳</span>
+                ) : (
+                  <UserPlus className="h-4 w-4 ml-1" />
+                )}
+                {isCreatingClient ? "יוצר תיק..." : "צור לקוח חדש + חוזה"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Version History Dialog */}
         <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
