@@ -5265,6 +5265,33 @@ export type Database = {
           },
         ]
       }
+      input_history: {
+        Row: {
+          field_key: string
+          field_value: string
+          id: string
+          use_count: number
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          field_key: string
+          field_value: string
+          id?: string
+          use_count?: number
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          field_key?: string
+          field_value?: string
+          id?: string
+          use_count?: number
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoice_payments: {
         Row: {
           amount: number
