@@ -3883,7 +3883,7 @@ export function HtmlTemplateEditor({
                 height: designSettings.headerStripHeight || 150,
                 backgroundColor: designSettings.stripBgColor || "#1a1a2e",
               }}
-            >
+             >
               <img
                 src={designSettings.logoUrl || companyHeaderImg}
                 alt="Company Header Strip"
@@ -3893,22 +3893,7 @@ export function HtmlTemplateEditor({
                   objectFit: "cover",
                   objectPosition: "center",
                   opacity: (designSettings.stripLineOpacity ?? 100) / 100,
-                  filter: (() => {
-                    const color = designSettings.stripLineColor || "#d4af37";
-                    // Convert hex to approximate CSS filter for color tinting
-                    // Use brightness(0) to make it black, then invert and sepia to colorize
-                    const r = parseInt(color.slice(1, 3), 16);
-                    const g = parseInt(color.slice(3, 5), 16);
-                    const b = parseInt(color.slice(5, 7), 16);
-                    const brightness = (r + g + b) / (3 * 255);
-                    return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
-                      (Math.atan2(
-                        Math.sqrt(3) * (g - b),
-                        2 * r - g - b
-                      ) * 180) / Math.PI
-                    )}deg) brightness(${0.5 + brightness * 0.8})`;
-                  })(),
-                  mixBlendMode: "lighten",
+                  mixBlendMode: "multiply",
                 }}
               />
             </div>
