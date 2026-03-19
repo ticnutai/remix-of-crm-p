@@ -4412,7 +4412,11 @@ export function HtmlTemplateEditor({
                       }
                       className="text-3xl font-bold bg-transparent border-0 text-white p-0 h-auto focus-visible:ring-0 w-32 text-left"
                     />
-                    <span className="text-base opacity-80">+ מע״מ</span>
+                    {designSettings.vatDisplayMode === "breakdown" ? (
+                      <span className="text-base opacity-80">כולל מע״מ</span>
+                    ) : (
+                      <span className="text-base opacity-80">+ מע״מ</span>
+                    )}
                   </div>
                   {/* VAT breakdown */}
                   {(() => {
@@ -4420,7 +4424,13 @@ export function HtmlTemplateEditor({
                     const vr = editedTemplate.vat_rate || 17;
                     const vatAmt = Math.round(bp * vr / 100);
                     const totalWithVat = bp + vatAmt;
-                    return (
+                    return designSettings.vatDisplayMode === "breakdown" ? (
+                      <div className="text-xs opacity-70 mt-1 space-y-0.5 text-left">
+                        <div>מחיר לפני מע״מ: ₪{bp.toLocaleString()}</div>
+                        <div>מע״מ {vr}%: ₪{vatAmt.toLocaleString()}</div>
+                        <div className="font-semibold text-sm">סה״כ כולל מע״מ: ₪{totalWithVat.toLocaleString()}</div>
+                      </div>
+                    ) : (
                       <div className="text-xs opacity-70 mt-1 space-y-0.5 text-left">
                         <div>מע״מ {vr}%: ₪{vatAmt.toLocaleString()}</div>
                         <div className="font-semibold text-sm">סה״כ כולל מע״מ: ₪{totalWithVat.toLocaleString()}</div>
