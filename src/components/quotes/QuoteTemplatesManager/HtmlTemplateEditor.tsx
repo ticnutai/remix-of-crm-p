@@ -554,7 +554,7 @@ function EmailDialog({
   );
 }
 
-// Field with quick-select options + manual text
+// Field with quick-select options + manual text + input history (48h memory)
 function FieldWithOptions({
   fieldKey,
   label,
@@ -571,6 +571,7 @@ function FieldWithOptions({
   placeholder: string;
 }) {
   const storageKey = `quote_field_options_${fieldKey}`;
+  const historyKey = `quote_field_history_${fieldKey}`;
   const [options, setOptions] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(storageKey) || "[]");
@@ -578,17 +579,104 @@ function FieldWithOptions({
       return [];
     }
   });
+  const [history, setHistory] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(historyKey) || "[]") as Array<{ value: string; timestamp: number }>;
+      const now = Date.now();
+      const hours48 = 48 * 60 * 60 * 1000;
+      // Filter to last 48 hours and extract values
+      const recent = saved.filter(h => now - h.timestamp < hours48);
+      // Clean up expired entries
+      if (recent.length !== saved.length) {
+        try { localStorage.setItem(historyKey, JSON.stringify(recent)); } catch {}
+      }
+      return recent.map(h => h.value);
+    } catch {
+      return [];
+    }
+  });
   const [newOption, setNewOption] = useState("");
   const [showOptions, setShowOptions] = useState(false);
   const [showAddPopover, setShowAddPopover] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const newOptionRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(options));
+    try { localStorage.setItem(storageKey, JSON.stringify(options)); } catch {}
   }, [options, storageKey]);
+
   useEffect(() => {
     if (showAddPopover && newOptionRef.current) newOptionRef.current.focus();
   }, [showAddPopover]);
+
+  // Save value to history when it changes (debounced)
+  const saveToHistoryRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (!value || value.trim().length < 2) return;
+    if (saveToHistoryRef.current) clearTimeout(saveToHistoryRef.current);
+    saveToHistoryRef.current = setTimeout(() => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(historyKey) || "[]") as Array<{ value: string; timestamp: number }>;
+        const now = Date.now();
+        const hours48 = 48 * 60 * 60 * 1000;
+        // Remove expired + existing same value
+        const filtered = saved.filter(h => now - h.timestamp < hours48 && h.value !== value.trim());
+        // Add current value at the top
+        filtered.unshift({ value: value.trim(), timestamp: now });
+        // Keep max 20 entries per field
+        const trimmed = filtered.slice(0, 20);
+        localStorage.setItem(historyKey, JSON.stringify(trimmed));
+        setHistory(trimmed.map(h => h.value));
+      } catch {}
+      
+      // Also save to database for cloud persistence
+      (async () => {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          await (supabase as any).from("input_history").upsert({
+            user_id: user.id,
+            field_key: fieldKey,
+            field_value: value.trim(),
+            used_at: new Date().toISOString(),
+            use_count: 1,
+          }, { onConflict: "user_id,field_key,field_value" });
+        } catch {}
+      })();
+    }, 1500);
+    return () => { if (saveToHistoryRef.current) clearTimeout(saveToHistoryRef.current); };
+  }, [value, fieldKey, historyKey]);
+
+  // Load history from database on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const { data } = await (supabase as any)
+          .from("input_history")
+          .select("field_value")
+          .eq("user_id", user.id)
+          .eq("field_key", fieldKey)
+          .gte("used_at", cutoff)
+          .order("used_at", { ascending: false })
+          .limit(20);
+        if (data && data.length > 0) {
+          const dbValues = data.map((d: any) => d.field_value);
+          setHistory(prev => {
+            const merged = [...new Set([...prev, ...dbValues])];
+            return merged.slice(0, 20);
+          });
+        }
+      } catch {}
+    })();
+  }, [fieldKey]);
 
   const addOption = () => {
     const trimmed = newOption.trim();
@@ -601,17 +689,54 @@ function FieldWithOptions({
   const removeOption = (opt: string) =>
     setOptions((prev) => prev.filter((o) => o !== opt));
 
+  // Handle input change with autocomplete suggestions
+  const handleInputChange = (inputVal: string) => {
+    onChange(inputVal);
+    if (inputVal.trim().length >= 1) {
+      const allSuggestions = [...new Set([...options, ...history])];
+      const filtered = allSuggestions.filter(s => 
+        s.toLowerCase().includes(inputVal.toLowerCase()) && s !== inputVal
+      );
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleFocus = () => {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    // Show recent history on focus if field is empty
+    if (!value || value.trim().length === 0) {
+      const allSuggestions = [...new Set([...history, ...options])];
+      if (allSuggestions.length > 0) {
+        setFilteredSuggestions(allSuggestions.slice(0, 8));
+        setShowSuggestions(true);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    blurTimeoutRef.current = setTimeout(() => setShowSuggestions(false), 200);
+  };
+
   return (
     <div className="space-y-1">
       <Label className="text-sm text-gray-600 flex items-center gap-1">
         <Icon className="h-3 w-3" />
         {label}
+        {history.length > 0 && (
+          <span className="text-[10px] text-gray-400 mr-1" title="זוכר ערכים אחרונים">🕐</span>
+        )}
       </Label>
       <div className="relative flex items-center gap-1">
         <div className="relative flex-1">
           <Input
+            ref={inputRef}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             placeholder={placeholder}
             dir="rtl"
             className="pr-3 pl-8"
@@ -626,6 +751,27 @@ function FieldWithOptions({
                 className={`h-4 w-4 transition-transform ${showOptions ? "rotate-180" : ""}`}
               />
             </button>
+          )}
+
+          {/* Autocomplete suggestions dropdown */}
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div className="absolute z-50 top-full left-0 right-0 mt-1 border rounded-lg bg-white shadow-lg overflow-hidden animate-in slide-in-from-top-1 duration-200 max-h-40 overflow-y-auto">
+              {filteredSuggestions.map((suggestion, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onChange(suggestion);
+                    setShowSuggestions(false);
+                  }}
+                  className="w-full text-right px-3 py-2 text-sm hover:bg-[#B8860B]/10 transition-colors flex items-center justify-between text-gray-700"
+                >
+                  <span>{suggestion}</span>
+                  <span className="text-[10px] text-gray-400">🕐</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -3774,6 +3920,19 @@ export function HtmlTemplateEditor({
                     />
                     <span className="text-base opacity-80">+ מע״מ</span>
                   </div>
+                  {/* VAT breakdown */}
+                  {(() => {
+                    const bp = editedTemplate.base_price || 35000;
+                    const vr = editedTemplate.vat_rate || 17;
+                    const vatAmt = Math.round(bp * vr / 100);
+                    const totalWithVat = bp + vatAmt;
+                    return (
+                      <div className="text-xs opacity-70 mt-1 space-y-0.5 text-left">
+                        <div>מע״מ {vr}%: ₪{vatAmt.toLocaleString()}</div>
+                        <div className="font-semibold text-sm">סה״כ כולל מע״מ: ₪{totalWithVat.toLocaleString()}</div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Button
                   variant="ghost"
