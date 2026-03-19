@@ -2357,7 +2357,18 @@ export function HtmlTemplateEditor({
     const pt = (template as any).pricing_tiers;
     if (pt && Array.isArray(pt) && pt.length > 0) setPricingTiers(pt);
     const pd = (template as any).project_details;
-    if (pd && pd.clientId) setProjectDetails(pd);
+    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.gush || pd.helka || pd.address || pd.projectType)) {
+      setProjectDetails({
+        clientId: pd.clientId || "",
+        clientName: pd.clientName || "",
+        gush: pd.gush || "",
+        helka: pd.helka || "",
+        migrash: pd.migrash || "",
+        taba: pd.taba || "",
+        address: pd.address || "",
+        projectType: pd.projectType || "",
+      });
+    }
   }, [template]);
 
   const handleClientSelect = (client: any) => {
