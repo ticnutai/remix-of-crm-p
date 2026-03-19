@@ -4066,7 +4066,7 @@ export function HtmlTemplateEditor({
                 : undefined,
           }}
         >
-          {/* Custom Strip - Company header with colorizable lines */}
+          {/* Custom Strip - Company header with AI-separated layers */}
           {designSettings.logoPosition === "custom-strip" && (
             <div
               className="relative w-full overflow-hidden"
@@ -4074,19 +4074,72 @@ export function HtmlTemplateEditor({
                 height: designSettings.headerStripHeight || 150,
                 backgroundColor: designSettings.stripBgColor || "#1a1a2e",
               }}
-             >
-              <img
-                src={designSettings.logoUrl || companyHeaderImg}
-                alt="Company Header Strip"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center",
-                  opacity: (designSettings.stripLineOpacity ?? 100) / 100,
-                  mixBlendMode: "multiply",
-                }}
-              />
+            >
+              {designSettings.stripProcessed && designSettings.stripLayers ? (
+                <>
+                  {/* Layer 1: Lines & Buildings */}
+                  {designSettings.stripLayers.lines?.url && (
+                    <img
+                      src={designSettings.stripLayers.lines.url}
+                      alt="Lines layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.lines.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                  {/* Layer 2: Windows */}
+                  {designSettings.stripLayers.windows?.url && (
+                    <img
+                      src={designSettings.stripLayers.windows.url}
+                      alt="Windows layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.windows.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                  {/* Layer 3: Text */}
+                  {designSettings.stripLayers.text?.url && (
+                    <img
+                      src={designSettings.stripLayers.text.url}
+                      alt="Text layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.text.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <img
+                  src={designSettings.logoUrl || companyHeaderImg}
+                  alt="Company Header Strip"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                    opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                    mixBlendMode: "multiply",
+                  }}
+                />
+              )}
             </div>
           )}
           {/* Full Width Logo - Inside header, spanning full width */}
