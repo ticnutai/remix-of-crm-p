@@ -2774,8 +2774,53 @@ export function HtmlTemplateEditor({
 </html>`;
   }, [editedTemplate, designSettings, paymentSteps, projectDetails, textBoxes]);
 
-  const handleExportWord = () => {
-    const html = generateHtmlContent();
+  // Helper: convert image URL to base64 data URL for standalone exports
+  const convertImageToBase64 = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!url || url.startsWith('data:')) {
+        resolve(url || '');
+        return;
+      }
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(url);
+        }
+      };
+      img.onerror = () => resolve(url);
+      img.src = url;
+    });
+  };
+
+  // Generate HTML with embedded base64 images for standalone export
+  const generateExportHtml = async (): Promise<string> => {
+    let html = generateHtmlContent();
+    // Find all image src attributes and convert to base64
+    const logoUrl = designSettings.logoUrl;
+    if (logoUrl && !logoUrl.startsWith('data:')) {
+      try {
+        const base64 = await convertImageToBase64(logoUrl);
+        if (base64.startsWith('data:')) {
+          html = html.replaceAll(logoUrl, base64);
+        }
+      } catch (e) {
+        console.warn('Could not convert logo to base64:', e);
+      }
+    }
+    return html;
+  };
+
+  const handleExportWord = async () => {
+    toast({ title: "מכין קובץ Word...", description: "ממיר תמונות" });
+    const html = await generateExportHtml();
     const blob = new Blob(["\ufeff", html], { type: "application/msword" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2788,8 +2833,8 @@ export function HtmlTemplateEditor({
     toast({ title: "הקובץ הורד", description: "קובץ Word נוצר בהצלחה" });
   };
 
-  const handleExportPdf = () => {
-    const html = generateHtmlContent();
+  const handleExportPdf = async () => {
+    const html = await generateExportHtml();
     const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(html);
@@ -2801,8 +2846,9 @@ export function HtmlTemplateEditor({
     toast({ title: "מייצא PDF", description: "חלון הדפסה נפתח" });
   };
 
-  const handleExportHtml = () => {
-    const html = generateHtmlContent();
+  const handleExportHtml = async () => {
+    toast({ title: "מכין קובץ HTML...", description: "ממיר תמונות" });
+    const html = await generateExportHtml();
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3584,8 +3630,8 @@ export function HtmlTemplateEditor({
   };
 
   // === Signed PDF export ===
-  const handleExportSignedPdf = () => {
-    const html = generateHtmlContent();
+  const handleExportSignedPdf = async () => {
+    const html = await generateExportHtml();
     const signatureHtml = signatureData
       ? `
       <div style="margin-top: 40px; padding: 20px; border-top: 2px solid #eee;">
