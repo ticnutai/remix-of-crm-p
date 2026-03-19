@@ -138,6 +138,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
+import companyHeaderImg from "@/assets/company-header.png";
 import {
   DesignTemplatesSelector,
   DigitalSignature,
