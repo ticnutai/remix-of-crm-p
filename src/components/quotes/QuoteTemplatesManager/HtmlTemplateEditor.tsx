@@ -5195,6 +5195,210 @@ export function HtmlTemplateEditor({
           >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                {/* Company Logo Strip - Prominent Upload Section */}
+                <div className="bg-gradient-to-l from-amber-50 to-orange-50 rounded-xl border-2 border-amber-200 p-6 shadow-sm">
+                  <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                    <Image className="h-6 w-6 text-amber-600" />
+                    לוגו חברה כסטריפ עליון
+                  </h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    העלה את הלוגו/סטריפ של החברה שלך - הוא יתפרס על כל רוחב ההצעה בחלק העליון עם שליטה מלאה בצבעים
+                  </p>
+
+                  {/* Quick action buttons */}
+                  <div className="flex gap-3 mb-4 flex-wrap">
+                    <Button
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={() => logoInputRef.current?.click()}
+                    >
+                      <Upload className="h-4 w-4 ml-2" />
+                      העלה לוגו חברה
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Load the built-in company header
+                        const img = new window.Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => {
+                          const canvas = document.createElement("canvas");
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          const ctx = canvas.getContext("2d");
+                          if (ctx) {
+                            ctx.drawImage(img, 0, 0);
+                            const dataUrl = canvas.toDataURL("image/png");
+                            setDesignSettings((prev) => ({
+                              ...prev,
+                              logoUrl: dataUrl,
+                              logoPosition: "custom-strip" as const,
+                              stripBgColor: prev.stripBgColor || "#1a1a2e",
+                              stripLineColor: prev.stripLineColor || "#d4af37",
+                            }));
+                          }
+                        };
+                        img.src = companyHeaderImg;
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4 ml-2" />
+                      השתמש בלוגו ברירת מחדל
+                    </Button>
+                    {designSettings.logoPosition === "custom-strip" && designSettings.logoUrl && (
+                      <Button
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() =>
+                          setDesignSettings((prev) => ({
+                            ...prev,
+                            logoPosition: "inside-header" as const,
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4 ml-2" />
+                        חזור לסטריפ רגיל
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Preview of current strip */}
+                  {designSettings.logoPosition === "custom-strip" && designSettings.logoUrl && (
+                    <div className="space-y-4">
+                      <div
+                        className="rounded-lg overflow-hidden border-2 border-amber-300"
+                        style={{
+                          height: `${Math.min(designSettings.headerStripHeight || 150, 200)}px`,
+                          backgroundColor: designSettings.stripBgColor || "#1a1a2e",
+                          position: "relative",
+                        }}
+                      >
+                        <img
+                          src={designSettings.logoUrl}
+                          alt="Company Strip Preview"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "center",
+                            opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                            filter: (() => {
+                              const color = designSettings.stripLineColor || "#d4af37";
+                              const r = parseInt(color.slice(1, 3), 16);
+                              const g = parseInt(color.slice(3, 5), 16);
+                              const b = parseInt(color.slice(5, 7), 16);
+                              const brightness = (r + g + b) / (3 * 255);
+                              return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
+                                (Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI
+                              )}deg) brightness(${(0.5 + brightness * 0.8).toFixed(2)})`;
+                            })(),
+                            mixBlendMode: "lighten",
+                          }}
+                        />
+                      </div>
+
+                      {/* Color controls inline */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium">צבע רקע</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="color"
+                              value={designSettings.stripBgColor || "#1a1a2e"}
+                              onChange={(e) =>
+                                setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                              }
+                              className="w-10 h-8 rounded border cursor-pointer"
+                            />
+                            <Input
+                              value={designSettings.stripBgColor || "#1a1a2e"}
+                              onChange={(e) =>
+                                setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                              }
+                              className="flex-1 h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium">צבע קווים</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="color"
+                              value={designSettings.stripLineColor || "#d4af37"}
+                              onChange={(e) =>
+                                setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
+                              }
+                              className="w-10 h-8 rounded border cursor-pointer"
+                            />
+                            <Input
+                              value={designSettings.stripLineColor || "#d4af37"}
+                              onChange={(e) =>
+                                setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
+                              }
+                              className="flex-1 h-8 text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm">שקיפות: {designSettings.stripLineOpacity ?? 100}%</Label>
+                          <Slider
+                            value={[designSettings.stripLineOpacity ?? 100]}
+                            onValueChange={([v]) =>
+                              setDesignSettings({ ...designSettings, stripLineOpacity: v })
+                            }
+                            min={10}
+                            max={100}
+                            step={5}
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">גובה: {designSettings.headerStripHeight || 150}px</Label>
+                          <Slider
+                            value={[designSettings.headerStripHeight || 150]}
+                            onValueChange={([v]) =>
+                              setDesignSettings({ ...designSettings, headerStripHeight: v })
+                            }
+                            min={80}
+                            max={300}
+                            step={10}
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Color presets */}
+                      <div className="flex gap-2 flex-wrap">
+                        {[
+                          { bg: "#1a1a2e", line: "#d4af37", label: "כחול-זהב" },
+                          { bg: "#ffffff", line: "#B8860B", label: "לבן-זהב" },
+                          { bg: "#0a0a0a", line: "#ffffff", label: "שחור-לבן" },
+                          { bg: "#1e3a5f", line: "#c0c0c0", label: "כחול-כסף" },
+                          { bg: "#2d1b0e", line: "#d4af37", label: "חום-זהב" },
+                          { bg: "#B8860B", line: "#ffffff", label: "זהב-לבן" },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-accent transition-colors"
+                            onClick={() =>
+                              setDesignSettings({
+                                ...designSettings,
+                                stripBgColor: preset.bg,
+                                stripLineColor: preset.line,
+                              })
+                            }
+                          >
+                            <span className="w-3 h-3 rounded-full border" style={{ background: preset.bg }} />
+                            <span className="w-3 h-3 rounded-full border" style={{ background: preset.line }} />
+                            <span>{preset.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Logo Crop / Adjust Section */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
