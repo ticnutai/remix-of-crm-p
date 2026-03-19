@@ -2691,19 +2691,12 @@ export function HtmlTemplateEditor({
       designSettings.logoPosition === "custom-strip"
         ? (() => {
             const stripBg = designSettings.stripBgColor || "#1a1a2e";
-            const stripLine = designSettings.stripLineColor || "#d4af37";
             const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
             const stripHeight = designSettings.headerStripHeight || 150;
             const logoSrc = designSettings.logoUrl || "";
-            const r = parseInt(stripLine.slice(1, 3), 16);
-            const g = parseInt(stripLine.slice(3, 5), 16);
-            const b = parseInt(stripLine.slice(5, 7), 16);
-            const brightness = (r + g + b) / (3 * 255);
-            const hueRotate = Math.round((Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI);
-            const filterVal = `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${hueRotate}deg) brightness(${(0.5 + brightness * 0.8).toFixed(2)})`;
             return `
     <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
-      <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; filter: ${filterVal}; mix-blend-mode: lighten;">
+      <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">
     </div>`;
           })()
         : designSettings.showHeaderStrip !== false
@@ -3883,7 +3876,7 @@ export function HtmlTemplateEditor({
                 height: designSettings.headerStripHeight || 150,
                 backgroundColor: designSettings.stripBgColor || "#1a1a2e",
               }}
-            >
+             >
               <img
                 src={designSettings.logoUrl || companyHeaderImg}
                 alt="Company Header Strip"
@@ -3893,22 +3886,7 @@ export function HtmlTemplateEditor({
                   objectFit: "cover",
                   objectPosition: "center",
                   opacity: (designSettings.stripLineOpacity ?? 100) / 100,
-                  filter: (() => {
-                    const color = designSettings.stripLineColor || "#d4af37";
-                    // Convert hex to approximate CSS filter for color tinting
-                    // Use brightness(0) to make it black, then invert and sepia to colorize
-                    const r = parseInt(color.slice(1, 3), 16);
-                    const g = parseInt(color.slice(3, 5), 16);
-                    const b = parseInt(color.slice(5, 7), 16);
-                    const brightness = (r + g + b) / (3 * 255);
-                    return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
-                      (Math.atan2(
-                        Math.sqrt(3) * (g - b),
-                        2 * r - g - b
-                      ) * 180) / Math.PI
-                    )}deg) brightness(${0.5 + brightness * 0.8})`;
-                  })(),
-                  mixBlendMode: "lighten",
+                  mixBlendMode: "multiply",
                 }}
               />
             </div>
@@ -4675,24 +4653,8 @@ export function HtmlTemplateEditor({
                             };
                             // Auto-load company header for custom-strip mode
                             if (newPosition === "custom-strip" && !designSettings.logoUrl) {
-                              // Convert imported image to data URL
-                              const img = new window.Image();
-                              img.crossOrigin = "anonymous";
-                              img.onload = () => {
-                                const canvas = document.createElement("canvas");
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                const ctx = canvas.getContext("2d");
-                                if (ctx) {
-                                  ctx.drawImage(img, 0, 0);
-                                  const dataUrl = canvas.toDataURL("image/png");
-                                  setDesignSettings((prev) => ({
-                                    ...prev,
-                                    logoUrl: dataUrl,
-                                  }));
-                                }
-                              };
-                              img.src = companyHeaderImg;
+                              updates.logoUrl = companyHeaderImg;
+                              updates.stripBgColor = designSettings.stripBgColor || "#B8860B";
                             }
                             setDesignSettings(updates);
                           }}
@@ -5217,27 +5179,13 @@ export function HtmlTemplateEditor({
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Load the built-in company header
-                        const img = new window.Image();
-                        img.crossOrigin = "anonymous";
-                        img.onload = () => {
-                          const canvas = document.createElement("canvas");
-                          canvas.width = img.width;
-                          canvas.height = img.height;
-                          const ctx = canvas.getContext("2d");
-                          if (ctx) {
-                            ctx.drawImage(img, 0, 0);
-                            const dataUrl = canvas.toDataURL("image/png");
-                            setDesignSettings((prev) => ({
-                              ...prev,
-                              logoUrl: dataUrl,
-                              logoPosition: "custom-strip" as const,
-                              stripBgColor: prev.stripBgColor || "#1a1a2e",
-                              stripLineColor: prev.stripLineColor || "#d4af37",
-                            }));
-                          }
-                        };
-                        img.src = companyHeaderImg;
+                        setDesignSettings((prev) => ({
+                          ...prev,
+                          logoUrl: companyHeaderImg,
+                          logoPosition: "custom-strip" as const,
+                          stripBgColor: prev.stripBgColor || "#B8860B",
+                          stripLineColor: prev.stripLineColor || "#d4af37",
+                        }));
                       }}
                     >
                       <Sparkles className="h-4 w-4 ml-2" />
@@ -5280,17 +5228,7 @@ export function HtmlTemplateEditor({
                             objectFit: "cover",
                             objectPosition: "center",
                             opacity: (designSettings.stripLineOpacity ?? 100) / 100,
-                            filter: (() => {
-                              const color = designSettings.stripLineColor || "#d4af37";
-                              const r = parseInt(color.slice(1, 3), 16);
-                              const g = parseInt(color.slice(3, 5), 16);
-                              const b = parseInt(color.slice(5, 7), 16);
-                              const brightness = (r + g + b) / (3 * 255);
-                              return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
-                                (Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI
-                              )}deg) brightness(${(0.5 + brightness * 0.8).toFixed(2)})`;
-                            })(),
-                            mixBlendMode: "lighten",
+                            mixBlendMode: "multiply",
                           }}
                         />
                       </div>
