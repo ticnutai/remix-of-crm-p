@@ -3198,14 +3198,46 @@ export function HtmlTemplateEditor({
   const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   const [processingLayer, setProcessingLayer] = useState<string | null>(null);
 
+  // Convert any image src (relative path, URL, or base64) to base64 data URL
+  const convertToBase64 = useCallback(async (src: string): Promise<string | null> => {
+    if (src.startsWith("data:")) return src;
+    try {
+      // For any URL or path, load via canvas
+      return await new Promise<string>((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return reject(new Error("No canvas context"));
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL("image/png"));
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = src;
+      });
+    } catch {
+      return null;
+    }
+  }, []);
+
   const processLogoLayer = useCallback(async (layer: string, color: string) => {
     const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
     if (!logoSrc) return;
     
     setProcessingLayer(layer);
     try {
+      // Always convert to base64 before sending to edge function
+      const base64Data = await convertToBase64(logoSrc);
+      if (!base64Data) {
+        toast({ title: "❌ שגיאה", description: "לא ניתן לטעון את תמונת הלוגו", variant: "destructive" });
+        return null;
+      }
+
       const { data, error } = await supabase.functions.invoke("process-logo", {
-        body: { image_base64: logoSrc, layer, color },
+        body: { image_base64: base64Data, layer, color },
       });
       
       if (error) {
@@ -3225,7 +3257,7 @@ export function HtmlTemplateEditor({
     } finally {
       setProcessingLayer(null);
     }
-  }, [designSettings.logoUrl, designSettings.originalLogoUrl, toast]);
+  }, [designSettings.logoUrl, designSettings.originalLogoUrl, toast, convertToBase64]);
 
   // Upload base64 image to storage and return public URL
   const uploadLayerToStorage = useCallback(async (base64Data: string, layerName: string): Promise<string | null> => {
