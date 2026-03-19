@@ -38,10 +38,41 @@ serve(async (req) => {
 
     const prompt = layerPrompts[layer] || layerPrompts.all;
 
-    // Ensure the image URL has the proper data URI prefix
-    const imageUrl = image_base64.startsWith("data:") 
-      ? image_base64 
-      : `data:image/png;base64,${image_base64}`;
+    // Handle both HTTP URLs and base64 data
+    let imageUrl: string;
+    if (image_base64.startsWith("http://") || image_base64.startsWith("https://")) {
+      // For HTTP URLs, fetch the image and convert to base64
+      try {
+        const imgResponse = await fetch(image_base64);
+        if (!imgResponse.ok) {
+          return new Response(JSON.stringify({ error: "Failed to fetch logo image from URL" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const imgBuffer = await imgResponse.arrayBuffer();
+        const bytes = new Uint8Array(imgBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        const contentType = imgResponse.headers.get("content-type") || "image/png";
+        imageUrl = `data:${contentType};base64,${base64}`;
+      } catch (fetchErr) {
+        console.error("Failed to fetch image URL:", fetchErr);
+        return new Response(JSON.stringify({ error: "Could not download logo image" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (image_base64.startsWith("data:")) {
+      imageUrl = image_base64;
+    } else {
+      imageUrl = `data:image/png;base64,${image_base64}`;
+    }
+
+    console.log("Sending to AI gateway, layer:", layer, "color:", color, "imageUrl length:", imageUrl.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
