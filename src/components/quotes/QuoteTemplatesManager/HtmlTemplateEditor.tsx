@@ -5260,6 +5260,21 @@ export function HtmlTemplateEditor({
                         חזור לסטריפ רגיל
                       </Button>
                     )}
+                    {designSettings.logoUrl && (
+                      <Button
+                        variant="outline"
+                        className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                        onClick={handleRemoveBackground}
+                        disabled={isRemovingBg}
+                      >
+                        {isRemovingBg ? (
+                          <div className="h-4 w-4 ml-2 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 ml-2" />
+                        )}
+                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע + זהה קווים"}
+                      </Button>
+                    )}
                   </div>
 
                   {/* Preview of current strip */}
