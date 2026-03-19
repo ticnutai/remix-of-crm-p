@@ -1952,7 +1952,18 @@ export function HtmlTemplateEditor({
   });
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
     const saved = (template as any).project_details;
-    if (saved && saved.clientId) return saved;
+    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.gush || saved.helka || saved.address || saved.projectType)) {
+      return {
+        clientId: saved.clientId || "",
+        clientName: saved.clientName || "",
+        gush: saved.gush || "",
+        helka: saved.helka || "",
+        migrash: saved.migrash || "",
+        taba: saved.taba || "",
+        address: saved.address || "",
+        projectType: saved.projectType || "",
+      };
+    }
     return {
       clientId: "",
       clientName: "",
