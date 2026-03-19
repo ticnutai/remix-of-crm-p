@@ -2688,7 +2688,25 @@ export function HtmlTemplateEditor({
         : ""
     }
     ${
-      designSettings.showHeaderStrip !== false
+      designSettings.logoPosition === "custom-strip"
+        ? (() => {
+            const stripBg = designSettings.stripBgColor || "#1a1a2e";
+            const stripLine = designSettings.stripLineColor || "#d4af37";
+            const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
+            const stripHeight = designSettings.headerStripHeight || 150;
+            const logoSrc = designSettings.logoUrl || "";
+            const r = parseInt(stripLine.slice(1, 3), 16);
+            const g = parseInt(stripLine.slice(3, 5), 16);
+            const b = parseInt(stripLine.slice(5, 7), 16);
+            const brightness = (r + g + b) / (3 * 255);
+            const hueRotate = Math.round((Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI);
+            const filterVal = `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${hueRotate}deg) brightness(${(0.5 + brightness * 0.8).toFixed(2)})`;
+            return `
+    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+      <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; filter: ${filterVal}; mix-blend-mode: lighten;">
+    </div>`;
+          })()
+        : designSettings.showHeaderStrip !== false
         ? `
     <div class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
