@@ -3086,6 +3086,60 @@ export function HtmlTemplateEditor({
     }
   };
 
+  // Background removal utility - removes white/light background, keeps dark lines
+  const removeLogoBackground = useCallback((logoSrc: string, threshold: number = 220) => {
+    return new Promise<string>((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(logoSrc); return; }
+        
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // If pixel is light/white, make it transparent
+          if (r > threshold && g > threshold && b > threshold) {
+            data[i + 3] = 0; // Set alpha to 0
+          } else {
+            // For darker pixels, calculate darkness as opacity
+            const darkness = 1 - (r + g + b) / (3 * 255);
+            data[i] = 0;     // Make pure black
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+            data[i + 3] = Math.round(darkness * 255); // Opacity based on darkness
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(logoSrc);
+      img.src = logoSrc;
+    });
+  }, []);
+
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+
+  const handleRemoveBackground = useCallback(async () => {
+    if (!designSettings.logoUrl) return;
+    setIsRemovingBg(true);
+    try {
+      const cleaned = await removeLogoBackground(designSettings.logoUrl);
+      setDesignSettings((prev) => ({ ...prev, logoUrl: cleaned }));
+      toast({ title: "✅ רקע הוסר בהצלחה", description: "הקווים זוהו והרקע הלבן הוסר" });
+    } catch (err) {
+      toast({ title: "❌ שגיאה", description: "לא ניתן להסיר רקע", variant: "destructive" });
+    }
+    setIsRemovingBg(false);
+  }, [designSettings.logoUrl, removeLogoBackground, toast]);
+
   const totalPaymentPercentage = paymentSteps.reduce(
     (sum, s) => sum + s.percentage,
     0,
@@ -5206,6 +5260,21 @@ export function HtmlTemplateEditor({
                         חזור לסטריפ רגיל
                       </Button>
                     )}
+                    {designSettings.logoUrl && (
+                      <Button
+                        variant="outline"
+                        className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                        onClick={handleRemoveBackground}
+                        disabled={isRemovingBg}
+                      >
+                        {isRemovingBg ? (
+                          <div className="h-4 w-4 ml-2 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 ml-2" />
+                        )}
+                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע + זהה קווים"}
+                      </Button>
+                    )}
                   </div>
 
                   {/* Preview of current strip */}
@@ -7088,19 +7157,34 @@ export function HtmlTemplateEditor({
                     />
                     <select
                       value={designSettings.logoPosition || "inside-header"}
-                      onChange={(e) =>
-                        setDesignSettings({
-                          ...designSettings,
-                          logoPosition: e.target.value as any,
-                        })
-                      }
+                      onChange={(e) => {
+                        const pos = e.target.value as any;
+                        const updates: any = { ...designSettings, logoPosition: pos };
+                        if (pos === "custom-strip" && !designSettings.logoUrl) {
+                          updates.logoUrl = companyHeaderImg;
+                          updates.stripBgColor = designSettings.stripBgColor || "#B8860B";
+                        }
+                        setDesignSettings(updates);
+                      }}
                       className="h-7 text-xs border rounded px-1"
                     >
                       <option value="inside-header">לוגו בסטריפ</option>
                       <option value="above-header">מעל הסטריפ</option>
                       <option value="centered-above">ממורכז מעל</option>
                       <option value="full-width">רוחב מלא</option>
+                      <option value="custom-strip">סטריפ לוגו חברה</option>
                     </select>
+                    {designSettings.logoPosition === "custom-strip" && (
+                      <input
+                        type="color"
+                        value={designSettings.stripBgColor || "#B8860B"}
+                        onChange={(e) =>
+                          setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                        }
+                        className="h-7 w-7 rounded cursor-pointer border-0"
+                        title="צבע רקע סטריפ"
+                      />
+                    )}
                   </div>
                 )}
                 {/* Version save button */}
@@ -8167,7 +8251,88 @@ export function HtmlTemplateEditor({
                       </Button>
                     </div>
 
-                    {/* Quick Project Details - always first */}
+                    {/* Logo Strip Quick Control */}
+                    <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 shadow-sm">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+                        <Image className="h-4 w-4 text-amber-600" />
+                        סטריפ לוגו חברה
+                      </h3>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <Button
+                          size="sm"
+                          variant={designSettings.logoPosition === "custom-strip" ? "default" : "outline"}
+                          className={`h-8 text-xs ${designSettings.logoPosition === "custom-strip" ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+                          onClick={() => {
+                            if (designSettings.logoPosition === "custom-strip") {
+                              setDesignSettings((prev) => ({ ...prev, logoPosition: "inside-header" as const }));
+                            } else {
+                              setDesignSettings((prev) => ({
+                                ...prev,
+                                logoPosition: "custom-strip" as const,
+                                logoUrl: prev.logoUrl || companyHeaderImg,
+                                stripBgColor: prev.stripBgColor || "#B8860B",
+                              }));
+                            }
+                          }}
+                        >
+                          {designSettings.logoPosition === "custom-strip" ? "✓ מופעל" : "הפעל סטריפ"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          <Upload className="h-3 w-3 ml-1" />
+                          העלה לוגו
+                        </Button>
+                        {designSettings.logoPosition === "custom-strip" && (
+                          <>
+                            <input
+                              type="color"
+                              value={designSettings.stripBgColor || "#B8860B"}
+                              onChange={(e) => setDesignSettings({ ...designSettings, stripBgColor: e.target.value })}
+                              className="h-7 w-7 rounded cursor-pointer border"
+                              title="צבע רקע"
+                            />
+                            <span className="text-[10px] text-gray-500">רקע</span>
+                            <input
+                              type="range"
+                              value={designSettings.headerStripHeight || 150}
+                              onChange={(e) => setDesignSettings({ ...designSettings, headerStripHeight: Number(e.target.value) })}
+                              min={80}
+                              max={300}
+                              step={10}
+                              className="w-16 h-2"
+                              title={`גובה: ${designSettings.headerStripHeight || 150}px`}
+                            />
+                            <span className="text-[10px] text-gray-500">{designSettings.headerStripHeight || 150}px</span>
+                          </>
+                        )}
+                      </div>
+                      {designSettings.logoPosition === "custom-strip" && designSettings.logoUrl && (
+                        <div
+                          className="mt-3 rounded-lg overflow-hidden border border-amber-300"
+                          style={{
+                            height: `${Math.min((designSettings.headerStripHeight || 150) * 0.5, 80)}px`,
+                            backgroundColor: designSettings.stripBgColor || "#B8860B",
+                          }}
+                        >
+                          <img
+                            src={designSettings.logoUrl}
+                            alt="Strip preview"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              mixBlendMode: "multiply",
+                              opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <div className="bg-white rounded-xl border p-4 shadow-sm">
                       <h3 className="font-semibold mb-3 flex items-center gap-2">
                         <User className="h-4 w-4 text-[#B8860B]" />
