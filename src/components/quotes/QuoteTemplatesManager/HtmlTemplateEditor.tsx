@@ -5195,27 +5195,13 @@ export function HtmlTemplateEditor({
                     <Button
                       variant="outline"
                       onClick={() => {
-                        // Load the built-in company header
-                        const img = new window.Image();
-                        img.crossOrigin = "anonymous";
-                        img.onload = () => {
-                          const canvas = document.createElement("canvas");
-                          canvas.width = img.width;
-                          canvas.height = img.height;
-                          const ctx = canvas.getContext("2d");
-                          if (ctx) {
-                            ctx.drawImage(img, 0, 0);
-                            const dataUrl = canvas.toDataURL("image/png");
-                            setDesignSettings((prev) => ({
-                              ...prev,
-                              logoUrl: dataUrl,
-                              logoPosition: "custom-strip" as const,
-                              stripBgColor: prev.stripBgColor || "#1a1a2e",
-                              stripLineColor: prev.stripLineColor || "#d4af37",
-                            }));
-                          }
-                        };
-                        img.src = companyHeaderImg;
+                        setDesignSettings((prev) => ({
+                          ...prev,
+                          logoUrl: companyHeaderImg,
+                          logoPosition: "custom-strip" as const,
+                          stripBgColor: prev.stripBgColor || "#B8860B",
+                          stripLineColor: prev.stripLineColor || "#d4af37",
+                        }));
                       }}
                     >
                       <Sparkles className="h-4 w-4 ml-2" />
