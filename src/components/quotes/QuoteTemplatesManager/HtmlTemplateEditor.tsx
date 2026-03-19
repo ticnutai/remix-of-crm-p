@@ -3926,8 +3926,8 @@ export function HtmlTemplateEditor({
                 </div>
               </div>
             )}
-          {/* Regular header content - only show when not full-width logo */}
-          {designSettings.logoPosition !== "full-width" && (
+          {/* Regular header content - only show when not full-width or custom-strip logo */}
+          {designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip" && (
             <div className="flex justify-between items-start max-w-6xl mx-auto">
               <div className="flex items-center gap-4">
                 {designSettings.showLogo &&
