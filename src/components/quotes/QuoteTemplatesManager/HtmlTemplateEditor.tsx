@@ -3581,6 +3581,111 @@ export function HtmlTemplateEditor({
     }
   };
 
+  // Create Client File from quote data
+  const handleCreateClientFile = async (linkExisting: string | null) => {
+    setIsCreatingClient(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("לא מחובר");
+
+      let clientId = linkExisting;
+
+      if (!clientId) {
+        // Create new client with all project details
+        if (!projectDetails.clientName?.trim()) {
+          toast({ title: "חסר שם לקוח", description: "הזן שם לקוח בפרטי הפרויקט", variant: "destructive" });
+          setIsCreatingClient(false);
+          return;
+        }
+
+        const { data: newClient, error: clientError } = await (supabase as any)
+          .from("clients")
+          .insert({
+            name: projectDetails.clientName,
+            gush: projectDetails.gush || null,
+            helka: projectDetails.helka || null,
+            migrash: projectDetails.migrash || null,
+            taba: projectDetails.taba || null,
+            address: projectDetails.address || null,
+            phone: (projectDetails as any).phone || null,
+            email: (projectDetails as any).email || null,
+            user_id: user.id,
+            created_by: user.id,
+            source: "הצעת מחיר",
+            status: "active",
+            notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
+          })
+          .select("id")
+          .single();
+
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      } else {
+        // Update existing client with project details
+        const updateData: any = {};
+        if (projectDetails.gush) updateData.gush = projectDetails.gush;
+        if (projectDetails.helka) updateData.helka = projectDetails.helka;
+        if (projectDetails.migrash) updateData.migrash = projectDetails.migrash;
+        if (projectDetails.taba) updateData.taba = projectDetails.taba;
+        if (projectDetails.address) updateData.address = projectDetails.address;
+        
+        if (Object.keys(updateData).length > 0) {
+          await (supabase as any).from("clients").update(updateData).eq("id", clientId);
+        }
+      }
+
+      // Create contract from the quote
+      const basePrice = editedTemplate.base_price || 0;
+      const vatRate = editedTemplate.vat_rate || 17;
+      const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
+
+      // Generate contract number
+      const year = new Date().getFullYear();
+      const { count } = await (supabase as any)
+        .from("contracts")
+        .select("id", { count: "exact", head: true });
+      const contractNumber = `C${year}-${String((count || 0) + 1).padStart(4, "0")}`;
+
+      const { error: contractError } = await (supabase as any)
+        .from("contracts")
+        .insert({
+          contract_number: contractNumber,
+          client_id: clientId,
+          title: editedTemplate.name || "חוזה מהצעת מחיר",
+          description: editedTemplate.description || "",
+          contract_type: projectDetails.projectType || "general",
+          contract_value: totalWithVat,
+          start_date: new Date().toISOString().split("T")[0],
+          payment_terms: editedTemplate.terms || "",
+          terms_and_conditions: editedTemplate.notes || "",
+          notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nמחיר בסיס: ₪${basePrice.toLocaleString()}\nמע״מ ${vatRate}%: ₪${Math.round(basePrice * vatRate / 100).toLocaleString()}\nסה״כ: ₪${totalWithVat.toLocaleString()}`,
+          created_by: user.id,
+          status: "active",
+        });
+
+      if (contractError) throw contractError;
+
+      setShowCreateClientDialog(false);
+      toast({
+        title: "✅ תיק לקוח נוצר בהצלחה!",
+        description: `${projectDetails.clientName || "לקוח"} - כולל חוזה וכל הפרטים`,
+      });
+
+      // Open client profile in new tab
+      window.open(`/clients/${clientId}`, "_blank");
+    } catch (err: any) {
+      console.error("Create client file error:", err);
+      toast({
+        title: "שגיאה ביצירת תיק לקוח",
+        description: err?.message || "נסה שוב",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingClient(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent
