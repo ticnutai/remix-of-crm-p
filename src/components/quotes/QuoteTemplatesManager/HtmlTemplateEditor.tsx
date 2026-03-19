@@ -3199,6 +3199,40 @@ export function HtmlTemplateEditor({
     }
   }, [designSettings.logoUrl, designSettings.originalLogoUrl, toast]);
 
+  // Upload base64 image to storage and return public URL
+  const uploadLayerToStorage = useCallback(async (base64Data: string, layerName: string): Promise<string | null> => {
+    try {
+      // Convert base64 to blob
+      const base64Clean = base64Data.replace(/^data:image\/\w+;base64,/, "");
+      const byteChars = atob(base64Clean);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteArray[i] = byteChars.charCodeAt(i);
+      }
+      const blob = new Blob([byteArray], { type: "image/png" });
+      
+      const fileName = `${editedTemplate.id || "draft"}_${layerName}_${Date.now()}.png`;
+      
+      const { data, error } = await supabase.storage
+        .from("logo-layers")
+        .upload(fileName, blob, { contentType: "image/png", upsert: true });
+      
+      if (error) {
+        console.error("Storage upload error:", error);
+        return base64Data; // Fallback to base64
+      }
+      
+      const { data: urlData } = supabase.storage
+        .from("logo-layers")
+        .getPublicUrl(data.path);
+      
+      return urlData.publicUrl;
+    } catch (err) {
+      console.error("Upload error:", err);
+      return base64Data; // Fallback to base64
+    }
+  }, [editedTemplate.id]);
+
   const handleProcessAllLayers = useCallback(async () => {
     const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
     if (!logoSrc) {
@@ -3220,20 +3254,27 @@ export function HtmlTemplateEditor({
     const windowsImg = await processLogoLayer("windows", defaultColors.windows);
     const textImg = await processLogoLayer("text", defaultColors.text);
     
+    // Upload to storage for persistence
+    const [linesUrl, windowsUrl, textUrl] = await Promise.all([
+      linesImg ? uploadLayerToStorage(linesImg, "lines") : Promise.resolve(""),
+      windowsImg ? uploadLayerToStorage(windowsImg, "windows") : Promise.resolve(""),
+      textImg ? uploadLayerToStorage(textImg, "text") : Promise.resolve(""),
+    ]);
+    
     setDesignSettings(prev => ({
       ...prev,
       originalLogoUrl: prev.originalLogoUrl || prev.logoUrl,
       stripProcessed: true,
       stripLayers: {
-        lines: { url: linesImg || "", color: defaultColors.lines, opacity: 100 },
-        windows: { url: windowsImg || "", color: defaultColors.windows, opacity: 100 },
-        text: { url: textImg || "", color: defaultColors.text, opacity: 100 },
+        lines: { url: linesUrl || "", color: defaultColors.lines, opacity: 100 },
+        windows: { url: windowsUrl || "", color: defaultColors.windows, opacity: 100 },
+        text: { url: textUrl || "", color: defaultColors.text, opacity: 100 },
       },
     }));
     
     setIsProcessingLogo(false);
-    toast({ title: "✅ עיבוד הושלם!", description: "3 שכבות זוהו - ניתן לשנות צבע לכל שכבה בנפרד" });
-  }, [designSettings, processLogoLayer, toast]);
+    toast({ title: "✅ עיבוד הושלם!", description: "3 שכבות זוהו ונשמרו - לחץ 'שמור' לשמירה בענן" });
+  }, [designSettings, processLogoLayer, uploadLayerToStorage, toast]);
 
   const handleRecolorLayer = useCallback(async (layer: "lines" | "windows" | "text", newColor: string) => {
     // Update color immediately in state
@@ -3248,15 +3289,17 @@ export function HtmlTemplateEditor({
     // Then process with AI
     const newImage = await processLogoLayer(layer, newColor);
     if (newImage) {
+      // Upload to storage
+      const storedUrl = await uploadLayerToStorage(newImage, layer);
       setDesignSettings(prev => ({
         ...prev,
         stripLayers: {
           ...prev.stripLayers,
-          [layer]: { ...(prev.stripLayers?.[layer] || { opacity: 100, color: newColor }), url: newImage, color: newColor },
+          [layer]: { ...(prev.stripLayers?.[layer] || { opacity: 100, color: newColor }), url: storedUrl || newImage, color: newColor },
         },
       }));
     }
-  }, [processLogoLayer]);
+  }, [processLogoLayer, uploadLayerToStorage]);
 
   const [isRemovingBg, setIsRemovingBg] = useState(false);
 
