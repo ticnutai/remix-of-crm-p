@@ -2801,12 +2801,29 @@ export function HtmlTemplateEditor({
       <table class="payments">
         <thead><tr><th>שלב</th><th>אחוז</th><th>סכום</th></tr></thead>
         <tbody>${payments}</tbody>
-        <tfoot><tr style="font-weight: bold; background: #f0f0f0;"><td style="padding: 12px;">סה"כ</td><td style="padding: 12px; text-align: center;">100%</td><td style="padding: 12px; text-align: left;">₪${(editedTemplate.base_price || 35000).toLocaleString()}</td></tr></tfoot>
+        <tfoot>
+          <tr style="font-weight: bold; background: #f0f0f0;">
+            <td style="padding: 12px;">סה"כ</td>
+            <td style="padding: 12px; text-align: center;">100%</td>
+            <td style="padding: 12px; text-align: left;">₪${(editedTemplate.base_price || 35000).toLocaleString()}</td>
+          </tr>
+          ${isVatBreakdown ? `
+          <tr style="background: #f9f9f9;">
+            <td style="padding: 12px; color: #666;">מע״מ ${vatRate}%</td>
+            <td style="padding: 12px;"></td>
+            <td style="padding: 12px; text-align: left; color: #666;">₪${Math.round((editedTemplate.base_price || 35000) * vatRate / 100).toLocaleString()}</td>
+          </tr>
+          <tr style="font-weight: bold; background: #e8e8e8; font-size: 1.1em;">
+            <td style="padding: 12px;">סה"כ כולל מע״מ</td>
+            <td style="padding: 12px;"></td>
+            <td style="padding: 12px; text-align: left;">₪${Math.round((editedTemplate.base_price || 35000) * (1 + vatRate / 100)).toLocaleString()}</td>
+          </tr>` : ""}
+        </tfoot>
       </table>
       
       ${renderTextBoxes("after-payments")}
       
-      <p style="margin-top: 30px; color: #666; font-size: 14px;">* המחירים אינם כוללים מע"מ. תוקף ההצעה: ${editedTemplate.validity_days || 30} יום.</p>
+      <p style="margin-top: 30px; color: #666; font-size: 14px;">* ${isVatBreakdown ? `המחירים כוללים מע״מ ${vatRate}%.` : "המחירים אינם כוללים מע\"מ."} תוקף ההצעה: ${editedTemplate.validity_days || 30} יום.</p>
       
       ${renderTextBoxes("footer")}
     </div>
