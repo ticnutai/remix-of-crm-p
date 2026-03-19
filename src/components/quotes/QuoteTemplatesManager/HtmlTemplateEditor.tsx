@@ -138,6 +138,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
+import companyHeaderImg from "@/assets/company-header.png";
 import {
   DesignTemplatesSelector,
   DigitalSignature,
@@ -190,7 +191,11 @@ interface DesignSettings {
     | "inside-header"
     | "above-header"
     | "centered-above"
-    | "full-width";
+    | "full-width"
+    | "custom-strip";
+  stripBgColor?: string;
+  stripLineColor?: string;
+  stripLineOpacity?: number;
   showHeaderStrip?: boolean;
   headerStripHeight?: number;
   stripWidth?: number;
@@ -2683,7 +2688,25 @@ export function HtmlTemplateEditor({
         : ""
     }
     ${
-      designSettings.showHeaderStrip !== false
+      designSettings.logoPosition === "custom-strip"
+        ? (() => {
+            const stripBg = designSettings.stripBgColor || "#1a1a2e";
+            const stripLine = designSettings.stripLineColor || "#d4af37";
+            const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
+            const stripHeight = designSettings.headerStripHeight || 150;
+            const logoSrc = designSettings.logoUrl || "";
+            const r = parseInt(stripLine.slice(1, 3), 16);
+            const g = parseInt(stripLine.slice(3, 5), 16);
+            const b = parseInt(stripLine.slice(5, 7), 16);
+            const brightness = (r + g + b) / (3 * 255);
+            const hueRotate = Math.round((Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180) / Math.PI);
+            const filterVal = `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${hueRotate}deg) brightness(${(0.5 + brightness * 0.8).toFixed(2)})`;
+            return `
+    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+      <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; filter: ${filterVal}; mix-blend-mode: lighten;">
+    </div>`;
+          })()
+        : designSettings.showHeaderStrip !== false
         ? `
     <div class="header${designSettings.logoPosition === "full-width" ? " full-width-header" : ""}">
       ${designSettings.showLogo && designSettings.logoUrl && designSettings.logoPosition === "full-width" ? `<img src="${designSettings.logoUrl}" alt="Logo">` : ""}
@@ -3836,20 +3859,60 @@ export function HtmlTemplateEditor({
           )}
 
         <div
-          className={`shrink-0 text-white ${designSettings.logoPosition === "full-width" ? "p-0 overflow-hidden relative" : "p-6"} ${designSettings.showHeaderStrip === false && designSettings.logoPosition !== "full-width" ? "bg-white border-b-2" : ""}`}
+          className={`shrink-0 text-white ${designSettings.logoPosition === "full-width" || designSettings.logoPosition === "custom-strip" ? "p-0 overflow-hidden relative" : "p-6"} ${designSettings.showHeaderStrip === false && designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip" ? "bg-white border-b-2" : ""}`}
           style={{
             background:
-              designSettings.logoPosition === "full-width"
-                ? "transparent"
+              designSettings.logoPosition === "full-width" || designSettings.logoPosition === "custom-strip"
+                ? designSettings.logoPosition === "custom-strip"
+                  ? designSettings.stripBgColor || "#1a1a2e"
+                  : "transparent"
                 : designSettings.showHeaderStrip !== false
                   ? designSettings.headerBackground
                   : "white",
             borderColor:
-              designSettings.logoPosition !== "full-width"
+              designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip"
                 ? designSettings.primaryColor
                 : undefined,
           }}
         >
+          {/* Custom Strip - Company header with colorizable lines */}
+          {designSettings.logoPosition === "custom-strip" && (
+            <div
+              className="relative w-full overflow-hidden"
+              style={{
+                height: designSettings.headerStripHeight || 150,
+                backgroundColor: designSettings.stripBgColor || "#1a1a2e",
+              }}
+            >
+              <img
+                src={designSettings.logoUrl || companyHeaderImg}
+                alt="Company Header Strip"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                  filter: (() => {
+                    const color = designSettings.stripLineColor || "#d4af37";
+                    // Convert hex to approximate CSS filter for color tinting
+                    // Use brightness(0) to make it black, then invert and sepia to colorize
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    const brightness = (r + g + b) / (3 * 255);
+                    return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
+                      (Math.atan2(
+                        Math.sqrt(3) * (g - b),
+                        2 * r - g - b
+                      ) * 180) / Math.PI
+                    )}deg) brightness(${0.5 + brightness * 0.8})`;
+                  })(),
+                  mixBlendMode: "lighten",
+                }}
+              />
+            </div>
+          )}
           {/* Full Width Logo - Inside header, spanning full width */}
           {designSettings.showLogo &&
             designSettings.logoUrl &&
@@ -3881,8 +3944,8 @@ export function HtmlTemplateEditor({
                 </div>
               </div>
             )}
-          {/* Regular header content - only show when not full-width logo */}
-          {designSettings.logoPosition !== "full-width" && (
+          {/* Regular header content - only show when not full-width or custom-strip logo */}
+          {designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip" && (
             <div className="flex justify-between items-start max-w-6xl mx-auto">
               <div className="flex items-center gap-4">
                 {designSettings.showLogo &&
@@ -4604,12 +4667,35 @@ export function HtmlTemplateEditor({
                         </Label>
                         <select
                           value={designSettings.logoPosition || "inside-header"}
-                          onChange={(e) =>
-                            setDesignSettings({
+                          onChange={(e) => {
+                            const newPosition = e.target.value as any;
+                            const updates: any = {
                               ...designSettings,
-                              logoPosition: e.target.value as any,
-                            })
-                          }
+                              logoPosition: newPosition,
+                            };
+                            // Auto-load company header for custom-strip mode
+                            if (newPosition === "custom-strip" && !designSettings.logoUrl) {
+                              // Convert imported image to data URL
+                              const img = new window.Image();
+                              img.crossOrigin = "anonymous";
+                              img.onload = () => {
+                                const canvas = document.createElement("canvas");
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext("2d");
+                                if (ctx) {
+                                  ctx.drawImage(img, 0, 0);
+                                  const dataUrl = canvas.toDataURL("image/png");
+                                  setDesignSettings((prev) => ({
+                                    ...prev,
+                                    logoUrl: dataUrl,
+                                  }));
+                                }
+                              };
+                              img.src = companyHeaderImg;
+                            }
+                            setDesignSettings(updates);
+                          }}
                           className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
                         >
                           <option value="inside-header">בתוך הסטריפ</option>
@@ -4618,6 +4704,7 @@ export function HtmlTemplateEditor({
                             ממורכז מעל הסטריפ
                           </option>
                           <option value="full-width">רוחב מלא בסטריפ</option>
+                          <option value="custom-strip">סטריפ מותאם (לוגו חברה)</option>
                         </select>
                       </div>
 
@@ -4676,6 +4763,137 @@ export function HtmlTemplateEditor({
                             step={10}
                             className="mt-2"
                           />
+                        </div>
+                      )}
+
+                      {/* Custom Strip Settings */}
+                      {designSettings.logoPosition === "custom-strip" && (
+                        <div className="space-y-3 mt-3 p-3 border rounded-lg bg-muted/30">
+                          <p className="text-xs text-muted-foreground font-medium">הגדרות סטריפ מותאם</p>
+                          
+                          <div>
+                            <Label className="text-sm text-gray-600">צבע רקע</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: e.target.value,
+                                  })
+                                }
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: e.target.value,
+                                  })
+                                }
+                                className="flex-1 h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripLineColor || "#d4af37"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripLineColor: e.target.value,
+                                  })
+                                }
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripLineColor || "#d4af37"}
+                                onChange={(e) =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripLineColor: e.target.value,
+                                  })
+                                }
+                                className="flex-1 h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">
+                              שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
+                            </Label>
+                            <Slider
+                              value={[designSettings.stripLineOpacity ?? 100]}
+                              onValueChange={([v]) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  stripLineOpacity: v,
+                                })
+                              }
+                              min={10}
+                              max={100}
+                              step={5}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-sm text-gray-600">
+                              גובה סטריפ: {designSettings.headerStripHeight || 150}px
+                            </Label>
+                            <Slider
+                              value={[designSettings.headerStripHeight || 150]}
+                              onValueChange={([v]) =>
+                                setDesignSettings({
+                                  ...designSettings,
+                                  headerStripHeight: v,
+                                })
+                              }
+                              min={80}
+                              max={300}
+                              step={10}
+                              className="mt-2"
+                            />
+                          </div>
+
+                          <div className="flex gap-2 flex-wrap">
+                            {[
+                              { bg: "#1a1a2e", line: "#d4af37", label: "כחול-זהב" },
+                              { bg: "#ffffff", line: "#B8860B", label: "לבן-זהב" },
+                              { bg: "#0a0a0a", line: "#ffffff", label: "שחור-לבן" },
+                              { bg: "#1e3a5f", line: "#c0c0c0", label: "כחול-כסף" },
+                              { bg: "#2d1b0e", line: "#d4af37", label: "חום-זהב" },
+                            ].map((preset) => (
+                              <button
+                                key={preset.label}
+                                className="flex items-center gap-1 px-2 py-1 text-xs border rounded hover:bg-accent transition-colors"
+                                onClick={() =>
+                                  setDesignSettings({
+                                    ...designSettings,
+                                    stripBgColor: preset.bg,
+                                    stripLineColor: preset.line,
+                                  })
+                                }
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border"
+                                  style={{ background: preset.bg }}
+                                />
+                                <span
+                                  className="w-3 h-3 rounded-full border"
+                                  style={{ background: preset.line }}
+                                />
+                                <span>{preset.label}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
