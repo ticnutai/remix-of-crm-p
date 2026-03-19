@@ -3145,7 +3145,101 @@ export function HtmlTemplateEditor({
     }
   };
 
-  // Background removal utility - removes white/light background, keeps dark lines
+  // AI-powered logo layer processing
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [processingLayer, setProcessingLayer] = useState<string | null>(null);
+
+  const processLogoLayer = useCallback(async (layer: string, color: string) => {
+    const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
+    if (!logoSrc) return;
+    
+    setProcessingLayer(layer);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-logo", {
+        body: { image_base64: logoSrc, layer, color },
+      });
+      
+      if (error) {
+        toast({ title: "❌ שגיאה בעיבוד", description: error.message, variant: "destructive" });
+        return null;
+      }
+      
+      if (data?.success && data?.image) {
+        return data.image;
+      } else {
+        toast({ title: "❌ שגיאה", description: data?.error || "AI לא החזיר תמונה", variant: "destructive" });
+        return null;
+      }
+    } catch (err: any) {
+      toast({ title: "❌ שגיאה", description: err.message, variant: "destructive" });
+      return null;
+    } finally {
+      setProcessingLayer(null);
+    }
+  }, [designSettings.logoUrl, designSettings.originalLogoUrl, toast]);
+
+  const handleProcessAllLayers = useCallback(async () => {
+    const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
+    if (!logoSrc) {
+      toast({ title: "❌ אין לוגו", description: "יש להעלות לוגו קודם" });
+      return;
+    }
+    
+    setIsProcessingLogo(true);
+    const defaultColors = {
+      lines: designSettings.stripLayers?.lines?.color || "#000000",
+      windows: designSettings.stripLayers?.windows?.color || "#000000",
+      text: designSettings.stripLayers?.text?.color || "#000000",
+    };
+    
+    toast({ title: "🔄 מעבד לוגו עם AI...", description: "מזהה קווים, חלונות וטקסט - אנא המתן" });
+    
+    // Process all 3 layers sequentially (to avoid rate limits)
+    const linesImg = await processLogoLayer("lines", defaultColors.lines);
+    const windowsImg = await processLogoLayer("windows", defaultColors.windows);
+    const textImg = await processLogoLayer("text", defaultColors.text);
+    
+    setDesignSettings(prev => ({
+      ...prev,
+      originalLogoUrl: prev.originalLogoUrl || prev.logoUrl,
+      stripProcessed: true,
+      stripLayers: {
+        lines: { url: linesImg || "", color: defaultColors.lines, opacity: 100 },
+        windows: { url: windowsImg || "", color: defaultColors.windows, opacity: 100 },
+        text: { url: textImg || "", color: defaultColors.text, opacity: 100 },
+      },
+    }));
+    
+    setIsProcessingLogo(false);
+    toast({ title: "✅ עיבוד הושלם!", description: "3 שכבות זוהו - ניתן לשנות צבע לכל שכבה בנפרד" });
+  }, [designSettings, processLogoLayer, toast]);
+
+  const handleRecolorLayer = useCallback(async (layer: "lines" | "windows" | "text", newColor: string) => {
+    // Update color immediately in state
+    setDesignSettings(prev => ({
+      ...prev,
+      stripLayers: {
+        ...prev.stripLayers,
+        [layer]: { ...(prev.stripLayers?.[layer] || { url: "", opacity: 100 }), color: newColor },
+      },
+    }));
+    
+    // Then process with AI
+    const newImage = await processLogoLayer(layer, newColor);
+    if (newImage) {
+      setDesignSettings(prev => ({
+        ...prev,
+        stripLayers: {
+          ...prev.stripLayers,
+          [layer]: { ...(prev.stripLayers?.[layer] || { opacity: 100, color: newColor }), url: newImage, color: newColor },
+        },
+      }));
+    }
+  }, [processLogoLayer]);
+
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+
+  // Legacy background removal (simple Canvas-based fallback)
   const removeLogoBackground = useCallback((logoSrc: string, threshold: number = 220) => {
     return new Promise<string>((resolve) => {
       const img = new window.Image();
@@ -3156,26 +3250,19 @@ export function HtmlTemplateEditor({
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) { resolve(logoSrc); return; }
-        
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i], g = data[i + 1], b = data[i + 2];
-          // If pixel is light/white, make it transparent
           if (r > threshold && g > threshold && b > threshold) {
-            data[i + 3] = 0; // Set alpha to 0
+            data[i + 3] = 0;
           } else {
-            // For darker pixels, calculate darkness as opacity
             const darkness = 1 - (r + g + b) / (3 * 255);
-            data[i] = 0;     // Make pure black
-            data[i + 1] = 0;
-            data[i + 2] = 0;
-            data[i + 3] = Math.round(darkness * 255); // Opacity based on darkness
+            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
+            data[i + 3] = Math.round(darkness * 255);
           }
         }
-        
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       };
@@ -3183,8 +3270,6 @@ export function HtmlTemplateEditor({
       img.src = logoSrc;
     });
   }, []);
-
-  const [isRemovingBg, setIsRemovingBg] = useState(false);
 
   const handleRemoveBackground = useCallback(async () => {
     if (!designSettings.logoUrl) return;
