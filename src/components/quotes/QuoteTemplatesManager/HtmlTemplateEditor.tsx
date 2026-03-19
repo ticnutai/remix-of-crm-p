@@ -3086,7 +3086,61 @@ export function HtmlTemplateEditor({
     }
   };
 
-  const totalPaymentPercentage = paymentSteps.reduce(
+  // Background removal utility - removes white/light background, keeps dark lines
+  const removeLogoBackground = useCallback((logoSrc: string, threshold: number = 220) => {
+    return new Promise<string>((resolve) => {
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(logoSrc); return; }
+        
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // If pixel is light/white, make it transparent
+          if (r > threshold && g > threshold && b > threshold) {
+            data[i + 3] = 0; // Set alpha to 0
+          } else {
+            // For darker pixels, calculate darkness as opacity
+            const darkness = 1 - (r + g + b) / (3 * 255);
+            data[i] = 0;     // Make pure black
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+            data[i + 3] = Math.round(darkness * 255); // Opacity based on darkness
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => resolve(logoSrc);
+      img.src = logoSrc;
+    });
+  }, []);
+
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+
+  const handleRemoveBackground = useCallback(async () => {
+    if (!designSettings.logoUrl) return;
+    setIsRemovingBg(true);
+    try {
+      const cleaned = await removeLogoBackground(designSettings.logoUrl);
+      setDesignSettings((prev) => ({ ...prev, logoUrl: cleaned }));
+      toast({ title: "✅ רקע הוסר בהצלחה", description: "הקווים זוהו והרקע הלבן הוסר" });
+    } catch (err) {
+      toast({ title: "❌ שגיאה", description: "לא ניתן להסיר רקע", variant: "destructive" });
+    }
+    setIsRemovingBg(false);
+  }, [designSettings.logoUrl, removeLogoBackground, toast]);
+
+
     (sum, s) => sum + s.percentage,
     0,
   );
