@@ -1952,7 +1952,18 @@ export function HtmlTemplateEditor({
   });
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
     const saved = (template as any).project_details;
-    if (saved && saved.clientId) return saved;
+    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.gush || saved.helka || saved.address || saved.projectType)) {
+      return {
+        clientId: saved.clientId || "",
+        clientName: saved.clientName || "",
+        gush: saved.gush || "",
+        helka: saved.helka || "",
+        migrash: saved.migrash || "",
+        taba: saved.taba || "",
+        address: saved.address || "",
+        projectType: saved.projectType || "",
+      };
+    }
     return {
       clientId: "",
       clientName: "",
@@ -2346,7 +2357,18 @@ export function HtmlTemplateEditor({
     const pt = (template as any).pricing_tiers;
     if (pt && Array.isArray(pt) && pt.length > 0) setPricingTiers(pt);
     const pd = (template as any).project_details;
-    if (pd && pd.clientId) setProjectDetails(pd);
+    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.gush || pd.helka || pd.address || pd.projectType)) {
+      setProjectDetails({
+        clientId: pd.clientId || "",
+        clientName: pd.clientName || "",
+        gush: pd.gush || "",
+        helka: pd.helka || "",
+        migrash: pd.migrash || "",
+        taba: pd.taba || "",
+        address: pd.address || "",
+        projectType: pd.projectType || "",
+      });
+    }
   }, [template]);
 
   const handleClientSelect = (client: any) => {
