@@ -218,6 +218,7 @@ interface DesignSettings {
   };
   stripProcessed?: boolean;
   originalLogoUrl?: string; // Original logo before AI processing
+  vatDisplayMode?: "plus-vat" | "breakdown"; // How VAT is displayed in the quote
 }
 interface TextBox {
   id: string;
