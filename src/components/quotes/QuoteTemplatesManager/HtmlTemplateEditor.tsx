@@ -4622,6 +4622,7 @@ export function HtmlTemplateEditor({
                             ממורכז מעל הסטריפ
                           </option>
                           <option value="full-width">רוחב מלא בסטריפ</option>
+                          <option value="custom-strip">סטריפ מותאם (לוגו חברה)</option>
                         </select>
                       </div>
 
