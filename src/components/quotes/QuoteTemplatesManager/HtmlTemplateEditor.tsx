@@ -190,7 +190,11 @@ interface DesignSettings {
     | "inside-header"
     | "above-header"
     | "centered-above"
-    | "full-width";
+    | "full-width"
+    | "custom-strip";
+  stripBgColor?: string;
+  stripLineColor?: string;
+  stripLineOpacity?: number;
   showHeaderStrip?: boolean;
   headerStripHeight?: number;
   stripWidth?: number;
