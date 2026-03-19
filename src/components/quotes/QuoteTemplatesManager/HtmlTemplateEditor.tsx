@@ -5725,55 +5725,208 @@ export function HtmlTemplateEditor({
                             height: "100%",
                             objectFit: "cover",
                             objectPosition: "center",
+                      {/* Show layers if AI processed, otherwise show original logo */}
+                      {designSettings.stripProcessed && designSettings.stripLayers ? (
+                        <>
+                          {designSettings.stripLayers.lines?.url && (
+                            <img
+                              src={designSettings.stripLayers.lines.url}
+                              alt="Lines layer"
+                              style={{
+                                position: "absolute",
+                                top: 0, left: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                objectPosition: "center",
+                                opacity: (designSettings.stripLayers.lines.opacity ?? 100) / 100,
+                              }}
+                            />
+                          )}
+                          {designSettings.stripLayers.windows?.url && (
+                            <img
+                              src={designSettings.stripLayers.windows.url}
+                              alt="Windows layer"
+                              style={{
+                                position: "absolute",
+                                top: 0, left: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                objectPosition: "center",
+                                opacity: (designSettings.stripLayers.windows.opacity ?? 100) / 100,
+                              }}
+                            />
+                          )}
+                          {designSettings.stripLayers.text?.url && (
+                            <img
+                              src={designSettings.stripLayers.text.url}
+                              alt="Text layer"
+                              style={{
+                                position: "absolute",
+                                top: 0, left: 0,
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                objectPosition: "center",
+                                opacity: (designSettings.stripLayers.text.opacity ?? 100) / 100,
+                              }}
+                            />
+                          )}
+                        </>
+                      ) : (
+                        <img
+                          src={designSettings.logoUrl}
+                          alt="Company Strip Preview"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "center",
                             opacity: (designSettings.stripLineOpacity ?? 100) / 100,
                             mixBlendMode: "multiply",
                           }}
                         />
+                      )}
                       </div>
 
-                      {/* Color controls inline */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium">צבע רקע</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <input
-                              type="color"
-                              value={designSettings.stripBgColor || "#1a1a2e"}
-                              onChange={(e) =>
-                                setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
-                              }
-                              className="w-10 h-8 rounded border cursor-pointer"
-                            />
-                            <Input
-                              value={designSettings.stripBgColor || "#1a1a2e"}
-                              onChange={(e) =>
-                                setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
-                              }
-                              className="flex-1 h-8 text-xs"
-                            />
+                      {/* AI Layer Controls - shown after AI processing */}
+                      {designSettings.stripProcessed && designSettings.stripLayers ? (
+                        <div className="space-y-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                          <p className="text-sm font-medium flex items-center gap-1 text-purple-700">
+                            <Layers className="h-4 w-4" />
+                            שכבות AI - צבע נפרד לכל חלק
+                          </p>
+                          
+                          {/* Background Color */}
+                          <div>
+                            <Label className="text-sm font-medium">צבע רקע</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                                }
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripBgColor || "#1a1a2e"}
+                                onChange={(e) =>
+                                  setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                                }
+                                className="flex-1 h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Lines & Buildings */}
+                          <div>
+                            <Label className="text-sm font-medium">🏗️ קווים ובניינים</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripLayers.lines?.color || "#000000"}
+                                onChange={(e) => handleRecolorLayer("lines", e.target.value)}
+                                disabled={!!processingLayer}
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripLayers.lines?.color || "#000000"}
+                                className="flex-1 h-8 text-xs"
+                                readOnly
+                              />
+                              {processingLayer === "lines" && <RotateCcw className="h-4 w-4 animate-spin text-purple-500" />}
+                            </div>
+                          </div>
+                          
+                          {/* Windows */}
+                          <div>
+                            <Label className="text-sm font-medium">🪟 חלונות / ריבועים</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripLayers.windows?.color || "#000000"}
+                                onChange={(e) => handleRecolorLayer("windows", e.target.value)}
+                                disabled={!!processingLayer}
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripLayers.windows?.color || "#000000"}
+                                className="flex-1 h-8 text-xs"
+                                readOnly
+                              />
+                              {processingLayer === "windows" && <RotateCcw className="h-4 w-4 animate-spin text-purple-500" />}
+                            </div>
+                          </div>
+                          
+                          {/* Text */}
+                          <div>
+                            <Label className="text-sm font-medium">✏️ טקסט</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <input
+                                type="color"
+                                value={designSettings.stripLayers.text?.color || "#000000"}
+                                onChange={(e) => handleRecolorLayer("text", e.target.value)}
+                                disabled={!!processingLayer}
+                                className="w-10 h-8 rounded border cursor-pointer"
+                              />
+                              <Input
+                                value={designSettings.stripLayers.text?.color || "#000000"}
+                                className="flex-1 h-8 text-xs"
+                                readOnly
+                              />
+                              {processingLayer === "text" && <RotateCcw className="h-4 w-4 animate-spin text-purple-500" />}
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <Label className="text-sm font-medium">צבע קווים</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <input
-                              type="color"
-                              value={designSettings.stripLineColor || "#d4af37"}
-                              onChange={(e) =>
-                                setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
-                              }
-                              className="w-10 h-8 rounded border cursor-pointer"
-                            />
-                            <Input
-                              value={designSettings.stripLineColor || "#d4af37"}
-                              onChange={(e) =>
-                                setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
-                              }
-                              className="flex-1 h-8 text-xs"
-                            />
+                      ) : (
+                        <>
+                          {/* Legacy color controls (before AI processing) */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium">צבע רקע</Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="color"
+                                  value={designSettings.stripBgColor || "#1a1a2e"}
+                                  onChange={(e) =>
+                                    setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                                  }
+                                  className="w-10 h-8 rounded border cursor-pointer"
+                                />
+                                <Input
+                                  value={designSettings.stripBgColor || "#1a1a2e"}
+                                  onChange={(e) =>
+                                    setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                                  }
+                                  className="flex-1 h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-sm font-medium">צבע קווים</Label>
+                              <div className="flex items-center gap-2 mt-1">
+                                <input
+                                  type="color"
+                                  value={designSettings.stripLineColor || "#d4af37"}
+                                  onChange={(e) =>
+                                    setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
+                                  }
+                                  className="w-10 h-8 rounded border cursor-pointer"
+                                />
+                                <Input
+                                  value={designSettings.stripLineColor || "#d4af37"}
+                                  onChange={(e) =>
+                                    setDesignSettings({ ...designSettings, stripLineColor: e.target.value })
+                                  }
+                                  className="flex-1 h-8 text-xs"
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
