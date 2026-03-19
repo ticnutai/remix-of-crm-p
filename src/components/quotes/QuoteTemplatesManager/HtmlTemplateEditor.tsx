@@ -4850,23 +4850,48 @@ export function HtmlTemplateEditor({
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="font-semibold mb-3">סיכום תשלומים</h3>
                       <div className="space-y-2 text-sm">
-                        {paymentSteps.map((step) => (
-                          <div key={step.id} className="flex justify-between">
-                            <span>
-                              {step.name} ({step.percentage}%)
-                            </span>
-                            <span className="font-semibold">
-                              ₪
-                              {Math.round(
-                                (basePrice * step.percentage) / 100,
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
+                        {paymentSteps.map((step) => {
+                          const stepAmount = Math.round((basePrice * step.percentage) / 100);
+                          const vatRate = editedTemplate.vat_rate || 17;
+                          const stepVat = Math.round(stepAmount * vatRate / 100);
+                          return (
+                            <div key={step.id} className="flex justify-between">
+                              <span>
+                                {step.name} ({step.percentage}%)
+                              </span>
+                              <div className="text-left">
+                                <span className="font-semibold">
+                                  ₪{stepAmount.toLocaleString()}
+                                </span>
+                                {designSettings.vatDisplayMode === "breakdown" && (
+                                  <span className="text-muted-foreground text-xs mr-2">
+                                    (+ ₪{stepVat.toLocaleString()} מע״מ)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                         <div className="flex justify-between pt-2 border-t font-bold text-lg">
                           <span>סה"כ</span>
                           <span>₪{basePrice.toLocaleString()}</span>
                         </div>
+                        {designSettings.vatDisplayMode === "breakdown" && (() => {
+                          const vatRate = editedTemplate.vat_rate || 17;
+                          const vatAmount = Math.round(basePrice * vatRate / 100);
+                          return (
+                            <>
+                              <div className="flex justify-between text-muted-foreground">
+                                <span>מע״מ {vatRate}%</span>
+                                <span>₪{vatAmount.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
+                                <span>סה"כ כולל מע״מ</span>
+                                <span>₪{(basePrice + vatAmount).toLocaleString()}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
