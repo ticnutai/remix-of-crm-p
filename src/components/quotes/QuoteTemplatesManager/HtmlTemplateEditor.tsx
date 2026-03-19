@@ -4653,24 +4653,8 @@ export function HtmlTemplateEditor({
                             };
                             // Auto-load company header for custom-strip mode
                             if (newPosition === "custom-strip" && !designSettings.logoUrl) {
-                              // Convert imported image to data URL
-                              const img = new window.Image();
-                              img.crossOrigin = "anonymous";
-                              img.onload = () => {
-                                const canvas = document.createElement("canvas");
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                const ctx = canvas.getContext("2d");
-                                if (ctx) {
-                                  ctx.drawImage(img, 0, 0);
-                                  const dataUrl = canvas.toDataURL("image/png");
-                                  setDesignSettings((prev) => ({
-                                    ...prev,
-                                    logoUrl: dataUrl,
-                                  }));
-                                }
-                              };
-                              img.src = companyHeaderImg;
+                              updates.logoUrl = companyHeaderImg;
+                              updates.stripBgColor = designSettings.stripBgColor || "#B8860B";
                             }
                             setDesignSettings(updates);
                           }}
