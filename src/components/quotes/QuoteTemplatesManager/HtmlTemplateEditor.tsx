@@ -5717,14 +5717,6 @@ export function HtmlTemplateEditor({
                           position: "relative",
                         }}
                       >
-                        <img
-                          src={designSettings.logoUrl}
-                          alt="Company Strip Preview"
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            objectPosition: "center",
                       {/* Show layers if AI processed, otherwise show original logo */}
                       {designSettings.stripProcessed && designSettings.stripLayers ? (
                         <>
