@@ -3841,20 +3841,60 @@ export function HtmlTemplateEditor({
           )}
 
         <div
-          className={`shrink-0 text-white ${designSettings.logoPosition === "full-width" ? "p-0 overflow-hidden relative" : "p-6"} ${designSettings.showHeaderStrip === false && designSettings.logoPosition !== "full-width" ? "bg-white border-b-2" : ""}`}
+          className={`shrink-0 text-white ${designSettings.logoPosition === "full-width" || designSettings.logoPosition === "custom-strip" ? "p-0 overflow-hidden relative" : "p-6"} ${designSettings.showHeaderStrip === false && designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip" ? "bg-white border-b-2" : ""}`}
           style={{
             background:
-              designSettings.logoPosition === "full-width"
-                ? "transparent"
+              designSettings.logoPosition === "full-width" || designSettings.logoPosition === "custom-strip"
+                ? designSettings.logoPosition === "custom-strip"
+                  ? designSettings.stripBgColor || "#1a1a2e"
+                  : "transparent"
                 : designSettings.showHeaderStrip !== false
                   ? designSettings.headerBackground
                   : "white",
             borderColor:
-              designSettings.logoPosition !== "full-width"
+              designSettings.logoPosition !== "full-width" && designSettings.logoPosition !== "custom-strip"
                 ? designSettings.primaryColor
                 : undefined,
           }}
         >
+          {/* Custom Strip - Company header with colorizable lines */}
+          {designSettings.logoPosition === "custom-strip" && (
+            <div
+              className="relative w-full overflow-hidden"
+              style={{
+                height: designSettings.headerStripHeight || 150,
+                backgroundColor: designSettings.stripBgColor || "#1a1a2e",
+              }}
+            >
+              <img
+                src={designSettings.logoUrl || companyHeaderImg}
+                alt="Company Header Strip"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                  filter: (() => {
+                    const color = designSettings.stripLineColor || "#d4af37";
+                    // Convert hex to approximate CSS filter for color tinting
+                    // Use brightness(0) to make it black, then invert and sepia to colorize
+                    const r = parseInt(color.slice(1, 3), 16);
+                    const g = parseInt(color.slice(3, 5), 16);
+                    const b = parseInt(color.slice(5, 7), 16);
+                    const brightness = (r + g + b) / (3 * 255);
+                    return `brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(${Math.round(
+                      (Math.atan2(
+                        Math.sqrt(3) * (g - b),
+                        2 * r - g - b
+                      ) * 180) / Math.PI
+                    )}deg) brightness(${0.5 + brightness * 0.8})`;
+                  })(),
+                  mixBlendMode: "lighten",
+                }}
+              />
+            </div>
+          )}
           {/* Full Width Logo - Inside header, spanning full width */}
           {designSettings.showLogo &&
             designSettings.logoUrl &&
