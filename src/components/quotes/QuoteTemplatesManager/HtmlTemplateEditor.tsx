@@ -4774,6 +4774,29 @@ export function HtmlTemplateEditor({
                       סדר תשלומים
                     </h2>
                     <div className="flex items-center gap-4">
+                      {/* VAT Display Mode Toggle */}
+                      <div className="flex items-center gap-2 border rounded-lg p-1">
+                        <button
+                          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                            (designSettings.vatDisplayMode || "plus-vat") === "plus-vat"
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-muted"
+                          }`}
+                          onClick={() => setDesignSettings({ ...designSettings, vatDisplayMode: "plus-vat" })}
+                        >
+                          + מע״מ
+                        </button>
+                        <button
+                          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                            designSettings.vatDisplayMode === "breakdown"
+                              ? "bg-primary text-primary-foreground"
+                              : "hover:bg-muted"
+                          }`}
+                          onClick={() => setDesignSettings({ ...designSettings, vatDisplayMode: "breakdown" })}
+                        >
+                          פירוט מע״מ
+                        </button>
+                      </div>
                       <Badge
                         variant={
                           totalPaymentPercentage === 100
