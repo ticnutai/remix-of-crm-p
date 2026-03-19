@@ -8182,7 +8182,88 @@ export function HtmlTemplateEditor({
                       </Button>
                     </div>
 
-                    {/* Quick Project Details - always first */}
+                    {/* Logo Strip Quick Control */}
+                    <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 shadow-sm">
+                      <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+                        <Image className="h-4 w-4 text-amber-600" />
+                        סטריפ לוגו חברה
+                      </h3>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <Button
+                          size="sm"
+                          variant={designSettings.logoPosition === "custom-strip" ? "default" : "outline"}
+                          className={`h-8 text-xs ${designSettings.logoPosition === "custom-strip" ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+                          onClick={() => {
+                            if (designSettings.logoPosition === "custom-strip") {
+                              setDesignSettings((prev) => ({ ...prev, logoPosition: "inside-header" as const }));
+                            } else {
+                              setDesignSettings((prev) => ({
+                                ...prev,
+                                logoPosition: "custom-strip" as const,
+                                logoUrl: prev.logoUrl || companyHeaderImg,
+                                stripBgColor: prev.stripBgColor || "#B8860B",
+                              }));
+                            }
+                          }}
+                        >
+                          {designSettings.logoPosition === "custom-strip" ? "✓ מופעל" : "הפעל סטריפ"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          <Upload className="h-3 w-3 ml-1" />
+                          העלה לוגו
+                        </Button>
+                        {designSettings.logoPosition === "custom-strip" && (
+                          <>
+                            <input
+                              type="color"
+                              value={designSettings.stripBgColor || "#B8860B"}
+                              onChange={(e) => setDesignSettings({ ...designSettings, stripBgColor: e.target.value })}
+                              className="h-7 w-7 rounded cursor-pointer border"
+                              title="צבע רקע"
+                            />
+                            <span className="text-[10px] text-gray-500">רקע</span>
+                            <input
+                              type="range"
+                              value={designSettings.headerStripHeight || 150}
+                              onChange={(e) => setDesignSettings({ ...designSettings, headerStripHeight: Number(e.target.value) })}
+                              min={80}
+                              max={300}
+                              step={10}
+                              className="w-16 h-2"
+                              title={`גובה: ${designSettings.headerStripHeight || 150}px`}
+                            />
+                            <span className="text-[10px] text-gray-500">{designSettings.headerStripHeight || 150}px</span>
+                          </>
+                        )}
+                      </div>
+                      {designSettings.logoPosition === "custom-strip" && designSettings.logoUrl && (
+                        <div
+                          className="mt-3 rounded-lg overflow-hidden border border-amber-300"
+                          style={{
+                            height: `${Math.min((designSettings.headerStripHeight || 150) * 0.5, 80)}px`,
+                            backgroundColor: designSettings.stripBgColor || "#B8860B",
+                          }}
+                        >
+                          <img
+                            src={designSettings.logoUrl}
+                            alt="Strip preview"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              mixBlendMode: "multiply",
+                              opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     <div className="bg-white rounded-xl border p-4 shadow-sm">
                       <h3 className="font-semibold mb-3 flex items-center gap-2">
                         <User className="h-4 w-4 text-[#B8860B]" />
