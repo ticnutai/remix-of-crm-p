@@ -7088,19 +7088,34 @@ export function HtmlTemplateEditor({
                     />
                     <select
                       value={designSettings.logoPosition || "inside-header"}
-                      onChange={(e) =>
-                        setDesignSettings({
-                          ...designSettings,
-                          logoPosition: e.target.value as any,
-                        })
-                      }
+                      onChange={(e) => {
+                        const pos = e.target.value as any;
+                        const updates: any = { ...designSettings, logoPosition: pos };
+                        if (pos === "custom-strip" && !designSettings.logoUrl) {
+                          updates.logoUrl = companyHeaderImg;
+                          updates.stripBgColor = designSettings.stripBgColor || "#B8860B";
+                        }
+                        setDesignSettings(updates);
+                      }}
                       className="h-7 text-xs border rounded px-1"
                     >
                       <option value="inside-header">לוגו בסטריפ</option>
                       <option value="above-header">מעל הסטריפ</option>
                       <option value="centered-above">ממורכז מעל</option>
                       <option value="full-width">רוחב מלא</option>
+                      <option value="custom-strip">סטריפ לוגו חברה</option>
                     </select>
+                    {designSettings.logoPosition === "custom-strip" && (
+                      <input
+                        type="color"
+                        value={designSettings.stripBgColor || "#B8860B"}
+                        onChange={(e) =>
+                          setDesignSettings({ ...designSettings, stripBgColor: e.target.value })
+                        }
+                        className="h-7 w-7 rounded cursor-pointer border-0"
+                        title="צבע רקע סטריפ"
+                      />
+                    )}
                   </div>
                 )}
                 {/* Version save button */}
