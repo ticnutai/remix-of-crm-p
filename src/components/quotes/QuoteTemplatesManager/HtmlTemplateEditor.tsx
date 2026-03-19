@@ -3140,7 +3140,7 @@ export function HtmlTemplateEditor({
     setIsRemovingBg(false);
   }, [designSettings.logoUrl, removeLogoBackground, toast]);
 
-
+  const totalPaymentPercentage = paymentSteps.reduce(
     (sum, s) => sum + s.percentage,
     0,
   );
