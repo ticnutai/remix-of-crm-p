@@ -51,7 +51,12 @@ serve(async (req) => {
           });
         }
         const imgBuffer = await imgResponse.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)));
+        const bytes = new Uint8Array(imgBuffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
         const contentType = imgResponse.headers.get("content-type") || "image/png";
         imageUrl = `data:${contentType};base64,${base64}`;
       } catch (fetchErr) {
