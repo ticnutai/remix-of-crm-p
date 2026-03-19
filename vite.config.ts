@@ -124,10 +124,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     server: {
-      host: "localhost",
+      host: "::",
       port: 8080,
       hmr: {
-        overlay: true,
+        overlay: false,
       },
     },
     define: {
