@@ -2781,7 +2781,7 @@ export function HtmlTemplateEditor({
         resolve(url || '');
         return;
       }
-      const img = new Image();
+      const img = new window.Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         const canvas = document.createElement('canvas');
