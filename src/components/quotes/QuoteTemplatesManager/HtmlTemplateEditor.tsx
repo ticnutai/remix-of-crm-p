@@ -8284,9 +8284,110 @@ export function HtmlTemplateEditor({
                 <MessageCircle className="h-4 w-4 ml-1" />
                 וואטסאפ
               </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+                onClick={() => setShowCreateClientDialog(true)}
+                disabled={isCreatingClient}
+              >
+                {isCreatingClient ? (
+                  <span className="animate-spin">⏳</span>
+                ) : (
+                  <FolderPlus className="h-4 w-4 ml-1" />
+                )}
+                {isCreatingClient ? "יוצר..." : "צור תיק לקוח"}
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Create Client File Dialog */}
+        <Dialog open={showCreateClientDialog} onOpenChange={setShowCreateClientDialog}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderPlus className="h-5 w-5 text-blue-600" />
+                צור תיק לקוח מההצעה
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              {/* Summary of what will be created */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <h4 className="font-semibold text-sm text-blue-800">מה ייווצר:</h4>
+                <div className="text-sm space-y-1 text-blue-700">
+                  <p>📋 <strong>תיק לקוח</strong> עם הפרטים:</p>
+                  <ul className="mr-5 space-y-0.5 text-xs">
+                    {projectDetails.clientName && <li>👤 שם: {projectDetails.clientName}</li>}
+                    {projectDetails.gush && <li>📍 גוש: {projectDetails.gush}</li>}
+                    {projectDetails.helka && <li>📍 חלקה: {projectDetails.helka}</li>}
+                    {projectDetails.migrash && <li>📍 מגרש: {projectDetails.migrash}</li>}
+                    {projectDetails.taba && <li>📄 תב"ע: {projectDetails.taba}</li>}
+                    {projectDetails.address && <li>🏠 כתובת: {projectDetails.address}</li>}
+                    {projectDetails.projectType && <li>🏗️ סוג: {projectDetails.projectType}</li>}
+                  </ul>
+                  <p className="mt-2">📝 <strong>חוזה</strong> על סך ₪{(() => {
+                    const bp = editedTemplate.base_price || 0;
+                    const vr = editedTemplate.vat_rate || 17;
+                    return Math.round(bp * (1 + vr / 100)).toLocaleString();
+                  })()} (כולל מע״מ)</p>
+                </div>
+              </div>
+
+              {/* Check if client exists */}
+              {allClients.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">לקוח קיים במערכת?</Label>
+                  <div className="border rounded-lg max-h-32 overflow-y-auto">
+                    {allClients
+                      .filter(c => 
+                        projectDetails.clientName && 
+                        c.name?.toLowerCase().includes(projectDetails.clientName.toLowerCase())
+                      )
+                      .map((client: any) => (
+                        <button
+                          key={client.id}
+                          type="button"
+                          onClick={() => handleCreateClientFile(client.id)}
+                          disabled={isCreatingClient}
+                          className="w-full text-right px-3 py-2 text-sm hover:bg-blue-50 transition-colors border-b last:border-0 flex items-center justify-between"
+                        >
+                          <div>
+                            <span className="font-medium">{client.name}</span>
+                            {client.phone && <span className="text-xs text-gray-400 mr-2">{client.phone}</span>}
+                          </div>
+                          <ExternalLink className="h-3 w-3 text-gray-400" />
+                        </button>
+                      ))
+                    }
+                    {allClients.filter(c => 
+                      projectDetails.clientName && 
+                      c.name?.toLowerCase().includes(projectDetails.clientName.toLowerCase())
+                    ).length === 0 && (
+                      <p className="text-xs text-gray-400 text-center py-2">לא נמצא לקוח תואם</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowCreateClientDialog(false)}>
+                ביטול
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => handleCreateClientFile(null)}
+                disabled={isCreatingClient || !projectDetails.clientName?.trim()}
+              >
+                {isCreatingClient ? (
+                  <span className="animate-spin ml-1">⏳</span>
+                ) : (
+                  <UserPlus className="h-4 w-4 ml-1" />
+                )}
+                {isCreatingClient ? "יוצר תיק..." : "צור לקוח חדש + חוזה"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Version History Dialog */}
         <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
