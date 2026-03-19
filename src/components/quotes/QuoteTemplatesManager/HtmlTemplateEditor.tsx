@@ -170,6 +170,11 @@ interface PaymentStep {
   percentage: number;
   description: string;
 }
+interface StripLayer {
+  url: string;
+  color: string;
+  opacity: number;
+}
 interface DesignSettings {
   primaryColor: string;
   secondaryColor: string;
@@ -205,6 +210,14 @@ interface DesignSettings {
     width: number;
     height: number;
   };
+  // AI-processed logo layers
+  stripLayers?: {
+    lines?: StripLayer;
+    windows?: StripLayer;
+    text?: StripLayer;
+  };
+  stripProcessed?: boolean;
+  originalLogoUrl?: string; // Original logo before AI processing
 }
 interface TextBox {
   id: string;
@@ -2691,13 +2704,34 @@ export function HtmlTemplateEditor({
       designSettings.logoPosition === "custom-strip"
         ? (() => {
             const stripBg = designSettings.stripBgColor || "#1a1a2e";
-            const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
             const stripHeight = designSettings.headerStripHeight || 150;
-            const logoSrc = designSettings.logoUrl || "";
-            return `
+            const layers = designSettings.stripLayers;
+            const isProcessed = designSettings.stripProcessed && layers;
+            
+            if (isProcessed) {
+              // Render 3 separate layers
+              let layersHtml = "";
+              if (layers?.lines?.url) {
+                layersHtml += `<img src="${layers.lines.url}" alt="Lines" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.lines.opacity ?? 100) / 100};">`;
+              }
+              if (layers?.windows?.url) {
+                layersHtml += `<img src="${layers.windows.url}" alt="Windows" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.windows.opacity ?? 100) / 100};">`;
+              }
+              if (layers?.text?.url) {
+                layersHtml += `<img src="${layers.text.url}" alt="Text" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.text.opacity ?? 100) / 100};">`;
+              }
+              return `
+    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+      ${layersHtml}
+    </div>`;
+            } else {
+              const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
+              const logoSrc = designSettings.logoUrl || "";
+              return `
     <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">
     </div>`;
+            }
           })()
         : designSettings.showHeaderStrip !== false
         ? `
@@ -3132,7 +3166,101 @@ export function HtmlTemplateEditor({
     }
   };
 
-  // Background removal utility - removes white/light background, keeps dark lines
+  // AI-powered logo layer processing
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
+  const [processingLayer, setProcessingLayer] = useState<string | null>(null);
+
+  const processLogoLayer = useCallback(async (layer: string, color: string) => {
+    const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
+    if (!logoSrc) return;
+    
+    setProcessingLayer(layer);
+    try {
+      const { data, error } = await supabase.functions.invoke("process-logo", {
+        body: { image_base64: logoSrc, layer, color },
+      });
+      
+      if (error) {
+        toast({ title: "❌ שגיאה בעיבוד", description: error.message, variant: "destructive" });
+        return null;
+      }
+      
+      if (data?.success && data?.image) {
+        return data.image;
+      } else {
+        toast({ title: "❌ שגיאה", description: data?.error || "AI לא החזיר תמונה", variant: "destructive" });
+        return null;
+      }
+    } catch (err: any) {
+      toast({ title: "❌ שגיאה", description: err.message, variant: "destructive" });
+      return null;
+    } finally {
+      setProcessingLayer(null);
+    }
+  }, [designSettings.logoUrl, designSettings.originalLogoUrl, toast]);
+
+  const handleProcessAllLayers = useCallback(async () => {
+    const logoSrc = designSettings.originalLogoUrl || designSettings.logoUrl;
+    if (!logoSrc) {
+      toast({ title: "❌ אין לוגו", description: "יש להעלות לוגו קודם" });
+      return;
+    }
+    
+    setIsProcessingLogo(true);
+    const defaultColors = {
+      lines: designSettings.stripLayers?.lines?.color || "#000000",
+      windows: designSettings.stripLayers?.windows?.color || "#000000",
+      text: designSettings.stripLayers?.text?.color || "#000000",
+    };
+    
+    toast({ title: "🔄 מעבד לוגו עם AI...", description: "מזהה קווים, חלונות וטקסט - אנא המתן" });
+    
+    // Process all 3 layers sequentially (to avoid rate limits)
+    const linesImg = await processLogoLayer("lines", defaultColors.lines);
+    const windowsImg = await processLogoLayer("windows", defaultColors.windows);
+    const textImg = await processLogoLayer("text", defaultColors.text);
+    
+    setDesignSettings(prev => ({
+      ...prev,
+      originalLogoUrl: prev.originalLogoUrl || prev.logoUrl,
+      stripProcessed: true,
+      stripLayers: {
+        lines: { url: linesImg || "", color: defaultColors.lines, opacity: 100 },
+        windows: { url: windowsImg || "", color: defaultColors.windows, opacity: 100 },
+        text: { url: textImg || "", color: defaultColors.text, opacity: 100 },
+      },
+    }));
+    
+    setIsProcessingLogo(false);
+    toast({ title: "✅ עיבוד הושלם!", description: "3 שכבות זוהו - ניתן לשנות צבע לכל שכבה בנפרד" });
+  }, [designSettings, processLogoLayer, toast]);
+
+  const handleRecolorLayer = useCallback(async (layer: "lines" | "windows" | "text", newColor: string) => {
+    // Update color immediately in state
+    setDesignSettings(prev => ({
+      ...prev,
+      stripLayers: {
+        ...prev.stripLayers,
+        [layer]: { ...(prev.stripLayers?.[layer] || { url: "", opacity: 100 }), color: newColor },
+      },
+    }));
+    
+    // Then process with AI
+    const newImage = await processLogoLayer(layer, newColor);
+    if (newImage) {
+      setDesignSettings(prev => ({
+        ...prev,
+        stripLayers: {
+          ...prev.stripLayers,
+          [layer]: { ...(prev.stripLayers?.[layer] || { opacity: 100, color: newColor }), url: newImage, color: newColor },
+        },
+      }));
+    }
+  }, [processLogoLayer]);
+
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+
+  // Legacy background removal (simple Canvas-based fallback)
   const removeLogoBackground = useCallback((logoSrc: string, threshold: number = 220) => {
     return new Promise<string>((resolve) => {
       const img = new window.Image();
@@ -3143,26 +3271,19 @@ export function HtmlTemplateEditor({
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) { resolve(logoSrc); return; }
-        
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i], g = data[i + 1], b = data[i + 2];
-          // If pixel is light/white, make it transparent
           if (r > threshold && g > threshold && b > threshold) {
-            data[i + 3] = 0; // Set alpha to 0
+            data[i + 3] = 0;
           } else {
-            // For darker pixels, calculate darkness as opacity
             const darkness = 1 - (r + g + b) / (3 * 255);
-            data[i] = 0;     // Make pure black
-            data[i + 1] = 0;
-            data[i + 2] = 0;
-            data[i + 3] = Math.round(darkness * 255); // Opacity based on darkness
+            data[i] = 0; data[i + 1] = 0; data[i + 2] = 0;
+            data[i + 3] = Math.round(darkness * 255);
           }
         }
-        
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       };
@@ -3170,8 +3291,6 @@ export function HtmlTemplateEditor({
       img.src = logoSrc;
     });
   }, []);
-
-  const [isRemovingBg, setIsRemovingBg] = useState(false);
 
   const handleRemoveBackground = useCallback(async () => {
     if (!designSettings.logoUrl) return;
@@ -3968,7 +4087,7 @@ export function HtmlTemplateEditor({
                 : undefined,
           }}
         >
-          {/* Custom Strip - Company header with colorizable lines */}
+          {/* Custom Strip - Company header with AI-separated layers */}
           {designSettings.logoPosition === "custom-strip" && (
             <div
               className="relative w-full overflow-hidden"
@@ -3976,19 +4095,72 @@ export function HtmlTemplateEditor({
                 height: designSettings.headerStripHeight || 150,
                 backgroundColor: designSettings.stripBgColor || "#1a1a2e",
               }}
-             >
-              <img
-                src={designSettings.logoUrl || companyHeaderImg}
-                alt="Company Header Strip"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center",
-                  opacity: (designSettings.stripLineOpacity ?? 100) / 100,
-                  mixBlendMode: "multiply",
-                }}
-              />
+            >
+              {designSettings.stripProcessed && designSettings.stripLayers ? (
+                <>
+                  {/* Layer 1: Lines & Buildings */}
+                  {designSettings.stripLayers.lines?.url && (
+                    <img
+                      src={designSettings.stripLayers.lines.url}
+                      alt="Lines layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.lines.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                  {/* Layer 2: Windows */}
+                  {designSettings.stripLayers.windows?.url && (
+                    <img
+                      src={designSettings.stripLayers.windows.url}
+                      alt="Windows layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.windows.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                  {/* Layer 3: Text */}
+                  {designSettings.stripLayers.text?.url && (
+                    <img
+                      src={designSettings.stripLayers.text.url}
+                      alt="Text layer"
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        opacity: (designSettings.stripLayers.text.opacity ?? 100) / 100,
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <img
+                  src={designSettings.logoUrl || companyHeaderImg}
+                  alt="Company Header Strip"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center",
+                    opacity: (designSettings.stripLineOpacity ?? 100) / 100,
+                    mixBlendMode: "multiply",
+                  }}
+                />
+              )}
             </div>
           )}
           {/* Full Width Logo - Inside header, spanning full width */}
@@ -4833,6 +5005,28 @@ export function HtmlTemplateEditor({
                         <div className="space-y-3 mt-3 p-3 border rounded-lg bg-muted/30">
                           <p className="text-xs text-muted-foreground font-medium">הגדרות סטריפ מותאם</p>
                           
+                          {/* AI Process Button */}
+                          <Button
+                            size="sm"
+                            variant={designSettings.stripProcessed ? "outline" : "default"}
+                            className="w-full"
+                            disabled={isProcessingLogo || !designSettings.logoUrl}
+                            onClick={handleProcessAllLayers}
+                          >
+                            {isProcessingLogo ? (
+                              <>
+                                <RotateCcw className="h-3 w-3 ml-1 animate-spin" />
+                                {processingLayer ? `מעבד שכבת ${processingLayer === "lines" ? "קווים" : processingLayer === "windows" ? "חלונות" : "טקסט"}...` : "מעבד..."}
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3 ml-1" />
+                                {designSettings.stripProcessed ? "עבד מחדש עם AI" : "🤖 זהה חלקים עם AI"}
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Background Color */}
                           <div>
                             <Label className="text-sm text-gray-600">צבע רקע</Label>
                             <div className="flex items-center gap-2 mt-1">
@@ -4860,52 +5054,177 @@ export function HtmlTemplateEditor({
                             </div>
                           </div>
 
-                          <div>
-                            <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                type="color"
-                                value={designSettings.stripLineColor || "#d4af37"}
-                                onChange={(e) =>
-                                  setDesignSettings({
-                                    ...designSettings,
-                                    stripLineColor: e.target.value,
-                                  })
-                                }
-                                className="w-10 h-8 rounded border cursor-pointer"
-                              />
-                              <Input
-                                value={designSettings.stripLineColor || "#d4af37"}
-                                onChange={(e) =>
-                                  setDesignSettings({
-                                    ...designSettings,
-                                    stripLineColor: e.target.value,
-                                  })
-                                }
-                                className="flex-1 h-8 text-xs"
-                              />
+                          {/* AI Layer Controls - shown after processing */}
+                          {designSettings.stripProcessed && designSettings.stripLayers ? (
+                            <div className="space-y-3 p-2 bg-background rounded border">
+                              <p className="text-xs font-medium text-primary flex items-center gap-1">
+                                <Layers className="h-3 w-3" />
+                                שכבות AI - צבע נפרד לכל חלק
+                              </p>
+                              
+                              {/* Lines & Buildings */}
+                              <div>
+                                <Label className="text-xs text-gray-600">🏗️ קווים ובניינים</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.lines?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("lines", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.lines?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("lines", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.lines?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          lines: { ...(prev.stripLayers?.lines || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "lines" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
+
+                              {/* Windows */}
+                              <div>
+                                <Label className="text-xs text-gray-600">🪟 חלונות/ריבועים</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.windows?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("windows", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.windows?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("windows", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.windows?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          windows: { ...(prev.stripLayers?.windows || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "windows" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
+
+                              {/* Text */}
+                              <div>
+                                <Label className="text-xs text-gray-600">✏️ טקסט</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.text?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("text", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.text?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("text", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.text?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          text: { ...(prev.stripLayers?.text || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "text" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              {/* Legacy single color control (before AI processing) */}
+                              <div>
+                                <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLineColor || "#d4af37"}
+                                    onChange={(e) =>
+                                      setDesignSettings({
+                                        ...designSettings,
+                                        stripLineColor: e.target.value,
+                                      })
+                                    }
+                                    className="w-10 h-8 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLineColor || "#d4af37"}
+                                    onChange={(e) =>
+                                      setDesignSettings({
+                                        ...designSettings,
+                                        stripLineColor: e.target.value,
+                                      })
+                                    }
+                                    className="flex-1 h-8 text-xs"
+                                  />
+                                </div>
+                              </div>
 
-                          <div>
-                            <Label className="text-sm text-gray-600">
-                              שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
-                            </Label>
-                            <Slider
-                              value={[designSettings.stripLineOpacity ?? 100]}
-                              onValueChange={([v]) =>
-                                setDesignSettings({
-                                  ...designSettings,
-                                  stripLineOpacity: v,
-                                })
-                              }
-                              min={10}
-                              max={100}
-                              step={5}
-                              className="mt-2"
-                            />
-                          </div>
+                              <div>
+                                <Label className="text-sm text-gray-600">
+                                  שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
+                                </Label>
+                                <Slider
+                                  value={[designSettings.stripLineOpacity ?? 100]}
+                                  onValueChange={([v]) =>
+                                    setDesignSettings({
+                                      ...designSettings,
+                                      stripLineOpacity: v,
+                                    })
+                                  }
+                                  min={10}
+                                  max={100}
+                                  step={5}
+                                  className="mt-2"
+                                />
+                              </div>
+                            </>
+                          )}
 
+                          {/* Strip Height */}
                           <div>
                             <Label className="text-sm text-gray-600">
                               גובה סטריפ: {designSettings.headerStripHeight || 150}px
@@ -4925,6 +5244,7 @@ export function HtmlTemplateEditor({
                             />
                           </div>
 
+                          {/* Color Presets */}
                           <div className="flex gap-2 flex-wrap">
                             {[
                               { bg: "#1a1a2e", line: "#d4af37", label: "כחול-זהב" },
