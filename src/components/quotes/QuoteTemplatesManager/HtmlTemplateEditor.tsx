@@ -3630,8 +3630,8 @@ export function HtmlTemplateEditor({
   };
 
   // === Signed PDF export ===
-  const handleExportSignedPdf = () => {
-    const html = generateHtmlContent();
+  const handleExportSignedPdf = async () => {
+    const html = await generateExportHtml();
     const signatureHtml = signatureData
       ? `
       <div style="margin-top: 40px; padding: 20px; border-top: 2px solid #eee;">
