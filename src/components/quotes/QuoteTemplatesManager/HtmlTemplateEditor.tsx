@@ -96,6 +96,9 @@ import {
   ZoomOut,
   RotateCw,
   Move,
+  FolderPlus,
+  UserPlus,
+  ExternalLink,
 } from "lucide-react";
 import {
   ResizablePanelGroup,
