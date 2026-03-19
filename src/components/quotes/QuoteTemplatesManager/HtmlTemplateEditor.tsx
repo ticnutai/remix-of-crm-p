@@ -170,6 +170,11 @@ interface PaymentStep {
   percentage: number;
   description: string;
 }
+interface StripLayer {
+  url: string;
+  color: string;
+  opacity: number;
+}
 interface DesignSettings {
   primaryColor: string;
   secondaryColor: string;
@@ -205,6 +210,14 @@ interface DesignSettings {
     width: number;
     height: number;
   };
+  // AI-processed logo layers
+  stripLayers?: {
+    lines?: StripLayer;
+    windows?: StripLayer;
+    text?: StripLayer;
+  };
+  stripProcessed?: boolean;
+  originalLogoUrl?: string; // Original logo before AI processing
 }
 interface TextBox {
   id: string;
