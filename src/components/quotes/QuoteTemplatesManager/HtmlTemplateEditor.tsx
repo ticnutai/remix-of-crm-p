@@ -4667,12 +4667,35 @@ export function HtmlTemplateEditor({
                         </Label>
                         <select
                           value={designSettings.logoPosition || "inside-header"}
-                          onChange={(e) =>
-                            setDesignSettings({
+                          onChange={(e) => {
+                            const newPosition = e.target.value as any;
+                            const updates: any = {
                               ...designSettings,
-                              logoPosition: e.target.value as any,
-                            })
-                          }
+                              logoPosition: newPosition,
+                            };
+                            // Auto-load company header for custom-strip mode
+                            if (newPosition === "custom-strip" && !designSettings.logoUrl) {
+                              // Convert imported image to data URL
+                              const img = new window.Image();
+                              img.crossOrigin = "anonymous";
+                              img.onload = () => {
+                                const canvas = document.createElement("canvas");
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                                const ctx = canvas.getContext("2d");
+                                if (ctx) {
+                                  ctx.drawImage(img, 0, 0);
+                                  const dataUrl = canvas.toDataURL("image/png");
+                                  setDesignSettings((prev) => ({
+                                    ...prev,
+                                    logoUrl: dataUrl,
+                                  }));
+                                }
+                              };
+                              img.src = companyHeaderImg;
+                            }
+                            setDesignSettings(updates);
+                          }}
                           className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
                         >
                           <option value="inside-header">בתוך הסטריפ</option>
