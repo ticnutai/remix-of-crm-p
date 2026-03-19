@@ -2704,13 +2704,34 @@ export function HtmlTemplateEditor({
       designSettings.logoPosition === "custom-strip"
         ? (() => {
             const stripBg = designSettings.stripBgColor || "#1a1a2e";
-            const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
             const stripHeight = designSettings.headerStripHeight || 150;
-            const logoSrc = designSettings.logoUrl || "";
-            return `
+            const layers = designSettings.stripLayers;
+            const isProcessed = designSettings.stripProcessed && layers;
+            
+            if (isProcessed) {
+              // Render 3 separate layers
+              let layersHtml = "";
+              if (layers?.lines?.url) {
+                layersHtml += `<img src="${layers.lines.url}" alt="Lines" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.lines.opacity ?? 100) / 100};">`;
+              }
+              if (layers?.windows?.url) {
+                layersHtml += `<img src="${layers.windows.url}" alt="Windows" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.windows.opacity ?? 100) / 100};">`;
+              }
+              if (layers?.text?.url) {
+                layersHtml += `<img src="${layers.text.url}" alt="Text" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;opacity:${(layers.text.opacity ?? 100) / 100};">`;
+              }
+              return `
+    <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
+      ${layersHtml}
+    </div>`;
+            } else {
+              const stripOpacity = (designSettings.stripLineOpacity ?? 100) / 100;
+              const logoSrc = designSettings.logoUrl || "";
+              return `
     <div style="position: relative; width: 100%; height: ${stripHeight}px; background-color: ${stripBg}; overflow: hidden;">
       <img src="${logoSrc}" alt="Header Strip" style="width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: ${stripOpacity}; mix-blend-mode: multiply;">
     </div>`;
+            }
           })()
         : designSettings.showHeaderStrip !== false
         ? `
