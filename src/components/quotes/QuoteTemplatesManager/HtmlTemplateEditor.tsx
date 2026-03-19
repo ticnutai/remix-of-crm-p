@@ -5005,6 +5005,28 @@ export function HtmlTemplateEditor({
                         <div className="space-y-3 mt-3 p-3 border rounded-lg bg-muted/30">
                           <p className="text-xs text-muted-foreground font-medium">הגדרות סטריפ מותאם</p>
                           
+                          {/* AI Process Button */}
+                          <Button
+                            size="sm"
+                            variant={designSettings.stripProcessed ? "outline" : "default"}
+                            className="w-full"
+                            disabled={isProcessingLogo || !designSettings.logoUrl}
+                            onClick={handleProcessAllLayers}
+                          >
+                            {isProcessingLogo ? (
+                              <>
+                                <RotateCcw className="h-3 w-3 ml-1 animate-spin" />
+                                {processingLayer ? `מעבד שכבת ${processingLayer === "lines" ? "קווים" : processingLayer === "windows" ? "חלונות" : "טקסט"}...` : "מעבד..."}
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3 ml-1" />
+                                {designSettings.stripProcessed ? "עבד מחדש עם AI" : "🤖 זהה חלקים עם AI"}
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Background Color */}
                           <div>
                             <Label className="text-sm text-gray-600">צבע רקע</Label>
                             <div className="flex items-center gap-2 mt-1">
@@ -5032,52 +5054,177 @@ export function HtmlTemplateEditor({
                             </div>
                           </div>
 
-                          <div>
-                            <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <input
-                                type="color"
-                                value={designSettings.stripLineColor || "#d4af37"}
-                                onChange={(e) =>
-                                  setDesignSettings({
-                                    ...designSettings,
-                                    stripLineColor: e.target.value,
-                                  })
-                                }
-                                className="w-10 h-8 rounded border cursor-pointer"
-                              />
-                              <Input
-                                value={designSettings.stripLineColor || "#d4af37"}
-                                onChange={(e) =>
-                                  setDesignSettings({
-                                    ...designSettings,
-                                    stripLineColor: e.target.value,
-                                  })
-                                }
-                                className="flex-1 h-8 text-xs"
-                              />
+                          {/* AI Layer Controls - shown after processing */}
+                          {designSettings.stripProcessed && designSettings.stripLayers ? (
+                            <div className="space-y-3 p-2 bg-background rounded border">
+                              <p className="text-xs font-medium text-primary flex items-center gap-1">
+                                <Layers className="h-3 w-3" />
+                                שכבות AI - צבע נפרד לכל חלק
+                              </p>
+                              
+                              {/* Lines & Buildings */}
+                              <div>
+                                <Label className="text-xs text-gray-600">🏗️ קווים ובניינים</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.lines?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("lines", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.lines?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("lines", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.lines?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          lines: { ...(prev.stripLayers?.lines || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "lines" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
+
+                              {/* Windows */}
+                              <div>
+                                <Label className="text-xs text-gray-600">🪟 חלונות/ריבועים</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.windows?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("windows", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.windows?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("windows", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.windows?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          windows: { ...(prev.stripLayers?.windows || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "windows" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
+
+                              {/* Text */}
+                              <div>
+                                <Label className="text-xs text-gray-600">✏️ טקסט</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLayers.text?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("text", e.target.value)}
+                                    disabled={!!processingLayer}
+                                    className="w-8 h-6 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLayers.text?.color || "#000000"}
+                                    onChange={(e) => handleRecolorLayer("text", e.target.value)}
+                                    className="flex-1 h-7 text-xs"
+                                    disabled={!!processingLayer}
+                                  />
+                                  <Slider
+                                    value={[designSettings.stripLayers.text?.opacity ?? 100]}
+                                    onValueChange={([v]) =>
+                                      setDesignSettings(prev => ({
+                                        ...prev,
+                                        stripLayers: {
+                                          ...prev.stripLayers,
+                                          text: { ...(prev.stripLayers?.text || { url: "", color: "#000000" }), opacity: v },
+                                        },
+                                      }))
+                                    }
+                                    min={0}
+                                    max={100}
+                                    step={5}
+                                    className="w-20"
+                                  />
+                                  {processingLayer === "text" && <RotateCcw className="h-3 w-3 animate-spin text-muted-foreground" />}
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <>
+                              {/* Legacy single color control (before AI processing) */}
+                              <div>
+                                <Label className="text-sm text-gray-600">צבע קווים/טקסטורה</Label>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <input
+                                    type="color"
+                                    value={designSettings.stripLineColor || "#d4af37"}
+                                    onChange={(e) =>
+                                      setDesignSettings({
+                                        ...designSettings,
+                                        stripLineColor: e.target.value,
+                                      })
+                                    }
+                                    className="w-10 h-8 rounded border cursor-pointer"
+                                  />
+                                  <Input
+                                    value={designSettings.stripLineColor || "#d4af37"}
+                                    onChange={(e) =>
+                                      setDesignSettings({
+                                        ...designSettings,
+                                        stripLineColor: e.target.value,
+                                      })
+                                    }
+                                    className="flex-1 h-8 text-xs"
+                                  />
+                                </div>
+                              </div>
 
-                          <div>
-                            <Label className="text-sm text-gray-600">
-                              שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
-                            </Label>
-                            <Slider
-                              value={[designSettings.stripLineOpacity ?? 100]}
-                              onValueChange={([v]) =>
-                                setDesignSettings({
-                                  ...designSettings,
-                                  stripLineOpacity: v,
-                                })
-                              }
-                              min={10}
-                              max={100}
-                              step={5}
-                              className="mt-2"
-                            />
-                          </div>
+                              <div>
+                                <Label className="text-sm text-gray-600">
+                                  שקיפות קווים: {designSettings.stripLineOpacity ?? 100}%
+                                </Label>
+                                <Slider
+                                  value={[designSettings.stripLineOpacity ?? 100]}
+                                  onValueChange={([v]) =>
+                                    setDesignSettings({
+                                      ...designSettings,
+                                      stripLineOpacity: v,
+                                    })
+                                  }
+                                  min={10}
+                                  max={100}
+                                  step={5}
+                                  className="mt-2"
+                                />
+                              </div>
+                            </>
+                          )}
 
+                          {/* Strip Height */}
                           <div>
                             <Label className="text-sm text-gray-600">
                               גובה סטריפ: {designSettings.headerStripHeight || 150}px
@@ -5097,6 +5244,7 @@ export function HtmlTemplateEditor({
                             />
                           </div>
 
+                          {/* Color Presets */}
                           <div className="flex gap-2 flex-wrap">
                             {[
                               { bg: "#1a1a2e", line: "#d4af37", label: "כחול-זהב" },
