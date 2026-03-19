@@ -5669,7 +5669,7 @@ export function HtmlTemplateEditor({
                         חזור לסטריפ רגיל
                       </Button>
                     )}
-                    {designSettings.logoUrl && (
+                    {designSettings.logoUrl && !designSettings.stripProcessed && (
                       <Button
                         variant="outline"
                         className="border-purple-200 text-purple-700 hover:bg-purple-50"
@@ -5681,7 +5681,27 @@ export function HtmlTemplateEditor({
                         ) : (
                           <Sparkles className="h-4 w-4 ml-2" />
                         )}
-                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע + זהה קווים"}
+                        {isRemovingBg ? "מנקה רקע..." : "נקה רקע (בסיסי)"}
+                      </Button>
+                    )}
+                    {designSettings.logoUrl && (
+                      <Button
+                        variant={designSettings.stripProcessed ? "outline" : "default"}
+                        className={designSettings.stripProcessed ? "border-green-200 text-green-700" : "bg-gradient-to-r from-purple-600 to-blue-600 text-white"}
+                        onClick={handleProcessAllLayers}
+                        disabled={isProcessingLogo}
+                      >
+                        {isProcessingLogo ? (
+                          <>
+                            <RotateCcw className="h-4 w-4 ml-2 animate-spin" />
+                            {processingLayer ? `מעבד ${processingLayer === "lines" ? "קווים" : processingLayer === "windows" ? "חלונות" : "טקסט"}...` : "מעבד..."}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 ml-2" />
+                            {designSettings.stripProcessed ? "✅ עבד מחדש עם AI" : "🤖 זהה חלקים עם AI"}
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
