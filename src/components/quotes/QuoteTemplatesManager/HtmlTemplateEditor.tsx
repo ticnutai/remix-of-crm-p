@@ -3774,6 +3774,19 @@ export function HtmlTemplateEditor({
                     />
                     <span className="text-base opacity-80">+ מע״מ</span>
                   </div>
+                  {/* VAT breakdown */}
+                  {(() => {
+                    const bp = editedTemplate.base_price || 35000;
+                    const vr = editedTemplate.vat_rate || 17;
+                    const vatAmt = Math.round(bp * vr / 100);
+                    const totalWithVat = bp + vatAmt;
+                    return (
+                      <div className="text-xs opacity-70 mt-1 space-y-0.5 text-left">
+                        <div>מע״מ {vr}%: ₪{vatAmt.toLocaleString()}</div>
+                        <div className="font-semibold text-sm">סה״כ כולל מע״מ: ₪{totalWithVat.toLocaleString()}</div>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <Button
                   variant="ghost"
