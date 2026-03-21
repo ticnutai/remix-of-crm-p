@@ -7,6 +7,7 @@ import {
   FileImage,
   CalendarDays,
   Bell,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePortalUnreadCounts } from "@/hooks/usePortalUnreadCounts";
@@ -20,6 +21,11 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/client-portal", icon: <Home className="h-5 w-5" />, label: "בית" },
+  {
+    path: "/client-portal/workflow",
+    icon: <ListChecks className="h-5 w-5" />,
+    label: "משימות",
+  },
   {
     path: "/client-portal/projects",
     icon: <FolderKanban className="h-5 w-5" />,

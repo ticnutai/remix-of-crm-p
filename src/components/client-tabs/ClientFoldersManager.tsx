@@ -213,6 +213,50 @@ function SortableTask({
             {task.title}
           </span>
 
+          {/* Office/Client toggle */}
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn(
+              "h-6 px-2 text-[10px] gap-1",
+              task.task_owner === "client"
+                ? "border-amber-300 text-amber-700 bg-amber-50"
+                : "border-blue-300 text-blue-700 bg-blue-50"
+            )}
+            onClick={() => {
+              const newOwner = task.task_owner === "office" ? "client" : "office";
+              const now = new Date().toISOString();
+              const updates: Partial<ClientFolderTask> = { task_owner: newOwner };
+
+              // Stop current timer, start other
+              if (task.task_owner === "office") {
+                // Office -> Client: stop office, start client
+                updates.office_timer_started_at = null;
+                if (task.office_timer_started_at) {
+                  const elapsed = Math.floor((Date.now() - new Date(task.office_timer_started_at).getTime()) / 1000);
+                  updates.office_timer_total_seconds = (task.office_timer_total_seconds || 0) + elapsed;
+                }
+                updates.client_timer_started_at = now;
+              } else {
+                // Client -> Office: stop client, start office  
+                updates.client_timer_started_at = null;
+                if (task.client_timer_started_at) {
+                  const elapsed = Math.floor((Date.now() - new Date(task.client_timer_started_at).getTime()) / 1000);
+                  updates.client_timer_total_seconds = (task.client_timer_total_seconds || 0) + elapsed;
+                }
+                updates.office_timer_started_at = now;
+              }
+              onUpdate(updates);
+            }}
+            title={task.task_owner === "client" ? "משימת לקוח - לחץ להעביר למשרד" : "משימת משרד - לחץ להעביר ללקוח"}
+          >
+            {task.task_owner === "client" ? (
+              <>👤 לקוח</>
+            ) : (
+              <>🏢 משרד</>
+            )}
+          </Button>
+
           <Button
             size="sm"
             variant="ghost"

@@ -252,6 +252,19 @@ export default function ClientPortal() {
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate("/client-portal/workflow")}
+          >
+            <CardContent className="p-3 text-center">
+              <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-1">
+                <CheckCircle className="h-4.5 w-4.5 text-amber-600" />
+              </div>
+              <p className="text-xl font-bold">📋</p>
+              <p className="text-[10px] text-muted-foreground">משימות</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate("/client-portal/projects")}
           >
             <CardContent className="p-3 text-center">

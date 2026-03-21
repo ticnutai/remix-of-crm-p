@@ -1941,15 +1941,20 @@ export type Database = {
       client_folder_tasks: {
         Row: {
           background_color: string | null
+          client_timer_started_at: string | null
+          client_timer_total_seconds: number
           completed: boolean | null
           completed_at: string | null
           created_at: string | null
           id: string
           is_bold: boolean | null
+          office_timer_started_at: string | null
+          office_timer_total_seconds: number
           sort_order: number | null
           stage_id: string
           started_at: string | null
           target_working_days: number | null
+          task_owner: string
           text_color: string | null
           timer_display_style: number | null
           title: string
@@ -1957,15 +1962,20 @@ export type Database = {
         }
         Insert: {
           background_color?: string | null
+          client_timer_started_at?: string | null
+          client_timer_total_seconds?: number
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
           is_bold?: boolean | null
+          office_timer_started_at?: string | null
+          office_timer_total_seconds?: number
           sort_order?: number | null
           stage_id: string
           started_at?: string | null
           target_working_days?: number | null
+          task_owner?: string
           text_color?: string | null
           timer_display_style?: number | null
           title: string
@@ -1973,15 +1983,20 @@ export type Database = {
         }
         Update: {
           background_color?: string | null
+          client_timer_started_at?: string | null
+          client_timer_total_seconds?: number
           completed?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
           is_bold?: boolean | null
+          office_timer_started_at?: string | null
+          office_timer_total_seconds?: number
           sort_order?: number | null
           stage_id?: string
           started_at?: string | null
           target_working_days?: number | null
+          task_owner?: string
           text_color?: string | null
           timer_display_style?: number | null
           title?: string
@@ -2616,6 +2631,60 @@ export type Database = {
             columns: ["tab_data_id"]
             isOneToOne: false
             referencedRelation: "client_tab_data"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_task_files: {
+        Row: {
+          client_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          stage_id: string | null
+          task_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          stage_id?: string | null
+          task_id: string
+          uploaded_by?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          stage_id?: string | null
+          task_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_task_files_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "client_folder_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_task_files_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "client_folder_tasks"
             referencedColumns: ["id"]
           },
         ]

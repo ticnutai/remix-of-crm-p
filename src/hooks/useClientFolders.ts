@@ -38,6 +38,11 @@ export interface ClientFolderTask {
   started_at?: string | null;
   target_working_days?: number | null;
   timer_display_style?: number;
+  task_owner?: string;
+  office_timer_started_at?: string | null;
+  office_timer_total_seconds?: number;
+  client_timer_started_at?: string | null;
+  client_timer_total_seconds?: number;
 }
 
 // Default stages for new folders
