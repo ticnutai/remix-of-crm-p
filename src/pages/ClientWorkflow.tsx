@@ -137,7 +137,7 @@ export default function ClientWorkflow() {
       setFolders(foldersWithStages);
 
       // Expand all stages by default
-      const allStageIds = new Set((stagesData || []).map((s: any) => s.id));
+      const allStageIds = new Set<string>((stagesData || []).map((s: any) => s.id));
       setExpandedStages(allStageIds);
 
       // Fetch tasks

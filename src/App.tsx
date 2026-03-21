@@ -211,6 +211,10 @@ const App = () => {
                                 element={withErrorBoundary(ClientPayments)}
                               />
                               <Route
+                                path="/client-portal/workflow"
+                                element={withErrorBoundary(ClientWorkflow)}
+                              />
+                              <Route
                                 path="/tasks-meetings"
                                 element={withErrorBoundary(TasksAndMeetings)}
                               />
