@@ -46,6 +46,7 @@ const ClientNotifications = lazy(() => import("./pages/ClientNotifications"));
 const ClientSettings = lazy(() => import("./pages/ClientSettings"));
 const ClientPayments = lazy(() => import("./pages/ClientPayments"));
 const TasksAndMeetings = lazy(() => import("./pages/TasksAndMeetings"));
+const ClientWorkflow = lazy(() => import("./pages/ClientWorkflow"));
 
 const CustomTableView = lazy(() => import("./pages/CustomTableView"));
 const ClientProfile = lazy(() => import("./pages/ClientProfile"));
