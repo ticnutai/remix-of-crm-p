@@ -7,6 +7,7 @@ import {
   FileImage,
   CalendarDays,
   Bell,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePortalUnreadCounts } from "@/hooks/usePortalUnreadCounts";
