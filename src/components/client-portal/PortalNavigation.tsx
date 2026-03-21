@@ -22,6 +22,11 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: "/client-portal", icon: <Home className="h-5 w-5" />, label: "בית" },
   {
+    path: "/client-portal/workflow",
+    icon: <ListChecks className="h-5 w-5" />,
+    label: "משימות",
+  },
+  {
     path: "/client-portal/projects",
     icon: <FolderKanban className="h-5 w-5" />,
     label: "תיקים",
