@@ -3204,7 +3204,7 @@ export function HtmlTemplateEditor({
     try {
       // For any URL or path, load via canvas
       return await new Promise<string>((resolve, reject) => {
-        const img = new Image();
+        const img = new window.Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
           const canvas = document.createElement("canvas");
