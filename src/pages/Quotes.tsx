@@ -112,7 +112,44 @@ export default function Quotes() {
   
   // Contracts hooks and state
   const { contracts, isLoading: contractsLoading, stats: contractsStats, createContract, updateContract, deleteContract } = useContracts();
-  
+  const queryClient = useQueryClient();
+
+  // Saved quotes
+  const [savedQuotesSearch, setSavedQuotesSearch] = useState("");
+  const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useState("all");
+  const [deleteSavedQuoteId, setDeleteSavedQuoteId] = useState<string | null>(null);
+
+  const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
+    queryKey: ["saved-quotes"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await (supabase as any)
+        .from("saved_quotes")
+        .select("*, clients:client_id(id, name, phone)")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+  });
+
+  const handleDeleteSavedQuote = async () => {
+    if (!deleteSavedQuoteId) return;
+    await (supabase as any).from("saved_quotes").delete().eq("id", deleteSavedQuoteId);
+    queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
+    setDeleteSavedQuoteId(null);
+    toast({ title: "הצעה נמחקה" });
+  };
+
+  const filteredSavedQuotes = savedQuotes.filter((sq: any) => {
+    const matchSearch = !savedQuotesSearch ||
+      sq.title?.toLowerCase().includes(savedQuotesSearch.toLowerCase()) ||
+      sq.clients?.name?.toLowerCase().includes(savedQuotesSearch.toLowerCase());
+    const matchStatus = savedQuotesStatusFilter === "all" || sq.status === savedQuotesStatusFilter;
+    return matchSearch && matchStatus;
+  });
+
   const [activeTab, setActiveTab] = useState<string>(() => {
     return localStorage.getItem('quotes-active-tab') || 'quotes';
   });
