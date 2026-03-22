@@ -738,7 +738,7 @@ export default function Quotes() {
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" dir="rtl">
+                                <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => {
                                     if (sq.clients?.id) {
                                       navigate(`/clients/${sq.clients.id}`);
