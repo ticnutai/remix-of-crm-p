@@ -2854,35 +2854,26 @@ export function HtmlTemplateEditor({
       
       ${renderTextBoxes("after-stages")}
       
-      ${renderTextBoxes("before-payments")}
-      
       <h2 style="color: ${designSettings.primaryColor}; margin-top: 40px;">סדר תשלומים</h2>
       <table class="payments">
-        <thead><tr><th>שלב</th><th>אחוז</th><th>סכום</th></tr></thead>
+        <thead><tr><th>שלב</th><th>אחוז</th><th>סכום (נטו)</th>${isVatBreakdown ? "<th>מע״מ</th><th>סה״כ (ברוטו)</th>" : ""}</tr></thead>
         <tbody>${payments}</tbody>
         <tfoot>
           <tr style="font-weight: bold; background: #f0f0f0;">
             <td style="padding: 12px;">סה"כ</td>
             <td style="padding: 12px; text-align: center;">100%</td>
-            <td style="padding: 12px; text-align: left;">₪${(editedTemplate.base_price || 35000).toLocaleString()}</td>
+            <td style="padding: 12px; text-align: left;">₪${basePrice.toLocaleString()}</td>
+            ${isVatBreakdown ? `
+            <td style="padding: 12px; text-align: left; color: #666;">₪${totalVat.toLocaleString()}</td>
+            <td style="padding: 12px; text-align: left; font-weight: bold; font-size: 1.1em;">₪${totalGross.toLocaleString()}</td>` : ""}
           </tr>
-          ${isVatBreakdown ? `
-          <tr style="background: #f9f9f9;">
-            <td style="padding: 12px; color: #666;">מע״מ ${vatRate}%</td>
-            <td style="padding: 12px;"></td>
-            <td style="padding: 12px; text-align: left; color: #666;">₪${Math.round((editedTemplate.base_price || 35000) * vatRate / 100).toLocaleString()}</td>
-          </tr>
-          <tr style="font-weight: bold; background: #e8e8e8; font-size: 1.1em;">
-            <td style="padding: 12px;">סה"כ כולל מע״מ</td>
-            <td style="padding: 12px;"></td>
-            <td style="padding: 12px; text-align: left;">₪${Math.round((editedTemplate.base_price || 35000) * (1 + vatRate / 100)).toLocaleString()}</td>
-          </tr>` : ""}
         </tfoot>
       </table>
+      ${isVatBreakdown ? `<p style="margin-top: 8px; font-size: 12px; color: #888;">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>` : ""}
       
       ${renderTextBoxes("after-payments")}
       
-      <p style="margin-top: 30px; color: #666; font-size: 14px;">* ${isVatBreakdown ? `המחירים כוללים מע״מ ${vatRate}%.` : "המחירים אינם כוללים מע\"מ."} תוקף ההצעה: ${editedTemplate.validity_days || 30} יום.</p>
+      <p style="margin-top: 30px; color: #666; font-size: 14px;">* ${isVatBreakdown ? `המחירים מוצגים עם פירוט מע״מ לכל שלב.${hasCustomVat ? " שימו לב: חלק מהשלבים כוללים שיעור מע״מ שונה." : ""}` : "המחירים אינם כוללים מע\"מ."} תוקף ההצעה: ${editedTemplate.validity_days || 30} יום.</p>
       
       ${renderTextBoxes("footer")}
     </div>
