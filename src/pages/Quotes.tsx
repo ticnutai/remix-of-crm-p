@@ -375,10 +375,17 @@ export default function Quotes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsList className="grid w-full max-w-3xl grid-cols-5">
             <TabsTrigger value="quotes" className="gap-2">
               <FileText className="h-4 w-4" />
               הצעות מחיר
+            </TabsTrigger>
+            <TabsTrigger value="saved-quotes" className="gap-2">
+              <Archive className="h-4 w-4" />
+              הצעות שמורות
+              {savedQuotes.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{savedQuotes.length}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="contracts" className="gap-2">
               <FileSignature className="h-4 w-4" />
