@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { he } from 'date-fns/locale';
 import {
@@ -74,10 +75,11 @@ import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteE
 import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
 import { NewAdvancedEditor } from '@/components/contracts/AdvancedContractEditor/NewAdvancedEditor';
 import { cn } from '@/lib/utils';
-import { ClipboardList, Settings2 } from 'lucide-react';
+import { ClipboardList, Settings2, Archive, User, Trash2 as TrashIcon } from 'lucide-react';
 import { exportQuoteToPDF } from '@/lib/pdf-export';
 import { SignatureDialog, SignatureData } from '@/components/signature';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
@@ -110,7 +112,44 @@ export default function Quotes() {
   
   // Contracts hooks and state
   const { contracts, isLoading: contractsLoading, stats: contractsStats, createContract, updateContract, deleteContract } = useContracts();
-  
+  const queryClient = useQueryClient();
+
+  // Saved quotes
+  const [savedQuotesSearch, setSavedQuotesSearch] = useState("");
+  const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useState("all");
+  const [deleteSavedQuoteId, setDeleteSavedQuoteId] = useState<string | null>(null);
+
+  const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
+    queryKey: ["saved-quotes"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data, error } = await (supabase as any)
+        .from("saved_quotes")
+        .select("*, clients:client_id(id, name, phone)")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false });
+      if (error) { console.error(error); return []; }
+      return data || [];
+    },
+  });
+
+  const handleDeleteSavedQuote = async () => {
+    if (!deleteSavedQuoteId) return;
+    await (supabase as any).from("saved_quotes").delete().eq("id", deleteSavedQuoteId);
+    queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
+    setDeleteSavedQuoteId(null);
+    toast({ title: "הצעה נמחקה" });
+  };
+
+  const filteredSavedQuotes = savedQuotes.filter((sq: any) => {
+    const matchSearch = !savedQuotesSearch ||
+      sq.title?.toLowerCase().includes(savedQuotesSearch.toLowerCase()) ||
+      sq.clients?.name?.toLowerCase().includes(savedQuotesSearch.toLowerCase());
+    const matchStatus = savedQuotesStatusFilter === "all" || sq.status === savedQuotesStatusFilter;
+    return matchSearch && matchStatus;
+  });
+
   const [activeTab, setActiveTab] = useState<string>(() => {
     return localStorage.getItem('quotes-active-tab') || 'quotes';
   });
@@ -336,10 +375,17 @@ export default function Quotes() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsList className="grid w-full max-w-3xl grid-cols-5">
             <TabsTrigger value="quotes" className="gap-2">
               <FileText className="h-4 w-4" />
               הצעות מחיר
+            </TabsTrigger>
+            <TabsTrigger value="saved-quotes" className="gap-2">
+              <Archive className="h-4 w-4" />
+              הצעות שמורות
+              {savedQuotes.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-xs">{savedQuotes.length}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="contracts" className="gap-2">
               <FileSignature className="h-4 w-4" />
@@ -574,6 +620,137 @@ export default function Quotes() {
                                   <DropdownMenuItem 
                                     className="text-destructive"
                                     onClick={() => setDeleteQuoteId(quote.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 ml-2" />
+                                    מחק
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Saved Quotes Tab - הצעות שמורות */}
+          <TabsContent value="saved-quotes" className="space-y-6 mt-6">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="חפש הצעה שמורה..."
+                    value={savedQuotesSearch}
+                    onChange={(e) => setSavedQuotesSearch(e.target.value)}
+                    className="pr-10"
+                    dir="rtl"
+                  />
+                </div>
+                <Select value={savedQuotesStatusFilter} onValueChange={setSavedQuotesStatusFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="סטטוס" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">הכל</SelectItem>
+                    <SelectItem value="draft">טיוטה</SelectItem>
+                    <SelectItem value="sent">נשלח</SelectItem>
+                    <SelectItem value="accepted">אושר</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Badge variant="outline">{filteredSavedQuotes.length} הצעות</Badge>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <Table dir="rtl">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">שם ההצעה</TableHead>
+                      <TableHead className="text-right">לקוח</TableHead>
+                      <TableHead className="text-right">סכום נטו</TableHead>
+                      <TableHead className="text-right">מע״מ</TableHead>
+                      <TableHead className="text-right">סה״כ</TableHead>
+                      <TableHead className="text-right">סטטוס</TableHead>
+                      <TableHead className="text-right">תאריך</TableHead>
+                      <TableHead className="text-right w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {savedQuotesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          טוען...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredSavedQuotes.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          אין הצעות שמורות
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredSavedQuotes.map((sq: any) => {
+                        const statusCfg: Record<string, { label: string; cls: string }> = {
+                          draft: { label: "טיוטה", cls: "bg-muted text-muted-foreground" },
+                          sent: { label: "נשלח", cls: "bg-blue-100 text-blue-700" },
+                          accepted: { label: "אושר", cls: "bg-green-100 text-green-700" },
+                        };
+                        const st = statusCfg[sq.status] || statusCfg.draft;
+                        const basePrice = sq.base_price || 0;
+                        const vatRate = sq.vat_rate || 17;
+                        const vatAmount = Math.round(basePrice * vatRate / 100);
+
+                        return (
+                          <TableRow key={sq.id}>
+                            <TableCell className="font-medium">{sq.title || "ללא שם"}</TableCell>
+                            <TableCell>
+                              {sq.clients?.name ? (
+                                <button
+                                  onClick={() => navigate(`/clients/${sq.clients.id}`)}
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <User className="h-3 w-3" />
+                                  {sq.clients.name}
+                                </button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">לא משויך</span>
+                              )}
+                            </TableCell>
+                            <TableCell>₪{basePrice.toLocaleString()}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{vatRate}% (₪{vatAmount.toLocaleString()})</TableCell>
+                            <TableCell className="font-semibold">₪{(sq.total_with_vat || 0).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge className={st.cls}>{st.label}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {sq.updated_at ? format(new Date(sq.updated_at), 'dd/MM/yyyy', { locale: he }) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => {
+                                    if (sq.clients?.id) {
+                                      navigate(`/clients/${sq.clients.id}`);
+                                    }
+                                  }} disabled={!sq.clients?.id}>
+                                    <User className="h-4 w-4 ml-2" />
+                                    פתח תיק לקוח
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => setDeleteSavedQuoteId(sq.id)}
                                   >
                                     <Trash2 className="h-4 w-4 ml-2" />
                                     מחק
@@ -1036,6 +1213,24 @@ export default function Quotes() {
         signerName={signatureQuote?.clients?.name}
         signerEmail={signatureQuote?.clients?.email}
       />
+
+      {/* Delete Saved Quote Confirmation */}
+      <AlertDialog open={!!deleteSavedQuoteId} onOpenChange={() => setDeleteSavedQuoteId(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת הצעה שמורה</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם למחוק הצעה זו? פעולה זו לא ניתנת לביטול.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSavedQuote} className="bg-destructive text-destructive-foreground">
+              מחק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

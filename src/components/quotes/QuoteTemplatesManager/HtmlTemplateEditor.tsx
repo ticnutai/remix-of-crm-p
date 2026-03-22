@@ -98,6 +98,7 @@ import {
   Move,
   FolderPlus,
   UserPlus,
+  Users,
   ExternalLink,
 } from "lucide-react";
 import {
@@ -2588,7 +2589,7 @@ export function HtmlTemplateEditor({
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      await onSave({
+      const templatePayload = {
         ...editedTemplate,
         payment_schedule: paymentSteps.map((s) => ({
           id: s.id,
@@ -2603,8 +2604,64 @@ export function HtmlTemplateEditor({
         project_details: projectDetails,
         base_price: editedTemplate.base_price || 0,
         pricing_tiers: pricingTiers,
-      } as any);
-      toast({ title: "נשמר בהצלחה ☁️", description: "כל הנתונים נשמרו בענן" });
+      };
+
+      // 1. Save template as before
+      await onSave(templatePayload as any);
+
+      // 2. Also save to saved_quotes table
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const basePrice = editedTemplate.base_price || 0;
+          const vatRate = editedTemplate.vat_rate || 17;
+          const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
+
+          const savedQuoteData = {
+            user_id: user.id,
+            client_id: projectDetails.clientId || null,
+            template_id: editedTemplate.id || null,
+            title: editedTemplate.name || "הצעת מחיר",
+            description: editedTemplate.description || "",
+            status: "draft",
+            base_price: basePrice,
+            vat_rate: vatRate,
+            total_with_vat: totalWithVat,
+            template_data: templatePayload as any,
+            project_details: projectDetails as any,
+            payment_schedule: templatePayload.payment_schedule as any,
+            design_settings: designSettings as any,
+            text_boxes: textBoxes as any,
+            upgrades: upgrades as any,
+            pricing_tiers: pricingTiers as any,
+            notes: editedTemplate.notes || "",
+          };
+
+          // Check if already saved (by template_id + user)
+          const { data: existing } = await (supabase as any)
+            .from("saved_quotes")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("template_id", editedTemplate.id)
+            .maybeSingle();
+
+          if (existing?.id) {
+            await (supabase as any)
+              .from("saved_quotes")
+              .update(savedQuoteData)
+              .eq("id", existing.id);
+          } else {
+            await (supabase as any)
+              .from("saved_quotes")
+              .insert(savedQuoteData);
+          }
+        }
+      } catch (sqErr) {
+        console.warn("Could not save to saved_quotes:", sqErr);
+      }
+
+      toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בתבנית ובהצעות השמורות" });
     } catch (err: any) {
       console.error("Save error:", err);
       toast({
@@ -3571,6 +3628,8 @@ export function HtmlTemplateEditor({
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [showAssignClientDialog, setShowAssignClientDialog] = useState(false);
+  const [assignClientSearch, setAssignClientSearch] = useState("");
   const [calculationResult, setCalculationResult] =
     useState<CalculationResult | null>(null);
 
@@ -9602,6 +9661,14 @@ export function HtmlTemplateEditor({
                 וואטסאפ
               </Button>
               <Button
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+                onClick={() => setShowAssignClientDialog(true)}
+              >
+                <Users className="h-4 w-4 ml-1" />
+                שייך ללקוח
+              </Button>
+              <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
                 onClick={() => setShowCreateClientDialog(true)}
@@ -9703,6 +9770,119 @@ export function HtmlTemplateEditor({
                 {isCreatingClient ? "יוצר תיק..." : "צור לקוח חדש + חוזה"}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Assign to Existing Client Dialog */}
+        <Dialog open={showAssignClientDialog} onOpenChange={setShowAssignClientDialog}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-purple-600" />
+                שייך הצעה ללקוח קיים
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <Input
+                placeholder="חפש לקוח..."
+                value={assignClientSearch}
+                onChange={(e) => setAssignClientSearch(e.target.value)}
+                dir="rtl"
+              />
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
+                {allClients
+                  .filter((c: any) =>
+                    !assignClientSearch ||
+                    c.name?.toLowerCase().includes(assignClientSearch.toLowerCase()) ||
+                    c.email?.toLowerCase().includes(assignClientSearch.toLowerCase()) ||
+                    c.phone?.includes(assignClientSearch)
+                  )
+                  .slice(0, 50)
+                  .map((client: any) => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const { supabase } = await import("@/integrations/supabase/client");
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) throw new Error("לא מחובר");
+
+                          const basePrice = editedTemplate.base_price || 0;
+                          const vatRate = editedTemplate.vat_rate || 17;
+                          const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
+
+                          // Save/update in saved_quotes with the client_id
+                          const savedData = {
+                            user_id: user.id,
+                            client_id: client.id,
+                            template_id: editedTemplate.id || null,
+                            title: editedTemplate.name || "הצעת מחיר",
+                            description: editedTemplate.description || "",
+                            status: "draft",
+                            base_price: basePrice,
+                            vat_rate: vatRate,
+                            total_with_vat: totalWithVat,
+                            template_data: editedTemplate as any,
+                            project_details: { ...projectDetails, clientId: client.id, clientName: client.name } as any,
+                            payment_schedule: paymentSteps as any,
+                            design_settings: designSettings as any,
+                            text_boxes: textBoxes as any,
+                            upgrades: upgrades as any,
+                            pricing_tiers: pricingTiers as any,
+                          };
+
+                          const { data: existing } = await (supabase as any)
+                            .from("saved_quotes")
+                            .select("id")
+                            .eq("user_id", user.id)
+                            .eq("template_id", editedTemplate.id)
+                            .eq("client_id", client.id)
+                            .maybeSingle();
+
+                          if (existing?.id) {
+                            await (supabase as any).from("saved_quotes").update(savedData).eq("id", existing.id);
+                          } else {
+                            await (supabase as any).from("saved_quotes").insert(savedData);
+                          }
+
+                          // Update local project details
+                          setProjectDetails((prev: any) => ({ ...prev, clientId: client.id, clientName: client.name }));
+
+                          setShowAssignClientDialog(false);
+                          setAssignClientSearch("");
+                          toast({
+                            title: "✅ הצעה שויכה ללקוח",
+                            description: `${editedTemplate.name} → ${client.name}`,
+                          });
+                        } catch (err: any) {
+                          toast({ title: "שגיאה", description: err?.message, variant: "destructive" });
+                        }
+                      }}
+                      className="w-full text-right px-3 py-2.5 text-sm hover:bg-purple-50 transition-colors border-b last:border-0 flex items-center justify-between"
+                    >
+                      <div className="text-right">
+                        <span className="font-medium">{client.name}</span>
+                        {client.phone && <span className="text-xs text-muted-foreground mr-2">{client.phone}</span>}
+                        {client.email && <div className="text-xs text-muted-foreground">{client.email}</div>}
+                      </div>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                    </button>
+                  ))
+                }
+                {allClients.filter((c: any) =>
+                  !assignClientSearch ||
+                  c.name?.toLowerCase().includes(assignClientSearch.toLowerCase())
+                ).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">לא נמצאו לקוחות</p>
+                )}
+              </div>
+              {projectDetails.clientId && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm">
+                  <span className="font-medium">משויך כעת:</span> {projectDetails.clientName || "לקוח"}
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
