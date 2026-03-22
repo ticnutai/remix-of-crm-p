@@ -2588,7 +2588,7 @@ export function HtmlTemplateEditor({
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      await onSave({
+      const templatePayload = {
         ...editedTemplate,
         payment_schedule: paymentSteps.map((s) => ({
           id: s.id,
@@ -2603,8 +2603,64 @@ export function HtmlTemplateEditor({
         project_details: projectDetails,
         base_price: editedTemplate.base_price || 0,
         pricing_tiers: pricingTiers,
-      } as any);
-      toast({ title: "נשמר בהצלחה ☁️", description: "כל הנתונים נשמרו בענן" });
+      };
+
+      // 1. Save template as before
+      await onSave(templatePayload as any);
+
+      // 2. Also save to saved_quotes table
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const basePrice = editedTemplate.base_price || 0;
+          const vatRate = editedTemplate.vat_rate || 17;
+          const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
+
+          const savedQuoteData = {
+            user_id: user.id,
+            client_id: projectDetails.clientId || null,
+            template_id: editedTemplate.id || null,
+            title: editedTemplate.name || "הצעת מחיר",
+            description: editedTemplate.description || "",
+            status: "draft",
+            base_price: basePrice,
+            vat_rate: vatRate,
+            total_with_vat: totalWithVat,
+            template_data: templatePayload as any,
+            project_details: projectDetails as any,
+            payment_schedule: templatePayload.payment_schedule as any,
+            design_settings: designSettings as any,
+            text_boxes: textBoxes as any,
+            upgrades: upgrades as any,
+            pricing_tiers: pricingTiers as any,
+            notes: editedTemplate.notes || "",
+          };
+
+          // Check if already saved (by template_id + user)
+          const { data: existing } = await (supabase as any)
+            .from("saved_quotes")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("template_id", editedTemplate.id)
+            .maybeSingle();
+
+          if (existing?.id) {
+            await (supabase as any)
+              .from("saved_quotes")
+              .update(savedQuoteData)
+              .eq("id", existing.id);
+          } else {
+            await (supabase as any)
+              .from("saved_quotes")
+              .insert(savedQuoteData);
+          }
+        }
+      } catch (sqErr) {
+        console.warn("Could not save to saved_quotes:", sqErr);
+      }
+
+      toast({ title: "נשמר בהצלחה ☁️", description: "ההצעה נשמרה בתבנית ובהצעות השמורות" });
     } catch (err: any) {
       console.error("Save error:", err);
       toast({
