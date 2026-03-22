@@ -4937,6 +4937,7 @@ export function HtmlTemplateEditor({
                       <PaymentStepEditor
                         key={step.id}
                         step={step}
+                        defaultVatRate={editedTemplate.vat_rate || 17}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
