@@ -4987,17 +4987,22 @@ export function HtmlTemplateEditor({
                           <span>₪{basePrice.toLocaleString()}</span>
                         </div>
                         {designSettings.vatDisplayMode === "breakdown" && (() => {
-                          const vatRate = editedTemplate.vat_rate || 17;
-                          const vatAmount = Math.round(basePrice * vatRate / 100);
+                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const totalVat = paymentSteps.reduce((sum, step) => {
+                            const stepAmount = Math.round((basePrice * step.percentage) / 100);
+                            const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                            return sum + Math.round(stepAmount * effVat / 100);
+                          }, 0);
+                          const hasCustomVat = paymentSteps.some(s => s.useCustomVat && (s.vatRate ?? defaultVat) !== defaultVat);
                           return (
                             <>
                               <div className="flex justify-between text-muted-foreground">
-                                <span>מע״מ {vatRate}%</span>
-                                <span>₪{vatAmount.toLocaleString()}</span>
+                                <span>מע״מ {hasCustomVat ? "(מעורב)" : `${defaultVat}%`}</span>
+                                <span>₪{totalVat.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
                                 <span>סה"כ כולל מע״מ</span>
-                                <span>₪{(basePrice + vatAmount).toLocaleString()}</span>
+                                <span>₪{(basePrice + totalVat).toLocaleString()}</span>
                               </div>
                             </>
                           );
