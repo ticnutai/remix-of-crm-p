@@ -640,6 +640,21 @@ export function QuoteTemplatesManager() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => {
+                  // Duplicate as new quote - navigate to editor with template data
+                  const params = new URLSearchParams({
+                    type: 'quote',
+                    templateId: template.id,
+                  });
+                  window.location.href = `/document-editor?${params.toString()}`;
+                }}
+                title="שכפל וצור הצעת מחיר חדשה"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => handleEdit(template)}
               >
                 <Pencil className="h-4 w-4" />
