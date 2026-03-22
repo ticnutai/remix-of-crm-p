@@ -1092,6 +1092,13 @@ export default function ClientProfile() {
               מיילים
             </TabsTrigger>
             <TabsTrigger
+              value="quotes-contracts"
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(45,70%,35%)] data-[state=active]:to-[hsl(45,70%,45%)] data-[state=active]:text-white data-[state=active]:border-[hsl(45,70%,55%)] border border-[hsl(45,70%,45%)]/50 hover:border-[hsl(45,70%,45%)] transition-all bg-[hsl(45,70%,45%)]/5"
+            >
+              <FileSignature className="h-4 w-4" />
+              הצעות וחוזים
+            </TabsTrigger>
+            <TabsTrigger
               value="invoices"
               className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[hsl(222,47%,20%)] data-[state=active]:to-[hsl(222,47%,30%)] data-[state=active]:text-white data-[state=active]:border-[hsl(222,47%,35%)] border border-transparent hover:border-[hsl(222,47%,25%)]/50 transition-all"
             >
