@@ -480,11 +480,18 @@ export function QuoteTemplatesManager() {
   );
 
   const calculateTotal = (template: QuoteTemplate) => {
+    // Prefer base_price (set in editor), fallback to items sum
+    if (template.base_price && template.base_price > 0) {
+      return template.base_price;
+    }
     return (template.items || []).reduce(
       (sum, item) => sum + (item.total || 0),
       0,
     );
   };
+
+  // State for open-template choice dialog
+  const [openChoiceTemplate, setOpenChoiceTemplate] = useState<QuoteTemplate | null>(null);
 
   // --- Render template card ---
   const renderTemplateCard = (template: QuoteTemplate) => {
@@ -602,7 +609,7 @@ export function QuoteTemplatesManager() {
         </CardHeader>
 
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>{stagesCount} שלבים</span>
               <span>•</span>
@@ -610,6 +617,18 @@ export function QuoteTemplatesManager() {
               <span>•</span>
               <span>{template.validity_days} יום</span>
             </div>
+
+            {/* Project details if available */}
+            {template.project_details && (template.project_details.gush || template.project_details.helka || template.project_details.projectName) && (
+              <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5 space-y-0.5">
+                {template.project_details.projectName && (
+                  <div className="truncate">📋 {template.project_details.projectName}</div>
+                )}
+                {(template.project_details.gush || template.project_details.helka) && (
+                  <div>📍 גוש: {template.project_details.gush || '-'} חלקה: {template.project_details.helka || '-'}</div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between py-2 border-t">
               <span className="font-medium">סה״כ:</span>
@@ -629,6 +648,21 @@ export function QuoteTemplatesManager() {
               >
                 <ExternalLink className="h-4 w-4 ml-1" />
                 פתח בעורך
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Duplicate as new quote - navigate to editor with template data
+                  const params = new URLSearchParams({
+                    type: 'quote',
+                    templateId: template.id,
+                  });
+                  window.location.href = `/document-editor?${params.toString()}`;
+                }}
+                title="שכפל וצור הצעת מחיר חדשה"
+              >
+                <Copy className="h-4 w-4" />
               </Button>
               <Button
                 variant="outline"
