@@ -2043,6 +2043,11 @@ export default function ClientProfile() {
             </Card>
           </TabsContent>
 
+          {/* Quotes & Contracts Tab */}
+          <TabsContent value="quotes-contracts" dir="rtl">
+            <ClientQuotesContractsTab clientId={clientId!} clientName={client?.name || ''} />
+          </TabsContent>
+
           {/* Invoices Tab */}
           <TabsContent value="invoices" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
