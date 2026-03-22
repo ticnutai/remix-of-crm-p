@@ -4960,8 +4960,10 @@ export function HtmlTemplateEditor({
                       <div className="space-y-2 text-sm">
                         {paymentSteps.map((step) => {
                           const stepAmount = Math.round((basePrice * step.percentage) / 100);
-                          const vatRate = editedTemplate.vat_rate || 17;
-                          const stepVat = Math.round(stepAmount * vatRate / 100);
+                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                          const stepVat = Math.round(stepAmount * effectiveVat / 100);
+                          const isCustom = step.useCustomVat && effectiveVat !== defaultVat;
                           return (
                             <div key={step.id} className="flex justify-between">
                               <span>
@@ -4972,8 +4974,8 @@ export function HtmlTemplateEditor({
                                   ₪{stepAmount.toLocaleString()}
                                 </span>
                                 {designSettings.vatDisplayMode === "breakdown" && (
-                                  <span className="text-muted-foreground text-xs mr-2">
-                                    (+ ₪{stepVat.toLocaleString()} מע״מ)
+                                  <span className={`text-xs mr-2 ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
+                                    (+ ₪{stepVat.toLocaleString()} מע״מ{isCustom ? ` ${effectiveVat}%` : ""})
                                   </span>
                                 )}
                               </div>
