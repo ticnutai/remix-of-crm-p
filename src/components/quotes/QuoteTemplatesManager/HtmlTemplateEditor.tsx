@@ -4495,7 +4495,7 @@ export function HtmlTemplateEditor({
                       }
                       className="text-3xl font-bold bg-transparent border-0 text-white p-0 h-auto focus-visible:ring-0 w-32 text-left"
                     />
-                    {designSettings.vatDisplayMode === "breakdown" ? (
+                    {designSettings.vatDisplayMode !== "plus-vat" ? (
                       <span className="text-base opacity-80">כולל מע״מ</span>
                     ) : (
                       <span className="text-base opacity-80">+ מע״מ</span>
@@ -4507,7 +4507,7 @@ export function HtmlTemplateEditor({
                     const vr = editedTemplate.vat_rate || 17;
                     const vatAmt = Math.round(bp * vr / 100);
                     const totalWithVat = bp + vatAmt;
-                    return designSettings.vatDisplayMode === "breakdown" ? (
+                    return designSettings.vatDisplayMode !== "plus-vat" ? (
                       <div className="text-xs opacity-70 mt-1 space-y-0.5 text-left">
                         <div>מחיר לפני מע״מ: ₪{bp.toLocaleString()}</div>
                         <div>מע״מ {vr}%: ₪{vatAmt.toLocaleString()}</div>
@@ -4908,7 +4908,7 @@ export function HtmlTemplateEditor({
                         </button>
                         <button
                           className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                            designSettings.vatDisplayMode === "breakdown"
+                            designSettings.vatDisplayMode !== "plus-vat"
                               ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted"
                           }`}
@@ -4986,7 +4986,7 @@ export function HtmlTemplateEditor({
                                 <span className="font-semibold">
                                   ₪{stepAmount.toLocaleString()}
                                 </span>
-                                {designSettings.vatDisplayMode === "breakdown" && (
+                                {designSettings.vatDisplayMode !== "plus-vat" && (
                                   <span className={`text-xs mr-2 ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
                                     (+ ₪{stepVat.toLocaleString()} מע״מ{isCustom ? ` ${effectiveVat}%` : ""})
                                   </span>
@@ -4999,7 +4999,7 @@ export function HtmlTemplateEditor({
                           <span>סה"כ</span>
                           <span>₪{basePrice.toLocaleString()}</span>
                         </div>
-                        {designSettings.vatDisplayMode === "breakdown" && (() => {
+                        {designSettings.vatDisplayMode !== "plus-vat" && (() => {
                           const defaultVat = editedTemplate.vat_rate || 17;
                           const totalVat = paymentSteps.reduce((sum, step) => {
                             const stepAmount = Math.round((basePrice * step.percentage) / 100);
@@ -8628,13 +8628,13 @@ export function HtmlTemplateEditor({
                                   <th className="p-2 text-left">
                                     סכום (נטו)
                                   </th>
-                                  {designSettings.vatDisplayMode === "breakdown" && (
+                                  {designSettings.vatDisplayMode !== "plus-vat" && (
                                     <>
                                       <th className="p-2 text-left">מע״מ</th>
                                       <th className="p-2 text-left rounded-tl-lg">סה״כ (ברוטו)</th>
                                     </>
                                   )}
-                                  {designSettings.vatDisplayMode !== "breakdown" && (
+                                  {designSettings.vatDisplayMode === "plus-vat" && (
                                     <th className="p-2 text-left rounded-tl-lg" style={{ display: 'none' }}></th>
                                   )}
                                 </tr>
@@ -8704,7 +8704,7 @@ export function HtmlTemplateEditor({
                                     <td className="p-2 text-left">
                                       ₪{stepAmount.toLocaleString()}
                                     </td>
-                                    {designSettings.vatDisplayMode === "breakdown" && (
+                                    {designSettings.vatDisplayMode !== "plus-vat" && (
                                       <>
                                         <td className={`p-2 text-left text-xs ${isCustom ? "text-orange-500 font-semibold" : "text-muted-foreground"}`}>
                                           ₪{vatAmt.toLocaleString()} ({effVat}%)
@@ -8758,7 +8758,7 @@ export function HtmlTemplateEditor({
                                           {bp.toLocaleString()}
                                         </span>
                                       </td>
-                                      {designSettings.vatDisplayMode === "breakdown" && (
+                                      {designSettings.vatDisplayMode !== "plus-vat" && (
                                         <>
                                           <td className="p-2 text-left text-muted-foreground">₪{totVat.toLocaleString()}</td>
                                           <td className="p-2 text-left text-primary font-bold text-base">₪{(bp + totVat).toLocaleString()}</td>
@@ -8769,7 +8769,7 @@ export function HtmlTemplateEditor({
                                 })()}
                               </tbody>
                             </table>
-                            {designSettings.vatDisplayMode === "breakdown" && (
+                            {designSettings.vatDisplayMode !== "plus-vat" && (
                               <p className="text-xs text-muted-foreground mt-2">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>
                             )}
                           </div>
