@@ -60,6 +60,7 @@ export interface PaymentSchedule {
   payment_method?: string;
   payment_reference?: string;
   notes?: string;
+  vat_rate?: number | null; // אחוז מע״מ ייחודי לשלב
   created_at: string;
   updated_at: string;
 }

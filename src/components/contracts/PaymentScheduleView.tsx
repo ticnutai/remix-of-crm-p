@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { format, isPast, isFuture, addDays } from 'date-fns';
+import { format, isPast, addDays } from 'date-fns';
 import { he } from 'date-fns/locale';
 import {
   Plus,
@@ -7,6 +7,7 @@ import {
   Clock,
   AlertTriangle,
   Calendar,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,11 +30,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentSchedule, useContracts } from '@/hooks/useContracts';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PaymentScheduleViewProps {
   contractId: string;
   paymentSchedules: PaymentSchedule[];
   contractValue: number;
+  defaultVatRate?: number;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -45,11 +49,14 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
   partial: { label: 'חלקי', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300', icon: Clock },
 };
 
-export function PaymentScheduleView({ contractId, paymentSchedules, contractValue }: PaymentScheduleViewProps) {
+export function PaymentScheduleView({ contractId, paymentSchedules, contractValue, defaultVatRate = 17 }: PaymentScheduleViewProps) {
   const { createPaymentSchedule, updatePaymentStatus } = useContracts();
+  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [numPayments, setNumPayments] = useState(3);
   const [paymentDates, setPaymentDates] = useState<string[]>([]);
+  const [editingVatId, setEditingVatId] = useState<string | null>(null);
+  const [editingVatValue, setEditingVatValue] = useState<string>('');
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -67,7 +74,7 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
       payment_number: index + 1,
       description: `תשלום ${index + 1} מתוך ${numPayments}`,
       amount: index === numPayments - 1 
-        ? contractValue - (amountPerPayment * (numPayments - 1)) // Last payment gets remainder
+        ? contractValue - (amountPerPayment * (numPayments - 1))
         : amountPerPayment,
       due_date: date,
     }));
@@ -88,7 +95,22 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
     });
   };
 
-  // Generate default dates when numPayments changes
+  const handleUpdateVatRate = async (paymentId: string, vatRate: number | null) => {
+    try {
+      const { error } = await supabase
+        .from('payment_schedules')
+        .update({ vat_rate: vatRate } as any)
+        .eq('id', paymentId);
+      if (error) throw error;
+      toast({ title: 'אחוז מע״מ עודכן' });
+      setEditingVatId(null);
+      // Force refresh
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: 'שגיאה בעדכון', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const generateDefaultDates = () => {
     const dates: string[] = [];
     const today = new Date();
@@ -102,7 +124,6 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
     generateDefaultDates();
   }, [numPayments]);
 
-  // Check for overdue payments
   const paymentsWithStatus = paymentSchedules.map(p => {
     if (p.status === 'paid' || p.status === 'cancelled') return p;
     if (isPast(new Date(p.due_date))) {
@@ -134,7 +155,9 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
               <TableRow>
                 <TableHead className="w-16">#</TableHead>
                 <TableHead>תיאור</TableHead>
-                <TableHead>סכום</TableHead>
+                <TableHead>סכום (נטו)</TableHead>
+                <TableHead>מע״מ</TableHead>
+                <TableHead>סה״כ (ברוטו)</TableHead>
                 <TableHead>תאריך יעד</TableHead>
                 <TableHead>סטטוס</TableHead>
                 <TableHead className="w-24"></TableHead>
@@ -146,6 +169,9 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
                 const status = statusConfig[displayStatus] || statusConfig.pending;
                 const StatusIcon = status.icon;
                 const isOverdue = displayStatus === 'overdue';
+                const effectiveVat = payment.vat_rate != null ? payment.vat_rate : defaultVatRate;
+                const vatAmount = Math.round(payment.amount * effectiveVat / 100);
+                const isCustomVat = payment.vat_rate != null && payment.vat_rate !== defaultVatRate;
 
                 return (
                   <TableRow 
@@ -155,6 +181,58 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
                     <TableCell className="font-medium">{payment.payment_number}</TableCell>
                     <TableCell>{payment.description || `תשלום ${payment.payment_number}`}</TableCell>
                     <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
+                    <TableCell>
+                      {editingVatId === payment.id ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={editingVatValue}
+                            onChange={(e) => setEditingVatValue(e.target.value)}
+                            className="w-16 h-7 text-center text-xs"
+                            min={0}
+                            max={100}
+                            step={0.5}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const val = parseFloat(editingVatValue);
+                                handleUpdateVatRate(payment.id, isNaN(val) ? null : val);
+                              }
+                              if (e.key === 'Escape') setEditingVatId(null);
+                            }}
+                          />
+                          <span className="text-xs">%</span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => {
+                              const val = parseFloat(editingVatValue);
+                              handleUpdateVatRate(payment.id, isNaN(val) ? null : val);
+                            }}
+                          >
+                            <CheckCircle2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          className={cn(
+                            "flex items-center gap-1 text-xs hover:bg-muted px-2 py-1 rounded cursor-pointer",
+                            isCustomVat && "text-orange-600 font-semibold"
+                          )}
+                          onClick={() => {
+                            setEditingVatId(payment.id);
+                            setEditingVatValue(String(effectiveVat));
+                          }}
+                        >
+                          {effectiveVat}%
+                          <Pencil className="h-3 w-3 opacity-50" />
+                        </button>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-bold">
+                      {formatCurrency(payment.amount + vatAmount)}
+                    </TableCell>
                     <TableCell>
                       {format(new Date(payment.due_date), 'dd/MM/yyyy', { locale: he })}
                     </TableCell>
@@ -180,6 +258,26 @@ export function PaymentScheduleView({ contractId, paymentSchedules, contractValu
                   </TableRow>
                 );
               })}
+              {/* Summary row */}
+              {(() => {
+                const totalNet = paymentSchedules.reduce((s, p) => s + p.amount, 0);
+                const totalVat = paymentSchedules.reduce((s, p) => {
+                  const vr = p.vat_rate != null ? p.vat_rate : defaultVatRate;
+                  return s + Math.round(p.amount * vr / 100);
+                }, 0);
+                return (
+                  <TableRow className="font-bold bg-muted/50">
+                    <TableCell></TableCell>
+                    <TableCell>סה״כ</TableCell>
+                    <TableCell>{formatCurrency(totalNet)}</TableCell>
+                    <TableCell>{formatCurrency(totalVat)}</TableCell>
+                    <TableCell className="text-primary">{formatCurrency(totalNet + totalVat)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                );
+              })()}
             </TableBody>
           </Table>
         )}
