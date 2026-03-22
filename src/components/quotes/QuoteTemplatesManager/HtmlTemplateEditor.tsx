@@ -2692,7 +2692,7 @@ export function HtmlTemplateEditor({
       .join("");
 
     const vatRate = editedTemplate.vat_rate || 17;
-    const isVatBreakdown = designSettings.vatDisplayMode === "breakdown";
+    const isVatBreakdown = designSettings.vatDisplayMode !== "plus-vat";
     
     const basePrice = editedTemplate.base_price || 35000;
     const payments = paymentSteps
