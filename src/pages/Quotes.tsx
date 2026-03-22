@@ -75,10 +75,11 @@ import { QuoteEditorSheet } from '@/components/quotes/QuoteDocumentEditor/QuoteE
 import { QuoteTemplatesManager } from '@/components/quotes/QuoteTemplatesManager';
 import { NewAdvancedEditor } from '@/components/contracts/AdvancedContractEditor/NewAdvancedEditor';
 import { cn } from '@/lib/utils';
-import { ClipboardList, Settings2 } from 'lucide-react';
+import { ClipboardList, Settings2, Archive, User, Trash2 as TrashIcon } from 'lucide-react';
 import { exportQuoteToPDF } from '@/lib/pdf-export';
 import { SignatureDialog, SignatureData } from '@/components/signature';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: FileText },
