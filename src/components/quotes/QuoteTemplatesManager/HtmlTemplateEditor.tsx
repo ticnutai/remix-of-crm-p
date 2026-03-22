@@ -4898,7 +4898,7 @@ export function HtmlTemplateEditor({
                       <div className="flex items-center gap-2 border rounded-lg p-1">
                         <button
                           className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                            (designSettings.vatDisplayMode || "plus-vat") === "plus-vat"
+                            (designSettings.vatDisplayMode || "breakdown") === "plus-vat"
                               ? "bg-primary text-primary-foreground"
                               : "hover:bg-muted"
                           }`}
