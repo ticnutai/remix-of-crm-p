@@ -2594,6 +2594,8 @@ export function HtmlTemplateEditor({
           id: s.id,
           percentage: s.percentage,
           description: s.description || s.name,
+          vatRate: s.vatRate,
+          useCustomVat: s.useCustomVat,
         })),
         design_settings: designSettings as any,
         text_boxes: textBoxes,
