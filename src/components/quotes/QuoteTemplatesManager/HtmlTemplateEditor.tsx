@@ -9658,6 +9658,14 @@ export function HtmlTemplateEditor({
                 וואטסאפ
               </Button>
               <Button
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+                onClick={() => setShowAssignClientDialog(true)}
+              >
+                <Users className="h-4 w-4 ml-1" />
+                שייך ללקוח
+              </Button>
+              <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
                 onClick={() => setShowCreateClientDialog(true)}
