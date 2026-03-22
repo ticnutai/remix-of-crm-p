@@ -3628,6 +3628,8 @@ export function HtmlTemplateEditor({
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [showAssignClientDialog, setShowAssignClientDialog] = useState(false);
+  const [assignClientSearch, setAssignClientSearch] = useState("");
   const [calculationResult, setCalculationResult] =
     useState<CalculationResult | null>(null);
 
