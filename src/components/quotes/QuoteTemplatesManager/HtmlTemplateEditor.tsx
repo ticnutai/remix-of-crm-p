@@ -2694,22 +2694,44 @@ export function HtmlTemplateEditor({
     const vatRate = editedTemplate.vat_rate || 17;
     const isVatBreakdown = designSettings.vatDisplayMode === "breakdown";
     
+    const basePrice = editedTemplate.base_price || 35000;
     const payments = paymentSteps
       .map(
         (step) => {
-          const stepAmount = Math.round(((editedTemplate.base_price || 35000) * step.percentage) / 100);
+          const stepAmount = Math.round((basePrice * step.percentage) / 100);
           const stepEffectiveVat = step.useCustomVat ? (step.vatRate ?? vatRate) : vatRate;
           const stepVat = Math.round(stepAmount * stepEffectiveVat / 100);
-          const vatLabel = step.useCustomVat && stepEffectiveVat !== vatRate ? ` (${stepEffectiveVat}%)` : "";
-          return `
+          const stepGross = stepAmount + stepVat;
+          const vatLabel = step.useCustomVat && stepEffectiveVat !== vatRate ? ` (${stepEffectiveVat}%)` : ` (${stepEffectiveVat}%)`;
+          if (isVatBreakdown) {
+            return `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
         <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}${isVatBreakdown ? `<br><span style="font-size: 11px; color: #888;">+ ₪${stepVat.toLocaleString()} מע״מ${vatLabel}</span>` : ""}</td>
+        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
+        <td style="padding: 10px; text-align: left; color: #666; font-size: 13px;">₪${stepVat.toLocaleString()}${vatLabel}</td>
+        <td style="padding: 10px; text-align: left; font-weight: 600;">₪${stepGross.toLocaleString()}</td>
       </tr>`;
+          } else {
+            return `
+      <tr>
+        <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
+        <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
+        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}</td>
+      </tr>`;
+          }
         },
       )
       .join("");
+
+    // Calculate totals with per-step VAT
+    const totalVat = paymentSteps.reduce((sum, step) => {
+      const stepAmount = Math.round((basePrice * step.percentage) / 100);
+      const stepEffectiveVat = step.useCustomVat ? (step.vatRate ?? vatRate) : vatRate;
+      return sum + Math.round(stepAmount * stepEffectiveVat / 100);
+    }, 0);
+    const totalGross = basePrice + totalVat;
+    const hasCustomVat = paymentSteps.some(s => s.useCustomVat && (s.vatRate ?? vatRate) !== vatRate);
 
     return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
