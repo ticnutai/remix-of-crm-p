@@ -1358,17 +1358,23 @@ function PaymentStepEditor({
   step,
   onUpdate,
   onDelete,
+  defaultVatRate,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
   onDelete: () => void;
+  defaultVatRate: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVatRate) : defaultVatRate;
   return (
     <div className="bg-white rounded-lg border p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#DAA520]/10 text-[#B8860B] font-bold">
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#DAA520]/10 text-[#B8860B] font-bold text-xs">
           {step.percentage}%
+          {step.useCustomVat && effectiveVat !== defaultVatRate && (
+            <span className="block text-[9px] text-orange-500">{effectiveVat}%</span>
+          )}
         </div>
         <div className="flex-1">
           <Input
@@ -1412,7 +1418,7 @@ function PaymentStepEditor({
         </div>
       </div>
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t">
+        <div className="mt-3 pt-3 border-t space-y-3">
           <Textarea
             value={step.description}
             onChange={(e) => onUpdate({ ...step, description: e.target.value })}
@@ -1420,6 +1426,31 @@ function PaymentStepEditor({
             className="min-h-[60px]"
             dir="rtl"
           />
+          <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={step.useCustomVat || false}
+                onChange={(e) => onUpdate({ ...step, useCustomVat: e.target.checked, vatRate: step.vatRate ?? defaultVatRate })}
+                className="rounded"
+              />
+              <span>מע״מ שונה לשלב זה</span>
+            </label>
+            {step.useCustomVat && (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={step.vatRate ?? defaultVatRate}
+                  onChange={(e) => onUpdate({ ...step, vatRate: parseFloat(e.target.value) || 0 })}
+                  className="w-20 text-center h-8"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
