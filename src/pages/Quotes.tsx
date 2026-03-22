@@ -1213,6 +1213,24 @@ export default function Quotes() {
         signerName={signatureQuote?.clients?.name}
         signerEmail={signatureQuote?.clients?.email}
       />
+
+      {/* Delete Saved Quote Confirmation */}
+      <AlertDialog open={!!deleteSavedQuoteId} onOpenChange={() => setDeleteSavedQuoteId(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת הצעה שמורה</AlertDialogTitle>
+            <AlertDialogDescription>
+              האם למחוק הצעה זו? פעולה זו לא ניתנת לביטול.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSavedQuote} className="bg-destructive text-destructive-foreground">
+              מחק
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
