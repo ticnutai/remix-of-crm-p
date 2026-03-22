@@ -609,7 +609,7 @@ export function QuoteTemplatesManager() {
         </CardHeader>
 
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>{stagesCount} שלבים</span>
               <span>•</span>
@@ -617,6 +617,18 @@ export function QuoteTemplatesManager() {
               <span>•</span>
               <span>{template.validity_days} יום</span>
             </div>
+
+            {/* Project details if available */}
+            {template.project_details && (template.project_details.gush || template.project_details.helka || template.project_details.projectName) && (
+              <div className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1.5 space-y-0.5">
+                {template.project_details.projectName && (
+                  <div className="truncate">📋 {template.project_details.projectName}</div>
+                )}
+                {(template.project_details.gush || template.project_details.helka) && (
+                  <div>📍 גוש: {template.project_details.gush || '-'} חלקה: {template.project_details.helka || '-'}</div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between py-2 border-t">
               <span className="font-medium">סה״כ:</span>
