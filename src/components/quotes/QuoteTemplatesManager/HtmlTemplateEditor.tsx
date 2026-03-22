@@ -3040,6 +3040,7 @@ export function HtmlTemplateEditor({
         name: "שלב תשלום חדש",
         percentage: 0,
         description: "",
+        useCustomVat: false,
       },
     ]);
   const addTextBox = () =>
