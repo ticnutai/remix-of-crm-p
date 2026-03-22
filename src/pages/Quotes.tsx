@@ -637,6 +637,137 @@ export default function Quotes() {
             </Card>
           </TabsContent>
 
+          {/* Saved Quotes Tab - הצעות שמורות */}
+          <TabsContent value="saved-quotes" className="space-y-6 mt-6">
+            <div className="flex flex-wrap items-center gap-3 justify-between">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="חפש הצעה שמורה..."
+                    value={savedQuotesSearch}
+                    onChange={(e) => setSavedQuotesSearch(e.target.value)}
+                    className="pr-10"
+                    dir="rtl"
+                  />
+                </div>
+                <Select value={savedQuotesStatusFilter} onValueChange={setSavedQuotesStatusFilter}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="סטטוס" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">הכל</SelectItem>
+                    <SelectItem value="draft">טיוטה</SelectItem>
+                    <SelectItem value="sent">נשלח</SelectItem>
+                    <SelectItem value="accepted">אושר</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Badge variant="outline">{filteredSavedQuotes.length} הצעות</Badge>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <Table dir="rtl">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">שם ההצעה</TableHead>
+                      <TableHead className="text-right">לקוח</TableHead>
+                      <TableHead className="text-right">סכום נטו</TableHead>
+                      <TableHead className="text-right">מע״מ</TableHead>
+                      <TableHead className="text-right">סה״כ</TableHead>
+                      <TableHead className="text-right">סטטוס</TableHead>
+                      <TableHead className="text-right">תאריך</TableHead>
+                      <TableHead className="text-right w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {savedQuotesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          טוען...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredSavedQuotes.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          אין הצעות שמורות
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredSavedQuotes.map((sq: any) => {
+                        const statusCfg: Record<string, { label: string; cls: string }> = {
+                          draft: { label: "טיוטה", cls: "bg-muted text-muted-foreground" },
+                          sent: { label: "נשלח", cls: "bg-blue-100 text-blue-700" },
+                          accepted: { label: "אושר", cls: "bg-green-100 text-green-700" },
+                        };
+                        const st = statusCfg[sq.status] || statusCfg.draft;
+                        const basePrice = sq.base_price || 0;
+                        const vatRate = sq.vat_rate || 17;
+                        const vatAmount = Math.round(basePrice * vatRate / 100);
+
+                        return (
+                          <TableRow key={sq.id}>
+                            <TableCell className="font-medium">{sq.title || "ללא שם"}</TableCell>
+                            <TableCell>
+                              {sq.clients?.name ? (
+                                <button
+                                  onClick={() => navigate(`/clients/${sq.clients.id}`)}
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <User className="h-3 w-3" />
+                                  {sq.clients.name}
+                                </button>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">לא משויך</span>
+                              )}
+                            </TableCell>
+                            <TableCell>₪{basePrice.toLocaleString()}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{vatRate}% (₪{vatAmount.toLocaleString()})</TableCell>
+                            <TableCell className="font-semibold">₪{(sq.total_with_vat || 0).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge className={st.cls}>{st.label}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {sq.updated_at ? format(new Date(sq.updated_at), 'dd/MM/yyyy', { locale: he }) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" dir="rtl">
+                                  <DropdownMenuItem onClick={() => {
+                                    if (sq.clients?.id) {
+                                      navigate(`/clients/${sq.clients.id}`);
+                                    }
+                                  }} disabled={!sq.clients?.id}>
+                                    <User className="h-4 w-4 ml-2" />
+                                    פתח תיק לקוח
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => setDeleteSavedQuoteId(sq.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 ml-2" />
+                                    מחק
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Contracts Tab */}
           <TabsContent value="contracts" className="space-y-6 mt-6">
             {/* Contracts Header */}
