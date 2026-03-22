@@ -124,6 +124,7 @@ import {
   X,
   PlusCircle,
   Sparkles,
+  FileSignature,
 } from "lucide-react";
 import {
   Popover,
