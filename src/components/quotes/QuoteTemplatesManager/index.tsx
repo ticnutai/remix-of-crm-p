@@ -480,11 +480,18 @@ export function QuoteTemplatesManager() {
   );
 
   const calculateTotal = (template: QuoteTemplate) => {
+    // Prefer base_price (set in editor), fallback to items sum
+    if (template.base_price && template.base_price > 0) {
+      return template.base_price;
+    }
     return (template.items || []).reduce(
       (sum, item) => sum + (item.total || 0),
       0,
     );
   };
+
+  // State for open-template choice dialog
+  const [openChoiceTemplate, setOpenChoiceTemplate] = useState<QuoteTemplate | null>(null);
 
   // --- Render template card ---
   const renderTemplateCard = (template: QuoteTemplate) => {
