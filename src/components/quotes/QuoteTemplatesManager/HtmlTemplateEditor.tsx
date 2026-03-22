@@ -169,6 +169,8 @@ interface PaymentStep {
   name: string;
   percentage: number;
   description: string;
+  vatRate?: number; // אחוז מע״מ ייחודי לשלב (אם שונה מברירת מחדל)
+  useCustomVat?: boolean; // האם להשתמש במע״מ ייחודי
 }
 interface StripLayer {
   url: string;
