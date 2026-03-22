@@ -8681,11 +8681,17 @@ export function HtmlTemplateEditor({
                                             100,
                                         ).toLocaleString()}
                                       </div>
-                                      {designSettings.vatDisplayMode === "breakdown" && (
-                                        <div className="text-xs text-muted-foreground">
-                                          + ₪{Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * (editedTemplate.vat_rate || 17) / 100).toLocaleString()} מע״מ
-                                        </div>
-                                      )}
+                                      {designSettings.vatDisplayMode === "breakdown" && (() => {
+                                        const defaultVat = editedTemplate.vat_rate || 17;
+                                        const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                                        const vatAmt = Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * effVat / 100);
+                                        const isCustom = step.useCustomVat && effVat !== defaultVat;
+                                        return (
+                                          <div className={`text-xs ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
+                                            + ₪{vatAmt.toLocaleString()} מע״מ{isCustom ? ` (${effVat}%)` : ""}
+                                          </div>
+                                        );
+                                      })()}
                                     </td>
                                   </tr>
                                 ))}
