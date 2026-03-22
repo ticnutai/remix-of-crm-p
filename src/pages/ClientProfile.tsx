@@ -64,6 +64,7 @@ import {
   ClientDeadlinesTab,
 } from "@/components/client-tabs";
 import { ClientEmailsTab } from "@/components/clients/ClientEmailsTab";
+import { ClientQuotesContractsTab } from "@/components/clients/ClientQuotesContractsTab";
 import { ClientPaymentsTab } from "@/components/clients/ClientPaymentsTab";
 import { CreateClientLoginDialog } from "@/components/clients/CreateClientLoginDialog";
 import PaymentStagesManager from "@/components/clients/PaymentStagesManager";
