@@ -169,6 +169,8 @@ interface PaymentStep {
   name: string;
   percentage: number;
   description: string;
+  vatRate?: number; // אחוז מע״מ ייחודי לשלב (אם שונה מברירת מחדל)
+  useCustomVat?: boolean; // האם להשתמש במע״מ ייחודי
 }
 interface StripLayer {
   url: string;
@@ -1356,17 +1358,23 @@ function PaymentStepEditor({
   step,
   onUpdate,
   onDelete,
+  defaultVatRate,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
   onDelete: () => void;
+  defaultVatRate: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVatRate) : defaultVatRate;
   return (
     <div className="bg-white rounded-lg border p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#DAA520]/10 text-[#B8860B] font-bold">
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#DAA520]/10 text-[#B8860B] font-bold text-xs">
           {step.percentage}%
+          {step.useCustomVat && effectiveVat !== defaultVatRate && (
+            <span className="block text-[9px] text-orange-500">{effectiveVat}%</span>
+          )}
         </div>
         <div className="flex-1">
           <Input
@@ -1410,7 +1418,7 @@ function PaymentStepEditor({
         </div>
       </div>
       {isExpanded && (
-        <div className="mt-3 pt-3 border-t">
+        <div className="mt-3 pt-3 border-t space-y-3">
           <Textarea
             value={step.description}
             onChange={(e) => onUpdate({ ...step, description: e.target.value })}
@@ -1418,6 +1426,31 @@ function PaymentStepEditor({
             className="min-h-[60px]"
             dir="rtl"
           />
+          <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={step.useCustomVat || false}
+                onChange={(e) => onUpdate({ ...step, useCustomVat: e.target.checked, vatRate: step.vatRate ?? defaultVatRate })}
+                className="rounded"
+              />
+              <span>מע״מ שונה לשלב זה</span>
+            </label>
+            {step.useCustomVat && (
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={step.vatRate ?? defaultVatRate}
+                  onChange={(e) => onUpdate({ ...step, vatRate: parseFloat(e.target.value) || 0 })}
+                  className="w-20 text-center h-8"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -2561,6 +2594,8 @@ export function HtmlTemplateEditor({
           id: s.id,
           percentage: s.percentage,
           description: s.description || s.name,
+          vatRate: s.vatRate,
+          useCustomVat: s.useCustomVat,
         })),
         design_settings: designSettings as any,
         text_boxes: textBoxes,
@@ -2663,12 +2698,14 @@ export function HtmlTemplateEditor({
       .map(
         (step) => {
           const stepAmount = Math.round(((editedTemplate.base_price || 35000) * step.percentage) / 100);
-          const stepVat = Math.round(stepAmount * vatRate / 100);
+          const stepEffectiveVat = step.useCustomVat ? (step.vatRate ?? vatRate) : vatRate;
+          const stepVat = Math.round(stepAmount * stepEffectiveVat / 100);
+          const vatLabel = step.useCustomVat && stepEffectiveVat !== vatRate ? ` (${stepEffectiveVat}%)` : "";
           return `
       <tr>
         <td style="padding: 10px; border-bottom: 1px solid #eee;">${step.name}</td>
         <td style="padding: 10px; text-align: center;">${step.percentage}%</td>
-        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}${isVatBreakdown ? `<br><span style="font-size: 11px; color: #888;">+ ₪${stepVat.toLocaleString()} מע״מ</span>` : ""}</td>
+        <td style="padding: 10px; text-align: left;">₪${stepAmount.toLocaleString()}${isVatBreakdown ? `<br><span style="font-size: 11px; color: #888;">+ ₪${stepVat.toLocaleString()} מע״מ${vatLabel}</span>` : ""}</td>
       </tr>`;
         },
       )
@@ -3003,6 +3040,7 @@ export function HtmlTemplateEditor({
         name: "שלב תשלום חדש",
         percentage: 0,
         description: "",
+        useCustomVat: false,
       },
     ]);
   const addTextBox = () =>
@@ -4899,6 +4937,7 @@ export function HtmlTemplateEditor({
                       <PaymentStepEditor
                         key={step.id}
                         step={step}
+                        defaultVatRate={editedTemplate.vat_rate || 17}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
@@ -4921,8 +4960,10 @@ export function HtmlTemplateEditor({
                       <div className="space-y-2 text-sm">
                         {paymentSteps.map((step) => {
                           const stepAmount = Math.round((basePrice * step.percentage) / 100);
-                          const vatRate = editedTemplate.vat_rate || 17;
-                          const stepVat = Math.round(stepAmount * vatRate / 100);
+                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                          const stepVat = Math.round(stepAmount * effectiveVat / 100);
+                          const isCustom = step.useCustomVat && effectiveVat !== defaultVat;
                           return (
                             <div key={step.id} className="flex justify-between">
                               <span>
@@ -4933,8 +4974,8 @@ export function HtmlTemplateEditor({
                                   ₪{stepAmount.toLocaleString()}
                                 </span>
                                 {designSettings.vatDisplayMode === "breakdown" && (
-                                  <span className="text-muted-foreground text-xs mr-2">
-                                    (+ ₪{stepVat.toLocaleString()} מע״מ)
+                                  <span className={`text-xs mr-2 ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
+                                    (+ ₪{stepVat.toLocaleString()} מע״מ{isCustom ? ` ${effectiveVat}%` : ""})
                                   </span>
                                 )}
                               </div>
@@ -4946,17 +4987,22 @@ export function HtmlTemplateEditor({
                           <span>₪{basePrice.toLocaleString()}</span>
                         </div>
                         {designSettings.vatDisplayMode === "breakdown" && (() => {
-                          const vatRate = editedTemplate.vat_rate || 17;
-                          const vatAmount = Math.round(basePrice * vatRate / 100);
+                          const defaultVat = editedTemplate.vat_rate || 17;
+                          const totalVat = paymentSteps.reduce((sum, step) => {
+                            const stepAmount = Math.round((basePrice * step.percentage) / 100);
+                            const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                            return sum + Math.round(stepAmount * effVat / 100);
+                          }, 0);
+                          const hasCustomVat = paymentSteps.some(s => s.useCustomVat && (s.vatRate ?? defaultVat) !== defaultVat);
                           return (
                             <>
                               <div className="flex justify-between text-muted-foreground">
-                                <span>מע״מ {vatRate}%</span>
-                                <span>₪{vatAmount.toLocaleString()}</span>
+                                <span>מע״מ {hasCustomVat ? "(מעורב)" : `${defaultVat}%`}</span>
+                                <span>₪{totalVat.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between pt-2 border-t font-bold text-lg text-primary">
                                 <span>סה"כ כולל מע״מ</span>
-                                <span>₪{(basePrice + vatAmount).toLocaleString()}</span>
+                                <span>₪{(basePrice + totalVat).toLocaleString()}</span>
                               </div>
                             </>
                           );
@@ -8635,11 +8681,17 @@ export function HtmlTemplateEditor({
                                             100,
                                         ).toLocaleString()}
                                       </div>
-                                      {designSettings.vatDisplayMode === "breakdown" && (
-                                        <div className="text-xs text-muted-foreground">
-                                          + ₪{Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * (editedTemplate.vat_rate || 17) / 100).toLocaleString()} מע״מ
-                                        </div>
-                                      )}
+                                      {designSettings.vatDisplayMode === "breakdown" && (() => {
+                                        const defaultVat = editedTemplate.vat_rate || 17;
+                                        const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                                        const vatAmt = Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * effVat / 100);
+                                        const isCustom = step.useCustomVat && effVat !== defaultVat;
+                                        return (
+                                          <div className={`text-xs ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
+                                            + ₪{vatAmt.toLocaleString()} מע״מ{isCustom ? ` (${effVat}%)` : ""}
+                                          </div>
+                                        );
+                                      })()}
                                     </td>
                                   </tr>
                                 ))}
