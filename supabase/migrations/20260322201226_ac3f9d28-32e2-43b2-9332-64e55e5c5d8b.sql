@@ -1,0 +1,1 @@
+ALTER TABLE public.payment_schedules ADD COLUMN IF NOT EXISTS vat_rate numeric DEFAULT NULL;
