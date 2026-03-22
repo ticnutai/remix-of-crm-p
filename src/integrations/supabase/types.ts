@@ -5676,6 +5676,7 @@ export type Database = {
           reminder_sent_at: string | null
           status: string | null
           updated_at: string | null
+          vat_rate: number | null
         }
         Insert: {
           amount: number
@@ -5696,6 +5697,7 @@ export type Database = {
           reminder_sent_at?: string | null
           status?: string | null
           updated_at?: string | null
+          vat_rate?: number | null
         }
         Update: {
           amount?: number
@@ -5716,6 +5718,7 @@ export type Database = {
           reminder_sent_at?: string | null
           status?: string | null
           updated_at?: string | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
