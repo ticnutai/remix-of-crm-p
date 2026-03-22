@@ -6671,6 +6671,90 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_quotes: {
+        Row: {
+          base_price: number | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          design_settings: Json | null
+          id: string
+          notes: string | null
+          payment_schedule: Json | null
+          pricing_tiers: Json | null
+          project_details: Json | null
+          status: string
+          template_data: Json
+          template_id: string | null
+          text_boxes: Json | null
+          title: string
+          total_with_vat: number | null
+          updated_at: string
+          upgrades: Json | null
+          user_id: string
+          vat_rate: number | null
+        }
+        Insert: {
+          base_price?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          design_settings?: Json | null
+          id?: string
+          notes?: string | null
+          payment_schedule?: Json | null
+          pricing_tiers?: Json | null
+          project_details?: Json | null
+          status?: string
+          template_data?: Json
+          template_id?: string | null
+          text_boxes?: Json | null
+          title?: string
+          total_with_vat?: number | null
+          updated_at?: string
+          upgrades?: Json | null
+          user_id: string
+          vat_rate?: number | null
+        }
+        Update: {
+          base_price?: number | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          design_settings?: Json | null
+          id?: string
+          notes?: string | null
+          payment_schedule?: Json | null
+          pricing_tiers?: Json | null
+          project_details?: Json | null
+          status?: string
+          template_data?: Json
+          template_id?: string | null
+          text_boxes?: Json | null
+          title?: string
+          total_with_vat?: number | null
+          updated_at?: string
+          upgrades?: Json | null
+          user_id?: string
+          vat_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_quotes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_quotes_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "quote_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signatures: {
         Row: {
           document_id: string
