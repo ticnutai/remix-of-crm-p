@@ -8625,13 +8625,29 @@ export function HtmlTemplateEditor({
                                     שלב
                                   </th>
                                   <th className="p-2 text-center">אחוז</th>
-                                  <th className="p-2 text-left rounded-tl-lg">
-                                    סכום
+                                  <th className="p-2 text-left">
+                                    סכום (נטו)
                                   </th>
+                                  {designSettings.vatDisplayMode === "breakdown" && (
+                                    <>
+                                      <th className="p-2 text-left">מע״מ</th>
+                                      <th className="p-2 text-left rounded-tl-lg">סה״כ (ברוטו)</th>
+                                    </>
+                                  )}
+                                  {designSettings.vatDisplayMode !== "breakdown" && (
+                                    <th className="p-2 text-left rounded-tl-lg" style={{ display: 'none' }}></th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
-                                {paymentSteps.map((step, i) => (
+                                {paymentSteps.map((step, i) => {
+                                  const bp = editedTemplate.base_price || 35000;
+                                  const stepAmount = Math.round((bp * step.percentage) / 100);
+                                  const defaultVat = editedTemplate.vat_rate || 17;
+                                  const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                                  const vatAmt = Math.round(stepAmount * effVat / 100);
+                                  const isCustom = step.useCustomVat && effVat !== defaultVat;
+                                  return (
                                   <tr
                                     key={step.id}
                                     className={i % 2 === 0 ? "bg-gray-50" : ""}
@@ -8686,83 +8702,76 @@ export function HtmlTemplateEditor({
                                       %
                                     </td>
                                     <td className="p-2 text-left">
-                                      <div>
-                                        ₪
-                                        {Math.round(
-                                          ((editedTemplate.base_price || 35000) *
-                                            step.percentage) /
-                                            100,
-                                        ).toLocaleString()}
-                                      </div>
-                                      {designSettings.vatDisplayMode === "breakdown" && (() => {
-                                        const defaultVat = editedTemplate.vat_rate || 17;
-                                        const effVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
-                                        const vatAmt = Math.round(((editedTemplate.base_price || 35000) * step.percentage / 100) * effVat / 100);
-                                        const isCustom = step.useCustomVat && effVat !== defaultVat;
-                                        return (
-                                          <div className={`text-xs ${isCustom ? "text-orange-500" : "text-muted-foreground"}`}>
-                                            + ₪{vatAmt.toLocaleString()} מע״מ{isCustom ? ` (${effVat}%)` : ""}
-                                          </div>
-                                        );
-                                      })()}
+                                      ₪{stepAmount.toLocaleString()}
                                     </td>
-                                  </tr>
-                                ))}
-                                <tr className="font-bold bg-gray-100">
-                                  <td className="p-2">סה"כ</td>
-                                  <td className="p-2 text-center">
-                                    {paymentSteps.reduce(
-                                      (sum, s) => sum + s.percentage,
-                                      0,
+                                    {designSettings.vatDisplayMode === "breakdown" && (
+                                      <>
+                                        <td className={`p-2 text-left text-xs ${isCustom ? "text-orange-500 font-semibold" : "text-muted-foreground"}`}>
+                                          ₪{vatAmt.toLocaleString()} ({effVat}%)
+                                        </td>
+                                        <td className="p-2 text-left font-bold">
+                                          ₪{(stepAmount + vatAmt).toLocaleString()}
+                                        </td>
+                                      </>
                                     )}
-                                    %
-                                  </td>
-                                  <td className="p-2 text-left">
-                                    ₪
-                                    <span
-                                      contentEditable
-                                      suppressContentEditableWarning
-                                      className="outline-none focus:bg-yellow-100 rounded px-1"
-                                      onBlur={(e) =>
-                                        setEditedTemplate({
-                                          ...editedTemplate,
-                                          base_price:
-                                            parseInt(
-                                              e.currentTarget.textContent?.replace(
-                                                /,/g,
-                                                "",
-                                              ) || "35000",
-                                            ) || 35000,
-                                        })
-                                      }
-                                    >
-                                      {(
-                                        editedTemplate.base_price || 35000
-                                      ).toLocaleString()}
-                                    </span>
-                                  </td>
-                                </tr>
-                                {designSettings.vatDisplayMode === "breakdown" && (() => {
+                                  </tr>
+                                  );
+                                })}
+                                {/* Totals */}
+                                {(() => {
                                   const bp = editedTemplate.base_price || 35000;
-                                  const vr = editedTemplate.vat_rate || 17;
-                                  const vatAmt = Math.round(bp * vr / 100);
+                                  const defaultVat = editedTemplate.vat_rate || 17;
+                                  const totVat = paymentSteps.reduce((sum, step) => {
+                                    const sa = Math.round((bp * step.percentage) / 100);
+                                    const ev = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
+                                    return sum + Math.round(sa * ev / 100);
+                                  }, 0);
                                   return (
-                                    <>
-                                      <tr className="bg-gray-50 text-muted-foreground">
-                                        <td className="p-2">מע״מ {vr}%</td>
-                                        <td className="p-2"></td>
-                                        <td className="p-2 text-left">₪{vatAmt.toLocaleString()}</td>
-                                      </tr>
-                                      <tr className="font-bold bg-gray-200 text-lg">
-                                        <td className="p-2">סה"כ כולל מע״מ</td>
-                                        <td className="p-2"></td>
-                                        <td className="p-2 text-left">₪{(bp + vatAmt).toLocaleString()}</td>
-                                      </tr>
-                                    </>
+                                    <tr className="font-bold bg-gray-100">
+                                      <td className="p-2">סה"כ</td>
+                                      <td className="p-2 text-center">
+                                        {paymentSteps.reduce(
+                                          (sum, s) => sum + s.percentage,
+                                          0,
+                                        )}
+                                        %
+                                      </td>
+                                      <td className="p-2 text-left">
+                                        ₪
+                                        <span
+                                          contentEditable
+                                          suppressContentEditableWarning
+                                          className="outline-none focus:bg-yellow-100 rounded px-1"
+                                          onBlur={(e) =>
+                                            setEditedTemplate({
+                                              ...editedTemplate,
+                                              base_price:
+                                                parseInt(
+                                                  e.currentTarget.textContent?.replace(
+                                                    /,/g,
+                                                    "",
+                                                  ) || "35000",
+                                                ) || 35000,
+                                            })
+                                          }
+                                        >
+                                          {bp.toLocaleString()}
+                                        </span>
+                                      </td>
+                                      {designSettings.vatDisplayMode === "breakdown" && (
+                                        <>
+                                          <td className="p-2 text-left text-muted-foreground">₪{totVat.toLocaleString()}</td>
+                                          <td className="p-2 text-left text-primary font-bold text-base">₪{(bp + totVat).toLocaleString()}</td>
+                                        </>
+                                      )}
+                                    </tr>
                                   );
                                 })()}
                               </tbody>
                             </table>
+                            {designSettings.vatDisplayMode === "breakdown" && (
+                              <p className="text-xs text-muted-foreground mt-2">* המע״מ יחושב בכל שלב תשלום בהתאם לשיעור המע״מ התקף במועד התשלום בפועל.</p>
+                            )}
                           </div>
                           <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                             <Button
