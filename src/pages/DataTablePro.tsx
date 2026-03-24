@@ -2545,9 +2545,10 @@ export default function DataTablePro() {
             </div>
           );
         },
-        // Make it editable via dropdown
+        // Make it editable via dropdown (enhanced-select opens instantly on click)
         editable: true,
-        editType: "select",
+        editType: "enhanced-select",
+        allowAddOptions: false,
         editOptions: availableConsultants.map((c) => ({
           value: c.name,
           label: `${c.name}${c.profession ? ` (${c.profession})` : ""}`,
