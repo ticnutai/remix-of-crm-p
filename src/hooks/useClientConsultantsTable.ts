@@ -199,22 +199,29 @@ export function useClientConsultantsTable() {
   }, [fetchClientConsultants]);
 
   // Set single consultant for client (replaces all existing)
+  // Queries DB directly to avoid stale closure issues with allConsultants state
   const setClientConsultant = useCallback(async (clientId: string, consultantName: string) => {
     try {
-      // Find consultant by name
-      const consultant = allConsultants.find(c => c.name === consultantName);
-      
-      if (!consultant) {
-        console.warn('Consultant not found:', consultantName);
+      // Query DB directly instead of relying on potentially stale state
+      const { data: matchedConsultants, error: findError } = await supabase
+        .from('consultants')
+        .select('id')
+        .eq('name', consultantName)
+        .limit(1);
+
+      if (findError) throw findError;
+
+      if (!matchedConsultants || matchedConsultants.length === 0) {
+        console.warn('Consultant not found in DB:', consultantName);
         return false;
       }
 
-      return await updateClientConsultants(clientId, [consultant.id]);
+      return await updateClientConsultants(clientId, [matchedConsultants[0].id]);
     } catch (error) {
       console.error('Error setting client consultant:', error);
       return false;
     }
-  }, [allConsultants, updateClientConsultants]);
+  }, [updateClientConsultants]);
 
   // Update multiple clients' consultants at once
   const updateMultipleClientsConsultant = useCallback(async (clientIds: string[], consultantName: string) => {
