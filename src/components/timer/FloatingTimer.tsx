@@ -40,6 +40,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,8 @@ function FloatingTimerContent() {
     pauseTimer,
     resetTimer,
     saveEntry,
+    updateBillable,
+    updateHourlyRate,
   } = useTimer();
   const { clients } = useClients();
   const { theme: timerTheme, setTheme: setTimerTheme } = useTimerTheme();
