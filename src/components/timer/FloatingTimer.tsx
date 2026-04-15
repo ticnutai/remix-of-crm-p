@@ -1094,6 +1094,52 @@ function FloatingTimerContent() {
                 className="text-right min-h-[80px] border-[hsl(45,80%,50%)]/40 text-[hsl(220,60%,20%)] focus:border-[hsl(45,80%,50%)]"
               />
             </div>
+
+            {/* Billing Section */}
+            <div className="space-y-3 pt-3 border-t border-[hsl(45,80%,50%)]/20">
+              <div className="flex items-center justify-between">
+                <Label className="text-[hsl(220,60%,20%)] flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-[hsl(45,80%,50%)]" />
+                  חיוב
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setStopBillable(!stopBillable)}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200",
+                    stopBillable
+                      ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] shadow-md"
+                      : "bg-gray-200 text-gray-500"
+                  )}
+                >
+                  {stopBillable ? "לחיוב ✅" : "לא לחיוב"}
+                </button>
+              </div>
+
+              {stopBillable && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="stop-hourly-rate" className="text-sm text-[hsl(220,60%,20%)] whitespace-nowrap">
+                    מחיר לשעה:
+                  </Label>
+                  <div className="relative flex-1">
+                    <Input
+                      id="stop-hourly-rate"
+                      type="number"
+                      value={stopHourlyRate}
+                      onChange={(e) => setStopHourlyRate(e.target.value)}
+                      placeholder="0"
+                      className="h-9 text-right border-[hsl(45,80%,50%)]/40 text-[hsl(220,60%,20%)] focus:border-[hsl(45,80%,50%)] pl-8"
+                    />
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-[hsl(220,60%,20%)]/50">₪</span>
+                  </div>
+                  {stopHourlyRate && (
+                    <div className="text-xs text-[hsl(45,80%,50%)] whitespace-nowrap font-medium">
+                      ≈ ₪{((stoppedElapsed || timerState.elapsed) / 3600 * parseFloat(stopHourlyRate || "0")).toFixed(0)}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1115,11 +1161,17 @@ function FloatingTimerContent() {
                 const combinedNotes = [stopDescription, stopNotes]
                   .filter(Boolean)
                   .join(" | ");
-                // Stop the timer and save the entry
+                // Stop the timer and save the entry with billing options
+                const rate = stopHourlyRate ? parseFloat(stopHourlyRate) : null;
                 await stopTimer();
-                await saveEntry(combinedNotes || undefined);
+                await saveEntry(combinedNotes || undefined, {
+                  is_billable: stopBillable,
+                  hourly_rate: rate,
+                });
                 setStopDescription("");
                 setStopNotes("");
+                setStopBillable(true);
+                setStopHourlyRate("");
                 setStoppedElapsed(0);
                 setIsStopDialogOpen(false);
                 toast.success("רישום הזמן נשמר בהצלחה! ✅");
