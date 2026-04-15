@@ -46,9 +46,11 @@ interface TimerContextType {
   pauseTimer: () => void;
   resumeTimer: () => void;
   resetTimer: () => void;
-  saveEntry: (notes?: string) => Promise<void>;
+  saveEntry: (notes?: string, options?: { is_billable?: boolean; hourly_rate?: number | null }) => Promise<void>;
   updateDescription: (description: string) => Promise<void>;
   updateTags: (tags: string[]) => Promise<void>;
+  updateBillable: (is_billable: boolean) => Promise<void>;
+  updateHourlyRate: (hourly_rate: number | null) => Promise<void>;
   todayEntries: TimeEntry[];
   todayTotal: number; // in minutes
   weekTotal: number; // in minutes
@@ -410,7 +412,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const saveEntry = async (notes?: string) => {
+  const saveEntry = async (notes?: string, options?: { is_billable?: boolean; hourly_rate?: number | null }) => {
     if (!timerState.currentEntry) {
       return;
     }
@@ -430,14 +432,24 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       ? `${timerState.currentEntry.description || ""} | ${notes}`.trim()
       : timerState.currentEntry.description;
 
+    const updateData: Record<string, unknown> = {
+      end_time: endTime.toISOString(),
+      is_running: false,
+      description: updatedDescription,
+    };
+
+    // Apply billable/rate options if provided
+    if (options?.is_billable !== undefined) {
+      updateData.is_billable = options.is_billable;
+    }
+    if (options?.hourly_rate !== undefined) {
+      updateData.hourly_rate = options.hourly_rate;
+    }
+
     // Note: duration_minutes is a generated column - only update end_time, is_running, and description
     const { data, error } = await supabase
       .from("time_entries")
-      .update({
-        end_time: endTime.toISOString(),
-        is_running: false,
-        description: updatedDescription,
-      })
+      .update(updateData)
       .eq("id", timerState.currentEntry.id)
       .select();
 
@@ -507,6 +519,48 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const updateBillable = async (is_billable: boolean) => {
+    if (!timerState.currentEntry) return;
+
+    const { error } = await supabase
+      .from("time_entries")
+      .update({ is_billable })
+      .eq("id", timerState.currentEntry.id);
+
+    if (error) {
+      console.error("Error updating billable:", error);
+      return;
+    }
+
+    setTimerState((prev) => ({
+      ...prev,
+      currentEntry: prev.currentEntry
+        ? { ...prev.currentEntry, is_billable }
+        : null,
+    }));
+  };
+
+  const updateHourlyRate = async (hourly_rate: number | null) => {
+    if (!timerState.currentEntry) return;
+
+    const { error } = await supabase
+      .from("time_entries")
+      .update({ hourly_rate })
+      .eq("id", timerState.currentEntry.id);
+
+    if (error) {
+      console.error("Error updating hourly rate:", error);
+      return;
+    }
+
+    setTimerState((prev) => ({
+      ...prev,
+      currentEntry: prev.currentEntry
+        ? { ...prev.currentEntry, hourly_rate }
+        : null,
+    }));
+  };
+
   return (
     <TimerContext.Provider
       value={{
@@ -519,6 +573,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         saveEntry,
         updateDescription,
         updateTags,
+        updateBillable,
+        updateHourlyRate,
         todayEntries,
         todayTotal,
         weekTotal,
