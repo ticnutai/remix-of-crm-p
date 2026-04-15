@@ -98,6 +98,8 @@ function FloatingTimerContent() {
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false);
   const [stopDescription, setStopDescription] = useState("");
   const [stopNotes, setStopNotes] = useState("");
+  const [stopBillable, setStopBillable] = useState(true);
+  const [stopHourlyRate, setStopHourlyRate] = useState<string>("");
   const [stoppedElapsed, setStoppedElapsed] = useState(0);
 
   // Minimized state
