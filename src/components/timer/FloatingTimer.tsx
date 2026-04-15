@@ -573,6 +573,8 @@ function FloatingTimerContent() {
                       e.stopPropagation();
                       // Capture elapsed time, pause the timer, then open save dialog
                       setStoppedElapsed(timerState.elapsed);
+                      setStopBillable(timerState.currentEntry?.is_billable ?? true);
+                      setStopHourlyRate(timerState.currentEntry?.hourly_rate?.toString() || "");
                       pauseTimer();
                       setIsStopDialogOpen(true);
                     }}
