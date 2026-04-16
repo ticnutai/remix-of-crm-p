@@ -1020,7 +1020,7 @@ function FloatingTimerContent() {
             )}
 
             {/* Global Billing Default Toggle */}
-            <TooltipProvider>
+            <TooltipProvider delayDuration={3000}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
