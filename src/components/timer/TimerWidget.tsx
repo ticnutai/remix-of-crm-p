@@ -600,8 +600,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
           onOpenChange={(open) => setIsCollapsed(!open)}
         >
           {/* Collapse Toggle Header */}
-          <div className="flex items-center justify-between py-1.5 border-t border-white/10">
-            <span className="text-[10px] text-white flex items-center gap-1">
+          <div className="flex items-center justify-between py-1.5 border-t border-white/10 gap-2">
+            <span className="text-[10px] text-white flex items-center gap-1 shrink-0">
               <FileText className="h-2.5 w-2.5" />
               פרטים נוספים
             </span>
@@ -609,7 +609,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded gap-0.5"
+                className="h-6 px-2 text-white/50 hover:text-white hover:bg-white/10 rounded gap-1 shrink-0"
               >
                 <span className="text-[10px]">
                   {isCollapsed ? "הצג" : "הסתר"}

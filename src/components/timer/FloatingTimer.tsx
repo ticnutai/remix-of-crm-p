@@ -570,7 +570,7 @@ function FloatingTimerContent() {
           {(timerState.isRunning || timerState.elapsed > 0) && !isMinimized && !open && !isStopDialogOpen && (
             <div
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-2xl",
+                "flex items-center gap-2 px-3 py-2.5 rounded-2xl",
                 "bg-gradient-to-l from-[hsl(220,60%,18%)] via-[hsl(220,60%,22%)] to-[hsl(220,60%,20%)]",
                 "border-2 border-[hsl(45,80%,50%)]",
                 "shadow-[0_0_20px_rgba(180,140,50,0.25)]",
@@ -580,7 +580,7 @@ function FloatingTimerContent() {
               onClick={() => setOpen(true)}
             >
               {/* Quick Action Buttons */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 {/* Play/Pause Button */}
                 <button
                   onClick={(e) => {
