@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useUserSettings } from "./useUserSettings";
 
 interface TimeEntry {
   id: string;
@@ -51,6 +52,8 @@ interface TimerContextType {
   updateTags: (tags: string[]) => Promise<void>;
   updateBillable: (is_billable: boolean) => Promise<void>;
   updateHourlyRate: (hourly_rate: number | null) => Promise<void>;
+  billingDefault: boolean;
+  setBillingDefault: (enabled: boolean) => void;
   todayEntries: TimeEntry[];
   todayTotal: number; // in minutes
   weekTotal: number; // in minutes
@@ -62,6 +65,10 @@ const TimerContext = createContext<TimerContextType | null>(null);
 
 export function TimerProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
+  const { value: billingDefault, setValue: setBillingDefault } = useUserSettings<boolean>({
+    key: 'timer_billing_default',
+    defaultValue: true,
+  });
   const [timerState, setTimerState] = useState<TimerState>({
     isRunning: false,
     startTime: null,
@@ -272,8 +279,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         description: description || null,
         start_time: startTime.toISOString(),
         is_running: true,
-        is_billable: true,
-        hourly_rate: profile?.hourly_rate || null,
+        is_billable: billingDefault,
+        hourly_rate: billingDefault ? (profile?.hourly_rate || null) : null,
         tags: tags || null,
       })
       .select()
