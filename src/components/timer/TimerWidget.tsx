@@ -749,11 +749,11 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Settings Icon - Bottom Left */}
+        {/* Settings Icon - Bottom Left, spaced from collapse toggle */}
         <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
           <DialogTrigger asChild>
             <button
-              className="absolute bottom-1 left-1 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
+              className="absolute bottom-10 left-1 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all z-10"
               title="הגדרות כותרות והערות"
             >
               <Settings className="h-3.5 w-3.5" />
