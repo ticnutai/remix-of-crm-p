@@ -45,6 +45,7 @@ import {
   ChevronRight,
   DollarSign,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -125,6 +126,9 @@ function FloatingTimerContent() {
   const [stopBillable, setStopBillable] = useState(true);
   const [stopHourlyRate, setStopHourlyRate] = useState<string>("");
   const [stoppedElapsed, setStoppedElapsed] = useState(0);
+
+  // Cancel confirmation state
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
   // Minimized state
   const [isMinimized, setIsMinimized] = useState(() => {
@@ -624,7 +628,7 @@ function FloatingTimerContent() {
                       setIsStopDialogOpen(true);
                     }}
                     className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
+                      "h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
                       "border",
                     )}
@@ -634,7 +638,7 @@ function FloatingTimerContent() {
                       boxShadow: '0 4px 12px hsla(45,80%,50%,0.35)',
                     }}
                   >
-                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <Square className="h-4 w-4 fill-current" />
                   </button>
                 )}
 
@@ -646,7 +650,7 @@ function FloatingTimerContent() {
                       resetTimer();
                     }}
                     className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
+                      "h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
                       "border",
                     )}
@@ -660,7 +664,7 @@ function FloatingTimerContent() {
                         : timerTheme.controlButtonsIdleColor || "white",
                     }}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <RotateCcw className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -891,6 +895,33 @@ function FloatingTimerContent() {
 
             {/* Control Buttons Row - White/Light buttons */}
             <div className="flex items-center gap-4">
+              {/* Cancel Button */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        if (timerState.isRunning || timerState.elapsed > 0) {
+                          setIsCancelConfirmOpen(true);
+                        }
+                      }}
+                      disabled={
+                        !timerState.isRunning && timerState.elapsed === 0
+                      }
+                      className={cn(
+                        "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                        "hover:scale-110 active:scale-95 border",
+                        "disabled:opacity-30 disabled:cursor-not-allowed",
+                        "bg-red-500/20 border-red-400/40 hover:bg-red-500/30",
+                      )}
+                    >
+                      <X className="h-5 w-5 text-red-400" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>בטל טיימר</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               {/* Stop Button */}
               <TooltipProvider>
                 <Tooltip>
@@ -913,7 +944,7 @@ function FloatingTimerContent() {
                         "bg-white/10 border-white/30 hover:bg-white/20",
                       )}
                     >
-                      <Square className="h-4 w-4 text-white" />
+                      <Square className="h-5 w-5 text-white" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>עצור</TooltipContent>
@@ -948,8 +979,6 @@ function FloatingTimerContent() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-
-              {/* Save button removed - use Stop flow instead */}
             </div>
 
             {/* Today Total - Small */}
@@ -1315,6 +1344,39 @@ function FloatingTimerContent() {
             >
               <Save className="h-4 w-4 ml-2 text-[hsl(220,60%,15%)]" />
               שמור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+        <DialogContent className="sm:max-w-sm bg-white border-2 border-red-400" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold text-red-600">
+              ביטול טיימר
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-right text-sm text-muted-foreground">
+            האם אתה בטוח שברצונך לבטל את הטיימר הנוכחי? הזמן שנמדד לא יישמר.
+          </p>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelConfirmOpen(false)}
+            >
+              חזור
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                resetTimer();
+                setIsCancelConfirmOpen(false);
+                setOpen(false);
+                toast.info("הטיימר בוטל");
+              }}
+            >
+              בטל טיימר
             </Button>
           </DialogFooter>
         </DialogContent>
