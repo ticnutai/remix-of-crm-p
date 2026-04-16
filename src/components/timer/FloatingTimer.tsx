@@ -953,6 +953,37 @@ function FloatingTimerContent() {
               </TooltipProvider>
             )}
 
+            {/* Billable Toggle Icon */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      const newBillable = !timerState.currentEntry?.is_billable;
+                      updateBillable(newBillable);
+                      toast.success(newBillable ? "מצב חיוב פעיל ✅" : "מצב חיוב כבוי ❌");
+                    }}
+                    className={cn(
+                      "p-2 rounded-xl transition-all duration-200 border",
+                      timerState.currentEntry?.is_billable
+                        ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                        : "border-transparent opacity-50 hover:opacity-80",
+                    )}
+                    style={{
+                      color: timerState.currentEntry?.is_billable
+                        ? "hsl(45,80%,55%)"
+                        : timerTheme.accentColor,
+                    }}
+                  >
+                    <DollarSign className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {timerState.currentEntry?.is_billable ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             {/* Settings Button */}
             <TooltipProvider>
               <Tooltip>
