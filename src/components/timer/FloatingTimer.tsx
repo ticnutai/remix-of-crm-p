@@ -127,6 +127,9 @@ function FloatingTimerContent() {
   const [stopHourlyRate, setStopHourlyRate] = useState<string>("");
   const [stoppedElapsed, setStoppedElapsed] = useState(0);
 
+  // Cancel confirmation state
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+
   // Minimized state
   const [isMinimized, setIsMinimized] = useState(() => {
     const saved = localStorage.getItem(TIMER_MINIMIZED_KEY);
