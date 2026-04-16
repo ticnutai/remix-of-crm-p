@@ -628,7 +628,7 @@ function FloatingTimerContent() {
                       setIsStopDialogOpen(true);
                     }}
                     className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
+                      "h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
                       "border",
                     )}
@@ -638,7 +638,7 @@ function FloatingTimerContent() {
                       boxShadow: '0 4px 12px hsla(45,80%,50%,0.35)',
                     }}
                   >
-                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <Square className="h-4 w-4 fill-current" />
                   </button>
                 )}
 
@@ -650,7 +650,7 @@ function FloatingTimerContent() {
                       resetTimer();
                     }}
                     className={cn(
-                      "h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-200",
+                      "h-9 w-9 rounded-lg flex items-center justify-center transition-all duration-200",
                       "hover:scale-105 active:scale-95",
                       "border",
                     )}
@@ -664,7 +664,7 @@ function FloatingTimerContent() {
                         : timerTheme.controlButtonsIdleColor || "white",
                     }}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
+                    <RotateCcw className="h-4 w-4" />
                   </button>
                 )}
               </div>
