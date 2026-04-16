@@ -96,18 +96,19 @@ function FloatingTimerContent() {
   const currentPage = location.pathname;
 
   // Cloud-persisted per-page button size
-  const { value: perPageButtonSize, setValue: setPerPageButtonSize } = useUserSettings<Record<string, number>>({
+  const { value: perPageButtonSize, setValue: setPerPageButtonSize, isLoading: isLoadingSize } = useUserSettings<Record<string, number>>({
     key: 'timer_button_sizes',
     defaultValue: {},
   });
 
   // Cloud-persisted per-page position
-  const { value: perPagePositions, setValue: setPerPagePositions } = useUserSettings<Record<string, { x: number; y: number }>>({
+  const { value: perPagePositions, setValue: setPerPagePositions, isLoading: isLoadingPos } = useUserSettings<Record<string, { x: number; y: number }>>({
     key: 'timer_positions',
     defaultValue: {},
   });
 
   const buttonSize = perPageButtonSize[currentPage] || 64;
+  const settingsReady = !isLoadingSize && !isLoadingPos;
   const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -454,6 +455,9 @@ function FloatingTimerContent() {
       resumeTimer();
     }
   };
+  // Don't render until cloud settings are loaded to prevent size/position flash
+  if (!settingsReady) return null;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -476,7 +480,7 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative rounded-full transition-all duration-500 ease-out",
+              "group relative rounded-full transition-[shadow,border-color,transform] duration-300 ease-out",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
