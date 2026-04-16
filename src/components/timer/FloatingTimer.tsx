@@ -1032,6 +1032,29 @@ function FloatingTimerContent() {
               </Tooltip>
             </TooltipProvider>
 
+            {/* Button Size Slider */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowSizeSlider(!showSizeSlider)}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all border",
+                      showSizeSlider
+                        ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                        : "border-transparent hover:opacity-80",
+                    )}
+                    style={{
+                      color: timerTheme.accentColor,
+                    }}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">גודל כפתור צף</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             {/* Settings Button */}
             <TooltipProvider>
               <Tooltip>
@@ -1050,6 +1073,35 @@ function FloatingTimerContent() {
               </Tooltip>
             </TooltipProvider>
           </div>
+
+          {/* Button Size Slider - Inline */}
+          {showSizeSlider && (
+            <div className="absolute top-14 left-3 right-3 bg-[hsl(220,60%,18%)] border border-[hsl(45,80%,50%)]/40 rounded-xl p-3 z-50 space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: timerTheme.labelsColor || timerTheme.accentColor }}>
+                  גודל כפתור (עמוד זה)
+                </span>
+                <span className="text-xs font-mono" style={{ color: timerTheme.accentColor }}>
+                  {buttonSize}px
+                </span>
+              </div>
+              <Slider
+                value={[buttonSize]}
+                onValueChange={([val]) => {
+                  setPerPageButtonSize(prev => ({ ...prev, [currentPage]: val }));
+                }}
+                min={40}
+                max={120}
+                step={4}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px]" style={{ color: timerTheme.labelsColor || "hsl(45,60%,60%)" }}>
+                <span>קטן</span>
+                <span>גדול</span>
+              </div>
+            </div>
+          )}
+        </div>
         </div>
 
         {/* Scrollable Content Area - No horizontal scroll */}
