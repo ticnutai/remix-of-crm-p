@@ -1348,6 +1348,39 @@ function FloatingTimerContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
+        <DialogContent className="sm:max-w-sm bg-white border-2 border-red-400" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right text-lg font-bold text-red-600">
+              ביטול טיימר
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-right text-sm text-muted-foreground">
+            האם אתה בטוח שברצונך לבטל את הטיימר הנוכחי? הזמן שנמדד לא יישמר.
+          </p>
+          <DialogFooter className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelConfirmOpen(false)}
+            >
+              חזור
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                resetTimer();
+                setIsCancelConfirmOpen(false);
+                setOpen(false);
+                toast.info("הטיימר בוטל");
+              }}
+            >
+              בטל טיימר
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Popover>
   );
 }
