@@ -1102,7 +1102,6 @@ function FloatingTimerContent() {
             </div>
           )}
         </div>
-        </div>
 
         {/* Scrollable Content Area - No horizontal scroll */}
         <div
