@@ -82,6 +82,8 @@ function FloatingTimerContent() {
     saveEntry,
     updateBillable,
     updateHourlyRate,
+    billingDefault,
+    setBillingDefault,
   } = useTimer();
   const { clients } = useClients();
   const { theme: timerTheme, setTheme: setTimerTheme } = useTimerTheme();
