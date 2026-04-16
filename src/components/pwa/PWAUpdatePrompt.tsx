@@ -9,6 +9,10 @@ export function PWAUpdatePrompt() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
 
   useEffect(() => {
+    if (import.meta.env.DEV || !('serviceWorker' in navigator)) {
+      return;
+    }
+
     if ('serviceWorker' in navigator) {
       // Check for updates on load
       navigator.serviceWorker.ready.then((registration) => {
@@ -52,7 +56,7 @@ export function PWAUpdatePrompt() {
     setShowPrompt(false);
   };
 
-  if (!showPrompt) return null;
+  if (import.meta.env.DEV || !showPrompt) return null;
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 animate-in slide-in-from-top duration-300 md:left-auto md:right-4 md:max-w-sm">
