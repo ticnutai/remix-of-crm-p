@@ -895,6 +895,33 @@ function FloatingTimerContent() {
 
             {/* Control Buttons Row - White/Light buttons */}
             <div className="flex items-center gap-4">
+              {/* Cancel Button */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        if (timerState.isRunning || timerState.elapsed > 0) {
+                          setIsCancelConfirmOpen(true);
+                        }
+                      }}
+                      disabled={
+                        !timerState.isRunning && timerState.elapsed === 0
+                      }
+                      className={cn(
+                        "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                        "hover:scale-110 active:scale-95 border",
+                        "disabled:opacity-30 disabled:cursor-not-allowed",
+                        "bg-red-500/20 border-red-400/40 hover:bg-red-500/30",
+                      )}
+                    >
+                      <X className="h-5 w-5 text-red-400" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>בטל טיימר</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               {/* Stop Button */}
               <TooltipProvider>
                 <Tooltip>
@@ -917,7 +944,7 @@ function FloatingTimerContent() {
                         "bg-white/10 border-white/30 hover:bg-white/20",
                       )}
                     >
-                      <Square className="h-4 w-4 text-white" />
+                      <Square className="h-5 w-5 text-white" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>עצור</TooltipContent>
@@ -952,8 +979,6 @@ function FloatingTimerContent() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-
-              {/* Save button removed - use Stop flow instead */}
             </div>
 
             {/* Today Total - Small */}
