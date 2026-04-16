@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTimer } from "@/hooks/useTimer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocation } from "react-router-dom";
+import { useUserSettings } from "@/hooks/useUserSettings";
+import { Slider } from "@/components/ui/slider";
 import { useClients } from "@/hooks/useClients";
 import {
   Popover,
