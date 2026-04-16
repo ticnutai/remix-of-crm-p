@@ -622,22 +622,25 @@ function FloatingTimerContent() {
                 )}
               </div>
 
-              {/* Billable Toggle Icon */}
+              {/* Global Billing Toggle Icon */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const newBillable = !timerState.currentEntry?.is_billable;
-                  updateBillable(newBillable);
-                  toast.success(newBillable ? "לחיוב ✅" : "לא לחיוב ❌");
+                  const newDefault = !billingDefault;
+                  setBillingDefault(newDefault);
+                  if (timerState.currentEntry) {
+                    updateBillable(newDefault);
+                  }
+                  toast.success(newDefault ? "חיוב פעיל ✅" : "חיוב כבוי ❌");
                 }}
                 className={cn(
                   "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200",
                   "hover:scale-110 active:scale-95",
-                  timerState.currentEntry?.is_billable
+                  billingDefault
                     ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] shadow-[0_0_8px_rgba(200,160,60,0.5)]"
                     : "bg-[hsl(220,60%,30%)] text-[hsl(220,30%,55%)] border border-[hsl(220,30%,40%)]",
                 )}
-                title={timerState.currentEntry?.is_billable ? "לחיוב - לחץ לביטול" : "לא לחיוב - לחץ להפעלה"}
+                title={billingDefault ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
               >
                 <DollarSign className="h-3.5 w-3.5" />
               </button>
