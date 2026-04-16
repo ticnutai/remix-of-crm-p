@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTimer } from "@/hooks/useTimer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocation } from "react-router-dom";
+import { useUserSettings } from "@/hooks/useUserSettings";
+import { Slider } from "@/components/ui/slider";
 import { useClients } from "@/hooks/useClients";
 import {
   Popover,
@@ -41,6 +44,7 @@ import {
   ChevronLeft,
   ChevronRight,
   DollarSign,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -88,6 +92,23 @@ function FloatingTimerContent() {
   const { clients } = useClients();
   const { theme: timerTheme, setTheme: setTimerTheme } = useTimerTheme();
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const currentPage = location.pathname;
+
+  // Cloud-persisted per-page button size
+  const { value: perPageButtonSize, setValue: setPerPageButtonSize } = useUserSettings<Record<string, number>>({
+    key: 'timer_button_sizes',
+    defaultValue: {},
+  });
+
+  // Cloud-persisted per-page position
+  const { value: perPagePositions, setValue: setPerPagePositions } = useUserSettings<Record<string, { x: number; y: number }>>({
+    key: 'timer_positions',
+    defaultValue: {},
+  });
+
+  const buttonSize = perPageButtonSize[currentPage] || 64;
+  const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -119,49 +140,55 @@ function FloatingTimerContent() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLongPress, setIsLongPress] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const positionRef = useRef<{ x: number; y: number }>({ x: 32, y: 600 });
   const [position, setPosition] = useState(() => {
+    // First check cloud-saved position for this page
+    const cloudPos = perPagePositions[currentPage];
+    if (cloudPos) {
+      positionRef.current = cloudPos;
+      return cloudPos;
+    }
     const saved = localStorage.getItem(TIMER_POSITION_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Ensure position is within screen bounds
-        const safeX = Math.min(
-          Math.max(0, parsed.x),
-          (typeof globalThis.window !== "undefined"
-            ? globalThis.window.innerWidth
-            : 800) - 80,
-        );
-        const safeY = Math.min(
-          Math.max(0, parsed.y),
-          (typeof globalThis.window !== "undefined"
-            ? globalThis.window.innerHeight
-            : 600) - 80,
-        );
-        return {
-          x: safeX,
-          y: safeY,
-        };
-      } catch {
-        // Fall through to default
+        const safeX = Math.min(Math.max(0, parsed.x), (typeof globalThis.window !== "undefined" ? globalThis.window.innerWidth : 800) - 80);
+        const safeY = Math.min(Math.max(0, parsed.y), (typeof globalThis.window !== "undefined" ? globalThis.window.innerHeight : 600) - 80);
+        const pos = { x: safeX, y: safeY };
+        positionRef.current = pos;
+        return pos;
+      } catch { /* Fall through */ }
+    }
+    const defaultPos = { x: 32, y: typeof globalThis.window !== "undefined" ? globalThis.window.innerHeight - 100 : 600 };
+    positionRef.current = defaultPos;
+    return defaultPos;
+  });
+
+  // Sync cloud position when page changes
+  useEffect(() => {
+    const cloudPos = perPagePositions[currentPage];
+    if (cloudPos) {
+      setPosition(cloudPos);
+      positionRef.current = cloudPos;
+      if (containerRef.current) {
+        containerRef.current.style.left = `${cloudPos.x}px`;
+        containerRef.current.style.top = `${cloudPos.y}px`;
       }
     }
-    // Default position: bottom-left corner
-    return {
-      x: 32,
-      y:
-        typeof globalThis.window !== "undefined"
-          ? globalThis.window.innerHeight - 100
-          : 600,
-    };
-  });
+  }, [currentPage]);
 
   // Keep timer in bounds on window resize
   useEffect(() => {
     const handleResize = () => {
-      setPosition((prev) => ({
-        x: Math.min(Math.max(0, prev.x), window.innerWidth - 80),
-        y: Math.min(Math.max(0, prev.y), window.innerHeight - 80),
-      }));
+      setPosition((prev) => {
+        const newPos = {
+          x: Math.min(Math.max(0, prev.x), window.innerWidth - 80),
+          y: Math.min(Math.max(0, prev.y), window.innerHeight - 80),
+        };
+        positionRef.current = newPos;
+        return newPos;
+      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -294,10 +321,14 @@ function FloatingTimerContent() {
     );
   }, [currentSizePreset]);
 
-  // Save position to localStorage
+  // Save position to localStorage and cloud
   useEffect(() => {
     localStorage.setItem(TIMER_POSITION_KEY, JSON.stringify(position));
   }, [position]);
+
+  const savePositionToCloud = useCallback((pos: { x: number; y: number }) => {
+    setPerPagePositions(prev => ({ ...prev, [currentPage]: pos }));
+  }, [currentPage, setPerPagePositions]);
 
   // Handle drag start (for long press)
   const handleDragStart = useCallback(
@@ -310,17 +341,16 @@ function FloatingTimerContent() {
       dragStartRef.current = {
         x: clientX,
         y: clientY,
-        posX: position.x,
-        posY: position.y,
+        posX: positionRef.current.x,
+        posY: positionRef.current.y,
       };
     },
-    [position],
+    [],
   );
 
   // Long press handlers for dragging the main timer button
   const handleLongPressStart = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      // Clear any existing timer
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
       }
@@ -329,70 +359,76 @@ function FloatingTimerContent() {
       dragStartRef.current = {
         x: clientX,
         y: clientY,
-        posX: position.x,
-        posY: position.y,
+        posX: positionRef.current.x,
+        posY: positionRef.current.y,
       };
 
-      // Start long press timer (300ms)
       longPressTimerRef.current = setTimeout(() => {
         setIsLongPress(true);
         setIsDragging(true);
-        // Vibrate on mobile for feedback
         if ("vibrate" in navigator) {
           navigator.vibrate(50);
         }
       }, 300);
     },
-    [position],
+    [],
   );
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-
-    // Small delay before resetting to allow click events
     setTimeout(() => {
       setIsLongPress(false);
     }, 100);
   }, []);
 
-  // Handle drag move
+  // Handle drag move - DIRECT DOM manipulation for performance
   useEffect(() => {
     if (!isDragging) return;
+    let rafId: number;
     const handleMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault();
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       const deltaX = clientX - dragStartRef.current.x;
       const deltaY = clientY - dragStartRef.current.y;
-      const newX = Math.max(
-        0,
-        Math.min(window.innerWidth - 80, dragStartRef.current.posX + deltaX),
-      );
-      const newY = Math.max(
-        0,
-        Math.min(window.innerHeight - 80, dragStartRef.current.posY + deltaY),
-      );
-      setPosition({
-        x: newX,
-        y: newY,
+      const newX = Math.max(0, Math.min(window.innerWidth - 80, dragStartRef.current.posX + deltaX));
+      const newY = Math.max(0, Math.min(window.innerHeight - 80, dragStartRef.current.posY + deltaY));
+      
+      // Update ref immediately
+      positionRef.current = { x: newX, y: newY };
+      
+      // Direct DOM update - no React re-render
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.style.left = `${newX}px`;
+          containerRef.current.style.top = `${newY}px`;
+        }
       });
     };
     const handleEnd = () => {
+      cancelAnimationFrame(rafId);
+      // Sync final position to React state and cloud
+      const finalPos = positionRef.current;
+      setPosition(finalPos);
+      savePositionToCloud(finalPos);
       setIsDragging(false);
       setIsLongPress(false);
     };
-    globalThis.addEventListener("mousemove", handleMove);
+    globalThis.addEventListener("mousemove", handleMove, { passive: false });
     globalThis.addEventListener("mouseup", handleEnd);
-    globalThis.addEventListener("touchmove", handleMove);
+    globalThis.addEventListener("touchmove", handleMove, { passive: false });
     globalThis.addEventListener("touchend", handleEnd);
     return () => {
+      cancelAnimationFrame(rafId);
       globalThis.removeEventListener("mousemove", handleMove);
       globalThis.removeEventListener("mouseup", handleEnd);
       globalThis.removeEventListener("touchmove", handleMove);
       globalThis.removeEventListener("touchend", handleEnd);
     };
-  }, [isDragging]);
+  }, [isDragging, savePositionToCloud]);
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -422,12 +458,14 @@ function FloatingTimerContent() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
+          ref={containerRef}
           className="fixed z-[9999] flex flex-row-reverse items-center gap-3 group"
           dir="rtl"
           style={{
             left: position.x,
             top: position.y,
             cursor: isDragging ? "grabbing" : "auto",
+            willChange: isDragging ? "left, top" : "auto",
           }}
         >
           {/* Main Timer Button - Circular Navy with Gold Border - Long press to drag */}
@@ -438,7 +476,7 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative h-16 w-16 rounded-full transition-all duration-500 ease-out",
+              "group relative rounded-full transition-all duration-500 ease-out",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
@@ -453,6 +491,7 @@ function FloatingTimerContent() {
                 "cursor-grabbing scale-110 shadow-[0_0_40px_rgba(180,140,50,0.7)]",
               isLongPress && "scale-110 ring-4 ring-[hsl(45,80%,50%)]/50",
             )}
+            style={{ width: `${buttonSize}px`, height: `${buttonSize}px` }}
           >
             {/* Static glow when running */}
             {timerState.isRunning && (
@@ -993,6 +1032,29 @@ function FloatingTimerContent() {
               </Tooltip>
             </TooltipProvider>
 
+            {/* Button Size Slider */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowSizeSlider(!showSizeSlider)}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all border",
+                      showSizeSlider
+                        ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                        : "border-transparent hover:opacity-80",
+                    )}
+                    style={{
+                      color: timerTheme.accentColor,
+                    }}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">גודל כפתור צף</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             {/* Settings Button */}
             <TooltipProvider>
               <Tooltip>
@@ -1011,6 +1073,34 @@ function FloatingTimerContent() {
               </Tooltip>
             </TooltipProvider>
           </div>
+
+          {/* Button Size Slider - Inline */}
+          {showSizeSlider && (
+            <div className="absolute top-14 left-3 right-3 bg-[hsl(220,60%,18%)] border border-[hsl(45,80%,50%)]/40 rounded-xl p-3 z-50 space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: timerTheme.labelsColor || timerTheme.accentColor }}>
+                  גודל כפתור (עמוד זה)
+                </span>
+                <span className="text-xs font-mono" style={{ color: timerTheme.accentColor }}>
+                  {buttonSize}px
+                </span>
+              </div>
+              <Slider
+                value={[buttonSize]}
+                onValueChange={([val]) => {
+                  setPerPageButtonSize(prev => ({ ...prev, [currentPage]: val }));
+                }}
+                min={40}
+                max={120}
+                step={4}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px]" style={{ color: timerTheme.labelsColor || "hsl(45,60%,60%)" }}>
+                <span>קטן</span>
+                <span>גדול</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Content Area - No horizontal scroll */}
