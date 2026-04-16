@@ -920,7 +920,7 @@ function FloatingTimerContent() {
           </div>
 
           {/* Settings & Resize Buttons */}
-          <div className="absolute top-3 left-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-3 left-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
             {/* Mobile Resize Button - Always visible on mobile */}
             {isMobile && (
               <TooltipProvider>
@@ -928,7 +928,7 @@ function FloatingTimerContent() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={cycleSizePreset}
-                      className="p-2 rounded-xl transition-all border border-transparent hover:opacity-80 active:scale-95"
+                      className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80 active:scale-95"
                       style={{
                         color: timerTheme.accentColor,
                       }}
@@ -955,24 +955,28 @@ function FloatingTimerContent() {
               </TooltipProvider>
             )}
 
-            {/* Billable Toggle Icon */}
+            {/* Global Billing Default Toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      const newBillable = !timerState.currentEntry?.is_billable;
-                      updateBillable(newBillable);
-                      toast.success(newBillable ? "מצב חיוב פעיל ✅" : "מצב חיוב כבוי ❌");
+                      const newDefault = !billingDefault;
+                      setBillingDefault(newDefault);
+                      // Also update current entry if running
+                      if (timerState.currentEntry) {
+                        updateBillable(newDefault);
+                      }
+                      toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
                     }}
                     className={cn(
-                      "p-2 rounded-xl transition-all duration-200 border",
-                      timerState.currentEntry?.is_billable
+                      "p-1.5 rounded-lg transition-all duration-200 border",
+                      billingDefault
                         ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
-                        : "border-transparent opacity-50 hover:opacity-80",
+                        : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
                     )}
                     style={{
-                      color: timerState.currentEntry?.is_billable
+                      color: billingDefault
                         ? "hsl(45,80%,55%)"
                         : timerTheme.accentColor,
                     }}
@@ -981,7 +985,7 @@ function FloatingTimerContent() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {timerState.currentEntry?.is_billable ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
+                  {billingDefault ? "חיוב פעיל - לחץ לכיבוי לכל הטיימרים" : "חיוב כבוי - לחץ להפעלה לכל הטיימרים"}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -992,7 +996,7 @@ function FloatingTimerContent() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 rounded-xl transition-all border border-transparent hover:opacity-80"
+                    className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80"
                     style={{
                       color: timerTheme.accentColor,
                     }}
