@@ -96,18 +96,19 @@ function FloatingTimerContent() {
   const currentPage = location.pathname;
 
   // Cloud-persisted per-page button size
-  const { value: perPageButtonSize, setValue: setPerPageButtonSize } = useUserSettings<Record<string, number>>({
+  const { value: perPageButtonSize, setValue: setPerPageButtonSize, isLoading: isLoadingSize } = useUserSettings<Record<string, number>>({
     key: 'timer_button_sizes',
     defaultValue: {},
   });
 
   // Cloud-persisted per-page position
-  const { value: perPagePositions, setValue: setPerPagePositions } = useUserSettings<Record<string, { x: number; y: number }>>({
+  const { value: perPagePositions, setValue: setPerPagePositions, isLoading: isLoadingPos } = useUserSettings<Record<string, { x: number; y: number }>>({
     key: 'timer_positions',
     defaultValue: {},
   });
 
   const buttonSize = perPageButtonSize[currentPage] || 64;
+  const settingsReady = !isLoadingSize && !isLoadingPos;
   const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
