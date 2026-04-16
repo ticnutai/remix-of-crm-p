@@ -600,8 +600,8 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
           onOpenChange={(open) => setIsCollapsed(!open)}
         >
           {/* Collapse Toggle Header */}
-          <div className="flex items-center justify-between py-1.5 border-t border-white/10">
-            <span className="text-[10px] text-white flex items-center gap-1">
+          <div className="flex items-center justify-between py-1.5 border-t border-white/10 gap-2">
+            <span className="text-[10px] text-white flex items-center gap-1 shrink-0">
               <FileText className="h-2.5 w-2.5" />
               פרטים נוספים
             </span>
@@ -609,7 +609,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 px-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded gap-0.5"
+                className="h-6 px-2 text-white/50 hover:text-white hover:bg-white/10 rounded gap-1 shrink-0"
               >
                 <span className="text-[10px]">
                   {isCollapsed ? "הצג" : "הסתר"}
@@ -749,11 +749,11 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
           </CollapsibleContent>
         </Collapsible>
 
-        {/* Settings Icon - Bottom Left */}
+        {/* Settings Icon - Bottom Left, spaced from collapse toggle */}
         <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
           <DialogTrigger asChild>
             <button
-              className="absolute bottom-1 left-1 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
+              className="absolute bottom-10 left-1 p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-all z-10"
               title="הגדרות כותרות והערות"
             >
               <Settings className="h-3.5 w-3.5" />
