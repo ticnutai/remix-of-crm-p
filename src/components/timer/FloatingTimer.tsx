@@ -321,10 +321,14 @@ function FloatingTimerContent() {
     );
   }, [currentSizePreset]);
 
-  // Save position to localStorage
+  // Save position to localStorage and cloud
   useEffect(() => {
     localStorage.setItem(TIMER_POSITION_KEY, JSON.stringify(position));
   }, [position]);
+
+  const savePositionToCloud = useCallback((pos: { x: number; y: number }) => {
+    setPerPagePositions(prev => ({ ...prev, [currentPage]: pos }));
+  }, [currentPage, setPerPagePositions]);
 
   // Handle drag start (for long press)
   const handleDragStart = useCallback(
@@ -337,17 +341,16 @@ function FloatingTimerContent() {
       dragStartRef.current = {
         x: clientX,
         y: clientY,
-        posX: position.x,
-        posY: position.y,
+        posX: positionRef.current.x,
+        posY: positionRef.current.y,
       };
     },
-    [position],
+    [],
   );
 
   // Long press handlers for dragging the main timer button
   const handleLongPressStart = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      // Clear any existing timer
       if (longPressTimerRef.current) {
         clearTimeout(longPressTimerRef.current);
       }
@@ -356,70 +359,76 @@ function FloatingTimerContent() {
       dragStartRef.current = {
         x: clientX,
         y: clientY,
-        posX: position.x,
-        posY: position.y,
+        posX: positionRef.current.x,
+        posY: positionRef.current.y,
       };
 
-      // Start long press timer (300ms)
       longPressTimerRef.current = setTimeout(() => {
         setIsLongPress(true);
         setIsDragging(true);
-        // Vibrate on mobile for feedback
         if ("vibrate" in navigator) {
           navigator.vibrate(50);
         }
       }, 300);
     },
-    [position],
+    [],
   );
   const handleLongPressEnd = useCallback(() => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-
-    // Small delay before resetting to allow click events
     setTimeout(() => {
       setIsLongPress(false);
     }, 100);
   }, []);
 
-  // Handle drag move
+  // Handle drag move - DIRECT DOM manipulation for performance
   useEffect(() => {
     if (!isDragging) return;
+    let rafId: number;
     const handleMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault();
       const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       const deltaX = clientX - dragStartRef.current.x;
       const deltaY = clientY - dragStartRef.current.y;
-      const newX = Math.max(
-        0,
-        Math.min(window.innerWidth - 80, dragStartRef.current.posX + deltaX),
-      );
-      const newY = Math.max(
-        0,
-        Math.min(window.innerHeight - 80, dragStartRef.current.posY + deltaY),
-      );
-      setPosition({
-        x: newX,
-        y: newY,
+      const newX = Math.max(0, Math.min(window.innerWidth - 80, dragStartRef.current.posX + deltaX));
+      const newY = Math.max(0, Math.min(window.innerHeight - 80, dragStartRef.current.posY + deltaY));
+      
+      // Update ref immediately
+      positionRef.current = { x: newX, y: newY };
+      
+      // Direct DOM update - no React re-render
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (containerRef.current) {
+          containerRef.current.style.left = `${newX}px`;
+          containerRef.current.style.top = `${newY}px`;
+        }
       });
     };
     const handleEnd = () => {
+      cancelAnimationFrame(rafId);
+      // Sync final position to React state and cloud
+      const finalPos = positionRef.current;
+      setPosition(finalPos);
+      savePositionToCloud(finalPos);
       setIsDragging(false);
       setIsLongPress(false);
     };
-    globalThis.addEventListener("mousemove", handleMove);
+    globalThis.addEventListener("mousemove", handleMove, { passive: false });
     globalThis.addEventListener("mouseup", handleEnd);
-    globalThis.addEventListener("touchmove", handleMove);
+    globalThis.addEventListener("touchmove", handleMove, { passive: false });
     globalThis.addEventListener("touchend", handleEnd);
     return () => {
+      cancelAnimationFrame(rafId);
       globalThis.removeEventListener("mousemove", handleMove);
       globalThis.removeEventListener("mouseup", handleEnd);
       globalThis.removeEventListener("touchmove", handleMove);
       globalThis.removeEventListener("touchend", handleEnd);
     };
-  }, [isDragging]);
+  }, [isDragging, savePositionToCloud]);
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
