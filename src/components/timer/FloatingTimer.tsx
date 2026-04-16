@@ -455,6 +455,9 @@ function FloatingTimerContent() {
       resumeTimer();
     }
   };
+  // Don't render until cloud settings are loaded to prevent size/position flash
+  if (!settingsReady) return null;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -477,7 +480,7 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative rounded-full transition-all duration-500 ease-out",
+              "group relative rounded-full transition-[shadow,border-color,transform] duration-300 ease-out",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
