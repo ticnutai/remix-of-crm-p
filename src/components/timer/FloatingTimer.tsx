@@ -140,49 +140,55 @@ function FloatingTimerContent() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLongPress, setIsLongPress] = useState(false);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const positionRef = useRef<{ x: number; y: number }>({ x: 32, y: 600 });
   const [position, setPosition] = useState(() => {
+    // First check cloud-saved position for this page
+    const cloudPos = perPagePositions[currentPage];
+    if (cloudPos) {
+      positionRef.current = cloudPos;
+      return cloudPos;
+    }
     const saved = localStorage.getItem(TIMER_POSITION_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Ensure position is within screen bounds
-        const safeX = Math.min(
-          Math.max(0, parsed.x),
-          (typeof globalThis.window !== "undefined"
-            ? globalThis.window.innerWidth
-            : 800) - 80,
-        );
-        const safeY = Math.min(
-          Math.max(0, parsed.y),
-          (typeof globalThis.window !== "undefined"
-            ? globalThis.window.innerHeight
-            : 600) - 80,
-        );
-        return {
-          x: safeX,
-          y: safeY,
-        };
-      } catch {
-        // Fall through to default
+        const safeX = Math.min(Math.max(0, parsed.x), (typeof globalThis.window !== "undefined" ? globalThis.window.innerWidth : 800) - 80);
+        const safeY = Math.min(Math.max(0, parsed.y), (typeof globalThis.window !== "undefined" ? globalThis.window.innerHeight : 600) - 80);
+        const pos = { x: safeX, y: safeY };
+        positionRef.current = pos;
+        return pos;
+      } catch { /* Fall through */ }
+    }
+    const defaultPos = { x: 32, y: typeof globalThis.window !== "undefined" ? globalThis.window.innerHeight - 100 : 600 };
+    positionRef.current = defaultPos;
+    return defaultPos;
+  });
+
+  // Sync cloud position when page changes
+  useEffect(() => {
+    const cloudPos = perPagePositions[currentPage];
+    if (cloudPos) {
+      setPosition(cloudPos);
+      positionRef.current = cloudPos;
+      if (containerRef.current) {
+        containerRef.current.style.left = `${cloudPos.x}px`;
+        containerRef.current.style.top = `${cloudPos.y}px`;
       }
     }
-    // Default position: bottom-left corner
-    return {
-      x: 32,
-      y:
-        typeof globalThis.window !== "undefined"
-          ? globalThis.window.innerHeight - 100
-          : 600,
-    };
-  });
+  }, [currentPage]);
 
   // Keep timer in bounds on window resize
   useEffect(() => {
     const handleResize = () => {
-      setPosition((prev) => ({
-        x: Math.min(Math.max(0, prev.x), window.innerWidth - 80),
-        y: Math.min(Math.max(0, prev.y), window.innerHeight - 80),
-      }));
+      setPosition((prev) => {
+        const newPos = {
+          x: Math.min(Math.max(0, prev.x), window.innerWidth - 80),
+          y: Math.min(Math.max(0, prev.y), window.innerHeight - 80),
+        };
+        positionRef.current = newPos;
+        return newPos;
+      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
