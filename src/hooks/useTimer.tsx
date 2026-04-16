@@ -582,6 +582,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         updateTags,
         updateBillable,
         updateHourlyRate,
+        billingDefault,
+        setBillingDefault,
         todayEntries,
         todayTotal,
         weekTotal,
