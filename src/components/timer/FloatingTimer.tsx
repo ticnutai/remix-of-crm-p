@@ -82,6 +82,8 @@ function FloatingTimerContent() {
     saveEntry,
     updateBillable,
     updateHourlyRate,
+    billingDefault,
+    setBillingDefault,
   } = useTimer();
   const { clients } = useClients();
   const { theme: timerTheme, setTheme: setTimerTheme } = useTimerTheme();
@@ -573,7 +575,7 @@ function FloatingTimerContent() {
                       e.stopPropagation();
                       // Capture elapsed time, pause the timer, then open save dialog
                       setStoppedElapsed(timerState.elapsed);
-                      setStopBillable(timerState.currentEntry?.is_billable ?? true);
+                      setStopBillable(timerState.currentEntry?.is_billable ?? billingDefault);
                       setStopHourlyRate(timerState.currentEntry?.hourly_rate?.toString() || "");
                       pauseTimer();
                       setIsStopDialogOpen(true);
@@ -620,22 +622,25 @@ function FloatingTimerContent() {
                 )}
               </div>
 
-              {/* Billable Toggle Icon */}
+              {/* Global Billing Toggle Icon */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const newBillable = !timerState.currentEntry?.is_billable;
-                  updateBillable(newBillable);
-                  toast.success(newBillable ? "לחיוב ✅" : "לא לחיוב ❌");
+                  const newDefault = !billingDefault;
+                  setBillingDefault(newDefault);
+                  if (timerState.currentEntry) {
+                    updateBillable(newDefault);
+                  }
+                  toast.success(newDefault ? "חיוב פעיל ✅" : "חיוב כבוי ❌");
                 }}
                 className={cn(
                   "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200",
                   "hover:scale-110 active:scale-95",
-                  timerState.currentEntry?.is_billable
+                  billingDefault
                     ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] shadow-[0_0_8px_rgba(200,160,60,0.5)]"
                     : "bg-[hsl(220,60%,30%)] text-[hsl(220,30%,55%)] border border-[hsl(220,30%,40%)]",
                 )}
-                title={timerState.currentEntry?.is_billable ? "לחיוב - לחץ לביטול" : "לא לחיוב - לחץ להפעלה"}
+                title={billingDefault ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
               >
                 <DollarSign className="h-3.5 w-3.5" />
               </button>
@@ -918,7 +923,7 @@ function FloatingTimerContent() {
           </div>
 
           {/* Settings & Resize Buttons */}
-          <div className="absolute top-3 left-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-3 left-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
             {/* Mobile Resize Button - Always visible on mobile */}
             {isMobile && (
               <TooltipProvider>
@@ -926,7 +931,7 @@ function FloatingTimerContent() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={cycleSizePreset}
-                      className="p-2 rounded-xl transition-all border border-transparent hover:opacity-80 active:scale-95"
+                      className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80 active:scale-95"
                       style={{
                         color: timerTheme.accentColor,
                       }}
@@ -953,24 +958,28 @@ function FloatingTimerContent() {
               </TooltipProvider>
             )}
 
-            {/* Billable Toggle Icon */}
+            {/* Global Billing Default Toggle */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      const newBillable = !timerState.currentEntry?.is_billable;
-                      updateBillable(newBillable);
-                      toast.success(newBillable ? "מצב חיוב פעיל ✅" : "מצב חיוב כבוי ❌");
+                      const newDefault = !billingDefault;
+                      setBillingDefault(newDefault);
+                      // Also update current entry if running
+                      if (timerState.currentEntry) {
+                        updateBillable(newDefault);
+                      }
+                      toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
                     }}
                     className={cn(
-                      "p-2 rounded-xl transition-all duration-200 border",
-                      timerState.currentEntry?.is_billable
+                      "p-1.5 rounded-lg transition-all duration-200 border",
+                      billingDefault
                         ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
-                        : "border-transparent opacity-50 hover:opacity-80",
+                        : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
                     )}
                     style={{
-                      color: timerState.currentEntry?.is_billable
+                      color: billingDefault
                         ? "hsl(45,80%,55%)"
                         : timerTheme.accentColor,
                     }}
@@ -979,7 +988,7 @@ function FloatingTimerContent() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {timerState.currentEntry?.is_billable ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
+                  {billingDefault ? "חיוב פעיל - לחץ לכיבוי לכל הטיימרים" : "חיוב כבוי - לחץ להפעלה לכל הטיימרים"}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -990,7 +999,7 @@ function FloatingTimerContent() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 rounded-xl transition-all border border-transparent hover:opacity-80"
+                    className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80"
                     style={{
                       color: timerTheme.accentColor,
                     }}
