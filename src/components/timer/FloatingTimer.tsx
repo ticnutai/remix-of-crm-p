@@ -458,12 +458,14 @@ function FloatingTimerContent() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
+          ref={containerRef}
           className="fixed z-[9999] flex flex-row-reverse items-center gap-3 group"
           dir="rtl"
           style={{
             left: position.x,
             top: position.y,
             cursor: isDragging ? "grabbing" : "auto",
+            willChange: isDragging ? "left, top" : "auto",
           }}
         >
           {/* Main Timer Button - Circular Navy with Gold Border - Long press to drag */}
@@ -474,7 +476,7 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative h-16 w-16 rounded-full transition-all duration-500 ease-out",
+              "group relative rounded-full transition-all duration-500 ease-out",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
@@ -489,6 +491,7 @@ function FloatingTimerContent() {
                 "cursor-grabbing scale-110 shadow-[0_0_40px_rgba(180,140,50,0.7)]",
               isLongPress && "scale-110 ring-4 ring-[hsl(45,80%,50%)]/50",
             )}
+            style={{ width: `${buttonSize}px`, height: `${buttonSize}px` }}
           >
             {/* Static glow when running */}
             {timerState.isRunning && (
