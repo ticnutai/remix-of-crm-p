@@ -669,30 +669,8 @@ function FloatingTimerContent() {
                 )}
               </div>
 
-              {/* Global Billing Toggle Icon */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const newDefault = !billingDefault;
-                  setBillingDefault(newDefault);
-                  if (timerState.currentEntry) {
-                    updateBillable(newDefault);
-                  }
-                  toast.success(newDefault ? "חיוב פעיל ✅" : "חיוב כבוי ❌");
-                }}
-                className={cn(
-                  "h-7 w-7 shrink-0 rounded-full flex items-center justify-center transition-all duration-200",
-                  "hover:scale-110 active:scale-95",
-                  billingDefault
-                    ? "bg-[hsl(45,80%,50%)] text-[hsl(220,60%,15%)] shadow-[0_0_8px_rgba(200,160,60,0.5)]"
-                    : "bg-[hsl(220,60%,30%)] text-[hsl(220,30%,55%)] border border-[hsl(220,30%,40%)]",
-                )}
-              >
-                <DollarSign className="h-3.5 w-3.5" />
-              </button>
-
               {/* Timer Display */}
-              <div className="flex flex-col items-start text-right">
+              <div className="flex flex-col items-start text-right mr-1">
                 <span
                   className={cn(
                     "font-mono font-bold tracking-wider leading-none antialiased",
@@ -895,34 +873,7 @@ function FloatingTimerContent() {
 
             {/* Control Buttons Row - White/Light buttons */}
             <div className="flex items-center gap-4">
-              {/* Cancel Button */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => {
-                        if (timerState.isRunning || timerState.elapsed > 0) {
-                          setIsCancelConfirmOpen(true);
-                        }
-                      }}
-                      disabled={
-                        !timerState.isRunning && timerState.elapsed === 0
-                      }
-                      className={cn(
-                        "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                        "hover:scale-110 active:scale-95 border",
-                        "disabled:opacity-30 disabled:cursor-not-allowed",
-                        "bg-red-500/20 border-red-400/40 hover:bg-red-500/30",
-                      )}
-                    >
-                      <X className="h-5 w-5 text-red-400" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>בטל טיימר</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Stop Button */}
+              {/* Stop Button - Right side */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -939,19 +890,25 @@ function FloatingTimerContent() {
                       }
                       className={cn(
                         "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
-                        "hover:scale-110 active:scale-95 border",
+                        "hover:scale-110 active:scale-95 border-2",
                         "disabled:opacity-30 disabled:cursor-not-allowed",
-                        "bg-white/10 border-white/30 hover:bg-white/20",
+                        "shadow-lg",
                       )}
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(45,80%,50%), hsl(45,90%,45%))',
+                        borderColor: 'hsl(45,80%,55%)',
+                        color: 'hsl(220,60%,15%)',
+                        boxShadow: '0 4px 15px hsla(45,80%,50%,0.4)',
+                      }}
                     >
-                      <Square className="h-5 w-5 text-white" />
+                      <Square className="h-5 w-5 fill-current" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>עצור</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Pause/Resume Button - Main action */}
+              {/* Pause/Resume Button - Center main action */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -977,6 +934,39 @@ function FloatingTimerContent() {
                   <TooltipContent>
                     {timerState.isRunning ? "השהה" : "המשך"}
                   </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Cancel Button - Left side, matching gold style */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        if (timerState.isRunning || timerState.elapsed > 0) {
+                          setIsCancelConfirmOpen(true);
+                        }
+                      }}
+                      disabled={
+                        !timerState.isRunning && timerState.elapsed === 0
+                      }
+                      className={cn(
+                        "h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200",
+                        "hover:scale-110 active:scale-95 border-2",
+                        "disabled:opacity-30 disabled:cursor-not-allowed",
+                        "shadow-lg",
+                      )}
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(45,80%,50%), hsl(45,90%,45%))',
+                        borderColor: 'hsl(45,80%,55%)',
+                        color: 'hsl(220,60%,15%)',
+                        boxShadow: '0 4px 15px hsla(45,80%,50%,0.4)',
+                      }}
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>בטל טיימר</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
@@ -1030,7 +1020,7 @@ function FloatingTimerContent() {
             )}
 
             {/* Global Billing Default Toggle */}
-            <TooltipProvider>
+            <TooltipProvider delayDuration={3000}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
