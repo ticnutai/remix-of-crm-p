@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ import {
   ArrowDown,
   LayoutGrid,
   Eye,
+  CheckSquare2,
+  CheckCheck,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
@@ -82,7 +84,12 @@ const TasksAndMeetings = () => {
     deleteMeeting,
     fetchMeetings,
   } = useMeetings();
-  const { reminders, loading: remindersLoading } = useReminders();
+  const {
+    reminders,
+    loading: remindersLoading,
+    deleteReminder,
+    dismissReminder,
+  } = useReminders();
 
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "all",
@@ -201,6 +208,144 @@ const TasksAndMeetings = () => {
       }
     },
   );
+
+  type ColumnKey = "tasks" | "meetings" | "reminders";
+
+  const [selectionMode, setSelectionMode] = useState<Record<ColumnKey, boolean>>({
+    tasks: false,
+    meetings: false,
+    reminders: false,
+  });
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [selectedMeetingIds, setSelectedMeetingIds] = useState<string[]>([]);
+  const [selectedReminderIds, setSelectedReminderIds] = useState<string[]>([]);
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+  const [hoveredMeetingId, setHoveredMeetingId] = useState<string | null>(null);
+  const [hoveredReminderId, setHoveredReminderId] = useState<string | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+
+  const clearSelection = (column: ColumnKey) => {
+    setSelectionMode((prev) => ({ ...prev, [column]: false }));
+    if (column === "tasks") setSelectedTaskIds([]);
+    if (column === "meetings") setSelectedMeetingIds([]);
+    if (column === "reminders") setSelectedReminderIds([]);
+  };
+
+  const activateSelectionMode = (column: ColumnKey) => {
+    setSelectionMode((prev) => ({ ...prev, [column]: true }));
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    activateSelectionMode("tasks");
+    setSelectedTaskIds((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId],
+    );
+  };
+
+  const toggleMeetingSelection = (meetingId: string) => {
+    activateSelectionMode("meetings");
+    setSelectedMeetingIds((prev) =>
+      prev.includes(meetingId)
+        ? prev.filter((id) => id !== meetingId)
+        : [...prev, meetingId],
+    );
+  };
+
+  const toggleReminderSelection = (reminderId: string) => {
+    activateSelectionMode("reminders");
+    setSelectedReminderIds((prev) =>
+      prev.includes(reminderId)
+        ? prev.filter((id) => id !== reminderId)
+        : [...prev, reminderId],
+    );
+  };
+
+  const selectAllInColumn = (column: ColumnKey) => {
+    activateSelectionMode(column);
+    if (column === "tasks") setSelectedTaskIds(sortedTasks.map((task) => task.id));
+    if (column === "meetings") {
+      setSelectedMeetingIds(sortedMeetings.map((meeting) => meeting.id));
+    }
+    if (column === "reminders") {
+      setSelectedReminderIds(reminders.map((reminder) => reminder.id));
+    }
+  };
+
+  const handleTouchStart = (column: ColumnKey, itemId: string) => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      if (column === "tasks") toggleTaskSelection(itemId);
+      if (column === "meetings") toggleMeetingSelection(itemId);
+      if (column === "reminders") toggleReminderSelection(itemId);
+    }, 450);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleBulkTaskComplete = async () => {
+    await Promise.all(
+      selectedTaskIds.map((taskId) => updateTask(taskId, { status: "completed" })),
+    );
+    clearSelection("tasks");
+  };
+
+  const handleBulkTaskDelete = async () => {
+    if (!confirm(`למחוק ${selectedTaskIds.length} משימות?`)) return;
+    await Promise.all(selectedTaskIds.map((taskId) => deleteTask(taskId)));
+    clearSelection("tasks");
+  };
+
+  const handleBulkMeetingComplete = async () => {
+    await Promise.all(
+      selectedMeetingIds.map((meetingId) =>
+        updateMeeting(meetingId, { status: "completed" }),
+      ),
+    );
+    clearSelection("meetings");
+  };
+
+  const handleBulkMeetingDelete = async () => {
+    if (!confirm(`למחוק ${selectedMeetingIds.length} פגישות?`)) return;
+    await Promise.all(selectedMeetingIds.map((meetingId) => deleteMeeting(meetingId)));
+    clearSelection("meetings");
+  };
+
+  const handleBulkReminderDismiss = async () => {
+    await Promise.all(
+      selectedReminderIds.map((reminderId) => dismissReminder(reminderId)),
+    );
+    clearSelection("reminders");
+  };
+
+  const handleBulkReminderDelete = async () => {
+    if (!confirm(`למחוק ${selectedReminderIds.length} תזכורות?`)) return;
+    await Promise.all(
+      selectedReminderIds.map((reminderId) => deleteReminder(reminderId)),
+    );
+    clearSelection("reminders");
+  };
+
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectionMode({ tasks: false, meetings: false, reminders: false });
+        setSelectedTaskIds([]);
+        setSelectedMeetingIds([]);
+        setSelectedReminderIds([]);
+      }
+    };
+
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, []);
 
   // Handlers
   const handleEditTask = (task: Task) => {
@@ -480,10 +625,37 @@ const TasksAndMeetings = () => {
                     <h3 className="font-bold text-sm text-foreground">משימות</h3>
                     <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">{tasks.length}</span>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTaskDialogOpen(true)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="בחר הכל"
+                      onClick={() => selectAllInColumn("tasks")}
+                    >
+                      <CheckSquare2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTaskDialogOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
+
+                {selectionMode.tasks && (
+                  <div className="px-3 py-2 border-b bg-primary/5 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1 font-medium text-primary">
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      {selectedTaskIds.length} נבחרו
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => selectAllInColumn("tasks")}>בחר הכל</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkTaskComplete} disabled={selectedTaskIds.length === 0}>השלם</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkTaskDelete} disabled={selectedTaskIds.length === 0}>מחק</Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => clearSelection("tasks")}>בטל בחירה</Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
                   {tasksLoading ? (
                     <div className="flex items-center justify-center py-8">
@@ -496,18 +668,65 @@ const TasksAndMeetings = () => {
                       <div
                         key={task.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        onMouseEnter={() => setHoveredTaskId(task.id)}
+                        onMouseLeave={() => setHoveredTaskId(null)}
+                        onTouchStart={() => handleTouchStart("tasks", task.id)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchEnd}
+                        onClick={() => {
+                          if (selectionMode.tasks) {
+                            toggleTaskSelection(task.id);
+                          }
+                        }}
                       >
+                        {(selectionMode.tasks || hoveredTaskId === task.id) && (
+                          <button
+                            type="button"
+                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              selectedTaskIds.includes(task.id)
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/40"
+                            }`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleTaskSelection(task.id);
+                            }}
+                            onDoubleClick={(event) => {
+                              event.stopPropagation();
+                              clearSelection("tasks");
+                            }}
+                            title="דאבל-קליק לביטול בחירה"
+                          >
+                            {selectedTaskIds.includes(task.id) && (
+                              <span className="text-[10px]">✓</span>
+                            )}
+                          </button>
+                        )}
                         <button
                           className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
                             task.status === "completed"
                               ? "bg-green-500 border-green-500 text-white"
                               : "border-muted-foreground/40 hover:border-primary"
                           }`}
-                          onClick={() => handleToggleComplete(task)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.tasks) {
+                              handleToggleComplete(task);
+                            }
+                          }}
                         >
                           {task.status === "completed" && <span className="text-[10px]">✓</span>}
                         </button>
-                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => handleEditTask(task)}>
+                        <div
+                          className="flex-1 min-w-0 text-right cursor-pointer"
+                          onClick={() => {
+                            if (selectionMode.tasks) {
+                              toggleTaskSelection(task.id);
+                              return;
+                            }
+                            handleEditTask(task);
+                          }}
+                        >
                           <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                             {task.title}
                           </p>
@@ -519,7 +738,13 @@ const TasksAndMeetings = () => {
                         </div>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => { setPreviewEvent(task); setPreviewType("task"); }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.tasks) {
+                              setPreviewEvent(task);
+                              setPreviewType("task");
+                            }
+                          }}
                           title="תצוגה מקדימה"
                         >
                           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
@@ -549,10 +774,37 @@ const TasksAndMeetings = () => {
                     <h3 className="font-bold text-sm text-foreground">פגישות</h3>
                     <span className="text-xs bg-blue-500/15 text-blue-600 px-2 py-0.5 rounded-full font-medium">{meetings.length}</span>
                   </div>
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setMeetingDialogOpen(true)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="בחר הכל"
+                      onClick={() => selectAllInColumn("meetings")}
+                    >
+                      <CheckSquare2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setMeetingDialogOpen(true)}>
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
+
+                {selectionMode.meetings && (
+                  <div className="px-3 py-2 border-b bg-blue-500/5 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1 font-medium text-blue-600">
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      {selectedMeetingIds.length} נבחרו
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => selectAllInColumn("meetings")}>בחר הכל</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkMeetingComplete} disabled={selectedMeetingIds.length === 0}>סמן כהושלם</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkMeetingDelete} disabled={selectedMeetingIds.length === 0}>מחק</Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => clearSelection("meetings")}>בטל בחירה</Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
                   {meetingsLoading ? (
                     <div className="flex items-center justify-center py-8">
@@ -565,9 +817,51 @@ const TasksAndMeetings = () => {
                       <div
                         key={meeting.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        onMouseEnter={() => setHoveredMeetingId(meeting.id)}
+                        onMouseLeave={() => setHoveredMeetingId(null)}
+                        onTouchStart={() => handleTouchStart("meetings", meeting.id)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchEnd}
+                        onClick={() => {
+                          if (selectionMode.meetings) {
+                            toggleMeetingSelection(meeting.id);
+                          }
+                        }}
                       >
+                        {(selectionMode.meetings || hoveredMeetingId === meeting.id) && (
+                          <button
+                            type="button"
+                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              selectedMeetingIds.includes(meeting.id)
+                                ? "bg-blue-500 border-blue-500 text-white"
+                                : "border-muted-foreground/40"
+                            }`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleMeetingSelection(meeting.id);
+                            }}
+                            onDoubleClick={(event) => {
+                              event.stopPropagation();
+                              clearSelection("meetings");
+                            }}
+                            title="דאבל-קליק לביטול בחירה"
+                          >
+                            {selectedMeetingIds.includes(meeting.id) && (
+                              <span className="text-[10px]">✓</span>
+                            )}
+                          </button>
+                        )}
                         <Calendar className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => handleEditMeeting(meeting)}>
+                        <div
+                          className="flex-1 min-w-0 text-right cursor-pointer"
+                          onClick={() => {
+                            if (selectionMode.meetings) {
+                              toggleMeetingSelection(meeting.id);
+                              return;
+                            }
+                            handleEditMeeting(meeting);
+                          }}
+                        >
                           <p className="text-xs font-medium truncate">{meeting.title}</p>
                           <p className="text-[10px] text-muted-foreground">
                             {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
@@ -575,7 +869,13 @@ const TasksAndMeetings = () => {
                         </div>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => { setPreviewEvent(meeting); setPreviewType("meeting"); }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.meetings) {
+                              setPreviewEvent(meeting);
+                              setPreviewType("meeting");
+                            }
+                          }}
                           title="תצוגה מקדימה"
                         >
                           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
@@ -601,14 +901,41 @@ const TasksAndMeetings = () => {
                     <h3 className="font-bold text-sm text-foreground">תזכורות</h3>
                     <span className="text-xs bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full font-medium">{reminders.length}</span>
                   </div>
-                  <AddReminderDialog
-                    trigger={
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    }
-                  />
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="בחר הכל"
+                      onClick={() => selectAllInColumn("reminders")}
+                    >
+                      <CheckSquare2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <AddReminderDialog
+                      trigger={
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
+                  </div>
                 </div>
+
+                {selectionMode.reminders && (
+                  <div className="px-3 py-2 border-b bg-amber-500/5 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1 font-medium text-amber-700">
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      {selectedReminderIds.length} נבחרו
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => selectAllInColumn("reminders")}>בחר הכל</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkReminderDismiss} disabled={selectedReminderIds.length === 0}>סמן כטופל</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleBulkReminderDelete} disabled={selectedReminderIds.length === 0}>מחק</Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => clearSelection("reminders")}>בטל בחירה</Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
                   {remindersLoading ? (
                     <div className="flex items-center justify-center py-8">
@@ -621,9 +948,51 @@ const TasksAndMeetings = () => {
                       <div
                         key={reminder.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                        onMouseEnter={() => setHoveredReminderId(reminder.id)}
+                        onMouseLeave={() => setHoveredReminderId(null)}
+                        onTouchStart={() => handleTouchStart("reminders", reminder.id)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchEnd}
+                        onClick={() => {
+                          if (selectionMode.reminders) {
+                            toggleReminderSelection(reminder.id);
+                          }
+                        }}
                       >
+                        {(selectionMode.reminders || hoveredReminderId === reminder.id) && (
+                          <button
+                            type="button"
+                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
+                              selectedReminderIds.includes(reminder.id)
+                                ? "bg-amber-500 border-amber-500 text-white"
+                                : "border-muted-foreground/40"
+                            }`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleReminderSelection(reminder.id);
+                            }}
+                            onDoubleClick={(event) => {
+                              event.stopPropagation();
+                              clearSelection("reminders");
+                            }}
+                            title="דאבל-קליק לביטול בחירה"
+                          >
+                            {selectedReminderIds.includes(reminder.id) && (
+                              <span className="text-[10px]">✓</span>
+                            )}
+                          </button>
+                        )}
                         <Bell className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => setActiveTab("reminders")}>
+                        <div
+                          className="flex-1 min-w-0 text-right cursor-pointer"
+                          onClick={() => {
+                            if (selectionMode.reminders) {
+                              toggleReminderSelection(reminder.id);
+                              return;
+                            }
+                            setActiveTab("reminders");
+                          }}
+                        >
                           <p className={`text-xs font-medium truncate ${reminder.is_dismissed ? "line-through text-muted-foreground" : ""}`}>
                             {reminder.title}
                           </p>
@@ -633,7 +1002,13 @@ const TasksAndMeetings = () => {
                         </div>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => { setPreviewEvent(reminder); setPreviewType("reminder"); }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.reminders) {
+                              setPreviewEvent(reminder);
+                              setPreviewType("reminder");
+                            }
+                          }}
                           title="תצוגה מקדימה"
                         >
                           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
