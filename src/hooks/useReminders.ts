@@ -364,17 +364,45 @@ export function useReminders() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // Check reminders every 30 seconds
+  // Check reminders every 30 seconds + drift monitor
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    checkReminders();
+    lastCheckRef.current = Date.now();
+    checkIntervalRef.current = setInterval(() => {
+      lastCheckRef.current = Date.now();
       checkReminders();
-      checkIntervalRef.current = setInterval(checkReminders, 30000);
-    }
+    }, 30000);
+
+    // Drift monitor: detect missed intervals (tab sleep / background throttle)
+    const driftMonitor = setInterval(() => {
+      const elapsed = Date.now() - lastCheckRef.current;
+      // If more than 45s since last check, interval was likely throttled — force re-check
+      if (elapsed > 45000) {
+        console.log("[Reminders] Drift detected, forcing re-check");
+        lastCheckRef.current = Date.now();
+        checkReminders();
+      }
+    }, 5000);
+
+    // Also re-check when tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        const elapsed = Date.now() - lastCheckRef.current;
+        if (elapsed > 35000) {
+          console.log("[Reminders] Tab visible after sleep, re-checking");
+          lastCheckRef.current = Date.now();
+          checkReminders();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
+      if (checkIntervalRef.current) clearInterval(checkIntervalRef.current);
+      clearInterval(driftMonitor);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
