@@ -103,6 +103,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     { open, onOpenChange, onSubmit, clients = [], initialData },
     _ref,
   ) {
+    const { themeId, theme, setThemeId } = useDialogTheme();
+    const sidebarColors = getSidebarColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");

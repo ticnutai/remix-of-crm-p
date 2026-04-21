@@ -88,6 +88,8 @@ const RINGTONES = [
 ];
 
 export function AddReminderDialog({ entityType, entityId, trigger, initialValues }: AddReminderDialogProps) {
+  const { themeId, theme, setThemeId } = useDialogTheme();
+  const sidebarColors = getSidebarColors(theme);
   const [open, setOpen] = useState(false);
   const { createReminder } = useReminders();
   const { toast } = useToast();

@@ -138,6 +138,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     },
     _ref,
   ) {
+    const { themeId, theme, setThemeId } = useDialogTheme();
+    const sidebarColors = getSidebarColors(theme);
     const { createReminder, updateReminder, reminders } = useReminders();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
