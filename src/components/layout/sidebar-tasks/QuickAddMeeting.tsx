@@ -200,7 +200,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
           status: "scheduled",
         });
 
-        const meetingId = editingMeeting?.id ?? createdMeeting?.id;
+        const meetingId = editingMeeting?.id ?? (createdMeeting as any)?.id;
 
         if (reminderConfig && meetingId) {
           const linkedReminder = reminders.find(
