@@ -48,8 +48,8 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
 // Readable input/trigger style: white bg + dark text + gold border (fixes "text swallowed" issue)
 const brandedInputStyle: React.CSSProperties = {
   background: '#FFFFFF',
-  borderColor: sidebarColors.gold,
-  color: sidebarColors.navyDark,
+  borderColor: '#d8ac27',
+  color: '#0F1F3D',
 };
 const brandedInputClass = 'placeholder:text-slate-400';
 
