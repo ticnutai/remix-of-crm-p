@@ -34,7 +34,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
-import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
