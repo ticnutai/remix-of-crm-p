@@ -148,7 +148,7 @@ const TasksAndMeetings = () => {
       statusFilter === "all" ||
       (statusFilter === "overdue"
         ? task.due_date &&
-          isPast(parseISO(task.due_date)) &&
+          isDatePast(parseISO(task.due_date)) &&
           task.status !== "completed"
         : task.status === statusFilter);
     const matchesPriority =
