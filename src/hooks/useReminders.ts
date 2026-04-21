@@ -410,6 +410,6 @@ export function useReminders() {
     updateReminder,
     dismissReminder,
     deleteReminder,
-    requestNotificationPermission,
+    requestNotificationPermission: initNotificationPermission,
   };
 }
