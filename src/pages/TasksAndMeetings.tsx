@@ -64,6 +64,18 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { parseISO } from "date-fns";
 
+const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
+
+type HoverDialogSettings = {
+  openDelayMs: number;
+  closeDelayMs: number;
+};
+
+const DEFAULT_HOVER_DIALOG_SETTINGS: HoverDialogSettings = {
+  openDelayMs: 200,
+  closeDelayMs: 150,
+};
+
 const TasksAndMeetings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -112,6 +124,9 @@ const TasksAndMeetings = () => {
   const [previewType, setPreviewType] = useState<"task" | "meeting" | "reminder">("task");
   const [previewAnchorPoint, setPreviewAnchorPoint] = useState<{ x: number; y: number } | null>(null);
   const [isPreviewPinned, setIsPreviewPinned] = useState(false);
+  const [hoverDialogSettings, setHoverDialogSettings] = useState<HoverDialogSettings>(
+    DEFAULT_HOVER_DIALOG_SETTINGS,
+  );
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
 
@@ -126,6 +141,32 @@ const TasksAndMeetings = () => {
     }[]
   >([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    try {
+      const rawSettings = localStorage.getItem(HOVER_DIALOG_SETTINGS_KEY);
+      if (!rawSettings) return;
+      const parsed = JSON.parse(rawSettings) as Partial<HoverDialogSettings>;
+      const nextOpen =
+        typeof parsed.openDelayMs === "number"
+          ? Math.min(1000, Math.max(0, parsed.openDelayMs))
+          : DEFAULT_HOVER_DIALOG_SETTINGS.openDelayMs;
+      const nextClose =
+        typeof parsed.closeDelayMs === "number"
+          ? Math.min(1000, Math.max(0, parsed.closeDelayMs))
+          : DEFAULT_HOVER_DIALOG_SETTINGS.closeDelayMs;
+      setHoverDialogSettings({ openDelayMs: nextOpen, closeDelayMs: nextClose });
+    } catch {
+      setHoverDialogSettings(DEFAULT_HOVER_DIALOG_SETTINGS);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      HOVER_DIALOG_SETTINGS_KEY,
+      JSON.stringify(hoverDialogSettings),
+    );
+  }, [hoverDialogSettings]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -337,7 +378,7 @@ const TasksAndMeetings = () => {
       setPreviewAnchorPoint(anchorPoint || null);
       setIsPreviewPinned(false);
       hoverOpenTimerRef.current = null;
-    }, 200);
+    }, hoverDialogSettings.openDelayMs);
   };
 
   const queuePreviewClose = () => {
@@ -357,7 +398,7 @@ const TasksAndMeetings = () => {
         setPreviewEvent(null);
       }
       hoverCloseTimerRef.current = null;
-    }, 150);
+    }, hoverDialogSettings.closeDelayMs);
   };
 
   const handleTouchPreview = (
@@ -1276,6 +1317,14 @@ const TasksAndMeetings = () => {
           }}
           event={previewEvent}
           type={previewType}
+          hoverOpenDelayMs={hoverDialogSettings.openDelayMs}
+          hoverCloseDelayMs={hoverDialogSettings.closeDelayMs}
+          onHoverDelaysChange={(nextOpenDelayMs, nextCloseDelayMs) => {
+            setHoverDialogSettings({
+              openDelayMs: Math.min(1000, Math.max(0, nextOpenDelayMs)),
+              closeDelayMs: Math.min(1000, Math.max(0, nextCloseDelayMs)),
+            });
+          }}
           onPointerEnter={clearPreviewTimers}
           onPointerLeave={queuePreviewClose}
           onEdit={() => {
