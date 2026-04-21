@@ -110,6 +110,7 @@ const TasksAndMeetings = () => {
   // Preview dialog
   const [previewEvent, setPreviewEvent] = useState<any>(null);
   const [previewType, setPreviewType] = useState<"task" | "meeting" | "reminder">("task");
+  const [previewAnchorPoint, setPreviewAnchorPoint] = useState<{ x: number; y: number } | null>(null);
   const [isPreviewPinned, setIsPreviewPinned] = useState(false);
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
@@ -296,16 +297,28 @@ const TasksAndMeetings = () => {
     event: any,
     type: "task" | "meeting" | "reminder",
     pinned: boolean,
+    anchorPoint?: { x: number; y: number } | null,
   ) => {
     clearPreviewTimers();
     setPreviewEvent(event);
     setPreviewType(type);
+    setPreviewAnchorPoint(anchorPoint || null);
     setIsPreviewPinned(pinned);
+  };
+
+  const getPreviewAnchorFromElement = (element: HTMLElement | null) => {
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.right + 8,
+      y: rect.top,
+    };
   };
 
   const queuePreviewOpen = (
     event: any,
     type: "task" | "meeting" | "reminder",
+    anchorPoint?: { x: number; y: number } | null,
   ) => {
     if (isPreviewPinned) return;
 
@@ -321,6 +334,7 @@ const TasksAndMeetings = () => {
     hoverOpenTimerRef.current = window.setTimeout(() => {
       setPreviewEvent(event);
       setPreviewType(type);
+      setPreviewAnchorPoint(anchorPoint || null);
       setIsPreviewPinned(false);
       hoverOpenTimerRef.current = null;
     }, 200);
@@ -764,10 +778,13 @@ const TasksAndMeetings = () => {
                           setHoveredTaskId(null);
                           queuePreviewClose();
                         }}
-                        onMouseEnter={() => {
+                        onMouseEnter={(event) => {
                           setHoveredTaskId(task.id);
                           if (!selectionMode.tasks) {
-                            queuePreviewOpen(task, "task");
+                            const anchorPoint = getPreviewAnchorFromElement(
+                              event.currentTarget as HTMLElement,
+                            );
+                            queuePreviewOpen(task, "task", anchorPoint);
                           }
                         }}
                         onTouchStart={() =>
@@ -843,7 +860,9 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) {
-                              openPreview(task, "task", true);
+                              const row = event.currentTarget.closest(".group") as HTMLElement | null;
+                              const anchorPoint = getPreviewAnchorFromElement(row);
+                              openPreview(task, "task", true, anchorPoint);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -918,10 +937,13 @@ const TasksAndMeetings = () => {
                       <div
                         key={meeting.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
-                        onMouseEnter={() => {
+                        onMouseEnter={(event) => {
                           setHoveredMeetingId(meeting.id);
                           if (!selectionMode.meetings) {
-                            queuePreviewOpen(meeting, "meeting");
+                            const anchorPoint = getPreviewAnchorFromElement(
+                              event.currentTarget as HTMLElement,
+                            );
+                            queuePreviewOpen(meeting, "meeting", anchorPoint);
                           }
                         }}
                         onMouseLeave={() => {
@@ -983,7 +1005,9 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) {
-                              openPreview(meeting, "meeting", true);
+                              const row = event.currentTarget.closest(".group") as HTMLElement | null;
+                              const anchorPoint = getPreviewAnchorFromElement(row);
+                              openPreview(meeting, "meeting", true, anchorPoint);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -1058,10 +1082,13 @@ const TasksAndMeetings = () => {
                       <div
                         key={reminder.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
-                        onMouseEnter={() => {
+                        onMouseEnter={(event) => {
                           setHoveredReminderId(reminder.id);
                           if (!selectionMode.reminders) {
-                            queuePreviewOpen(reminder, "reminder");
+                            const anchorPoint = getPreviewAnchorFromElement(
+                              event.currentTarget as HTMLElement,
+                            );
+                            queuePreviewOpen(reminder, "reminder", anchorPoint);
                           }
                         }}
                         onMouseLeave={() => {
@@ -1125,7 +1152,9 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
-                              openPreview(reminder, "reminder", true);
+                              const row = event.currentTarget.closest(".group") as HTMLElement | null;
+                              const anchorPoint = getPreviewAnchorFromElement(row);
+                              openPreview(reminder, "reminder", true, anchorPoint);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -1231,6 +1260,7 @@ const TasksAndMeetings = () => {
         {/* Preview Dialog */}
         <EventPreviewDialog
           open={!!previewEvent}
+          anchorPoint={previewAnchorPoint}
           pinned={isPreviewPinned}
           onPinToggle={() => {
             if (!previewEvent) return;
@@ -1239,6 +1269,7 @@ const TasksAndMeetings = () => {
           onOpenChange={(open) => {
             if (!open) {
               setPreviewEvent(null);
+              setPreviewAnchorPoint(null);
               setIsPreviewPinned(false);
               clearPreviewTimers();
             }

@@ -13,6 +13,7 @@ interface EventPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   event: any;
   type: "task" | "meeting" | "reminder";
+  anchorPoint?: { x: number; y: number } | null;
   pinned?: boolean;
   onPinToggle?: () => void;
   onPointerEnter?: () => void;
@@ -50,6 +51,7 @@ export function EventPreviewDialog({
   onOpenChange,
   event,
   type,
+  anchorPoint,
   pinned = false,
   onPinToggle,
   onPointerEnter,
@@ -78,19 +80,39 @@ export function EventPreviewDialog({
         ? `תזכורת למשימה: ${event.title}`
         : `תזכורת: ${event.title}`;
 
+  const anchoredStyle = (() => {
+    if (!anchorPoint) return undefined;
+
+    const margin = 12;
+    const dialogWidth = Math.min(420, window.innerWidth - margin * 2);
+    const maxLeft = Math.max(margin, window.innerWidth - dialogWidth - margin);
+    const left = Math.min(Math.max(anchorPoint.x, margin), maxLeft);
+    const maxTop = Math.max(margin, window.innerHeight - 560 - margin);
+    const top = Math.min(Math.max(anchorPoint.y, margin), maxTop);
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      transform: "none",
+      width: `${dialogWidth}px`,
+    } as const;
+  })();
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
-        className={cn(
-          "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 border-primary/40 bg-background p-6 text-right shadow-lg shadow-primary/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] overflow-y-auto",
-        )}
-        dir="rtl"
-        onMouseEnter={onPointerEnter}
-        onMouseLeave={onPointerLeave}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
+          className={cn(
+            "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 border-primary/40 bg-background p-6 text-right shadow-lg shadow-primary/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] overflow-y-auto",
+            anchoredStyle && "max-w-none",
+          )}
+          style={anchoredStyle}
+          dir="rtl"
+          onMouseEnter={onPointerEnter}
+          onMouseLeave={onPointerLeave}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
         <div className="flex flex-col space-y-1.5 text-center sm:text-right">
           <DialogPrimitive.Title className="flex items-center gap-2 text-right text-lg font-semibold leading-none tracking-tight">
             {type === "task" && <FileText className="h-5 w-5 text-primary" />}
