@@ -60,7 +60,7 @@ import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
-import { isPast, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
   const navigate = useNavigate();
@@ -82,6 +82,7 @@ const TasksAndMeetings = () => {
     deleteMeeting,
     fetchMeetings,
   } = useMeetings();
+  const { reminders, loading: remindersLoading } = useReminders();
 
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "all",
@@ -98,6 +99,10 @@ const TasksAndMeetings = () => {
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+
+  // Preview dialog
+  const [previewEvent, setPreviewEvent] = useState<any>(null);
+  const [previewType, setPreviewType] = useState<"task" | "meeting" | "reminder">("task");
 
   // Shared data
   const [clients, setClients] = useState<
