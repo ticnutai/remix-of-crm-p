@@ -709,6 +709,19 @@ const TasksAndMeetings = () => {
             <RemindersTabContent />
           </TabsContent>
         </Tabs>
+
+        {/* Preview Dialog */}
+        <EventPreviewDialog
+          open={!!previewEvent}
+          onOpenChange={(open) => { if (!open) setPreviewEvent(null); }}
+          event={previewEvent}
+          type={previewType}
+          onEdit={() => {
+            if (previewType === "task") handleEditTask(previewEvent);
+            else if (previewType === "meeting") handleEditMeeting(previewEvent);
+            else setActiveTab("reminders");
+          }}
+        />
       </div>
     </AppLayout>
   );
