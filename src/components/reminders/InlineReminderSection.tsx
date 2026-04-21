@@ -2,7 +2,7 @@
  * InlineReminderSection - Compact reminder creation section for dialogs (QuickAddTask, QuickAddMeeting)
  * Includes: reminder time presets, notification methods, ringtone, recurring, calendar sync
  */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useReminders } from "@/hooks/useReminders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,17 @@ interface InlineReminderSectionProps {
   entityDate?: Date;
   entityDescription?: string;
   entityLocation?: string;
+  submitMode?: "immediate" | "deferred";
+  onReminderConfigChange?: (config: InlineReminderConfig | null) => void;
+}
+
+export interface InlineReminderConfig {
+  title: string;
+  message?: string;
+  remind_at: string;
+  reminder_type: string;
+  is_recurring?: boolean;
+  recurring_interval?: string;
 }
 
 export function InlineReminderSection({
@@ -116,6 +127,8 @@ export function InlineReminderSection({
   entityDate,
   entityDescription,
   entityLocation,
+  submitMode = "immediate",
+  onReminderConfigChange,
 }: InlineReminderSectionProps) {
   const { createReminder } = useReminders();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -179,6 +192,45 @@ export function InlineReminderSection({
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (submitMode !== "deferred" || !onReminderConfigChange) return;
+
+    if (!expanded) {
+      onReminderConfigChange(null);
+      return;
+    }
+
+    const remindAt = getReminderDateTime();
+    if (!remindAt || !entityTitle.trim()) {
+      onReminderConfigChange(null);
+      return;
+    }
+
+    onReminderConfigChange({
+      title: `תזכורת: ${entityTitle}`,
+      message: entityDescription || undefined,
+      remind_at: remindAt.toISOString(),
+      reminder_type: selectedMethods[0] || "browser",
+      is_recurring: isRecurring,
+      recurring_interval:
+        isRecurring && recurringInterval !== "none"
+          ? recurringInterval
+          : undefined,
+    });
+  }, [
+    submitMode,
+    onReminderConfigChange,
+    expanded,
+    entityTitle,
+    entityDescription,
+    selectedMethods,
+    isRecurring,
+    recurringInterval,
+    reminderTime,
+    quickPreset,
+    entityDate,
+  ]);
 
   const handleCalendarSync = () => {
     if (!entityDate || !entityTitle) {
@@ -454,42 +506,64 @@ export function InlineReminderSection({
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
-        <Button
-          type="button"
-          size="sm"
-          className="flex-1 gap-1.5 text-xs h-8"
-          style={{ background: sidebarColors.gold, color: sidebarColors.navy }}
-          onClick={handleCreateReminder}
-          disabled={isCreating}
-        >
-          {isCreating ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              שומר...
-            </>
-          ) : (
-            <>
-              <Bell className="h-3.5 w-3.5" />
-              צור תזכורת
-            </>
-          )}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="gap-1.5 text-xs h-8"
-          style={{
-            borderColor: `${sidebarColors.gold}40`,
-            color: sidebarColors.goldLight,
-          }}
-          onClick={handleCalendarSync}
-        >
-          <CalendarPlus className="h-3.5 w-3.5" />
-          סנכרון
-        </Button>
-      </div>
+      {submitMode === "immediate" ? (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="flex-1 gap-1.5 text-xs h-8"
+            style={{ background: sidebarColors.gold, color: sidebarColors.navy }}
+            onClick={handleCreateReminder}
+            disabled={isCreating}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                שומר...
+              </>
+            ) : (
+              <>
+                <Bell className="h-3.5 w-3.5" />
+                צור תזכורת
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs h-8"
+            style={{
+              borderColor: `${sidebarColors.gold}40`,
+              color: sidebarColors.goldLight,
+            }}
+            onClick={handleCalendarSync}
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            סנכרון
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-2 text-[11px]">
+          <span style={{ color: `${sidebarColors.goldLight}CC` }}>
+            התזכורת תישמר אוטומטית יחד עם הפגישה
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs h-8"
+            style={{
+              borderColor: `${sidebarColors.gold}40`,
+              color: sidebarColors.goldLight,
+            }}
+            onClick={handleCalendarSync}
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            סנכרון
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

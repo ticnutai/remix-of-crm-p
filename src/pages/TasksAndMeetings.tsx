@@ -245,13 +245,19 @@ const TasksAndMeetings = () => {
   };
 
   const handleCreateMeeting = async (meeting: MeetingInsert) => {
+    let meetingId: string | undefined;
+
     if (editingMeeting) {
       await updateMeeting(editingMeeting.id, meeting);
+      meetingId = editingMeeting.id;
     } else {
-      await createMeeting(meeting);
+      const created = await createMeeting(meeting);
+      meetingId = created.id;
     }
+
     setMeetingDialogOpen(false);
     setEditingMeeting(null);
+    return { id: meetingId };
   };
 
   if (authLoading) {
@@ -322,7 +328,25 @@ const TasksAndMeetings = () => {
                 if (!open) setEditingMeeting(null);
               }}
               onSubmit={handleCreateMeeting}
+              editingMeeting={editingMeeting}
               clients={clients}
+              initialData={
+                editingMeeting
+                  ? {
+                      title: editingMeeting.title,
+                      description: editingMeeting.description || "",
+                      clientId: editingMeeting.client_id || undefined,
+                      date: new Date(editingMeeting.start_time),
+                      startTime: format(
+                        new Date(editingMeeting.start_time),
+                        "HH:mm",
+                      ),
+                      endTime: format(new Date(editingMeeting.end_time), "HH:mm"),
+                      location: editingMeeting.location || "",
+                      meetingType: editingMeeting.meeting_type || "in_person",
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>

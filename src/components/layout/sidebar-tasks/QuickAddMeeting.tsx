@@ -1,6 +1,7 @@
 // QuickAddMeeting - Quick Add Meeting Dialog for Sidebar
 import React, { useState, useEffect, forwardRef } from "react";
-import { MeetingInsert } from "@/hooks/useMeetingsOptimized";
+import { Meeting, MeetingInsert } from "@/hooks/useMeetingsOptimized";
+import { useReminders } from "@/hooks/useReminders";
 import {
   Dialog,
   DialogContent,
@@ -42,7 +43,10 @@ import {
 import { format, setHours, setMinutes } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
-import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import {
+  InlineReminderSection,
+  InlineReminderConfig,
+} from "@/components/reminders/InlineReminderSection";
 import { LocationPicker } from "@/components/location/LocationPicker";
 
 // Sidebar colors
@@ -104,7 +108,8 @@ interface Client {
 interface QuickAddMeetingProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (meeting: MeetingInsert) => Promise<void>;
+  onSubmit: (meeting: MeetingInsert) => Promise<{ id?: string } | void>;
+  editingMeeting?: Meeting | null;
   clients?: Client[];
   initialData?: {
     title?: string;
@@ -120,9 +125,17 @@ interface QuickAddMeetingProps {
 
 export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
   function QuickAddMeeting(
-    { open, onOpenChange, onSubmit, clients = [], initialData },
+    {
+      open,
+      onOpenChange,
+      onSubmit,
+      editingMeeting = null,
+      clients = [],
+      initialData,
+    },
     _ref,
   ) {
+    const { createReminder, updateReminder, reminders } = useReminders();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -135,6 +148,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
+    const [reminderConfig, setReminderConfig] =
+      useState<InlineReminderConfig | null>(null);
 
     // Load initial data when dialog opens
     useEffect(() => {
@@ -159,6 +174,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setEndTime("10:00");
       setLocation("");
       setClientIds([]);
+      setReminderConfig(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -173,7 +189,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
 
       setIsSubmitting(true);
       try {
-        await onSubmit({
+        const createdMeeting = await onSubmit({
           title: title.trim(),
           description: description.trim() || null,
           meeting_type: meetingType,
@@ -183,6 +199,34 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "scheduled",
         });
+
+        const meetingId = editingMeeting?.id ?? createdMeeting?.id;
+
+        if (reminderConfig && meetingId) {
+          const linkedReminder = reminders.find(
+            (r) => r.entity_type === "meeting" && r.entity_id === meetingId,
+          );
+
+          if (linkedReminder) {
+            await updateReminder(linkedReminder.id, {
+              title: reminderConfig.title,
+              message: reminderConfig.message,
+              remind_at: reminderConfig.remind_at,
+              reminder_type: reminderConfig.reminder_type,
+              is_recurring: reminderConfig.is_recurring,
+              recurring_interval: reminderConfig.recurring_interval,
+              entity_type: "meeting",
+              entity_id: meetingId,
+            } as any);
+          } else {
+            await createReminder({
+              ...reminderConfig,
+              entity_type: "meeting",
+              entity_id: meetingId,
+            });
+          }
+        }
+
         resetForm();
         onOpenChange(false);
       } finally {
@@ -241,7 +285,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 className="text-lg font-bold"
                 style={{ color: sidebarColors.goldLight }}
               >
-                פגישה חדשה
+                {editingMeeting ? "עריכת פגישה" : "פגישה חדשה"}
               </DialogTitle>
             </div>
           </DialogHeader>
@@ -613,6 +657,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 entityDate={date}
                 entityDescription={description}
                 entityLocation={location}
+                submitMode="deferred"
+                onReminderConfigChange={setReminderConfig}
               />
 
               {/* Notification Options */}
@@ -693,7 +739,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 ) : (
                   <>
                     <CalendarIcon2 className="h-4 w-4" />
-                    צור פגישה
+                    {editingMeeting ? "עדכן פגישה" : "צור פגישה"}
                   </>
                 )}
               </Button>
