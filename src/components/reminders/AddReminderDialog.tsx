@@ -45,6 +45,12 @@ interface AddReminderDialogProps {
   entityType?: string;
   entityId?: string;
   trigger?: React.ReactNode;
+  initialValues?: {
+    title?: string;
+    message?: string;
+    remind_at?: string;
+    client_id?: string;
+  };
 }
 
 const reminderTypes = [
@@ -77,7 +83,7 @@ const RINGTONES = [
   { id: 'soft', name: 'רך ונעים', url: 'https://assets.mixkit.co/active_storage/sfx/2877/2877-preview.mp3' },
 ];
 
-export function AddReminderDialog({ entityType, entityId, trigger }: AddReminderDialogProps) {
+export function AddReminderDialog({ entityType, entityId, trigger, initialValues }: AddReminderDialogProps) {
   const [open, setOpen] = useState(false);
   const { createReminder } = useReminders();
   const { toast } = useToast();
@@ -134,6 +140,21 @@ export function AddReminderDialog({ entityType, entityId, trigger }: AddReminder
       fetchEmailTemplates();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !initialValues) return;
+
+    setForm((prev) => ({
+      ...prev,
+      title: initialValues.title ?? prev.title,
+      message: initialValues.message ?? prev.message,
+      remind_at: initialValues.remind_at ?? prev.remind_at,
+    }));
+
+    if (initialValues.client_id) {
+      setClientIds([initialValues.client_id]);
+    }
+  }, [open, initialValues]);
 
   const toggleReminderType = (type: string) => {
     setSelectedTypes(prev => 

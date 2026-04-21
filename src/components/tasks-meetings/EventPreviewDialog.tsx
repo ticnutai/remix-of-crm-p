@@ -7,7 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Calendar, Clock, MapPin, Bell, User, FileText, Flag } from "lucide-react";
+import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
+import { Pencil, Calendar, Clock, MapPin, Bell, FileText, Flag, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -16,6 +17,10 @@ interface EventPreviewDialogProps {
   onOpenChange: (open: boolean) => void;
   event: any;
   type: "task" | "meeting" | "reminder";
+  pinned?: boolean;
+  onPinToggle?: () => void;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
   onEdit?: () => void;
 }
 
@@ -44,7 +49,17 @@ const reminderTypeLabels: Record<string, string> = {
   voice: "הקראה קולית",
 };
 
-export function EventPreviewDialog({ open, onOpenChange, event, type, onEdit }: EventPreviewDialogProps) {
+export function EventPreviewDialog({
+  open,
+  onOpenChange,
+  event,
+  type,
+  pinned = false,
+  onPinToggle,
+  onPointerEnter,
+  onPointerLeave,
+  onEdit,
+}: EventPreviewDialogProps) {
   if (!event) return null;
 
   const formatDate = (dateStr: string) => {
@@ -55,9 +70,26 @@ export function EventPreviewDialog({ open, onOpenChange, event, type, onEdit }: 
     }
   };
 
+  const reminderDefaultAt =
+    event.start_time || event.due_date || event.remind_at
+      ? format(new Date(event.start_time || event.due_date || event.remind_at), "yyyy-MM-dd'T'HH:mm")
+      : "";
+
+  const reminderTitle =
+    type === "meeting"
+      ? `תזכורת לפגישה: ${event.title}`
+      : type === "task"
+        ? `תזכורת למשימה: ${event.title}`
+        : `תזכורת: ${event.title}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent
+        className="max-w-md"
+        dir="rtl"
+        onMouseEnter={onPointerEnter}
+        onMouseLeave={onPointerLeave}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-right">
             {type === "task" && <FileText className="h-5 w-5 text-primary" />}
@@ -66,6 +98,44 @@ export function EventPreviewDialog({ open, onOpenChange, event, type, onEdit }: 
             <span className="truncate">{event.title}</span>
           </DialogTitle>
         </DialogHeader>
+
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <Badge variant={pinned ? "default" : "outline"} className="text-xs">
+            {pinned ? "מצב עינית פעיל" : "תצוגה מקדימה"}
+          </Badge>
+          <div className="flex items-center gap-2">
+            {pinned && (
+              <AddReminderDialog
+                entityType={type}
+                entityId={event.id}
+                initialValues={{
+                  title: reminderTitle,
+                  message: event.description || "",
+                  remind_at: reminderDefaultAt,
+                  client_id: event.client_id || undefined,
+                }}
+                trigger={
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <Bell className="h-3.5 w-3.5" />
+                    תזכורת
+                  </Button>
+                }
+              />
+            )}
+            {onPinToggle && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2"
+                onClick={onPinToggle}
+                title={pinned ? "בטל קיבוע" : "קבע דיאלוג"}
+              >
+                {pinned ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            )}
+          </div>
+        </div>
 
         <div className="space-y-4 mt-2">
           {/* Task fields */}

@@ -110,6 +110,9 @@ const TasksAndMeetings = () => {
   // Preview dialog
   const [previewEvent, setPreviewEvent] = useState<any>(null);
   const [previewType, setPreviewType] = useState<"task" | "meeting" | "reminder">("task");
+  const [isPreviewPinned, setIsPreviewPinned] = useState(false);
+  const hoverOpenTimerRef = useRef<number | null>(null);
+  const hoverCloseTimerRef = useRef<number | null>(null);
 
   // Shared data
   const [clients, setClients] = useState<
@@ -271,23 +274,97 @@ const TasksAndMeetings = () => {
     }
   };
 
-  const handleTouchStart = (column: ColumnKey, itemId: string) => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current);
-    }
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      if (column === "tasks") toggleTaskSelection(itemId);
-      if (column === "meetings") toggleMeetingSelection(itemId);
-      if (column === "reminders") toggleReminderSelection(itemId);
-    }, 450);
-  };
-
   const handleTouchEnd = () => {
     if (longPressTimerRef.current) {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+  };
+
+  const clearPreviewTimers = () => {
+    if (hoverOpenTimerRef.current) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
+    }
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  };
+
+  const openPreview = (
+    event: any,
+    type: "task" | "meeting" | "reminder",
+    pinned: boolean,
+  ) => {
+    clearPreviewTimers();
+    setPreviewEvent(event);
+    setPreviewType(type);
+    setIsPreviewPinned(pinned);
+  };
+
+  const queuePreviewOpen = (
+    event: any,
+    type: "task" | "meeting" | "reminder",
+  ) => {
+    if (isPreviewPinned) return;
+
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+
+    if (hoverOpenTimerRef.current) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+    }
+
+    hoverOpenTimerRef.current = window.setTimeout(() => {
+      setPreviewEvent(event);
+      setPreviewType(type);
+      setIsPreviewPinned(false);
+      hoverOpenTimerRef.current = null;
+    }, 200);
+  };
+
+  const queuePreviewClose = () => {
+    if (isPreviewPinned) return;
+
+    if (hoverOpenTimerRef.current) {
+      window.clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
+    }
+
+    if (hoverCloseTimerRef.current) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+    }
+
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      if (!isPreviewPinned) {
+        setPreviewEvent(null);
+      }
+      hoverCloseTimerRef.current = null;
+    }, 150);
+  };
+
+  const handleTouchPreview = (
+    column: ColumnKey,
+    itemId: string,
+    event: any,
+    type: "task" | "meeting" | "reminder",
+  ) => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      if (selectionMode[column]) {
+        if (column === "tasks") toggleTaskSelection(itemId);
+        if (column === "meetings") toggleMeetingSelection(itemId);
+        if (column === "reminders") toggleReminderSelection(itemId);
+      } else {
+        openPreview(event, type, false);
+      }
+    }, 450);
   };
 
   const handleBulkTaskComplete = async () => {
@@ -336,6 +413,12 @@ const TasksAndMeetings = () => {
   useEffect(() => {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (isPreviewPinned) {
+          setPreviewEvent(null);
+          setIsPreviewPinned(false);
+          clearPreviewTimers();
+          return;
+        }
         setSelectionMode({ tasks: false, meetings: false, reminders: false });
         setSelectedTaskIds([]);
         setSelectedMeetingIds([]);
@@ -345,6 +428,15 @@ const TasksAndMeetings = () => {
 
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
+  }, [isPreviewPinned]);
+
+  useEffect(() => {
+    return () => {
+      clearPreviewTimers();
+      if (longPressTimerRef.current) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+    };
   }, []);
 
   // Handlers
@@ -668,9 +760,19 @@ const TasksAndMeetings = () => {
                       <div
                         key={task.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
-                        onMouseEnter={() => setHoveredTaskId(task.id)}
-                        onMouseLeave={() => setHoveredTaskId(null)}
-                        onTouchStart={() => handleTouchStart("tasks", task.id)}
+                        onMouseLeave={() => {
+                          setHoveredTaskId(null);
+                          queuePreviewClose();
+                        }}
+                        onMouseEnter={() => {
+                          setHoveredTaskId(task.id);
+                          if (!selectionMode.tasks) {
+                            queuePreviewOpen(task, "task");
+                          }
+                        }}
+                        onTouchStart={() =>
+                          handleTouchPreview("tasks", task.id, task, "task")
+                        }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
                         onClick={() => {
@@ -741,8 +843,7 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) {
-                              setPreviewEvent(task);
-                              setPreviewType("task");
+                              openPreview(task, "task", true);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -817,9 +918,19 @@ const TasksAndMeetings = () => {
                       <div
                         key={meeting.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
-                        onMouseEnter={() => setHoveredMeetingId(meeting.id)}
-                        onMouseLeave={() => setHoveredMeetingId(null)}
-                        onTouchStart={() => handleTouchStart("meetings", meeting.id)}
+                        onMouseEnter={() => {
+                          setHoveredMeetingId(meeting.id);
+                          if (!selectionMode.meetings) {
+                            queuePreviewOpen(meeting, "meeting");
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredMeetingId(null);
+                          queuePreviewClose();
+                        }}
+                        onTouchStart={() =>
+                          handleTouchPreview("meetings", meeting.id, meeting, "meeting")
+                        }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
                         onClick={() => {
@@ -872,8 +983,7 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) {
-                              setPreviewEvent(meeting);
-                              setPreviewType("meeting");
+                              openPreview(meeting, "meeting", true);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -948,9 +1058,19 @@ const TasksAndMeetings = () => {
                       <div
                         key={reminder.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
-                        onMouseEnter={() => setHoveredReminderId(reminder.id)}
-                        onMouseLeave={() => setHoveredReminderId(null)}
-                        onTouchStart={() => handleTouchStart("reminders", reminder.id)}
+                        onMouseEnter={() => {
+                          setHoveredReminderId(reminder.id);
+                          if (!selectionMode.reminders) {
+                            queuePreviewOpen(reminder, "reminder");
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredReminderId(null);
+                          queuePreviewClose();
+                        }}
+                        onTouchStart={() =>
+                          handleTouchPreview("reminders", reminder.id, reminder, "reminder")
+                        }
                         onTouchEnd={handleTouchEnd}
                         onTouchMove={handleTouchEnd}
                         onClick={() => {
@@ -1005,8 +1125,7 @@ const TasksAndMeetings = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
-                              setPreviewEvent(reminder);
-                              setPreviewType("reminder");
+                              openPreview(reminder, "reminder", true);
                             }
                           }}
                           title="תצוגה מקדימה"
@@ -1112,9 +1231,22 @@ const TasksAndMeetings = () => {
         {/* Preview Dialog */}
         <EventPreviewDialog
           open={!!previewEvent}
-          onOpenChange={(open) => { if (!open) setPreviewEvent(null); }}
+          pinned={isPreviewPinned}
+          onPinToggle={() => {
+            if (!previewEvent) return;
+            setIsPreviewPinned((prev) => !prev);
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPreviewEvent(null);
+              setIsPreviewPinned(false);
+              clearPreviewTimers();
+            }
+          }}
           event={previewEvent}
           type={previewType}
+          onPointerEnter={clearPreviewTimers}
+          onPointerLeave={queuePreviewClose}
           onEdit={() => {
             if (previewType === "task") handleEditTask(previewEvent);
             else if (previewType === "meeting") handleEditMeeting(previewEvent);
