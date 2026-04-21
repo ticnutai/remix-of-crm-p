@@ -345,7 +345,6 @@ export function useReminders() {
   }, [
     user?.id,
     toast,
-    showBrowserNotification,
     speakReminder,
     sendEmailReminder,
     fetchReminders,
@@ -353,8 +352,8 @@ export function useReminders() {
 
   // Request notification permission on mount
   useEffect(() => {
-    requestNotificationPermission();
-  }, [requestNotificationPermission]);
+    initNotificationPermission();
+  }, [initNotificationPermission]);
 
   // Fetch reminders on mount
   useEffect(() => {
