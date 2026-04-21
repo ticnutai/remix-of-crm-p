@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { createPortal } from 'react-dom';
 
 export type DialogThemeId = 'navy-gold' | 'white-gold' | 'dark-elegant' | 'soft-blue';
 
@@ -134,6 +135,48 @@ export function useDialogTheme() {
   };
 }
 
+// --- Resize hook for dialog ---
+export function useDialogResize(initialWidth = 500, minWidth = 350, minHeight = 300) {
+  const [size, setSize] = useState<{ width: number; height: number | null }>({ width: initialWidth, height: null });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startResize = useCallback((direction: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = containerRef.current?.offsetWidth || size.width;
+    const startHeight = containerRef.current?.offsetHeight || size.height || 400;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+
+      if (direction.includes('e')) newWidth = Math.max(minWidth, startWidth + (ev.clientX - startX));
+      if (direction.includes('w')) newWidth = Math.max(minWidth, startWidth - (ev.clientX - startX));
+      if (direction.includes('s')) newHeight = Math.max(minHeight, startHeight + (ev.clientY - startY));
+      if (direction.includes('n')) newHeight = Math.max(minHeight, startHeight - (ev.clientY - startY));
+
+      setSize({ width: newWidth, height: newHeight });
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = direction.length === 2 ? `${direction}-resize` : `${direction}-resize`;
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [size, minWidth, minHeight]);
+
+  return { size, containerRef, startResize };
+}
+
+// --- Theme Switcher ---
 interface DialogThemeSwitcherProps {
   currentTheme: DialogThemeId;
   onThemeChange: (id: DialogThemeId) => void;
@@ -141,12 +184,22 @@ interface DialogThemeSwitcherProps {
 
 export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogThemeSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
 
   const themeEntries = Object.entries(dialogThemes) as [DialogThemeId, typeof dialogThemes[DialogThemeId]][];
 
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+  }, [isOpen]);
+
   return (
-    <div className="relative">
+    <>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110"
@@ -159,48 +212,74 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
         <Palette className="h-3.5 w-3.5" style={{ color: dialogThemes[currentTheme].colors.iconColor }} />
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-[500]" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-[600]" onClick={() => setIsOpen(false)} />
           <div
-            className="absolute top-full mt-1 right-0 z-[501] rounded-lg shadow-xl p-2 min-w-[140px] border"
+            className="fixed z-[601] rounded-lg shadow-xl p-2 min-w-[150px] border"
             style={{
+              top: menuPos.top,
+              left: menuPos.left,
               background: '#FFFFFF',
               borderColor: '#E0E0E0',
             }}
+            dir="rtl"
           >
-            {themeEntries.map(([id, theme]) => (
+            {themeEntries.map(([id, t]) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => { onThemeChange(id); setIsOpen(false); }}
                 className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 rounded-md text-right text-sm transition-colors",
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-right text-sm transition-colors",
                   currentTheme === id ? "bg-blue-50 font-bold" : "hover:bg-gray-50"
                 )}
               >
                 <div className="flex gap-1">
                   <span
                     className="w-4 h-4 rounded-full border"
-                    style={{
-                      background: theme.colors.background,
-                      borderColor: theme.colors.border,
-                    }}
+                    style={{ background: t.colors.background, borderColor: t.colors.border }}
                   />
                   <span
                     className="w-4 h-4 rounded-full border"
-                    style={{
-                      background: theme.colors.border,
-                      borderColor: theme.colors.border,
-                    }}
+                    style={{ background: t.colors.border, borderColor: t.colors.border }}
                   />
                 </div>
-                <span style={{ color: '#333' }}>{theme.name}</span>
+                <span style={{ color: '#333' }}>{t.name}</span>
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
-    </div>
+    </>
+  );
+}
+
+// --- Resize handles component ---
+export function ResizeHandles({ onResize }: { onResize: (dir: string, e: React.MouseEvent) => void }) {
+  const handleStyle = "absolute opacity-0 hover:opacity-100 transition-opacity";
+  const dotStyle = "bg-amber-500/50 rounded-full";
+
+  return (
+    <>
+      {/* Edges */}
+      <div className={`${handleStyle} left-0 top-2 bottom-2 w-1.5 cursor-w-resize`} onMouseDown={(e) => onResize('w', e)}>
+        <div className={`${dotStyle} w-1 h-6 absolute top-1/2 -translate-y-1/2 left-0.5`} />
+      </div>
+      <div className={`${handleStyle} right-0 top-2 bottom-2 w-1.5 cursor-e-resize`} onMouseDown={(e) => onResize('e', e)}>
+        <div className={`${dotStyle} w-1 h-6 absolute top-1/2 -translate-y-1/2 right-0.5`} />
+      </div>
+      <div className={`${handleStyle} bottom-0 left-2 right-2 h-1.5 cursor-s-resize`} onMouseDown={(e) => onResize('s', e)}>
+        <div className={`${dotStyle} h-1 w-6 absolute left-1/2 -translate-x-1/2 bottom-0.5`} />
+      </div>
+      {/* Corners */}
+      <div className={`${handleStyle} right-0 bottom-0 w-4 h-4 cursor-se-resize`} onMouseDown={(e) => onResize('se', e)}>
+        <div className={`${dotStyle} w-2 h-2 absolute bottom-1 right-1`} />
+      </div>
+      <div className={`${handleStyle} left-0 bottom-0 w-4 h-4 cursor-sw-resize`} onMouseDown={(e) => onResize('sw', e)}>
+        <div className={`${dotStyle} w-2 h-2 absolute bottom-1 left-1`} />
+      </div>
+    </>
   );
 }
