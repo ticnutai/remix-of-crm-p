@@ -326,13 +326,19 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
         )}
       </DialogTrigger>
       <DialogContent
-        className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
+        ref={containerRef}
+        className="p-0 overflow-visible navy-gold-dialog"
         dir="rtl"
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         style={{
           background: theme.backgroundGradient,
           border: `2px solid ${theme.border}`,
+          width: `${size.width}px`,
+          maxWidth: '90vw',
+          ...(size.height ? { height: `${size.height}px`, maxHeight: '90vh' } : {}),
         }}
       >
+        <ResizeHandles onResize={startResize} />
         <DialogHeader
           className="px-5 pt-5 pb-3"
           style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
