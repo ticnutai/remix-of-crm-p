@@ -122,6 +122,42 @@ export function EventPreviewDialog({
     window.addEventListener("mouseup", onUp);
   }, []);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DIALOG_UI_SETTINGS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { width?: number };
+      if (typeof parsed.width === "number") {
+        setDialogWidth(clampWidth(parsed.width));
+      }
+    } catch {
+      setDialogWidth(420);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      DIALOG_UI_SETTINGS_KEY,
+      JSON.stringify({ width: dialogWidth }),
+    );
+  }, [dialogWidth]);
+
+  const anchoredStyle = useMemo(() => {
+    if (!anchorPoint) return undefined;
+    const margin = 12;
+    const responsiveWidth = Math.min(dialogWidth, window.innerWidth - margin * 2);
+    const maxLeft = Math.max(margin, window.innerWidth - responsiveWidth - margin);
+    const left = Math.min(Math.max(anchorPoint.x, margin), maxLeft);
+    const maxTop = Math.max(margin, window.innerHeight - 560 - margin);
+    const top = Math.min(Math.max(anchorPoint.y, margin), maxTop);
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      transform: "none",
+      width: `${responsiveWidth}px`,
+    } as const;
+  }, [anchorPoint, dialogWidth]);
+
   if (!event) return null;
 
   useEffect(() => {
