@@ -17,7 +17,6 @@ import {
   Minus,
   Plus,
   SlidersHorizontal,
-  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -42,7 +41,7 @@ interface EventPreviewDialogProps {
 const DIALOG_UI_SETTINGS_KEY = "tasks-meetings-preview-dialog-ui";
 const NAVY = "#162C58";
 const GOLD = "#D4A843";
-const MIN_DIALOG_WIDTH = 320;
+const MIN_DIALOG_WIDTH = 240;
 const MAX_DIALOG_WIDTH = 640;
 const DIALOG_WIDTH_STEP = 24;
 
@@ -181,7 +180,7 @@ export function EventPreviewDialog({
         : `תזכורת: ${event.title}`;
 
   const setPresetSize = (preset: "small" | "medium" | "large") => {
-    if (preset === "small") setDialogWidth(360);
+    if (preset === "small") setDialogWidth(320);
     if (preset === "medium") setDialogWidth(420);
     if (preset === "large") setDialogWidth(520);
   };
@@ -198,7 +197,7 @@ export function EventPreviewDialog({
         <DialogPrimitive.Content
           ref={contentRef}
           className={cn(
-            "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 bg-white p-6 text-right shadow-lg duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg overflow-y-auto",
+            "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 bg-white p-4 sm:p-6 text-right shadow-lg duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg overflow-y-auto overflow-x-hidden",
             anchoredStyle && "max-w-none",
           )}
           style={{
@@ -223,16 +222,16 @@ export function EventPreviewDialog({
           {/* Corner handles */}
           <div className={cn(handleStyle, "right-0 bottom-0 w-3 h-3 cursor-se-resize")} style={{ background: `${GOLD}88` }} onMouseDown={(e) => startResize("se", e)} />
           <div className={cn(handleStyle, "left-0 bottom-0 w-3 h-3 cursor-sw-resize")} style={{ background: `${GOLD}88` }} onMouseDown={(e) => startResize("sw", e)} />
-        <div className="flex flex-col space-y-1.5 text-center sm:text-right">
-          <DialogPrimitive.Title className="flex items-center gap-2 text-right text-lg font-semibold leading-none tracking-tight" style={{ color: NAVY }}>
+        <div className="flex min-w-0 flex-col space-y-1.5 text-center sm:text-right">
+          <DialogPrimitive.Title className="flex min-w-0 items-center gap-2 text-right text-lg font-semibold leading-none tracking-tight" style={{ color: NAVY }}>
             {type === "task" && <FileText className="h-5 w-5" style={{ color: NAVY }} />}
             {type === "meeting" && <Calendar className="h-5 w-5" style={{ color: NAVY }} />}
             {type === "reminder" && <Bell className="h-5 w-5" style={{ color: NAVY }} />}
-            <span className="truncate">{event.title}</span>
+            <span className="min-w-0 break-words">{event.title}</span>
           </DialogPrimitive.Title>
         </div>
 
-        <div className="flex items-center justify-between gap-2 mt-1">
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
           <Badge
             variant={pinned ? "default" : "outline"}
             className="text-xs"
@@ -240,7 +239,7 @@ export function EventPreviewDialog({
           >
             {pinned ? "מצב עינית פעיל" : "תצוגה מקדימה"}
           </Badge>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {pinned && (
               <AddReminderDialog
                 entityType={type}
@@ -252,7 +251,7 @@ export function EventPreviewDialog({
                   client_id: event.client_id || undefined,
                 }}
                 trigger={
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5" style={{ borderColor: GOLD, color: NAVY }}>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 whitespace-nowrap" style={{ borderColor: GOLD, color: NAVY }}>
                     <Bell className="h-3.5 w-3.5" />
                     תזכורת
                   </Button>
@@ -275,7 +274,7 @@ export function EventPreviewDialog({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5" style={{ borderColor: `${GOLD}99` }}>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-2 py-1.5" style={{ borderColor: `${GOLD}99` }}>
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -300,10 +299,10 @@ export function EventPreviewDialog({
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <div className="flex items-center gap-1">
-            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPresetSize("small")} style={{ borderColor: GOLD, color: NAVY }}>קטן</Button>
-            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPresetSize("medium")} style={{ borderColor: GOLD, color: NAVY }}>בינוני</Button>
-            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPresetSize("large")} style={{ borderColor: GOLD, color: NAVY }}>גדול</Button>
+          <div className="flex flex-wrap items-center gap-1">
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs whitespace-nowrap" onClick={() => setPresetSize("small")} style={{ borderColor: GOLD, color: NAVY }}>קטן</Button>
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs whitespace-nowrap" onClick={() => setPresetSize("medium")} style={{ borderColor: GOLD, color: NAVY }}>בינוני</Button>
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs whitespace-nowrap" onClick={() => setPresetSize("large")} style={{ borderColor: GOLD, color: NAVY }}>גדול</Button>
           </div>
         </div>
 
@@ -314,13 +313,13 @@ export function EventPreviewDialog({
               {event.description && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium" style={{ color: NAVY }}>תיאור</p>
-                  <p className="text-sm whitespace-pre-wrap" style={{ color: NAVY }}>{event.description}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words" style={{ color: NAVY }}>{event.description}</p>
                 </div>
               )}
               {event.due_date && (
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4" style={{ color: NAVY }} />
-                  <span style={{ color: NAVY }}>{formatDate(event.due_date)}</span>
+                  <span className="break-words" style={{ color: NAVY }}>{formatDate(event.due_date)}</span>
                 </div>
               )}
               {event.status && (
@@ -346,13 +345,13 @@ export function EventPreviewDialog({
               {event.description && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium" style={{ color: NAVY }}>תיאור</p>
-                  <p className="text-sm whitespace-pre-wrap" style={{ color: NAVY }}>{event.description}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words" style={{ color: NAVY }}>{event.description}</p>
                 </div>
               )}
               {event.start_time && (
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4" style={{ color: NAVY }} />
-                  <span style={{ color: NAVY }}>{formatDate(event.start_time)}</span>
+                  <span className="break-words" style={{ color: NAVY }}>{formatDate(event.start_time)}</span>
                   {event.end_time && (
                     <span style={{ color: NAVY }}>
                       — {format(new Date(event.end_time), "HH:mm", { locale: he })}
@@ -363,7 +362,7 @@ export function EventPreviewDialog({
               {event.location && (
                 <div className="flex items-center gap-2 text-sm">
                   <MapPin className="h-4 w-4" style={{ color: NAVY }} />
-                  <span style={{ color: NAVY }}>{event.location}</span>
+                  <span className="break-words" style={{ color: NAVY }}>{event.location}</span>
                 </div>
               )}
             </>
@@ -375,13 +374,13 @@ export function EventPreviewDialog({
               {event.message && (
                 <div className="space-y-1">
                   <p className="text-xs font-medium" style={{ color: NAVY }}>הודעה</p>
-                  <p className="text-sm whitespace-pre-wrap" style={{ color: NAVY }}>{event.message}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words" style={{ color: NAVY }}>{event.message}</p>
                 </div>
               )}
               {event.remind_at && (
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4" style={{ color: NAVY }} />
-                  <span style={{ color: NAVY }}>{formatDate(event.remind_at)}</span>
+                  <span className="break-words" style={{ color: NAVY }}>{formatDate(event.remind_at)}</span>
                 </div>
               )}
               {event.reminder_type && (
@@ -427,7 +426,7 @@ export function EventPreviewDialog({
         )}
 
         {settingsOpen && (
-          <div className="absolute left-2 top-12 z-10 w-[280px] rounded-md border bg-white p-3 shadow-md" style={{ borderColor: GOLD }}>
+          <div className="absolute left-2 right-2 top-12 z-10 rounded-md border bg-white p-3 shadow-md sm:right-auto sm:w-[280px]" style={{ borderColor: GOLD }}>
             <div className="mb-2 text-xs font-semibold" style={{ color: NAVY }}>
               הגדרות Hover (ms)
             </div>
@@ -469,15 +468,15 @@ export function EventPreviewDialog({
               />
               <span className="text-xs" style={{ color: NAVY }}>סגירה</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => setDelayPreset(200, 150)} style={{ borderColor: GOLD, color: NAVY }}>200/150</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => setDelayPreset(300, 200)} style={{ borderColor: GOLD, color: NAVY }}>300/200</Button>
-              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => setDelayPreset(400, 250)} style={{ borderColor: GOLD, color: NAVY }}>400/250</Button>
+            <div className="flex flex-wrap items-center gap-1">
+              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px] whitespace-nowrap" onClick={() => setDelayPreset(200, 150)} style={{ borderColor: GOLD, color: NAVY }}>200/150</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px] whitespace-nowrap" onClick={() => setDelayPreset(300, 200)} style={{ borderColor: GOLD, color: NAVY }}>300/200</Button>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-[11px] whitespace-nowrap" onClick={() => setDelayPreset(400, 250)} style={{ borderColor: GOLD, color: NAVY }}>400/250</Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 text-[11px]"
+                className="h-7 text-[11px] whitespace-nowrap"
                 onClick={() => setDelayPreset(200, 150)}
                 style={{ borderColor: GOLD, color: NAVY }}
               >
