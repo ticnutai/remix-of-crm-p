@@ -673,21 +673,23 @@
     background: #d8ac2780;
   }
 
-  /* Navy dialog inputs - white text and gold borders */
+  /* Navy dialog inputs - white bg + dark navy text + gold borders (readable on white) */
   .navy-gold-dialog input,
   .navy-gold-dialog textarea,
   .navy-gold-dialog select,
   .navy-gold-dialog [role="combobox"] {
-    color: white !important;
-    border-color: #d8ac2760 !important;
+    color: #0F1F3D !important;
+    background-color: #FFFFFF !important;
+    border-color: #d8ac27 !important;
   }
   .navy-gold-dialog input::placeholder,
   .navy-gold-dialog textarea::placeholder {
-    color: rgba(255, 255, 255, 0.4) !important;
+    color: #64748b !important;
   }
   .navy-gold-dialog input:focus,
   .navy-gold-dialog textarea:focus {
-    border-color: #d8ac27 !important;
+    border-color: #b8941f !important;
+    outline: 2px solid #d8ac2740;
   }
 
   .scrollbar-hide {
