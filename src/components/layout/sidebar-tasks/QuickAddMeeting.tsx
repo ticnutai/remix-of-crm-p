@@ -48,7 +48,7 @@ import {
   InlineReminderConfig,
 } from "@/components/reminders/InlineReminderSection";
 import { LocationPicker } from "@/components/location/LocationPicker";
-import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
