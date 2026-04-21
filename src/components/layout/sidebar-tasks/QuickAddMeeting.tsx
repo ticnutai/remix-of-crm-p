@@ -39,6 +39,8 @@ import {
   UserPlus,
   X,
   Search,
+  RefreshCw,
+  Keyboard,
 } from "lucide-react";
 import { format, setHours, setMinutes } from "date-fns";
 import { he } from "date-fns/locale";
@@ -97,6 +99,11 @@ const meetingTypes = [
     borderColor: "border-green-500",
   },
 ];
+
+// Time input modes
+type TimeInputMode = "dropdown" | "text" | "clock" | "spinners";
+const TIME_MODES: TimeInputMode[] = ["dropdown", "text", "clock", "spinners"];
+const TIME_MODE_KEY = "meeting-time-input-mode";
 
 // Time options
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -164,6 +171,13 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [clientSearch, setClientSearch] = useState("");
     const [reminderConfig, setReminderConfig] =
       useState<InlineReminderConfig | null>(null);
+
+    // ── time input mode (persisted to localStorage) ─────────────────────────
+    const [timeMode, setTimeMode] = useState<TimeInputMode>(
+      () => (localStorage.getItem(TIME_MODE_KEY) as TimeInputMode) || "dropdown",
+    );
+    const [manualPopoverOpen, setManualPopoverOpen] = useState(false);
+    const [manualBothText, setManualBothText] = useState("");
 
     // Load initial data when dialog opens
     useEffect(() => {
@@ -249,14 +263,150 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     };
 
     const handleStartTimeChange = (newStartTime: string) => {
+      // Preserve the existing gap between start and end times
+      const [oldH, oldM] = startTime.split(":").map(Number);
+      const [endH, endM] = endTime.split(":").map(Number);
+      const gapMins = (endH * 60 + endM) - (oldH * 60 + oldM);
+      const [newH, newM] = newStartTime.split(":").map(Number);
+      const newEndTotal = newH * 60 + newM + gapMins;
+      if (newEndTotal >= 0 && newEndTotal < 24 * 60) {
+        const eH = Math.floor(newEndTotal / 60);
+        const eM = newEndTotal % 60;
+        setEndTime(`${eH.toString().padStart(2, "0")}:${eM.toString().padStart(2, "0")}`);
+      }
       setStartTime(newStartTime);
-      const [hour, min] = newStartTime.split(":").map(Number);
-      const newEndHour = hour + 1;
-      if (newEndHour < 24) {
-        setEndTime(
-          `${newEndHour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`,
+    };
+
+    const cycleTimeMode = () => {
+      const next = TIME_MODES[(TIME_MODES.indexOf(timeMode) + 1) % TIME_MODES.length];
+      setTimeMode(next);
+      localStorage.setItem(TIME_MODE_KEY, next);
+    };
+
+    const parseTimeStr = (s: string): string | null => {
+      const m = s.trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      const h = parseInt(m[1]), min = parseInt(m[2]);
+      if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+      return `${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
+    };
+
+    const applyManualBoth = () => {
+      const parts = manualBothText.split(/[\s\-\u2013]+/).filter(Boolean);
+      const s = parts[0] ? parseTimeStr(parts[0]) : null;
+      const e = parts[1] ? parseTimeStr(parts[1]) : null;
+      if (s) handleStartTimeChange(s);
+      if (e) setEndTime(e);
+      setManualPopoverOpen(false);
+      setManualBothText("");
+    };
+
+    const renderTimeInput = (value: string, onChange: (v: string) => void) => {
+      const [valH, valM] = value.split(":").map(Number);
+      const modeEmoji: Record<TimeInputMode, string> = {
+        dropdown: "📅", text: "⌨️", clock: "🕐", spinners: "🔢",
+      };
+      const modeTitle: Record<TimeInputMode, string> = {
+        dropdown: "רשימה נפתחת", text: "הקלדה חופשית",
+        clock: "שעון (גלגל)", spinners: "ספינרים",
+      };
+      const toggleBtn = (
+        <button
+          type="button"
+          onClick={cycleTimeMode}
+          title={`מצב: ${modeEmoji[timeMode]} ${modeTitle[timeMode]} — לחץ להחלפה`}
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-5 h-5 rounded hover:opacity-70 transition-opacity"
+          style={{ color: sidebarColors.gold }}
+        >
+          <RefreshCw className="h-3 w-3" />
+        </button>
+      );
+
+      if (timeMode === "dropdown") {
+        return (
+          <div className="relative">
+            {toggleBtn}
+            <Select value={value} onValueChange={onChange}>
+              <SelectTrigger className="text-right pl-8" style={brandedInputStyle}>
+                <Clock className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {timeOptions.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         );
       }
+
+      if (timeMode === "text") {
+        return (
+          <div className="relative">
+            {toggleBtn}
+            <div className="relative">
+              <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                onBlur={(e) => { const p = parseTimeStr(e.target.value); if (p) onChange(p); }}
+                placeholder="09:30"
+                className="w-full h-9 pr-9 pl-8 rounded-md border text-sm text-right"
+                style={brandedInputStyle}
+              />
+              <Clock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: sidebarColors.gold }} />
+            </div>
+          </div>
+        );
+      }
+
+      if (timeMode === "clock") {
+        return (
+          <div className="relative">
+            {toggleBtn}
+            <input
+              type="time"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="w-full h-9 px-3 pl-8 rounded-md border text-sm"
+              style={brandedInputStyle}
+            />
+          </div>
+        );
+      }
+
+      // spinners mode
+      return (
+        <div className="relative">
+          {toggleBtn}
+          <div
+            className="flex items-center gap-1 h-9 pr-2 pl-8 rounded-md border"
+            style={{ background: brandedInputStyle.background, borderColor: brandedInputStyle.borderColor }}
+          >
+            <input
+              type="number" min={0} max={23} value={valH}
+              onChange={(e) => {
+                const h = Math.min(23, Math.max(0, parseInt(e.target.value) || 0));
+                onChange(`${h.toString().padStart(2, "0")}:${valM.toString().padStart(2, "0")}`);
+              }}
+              className="w-10 h-7 px-1 text-center rounded text-sm bg-transparent border-0 focus:outline-none"
+              style={{ color: brandedInputStyle.color }}
+            />
+            <span className="font-bold" style={{ color: sidebarColors.gold }}>:</span>
+            <input
+              type="number" min={0} max={59} value={valM}
+              onChange={(e) => {
+                const m = Math.min(59, Math.max(0, parseInt(e.target.value) || 0));
+                onChange(`${valH.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+              }}
+              className="w-10 h-7 px-1 text-center rounded text-sm bg-transparent border-0 focus:outline-none"
+              style={{ color: brandedInputStyle.color }}
+            />
+            <Clock className="h-4 w-4 mr-auto" style={{ color: sidebarColors.gold }} />
+          </div>
+        </div>
+      );
     };
 
     const toggleClient = (id: string) => {
@@ -414,64 +564,60 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
               </div>
 
               {/* Time Range */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label
-                    className="text-sm font-medium"
-                    style={{ color: sidebarColors.goldLight }}
-                  >
-                    שעת התחלה
-                  </Label>
-                  <Select
-                    value={startTime}
-                    onValueChange={handleStartTimeChange}
-                  >
-                    <SelectTrigger
-                      className="text-right"
-                      style={brandedInputStyle}
-                    >
-                      <Clock
-                        className="h-4 w-4 ml-auto"
-                        style={{ color: sidebarColors.gold }}
-                      />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
-                        <SelectItem key={time.value} value={time.value}>
-                          {time.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-1">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                      שעת התחלה
+                    </Label>
+                    {renderTimeInput(startTime, handleStartTimeChange)}
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+                      שעת סיום
+                    </Label>
+                    {renderTimeInput(endTime, setEndTime)}
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label
-                    className="text-sm font-medium"
-                    style={{ color: sidebarColors.goldLight }}
-                  >
-                    שעת סיום
-                  </Label>
-                  <Select value={endTime} onValueChange={setEndTime}>
-                    <SelectTrigger
-                      className="text-right"
-                      style={brandedInputStyle}
-                    >
-                      <Clock
-                        className="h-4 w-4 ml-auto"
-                        style={{ color: sidebarColors.gold }}
-                      />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timeOptions.map((time) => (
-                        <SelectItem key={time.value} value={time.value}>
-                          {time.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Manual time entry popover */}
+                <div className="flex justify-center pt-0.5">
+                  <Popover open={manualPopoverOpen} onOpenChange={setManualPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border border-dashed hover:opacity-80 transition-opacity"
+                        style={{ borderColor: `${sidebarColors.gold}60`, color: sidebarColors.gold }}
+                      >
+                        <Keyboard className="h-3 w-3" />
+                        הכנסה ידנית
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" dir="rtl" align="center">
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium">הכנס שעות ידנית</p>
+                        <p className="text-[10px] text-gray-400">פורמט: 09:30 10:30 (התחלה סיום)</p>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={manualBothText}
+                          onChange={(e) => setManualBothText(e.target.value)}
+                          placeholder="09:30 10:30"
+                          className="w-full text-sm h-8 px-2 rounded border"
+                          style={brandedInputStyle}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyManualBoth(); } }}
+                        />
+                        <button
+                          type="button"
+                          onClick={applyManualBoth}
+                          className="w-full text-xs py-1 rounded font-medium"
+                          style={{ background: sidebarColors.gold, color: "#0F1F3D" }}
+                        >
+                          הגדר
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
