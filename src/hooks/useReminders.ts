@@ -83,22 +83,8 @@ export function useReminders() {
   const { pushAction } = useUndoRedo();
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const requestNotificationPermission = useCallback(async () => {
-    if ("Notification" in window) {
-      const permission = await Notification.requestPermission();
-      return permission === "granted";
-    }
-    return false;
-  }, []);
-
-  const showBrowserNotification = useCallback((reminder: Reminder) => {
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(reminder.title, {
-        body: reminder.message || "תזכורת",
-        icon: "/favicon.ico",
-        tag: reminder.id,
-      });
-    }
+  const initNotificationPermission = useCallback(async () => {
+    await requestDesktopPermission();
   }, []);
 
   const fetchReminders = useCallback(async () => {
