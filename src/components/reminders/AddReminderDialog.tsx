@@ -31,7 +31,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -90,6 +90,7 @@ const RINGTONES = [
 export function AddReminderDialog({ entityType, entityId, trigger, initialValues }: AddReminderDialogProps) {
   const { themeId, theme, setThemeId } = useDialogTheme();
   const sidebarColors = getSidebarColors(theme);
+  const { size, containerRef, startResize } = useDialogResize(500);
   const [open, setOpen] = useState(false);
   const { createReminder } = useReminders();
   const { toast } = useToast();
@@ -325,13 +326,19 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
         )}
       </DialogTrigger>
       <DialogContent
-        className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
+        ref={containerRef}
+        className="p-0 overflow-visible navy-gold-dialog"
         dir="rtl"
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         style={{
           background: theme.backgroundGradient,
           border: `2px solid ${theme.border}`,
+          width: `${size.width}px`,
+          maxWidth: '90vw',
+          ...(size.height ? { height: `${size.height}px`, maxHeight: '90vh' } : {}),
         }}
       >
+        <ResizeHandles onResize={startResize} />
         <DialogHeader
           className="px-5 pt-5 pb-3"
           style={{ borderBottom: `1px solid ${theme.headerBorder}` }}

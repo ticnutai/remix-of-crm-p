@@ -34,7 +34,7 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
-import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -105,6 +105,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
     const sidebarColors = getSidebarColors(theme);
+    const { size, containerRef, startResize } = useDialogResize(500);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -170,13 +171,19 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     return (
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent
-          className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
+          ref={containerRef}
+          className="p-0 overflow-visible navy-gold-dialog"
           dir="rtl"
+          onKeyDown={(e) => { if (e.key === 'Escape') onOpenChange(false); }}
           style={{
             background: theme.backgroundGradient,
             border: `2px solid ${theme.border}`,
+            width: `${size.width}px`,
+            maxWidth: '90vw',
+            ...(size.height ? { height: `${size.height}px`, maxHeight: '90vh' } : {}),
           }}
         >
+          <ResizeHandles onResize={startResize} />
           <DialogHeader
             className="px-5 pt-5 pb-3"
             style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
