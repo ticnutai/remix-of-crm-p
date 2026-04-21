@@ -105,6 +105,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
     const sidebarColors = getSidebarColors(theme);
+    const { size, containerRef, startResize } = useDialogResize(500);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
