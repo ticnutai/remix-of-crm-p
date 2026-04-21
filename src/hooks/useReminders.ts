@@ -306,13 +306,14 @@ export function useReminders() {
 
       // Show notifications and mark as sent
       for (const reminder of newReminders) {
-        // Handle different reminder types
-        if (
-          reminder.reminder_type === "browser" ||
-          reminder.reminder_type === "popup"
-        ) {
-          showBrowserNotification(reminder);
-        }
+        // Play sound for ALL reminder types
+        playNotificationSound();
+
+        // Show desktop push notification for all types
+        showDesktopNotification(
+          `⏰ ${reminder.title}`,
+          reminder.message || "הגיע הזמן!",
+        );
 
         if (reminder.reminder_type === "voice") {
           speakReminder(reminder);
