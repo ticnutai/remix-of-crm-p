@@ -800,13 +800,13 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
 
           <DialogFooter
             className="px-5 py-4 gap-2"
-            style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
+            style={{ borderTop: `1px solid ${theme.headerBorder}` }}
           >
             <Button
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
-              style={{ color: sidebarColors.goldLight }}
+              style={{ color: theme.cancelText }}
             >
               ביטול
             </Button>
@@ -815,8 +815,9 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               disabled={!form.title || !form.remind_at || isSubmitting}
               className="gap-2"
               style={{
-                background: sidebarColors.gold,
-                color: sidebarColors.navy,
+                background: theme.buttonBg,
+                color: theme.buttonText,
+                border: `1px solid ${theme.buttonBorder}`,
               }}
             >
               {isSubmitting ? (
