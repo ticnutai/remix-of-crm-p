@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useUndoRedo } from "@/hooks/useUndoRedo";
+import {
+  playNotificationSound,
+  requestNotificationPermission as requestDesktopPermission,
+  showDesktopNotification,
+} from "@/services/chatNotifications";
 
 // Activity logging helper function (no hooks)
 const logToActivityLog = async (
@@ -78,22 +83,8 @@ export function useReminders() {
   const { pushAction } = useUndoRedo();
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const requestNotificationPermission = useCallback(async () => {
-    if ("Notification" in window) {
-      const permission = await Notification.requestPermission();
-      return permission === "granted";
-    }
-    return false;
-  }, []);
-
-  const showBrowserNotification = useCallback((reminder: Reminder) => {
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(reminder.title, {
-        body: reminder.message || "תזכורת",
-        icon: "/favicon.ico",
-        tag: reminder.id,
-      });
-    }
+  const initNotificationPermission = useCallback(async () => {
+    await requestDesktopPermission();
   }, []);
 
   const fetchReminders = useCallback(async () => {
@@ -315,13 +306,14 @@ export function useReminders() {
 
       // Show notifications and mark as sent
       for (const reminder of newReminders) {
-        // Handle different reminder types
-        if (
-          reminder.reminder_type === "browser" ||
-          reminder.reminder_type === "popup"
-        ) {
-          showBrowserNotification(reminder);
-        }
+        // Play sound for ALL reminder types
+        playNotificationSound();
+
+        // Show desktop push notification for all types
+        showDesktopNotification(
+          `⏰ ${reminder.title}`,
+          reminder.message || "הגיע הזמן!",
+        );
 
         if (reminder.reminder_type === "voice") {
           speakReminder(reminder);
@@ -353,7 +345,6 @@ export function useReminders() {
   }, [
     user?.id,
     toast,
-    showBrowserNotification,
     speakReminder,
     sendEmailReminder,
     fetchReminders,
@@ -361,8 +352,8 @@ export function useReminders() {
 
   // Request notification permission on mount
   useEffect(() => {
-    requestNotificationPermission();
-  }, [requestNotificationPermission]);
+    initNotificationPermission();
+  }, [initNotificationPermission]);
 
   // Fetch reminders on mount
   useEffect(() => {
@@ -419,6 +410,6 @@ export function useReminders() {
     updateReminder,
     dismissReminder,
     deleteReminder,
-    requestNotificationPermission,
+    requestNotificationPermission: initNotificationPermission,
   };
 }
