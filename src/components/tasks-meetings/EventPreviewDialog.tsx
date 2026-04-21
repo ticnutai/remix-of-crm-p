@@ -160,26 +160,6 @@ export function EventPreviewDialog({
 
   if (!event) return null;
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DIALOG_UI_SETTINGS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { width?: number };
-      if (typeof parsed.width === "number") {
-        setDialogWidth(clampWidth(parsed.width));
-      }
-    } catch {
-      setDialogWidth(420);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      DIALOG_UI_SETTINGS_KEY,
-      JSON.stringify({ width: dialogWidth }),
-    );
-  }, [dialogWidth]);
-
   const formatDate = (dateStr: string) => {
     try {
       return format(new Date(dateStr), "EEEE, d בMMMM yyyy · HH:mm", { locale: he });
@@ -210,35 +190,21 @@ export function EventPreviewDialog({
     onHoverDelaysChange?.(clampDelay(openDelay), clampDelay(closeDelay));
   };
 
-  const anchoredStyle = useMemo(() => {
-    if (!anchorPoint) return undefined;
-
-    const margin = 12;
-    const responsiveWidth = Math.min(dialogWidth, window.innerWidth - margin * 2);
-    const maxLeft = Math.max(margin, window.innerWidth - responsiveWidth - margin);
-    const left = Math.min(Math.max(anchorPoint.x, margin), maxLeft);
-    const maxTop = Math.max(margin, window.innerHeight - 560 - margin);
-    const top = Math.min(Math.max(anchorPoint.y, margin), maxTop);
-
-    return {
-      left: `${left}px`,
-      top: `${top}px`,
-      transform: "none",
-      width: `${responsiveWidth}px`,
-    } as const;
-  }, [anchorPoint, dialogWidth]);
+  const handleStyle = "absolute z-20 opacity-0 hover:opacity-100 transition-opacity";
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
+          ref={contentRef}
           className={cn(
-            "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 bg-white p-6 text-right shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] overflow-y-auto",
+            "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 bg-white p-6 text-right shadow-lg duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg overflow-y-auto",
             anchoredStyle && "max-w-none",
           )}
           style={{
             borderColor: GOLD,
             color: NAVY,
+            maxHeight: dialogHeight ? `${dialogHeight}px` : "90vh",
             ...(anchoredStyle ?? {
               width: `${Math.min(dialogWidth, window.innerWidth - 24)}px`,
             }),
@@ -249,6 +215,14 @@ export function EventPreviewDialog({
           onOpenAutoFocus={(event) => event.preventDefault()}
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
+          {/* Resize handles */}
+          <div className={cn(handleStyle, "left-0 top-0 bottom-0 w-1.5 cursor-w-resize")} style={{ background: `${GOLD}66` }} onMouseDown={(e) => startResize("w", e)} />
+          <div className={cn(handleStyle, "right-0 top-0 bottom-0 w-1.5 cursor-e-resize")} style={{ background: `${GOLD}66` }} onMouseDown={(e) => startResize("e", e)} />
+          <div className={cn(handleStyle, "left-0 right-0 bottom-0 h-1.5 cursor-s-resize")} style={{ background: `${GOLD}66` }} onMouseDown={(e) => startResize("s", e)} />
+          <div className={cn(handleStyle, "left-0 right-0 top-0 h-1.5 cursor-n-resize")} style={{ background: `${GOLD}66` }} onMouseDown={(e) => startResize("n", e)} />
+          {/* Corner handles */}
+          <div className={cn(handleStyle, "right-0 bottom-0 w-3 h-3 cursor-se-resize")} style={{ background: `${GOLD}88` }} onMouseDown={(e) => startResize("se", e)} />
+          <div className={cn(handleStyle, "left-0 bottom-0 w-3 h-3 cursor-sw-resize")} style={{ background: `${GOLD}88` }} onMouseDown={(e) => startResize("sw", e)} />
         <div className="flex flex-col space-y-1.5 text-center sm:text-right">
           <DialogPrimitive.Title className="flex items-center gap-2 text-right text-lg font-semibold leading-none tracking-tight" style={{ color: NAVY }}>
             {type === "task" && <FileText className="h-5 w-5" style={{ color: NAVY }} />}
