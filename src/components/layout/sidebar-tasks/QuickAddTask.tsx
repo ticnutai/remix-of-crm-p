@@ -499,13 +499,13 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
 
             <DialogFooter
               className="px-5 py-4 gap-2"
-              style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
+              style={{ borderTop: `1px solid ${theme.headerBorder}` }}
             >
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                style={{ color: sidebarColors.goldLight }}
+                style={{ color: theme.cancelText }}
               >
                 ביטול
               </Button>
@@ -514,8 +514,9 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 disabled={!title.trim() || isSubmitting}
                 className="gap-2"
                 style={{
-                  background: sidebarColors.gold,
-                  color: sidebarColors.navy,
+                  background: theme.buttonBg,
+                  color: theme.buttonText,
+                  border: `1px solid ${theme.buttonBorder}`,
                 }}
               >
                 {isSubmitting ? (
