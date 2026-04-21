@@ -45,6 +45,14 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   };
 }
 
+// Readable input/trigger style: white bg + dark text + gold border (fixes "text swallowed" issue)
+const brandedInputStyle: React.CSSProperties = {
+  background: '#FFFFFF',
+  borderColor: sidebarColors.gold,
+  color: sidebarColors.navyDark,
+};
+const brandedInputClass = 'placeholder:text-slate-400';
+
 interface AddReminderDialogProps {
   entityType?: string;
   entityId?: string;
@@ -372,12 +380,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="תזכורת לפגישה..."
                 required
-                className="text-right"
-                style={{
-                  background: `${sidebarColors.navyLight}50`,
-                  borderColor: `${sidebarColors.gold}40`,
-                  color: sidebarColors.goldLight,
-                }}
+                className={cn("text-right", brandedInputClass)}
+                style={brandedInputStyle}
                 autoFocus
               />
             </div>
@@ -392,11 +396,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 value={form.remind_at}
                 onChange={(e) => setForm({ ...form, remind_at: e.target.value })}
                 required
-                style={{
-                  background: `${sidebarColors.navyLight}50`,
-                  borderColor: `${sidebarColors.gold}40`,
-                  color: sidebarColors.goldLight,
-                }}
+                style={brandedInputStyle}
               />
             </div>
 
@@ -436,9 +436,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                     variant="outline"
                     className="w-full justify-start gap-2"
                     style={{
-                      background: `${sidebarColors.navyLight}50`,
-                      borderColor: `${sidebarColors.gold}40`,
-                      color: `${sidebarColors.goldLight}60`,
+                      ...brandedInputStyle,
+                      color: selectedClients.length > 0 ? sidebarColors.navyDark : '#64748b',
                     }}
                   >
                     <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
@@ -460,12 +459,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                         placeholder="חיפוש לקוח..."
                         value={clientSearch}
                         onChange={(e) => setClientSearch(e.target.value)}
-                        className="pr-9 text-right text-sm"
-                        style={{
-                          background: `${sidebarColors.navyLight}50`,
-                          borderColor: `${sidebarColors.gold}30`,
-                          color: sidebarColors.goldLight,
-                        }}
+                        className={cn("pr-9 text-right text-sm", brandedInputClass)}
+                        style={brandedInputStyle}
                         autoFocus
                       />
                     </div>
@@ -573,11 +568,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                       onValueChange={(value) => setForm({ ...form, recurring_interval: value })}
                     >
                       <SelectTrigger
-                        style={{
-                          background: `${sidebarColors.navyLight}50`,
-                          borderColor: `${sidebarColors.gold}30`,
-                          color: sidebarColors.goldLight,
-                        }}
+                        style={brandedInputStyle}
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -598,11 +589,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                       max={50}
                       value={form.recurring_count}
                       onChange={(e) => setForm({ ...form, recurring_count: parseInt(e.target.value) || 1 })}
-                      style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}30`,
-                        color: sidebarColors.goldLight,
-                      }}
+                      style={brandedInputStyle}
                     />
                   </div>
                 </div>
@@ -689,7 +676,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                   <div>
                     <Label className="text-xs mb-1 block" style={{ color: `${sidebarColors.goldLight}80` }}>תבנית אימייל (אופציונלי)</Label>
                     <Select value={selectedTemplate || 'none'} onValueChange={(value) => setSelectedTemplate(value === 'none' ? null : value)}>
-                      <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
+                      <SelectTrigger style={brandedInputStyle}>
                         <SelectValue placeholder="בחר תבנית" />
                       </SelectTrigger>
                       <SelectContent>
@@ -714,7 +701,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 </div>
                 
                 <Select onValueChange={(value) => addRecipientEmail(value)}>
-                  <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
+                  <SelectTrigger style={brandedInputStyle}>
                     <SelectValue placeholder="בחר מהלקוחות..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -733,7 +720,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                     onChange={(e) => setForm({ ...form, manual_email: e.target.value })}
                     placeholder="הזן אימייל ידנית..."
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addManualEmail())}
-                    style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}
+                    className={brandedInputClass}
+                    style={brandedInputStyle}
                   />
                   <Button type="button" variant="outline" onClick={addManualEmail} style={{ borderColor: `${sidebarColors.gold}40`, color: sidebarColors.gold }}>
                     <Plus className="h-4 w-4" />
@@ -757,7 +745,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 </div>
                 
                 <Select onValueChange={(value) => addRecipientPhone(value)}>
-                  <SelectTrigger style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}>
+                  <SelectTrigger style={brandedInputStyle}>
                     <SelectValue placeholder="בחר מהלקוחות..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -776,7 +764,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                     onChange={(e) => setForm({ ...form, manual_phone: e.target.value })}
                     placeholder="הזן מספר טלפון ידנית..."
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addManualPhone())}
-                    style={{ background: `${sidebarColors.navyLight}50`, borderColor: `${sidebarColors.gold}30`, color: sidebarColors.goldLight }}
+                    className={brandedInputClass}
+                    style={brandedInputStyle}
                   />
                   <Button type="button" variant="outline" onClick={addManualPhone} style={{ borderColor: `${sidebarColors.gold}40`, color: sidebarColors.gold }}>
                     <Plus className="h-4 w-4" />
@@ -795,12 +784,8 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                 onChange={(e) => setForm({ ...form, message: e.target.value })}
                 placeholder="פרטים נוספים..."
                 rows={2}
-                className="text-right resize-none"
-                style={{
-                  background: `${sidebarColors.navyLight}50`,
-                  borderColor: `${sidebarColors.gold}40`,
-                  color: sidebarColors.goldLight,
-                }}
+                className={cn("text-right resize-none", brandedInputClass)}
+                style={brandedInputStyle}
               />
             </div>
           </div>

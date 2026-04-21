@@ -48,6 +48,14 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   };
 }
 
+// Readable input/trigger style: white bg + dark text + gold border (fixes "text swallowed" issue)
+const brandedInputStyle: React.CSSProperties = {
+  background: "#FFFFFF",
+  borderColor: sidebarColors.gold,
+  color: sidebarColors.navyDark,
+};
+const brandedInputClass = "placeholder:text-slate-400";
+
 // Priority options
 const priorities = [
   {
@@ -224,12 +232,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="מה צריך לעשות?"
-                  className="text-right"
-                  style={{
-                    background: `${sidebarColors.navyLight}50`,
-                    borderColor: `${sidebarColors.gold}40`,
-                    color: sidebarColors.goldLight,
-                  }}
+                  className={cn("text-right", brandedInputClass)}
+                  style={brandedInputStyle}
                   autoFocus
                 />
               </div>
@@ -249,12 +253,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="פרטים נוספים..."
                   rows={2}
-                  className="text-right resize-none"
-                  style={{
-                    background: `${sidebarColors.navyLight}50`,
-                    borderColor: `${sidebarColors.gold}40`,
-                    color: sidebarColors.goldLight,
-                  }}
+                  className={cn("text-right resize-none", brandedInputClass)}
+                  style={brandedInputStyle}
                 />
               </div>
 
@@ -310,16 +310,10 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                     <Button
                       type="button"
                       variant="outline"
-                      className={cn(
-                        "w-full justify-start text-right gap-2",
-                        !dueDate && "text-muted-foreground",
-                      )}
+                      className="w-full justify-start text-right gap-2"
                       style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: dueDate
-                          ? sidebarColors.goldLight
-                          : `${sidebarColors.goldLight}60`,
+                        ...brandedInputStyle,
+                        color: dueDate ? sidebarColors.navyDark : "#64748b",
                       }}
                     >
                       <CalendarIcon
@@ -386,9 +380,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                       variant="outline"
                       className="w-full justify-start gap-2"
                       style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: `${sidebarColors.goldLight}60`,
+                        ...brandedInputStyle,
+                        color: selectedClients.length > 0 ? sidebarColors.navyDark : "#64748b",
                       }}
                     >
                       <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
@@ -410,12 +403,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                           placeholder="חיפוש לקוח..."
                           value={clientSearch}
                           onChange={(e) => setClientSearch(e.target.value)}
-                          className="pr-9 text-right text-sm"
-                          style={{
-                            background: `${sidebarColors.navyLight}50`,
-                            borderColor: `${sidebarColors.gold}30`,
-                            color: sidebarColors.goldLight,
-                          }}
+                          className={cn("pr-9 text-right text-sm", brandedInputClass)}
+                          style={brandedInputStyle}
                           autoFocus
                         />
                       </div>

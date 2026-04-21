@@ -30,6 +30,13 @@ const sidebarColors = {
   navyDark: "#0F1F3D",
 };
 
+// Readable input/trigger style: white bg + dark text + gold border (fixes "text swallowed" issue)
+const brandedInputStyle: React.CSSProperties = {
+  background: "#FFFFFF",
+  borderColor: sidebarColors.gold,
+  color: sidebarColors.navyDark,
+};
+
 const reminderMethods = [
   { value: "browser", label: "דפדפן", emoji: "🔔" },
   { value: "popup", label: "פופ-אפ", emoji: "📢" },
@@ -373,11 +380,7 @@ export function InlineReminderSection({
             setQuickPreset(null);
           }}
           className="text-xs h-8"
-          style={{
-            background: `${sidebarColors.navyLight}50`,
-            borderColor: `${sidebarColors.gold}30`,
-            color: sidebarColors.goldLight,
-          }}
+          style={brandedInputStyle}
         />
       </div>
 
@@ -424,9 +427,9 @@ export function InlineReminderSection({
           onChange={(e) => setRingtone(e.target.value)}
           className="text-[11px] rounded px-2 py-1 flex-1 cursor-pointer"
           style={{
-            background: `${sidebarColors.navyLight}50`,
-            border: `1px solid ${sidebarColors.gold}30`,
-            color: sidebarColors.goldLight,
+            background: "#FFFFFF",
+            border: `1px solid ${sidebarColors.gold}`,
+            color: sidebarColors.navyDark,
           }}
         >
           {RINGTONES.map((r) => (
@@ -471,9 +474,9 @@ export function InlineReminderSection({
               onChange={(e) => setRecurringInterval(e.target.value)}
               className="text-[10px] rounded px-1.5 py-0.5 cursor-pointer"
               style={{
-                background: `${sidebarColors.navyLight}50`,
-                border: `1px solid ${sidebarColors.gold}30`,
-                color: sidebarColors.goldLight,
+                background: "#FFFFFF",
+                border: `1px solid ${sidebarColors.gold}`,
+                color: sidebarColors.navyDark,
               }}
             >
               {recurringOptions.map((o) => (
@@ -489,11 +492,7 @@ export function InlineReminderSection({
               value={recurringCount}
               onChange={(e) => setRecurringCount(parseInt(e.target.value) || 1)}
               className="w-14 h-6 text-[10px]"
-              style={{
-                background: `${sidebarColors.navyLight}50`,
-                borderColor: `${sidebarColors.gold}30`,
-                color: sidebarColors.goldLight,
-              }}
+              style={brandedInputStyle}
             />
             <span
               className="text-[10px]"

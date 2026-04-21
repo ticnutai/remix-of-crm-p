@@ -62,6 +62,14 @@ function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
   };
 }
 
+// Readable input/trigger style: white bg + dark text + gold border (fixes "text swallowed" issue)
+const brandedInputStyle: React.CSSProperties = {
+  background: "#FFFFFF",
+  borderColor: sidebarColors.gold,
+  color: sidebarColors.navyDark,
+};
+const brandedInputClass = "placeholder:text-slate-400";
+
 // Meeting type options
 const meetingTypes = [
   {
@@ -319,12 +327,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="נושא הפגישה"
-                  className="text-right"
-                  style={{
-                    background: `${sidebarColors.navyLight}50`,
-                    borderColor: `${sidebarColors.gold}40`,
-                    color: sidebarColors.goldLight,
-                  }}
+                  className={cn("text-right", brandedInputClass)}
+                  style={brandedInputStyle}
                   autoFocus
                 />
               </div>
@@ -381,16 +385,10 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                     <Button
                       type="button"
                       variant="outline"
-                      className={cn(
-                        "w-full justify-start text-right gap-2",
-                        !date && "text-muted-foreground",
-                      )}
+                      className="w-full justify-start text-right gap-2"
                       style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: date
-                          ? sidebarColors.goldLight
-                          : `${sidebarColors.goldLight}60`,
+                        ...brandedInputStyle,
+                        color: date ? sidebarColors.navyDark : "#64748b",
                       }}
                     >
                       <CalendarIcon
@@ -430,11 +428,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                   >
                     <SelectTrigger
                       className="text-right"
-                      style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: sidebarColors.goldLight,
-                      }}
+                      style={brandedInputStyle}
                     >
                       <Clock
                         className="h-4 w-4 ml-auto"
@@ -462,11 +456,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                   <Select value={endTime} onValueChange={setEndTime}>
                     <SelectTrigger
                       className="text-right"
-                      style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: sidebarColors.goldLight,
-                      }}
+                      style={brandedInputStyle}
                     >
                       <Clock
                         className="h-4 w-4 ml-auto"
@@ -505,11 +495,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                     clientIds={clientIds}
                     placeholder="בחר או הקלד מיקום"
                     iconColor={sidebarColors.gold}
-                    inputStyle={{
-                      background: `${sidebarColors.navyLight}50`,
-                      borderColor: `${sidebarColors.gold}40`,
-                      color: sidebarColors.goldLight,
-                    }}
+                    inputStyle={brandedInputStyle}
                   />
                 ) : (
                   <div className="relative">
@@ -526,12 +512,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                           ? "https://meet.google.com/..."
                           : "050-000-0000"
                       }
-                      className="text-right pr-10"
-                      style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: sidebarColors.goldLight,
-                      }}
+                      className={cn("text-right pr-10", brandedInputClass)}
+                      style={brandedInputStyle}
                     />
                   </div>
                 )}
@@ -577,9 +559,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                       variant="outline"
                       className="w-full justify-start gap-2"
                       style={{
-                        background: `${sidebarColors.navyLight}50`,
-                        borderColor: `${sidebarColors.gold}40`,
-                        color: `${sidebarColors.goldLight}60`,
+                        ...brandedInputStyle,
+                        color: selectedClients.length > 0 ? sidebarColors.navyDark : "#64748b",
                       }}
                     >
                       <UserPlus className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
@@ -601,12 +582,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                           placeholder="חיפוש לקוח..."
                           value={clientSearch}
                           onChange={(e) => setClientSearch(e.target.value)}
-                          className="pr-9 text-right text-sm"
-                          style={{
-                            background: `${sidebarColors.navyLight}50`,
-                            borderColor: `${sidebarColors.gold}30`,
-                            color: sidebarColors.goldLight,
-                          }}
+                          className={cn("pr-9 text-right text-sm", brandedInputClass)}
+                          style={brandedInputStyle}
                           autoFocus
                         />
                       </div>
@@ -713,12 +690,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="פרטים נוספים על הפגישה..."
                   rows={2}
-                  className="text-right resize-none"
-                  style={{
-                    background: `${sidebarColors.navyLight}50`,
-                    borderColor: `${sidebarColors.gold}40`,
-                    color: sidebarColors.goldLight,
-                  }}
+                  className={cn("text-right resize-none", brandedInputClass)}
+                  style={brandedInputStyle}
                 />
               </div>
             </div>
