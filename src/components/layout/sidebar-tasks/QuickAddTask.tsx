@@ -34,16 +34,19 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 
-// Sidebar colors
-const sidebarColors = {
-  navy: "#162C58",
-  gold: "#d8ac27",
-  goldLight: "#e8c85a",
-  goldDark: "#b8941f",
-  navyLight: "#1E3A6E",
-  navyDark: "#0F1F3D",
-};
+// Dynamic sidebar colors based on theme
+function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
+  return {
+    navy: theme.background,
+    gold: theme.border,
+    goldLight: theme.label,
+    goldDark: theme.buttonBorder,
+    navyLight: theme.inputBg,
+    navyDark: theme.background,
+  };
+}
 
 // Priority options
 const priorities = [

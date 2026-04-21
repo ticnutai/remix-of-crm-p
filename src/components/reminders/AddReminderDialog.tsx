@@ -31,15 +31,19 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-// Sidebar colors - matching QuickAddTask
-const sidebarColors = {
-  navy: '#162C58',
-  gold: '#d8ac27',
-  goldLight: '#e8c85a',
-  goldDark: '#b8941f',
-  navyLight: '#1E3A6E',
-  navyDark: '#0F1F3D',
-};
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+
+// Dynamic sidebar colors based on theme
+function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
+  return {
+    navy: theme.background,
+    gold: theme.border,
+    goldLight: theme.label,
+    goldDark: theme.buttonBorder,
+    navyLight: theme.inputBg,
+    navyDark: theme.background,
+  };
+}
 
 interface AddReminderDialogProps {
   entityType?: string;
