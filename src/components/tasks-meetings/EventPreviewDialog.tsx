@@ -89,10 +89,40 @@ export function EventPreviewDialog({
   onPointerLeave,
   onEdit,
 }: EventPreviewDialogProps) {
-  if (!event) return null;
-
   const [dialogWidth, setDialogWidth] = useState(420);
+  const [dialogHeight, setDialogHeight] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const resizingRef = useRef<{ edge: string; startX: number; startY: number; startW: number; startH: number } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const startResize = useCallback((edge: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = contentRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    resizingRef.current = { edge, startX: e.clientX, startY: e.clientY, startW: rect.width, startH: rect.height };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizingRef.current) return;
+      const { edge: ed, startX, startY, startW, startH } = resizingRef.current;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (ed.includes("e")) setDialogWidth(clampWidth(startW + dx));
+      if (ed.includes("w")) setDialogWidth(clampWidth(startW - dx));
+      if (ed.includes("s")) setDialogHeight(Math.max(200, startH + dy));
+      if (ed.includes("n")) setDialogHeight(Math.max(200, startH - dy));
+    };
+    const onUp = () => {
+      resizingRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
+
+  if (!event) return null;
 
   useEffect(() => {
     try {
