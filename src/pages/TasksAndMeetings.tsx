@@ -37,6 +37,7 @@ import {
   ArrowDown,
   LayoutGrid,
   Eye,
+  EyeOff,
   CheckSquare2,
   CheckCheck,
 } from "lucide-react";
@@ -65,6 +66,26 @@ import { he } from "date-fns/locale";
 import { parseISO } from "date-fns";
 
 const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
+const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
+
+type ColumnKey = "tasks" | "meetings" | "reminders";
+type ColumnSortField = "time" | "name" | "priority";
+type ColumnSortConfig = {
+  field: ColumnSortField;
+  order: SortOrder;
+};
+
+const DEFAULT_COLUMN_SORT_CONFIG: Record<ColumnKey, ColumnSortConfig> = {
+  tasks: { field: "time", order: "asc" },
+  meetings: { field: "time", order: "asc" },
+  reminders: { field: "time", order: "asc" },
+};
+
+const DEFAULT_COLUMN_HOVER_PREVIEW: Record<ColumnKey, boolean> = {
+  tasks: true,
+  meetings: true,
+  reminders: true,
+};
 
 type HoverDialogSettings = {
   openDelayMs: number;
@@ -127,6 +148,12 @@ const TasksAndMeetings = () => {
   const [hoverDialogSettings, setHoverDialogSettings] = useState<HoverDialogSettings>(
     DEFAULT_HOVER_DIALOG_SETTINGS,
   );
+  const [columnSortConfig, setColumnSortConfig] = useState<
+    Record<ColumnKey, ColumnSortConfig>
+  >(DEFAULT_COLUMN_SORT_CONFIG);
+  const [columnHoverPreviewEnabled, setColumnHoverPreviewEnabled] = useState<
+    Record<ColumnKey, boolean>
+  >(DEFAULT_COLUMN_HOVER_PREVIEW);
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
 
@@ -167,6 +194,90 @@ const TasksAndMeetings = () => {
       JSON.stringify(hoverDialogSettings),
     );
   }, [hoverDialogSettings]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLUMN_SETTINGS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        sort?: Partial<Record<ColumnKey, Partial<ColumnSortConfig>>>;
+        hoverPreview?: Partial<Record<ColumnKey, boolean>>;
+      };
+
+      if (parsed.sort) {
+        setColumnSortConfig((prev) => ({
+          tasks: {
+            field:
+              parsed.sort?.tasks?.field === "name" ||
+              parsed.sort?.tasks?.field === "priority" ||
+              parsed.sort?.tasks?.field === "time"
+                ? parsed.sort.tasks.field
+                : prev.tasks.field,
+            order:
+              parsed.sort?.tasks?.order === "asc" || parsed.sort?.tasks?.order === "desc"
+                ? parsed.sort.tasks.order
+                : prev.tasks.order,
+          },
+          meetings: {
+            field:
+              parsed.sort?.meetings?.field === "name" ||
+              parsed.sort?.meetings?.field === "priority" ||
+              parsed.sort?.meetings?.field === "time"
+                ? parsed.sort.meetings.field
+                : prev.meetings.field,
+            order:
+              parsed.sort?.meetings?.order === "asc" ||
+              parsed.sort?.meetings?.order === "desc"
+                ? parsed.sort.meetings.order
+                : prev.meetings.order,
+          },
+          reminders: {
+            field:
+              parsed.sort?.reminders?.field === "name" ||
+              parsed.sort?.reminders?.field === "priority" ||
+              parsed.sort?.reminders?.field === "time"
+                ? parsed.sort.reminders.field
+                : prev.reminders.field,
+            order:
+              parsed.sort?.reminders?.order === "asc" ||
+              parsed.sort?.reminders?.order === "desc"
+                ? parsed.sort.reminders.order
+                : prev.reminders.order,
+          },
+        }));
+      }
+
+      if (parsed.hoverPreview) {
+        setColumnHoverPreviewEnabled((prev) => ({
+          tasks:
+            typeof parsed.hoverPreview?.tasks === "boolean"
+              ? parsed.hoverPreview.tasks
+              : prev.tasks,
+          meetings:
+            typeof parsed.hoverPreview?.meetings === "boolean"
+              ? parsed.hoverPreview.meetings
+              : prev.meetings,
+          reminders:
+            typeof parsed.hoverPreview?.reminders === "boolean"
+              ? parsed.hoverPreview.reminders
+              : prev.reminders,
+        }));
+      }
+    } catch {
+      setColumnSortConfig(DEFAULT_COLUMN_SORT_CONFIG);
+      setColumnHoverPreviewEnabled(DEFAULT_COLUMN_HOVER_PREVIEW);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      COLUMN_SETTINGS_KEY,
+      JSON.stringify({
+        sort: columnSortConfig,
+        hoverPreview: columnHoverPreviewEnabled,
+      }),
+    );
+  }, [columnSortConfig, columnHoverPreviewEnabled]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -254,8 +365,6 @@ const TasksAndMeetings = () => {
     },
   );
 
-  type ColumnKey = "tasks" | "meetings" | "reminders";
-
   const [selectionMode, setSelectionMode] = useState<Record<ColumnKey, boolean>>({
     tasks: false,
     meetings: false,
@@ -307,13 +416,73 @@ const TasksAndMeetings = () => {
 
   const selectAllInColumn = (column: ColumnKey) => {
     activateSelectionMode(column);
-    if (column === "tasks") setSelectedTaskIds(sortedTasks.map((task) => task.id));
+    if (column === "tasks") setSelectedTaskIds(sortedTasksForAllColumn.tasks.map((task) => task.id));
     if (column === "meetings") {
-      setSelectedMeetingIds(sortedMeetings.map((meeting) => meeting.id));
+      setSelectedMeetingIds(sortedTasksForAllColumn.meetings.map((meeting) => meeting.id));
     }
     if (column === "reminders") {
-      setSelectedReminderIds(reminders.map((reminder) => reminder.id));
+      setSelectedReminderIds(sortedTasksForAllColumn.reminders.map((reminder) => reminder.id));
     }
+  };
+
+  const sortedTasksForAllColumn = {
+    tasks: [...sortedTasks].sort((a, b) => {
+      const config = columnSortConfig.tasks;
+      const direction = config.order === "asc" ? 1 : -1;
+
+      if (config.field === "name") {
+        return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "priority") {
+        const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const rankA = priorityRank[a.priority || "medium"] ?? 1;
+        const rankB = priorityRank[b.priority || "medium"] ?? 1;
+        return (rankA - rankB) * direction;
+      }
+
+      const timeA = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER;
+      const timeB = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER;
+      return (timeA - timeB) * direction;
+    }),
+    meetings: [...sortedMeetings].sort((a, b) => {
+      const config = columnSortConfig.meetings;
+      const direction = config.order === "asc" ? 1 : -1;
+
+      if (config.field === "name") {
+        return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      const timeA = new Date(a.start_time).getTime();
+      const timeB = new Date(b.start_time).getTime();
+      return (timeA - timeB) * direction;
+    }),
+    reminders: [...reminders].sort((a, b) => {
+      const config = columnSortConfig.reminders;
+      const direction = config.order === "asc" ? 1 : -1;
+
+      if (config.field === "name") {
+        return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "priority") {
+        const isAOverdue = isDatePast(new Date(a.remind_at)) && !a.is_dismissed;
+        const isBOverdue = isDatePast(new Date(b.remind_at)) && !b.is_dismissed;
+        const rankA = isAOverdue ? 0 : a.is_dismissed ? 2 : 1;
+        const rankB = isBOverdue ? 0 : b.is_dismissed ? 2 : 1;
+        return (rankA - rankB) * direction;
+      }
+
+      const timeA = new Date(a.remind_at).getTime();
+      const timeB = new Date(b.remind_at).getTime();
+      return (timeA - timeB) * direction;
+    }),
+  };
+
+  const getSortFieldLabel = (field: ColumnSortField) => {
+    if (field === "time") return "זמן";
+    if (field === "name") return "שם";
+    return "עדיפות";
   };
 
   const handleTouchEnd = () => {
@@ -773,6 +942,66 @@ const TasksAndMeetings = () => {
                     <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">{tasks.length}</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Select
+                      value={columnSortConfig.tasks.field}
+                      onValueChange={(value) =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          tasks: { ...prev.tasks, field: value as ColumnSortField },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
+                        <div className="flex items-center gap-1">
+                          <Filter className="h-3 w-3" />
+                          <span>{getSortFieldLabel(columnSortConfig.tasks.field)}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="priority">עדיפות</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="כיוון מיון"
+                      onClick={() =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          tasks: {
+                            ...prev.tasks,
+                            order: prev.tasks.order === "asc" ? "desc" : "asc",
+                          },
+                        }))
+                      }
+                    >
+                      {columnSortConfig.tasks.order === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={columnHoverPreviewEnabled.tasks ? "ghost" : "outline"}
+                      className="h-7 w-7 p-0"
+                      title={columnHoverPreviewEnabled.tasks ? "כבה הובר בעמודה" : "הפעל הובר בעמודה"}
+                      onClick={() =>
+                        setColumnHoverPreviewEnabled((prev) => ({
+                          ...prev,
+                          tasks: !prev.tasks,
+                        }))
+                      }
+                    >
+                      {columnHoverPreviewEnabled.tasks ? (
+                        <Eye className="h-3.5 w-3.5" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -811,7 +1040,7 @@ const TasksAndMeetings = () => {
                   ) : sortedTasks.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין משימות</p>
                   ) : (
-                    sortedTasks.slice(0, 20).map((task) => (
+                    sortedTasksForAllColumn.tasks.slice(0, 20).map((task) => (
                       <div
                         key={task.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
@@ -821,7 +1050,7 @@ const TasksAndMeetings = () => {
                         }}
                         onMouseEnter={(event) => {
                           setHoveredTaskId(task.id);
-                          if (!selectionMode.tasks) {
+                          if (!selectionMode.tasks && columnHoverPreviewEnabled.tasks) {
                             const anchorPoint = getPreviewAnchorFromElement(
                               event.currentTarget as HTMLElement,
                             );
@@ -936,6 +1165,66 @@ const TasksAndMeetings = () => {
                     <span className="text-xs bg-blue-500/15 text-blue-600 px-2 py-0.5 rounded-full font-medium">{meetings.length}</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Select
+                      value={columnSortConfig.meetings.field}
+                      onValueChange={(value) =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          meetings: { ...prev.meetings, field: value as ColumnSortField },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
+                        <div className="flex items-center gap-1">
+                          <Filter className="h-3 w-3" />
+                          <span>{getSortFieldLabel(columnSortConfig.meetings.field)}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="priority" disabled>עדיפות</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="כיוון מיון"
+                      onClick={() =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          meetings: {
+                            ...prev.meetings,
+                            order: prev.meetings.order === "asc" ? "desc" : "asc",
+                          },
+                        }))
+                      }
+                    >
+                      {columnSortConfig.meetings.order === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={columnHoverPreviewEnabled.meetings ? "ghost" : "outline"}
+                      className="h-7 w-7 p-0"
+                      title={columnHoverPreviewEnabled.meetings ? "כבה הובר בעמודה" : "הפעל הובר בעמודה"}
+                      onClick={() =>
+                        setColumnHoverPreviewEnabled((prev) => ({
+                          ...prev,
+                          meetings: !prev.meetings,
+                        }))
+                      }
+                    >
+                      {columnHoverPreviewEnabled.meetings ? (
+                        <Eye className="h-3.5 w-3.5" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -974,13 +1263,13 @@ const TasksAndMeetings = () => {
                   ) : sortedMeetings.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין פגישות</p>
                   ) : (
-                    sortedMeetings.slice(0, 20).map((meeting) => (
+                    sortedTasksForAllColumn.meetings.slice(0, 20).map((meeting) => (
                       <div
                         key={meeting.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
                         onMouseEnter={(event) => {
                           setHoveredMeetingId(meeting.id);
-                          if (!selectionMode.meetings) {
+                          if (!selectionMode.meetings && columnHoverPreviewEnabled.meetings) {
                             const anchorPoint = getPreviewAnchorFromElement(
                               event.currentTarget as HTMLElement,
                             );
@@ -1077,6 +1366,66 @@ const TasksAndMeetings = () => {
                     <span className="text-xs bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full font-medium">{reminders.length}</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Select
+                      value={columnSortConfig.reminders.field}
+                      onValueChange={(value) =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          reminders: { ...prev.reminders, field: value as ColumnSortField },
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
+                        <div className="flex items-center gap-1">
+                          <Filter className="h-3 w-3" />
+                          <span>{getSortFieldLabel(columnSortConfig.reminders.field)}</span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="time">זמן</SelectItem>
+                        <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="priority">עדיפות</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title="כיוון מיון"
+                      onClick={() =>
+                        setColumnSortConfig((prev) => ({
+                          ...prev,
+                          reminders: {
+                            ...prev.reminders,
+                            order: prev.reminders.order === "asc" ? "desc" : "asc",
+                          },
+                        }))
+                      }
+                    >
+                      {columnSortConfig.reminders.order === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={columnHoverPreviewEnabled.reminders ? "ghost" : "outline"}
+                      className="h-7 w-7 p-0"
+                      title={columnHoverPreviewEnabled.reminders ? "כבה הובר בעמודה" : "הפעל הובר בעמודה"}
+                      onClick={() =>
+                        setColumnHoverPreviewEnabled((prev) => ({
+                          ...prev,
+                          reminders: !prev.reminders,
+                        }))
+                      }
+                    >
+                      {columnHoverPreviewEnabled.reminders ? (
+                        <Eye className="h-3.5 w-3.5" />
+                      ) : (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1119,13 +1468,13 @@ const TasksAndMeetings = () => {
                   ) : reminders.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין תזכורות</p>
                   ) : (
-                    reminders.slice(0, 20).map((reminder) => (
+                    sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder) => (
                       <div
                         key={reminder.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
                         onMouseEnter={(event) => {
                           setHoveredReminderId(reminder.id);
-                          if (!selectionMode.reminders) {
+                          if (!selectionMode.reminders && columnHoverPreviewEnabled.reminders) {
                             const anchorPoint = getPreviewAnchorFromElement(
                               event.currentTarget as HTMLElement,
                             );
