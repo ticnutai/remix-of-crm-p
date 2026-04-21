@@ -15,7 +15,11 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  Upload,
+  Pencil,
+  Plus,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
 import { addMinutes, addHours } from "date-fns";
 import { toast } from "sonner";
@@ -37,6 +41,21 @@ const brandedInputStyle: React.CSSProperties = {
   color: sidebarColors.navyDark,
 };
 
+const PRESETS_STORAGE_KEY = "inline-reminder-presets";
+
+interface ReminderPreset {
+  label: string;
+  minutes: number; // negative = before event, positive = after
+}
+
+const DEFAULT_PRESETS: ReminderPreset[] = [
+  { label: "5 דק׳ לפני", minutes: -5 },
+  { label: "15 דק׳", minutes: -15 },
+  { label: "30 דק׳", minutes: -30 },
+  { label: "שעה לפני", minutes: -60 },
+  { label: "יום לפני", minutes: -1440 },
+];
+
 const reminderMethods = [
   { value: "browser", label: "דפדפן", emoji: "🔔" },
   { value: "popup", label: "פופ-אפ", emoji: "📢" },
@@ -46,66 +65,19 @@ const reminderMethods = [
   { value: "voice", label: "קולי", emoji: "🔊" },
 ];
 
-const quickReminders = [
-  { label: "5 דק׳ לפני", minutes: -5 },
-  { label: "15 דק׳", minutes: -15 },
-  { label: "30 דק׳", minutes: -30 },
-  { label: "שעה לפני", minutes: -60 },
-  { label: "יום לפני", minutes: -1440 },
-];
-
 const RINGTONES = [
-  {
-    id: "default",
-    name: "ברירת מחדל",
-    url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
-  },
-  {
-    id: "chime",
-    name: "צליל פעמון",
-    url: "https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3",
-  },
-  {
-    id: "bell",
-    name: "פעמון קלאסי",
-    url: "https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3",
-  },
-  {
-    id: "alert",
-    name: "התראה חדה",
-    url: "https://assets.mixkit.co/active_storage/sfx/2872/2872-preview.mp3",
-  },
-  {
-    id: "gentle",
-    name: "עדין",
-    url: "https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3",
-  },
-  {
-    id: "urgent",
-    name: "דחוף",
-    url: "https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3",
-  },
-  {
-    id: "melody",
-    name: "מלודי",
-    url: "https://assets.mixkit.co/active_storage/sfx/2875/2875-preview.mp3",
-  },
-  {
-    id: "digital",
-    name: "דיגיטלי",
-    url: "https://assets.mixkit.co/active_storage/sfx/2876/2876-preview.mp3",
-  },
-  {
-    id: "soft",
-    name: "רך ונעים",
-    url: "https://assets.mixkit.co/active_storage/sfx/2877/2877-preview.mp3",
-  },
+  { id: "default", name: "ברירת מחדל", url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" },
+  { id: "chime",   name: "צליל פעמון", url: "https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3" },
+  { id: "bell",    name: "פעמון קלאסי", url: "https://assets.mixkit.co/active_storage/sfx/2871/2871-preview.mp3" },
+  { id: "alert",   name: "התראה חדה",  url: "https://assets.mixkit.co/active_storage/sfx/2872/2872-preview.mp3" },
+  { id: "gentle",  name: "עדין",       url: "https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3" },
+  { id: "urgent",  name: "דחוף",       url: "https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3" },
 ];
 
 const recurringOptions = [
-  { value: "none", label: "ללא" },
-  { value: "daily", label: "יומי" },
-  { value: "weekly", label: "שבועי" },
+  { value: "none",    label: "ללא" },
+  { value: "daily",   label: "יומי" },
+  { value: "weekly",  label: "שבועי" },
   { value: "monthly", label: "חודשי" },
 ];
 
@@ -128,6 +100,14 @@ export interface InlineReminderConfig {
   recurring_interval?: string;
 }
 
+function loadPresets(): ReminderPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as ReminderPreset[];
+  } catch {}
+  return DEFAULT_PRESETS;
+}
+
 export function InlineReminderSection({
   entityType,
   entityTitle,
@@ -140,7 +120,8 @@ export function InlineReminderSection({
   const { createReminder } = useReminders();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [expanded, setExpanded] = useState(false);
+  // ── expanded by default ──────────────────────────────────────────────────
+  const [expanded, setExpanded] = useState(true);
   const [selectedMethods, setSelectedMethods] = useState<string[]>(["browser"]);
   const [reminderTime, setReminderTime] = useState<string>("");
   const [quickPreset, setQuickPreset] = useState<number | null>(-15);
@@ -149,6 +130,63 @@ export function InlineReminderSection({
   const [recurringInterval, setRecurringInterval] = useState("none");
   const [recurringCount, setRecurringCount] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+
+  // ── manual "X minutes before" input ─────────────────────────────────────
+  const [manualMinutes, setManualMinutes] = useState<string>("");
+
+  // ── editable presets ─────────────────────────────────────────────────────
+  const [presets, setPresets] = useState<ReminderPreset[]>(loadPresets);
+  // editingIdx: index of preset being edited, -1 = adding new
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editMinutes, setEditMinutes] = useState("");
+
+  const savePresets = (updated: ReminderPreset[]) => {
+    setPresets(updated);
+    localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const startEdit = (idx: number) => {
+    setEditingIdx(idx);
+    if (idx === -1) {
+      setEditLabel("");
+      setEditMinutes("");
+    } else {
+      setEditLabel(presets[idx].label);
+      setEditMinutes(String(presets[idx].minutes));
+    }
+  };
+
+  const commitEdit = () => {
+    const mins = parseInt(editMinutes);
+    if (!editLabel.trim() || isNaN(mins)) {
+      cancelEdit();
+      return;
+    }
+    if (editingIdx === -1) {
+      // new preset
+      savePresets([...presets, { label: editLabel.trim(), minutes: mins }]);
+    } else {
+      const updated = presets.map((p, i) =>
+        i === editingIdx ? { label: editLabel.trim(), minutes: mins } : p
+      );
+      savePresets(updated);
+      if (quickPreset === presets[editingIdx!].minutes) setQuickPreset(mins);
+    }
+    cancelEdit();
+  };
+
+  const cancelEdit = () => {
+    setEditingIdx(null);
+    setEditLabel("");
+    setEditMinutes("");
+  };
+
+  const deletePreset = (idx: number) => {
+    const updated = presets.filter((_, i) => i !== idx);
+    savePresets(updated);
+    if (quickPreset === presets[idx].minutes) setQuickPreset(null);
+  };
 
   const toggleMethod = (method: string) => {
     setSelectedMethods((prev) =>
@@ -174,6 +212,15 @@ export function InlineReminderSection({
       return new Date(reminderTime);
     }
     return null;
+  };
+
+  const applyManualMinutes = () => {
+    const mins = parseInt(manualMinutes);
+    if (isNaN(mins)) return;
+    const negMins = mins > 0 ? -mins : mins; // always treat as "before"
+    setQuickPreset(negMins);
+    setReminderTime("");
+    setManualMinutes("");
   };
 
   const handleCreateReminder = async () => {
@@ -312,10 +359,7 @@ export function InlineReminderSection({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bell className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-          <span
-            className="text-sm font-medium"
-            style={{ color: sidebarColors.goldLight }}
-          >
+          <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
             תזכורת וסנכרון
           </span>
         </div>
@@ -329,47 +373,159 @@ export function InlineReminderSection({
         </button>
       </div>
 
-      {/* Quick time presets */}
+      {/* Quick time presets — editable */}
       <div>
-        <Label
-          className="text-[11px] mb-1.5 block"
-          style={{ color: sidebarColors.goldLight }}
-        >
+        <Label className="text-[11px] mb-1.5 block" style={{ color: sidebarColors.goldLight }}>
           מתי להזכיר?
         </Label>
-        <div className="flex flex-wrap gap-1.5">
-          {quickReminders.map((preset) => (
+
+        {/* Preset buttons row */}
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {presets.map((preset, idx) =>
+            editingIdx === idx ? (
+              /* ── inline edit form ── */
+              <div key={idx} className="flex items-center gap-1 flex-wrap">
+                <input
+                  autoFocus
+                  className="text-[10px] rounded px-1.5 py-0.5 w-24 border"
+                  style={{ background: "#FFFFFF", color: sidebarColors.navyDark, borderColor: sidebarColors.gold }}
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  placeholder="תווית"
+                  onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
+                />
+                <input
+                  className="text-[10px] rounded px-1.5 py-0.5 w-16 border"
+                  style={{ background: "#FFFFFF", color: sidebarColors.navyDark, borderColor: sidebarColors.gold }}
+                  value={editMinutes}
+                  onChange={(e) => setEditMinutes(e.target.value)}
+                  type="number"
+                  placeholder="דקות (שלילי=לפני)"
+                  onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
+                />
+                <button type="button" onClick={commitEdit} className="p-0.5 rounded hover:opacity-70" style={{ color: sidebarColors.gold }}>
+                  <Check className="h-3 w-3" />
+                </button>
+                <button type="button" onClick={cancelEdit} className="p-0.5 rounded hover:opacity-70" style={{ color: sidebarColors.goldLight }}>
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              /* ── regular preset chip ── */
+              <div key={idx} className="group relative flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setQuickPreset(preset.minutes); setReminderTime(""); setManualMinutes(""); }}
+                  className={`px-2 py-1 text-[10px] rounded-md border transition-colors ${
+                    quickPreset === preset.minutes
+                      ? "border-amber-500 bg-amber-500/20 text-amber-300"
+                      : "border-transparent text-gray-400 hover:text-gray-200"
+                  }`}
+                  style={{ background: quickPreset === preset.minutes ? undefined : `${sidebarColors.navyLight}50` }}
+                >
+                  {preset.label}
+                </button>
+                {/* edit / delete icons (visible on hover) */}
+                <span className="hidden group-hover:flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(idx)}
+                    className="p-0.5 rounded hover:opacity-80"
+                    style={{ color: sidebarColors.goldLight }}
+                    title="ערוך"
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deletePreset(idx)}
+                    className="p-0.5 rounded hover:opacity-80"
+                    style={{ color: "#ef4444" }}
+                    title="מחק"
+                  >
+                    <Trash2 className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              </div>
+            )
+          )}
+
+          {/* Add new preset */}
+          {editingIdx === -1 ? (
+            <div className="flex items-center gap-1">
+              <input
+                autoFocus
+                className="text-[10px] rounded px-1.5 py-0.5 w-24 border"
+                style={{ background: "#FFFFFF", color: sidebarColors.navyDark, borderColor: sidebarColors.gold }}
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                placeholder="תווית"
+                onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
+              />
+              <input
+                className="text-[10px] rounded px-1.5 py-0.5 w-16 border"
+                style={{ background: "#FFFFFF", color: sidebarColors.navyDark, borderColor: sidebarColors.gold }}
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(e.target.value)}
+                type="number"
+                placeholder="דקות"
+                onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") cancelEdit(); }}
+              />
+              <button type="button" onClick={commitEdit} className="p-0.5 rounded hover:opacity-70" style={{ color: sidebarColors.gold }}>
+                <Check className="h-3 w-3" />
+              </button>
+              <button type="button" onClick={cancelEdit} className="p-0.5 rounded hover:opacity-70" style={{ color: sidebarColors.goldLight }}>
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
             <button
-              key={preset.minutes}
               type="button"
-              onClick={() => {
-                setQuickPreset(preset.minutes);
-                setReminderTime("");
-              }}
-              className={`px-2 py-1 text-[10px] rounded-md border transition-colors ${
-                quickPreset === preset.minutes
-                  ? "border-amber-500 bg-amber-500/20 text-amber-300"
-                  : "border-transparent text-gray-400 hover:text-gray-200"
-              }`}
-              style={{
-                background:
-                  quickPreset === preset.minutes
-                    ? undefined
-                    : `${sidebarColors.navyLight}50`,
-              }}
+              onClick={() => startEdit(-1)}
+              className="flex items-center gap-0.5 px-1.5 py-1 text-[10px] rounded-md border border-dashed transition-colors hover:opacity-80"
+              style={{ borderColor: `${sidebarColors.gold}60`, color: sidebarColors.gold }}
+              title="הוסף טאב חדש"
             >
-              {preset.label}
+              <Plus className="h-3 w-3" />
+              הוסף
             </button>
-          ))}
+          )}
+        </div>
+
+        {/* Manual "X minutes before" input */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] shrink-0" style={{ color: sidebarColors.goldLight }}>
+            או הכנס ידנית:
+          </span>
+          <input
+            type="number"
+            min={1}
+            value={manualMinutes}
+            onChange={(e) => setManualMinutes(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); applyManualMinutes(); } }}
+            placeholder="דקות לפני"
+            className="text-[10px] rounded px-1.5 py-0.5 w-24 border"
+            style={{ background: "#FFFFFF", color: sidebarColors.navyDark, borderColor: sidebarColors.gold }}
+          />
+          <button
+            type="button"
+            onClick={applyManualMinutes}
+            className="text-[10px] px-2 py-0.5 rounded border transition-colors hover:opacity-80"
+            style={{ borderColor: sidebarColors.gold, color: sidebarColors.gold, background: `${sidebarColors.gold}15` }}
+          >
+            הגדר
+          </button>
+          {quickPreset !== null && (
+            <span className="text-[10px]" style={{ color: "#86efac" }}>
+              ✓ {quickPreset < 0 ? `${Math.abs(quickPreset)} דק׳ לפני` : `${quickPreset} דק׳ אחרי`}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Custom datetime */}
       <div>
-        <Label
-          className="text-[11px] mb-1 block"
-          style={{ color: sidebarColors.goldLight }}
-        >
+        <Label className="text-[11px] mb-1 block" style={{ color: sidebarColors.goldLight }}>
           או בחר זמן מדויק
         </Label>
         <Input
@@ -378,6 +534,7 @@ export function InlineReminderSection({
           onChange={(e) => {
             setReminderTime(e.target.value);
             setQuickPreset(null);
+            setManualMinutes("");
           }}
           className="text-xs h-8"
           style={brandedInputStyle}
