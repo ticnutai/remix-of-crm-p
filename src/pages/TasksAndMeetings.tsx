@@ -36,8 +36,12 @@ import {
   ArrowUp,
   ArrowDown,
   LayoutGrid,
+  Eye,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
+import { useReminders, Reminder } from "@/hooks/useReminders";
+import { EventPreviewDialog } from "@/components/tasks-meetings/EventPreviewDialog";
+import { isPast as isDatePast, isFuture } from "date-fns";
 import {
   TasksViewToggle,
   TasksListView,
@@ -54,6 +58,8 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
 import { isPast, parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
