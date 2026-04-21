@@ -377,7 +377,7 @@ export function RemindersTabContent() {
   const ReminderTable = ({ items }: { items: Reminder[] }) => {
     const { visible, dupMap } = dedupReminders(items);
     return (
-      <Table>
+      <div className="overflow-x-auto"><Table>
         <TableHeader>
           <TableRow>
             <TableHead>כותרת</TableHead>
@@ -407,7 +407,7 @@ export function RemindersTabContent() {
             ))
           )}
         </TableBody>
-      </Table>
+      </Table></div>
     );
   };
 
@@ -421,7 +421,7 @@ export function RemindersTabContent() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Header with search, sort and add */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-1">

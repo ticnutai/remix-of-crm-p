@@ -36,8 +36,12 @@ import {
   ArrowUp,
   ArrowDown,
   LayoutGrid,
+  Eye,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
+import { useReminders, Reminder } from "@/hooks/useReminders";
+import { EventPreviewDialog } from "@/components/tasks-meetings/EventPreviewDialog";
+import { isPast as isDatePast, isFuture } from "date-fns";
 import {
   TasksViewToggle,
   TasksListView,
@@ -54,7 +58,9 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
-import { isPast, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { he } from "date-fns/locale";
+import { parseISO } from "date-fns";
 
 const TasksAndMeetings = () => {
   const navigate = useNavigate();
@@ -76,6 +82,7 @@ const TasksAndMeetings = () => {
     deleteMeeting,
     fetchMeetings,
   } = useMeetings();
+  const { reminders, loading: remindersLoading } = useReminders();
 
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "all",
@@ -92,6 +99,10 @@ const TasksAndMeetings = () => {
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+
+  // Preview dialog
+  const [previewEvent, setPreviewEvent] = useState<any>(null);
+  const [previewType, setPreviewType] = useState<"task" | "meeting" | "reminder">("task");
 
   // Shared data
   const [clients, setClients] = useState<
@@ -137,7 +148,7 @@ const TasksAndMeetings = () => {
       statusFilter === "all" ||
       (statusFilter === "overdue"
         ? task.due_date &&
-          isPast(parseISO(task.due_date)) &&
+          isDatePast(parseISO(task.due_date)) &&
           task.status !== "completed"
         : task.status === statusFilter);
     const matchesPriority =
@@ -449,7 +460,7 @@ const TasksAndMeetings = () => {
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="max-h-[500px] overflow-y-auto p-2 space-y-1.5">
+                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
                   {tasksLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -460,8 +471,7 @@ const TasksAndMeetings = () => {
                     sortedTasks.slice(0, 20).map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group text-right"
-                        onClick={() => handleEditTask(task)}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
                       >
                         <button
                           className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
@@ -469,11 +479,11 @@ const TasksAndMeetings = () => {
                               ? "bg-green-500 border-green-500 text-white"
                               : "border-muted-foreground/40 hover:border-primary"
                           }`}
-                          onClick={(e) => { e.stopPropagation(); handleToggleComplete(task); }}
+                          onClick={() => handleToggleComplete(task)}
                         >
                           {task.status === "completed" && <span className="text-[10px]">✓</span>}
                         </button>
-                        <div className="flex-1 min-w-0 text-right">
+                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => handleEditTask(task)}>
                           <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                             {task.title}
                           </p>
@@ -483,6 +493,13 @@ const TasksAndMeetings = () => {
                             </p>
                           )}
                         </div>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => { setPreviewEvent(task); setPreviewType("task"); }}
+                          title="תצוגה מקדימה"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                         <span className={`shrink-0 h-2 w-2 rounded-full ${
                           task.priority === "high" ? "bg-red-500" :
                           task.priority === "medium" ? "bg-yellow-500" : "bg-green-400"
@@ -512,7 +529,7 @@ const TasksAndMeetings = () => {
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-                <div className="max-h-[500px] overflow-y-auto p-2 space-y-1.5">
+                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
                   {meetingsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -523,19 +540,22 @@ const TasksAndMeetings = () => {
                     sortedMeetings.slice(0, 20).map((meeting) => (
                       <div
                         key={meeting.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer group text-right"
-                        onClick={() => handleEditMeeting(meeting)}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
                       >
                         <Calendar className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                        <div className="flex-1 min-w-0 text-right">
+                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => handleEditMeeting(meeting)}>
                           <p className="text-xs font-medium truncate">{meeting.title}</p>
                           <p className="text-[10px] text-muted-foreground">
                             {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
-                        {meeting.location && (
-                          <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{meeting.location}</span>
-                        )}
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => { setPreviewEvent(meeting); setPreviewType("meeting"); }}
+                          title="תצוגה מקדימה"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                       </div>
                     ))
                   )}
@@ -549,12 +569,13 @@ const TasksAndMeetings = () => {
                 )}
               </div>
 
-              {/* Reminders Column */}
+              {/* Reminders Column - simple list like the others */}
               <div className="rounded-xl border-2 border-amber-500/20 bg-card shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-amber-500/10 to-amber-500/5 border-b">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4 text-amber-500" />
                     <h3 className="font-bold text-sm text-foreground">תזכורות</h3>
+                    <span className="text-xs bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full font-medium">{reminders.length}</span>
                   </div>
                   <AddReminderDialog
                     trigger={
@@ -564,9 +585,51 @@ const TasksAndMeetings = () => {
                     }
                   />
                 </div>
-                <div className="max-h-[500px] overflow-y-auto">
-                  <RemindersTabContent />
+                <div className="max-h-[500px] overflow-y-auto overflow-x-hidden p-2 space-y-1.5">
+                  {remindersLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-amber-500" />
+                    </div>
+                  ) : reminders.length === 0 ? (
+                    <p className="text-center text-xs text-muted-foreground py-8">אין תזכורות</p>
+                  ) : (
+                    reminders.slice(0, 20).map((reminder) => (
+                      <div
+                        key={reminder.id}
+                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
+                      >
+                        <Bell className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <div className="flex-1 min-w-0 text-right cursor-pointer" onClick={() => setActiveTab("reminders")}>
+                          <p className={`text-xs font-medium truncate ${reminder.is_dismissed ? "line-through text-muted-foreground" : ""}`}>
+                            {reminder.title}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(reminder.remind_at), "dd/MM/yyyy · HH:mm", { locale: he })}
+                          </p>
+                        </div>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => { setPreviewEvent(reminder); setPreviewType("reminder"); }}
+                          title="תצוגה מקדימה"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        <span className={`shrink-0 h-2 w-2 rounded-full ${
+                          reminder.is_dismissed ? "bg-muted-foreground" :
+                          reminder.is_sent ? "bg-green-500" :
+                          isDatePast(new Date(reminder.remind_at)) ? "bg-red-500" : "bg-amber-500"
+                        }`} />
+                      </div>
+                    ))
+                  )}
                 </div>
+                {reminders.length > 20 && (
+                  <div className="border-t px-3 py-2">
+                    <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setActiveTab("reminders")}>
+                      הצג את כל {reminders.length} התזכורות
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -646,6 +709,19 @@ const TasksAndMeetings = () => {
             <RemindersTabContent />
           </TabsContent>
         </Tabs>
+
+        {/* Preview Dialog */}
+        <EventPreviewDialog
+          open={!!previewEvent}
+          onOpenChange={(open) => { if (!open) setPreviewEvent(null); }}
+          event={previewEvent}
+          type={previewType}
+          onEdit={() => {
+            if (previewType === "task") handleEditTask(previewEvent);
+            else if (previewType === "meeting") handleEditMeeting(previewEvent);
+            else setActiveTab("reminders");
+          }}
+        />
       </div>
     </AppLayout>
   );

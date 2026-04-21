@@ -7,3 +7,4 @@ export { TasksTimelineView } from './TasksTimelineView';
 export { TasksStatsHeader } from './TasksStatsHeader';
 export { MeetingsListView } from './MeetingsListView';
 export { RemindersTabContent } from './RemindersTabContent';
+export { EventPreviewDialog } from './EventPreviewDialog';
