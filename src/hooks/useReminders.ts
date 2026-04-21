@@ -364,6 +364,32 @@ export function useReminders() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // ── Realtime subscription: refresh ALL hook instances on any DB change ──
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`reminders-realtime-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "reminders",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchReminders();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Check reminders every 30 seconds + drift monitor
   useEffect(() => {
     if (!user) return;
