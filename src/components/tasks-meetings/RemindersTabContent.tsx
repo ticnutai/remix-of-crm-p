@@ -407,7 +407,7 @@ export function RemindersTabContent() {
             ))
           )}
         </TableBody>
-      </Table>
+      </Table></div>
     );
   };
 
