@@ -1,14 +1,10 @@
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
-import { Pencil, Calendar, Clock, MapPin, Bell, FileText, Flag, Eye, EyeOff } from "lucide-react";
+import { Pencil, Calendar, Clock, MapPin, Bell, FileText, Flag, Eye, EyeOff, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 
@@ -83,21 +79,26 @@ export function EventPreviewDialog({
         : `תזכורת: ${event.title}`;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-md"
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={false}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+        className={cn(
+          "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border-2 border-primary/40 bg-background p-6 text-right shadow-lg shadow-primary/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg max-h-[90vh] overflow-y-auto",
+        )}
         dir="rtl"
         onMouseEnter={onPointerEnter}
         onMouseLeave={onPointerLeave}
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-right">
+        <div className="flex flex-col space-y-1.5 text-center sm:text-right">
+          <DialogPrimitive.Title className="flex items-center gap-2 text-right text-lg font-semibold leading-none tracking-tight">
             {type === "task" && <FileText className="h-5 w-5 text-primary" />}
             {type === "meeting" && <Calendar className="h-5 w-5 text-blue-500" />}
             {type === "reminder" && <Bell className="h-5 w-5 text-amber-500" />}
             <span className="truncate">{event.title}</span>
-          </DialogTitle>
-        </DialogHeader>
+          </DialogPrimitive.Title>
+        </div>
 
         <div className="flex items-center justify-between gap-2 mt-1">
           <Badge variant={pinned ? "default" : "outline"} className="text-xs">
@@ -248,7 +249,12 @@ export function EventPreviewDialog({
             </Button>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+        <DialogPrimitive.Close className="absolute left-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring disabled:pointer-events-none">
+          <X className="h-4 w-4" />
+          <span className="sr-only">סגור</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
