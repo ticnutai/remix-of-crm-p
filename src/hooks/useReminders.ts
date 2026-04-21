@@ -82,6 +82,7 @@ export function useReminders() {
   const { toast } = useToast();
   const { pushAction } = useUndoRedo();
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckRef = useRef<number>(Date.now());
 
   const initNotificationPermission = useCallback(async () => {
     await requestDesktopPermission();
