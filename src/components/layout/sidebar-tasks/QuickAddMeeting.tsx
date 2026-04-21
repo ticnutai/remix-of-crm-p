@@ -51,6 +51,7 @@ import {
 } from "@/components/reminders/InlineReminderSection";
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -103,7 +104,7 @@ const meetingTypes = [
 // Time input modes
 type TimeInputMode = "dropdown" | "text" | "clock" | "spinners";
 const TIME_MODES: TimeInputMode[] = ["dropdown", "text", "clock", "spinners"];
-const TIME_MODE_KEY = "meeting-time-input-mode";
+const TIME_MODE_LS_KEY = "meeting-time-input-mode";
 
 // Time options
 const timeOptions = Array.from({ length: 48 }, (_, i) => {
@@ -157,6 +158,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const sidebarColors = getSidebarColors(theme);
     const { size, containerRef, startResize } = useDialogResize(500);
     const { createReminder, updateReminder, reminders } = useReminders();
+    const { preferences, savePreferences: saveUserPrefs } = useUserPreferences();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -172,10 +174,18 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [reminderConfig, setReminderConfig] =
       useState<InlineReminderConfig | null>(null);
 
-    // ── time input mode (persisted to localStorage) ─────────────────────────
+    // ── time input mode (synced: Supabase ui_preferences + localStorage fallback) ──
     const [timeMode, setTimeMode] = useState<TimeInputMode>(
-      () => (localStorage.getItem(TIME_MODE_KEY) as TimeInputMode) || "dropdown",
+      () => (localStorage.getItem(TIME_MODE_LS_KEY) as TimeInputMode) || "dropdown",
     );
+    // Sync from Supabase once preferences load
+    useEffect(() => {
+      const cloud = (preferences?.ui_preferences as Record<string, unknown> | null)?.meeting_time_input_mode as TimeInputMode | undefined;
+      if (cloud && TIME_MODES.includes(cloud)) {
+        setTimeMode(cloud);
+        localStorage.setItem(TIME_MODE_LS_KEY, cloud);
+      }
+    }, [preferences?.ui_preferences]);
     const [manualPopoverOpen, setManualPopoverOpen] = useState(false);
     const [manualBothText, setManualBothText] = useState("");
 
@@ -280,7 +290,10 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const cycleTimeMode = () => {
       const next = TIME_MODES[(TIME_MODES.indexOf(timeMode) + 1) % TIME_MODES.length];
       setTimeMode(next);
-      localStorage.setItem(TIME_MODE_KEY, next);
+      localStorage.setItem(TIME_MODE_LS_KEY, next);
+      // Persist to Supabase (merge into existing ui_preferences)
+      const existing = (preferences?.ui_preferences as Record<string, unknown> | null) ?? {};
+      saveUserPrefs({ ui_preferences: { ...existing, meeting_time_input_mode: next } } as any);
     };
 
     const parseTimeStr = (s: string): string | null => {
