@@ -34,16 +34,19 @@ import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 
-// Sidebar colors
-const sidebarColors = {
-  navy: "#162C58",
-  gold: "#d8ac27",
-  goldLight: "#e8c85a",
-  goldDark: "#b8941f",
-  navyLight: "#1E3A6E",
-  navyDark: "#0F1F3D",
-};
+// Dynamic sidebar colors based on theme
+function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
+  return {
+    navy: theme.background,
+    gold: theme.border,
+    goldLight: theme.label,
+    goldDark: theme.buttonBorder,
+    navyLight: theme.inputBg,
+    navyDark: theme.background,
+  };
+}
 
 // Priority options
 const priorities = [
@@ -100,6 +103,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     { open, onOpenChange, onSubmit, clients = [], initialData },
     _ref,
   ) {
+    const { themeId, theme, setThemeId } = useDialogTheme();
+    const sidebarColors = getSidebarColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -168,30 +173,31 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
           dir="rtl"
           style={{
-            background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
-            border: `2px solid ${sidebarColors.gold}`,
+            background: theme.backgroundGradient,
+            border: `2px solid ${theme.border}`,
           }}
         >
           <DialogHeader
             className="px-5 pt-5 pb-3"
-            style={{ borderBottom: `1px solid ${sidebarColors.gold}30` }}
+            style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
           >
             <div className="flex items-center gap-3">
               <div
                 className="flex items-center justify-center w-10 h-10 rounded-lg"
-                style={{ background: `${sidebarColors.gold}20` }}
+                style={{ background: theme.iconBg }}
               >
                 <CheckSquare
                   className="h-5 w-5"
-                  style={{ color: sidebarColors.gold }}
+                  style={{ color: theme.iconColor }}
                 />
               </div>
               <DialogTitle
-                className="text-lg font-bold"
-                style={{ color: sidebarColors.goldLight }}
+                className="text-lg font-bold flex-1"
+                style={{ color: theme.title }}
               >
                 משימה חדשה
               </DialogTitle>
+              <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
             </div>
           </DialogHeader>
 
@@ -493,13 +499,13 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
 
             <DialogFooter
               className="px-5 py-4 gap-2"
-              style={{ borderTop: `1px solid ${sidebarColors.gold}30` }}
+              style={{ borderTop: `1px solid ${theme.headerBorder}` }}
             >
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => onOpenChange(false)}
-                style={{ color: sidebarColors.goldLight }}
+                style={{ color: theme.cancelText }}
               >
                 ביטול
               </Button>
@@ -508,8 +514,9 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 disabled={!title.trim() || isSubmitting}
                 className="gap-2"
                 style={{
-                  background: sidebarColors.gold,
-                  color: sidebarColors.navy,
+                  background: theme.buttonBg,
+                  color: theme.buttonText,
+                  border: `1px solid ${theme.buttonBorder}`,
                 }}
               >
                 {isSubmitting ? (
