@@ -173,30 +173,31 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           className="sm:max-w-[500px] p-0 overflow-hidden navy-gold-dialog"
           dir="rtl"
           style={{
-            background: `linear-gradient(135deg, ${sidebarColors.navy} 0%, ${sidebarColors.navyDark} 100%)`,
-            border: `2px solid ${sidebarColors.gold}`,
+            background: theme.backgroundGradient,
+            border: `2px solid ${theme.border}`,
           }}
         >
           <DialogHeader
             className="px-5 pt-5 pb-3"
-            style={{ borderBottom: `1px solid ${sidebarColors.gold}30` }}
+            style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
           >
             <div className="flex items-center gap-3">
               <div
                 className="flex items-center justify-center w-10 h-10 rounded-lg"
-                style={{ background: `${sidebarColors.gold}20` }}
+                style={{ background: theme.iconBg }}
               >
                 <CheckSquare
                   className="h-5 w-5"
-                  style={{ color: sidebarColors.gold }}
+                  style={{ color: theme.iconColor }}
                 />
               </div>
               <DialogTitle
-                className="text-lg font-bold"
-                style={{ color: sidebarColors.goldLight }}
+                className="text-lg font-bold flex-1"
+                style={{ color: theme.title }}
               >
                 משימה חדשה
               </DialogTitle>
+              <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
             </div>
           </DialogHeader>
 
