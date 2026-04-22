@@ -11,8 +11,9 @@ let notificationAudio: HTMLAudioElement | null = null;
 
 function getAudio() {
   if (!notificationAudio) {
-    notificationAudio = new Audio("/notification.mp3");
-    notificationAudio.volume = 0.4;
+    // Use inline base64 WAV — always available, no file dependency
+    notificationAudio = new Audio(NOTIFICATION_SOUND_URL);
+    notificationAudio.volume = 0.5;
   }
   return notificationAudio;
 }

@@ -74,6 +74,10 @@ function decodeReminder(r: Reminder): Reminder {
   };
 }
 
+// Module-level lock: prevents duplicate notifications when multiple
+// hook instances run checkReminders simultaneously
+let _checkInProgress = false;
+
 export function useReminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [activeReminders, setActiveReminders] = useState<Reminder[]>([]);
@@ -292,15 +296,18 @@ export function useReminders() {
   // Check for due reminders
   const checkReminders = useCallback(async () => {
     if (!user) return;
-
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from("reminders")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("is_sent", false)
-      .eq("is_dismissed", false)
-      .lte("remind_at", now);
+    // Prevent concurrent execution across hook instances (race condition guard)
+    if (_checkInProgress) return;
+    _checkInProgress = true;
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_sent", false)
+        .eq("is_dismissed", false)
+        .lte("remind_at", now);
 
     if (!error && data && data.length > 0) {
       const newReminders = data as Reminder[];
@@ -342,6 +349,9 @@ export function useReminders() {
       setActiveReminders((prev) => [...prev, ...newReminders]);
       await fetchReminders();
     }
+    } finally {
+      _checkInProgress = false;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user?.id,
@@ -364,12 +374,12 @@ export function useReminders() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // ── Realtime subscription: refresh ALL hook instances on any DB change ──
+  // ── Realtime subscription: refresh + check on any DB change ──
   useEffect(() => {
     if (!user?.id) return;
 
     const channel = supabase
-      .channel(`reminders-realtime-${user.id}`)
+      .channel(`reminders-realtime-${user.id}-${Math.random()}`)
       .on(
         "postgres_changes",
         {
@@ -380,6 +390,8 @@ export function useReminders() {
         },
         () => {
           fetchReminders();
+          // Also check for due reminders immediately (catches "remind now" scenarios)
+          checkReminders();
         },
       )
       .subscribe();
