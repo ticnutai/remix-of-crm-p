@@ -309,46 +309,46 @@ export function useReminders() {
         .eq("is_dismissed", false)
         .lte("remind_at", now);
 
-    if (!error && data && data.length > 0) {
-      const newReminders = data as Reminder[];
+      if (!error && data && data.length > 0) {
+        const newReminders = data as Reminder[];
 
-      // Show notifications and mark as sent
-      for (const reminder of newReminders) {
-        // Play sound for ALL reminder types
-        playNotificationSound();
+        // Show notifications and mark as sent
+        for (const reminder of newReminders) {
+          // Play sound for ALL reminder types
+          playNotificationSound();
 
-        // Show desktop push notification for all types
-        showDesktopNotification(
-          `⏰ ${reminder.title}`,
-          reminder.message || "הגיע הזמן!",
-        );
+          // Show desktop push notification for all types
+          showDesktopNotification(
+            `⏰ ${reminder.title}`,
+            reminder.message || "הגיע הזמן!",
+          );
 
-        if (reminder.reminder_type === "voice") {
-          speakReminder(reminder);
+          if (reminder.reminder_type === "voice") {
+            speakReminder(reminder);
+          }
+
+          if (reminder.reminder_type === "email" && user.email) {
+            await sendEmailReminder(reminder, user.email);
+          }
+
+          // Show toast for all types
+          toast({
+            title: "⏰ " + reminder.title,
+            description: reminder.message || "הגיע הזמן!",
+            duration: 10000,
+          });
+
+          // Mark as sent
+          await supabase
+            .from("reminders")
+            .update({ is_sent: true })
+            .eq("id", reminder.id);
         }
 
-        if (reminder.reminder_type === "email" && user.email) {
-          await sendEmailReminder(reminder, user.email);
-        }
-
-        // Show toast for all types
-        toast({
-          title: "⏰ " + reminder.title,
-          description: reminder.message || "הגיע הזמן!",
-          duration: 10000,
-        });
-
-        // Mark as sent
-        await supabase
-          .from("reminders")
-          .update({ is_sent: true })
-          .eq("id", reminder.id);
+        // Add to active reminders for popup display
+        setActiveReminders((prev) => [...prev, ...newReminders]);
+        await fetchReminders();
       }
-
-      // Add to active reminders for popup display
-      setActiveReminders((prev) => [...prev, ...newReminders]);
-      await fetchReminders();
-    }
     } finally {
       _checkInProgress = false;
     }
