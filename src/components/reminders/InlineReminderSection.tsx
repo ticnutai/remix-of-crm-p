@@ -360,8 +360,8 @@ export function InlineReminderSection({
     <div
       className="space-y-3 rounded-lg p-3"
       style={{
-        background: `${sidebarColors.navyLight}30`,
-        border: `1px solid ${sidebarColors.gold}30`,
+        background: `${sidebarColors.navyLight}55`,
+        border: `1px solid ${sidebarColors.gold}50`,
       }}
     >
       {/* Header */}
@@ -427,10 +427,10 @@ export function InlineReminderSection({
                   onClick={() => { setQuickPreset(preset.minutes); setReminderTime(""); setManualMinutes(""); }}
                   className={`px-2 py-1 text-[10px] rounded-md border transition-colors ${
                     quickPreset === preset.minutes
-                      ? "border-amber-500 bg-amber-500/20 text-amber-300"
-                      : "border-transparent text-gray-400 hover:text-gray-200"
+                      ? "border-amber-400 bg-amber-500/20 text-amber-300"
+                      : "border-amber-700/50 text-amber-200 hover:border-amber-500 hover:text-amber-100"
                   }`}
-                  style={{ background: quickPreset === preset.minutes ? undefined : `${sidebarColors.navyLight}50` }}
+                  style={{ background: quickPreset === preset.minutes ? undefined : `${sidebarColors.navyLight}80` }}
                 >
                   {preset.label}
                 </button>
@@ -566,13 +566,13 @@ export function InlineReminderSection({
               onClick={() => toggleMethod(method.value)}
               className={`px-2 py-1 text-[10px] rounded-md border transition-colors flex items-center gap-1 ${
                 selectedMethods.includes(method.value)
-                  ? "border-amber-500 bg-amber-500/20 text-amber-300"
-                  : "border-transparent text-gray-400 hover:text-gray-200"
+                  ? "border-amber-400 bg-amber-500/20 text-amber-300"
+                  : "border-amber-700/50 text-amber-200 hover:border-amber-500 hover:text-amber-100"
               }`}
               style={{
                 background: selectedMethods.includes(method.value)
                   ? undefined
-                  : `${sidebarColors.navyLight}50`,
+                  : `${sidebarColors.navyLight}80`,
               }}
             >
               <span>{method.emoji}</span>
