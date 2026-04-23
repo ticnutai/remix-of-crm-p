@@ -18,8 +18,8 @@ interface HistoryState {
 
 type HistoryReducerAction = 
   | { type: 'PUSH'; action: HistoryAction }
-  | { type: 'UNDO' }
-  | { type: 'REDO' }
+  | { type: 'UNDO_MOVE' }
+  | { type: 'REDO_MOVE' }
   | { type: 'CLEAR' };
 
 const initialState: HistoryState = {
@@ -42,21 +42,19 @@ function historyReducer(state: HistoryState, action: HistoryReducerAction): Hist
         future: [], // Clear future on new action
       };
     }
-    case 'UNDO': {
+    case 'UNDO_MOVE': {
       if (state.past.length === 0) return state;
       const lastAction = state.past.at(-1);
       if (!lastAction) return state;
-      lastAction.undo();
       return {
         ...state,
         past: state.past.slice(0, -1),
         future: [lastAction, ...state.future],
       };
     }
-    case 'REDO': {
+    case 'REDO_MOVE': {
       if (state.future.length === 0) return state;
       const nextAction = state.future[0];
-      nextAction.redo();
       return {
         ...state,
         past: [...state.past, nextAction],
@@ -97,8 +95,19 @@ export function UndoRedoProvider({ children }: Readonly<{ children: ReactNode }>
     });
   }, []);
 
-  const undo = useCallback(() => dispatch({ type: 'UNDO' }), []);
-  const redo = useCallback(() => dispatch({ type: 'REDO' }), []);
+  const undo = useCallback(async () => {
+    const lastAction = state.past.at(-1);
+    if (!lastAction) return;
+    dispatch({ type: 'UNDO_MOVE' });
+    try { await lastAction.undo(); } catch (e) { console.error('Undo error:', e); }
+  }, [state.past]);
+
+  const redo = useCallback(async () => {
+    const nextAction = state.future[0];
+    if (!nextAction) return;
+    dispatch({ type: 'REDO_MOVE' });
+    try { await nextAction.redo(); } catch (e) { console.error('Redo error:', e); }
+  }, [state.future]);
   const clearHistory = useCallback(() => dispatch({ type: 'CLEAR' }), []);
 
   // Global keyboard shortcuts for Ctrl+Z and Ctrl+Y
@@ -113,23 +122,19 @@ export function UndoRedoProvider({ children }: Readonly<{ children: ReactNode }>
       // Ctrl+Z or Cmd+Z for Undo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (state.past.length > 0) {
-          dispatch({ type: 'UNDO' });
-        }
+        undo();
       }
 
       // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z for Redo
       if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
-        if (state.future.length > 0) {
-          dispatch({ type: 'REDO' });
-        }
+        redo();
       }
     };
 
     globalThis.addEventListener('keydown', handleKeyDown);
     return () => globalThis.removeEventListener('keydown', handleKeyDown);
-  }, [state.past.length, state.future.length]);
+  }, [undo, redo]);
 
   const contextValue = useMemo(() => ({
     canUndo: state.past.length > 0,

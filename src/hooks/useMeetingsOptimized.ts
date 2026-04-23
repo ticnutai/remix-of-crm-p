@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { toast } from "sonner";
 import { startOfDay, endOfDay, startOfWeek, endOfWeek } from "date-fns";
 import { createOfflineMutation } from "@/lib/offlineQueryUtils";
@@ -119,6 +120,7 @@ async function fetchWeekMeetings(): Promise<Meeting[]> {
 export function useMeetingsOptimized() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { pushAction } = useUndoRedo();
 
   // Main meetings query
   const {
@@ -188,6 +190,19 @@ export function useMeetingsOptimized() {
     },
     onSuccess: (data) => {
       toast.success(`פגישה נוצרה: ${data.title}`);
+      pushAction({
+        type: 'create_meeting',
+        description: `יצירת פגישה: ${data.title}`,
+        undo: async () => {
+          await supabase.from('meetings').delete().eq('id', data.id);
+          queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+        },
+        redo: async () => {
+          const { client, project, ...meetingData } = data as Meeting & { client?: unknown; project?: unknown };
+          await supabase.from('meetings').insert(meetingData);
+          queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+        },
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
@@ -221,6 +236,7 @@ export function useMeetingsOptimized() {
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings =
         queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
+      const previousMeeting = previousMeetings?.find(m => m.id === id);
 
       queryClient.setQueryData<Meeting[]>(MEETINGS_KEY, (old = []) =>
         old
@@ -236,7 +252,7 @@ export function useMeetingsOptimized() {
           ),
       );
 
-      return { previousMeetings };
+      return { previousMeetings, previousMeeting };
     },
     onError: (_err, _vars, context) => {
       if (context?.previousMeetings) {
@@ -244,8 +260,24 @@ export function useMeetingsOptimized() {
       }
       toast.error("שגיאה בעדכון הפגישה");
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id, updates }, context) => {
       toast.success("הפגישה עודכנה");
+      if (context?.previousMeeting) {
+        const prev = context.previousMeeting;
+        const revert = { title: prev.title, description: prev.description, start_time: prev.start_time, end_time: prev.end_time, location: prev.location, meeting_type: prev.meeting_type, status: prev.status, client_id: prev.client_id, project_id: prev.project_id, is_private: prev.is_private };
+        pushAction({
+          type: 'update_meeting',
+          description: `עדכון פגישה: ${prev.title}`,
+          undo: async () => {
+            await supabase.from('meetings').update(revert).eq('id', id);
+            queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+          },
+          redo: async () => {
+            await supabase.from('meetings').update(updates).eq('id', id);
+            queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+          },
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
@@ -270,15 +302,17 @@ export function useMeetingsOptimized() {
       },
     ),
     onMutate: async (id) => {
+      const realId = typeof id === 'string' ? id : (id as { id: string }).id;
       await queryClient.cancelQueries({ queryKey: MEETINGS_KEY });
       const previousMeetings =
         queryClient.getQueryData<Meeting[]>(MEETINGS_KEY);
+      const deletedMeeting = previousMeetings?.find(m => m.id === realId);
 
       queryClient.setQueryData<Meeting[]>(MEETINGS_KEY, (old = []) =>
-        old.filter((meeting) => meeting.id !== id),
+        old.filter((meeting) => meeting.id !== realId),
       );
 
-      return { previousMeetings };
+      return { previousMeetings, deletedMeeting };
     },
     onError: (_err, _id, context) => {
       if (context?.previousMeetings) {
@@ -286,8 +320,24 @@ export function useMeetingsOptimized() {
       }
       toast.error("שגיאה במחיקת הפגישה");
     },
-    onSuccess: () => {
+    onSuccess: (_data, _id, context) => {
       toast.success("הפגישה נמחקה");
+      if (context?.deletedMeeting) {
+        const meeting = context.deletedMeeting;
+        const { client, project, ...meetingData } = meeting as Meeting & { client?: unknown; project?: unknown };
+        pushAction({
+          type: 'delete_meeting',
+          description: `מחיקת פגישה: ${meeting.title}`,
+          undo: async () => {
+            await supabase.from('meetings').insert(meetingData);
+            queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+          },
+          redo: async () => {
+            await supabase.from('meetings').delete().eq('id', meeting.id);
+            queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
+          },
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });

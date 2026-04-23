@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useUndoRedo } from "@/hooks/useUndoRedo";
 import { toast } from "sonner";
 import {
   createOfflineQueryFn,
@@ -102,6 +103,7 @@ async function fetchTodayTasks(): Promise<Task[]> {
 export function useTasksOptimized() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { pushAction } = useUndoRedo();
 
   // Main tasks query
   const {
@@ -173,6 +175,19 @@ export function useTasksOptimized() {
     },
     onSuccess: (data) => {
       toast.success(`משימה נוצרה: ${data.title}`);
+      pushAction({
+        type: 'create_task',
+        description: `יצירת משימה: ${data.title}`,
+        undo: async () => {
+          await supabase.from('tasks').delete().eq('id', data.id);
+          queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+        },
+        redo: async () => {
+          const { client, project, assignee, creator, ...taskData } = data as Task & { client?: unknown; project?: unknown; assignee?: unknown; creator?: unknown };
+          await supabase.from('tasks').insert(taskData);
+          queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+        },
+      });
     },
     onSettled: () => {
       // Always refetch to sync with server
@@ -206,6 +221,7 @@ export function useTasksOptimized() {
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY);
+      const previousTask = previousTasks?.find(t => t.id === id);
 
       // Optimistically update
       queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) =>
@@ -226,7 +242,7 @@ export function useTasksOptimized() {
         ),
       );
 
-      return { previousTasks };
+      return { previousTasks, previousTask };
     },
     onError: (_err, _vars, context) => {
       if (context?.previousTasks) {
@@ -234,8 +250,24 @@ export function useTasksOptimized() {
       }
       toast.error("שגיאה בעדכון המשימה");
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id, updates }, context) => {
       toast.success("המשימה עודכנה");
+      if (context?.previousTask) {
+        const prev = context.previousTask;
+        const revert = { title: prev.title, description: prev.description, status: prev.status, priority: prev.priority, due_date: prev.due_date, assigned_to: prev.assigned_to, client_id: prev.client_id, project_id: prev.project_id, tags: prev.tags, is_private: prev.is_private };
+        pushAction({
+          type: 'update_task',
+          description: `עדכון משימה: ${prev.title}`,
+          undo: async () => {
+            await supabase.from('tasks').update(revert).eq('id', id);
+            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+          },
+          redo: async () => {
+            await supabase.from('tasks').update(updates).eq('id', id);
+            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+          },
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
@@ -258,15 +290,17 @@ export function useTasksOptimized() {
       },
     ),
     onMutate: async (id) => {
+      const realId = typeof id === 'string' ? id : (id as { id: string }).id;
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const previousTasks = queryClient.getQueryData<Task[]>(TASKS_QUERY_KEY);
+      const deletedTask = previousTasks?.find(t => t.id === realId);
 
       // Optimistically remove
       queryClient.setQueryData<Task[]>(TASKS_QUERY_KEY, (old = []) =>
-        old.filter((task) => task.id !== id),
+        old.filter((task) => task.id !== realId),
       );
 
-      return { previousTasks };
+      return { previousTasks, deletedTask };
     },
     onError: (_err, _id, context) => {
       if (context?.previousTasks) {
@@ -274,8 +308,24 @@ export function useTasksOptimized() {
       }
       toast.error("שגיאה במחיקת המשימה");
     },
-    onSuccess: () => {
+    onSuccess: (_data, _id, context) => {
       toast.success("המשימה נמחקה");
+      if (context?.deletedTask) {
+        const task = context.deletedTask;
+        const { client, project, assignee, creator, ...taskData } = task as Task & { client?: unknown; project?: unknown; assignee?: unknown; creator?: unknown };
+        pushAction({
+          type: 'delete_task',
+          description: `מחיקת משימה: ${task.title}`,
+          undo: async () => {
+            await supabase.from('tasks').insert(taskData);
+            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+          },
+          redo: async () => {
+            await supabase.from('tasks').delete().eq('id', task.id);
+            queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+          },
+        });
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
