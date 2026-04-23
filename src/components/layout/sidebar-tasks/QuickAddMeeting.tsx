@@ -41,6 +41,8 @@ import {
   Search,
   RefreshCw,
   Keyboard,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { format, setHours, setMinutes } from "date-fns";
 import { he } from "date-fns/locale";
@@ -168,6 +170,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [endTime, setEndTime] = useState("10:00");
     const [location, setLocation] = useState("");
     const [clientIds, setClientIds] = useState<string[]>([]);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
@@ -203,6 +206,13 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       }
     }, [open, initialData]);
 
+    // Hydrate is_private from editing meeting
+    useEffect(() => {
+      if (open && editingMeeting) {
+        setIsPrivate(Boolean((editingMeeting as any).is_private));
+      }
+    }, [open, editingMeeting]);
+
     const resetForm = () => {
       setTitle("");
       setDescription("");
@@ -213,6 +223,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setLocation("");
       setClientIds([]);
       setReminderConfig(null);
+      setIsPrivate(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -236,6 +247,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
           location: location.trim() || null,
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "scheduled",
+          is_private: isPrivate,
         });
 
         const meetingId = editingMeeting?.id ?? (createdMeeting as any)?.id;
@@ -470,6 +482,21 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
               >
                 {editingMeeting ? "עריכת פגישה" : "פגישה חדשה"}
               </DialogTitle>
+              <button
+                type="button"
+                onClick={() => setIsPrivate((p) => !p)}
+                title={isPrivate ? "פרטי — רק את/ה רואה פגישה זו (גם אדמין לא)" : "לחץ כדי לסמן כפרטי"}
+                aria-pressed={isPrivate}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all"
+                style={{
+                  background: isPrivate ? `${sidebarColors.gold}25` : "transparent",
+                  borderColor: isPrivate ? sidebarColors.gold : `${sidebarColors.gold}40`,
+                  color: isPrivate ? sidebarColors.gold : sidebarColors.goldLight,
+                }}
+              >
+                {isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                <span>פרטי</span>
+              </button>
               <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
             </div>
           </DialogHeader>

@@ -29,6 +29,8 @@ import {
   UserPlus,
   X,
   Search,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -120,6 +122,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [priority, setPriority] = useState<string>("medium");
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
     const [clientIds, setClientIds] = useState<string[]>([]);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
@@ -141,6 +144,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setPriority("medium");
       setDueDate(undefined);
       setClientIds([]);
+      setIsPrivate(false);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -156,6 +160,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           due_date: dueDate ? dueDate.toISOString() : null,
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "pending",
+          is_private: isPrivate,
         });
         resetForm();
         onOpenChange(false);
@@ -212,6 +217,21 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               >
                 משימה חדשה
               </DialogTitle>
+              <button
+                type="button"
+                onClick={() => setIsPrivate((p) => !p)}
+                title={isPrivate ? "פרטי — רק את/ה רואה משימה זו (גם אדמין לא)" : "לחץ כדי לסמן כפרטי"}
+                aria-pressed={isPrivate}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all"
+                style={{
+                  background: isPrivate ? `${sidebarColors.gold}25` : "transparent",
+                  borderColor: isPrivate ? sidebarColors.gold : `${sidebarColors.gold}40`,
+                  color: isPrivate ? sidebarColors.gold : sidebarColors.goldLight,
+                }}
+              >
+                {isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                <span>{isPrivate ? "פרטי" : "פרטי"}</span>
+              </button>
               <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
             </div>
           </DialogHeader>

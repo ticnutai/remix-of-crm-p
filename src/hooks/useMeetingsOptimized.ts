@@ -21,6 +21,7 @@ export interface Meeting {
   client_id: string | null;
   project_id: string | null;
   created_by: string;
+  is_private?: boolean;
   created_at: string;
   updated_at: string;
   client?: { name: string } | null;
@@ -37,6 +38,7 @@ export interface MeetingInsert {
   status?: string;
   client_id?: string | null;
   project_id?: string | null;
+  is_private?: boolean;
 }
 
 // Query keys

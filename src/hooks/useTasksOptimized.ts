@@ -24,6 +24,7 @@ export interface Task {
   client_id: string | null;
   project_id: string | null;
   tags: string[];
+  is_private?: boolean;
   created_at: string;
   updated_at: string;
   client?: { name: string } | null;
@@ -42,6 +43,7 @@ export interface TaskInsert {
   client_id?: string | null;
   project_id?: string | null;
   tags?: string[];
+  is_private?: boolean;
 }
 
 // Query keys for cache management
