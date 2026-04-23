@@ -46,8 +46,9 @@ const MEETINGS_KEY = ["meetings"] as const;
 const MEETINGS_TODAY_KEY = ["meetings", "today"] as const;
 const MEETINGS_WEEK_KEY = ["meetings", "week"] as const;
 
-// Fetch functions (all scoped to the current user via created_by)
-async function fetchMeetings(userId: string): Promise<Meeting[]> {
+// Fetch functions — no client-side user filter; RLS handles visibility
+// (admins see all non-private rows; others see own rows only)
+async function fetchMeetings(): Promise<Meeting[]> {
   const { data, error } = await supabase
     .from("meetings")
     .select(
@@ -57,7 +58,6 @@ async function fetchMeetings(userId: string): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
-    .eq("created_by", userId)
     .order("start_time", { ascending: true });
 
   if (error) {
@@ -67,7 +67,7 @@ async function fetchMeetings(userId: string): Promise<Meeting[]> {
   return data as Meeting[];
 }
 
-async function fetchTodayMeetings(userId: string): Promise<Meeting[]> {
+async function fetchTodayMeetings(): Promise<Meeting[]> {
   const today = new Date();
 
   const { data, error } = await supabase
@@ -79,7 +79,6 @@ async function fetchTodayMeetings(userId: string): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
-    .eq("created_by", userId)
     .gte("start_time", startOfDay(today).toISOString())
     .lte("start_time", endOfDay(today).toISOString())
     .neq("status", "cancelled")
@@ -92,7 +91,7 @@ async function fetchTodayMeetings(userId: string): Promise<Meeting[]> {
   return data as Meeting[];
 }
 
-async function fetchWeekMeetings(userId: string): Promise<Meeting[]> {
+async function fetchWeekMeetings(): Promise<Meeting[]> {
   const today = new Date();
 
   const { data, error } = await supabase
@@ -104,7 +103,6 @@ async function fetchWeekMeetings(userId: string): Promise<Meeting[]> {
       project:projects(name)
     `,
     )
-    .eq("created_by", userId)
     .gte("start_time", startOfWeek(today, { weekStartsOn: 0 }).toISOString())
     .lte("start_time", endOfWeek(today, { weekStartsOn: 0 }).toISOString())
     .neq("status", "cancelled")
@@ -130,7 +128,7 @@ export function useMeetingsOptimized() {
     refetch,
   } = useQuery({
     queryKey: [...MEETINGS_KEY, user?.id],
-    queryFn: () => fetchMeetings(user!.id),
+    queryFn: () => fetchMeetings(),
     enabled: !!user,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -350,7 +348,7 @@ export function useMeetingsOptimized() {
     if (!user) return;
     queryClient.prefetchQuery({
       queryKey: [...MEETINGS_TODAY_KEY, user.id],
-      queryFn: () => fetchTodayMeetings(user.id),
+      queryFn: () => fetchTodayMeetings(),
     });
   }, [queryClient, user]);
 
@@ -358,7 +356,7 @@ export function useMeetingsOptimized() {
     if (!user) return;
     queryClient.prefetchQuery({
       queryKey: [...MEETINGS_WEEK_KEY, user.id],
-      queryFn: () => fetchWeekMeetings(user.id),
+      queryFn: () => fetchWeekMeetings(),
     });
   }, [queryClient, user]);
 
@@ -395,7 +393,7 @@ export function useTodayMeetings() {
 
   return useQuery({
     queryKey: [...MEETINGS_TODAY_KEY, user?.id],
-    queryFn: () => fetchTodayMeetings(user!.id),
+    queryFn: () => fetchTodayMeetings(),
     enabled: !!user,
     staleTime: 1 * 60 * 1000,
   });
@@ -406,7 +404,7 @@ export function useWeekMeetings() {
 
   return useQuery({
     queryKey: [...MEETINGS_WEEK_KEY, user?.id],
-    queryFn: () => fetchWeekMeetings(user!.id),
+    queryFn: () => fetchWeekMeetings(),
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });

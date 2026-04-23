@@ -96,10 +96,11 @@ export function useReminders() {
     if (!user) return;
 
     setLoading(true);
+    // No client-side user_id filter — RLS handles row visibility.
+    // Admins see all non-private reminders; regular users see only their own.
     const { data, error } = await supabase
       .from("reminders")
       .select("*")
-      .eq("user_id", user.id)
       .order("remind_at", { ascending: true });
 
     if (error) {
