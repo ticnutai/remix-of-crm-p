@@ -8,6 +8,7 @@ import {
   requestNotificationPermission as requestDesktopPermission,
   showDesktopNotification,
 } from "@/services/chatNotifications";
+import { openWhatsApp } from "@/utils/whatsapp";
 
 // Activity logging helper function (no hooks)
 const logToActivityLog = async (
@@ -43,6 +44,8 @@ export interface Reminder {
   entity_id: string | null;
   user_id: string;
   created_at: string;
+  recipient_phone?: string | null;
+  recipient_email?: string | null;
 }
 
 export interface ReminderInsert {
@@ -330,6 +333,12 @@ export function useReminders() {
 
           if (reminder.reminder_type === "email" && user.email) {
             await sendEmailReminder(reminder, user.email);
+          }
+
+          if (reminder.reminder_type === "whatsapp") {
+            const phone = reminder.recipient_phone || "";
+            const text = `⏰ ${reminder.title}${reminder.message ? `\n${reminder.message}` : ""}`;
+            openWhatsApp(phone, text);
           }
 
           // Show toast for all types

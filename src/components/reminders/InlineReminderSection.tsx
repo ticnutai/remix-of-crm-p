@@ -98,6 +98,7 @@ export interface InlineReminderConfig {
   reminder_type: string;
   is_recurring?: boolean;
   recurring_interval?: string;
+  recipient_phone?: string;
 }
 
 function loadPresets(): ReminderPreset[] {
@@ -130,6 +131,7 @@ export function InlineReminderSection({
   const [recurringInterval, setRecurringInterval] = useState("none");
   const [recurringCount, setRecurringCount] = useState(1);
   const [isCreating, setIsCreating] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
 
   // ── manual "X minutes before" input ─────────────────────────────────────
   const [manualMinutes, setManualMinutes] = useState<string>("");
@@ -229,6 +231,10 @@ export function InlineReminderSection({
       toast.error("יש לבחור זמן תזכורת ולהזין כותרת");
       return;
     }
+    if (selectedMethods.includes("whatsapp") && !whatsappPhone.trim()) {
+      toast.error("יש להזין מספר טלפון לוואטסאפ");
+      return;
+    }
 
     setIsCreating(true);
     try {
@@ -238,6 +244,7 @@ export function InlineReminderSection({
         remind_at: remindAt.toISOString(),
         reminder_type: selectedMethods[0] || "browser",
         entity_type: entityType,
+        recipient_phone: whatsappPhone.trim() || undefined,
       } as any);
       toast.success("תזכורת נוצרה בהצלחה! 🔔");
     } catch {
@@ -271,6 +278,7 @@ export function InlineReminderSection({
         isRecurring && recurringInterval !== "none"
           ? recurringInterval
           : undefined,
+      recipient_phone: whatsappPhone.trim() || undefined,
     });
   }, [
     submitMode,
@@ -278,6 +286,7 @@ export function InlineReminderSection({
     expanded,
     entityTitle,
     entityDescription,
+    whatsappPhone,
     selectedMethods,
     isRecurring,
     recurringInterval,
@@ -572,6 +581,27 @@ export function InlineReminderSection({
           ))}
         </div>
       </div>
+
+      {/* WhatsApp phone input (shown only when whatsapp method is selected) */}
+      {selectedMethods.includes("whatsapp") && (
+        <div>
+          <Label className="text-[11px] mb-1 block" style={{ color: sidebarColors.goldLight }}>
+            📱 מספר וואטסאפ לשליחה
+          </Label>
+          <Input
+            type="tel"
+            dir="ltr"
+            placeholder="050-0000000"
+            value={whatsappPhone}
+            onChange={(e) => setWhatsappPhone(e.target.value)}
+            className="text-xs h-8"
+            style={brandedInputStyle}
+          />
+          <p className="text-[10px] mt-0.5" style={{ color: `${sidebarColors.goldLight}80` }}>
+            כשתגיע שעת התזכורת, ייפתח חלון וואטסאפ עם ההודעה
+          </p>
+        </div>
+      )}
 
       {/* Ringtone selector */}
       <div className="flex items-center gap-2">
