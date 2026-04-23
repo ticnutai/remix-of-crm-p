@@ -3,7 +3,80 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+
+// Twilio credentials loaded from platform_settings table (set by admin in Settings page)
+let _twilioAccountSid: string | null = null;
+let _twilioAuthToken: string | null = null;
+let _twilioWhatsAppFrom: string | null = null;
+
+async function loadTwilioCredentials(db: ReturnType<typeof createClient>) {
+  if (_twilioAccountSid) return; // already loaded
+  try {
+    const { data } = await db
+      .from("platform_settings")
+      .select("key, value")
+      .in("key", [
+        "twilio:TWILIO_ACCOUNT_SID",
+        "twilio:TWILIO_AUTH_TOKEN",
+        "twilio:TWILIO_WHATSAPP_NUMBER",
+      ]);
+    if (data) {
+      data.forEach((row: { key: string; value: string }) => {
+        if (row.key === "twilio:TWILIO_ACCOUNT_SID") _twilioAccountSid = row.value;
+        if (row.key === "twilio:TWILIO_AUTH_TOKEN") _twilioAuthToken = row.value;
+        if (row.key === "twilio:TWILIO_WHATSAPP_NUMBER") _twilioWhatsAppFrom = row.value;
+      });
+    }
+  } catch (e) {
+    console.error("Failed to load Twilio credentials:", e);
+  }
+}
+
+function formatPhoneForWhatsApp(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("972")) return digits;
+  if (digits.startsWith("0")) return "972" + digits.slice(1);
+  return digits;
+}
+
+async function sendWhatsApp(to: string, body: string): Promise<boolean> {
+  if (!_twilioAccountSid || !_twilioAuthToken || !_twilioWhatsAppFrom) {
+    console.log("Twilio not configured, skipping WhatsApp");
+    return false;
+  }
+  const phone = formatPhoneForWhatsApp(to);
+  if (!phone) {
+    console.log("WhatsApp: no phone number provided");
+    return false;
+  }
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${_twilioAccountSid}/Messages.json`;
+    const params = new URLSearchParams({
+      From: `whatsapp:${_twilioWhatsAppFrom}`,
+      To: `whatsapp:+${phone}`,
+      Body: body,
+    });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: "Basic " + btoa(`${_twilioAccountSid}:${_twilioAuthToken}`),
+      },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Twilio WhatsApp error:", err);
+      return false;
+    }
+    console.log("WhatsApp sent to:", phone);
+    return true;
+  } catch (e) {
+    console.error("sendWhatsApp error:", e);
+    return false;
+  }
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +85,9 @@ const corsHeaders = {
 };
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// Load Twilio creds on startup
+await loadTwilioCredentials(supabase);
 
 async function sendEmail(
   to: string,
@@ -108,6 +184,7 @@ const handler = async (req: Request): Promise<Response> => {
     const results = {
       processed: 0,
       emailsSent: 0,
+      whatsappSent: 0,
       errors: 0,
     };
 
@@ -170,6 +247,18 @@ const handler = async (req: Request): Promise<Response> => {
                 results.emailsSent++;
               }
             }
+          }
+
+          // Send WhatsApp via Twilio if reminder_type includes whatsapp
+          if (
+            reminderTypes.includes("whatsapp") &&
+            reminder.recipient_phone
+          ) {
+            const waBody = `\u23f0 ${reminder.title}${
+              reminder.message ? `\n${reminder.message}` : ""
+            }`;
+            const sent = await sendWhatsApp(reminder.recipient_phone, waBody);
+            if (sent) results.whatsappSent++;
           }
 
           // Mark reminder as sent
@@ -239,7 +328,7 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Processed ${results.processed} reminders, sent ${results.emailsSent} emails`,
+        message: `Processed ${results.processed} reminders, sent ${results.emailsSent} emails, ${results.whatsappSent} WhatsApp`,
         results,
       }),
       {

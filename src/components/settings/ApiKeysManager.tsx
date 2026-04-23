@@ -55,6 +55,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ServiceConfig {
   id: string;
@@ -378,40 +379,89 @@ export function ApiKeysManager({ isUnlocked }: ApiKeysManagerProps) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Load saved API keys from localStorage (in real app, would be encrypted on server)
+  // Load saved API keys from Supabase platform_settings (falls back to localStorage)
   useEffect(() => {
     const envValues = getEnvValues();
-    const saved = localStorage.getItem('crm_api_keys');
     
-    if (saved) {
+    const loadFromSupabase = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        // Merge with env values
-        const merged = parsed.map((entry: ApiKeyEntry) => {
-          if (entry.serviceId === 'supabase') {
+        const { data: rows } = await supabase
+          .from('platform_settings')
+          .select('key, value');
+        
+        if (rows && rows.length > 0) {
+          // Group by serviceId prefix: "twilio:TWILIO_ACCOUNT_SID"
+          const serverValues: Record<string, Record<string, string>> = {};
+          rows.forEach((row: { key: string; value: string }) => {
+            const [serviceId, ...rest] = row.key.split(':');
+            const fieldKey = rest.join(':');
+            if (!serverValues[serviceId]) serverValues[serviceId] = {};
+            serverValues[serviceId][fieldKey] = row.value;
+          });
+          
+          const initialKeys: ApiKeyEntry[] = SERVICES.map(service => {
+            const hasExisting = service.fields.some(f => EXISTING_SECRETS.has(f.key));
+            const isPreconfigured = PRECONFIGURED_SERVICES[service.id]?.configured;
+            const serviceVals = serverValues[service.id] || {};
+            const mergedVals = { ...serviceVals };
+            if (service.id === 'supabase') Object.assign(mergedVals, envValues);
+            
             return {
-              ...entry,
-              values: { ...entry.values, ...envValues },
-              isConfigured: true,
+              serviceId: service.id,
+              values: mergedVals,
+              isConfigured: hasExisting || isPreconfigured || Object.keys(mergedVals).length > 0,
+              lastUpdated: (hasExisting || isPreconfigured || Object.keys(serverValues[service.id] || {}).length > 0)
+                ? new Date().toISOString() : undefined,
             };
-          }
-          // Check if pre-configured in Supabase
-          if (PRECONFIGURED_SERVICES[entry.serviceId]?.configured) {
-            return {
-              ...entry,
-              isConfigured: true,
-            };
-          }
-          return entry;
-        });
-        setApiKeys(merged);
+          });
+          setApiKeys(initialKeys);
+          return;
+        }
       } catch (e) {
-        console.error('Failed to parse saved API keys');
+        console.error('Failed to load platform_settings from Supabase:', e);
+      }
+      
+      // Fallback: localStorage — and migrate to Supabase
+      const saved = localStorage.getItem('crm_api_keys');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          const merged = parsed.map((entry: ApiKeyEntry) => {
+            if (entry.serviceId === 'supabase') {
+              return { ...entry, values: { ...entry.values, ...envValues }, isConfigured: true };
+            }
+            if (PRECONFIGURED_SERVICES[entry.serviceId]?.configured) {
+              return { ...entry, isConfigured: true };
+            }
+            return entry;
+          });
+          setApiKeys(merged);
+          
+          // Migrate non-empty, non-system entries to Supabase
+          const upserts: { key: string; value: string }[] = [];
+          parsed.forEach((entry: ApiKeyEntry) => {
+            if (entry.serviceId === 'supabase') return; // skip system keys
+            Object.entries(entry.values || {}).forEach(([fieldKey, value]) => {
+              if (value) upserts.push({ key: `${entry.serviceId}:${fieldKey}`, value: value as string });
+            });
+          });
+          if (upserts.length > 0) {
+            supabase.from('platform_settings').upsert(upserts, { onConflict: 'key' })
+              .then(({ error }) => {
+                if (error) console.error('Migration to Supabase failed:', error);
+                else console.log(`Migrated ${upserts.length} API keys to Supabase`);
+              });
+          }
+        } catch (e) {
+          console.error('Failed to parse saved API keys');
+          initializeApiKeys(envValues);
+        }
+      } else {
         initializeApiKeys(envValues);
       }
-    } else {
-      initializeApiKeys(envValues);
-    }
+    };
+    
+    loadFromSupabase();
   }, []);
 
   const initializeApiKeys = (envValues: Record<string, string>) => {
@@ -480,70 +530,68 @@ export function ApiKeysManager({ isUnlocked }: ApiKeysManagerProps) {
     
     setIsSaving(true);
     try {
-      // In a real app, this would call an edge function to securely store the keys
+      // Save to Supabase platform_settings with key format "serviceId:FIELD_KEY"
+      const upserts = Object.entries(editValues)
+        .filter(([, v]) => v)
+        .map(([fieldKey, value]) => ({
+          key: `${editingService.id}:${fieldKey}`,
+          value,
+          updated_at: new Date().toISOString(),
+        }));
+      
+      if (upserts.length > 0) {
+        const { error } = await supabase
+          .from('platform_settings')
+          .upsert(upserts, { onConflict: 'key' });
+        
+        if (error) throw error;
+      }
+      
       const updatedKeys = apiKeys.map(k => {
         if (k.serviceId === editingService.id) {
-          return {
-            ...k,
-            values: editValues,
-            isConfigured: true,
-            lastUpdated: new Date().toISOString(),
-          };
+          return { ...k, values: editValues, isConfigured: true, lastUpdated: new Date().toISOString() };
         }
         return k;
       });
-
       if (!updatedKeys.find(k => k.serviceId === editingService.id)) {
-        updatedKeys.push({
-          serviceId: editingService.id,
-          values: editValues,
-          isConfigured: true,
-          lastUpdated: new Date().toISOString(),
-        });
+        updatedKeys.push({ serviceId: editingService.id, values: editValues, isConfigured: true, lastUpdated: new Date().toISOString() });
       }
-
       setApiKeys(updatedKeys);
       localStorage.setItem('crm_api_keys', JSON.stringify(updatedKeys));
       
-      toast({
-        title: 'המפתחות נשמרו',
-        description: `הגדרות ${editingService.name} עודכנו בהצלחה`,
-      });
-      
+      toast({ title: 'המפתחות נשמרו', description: `הגדרות ${editingService.name} עודכנו בהצלחה` });
       setEditingService(null);
       setEditValues({});
     } catch (error) {
-      toast({
-        title: 'שגיאה',
-        description: 'לא ניתן לשמור את המפתחות',
-        variant: 'destructive',
-      });
+      toast({ title: 'שגיאה', description: 'לא ניתן לשמור את המפתחות', variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDelete = (serviceId: string) => {
+  const handleDelete = async (serviceId: string) => {
     const service = SERVICES.find(s => s.id === serviceId);
+    
+    // Delete from Supabase
+    try {
+      const { error } = await supabase
+        .from('platform_settings')
+        .delete()
+        .like('key', `${serviceId}:%`);
+      if (error) console.error('Failed to delete from platform_settings:', error);
+    } catch (e) {
+      console.error('Delete error:', e);
+    }
+    
     const updatedKeys = apiKeys.map(k => {
       if (k.serviceId === serviceId) {
-        return {
-          ...k,
-          values: {},
-          isConfigured: false,
-          lastUpdated: undefined,
-        };
+        return { ...k, values: {}, isConfigured: false, lastUpdated: undefined };
       }
       return k;
     });
-    
     setApiKeys(updatedKeys);
     localStorage.setItem('crm_api_keys', JSON.stringify(updatedKeys));
-    
-    toast({
-      title: 'המפתחות נמחקו',
-      description: `הגדרות ${service?.name} נמחקו`,
-    });
+    toast({ title: 'המפתחות נמחקו', description: `הגדרות ${service?.name} נמחקו` });
   };
 
   const handleExport = () => {
