@@ -304,7 +304,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setTimeMode(next);
       localStorage.setItem(TIME_MODE_LS_KEY, next);
       // Persist to Supabase (merge into existing ui_preferences)
-      const existing = (preferences?.ui_preferences as Record<string, unknown> | null) ?? {};
+      const existing = ((preferences as unknown as Record<string, unknown>)?.ui_preferences as Record<string, unknown> | null) ?? {};
       saveUserPrefs({ ui_preferences: { ...existing, meeting_time_input_mode: next } } as any);
     };
 
