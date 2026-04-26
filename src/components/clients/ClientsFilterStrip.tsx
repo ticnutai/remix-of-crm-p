@@ -285,24 +285,33 @@ export function ClientsFilterStrip({
           <span className="text-xs font-semibold text-foreground">סינון:</span>
         </div>
 
-        {/* Sort By Filter */}
+        {/* Unified Sort & Date Filter */}
         <Popover open={sortDialogOpen} onOpenChange={setSortDialogOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs"
+              className={cn(
+                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
+                filters.dateFilter !== "all" &&
+                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a]",
+              )}
             >
               <ArrowUpDown className="h-4 w-4" />
               {sortByLabels[filters.sortBy]}
+              {filters.dateFilter !== "all" && (
+                <span className="text-[10px] opacity-80">
+                  · {dateFilterLabels[filters.dateFilter]}
+                </span>
+              )}
               <ChevronDown className="h-3 w-3 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[220px] p-0" dir="rtl" align="end">
+          <PopoverContent className="w-[260px] p-0" dir="rtl" align="end">
             <div className="p-3 border-b">
               <div className="flex flex-row-reverse items-center gap-2">
                 <ArrowUpDown className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">מיין לפי</h3>
+                <h3 className="font-semibold">מיון וסינון תאריכים</h3>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -313,30 +322,66 @@ export function ClientsFilterStrip({
                 </Button>
               </div>
             </div>
-            <div className="p-2 space-y-1">
-              {(
-                Object.entries(sortByLabels) as [
-                  ClientFilterState["sortBy"],
-                  string,
-                ][]
-              ).map(([value, label]) => (
-                <Button
-                  key={value}
-                  variant={filters.sortBy === value ? "default" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => {
-                    onFiltersChange({ ...filters, sortBy: value });
-                    setSortDialogOpen(false);
-                  }}
-                >
-                  {value.includes("date") ? (
-                    <CalendarDays className="h-4 w-4" />
-                  ) : (
-                    <SortAsc className="h-4 w-4" />
-                  )}
-                  {label}
-                </Button>
-              ))}
+
+            {/* Sort options */}
+            <div className="p-2">
+              <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                <SortAsc className="h-3 w-3" />
+                מיין לפי
+              </div>
+              <div className="space-y-1 mt-1">
+                {(
+                  Object.entries(sortByLabels) as [
+                    ClientFilterState["sortBy"],
+                    string,
+                  ][]
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={filters.sortBy === value ? "default" : "ghost"}
+                    size="sm"
+                    className="w-full justify-start gap-2 h-8"
+                    onClick={() => {
+                      onFiltersChange({ ...filters, sortBy: value });
+                    }}
+                  >
+                    {value.includes("date") ? (
+                      <CalendarDays className="h-4 w-4" />
+                    ) : (
+                      <SortAsc className="h-4 w-4" />
+                    )}
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date filter options */}
+            <div className="border-t p-2">
+              <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                סינון לפי תאריך יצירה
+              </div>
+              <div className="grid grid-cols-2 gap-1 mt-1">
+                {Object.entries(dateFilterLabels).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    variant={
+                      filters.dateFilter === value ? "default" : "outline"
+                    }
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      onFiltersChange({
+                        ...filters,
+                        dateFilter: value as ClientFilterState["dateFilter"],
+                      });
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </PopoverContent>
         </Popover>
@@ -780,54 +825,7 @@ export function ClientsFilterStrip({
           </PopoverContent>
         </Popover>
 
-        {/* Date Filter */}
-        <Popover open={dateDialogOpen} onOpenChange={setDateDialogOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
-                filters.dateFilter !== "all" &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
-              )}
-            >
-              <CalendarDays className="h-4 w-4" />
-              {dateFilterLabels[filters.dateFilter]}
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[280px] p-0" dir="rtl" align="end">
-            <div className="p-3 border-b">
-              <div className="flex flex-row-reverse items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">סינון לפי תאריך יצירה</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 ml-auto"
-                  onClick={() => setDateDialogOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="p-3 space-y-2">
-              {Object.entries(dateFilterLabels).map(([value, label]) => (
-                <Button
-                  key={value}
-                  variant={filters.dateFilter === value ? "default" : "outline"}
-                  className="w-full"
-                  onClick={() => {
-                    setDateFilter(value as ClientFilterState["dateFilter"]);
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        {/* Date filter merged into the unified Sort & Date dropdown above */}
 
         {/* Has Reminders Toggle */}
         <Button
