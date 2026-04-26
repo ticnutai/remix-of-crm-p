@@ -825,54 +825,7 @@ export function ClientsFilterStrip({
           </PopoverContent>
         </Popover>
 
-        {/* Date Filter */}
-        <Popover open={dateDialogOpen} onOpenChange={setDateDialogOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "gap-1.5 h-7 bg-white text-[#1e293b] border border-[#d4a843] hover:bg-[#fef9ee] hover:text-[#1e293b] text-xs",
-                filters.dateFilter !== "all" &&
-                  "bg-[#d4a843] text-[#1e293b] border-[#d4a843] hover:bg-[#c49a3a] text-xs",
-              )}
-            >
-              <CalendarDays className="h-4 w-4" />
-              {dateFilterLabels[filters.dateFilter]}
-              <ChevronDown className="h-3 w-3 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[280px] p-0" dir="rtl" align="end">
-            <div className="p-3 border-b">
-              <div className="flex flex-row-reverse items-center gap-2">
-                <CalendarDays className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">סינון לפי תאריך יצירה</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 ml-auto"
-                  onClick={() => setDateDialogOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="p-3 space-y-2">
-              {Object.entries(dateFilterLabels).map(([value, label]) => (
-                <Button
-                  key={value}
-                  variant={filters.dateFilter === value ? "default" : "outline"}
-                  className="w-full"
-                  onClick={() => {
-                    setDateFilter(value as ClientFilterState["dateFilter"]);
-                  }}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+        {/* Date filter merged into the unified Sort & Date dropdown above */}
 
         {/* Has Reminders Toggle */}
         <Button
