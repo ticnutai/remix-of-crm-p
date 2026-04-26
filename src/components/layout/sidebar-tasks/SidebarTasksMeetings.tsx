@@ -19,6 +19,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -404,32 +413,57 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
                   </TabsTrigger>
                 </TabsList>
                 
-                {/* Add button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 rounded-full"
-                      style={{ 
-                        color: sidebarColors.gold,
-                        background: `${sidebarColors.gold}20`,
-                      }}
-                      onClick={() => {
-                        if (activeTab === 'tasks') {
-                          setIsAddTaskOpen(true);
-                        } else {
-                          setIsAddMeetingOpen(true);
-                        }
-                      }}
+                {/* Unified Add menu: Task / Meeting / Reminder */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-full"
+                          style={{
+                            color: sidebarColors.gold,
+                            background: `${sidebarColors.gold}20`,
+                          }}
+                          aria-label="הוסף חדש"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">הוספה מהירה</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuLabel className="text-xs">הוספה מהירה</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => setIsAddTaskOpen(true)}
+                      className="gap-2 cursor-pointer"
                     >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {activeTab === 'tasks' ? 'משימה חדשה' : 'פגישה חדשה'}
-                  </TooltipContent>
-                </Tooltip>
+                      <CheckSquare className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                      <span>משימה חדשה</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setIsAddMeetingOpen(true)}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Calendar className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                      <span>פגישה חדשה</span>
+                    </DropdownMenuItem>
+                    <AddReminderDialog
+                      trigger={
+                        <DropdownMenuItem
+                          onSelect={(e) => e.preventDefault()}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Bell className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                          <span>תזכורת חדשה</span>
+                        </DropdownMenuItem>
+                      }
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               
               {/* Filter row */}
