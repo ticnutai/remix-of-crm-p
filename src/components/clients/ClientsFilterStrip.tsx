@@ -263,9 +263,9 @@ export function ClientsFilterStrip({
   const sortByLabels: Record<ClientFilterState["sortBy"], string> = {
     date_desc: "חדשים ראשון",
     date_asc: "ישנים ראשון",
-    name_asc: "שם א-ת",
-    name_desc: "שם ת-א",
-    classification_asc: "סיווג א-ת",
+    name_asc: "שם",
+    name_desc: "שם",
+    classification_asc: "סיווג",
   };
 
   const filteredTags = allTags.filter((tag) =>
@@ -282,7 +282,6 @@ export function ClientsFilterStrip({
         {/* Filter Icon */}
         <div className="flex items-center gap-1 ml-1">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-foreground">סינון:</span>
         </div>
 
         {/* Unified Sort & Date Filter */}
