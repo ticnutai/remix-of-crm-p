@@ -434,7 +434,7 @@ export function SidebarTasksMeetings({ isCollapsed = false }: SidebarTasksMeetin
                     </TooltipTrigger>
                     <TooltipContent side="top">הוספה מהירה</TooltipContent>
                   </Tooltip>
-                  <DropdownMenuContent align="end" dir="rtl" className="w-44">
+                  <DropdownMenuContent align="end" className="w-44">
                     <DropdownMenuLabel className="text-xs">הוספה מהירה</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
