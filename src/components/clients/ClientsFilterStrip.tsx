@@ -372,10 +372,10 @@ export function ClientsFilterStrip({
                     size="sm"
                     className="h-8 text-xs"
                     onClick={() => {
-                      setDateFilter(
-                        value as ClientFilterState["dateFilter"],
-                      );
-                      setSortDialogOpen(true);
+                      onFiltersChange({
+                        ...filters,
+                        dateFilter: value as ClientFilterState["dateFilter"],
+                      });
                     }}
                   >
                     {label}
