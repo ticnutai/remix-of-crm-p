@@ -2484,224 +2484,122 @@ export default function Clients() {
                 ({filteredClients.length})
               </span>
 
-              {/* Action buttons — compact pill style */}
-              <button
-                onClick={() => setIsAddClientDialogOpen(true)}
-                style={{
+              {/* Action buttons — icon-only circular style */}
+              {(() => {
+                const iconBtnBase: React.CSSProperties = {
                   display: "flex",
                   alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
+                  justifyContent: "center",
+                  width: "34px",
+                  height: "34px",
                   backgroundColor: "transparent",
                   border: "1.5px solid #d4a843",
-                  borderRadius: "6px",
+                  borderRadius: "50%",
                   color: "#d4a843",
                   cursor: "pointer",
                   transition: "all 0.2s",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#1e293b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#d4a843";
-                }}
-                title="הוסף לקוח חדש"
-              >
-                <UserPlus style={{ width: "14px", height: "14px" }} />
-                הוסף לקוח
-              </button>
-
-              <button
-                onClick={() => navigate("/datatable-pro")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
-                  backgroundColor: "transparent",
-                  border: "1.5px solid #d4a843",
-                  borderRadius: "6px",
-                  color: "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#1e293b";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#d4a843";
-                }}
-                title="עבור לטבלת לקוחות"
-              >
-                <Rows3 style={{ width: "13px", height: "13px" }} />
-                טבלה
-              </button>
-
-              <button
-                onClick={toggleSelectionMode}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
-                  backgroundColor: selectionMode ? "#d4a843" : "transparent",
-                  border: "1.5px solid #d4a843",
-                  borderRadius: "6px",
-                  color: selectionMode ? "#1e293b" : "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  if (!selectionMode) {
+                  flexShrink: 0,
+                };
+                const activeStyle: React.CSSProperties = {
+                  backgroundColor: "#d4a843",
+                  color: "#1e293b",
+                };
+                const handleEnter = (e: React.MouseEvent<HTMLButtonElement>, isActive: boolean) => {
+                  if (!isActive) {
                     e.currentTarget.style.backgroundColor = "#d4a843";
                     e.currentTarget.style.color = "#1e293b";
                   }
-                }}
-                onMouseLeave={(e) => {
-                  if (!selectionMode) {
+                };
+                const handleLeave = (e: React.MouseEvent<HTMLButtonElement>, isActive: boolean) => {
+                  if (!isActive) {
                     e.currentTarget.style.backgroundColor = "transparent";
                     e.currentTarget.style.color = "#d4a843";
                   }
-                }}
-                title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
-              >
-                <CheckSquare style={{ width: "14px", height: "14px" }} />
-                {selectionMode ? "בטל בחירה" : "בחירה מרובה"}
-              </button>
+                };
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setIsAddClientDialogOpen(true)}
+                      style={iconBtnBase}
+                      onMouseEnter={(e) => handleEnter(e, false)}
+                      onMouseLeave={(e) => handleLeave(e, false)}
+                      title="הוסף לקוח חדש"
+                      aria-label="הוסף לקוח חדש"
+                    >
+                      <UserPlus style={{ width: "16px", height: "16px" }} />
+                    </button>
 
-              <button
-                onClick={() => {
-                  setShowStagesView(!showStagesView);
-                  if (!showStagesView) setShowStatisticsView(false);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
-                  backgroundColor: showStagesView ? "#d4a843" : "transparent",
-                  border: "1.5px solid #d4a843",
-                  borderRadius: "6px",
-                  color: showStagesView ? "#1e293b" : "#d4a843",
-                  fontWeight: "600",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showStagesView) {
-                    e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showStagesView) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "#d4a843";
-                  }
-                }}
-                title="תצוגה לפי שלבים"
-              >
-                <Layers style={{ width: "13px", height: "13px" }} />
-                שלבים
-              </button>
+                    <button
+                      onClick={() => navigate("/datatable-pro")}
+                      style={iconBtnBase}
+                      onMouseEnter={(e) => handleEnter(e, false)}
+                      onMouseLeave={(e) => handleLeave(e, false)}
+                      title="עבור לטבלת לקוחות"
+                      aria-label="עבור לטבלת לקוחות"
+                    >
+                      <Rows3 style={{ width: "16px", height: "16px" }} />
+                    </button>
 
-              <button
-                onClick={() => {
-                  setShowStatisticsView(!showStatisticsView);
-                  if (!showStatisticsView) setShowStagesView(false);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 10px",
-                  backgroundColor: showStatisticsView
-                    ? "#d4a843"
-                    : "transparent",
-                  border: "1.5px solid #d4a843",
-                  borderRadius: "6px",
-                  color: showStatisticsView ? "#1e293b" : "#d4a843",
-                  fontWeight: "600",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={(e) => {
-                  if (!showStatisticsView) {
-                    e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!showStatisticsView) {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color = "#d4a843";
-                  }
-                }}
-                title="סטטיסטיקות לקוחות"
-              >
-                <BarChart3 style={{ width: "13px", height: "13px" }} />
-                סטטיסטיקות
-              </button>
+                    <button
+                      onClick={toggleSelectionMode}
+                      style={{ ...iconBtnBase, ...(selectionMode ? activeStyle : {}) }}
+                      onMouseEnter={(e) => handleEnter(e, selectionMode)}
+                      onMouseLeave={(e) => handleLeave(e, selectionMode)}
+                      title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
+                      aria-label={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
+                    >
+                      <CheckSquare style={{ width: "16px", height: "16px" }} />
+                    </button>
 
-              {(isAdmin || isManager) && (
-                <button
-                  onClick={() => {
-                    setShowAccessView(!showAccessView);
-                    if (!showAccessView) {
-                      setShowStagesView(false);
-                      setShowStatisticsView(false);
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "4px 10px",
-                    backgroundColor: showAccessView ? "#d4a843" : "transparent",
-                    border: "1.5px solid #d4a843",
-                    borderRadius: "6px",
-                    color: showAccessView ? "#1e293b" : "#d4a843",
-                    fontWeight: "600",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!showAccessView) {
-                      e.currentTarget.style.backgroundColor = "#d4a843";
-                      e.currentTarget.style.color = "#1e293b";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!showAccessView) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color = "#d4a843";
-                    }
-                  }}
-                  title="ניהול גישות לפורטל"
-                >
-                  <Shield style={{ width: "13px", height: "13px" }} />
-                  גישות
-                </button>
-              )}
+                    <button
+                      onClick={() => {
+                        setShowStagesView(!showStagesView);
+                        if (!showStagesView) setShowStatisticsView(false);
+                      }}
+                      style={{ ...iconBtnBase, ...(showStagesView ? activeStyle : {}) }}
+                      onMouseEnter={(e) => handleEnter(e, showStagesView)}
+                      onMouseLeave={(e) => handleLeave(e, showStagesView)}
+                      title="תצוגה לפי שלבים"
+                      aria-label="תצוגה לפי שלבים"
+                    >
+                      <Layers style={{ width: "16px", height: "16px" }} />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowStatisticsView(!showStatisticsView);
+                        if (!showStatisticsView) setShowStagesView(false);
+                      }}
+                      style={{ ...iconBtnBase, ...(showStatisticsView ? activeStyle : {}) }}
+                      onMouseEnter={(e) => handleEnter(e, showStatisticsView)}
+                      onMouseLeave={(e) => handleLeave(e, showStatisticsView)}
+                      title="סטטיסטיקות לקוחות"
+                      aria-label="סטטיסטיקות לקוחות"
+                    >
+                      <BarChart3 style={{ width: "16px", height: "16px" }} />
+                    </button>
+
+                    {(isAdmin || isManager) && (
+                      <button
+                        onClick={() => {
+                          setShowAccessView(!showAccessView);
+                          if (!showAccessView) {
+                            setShowStagesView(false);
+                            setShowStatisticsView(false);
+                          }
+                        }}
+                        style={{ ...iconBtnBase, ...(showAccessView ? activeStyle : {}) }}
+                        onMouseEnter={(e) => handleEnter(e, showAccessView)}
+                        onMouseLeave={(e) => handleLeave(e, showAccessView)}
+                        title="ניהול גישות לפורטל"
+                        aria-label="ניהול גישות לפורטל"
+                      >
+                        <Shield style={{ width: "16px", height: "16px" }} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               <button
                 onClick={() => setShowFeaturesHelp(true)}
