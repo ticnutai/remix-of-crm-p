@@ -2591,33 +2591,6 @@ export default function Clients() {
                 );
               })()}
 
-              <button
-                onClick={() => setShowFeaturesHelp(true)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "26px",
-                  height: "26px",
-                  backgroundColor: "transparent",
-                  border: "1.5px solid #d4a843",
-                  borderRadius: "50%",
-                  color: "#d4a843",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d4a843";
-                  e.currentTarget.style.color = "#ffffff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "#d4a843";
-                }}
-                title="תכונות זמינות"
-              >
-                <Sparkles style={{ width: "13px", height: "13px" }} />
-              </button>
             </div>
 
             {/* Left side: Selection controls OR Search + View toggle */}
