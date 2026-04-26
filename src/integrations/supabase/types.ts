@@ -5513,6 +5513,7 @@ export type Database = {
           end_time: string
           google_event_id: string | null
           id: string
+          is_private: boolean
           location: string | null
           meeting_type: string | null
           notes: string | null
@@ -5531,6 +5532,7 @@ export type Database = {
           end_time: string
           google_event_id?: string | null
           id?: string
+          is_private?: boolean
           location?: string | null
           meeting_type?: string | null
           notes?: string | null
@@ -5549,6 +5551,7 @@ export type Database = {
           end_time?: string
           google_event_id?: string | null
           id?: string
+          is_private?: boolean
           location?: string | null
           meeting_type?: string | null
           notes?: string | null
@@ -5906,6 +5909,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      platform_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -6508,6 +6535,7 @@ export type Database = {
           entity_type: string | null
           id: string
           is_dismissed: boolean | null
+          is_private: boolean
           is_recurring: boolean | null
           is_sent: boolean | null
           message: string | null
@@ -6537,6 +6565,7 @@ export type Database = {
           entity_type?: string | null
           id?: string
           is_dismissed?: boolean | null
+          is_private?: boolean
           is_recurring?: boolean | null
           is_sent?: boolean | null
           message?: string | null
@@ -6566,6 +6595,7 @@ export type Database = {
           entity_type?: string | null
           id?: string
           is_dismissed?: boolean | null
+          is_private?: boolean
           is_recurring?: boolean | null
           is_sent?: boolean | null
           message?: string | null
@@ -7050,6 +7080,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_private: boolean
           priority: string | null
           project_id: string | null
           status: string | null
@@ -7066,6 +7097,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_private?: boolean
           priority?: string | null
           project_id?: string | null
           status?: string | null
@@ -7082,6 +7114,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_private?: boolean
           priority?: string | null
           project_id?: string | null
           status?: string | null

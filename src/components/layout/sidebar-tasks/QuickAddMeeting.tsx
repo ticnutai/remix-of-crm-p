@@ -183,12 +183,12 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     );
     // Sync from Supabase once preferences load
     useEffect(() => {
-      const cloud = (preferences?.ui_preferences as Record<string, unknown> | null)?.meeting_time_input_mode as TimeInputMode | undefined;
+      const cloud = ((preferences as unknown as Record<string, unknown>)?.ui_preferences as Record<string, unknown> | null)?.meeting_time_input_mode as TimeInputMode | undefined;
       if (cloud && TIME_MODES.includes(cloud)) {
         setTimeMode(cloud);
         localStorage.setItem(TIME_MODE_LS_KEY, cloud);
       }
-    }, [preferences?.ui_preferences]);
+    }, [(preferences as unknown as Record<string, unknown>)?.ui_preferences]);
     const [manualPopoverOpen, setManualPopoverOpen] = useState(false);
     const [manualBothText, setManualBothText] = useState("");
 
@@ -304,7 +304,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setTimeMode(next);
       localStorage.setItem(TIME_MODE_LS_KEY, next);
       // Persist to Supabase (merge into existing ui_preferences)
-      const existing = (preferences?.ui_preferences as Record<string, unknown> | null) ?? {};
+      const existing = ((preferences as unknown as Record<string, unknown>)?.ui_preferences as Record<string, unknown> | null) ?? {};
       saveUserPrefs({ ui_preferences: { ...existing, meeting_time_input_mode: next } } as any);
     };
 
