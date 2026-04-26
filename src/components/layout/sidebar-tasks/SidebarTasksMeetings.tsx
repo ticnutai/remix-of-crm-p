@@ -19,6 +19,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
