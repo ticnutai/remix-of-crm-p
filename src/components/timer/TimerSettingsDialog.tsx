@@ -59,6 +59,8 @@ export interface TimerTheme {
   entryTextColor?: string; // Color for time entry text (descriptions)
   entryFontSize?: number; // Font size for time entry descriptions
   entryFontFamily?: string; // Font for time entries
+  // Floating Timer Icon (the round button on the page)
+  floatingButtonShape?: 'circle' | 'rounded' | 'square'; // Shape of the floating timer icon
   // Button customization
   buttonShape?: 'circle' | 'rounded' | 'square'; // Shape of action buttons
   buttonSize?: number; // Size of action buttons (px)
