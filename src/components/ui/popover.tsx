@@ -10,6 +10,7 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 type FloatingRect = Pick<DOMRect, "left" | "right" | "top" | "bottom" | "width" | "height">;
 const DEFAULT_DIALOG_GAP = 32;
 const VIEWPORT_MARGIN = 16;
+const DIALOG_ATTACHED_GAP = 28;
 
 function isOverlapping(a: FloatingRect, b: FloatingRect) {
   return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -126,6 +127,7 @@ function useDialogSeparation(
 
 interface PopoverContentProps extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   avoidDialogOverlap?: boolean;
+  keepInsideDialog?: boolean;
   separationGap?: number;
 }
 
