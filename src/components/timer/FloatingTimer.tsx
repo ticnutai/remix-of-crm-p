@@ -484,7 +484,10 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative rounded-full transition-[shadow,border-color,transform] duration-300 ease-out",
+              "group relative transition-[shadow,border-color,transform] duration-300 ease-out",
+              timerTheme.floatingButtonShape === 'square' && "rounded-none",
+              timerTheme.floatingButtonShape === 'rounded' && "rounded-2xl",
+              (!timerTheme.floatingButtonShape || timerTheme.floatingButtonShape === 'circle') && "rounded-full",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
