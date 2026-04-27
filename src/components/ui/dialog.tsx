@@ -31,6 +31,30 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 // ---------- Stacking offset for multiple open dialogs ----------
 let openDialogCount = 0;
 const STACK_OFFSET = 56; // px shift per stacked dialog, keeps mandatory visual gap between dialogs
+const VIEWPORT_MARGIN = 24;
+const MIN_DIALOG_WIDTH = 320;
+const MIN_DIALOG_HEIGHT = 240;
+
+function clampNumber(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function useViewportSize() {
+  const [size, setSize] = React.useState(() => ({
+    width: typeof window === 'undefined' ? 1024 : window.innerWidth,
+    height: typeof window === 'undefined' ? 768 : window.innerHeight,
+  }));
+
+  React.useEffect(() => {
+    const update = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  return size;
+}
 
 function useStackOffset() {
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -59,6 +83,7 @@ const DialogContent = React.forwardRef<
   DialogContentProps
 >(({ className, children, disableDrag, disableResize, dialogKey, style, ...props }, ref) => {
   const stack = useStackOffset();
+  const viewport = useViewportSize();
   const { state: persisted, update: updatePersisted } = useDialogPersistence(dialogKey);
 
   const [drag, setDrag] = React.useState({ x: 0, y: 0 });
@@ -146,9 +171,30 @@ const DialogContent = React.forwardRef<
   const totalX = (hasSavedPos ? 0 : stack.x) + drag.x;
   const totalY = (hasSavedPos ? 0 : stack.y) + drag.y;
 
+  const maxDialogWidth = Math.max(MIN_DIALOG_WIDTH, viewport.width - VIEWPORT_MARGIN * 2);
+  const maxDialogHeight = Math.max(MIN_DIALOG_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
+  const dialogWidth = !disableResize && persisted.width
+    ? clampNumber(persisted.width, MIN_DIALOG_WIDTH, maxDialogWidth)
+    : undefined;
+  const dialogHeight = !disableResize && persisted.height
+    ? clampNumber(persisted.height, MIN_DIALOG_HEIGHT, maxDialogHeight)
+    : undefined;
+  const effectiveWidth = dialogWidth ?? innerRef.current?.offsetWidth ?? 500;
+  const effectiveHeight = dialogHeight ?? innerRef.current?.offsetHeight ?? 400;
+  const clampedTotalX = clampNumber(
+    totalX,
+    -viewport.width / 2 + effectiveWidth / 2 + VIEWPORT_MARGIN,
+    viewport.width / 2 - effectiveWidth / 2 - VIEWPORT_MARGIN,
+  );
+  const clampedTotalY = clampNumber(
+    totalY,
+    -viewport.height / 2 + effectiveHeight / 2 + VIEWPORT_MARGIN,
+    viewport.height / 2 - effectiveHeight / 2 - VIEWPORT_MARGIN,
+  );
+
   const sizeStyle: React.CSSProperties = {};
-  if (!disableResize && persisted.width) sizeStyle.width = persisted.width;
-  if (!disableResize && persisted.height) sizeStyle.height = persisted.height;
+  if (!disableResize && dialogWidth) sizeStyle.width = dialogWidth;
+  if (!disableResize && dialogHeight) sizeStyle.height = dialogHeight;
 
   return (
     <DialogPortal>
@@ -161,7 +207,7 @@ const DialogContent = React.forwardRef<
         style={{
           ...style,
           ...sizeStyle,
-          transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
+          transform: `translate(calc(-50% + ${clampedTotalX}px), calc(-50% + ${clampedTotalY}px))`,
         }}
         className={cn(
           "fixed left-[50%] top-[50%] z-[401] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
