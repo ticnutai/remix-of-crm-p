@@ -20,7 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2 } from 'lucide-react';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2, CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parse } from 'date-fns';
+import { he } from 'date-fns/locale';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
