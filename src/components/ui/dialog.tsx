@@ -29,7 +29,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 // ---------- Stacking offset for multiple open dialogs ----------
 let openDialogCount = 0;
-const STACK_OFFSET = 28; // px shift per stacked dialog
+const STACK_OFFSET = 56; // px shift per stacked dialog, keeps mandatory visual gap between dialogs
 
 function useStackOffset() {
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -100,6 +100,7 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         dir="rtl"
+        data-dialog-content="true"
         aria-describedby={undefined}
         style={{
           ...style,
@@ -109,7 +110,7 @@ const DialogContent = React.forwardRef<
         className={cn(
           "fixed left-[50%] top-[50%] z-[401] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
           // Resize: user can grab corner to resize
-          !disableResize && "resize overflow-hidden min-w-[320px] min-h-[240px] max-w-[95vw] max-h-[92vh]",
+          !disableResize && "resize overflow-hidden min-w-[320px] min-h-[240px] max-w-[calc(100vw-96px)] max-h-[calc(100vh-96px)]",
           disableResize && "max-h-[90vh] overflow-hidden",
           className,
         )}
