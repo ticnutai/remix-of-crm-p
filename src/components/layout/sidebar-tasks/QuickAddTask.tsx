@@ -400,7 +400,9 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto p-0 pointer-events-auto z-[100]"
+                      avoidDialogOverlap
+                      separationGap={40}
+                      className="w-auto p-0 pointer-events-auto"
                       align="start"
                       side="bottom"
                       style={{ background: "#FFFFFF", border: `2px solid ${sidebarColors.gold}` }}
