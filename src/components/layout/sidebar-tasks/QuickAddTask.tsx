@@ -126,6 +126,46 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
+    const [dueDateText, setDueDateText] = useState("");
+    const [dateError, setDateError] = useState<string | null>(null);
+
+    // Parse manual date input - supports dd/MM/yyyy, dd-MM-yyyy, dd.MM.yyyy, yyyy-MM-dd
+    const parseManualDate = (value: string): Date | null => {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      // dd/MM/yyyy or dd-MM-yyyy or dd.MM.yyyy
+      const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (dmy) {
+        const [, d, m, y] = dmy;
+        const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
+        const date = new Date(year, parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(date.getTime())) return date;
+      }
+      // yyyy-MM-dd
+      const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (ymd) {
+        const [, y, m, d] = ymd;
+        const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(date.getTime())) return date;
+      }
+      return null;
+    };
+
+    const handleManualDateChange = (value: string) => {
+      setDueDateText(value);
+      if (!value.trim()) {
+        setDateError(null);
+        setDueDate(undefined);
+        return;
+      }
+      const parsed = parseManualDate(value);
+      if (parsed) {
+        setDueDate(parsed);
+        setDateError(null);
+      } else {
+        setDateError("פורמט: יום/חודש/שנה (לדוגמה 25/12/2025)");
+      }
+    };
 
     // Load initial data when dialog opens
     useEffect(() => {
