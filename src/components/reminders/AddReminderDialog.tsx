@@ -454,18 +454,83 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               />
             </div>
             
-            {/* Remind At */}
+            {/* Remind At - Manual date + time + Broad calendar */}
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
                 מתי להזכיר *
               </Label>
-              <Input
-                type="datetime-local"
-                value={form.remind_at}
-                onChange={(e) => setForm({ ...form, remind_at: e.target.value })}
-                required
-                style={brandedInputStyle}
-              />
+              <div className="flex gap-2">
+                {/* Manual date input */}
+                <Input
+                  value={reminderDateText}
+                  onChange={(e) => handleReminderDateChange(e.target.value)}
+                  placeholder="dd/mm/yyyy"
+                  className={cn('flex-1 text-right', brandedInputClass)}
+                  style={brandedInputStyle}
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+                {/* Manual time input */}
+                <Input
+                  value={reminderTimeText}
+                  onChange={(e) => handleReminderTimeChange(e.target.value)}
+                  placeholder="HH:MM"
+                  className={cn('w-24 text-right', brandedInputClass)}
+                  style={brandedInputStyle}
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+                {/* Broad calendar picker */}
+                <Popover open={isReminderCalendarOpen} onOpenChange={setIsReminderCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="px-3 gap-2 shrink-0"
+                      style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
+                      title="בחר מלוח שנה"
+                    >
+                      <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                      <span className="text-xs">לוח</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 pointer-events-auto z-[100]"
+                    align="start"
+                    side="bottom"
+                    style={{ background: '#FFFFFF', border: `2px solid ${sidebarColors.gold}` }}
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={form.remind_at ? new Date(form.remind_at) : undefined}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        const dateStr = format(d, 'dd/MM/yyyy');
+                        setReminderDateText(dateStr);
+                        const tStr = reminderTimeText || '09:00';
+                        setReminderTimeText(tStr);
+                        updateRemindAt(dateStr, tStr);
+                        setIsReminderCalendarOpen(false);
+                      }}
+                      locale={he}
+                      captionLayout="dropdown-buttons"
+                      fromYear={2000}
+                      toYear={2100}
+                      showOutsideDays
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {reminderDateError && (
+                <p className="text-xs" style={{ color: '#ef4444' }}>{reminderDateError}</p>
+              )}
+              {form.remind_at && !reminderDateError && (
+                <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                  {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
+                </p>
+              )}
             </div>
 
             {/* Client Assignment - Multi Select */}
