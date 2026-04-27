@@ -117,7 +117,63 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [isReminderCalendarOpen, setIsReminderCalendarOpen] = useState(false);
+  const [reminderDateText, setReminderDateText] = useState('');
+  const [reminderTimeText, setReminderTimeText] = useState('');
+  const [reminderDateError, setReminderDateError] = useState<string | null>(null);
+
+  // Parse manual date input
+  const parseManualDate = (value: string): Date | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (dmy) {
+      const [, d, m, y] = dmy;
+      const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
+      const dt = new Date(year, parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+    const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+      const [, y, m, d] = ymd;
+      const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+    return null;
+  };
+
+  // Combine date+time text into the form.remind_at (datetime-local format YYYY-MM-DDTHH:mm)
+  const updateRemindAt = (dateStr: string, timeStr: string) => {
+    const parsedDate = parseManualDate(dateStr);
+    const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!parsedDate) {
+      setReminderDateError(dateStr.trim() ? 'תאריך לא תקין: יום/חודש/שנה' : 'יש להזין תאריך');
+      return;
+    }
+    if (!timeMatch) {
+      setReminderDateError('שעה לא תקינה (HH:MM)');
+      return;
+    }
+    setReminderDateError(null);
+    const hh = timeMatch[1].padStart(2, '0');
+    const mm = timeMatch[2];
+    const yyyy = parsedDate.getFullYear();
+    const MM = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsedDate.getDate()).padStart(2, '0');
+    setForm((f) => ({ ...f, remind_at: `${yyyy}-${MM}-${dd}T${hh}:${mm}` }));
+  };
+
+  const handleReminderDateChange = (value: string) => {
+    setReminderDateText(value);
+    updateRemindAt(value, reminderTimeText || '09:00');
+    if (!reminderTimeText) setReminderTimeText('09:00');
+  };
+
+  const handleReminderTimeChange = (value: string) => {
+    setReminderTimeText(value);
+    if (reminderDateText) updateRemindAt(reminderDateText, value);
+  };
+
   const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
