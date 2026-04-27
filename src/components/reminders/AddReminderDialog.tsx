@@ -483,51 +483,47 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
                   inputMode="numeric"
                   dir="ltr"
                 />
-                {/* Broad calendar picker */}
-                <Popover open={isReminderCalendarOpen} onOpenChange={setIsReminderCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="px-3 gap-2 shrink-0"
-                      style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
-                      title="בחר מלוח שנה"
-                    >
-                      <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-                      <span className="text-xs">לוח</span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    avoidDialogOverlap
-                    separationGap={40}
-                    className="w-auto p-0 pointer-events-auto"
-                    align="start"
-                    side="bottom"
-                    style={{ background: '#FFFFFF', border: `2px solid ${sidebarColors.gold}` }}
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={form.remind_at ? new Date(form.remind_at) : undefined}
-                      onSelect={(d) => {
-                        if (!d) return;
-                        const dateStr = format(d, 'dd/MM/yyyy');
-                        setReminderDateText(dateStr);
-                        const tStr = reminderTimeText || '09:00';
-                        setReminderTimeText(tStr);
-                        updateRemindAt(dateStr, tStr);
-                        setIsReminderCalendarOpen(false);
-                      }}
-                      locale={he}
-                      captionLayout="dropdown-buttons"
-                      fromYear={2000}
-                      toYear={2100}
-                      showOutsideDays
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="px-3 gap-2 shrink-0"
+                  style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
+                  title="בחר מלוח שנה"
+                  onClick={() => setIsReminderCalendarOpen((v) => !v)}
+                  aria-expanded={isReminderCalendarOpen}
+                >
+                  <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                  <span className="text-xs">לוח</span>
+                </Button>
               </div>
+              {isReminderCalendarOpen && (
+                <div
+                  className="mt-3 w-[340px] max-w-full min-w-[300px] max-h-[48vh] resize overflow-auto rounded-lg border-2 bg-background p-2 shadow-xl"
+                  style={{ borderColor: sidebarColors.gold }}
+                  data-no-drag
+                >
+                  <Calendar
+                    mode="single"
+                    selected={form.remind_at ? new Date(form.remind_at) : undefined}
+                    onSelect={(d) => {
+                      if (!d) return;
+                      const dateStr = format(d, 'dd/MM/yyyy');
+                      setReminderDateText(dateStr);
+                      const tStr = reminderTimeText || '09:00';
+                      setReminderTimeText(tStr);
+                      updateRemindAt(dateStr, tStr);
+                      setIsReminderCalendarOpen(false);
+                    }}
+                    locale={he}
+                    captionLayout="dropdown-buttons"
+                    fromYear={2000}
+                    toYear={2100}
+                    showOutsideDays
+                    initialFocus
+                    className="p-2 pointer-events-auto"
+                  />
+                </div>
+              )}
               {reminderDateError && (
                 <p className="text-xs" style={{ color: '#ef4444' }}>{reminderDateError}</p>
               )}

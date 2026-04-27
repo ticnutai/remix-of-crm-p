@@ -379,54 +379,50 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                     inputMode="numeric"
                     dir="ltr"
                   />
-                  {/* Broad calendar picker */}
-                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="px-3 gap-2 shrink-0"
-                        style={{
-                          ...brandedInputStyle,
-                          color: sidebarColors.navyDark,
-                        }}
-                        title="בחר מלוח שנה"
-                      >
-                        <CalendarIcon
-                          className="h-4 w-4"
-                          style={{ color: sidebarColors.gold }}
-                        />
-                        <span className="text-xs">לוח</span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      avoidDialogOverlap
-                      separationGap={40}
-                      className="w-auto p-0 pointer-events-auto"
-                      align="start"
-                      side="bottom"
-                      style={{ background: "#FFFFFF", border: `2px solid ${sidebarColors.gold}` }}
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={dueDate}
-                        onSelect={(date) => {
-                          setDueDate(date);
-                          setDueDateText(date ? format(date, "dd/MM/yyyy") : "");
-                          setDateError(null);
-                          setIsCalendarOpen(false);
-                        }}
-                        locale={he}
-                        captionLayout="dropdown-buttons"
-                        fromYear={2000}
-                        toYear={2100}
-                        showOutsideDays
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="px-3 gap-2 shrink-0"
+                    style={{
+                      ...brandedInputStyle,
+                      color: sidebarColors.navyDark,
+                    }}
+                    title="בחר מלוח שנה"
+                    onClick={() => setIsCalendarOpen((v) => !v)}
+                    aria-expanded={isCalendarOpen}
+                  >
+                    <CalendarIcon
+                      className="h-4 w-4"
+                      style={{ color: sidebarColors.gold }}
+                    />
+                    <span className="text-xs">לוח</span>
+                  </Button>
                 </div>
+                {isCalendarOpen && (
+                  <div
+                    className="mt-3 w-[340px] max-w-full min-w-[300px] max-h-[48vh] resize overflow-auto rounded-lg border-2 bg-background p-2 shadow-xl"
+                    style={{ borderColor: sidebarColors.gold }}
+                    data-no-drag
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={dueDate}
+                      onSelect={(date) => {
+                        setDueDate(date);
+                        setDueDateText(date ? format(date, "dd/MM/yyyy") : "");
+                        setDateError(null);
+                        setIsCalendarOpen(false);
+                      }}
+                      locale={he}
+                      captionLayout="dropdown-buttons"
+                      fromYear={2000}
+                      toYear={2100}
+                      showOutsideDays
+                      initialFocus
+                      className="p-2 pointer-events-auto"
+                    />
+                  </div>
+                )}
                 {dateError && (
                   <p className="text-xs" style={{ color: "#ef4444" }}>
                     {dateError}
