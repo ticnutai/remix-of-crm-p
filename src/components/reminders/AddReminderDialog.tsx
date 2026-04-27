@@ -385,6 +385,9 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       setCustomRingtoneUrl(null);
       setClientIds([]);
       setClientSearch('');
+      setReminderDateText('');
+      setReminderTimeText('');
+      setReminderDateError(null);
       setOpen(false);
     } finally {
       setIsSubmitting(false);
