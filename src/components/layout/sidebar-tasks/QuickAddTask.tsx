@@ -174,6 +174,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
         setDescription(initialData.description || "");
         setPriority(initialData.priority || "medium");
         setDueDate(initialData.dueDate);
+        setDueDateText(initialData.dueDate ? format(initialData.dueDate, "dd/MM/yyyy") : "");
         setClientIds(initialData.clientId ? [initialData.clientId] : []);
       }
     }, [open, initialData]);
@@ -183,6 +184,8 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setDescription("");
       setPriority("medium");
       setDueDate(undefined);
+      setDueDateText("");
+      setDateError(null);
       setClientIds([]);
       setIsPrivate(false);
     };
