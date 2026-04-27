@@ -415,18 +415,18 @@
     border: 1px solid hsl(var(--border) / 0.3) !important;
   }
 
-  /* Button Style Variants */
-  [data-button-style="square"] button,
+  /* Button Style Variants - exclude floating timer button which controls its own shape */
+  [data-button-style="square"] button:not([data-floating-timer-btn]),
   [data-button-style="square"] .btn {
     border-radius: 2px !important;
   }
 
-  [data-button-style="rounded"] button,
+  [data-button-style="rounded"] button:not([data-floating-timer-btn]),
   [data-button-style="rounded"] .btn {
     border-radius: 6px !important;
   }
 
-  [data-button-style="pill"] button,
+  [data-button-style="pill"] button:not([data-floating-timer-btn]),
   [data-button-style="pill"] .btn {
     border-radius: 9999px !important;
   }
