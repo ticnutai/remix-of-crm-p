@@ -601,7 +601,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 </div>
               </div>
 
-              {/* Date */}
+              {/* Date - Manual input + Broad calendar */}
               <div className="space-y-2">
                 <Label
                   className="text-sm font-medium"
@@ -609,38 +609,65 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 >
                   תאריך *
                 </Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start text-right gap-2"
-                      style={{
-                        ...brandedInputStyle,
-                        color: date ? sidebarColors.navyDark : "#64748b",
-                      }}
+                <div className="flex gap-2">
+                  <Input
+                    value={dateText}
+                    onChange={(e) => handleManualDateChange(e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className={cn("flex-1 text-right")}
+                    style={brandedInputStyle}
+                    inputMode="numeric"
+                    dir="ltr"
+                  />
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="px-3 gap-2 shrink-0"
+                        style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
+                        title="בחר מלוח שנה"
+                      >
+                        <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                        <span className="text-xs">לוח</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 pointer-events-auto z-[100]"
+                      align="start"
+                      side="bottom"
+                      style={{ background: "#FFFFFF", border: `2px solid ${sidebarColors.gold}` }}
                     >
-                      <CalendarIcon
-                        className="h-4 w-4 ml-auto"
-                        style={{ color: sidebarColors.gold }}
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(newDate) => {
+                          setDate(newDate);
+                          setDateText(newDate ? format(newDate, "dd/MM/yyyy") : "");
+                          setDateError(null);
+                          setIsCalendarOpen(false);
+                        }}
+                        locale={he}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2000}
+                        toYear={2100}
+                        showOutsideDays
+                        initialFocus
+                        className="p-3 pointer-events-auto"
                       />
-                      {date ? format(date, "PPP", { locale: he }) : "בחר תאריך"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(newDate) => {
-                        setDate(newDate);
-                        setIsCalendarOpen(false);
-                      }}
-                      locale={he}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {dateError && (
+                  <p className="text-xs" style={{ color: "#ef4444" }}>{dateError}</p>
+                )}
+                {date && !dateError && (
+                  <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                    {format(date, "EEEE, d בMMMM yyyy", { locale: he })}
+                  </p>
+                )}
               </div>
+
 
               {/* Time Range */}
               <div className="space-y-1">
