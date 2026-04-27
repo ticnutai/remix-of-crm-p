@@ -44,9 +44,8 @@ export type ClientsSortBy =
   | "name_asc"
   | "name_desc"
   | "classification_asc"
-  | "classification_desc"
-  | "created_desc"
-  | "created_asc";
+  | "date_asc"
+  | "date_desc";
 
 export interface ViewPresetState {
   viewMode: ClientsViewMode;
