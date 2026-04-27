@@ -407,15 +407,16 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       <DialogContent
         ref={containerRef}
         dialogKey="add-reminder"
-        className="p-0 overflow-visible navy-gold-dialog"
+        className="p-0 navy-gold-dialog"
         dir="rtl"
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         style={{
           background: theme.backgroundGradient,
           border: `2px solid ${theme.border}`,
           width: `${size.width}px`,
-          maxWidth: '90vw',
-          ...(size.height ? { height: `${size.height}px`, maxHeight: '90vh' } : {}),
+          maxWidth: 'calc(100vw - 48px)',
+          maxHeight: 'calc(100vh - 48px)',
+          ...(size.height ? { height: `${size.height}px` } : {}),
         }}
       >
         <ResizeHandles onResize={startResize} />
