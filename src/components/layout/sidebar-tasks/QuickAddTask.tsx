@@ -360,7 +360,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 </div>
               </div>
 
-              {/* Due Date */}
+              {/* Due Date - Manual input + Calendar picker */}
               <div className="space-y-2">
                 <Label
                   className="text-sm font-medium"
@@ -368,40 +368,75 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 >
                   תאריך יעד
                 </Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start text-right gap-2"
-                      style={{
-                        ...brandedInputStyle,
-                        color: dueDate ? sidebarColors.navyDark : "#64748b",
-                      }}
+                <div className="flex gap-2">
+                  {/* Manual text input */}
+                  <Input
+                    value={dueDateText}
+                    onChange={(e) => handleManualDateChange(e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className={cn("flex-1 text-right", brandedInputClass)}
+                    style={brandedInputStyle}
+                    inputMode="numeric"
+                    dir="ltr"
+                  />
+                  {/* Broad calendar picker */}
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="px-3 gap-2 shrink-0"
+                        style={{
+                          ...brandedInputStyle,
+                          color: sidebarColors.navyDark,
+                        }}
+                        title="בחר מלוח שנה"
+                      >
+                        <CalendarIcon
+                          className="h-4 w-4"
+                          style={{ color: sidebarColors.gold }}
+                        />
+                        <span className="text-xs">לוח</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 pointer-events-auto z-[100]"
+                      align="start"
+                      side="bottom"
+                      style={{ background: "#FFFFFF", border: `2px solid ${sidebarColors.gold}` }}
                     >
-                      <CalendarIcon
-                        className="h-4 w-4 ml-auto"
-                        style={{ color: sidebarColors.gold }}
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={(date) => {
+                          setDueDate(date);
+                          setDueDateText(date ? format(date, "dd/MM/yyyy") : "");
+                          setDateError(null);
+                          setIsCalendarOpen(false);
+                        }}
+                        locale={he}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2000}
+                        toYear={2100}
+                        showOutsideDays
+                        initialFocus
+                        className="p-3 pointer-events-auto"
                       />
-                      {dueDate
-                        ? format(dueDate, "PPP", { locale: he })
-                        : "בחר תאריך"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dueDate}
-                      onSelect={(date) => {
-                        setDueDate(date);
-                        setIsCalendarOpen(false);
-                      }}
-                      locale={he}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {dateError && (
+                  <p className="text-xs" style={{ color: "#ef4444" }}>
+                    {dateError}
+                  </p>
+                )}
+                {dueDate && !dateError && (
+                  <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                    {format(dueDate, "EEEE, d בMMMM yyyy", { locale: he })}
+                  </p>
+                )}
               </div>
+
 
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
