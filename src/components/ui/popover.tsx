@@ -134,9 +134,12 @@ interface PopoverContentProps extends React.ComponentPropsWithoutRef<typeof Popo
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   PopoverContentProps
->(({ className, align = "end", sideOffset = 24, collisionPadding = 32, avoidDialogOverlap = false, separationGap = DEFAULT_DIALOG_GAP, style, ...props }, ref) => {
+>(({ className, align = "end", sideOffset = 24, collisionPadding = 32, avoidDialogOverlap = false, keepInsideDialog = false, separationGap = DEFAULT_DIALOG_GAP, style, ...props }, ref) => {
   const localRef = React.useRef<React.ElementRef<typeof PopoverPrimitive.Content>>(null);
   const separationOffset = useDialogSeparation(localRef, avoidDialogOverlap, separationGap);
+  const dialogHost = keepInsideDialog && typeof window !== "undefined"
+    ? (window.document.querySelector<HTMLElement>("[data-dialog-content='true']") ?? undefined)
+    : undefined;
   const composedRef = React.useCallback(
     (node: React.ElementRef<typeof PopoverPrimitive.Content> | null) => {
       localRef.current = node;
@@ -149,14 +152,17 @@ const PopoverContent = React.forwardRef<
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
+        avoidCollisions={!keepInsideDialog}
         ref={composedRef}
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
+        container={dialogHost}
         dir="rtl"
         style={{
           ...style,
           ...(avoidDialogOverlap ? { translate: `${separationOffset.x}px ${separationOffset.y}px` } : {}),
+          ...(keepInsideDialog ? { position: "relative", translate: "0 0" } : {}),
         }}
         className={cn(
           // Base look
@@ -165,6 +171,7 @@ const PopoverContent = React.forwardRef<
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           // Resize from any corner + size constraints
           "resize overflow-auto min-w-[260px] min-h-[180px] max-w-[95vw] max-h-[85vh]",
+          keepInsideDialog && "static mt-7 mb-2 w-full min-w-0 max-w-full max-h-[45vh] shrink-0 rounded-lg",
           className,
           "z-[700]",
         )}
