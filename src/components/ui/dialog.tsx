@@ -50,13 +50,17 @@ interface DialogContentProps
   /** Disable the drag/resize chrome (e.g. for confirm dialogs). */
   disableDrag?: boolean;
   disableResize?: boolean;
+  /** Unique key to persist size + position per user (cloud + localStorage). */
+  dialogKey?: string;
 }
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, disableDrag, disableResize, style, ...props }, ref) => {
+>(({ className, children, disableDrag, disableResize, dialogKey, style, ...props }, ref) => {
   const stack = useStackOffset();
+  const { state: persisted, update: updatePersisted } = useDialogPersistence(dialogKey);
+
   const [drag, setDrag] = React.useState({ x: 0, y: 0 });
   const dragStateRef = React.useRef<{
     startX: number;
@@ -65,9 +69,50 @@ const DialogContent = React.forwardRef<
     origY: number;
   } | null>(null);
 
+  const innerRef = React.useRef<HTMLDivElement | null>(null);
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      innerRef.current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    },
+    [ref],
+  );
+
+  // Apply persisted drag position once available
+  React.useEffect(() => {
+    if (persisted.x !== undefined && persisted.y !== undefined) {
+      setDrag({ x: persisted.x, y: persisted.y });
+    }
+  }, [persisted.x, persisted.y]);
+
+  // Observe resize and persist size
+  React.useEffect(() => {
+    if (!dialogKey || disableResize) return;
+    const node = innerRef.current;
+    if (!node) return;
+    let raf: number | null = null;
+    const ro = new ResizeObserver(entries => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const entry = entries[0];
+        if (!entry) return;
+        const w = Math.round(entry.contentRect.width);
+        const h = Math.round(entry.contentRect.height);
+        if (w > 0 && h > 0) {
+          updatePersisted({ width: w, height: h });
+        }
+      });
+    });
+    ro.observe(node);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [dialogKey, disableResize, updatePersisted]);
+
   const onHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (disableDrag) return;
-    // Don't start drag from interactive elements
     const target = e.target as HTMLElement;
     if (target.closest("button, a, input, textarea, select, [data-no-drag]")) return;
     e.preventDefault();
@@ -88,36 +133,44 @@ const DialogContent = React.forwardRef<
     });
   };
   const onHeaderPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const wasDragging = dragStateRef.current !== null;
     dragStateRef.current = null;
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    if (wasDragging && dialogKey) {
+      updatePersisted({ x: drag.x, y: drag.y });
+    }
   };
 
-  const totalX = stack.x + drag.x;
-  const totalY = stack.y + drag.y;
+  // Use persisted offset (no stacking) when we have a saved position.
+  const hasSavedPos = persisted.x !== undefined && persisted.y !== undefined;
+  const totalX = (hasSavedPos ? 0 : stack.x) + drag.x;
+  const totalY = (hasSavedPos ? 0 : stack.y) + drag.y;
+
+  const sizeStyle: React.CSSProperties = {};
+  if (!disableResize && persisted.width) sizeStyle.width = persisted.width;
+  if (!disableResize && persisted.height) sizeStyle.height = persisted.height;
 
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
-        ref={ref}
+        ref={setRefs}
         dir="rtl"
         data-dialog-content="true"
         aria-describedby={undefined}
         style={{
           ...style,
-          // Apply stacking + drag offset on top of the centering transform
+          ...sizeStyle,
           transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
         }}
         className={cn(
           "fixed left-[50%] top-[50%] z-[401] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
-          // Resize: user can grab corner to resize
           !disableResize && "resize overflow-hidden min-w-[320px] min-h-[240px] max-w-[calc(100vw-96px)] max-h-[calc(100vh-96px)]",
           disableResize && "max-h-[90vh] overflow-hidden",
           className,
         )}
         {...props}
       >
-        {/* Drag handle bar */}
         {!disableDrag && (
           <div
             onPointerDown={onHeaderPointerDown}
@@ -132,7 +185,6 @@ const DialogContent = React.forwardRef<
           </div>
         )}
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 grid gap-4">
           {children}
         </div>
