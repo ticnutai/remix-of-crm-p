@@ -234,7 +234,10 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
         setTitle(initialData.title || "");
         setDescription(initialData.description || "");
         setMeetingType(initialData.meetingType || "in_person");
-        setDate(initialData.date || new Date());
+        const initDate = initialData.date || new Date();
+        setDate(initDate);
+        setDateText(format(initDate, "dd/MM/yyyy"));
+        setDateError(null);
         setStartTime(initialData.startTime || "09:00");
         setEndTime(initialData.endTime || "10:00");
         setLocation(initialData.location || "");
