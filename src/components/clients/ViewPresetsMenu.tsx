@@ -215,7 +215,7 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
           </button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-64" dir="rtl">
+        <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="text-xs text-muted-foreground">
             תצוגות מוכנות
           </DropdownMenuLabel>
