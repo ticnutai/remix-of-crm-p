@@ -150,14 +150,13 @@ const PopoverContent = React.forwardRef<
   );
 
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={dialogHost}>
       <PopoverPrimitive.Content
         avoidCollisions={!keepInsideDialog}
         ref={composedRef}
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
-        container={dialogHost}
         dir="rtl"
         style={{
           ...style,
