@@ -174,6 +174,42 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
+    const [dateText, setDateText] = useState<string>(format(new Date(), "dd/MM/yyyy"));
+    const [dateError, setDateError] = useState<string | null>(null);
+
+    const parseManualDate = (value: string): Date | null => {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (dmy) {
+        const [, d, m, y] = dmy;
+        const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
+        const dt = new Date(year, parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(dt.getTime())) return dt;
+      }
+      const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (ymd) {
+        const [, y, m, d] = ymd;
+        const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(dt.getTime())) return dt;
+      }
+      return null;
+    };
+
+    const handleManualDateChange = (value: string) => {
+      setDateText(value);
+      if (!value.trim()) {
+        setDateError("יש להזין תאריך");
+        return;
+      }
+      const parsed = parseManualDate(value);
+      if (parsed) {
+        setDate(parsed);
+        setDateError(null);
+      } else {
+        setDateError("פורמט: יום/חודש/שנה (לדוגמה 25/12/2025)");
+      }
+    };
     const [reminderConfig, setReminderConfig] =
       useState<InlineReminderConfig | null>(null);
 
@@ -198,7 +234,10 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
         setTitle(initialData.title || "");
         setDescription(initialData.description || "");
         setMeetingType(initialData.meetingType || "in_person");
-        setDate(initialData.date || new Date());
+        const initDate = initialData.date || new Date();
+        setDate(initDate);
+        setDateText(format(initDate, "dd/MM/yyyy"));
+        setDateError(null);
         setStartTime(initialData.startTime || "09:00");
         setEndTime(initialData.endTime || "10:00");
         setLocation(initialData.location || "");
@@ -562,7 +601,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 </div>
               </div>
 
-              {/* Date */}
+              {/* Date - Manual input + Broad calendar */}
               <div className="space-y-2">
                 <Label
                   className="text-sm font-medium"
@@ -570,38 +609,65 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 >
                   תאריך *
                 </Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-start text-right gap-2"
-                      style={{
-                        ...brandedInputStyle,
-                        color: date ? sidebarColors.navyDark : "#64748b",
-                      }}
+                <div className="flex gap-2">
+                  <Input
+                    value={dateText}
+                    onChange={(e) => handleManualDateChange(e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    className={cn("flex-1 text-right")}
+                    style={brandedInputStyle}
+                    inputMode="numeric"
+                    dir="ltr"
+                  />
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="px-3 gap-2 shrink-0"
+                        style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
+                        title="בחר מלוח שנה"
+                      >
+                        <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                        <span className="text-xs">לוח</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto p-0 pointer-events-auto z-[100]"
+                      align="start"
+                      side="bottom"
+                      style={{ background: "#FFFFFF", border: `2px solid ${sidebarColors.gold}` }}
                     >
-                      <CalendarIcon
-                        className="h-4 w-4 ml-auto"
-                        style={{ color: sidebarColors.gold }}
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(newDate) => {
+                          setDate(newDate);
+                          setDateText(newDate ? format(newDate, "dd/MM/yyyy") : "");
+                          setDateError(null);
+                          setIsCalendarOpen(false);
+                        }}
+                        locale={he}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2000}
+                        toYear={2100}
+                        showOutsideDays
+                        initialFocus
+                        className="p-3 pointer-events-auto"
                       />
-                      {date ? format(date, "PPP", { locale: he }) : "בחר תאריך"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(newDate) => {
-                        setDate(newDate);
-                        setIsCalendarOpen(false);
-                      }}
-                      locale={he}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {dateError && (
+                  <p className="text-xs" style={{ color: "#ef4444" }}>{dateError}</p>
+                )}
+                {date && !dateError && (
+                  <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                    {format(date, "EEEE, d בMMMM yyyy", { locale: he })}
+                  </p>
+                )}
               </div>
+
 
               {/* Time Range */}
               <div className="space-y-1">

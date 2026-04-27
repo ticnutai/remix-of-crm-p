@@ -20,7 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2 } from 'lucide-react';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2, CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parse } from 'date-fns';
+import { he } from 'date-fns/locale';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -114,7 +117,63 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [isReminderCalendarOpen, setIsReminderCalendarOpen] = useState(false);
+  const [reminderDateText, setReminderDateText] = useState('');
+  const [reminderTimeText, setReminderTimeText] = useState('');
+  const [reminderDateError, setReminderDateError] = useState<string | null>(null);
+
+  // Parse manual date input
+  const parseManualDate = (value: string): Date | null => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if (dmy) {
+      const [, d, m, y] = dmy;
+      const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
+      const dt = new Date(year, parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+    const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+      const [, y, m, d] = ymd;
+      const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(dt.getTime())) return dt;
+    }
+    return null;
+  };
+
+  // Combine date+time text into the form.remind_at (datetime-local format YYYY-MM-DDTHH:mm)
+  const updateRemindAt = (dateStr: string, timeStr: string) => {
+    const parsedDate = parseManualDate(dateStr);
+    const timeMatch = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!parsedDate) {
+      setReminderDateError(dateStr.trim() ? 'תאריך לא תקין: יום/חודש/שנה' : 'יש להזין תאריך');
+      return;
+    }
+    if (!timeMatch) {
+      setReminderDateError('שעה לא תקינה (HH:MM)');
+      return;
+    }
+    setReminderDateError(null);
+    const hh = timeMatch[1].padStart(2, '0');
+    const mm = timeMatch[2];
+    const yyyy = parsedDate.getFullYear();
+    const MM = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsedDate.getDate()).padStart(2, '0');
+    setForm((f) => ({ ...f, remind_at: `${yyyy}-${MM}-${dd}T${hh}:${mm}` }));
+  };
+
+  const handleReminderDateChange = (value: string) => {
+    setReminderDateText(value);
+    updateRemindAt(value, reminderTimeText || '09:00');
+    if (!reminderTimeText) setReminderTimeText('09:00');
+  };
+
+  const handleReminderTimeChange = (value: string) => {
+    setReminderTimeText(value);
+    if (reminderDateText) updateRemindAt(reminderDateText, value);
+  };
+
   const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   
@@ -165,6 +224,15 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       message: initialValues.message ?? prev.message,
       remind_at: initialValues.remind_at ?? prev.remind_at,
     }));
+
+    if (initialValues.remind_at) {
+      const dt = new Date(initialValues.remind_at);
+      if (!isNaN(dt.getTime())) {
+        setReminderDateText(format(dt, 'dd/MM/yyyy'));
+        setReminderTimeText(format(dt, 'HH:mm'));
+        setReminderDateError(null);
+      }
+    }
 
     if (initialValues.client_id) {
       setClientIds([initialValues.client_id]);
@@ -317,6 +385,9 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       setCustomRingtoneUrl(null);
       setClientIds([]);
       setClientSearch('');
+      setReminderDateText('');
+      setReminderTimeText('');
+      setReminderDateError(null);
       setOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -386,18 +457,83 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               />
             </div>
             
-            {/* Remind At */}
+            {/* Remind At - Manual date + time + Broad calendar */}
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
                 מתי להזכיר *
               </Label>
-              <Input
-                type="datetime-local"
-                value={form.remind_at}
-                onChange={(e) => setForm({ ...form, remind_at: e.target.value })}
-                required
-                style={brandedInputStyle}
-              />
+              <div className="flex gap-2">
+                {/* Manual date input */}
+                <Input
+                  value={reminderDateText}
+                  onChange={(e) => handleReminderDateChange(e.target.value)}
+                  placeholder="dd/mm/yyyy"
+                  className={cn('flex-1 text-right', brandedInputClass)}
+                  style={brandedInputStyle}
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+                {/* Manual time input */}
+                <Input
+                  value={reminderTimeText}
+                  onChange={(e) => handleReminderTimeChange(e.target.value)}
+                  placeholder="HH:MM"
+                  className={cn('w-24 text-right', brandedInputClass)}
+                  style={brandedInputStyle}
+                  inputMode="numeric"
+                  dir="ltr"
+                />
+                {/* Broad calendar picker */}
+                <Popover open={isReminderCalendarOpen} onOpenChange={setIsReminderCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="px-3 gap-2 shrink-0"
+                      style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
+                      title="בחר מלוח שנה"
+                    >
+                      <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+                      <span className="text-xs">לוח</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-auto p-0 pointer-events-auto z-[100]"
+                    align="start"
+                    side="bottom"
+                    style={{ background: '#FFFFFF', border: `2px solid ${sidebarColors.gold}` }}
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={form.remind_at ? new Date(form.remind_at) : undefined}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        const dateStr = format(d, 'dd/MM/yyyy');
+                        setReminderDateText(dateStr);
+                        const tStr = reminderTimeText || '09:00';
+                        setReminderTimeText(tStr);
+                        updateRemindAt(dateStr, tStr);
+                        setIsReminderCalendarOpen(false);
+                      }}
+                      locale={he}
+                      captionLayout="dropdown-buttons"
+                      fromYear={2000}
+                      toYear={2100}
+                      showOutsideDays
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {reminderDateError && (
+                <p className="text-xs" style={{ color: '#ef4444' }}>{reminderDateError}</p>
+              )}
+              {form.remind_at && !reminderDateError && (
+                <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                  {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
+                </p>
+              )}
             </div>
 
             {/* Client Assignment - Multi Select */}
