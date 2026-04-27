@@ -228,6 +228,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent
           ref={containerRef}
+          dialogKey="quick-add-task"
           className="p-0 overflow-visible navy-gold-dialog"
           dir="rtl"
           onKeyDown={(e) => { if (e.key === 'Escape') onOpenChange(false); }}
