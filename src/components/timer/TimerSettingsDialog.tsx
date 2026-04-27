@@ -649,32 +649,34 @@ export function TimerSettingsDialog({
           {/* Settings Panel */}
           <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             <Tabs defaultValue="presets" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <TabsList className="mx-4 mt-2 grid grid-cols-6 flex-shrink-0">
-                <TabsTrigger value="presets" className="gap-1 text-xs">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  ערכות
-                </TabsTrigger>
-                <TabsTrigger value="colors" className="gap-1 text-xs">
-                  <Palette className="h-3.5 w-3.5" />
-                  צבעים
-                </TabsTrigger>
-                <TabsTrigger value="fonts" className="gap-1 text-xs">
-                  <Type className="h-3.5 w-3.5" />
-                  טיפוגרפיה
-                </TabsTrigger>
-                <TabsTrigger value="elements" className="gap-1 text-xs">
-                  <Tag className="h-3.5 w-3.5" />
-                  אלמנטים
-                </TabsTrigger>
-                <TabsTrigger value="effects" className="gap-1 text-xs">
-                  <Wand2 className="h-3.5 w-3.5" />
-                  אפקטים
-                </TabsTrigger>
-                <TabsTrigger value="size" className="gap-1 text-xs">
-                  <Maximize2 className="h-3.5 w-3.5" />
-                  גודל
-                </TabsTrigger>
-              </TabsList>
+              <div className="mx-4 mt-2 flex-shrink-0 overflow-x-auto">
+                <TabsList className="inline-flex w-max min-w-full">
+                  <TabsTrigger value="presets" className="gap-1 text-xs whitespace-nowrap">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    ערכות
+                  </TabsTrigger>
+                  <TabsTrigger value="colors" className="gap-1 text-xs whitespace-nowrap">
+                    <Palette className="h-3.5 w-3.5" />
+                    צבעים
+                  </TabsTrigger>
+                  <TabsTrigger value="fonts" className="gap-1 text-xs whitespace-nowrap">
+                    <Type className="h-3.5 w-3.5" />
+                    טיפוגרפיה
+                  </TabsTrigger>
+                  <TabsTrigger value="elements" className="gap-1 text-xs whitespace-nowrap">
+                    <Tag className="h-3.5 w-3.5" />
+                    אלמנטים
+                  </TabsTrigger>
+                  <TabsTrigger value="effects" className="gap-1 text-xs whitespace-nowrap">
+                    <Wand2 className="h-3.5 w-3.5" />
+                    אפקטים
+                  </TabsTrigger>
+                  <TabsTrigger value="size" className="gap-1 text-xs whitespace-nowrap">
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    גודל
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <ScrollArea className="flex-1 min-h-0 h-full">
                 <div className="px-4 py-3">
