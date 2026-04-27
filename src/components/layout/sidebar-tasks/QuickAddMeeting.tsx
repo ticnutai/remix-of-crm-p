@@ -174,6 +174,42 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
+    const [dateText, setDateText] = useState<string>(format(new Date(), "dd/MM/yyyy"));
+    const [dateError, setDateError] = useState<string | null>(null);
+
+    const parseManualDate = (value: string): Date | null => {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      const dmy = trimmed.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+      if (dmy) {
+        const [, d, m, y] = dmy;
+        const year = y.length === 2 ? 2000 + parseInt(y, 10) : parseInt(y, 10);
+        const dt = new Date(year, parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(dt.getTime())) return dt;
+      }
+      const ymd = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (ymd) {
+        const [, y, m, d] = ymd;
+        const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+        if (!isNaN(dt.getTime())) return dt;
+      }
+      return null;
+    };
+
+    const handleManualDateChange = (value: string) => {
+      setDateText(value);
+      if (!value.trim()) {
+        setDateError("יש להזין תאריך");
+        return;
+      }
+      const parsed = parseManualDate(value);
+      if (parsed) {
+        setDate(parsed);
+        setDateError(null);
+      } else {
+        setDateError("פורמט: יום/חודש/שנה (לדוגמה 25/12/2025)");
+      }
+    };
     const [reminderConfig, setReminderConfig] =
       useState<InlineReminderConfig | null>(null);
 
