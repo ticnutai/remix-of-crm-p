@@ -108,10 +108,16 @@ function useDialogSeparation(
     update();
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
+    window.addEventListener("pointermove", update, true);
+    window.addEventListener("pointerup", update, true);
+    window.addEventListener("transitionend", update, true);
     return () => {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
+      window.removeEventListener("pointermove", update, true);
+      window.removeEventListener("pointerup", update, true);
+      window.removeEventListener("transitionend", update, true);
     };
   }, [contentRef, enabled, gap]);
 
