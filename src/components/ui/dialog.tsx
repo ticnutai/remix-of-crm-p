@@ -34,6 +34,7 @@ const STACK_OFFSET = 56; // px shift per stacked dialog, keeps mandatory visual 
 const VIEWPORT_MARGIN = 24;
 const MIN_DIALOG_WIDTH = 320;
 const MIN_DIALOG_HEIGHT = 240;
+const FORM_DIALOG_KEYS = new Set(['quick-add-task', 'quick-add-meeting', 'add-reminder']);
 
 function clampNumber(value: number, min: number, max: number) {
   if (max < min) return min;
@@ -44,10 +45,23 @@ function useViewportSize() {
   const [size, setSize] = React.useState(() => ({
     width: typeof window === 'undefined' ? 1024 : window.innerWidth,
     height: typeof window === 'undefined' ? 768 : window.innerHeight,
+    safeLeft: VIEWPORT_MARGIN,
+    safeRight: typeof window === 'undefined' ? 1000 : window.innerWidth - VIEWPORT_MARGIN,
   }));
 
   React.useEffect(() => {
-    const update = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    const update = () => {
+      let safeLeft = VIEWPORT_MARGIN;
+      let safeRight = window.innerWidth - VIEWPORT_MARGIN;
+      document.querySelectorAll('[data-sidebar="sidebar"]').forEach((node) => {
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        if (rect.width > 120 && rect.height > window.innerHeight * 0.5) {
+          if (rect.right >= window.innerWidth - 4) safeRight = Math.min(safeRight, rect.left - VIEWPORT_MARGIN);
+          if (rect.left <= 4) safeLeft = Math.max(safeLeft, rect.right + VIEWPORT_MARGIN);
+        }
+      });
+      setSize({ width: window.innerWidth, height: window.innerHeight, safeLeft, safeRight });
+    };
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
