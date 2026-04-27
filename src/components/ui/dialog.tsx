@@ -20,7 +20,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[10040] bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -31,6 +31,44 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 // ---------- Stacking offset for multiple open dialogs ----------
 let openDialogCount = 0;
 const STACK_OFFSET = 56; // px shift per stacked dialog, keeps mandatory visual gap between dialogs
+const VIEWPORT_MARGIN = 24;
+const MIN_DIALOG_WIDTH = 320;
+const MIN_DIALOG_HEIGHT = 240;
+const FORM_DIALOG_KEYS = new Set(['quick-add-task', 'quick-add-meeting', 'add-reminder']);
+
+function clampNumber(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function useViewportSize() {
+  const [size, setSize] = React.useState(() => ({
+    width: typeof window === 'undefined' ? 1024 : window.innerWidth,
+    height: typeof window === 'undefined' ? 768 : window.innerHeight,
+    safeLeft: VIEWPORT_MARGIN,
+    safeRight: typeof window === 'undefined' ? 1000 : window.innerWidth - VIEWPORT_MARGIN,
+  }));
+
+  React.useEffect(() => {
+    const update = () => {
+      let safeLeft = VIEWPORT_MARGIN;
+      let safeRight = window.innerWidth - VIEWPORT_MARGIN;
+      document.querySelectorAll('[data-sidebar="sidebar"]').forEach((node) => {
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        if (rect.width > 120 && rect.height > window.innerHeight * 0.5) {
+          if (rect.right >= window.innerWidth - 4) safeRight = Math.min(safeRight, rect.left - VIEWPORT_MARGIN);
+          if (rect.left <= 4) safeLeft = Math.max(safeLeft, rect.right + VIEWPORT_MARGIN);
+        }
+      });
+      setSize({ width: window.innerWidth, height: window.innerHeight, safeLeft, safeRight });
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  return size;
+}
 
 function useStackOffset() {
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -59,6 +97,7 @@ const DialogContent = React.forwardRef<
   DialogContentProps
 >(({ className, children, disableDrag, disableResize, dialogKey, style, ...props }, ref) => {
   const stack = useStackOffset();
+  const viewport = useViewportSize();
   const { state: persisted, update: updatePersisted } = useDialogPersistence(dialogKey);
 
   const [drag, setDrag] = React.useState({ x: 0, y: 0 });
@@ -146,9 +185,33 @@ const DialogContent = React.forwardRef<
   const totalX = (hasSavedPos ? 0 : stack.x) + drag.x;
   const totalY = (hasSavedPos ? 0 : stack.y) + drag.y;
 
+  const safeWidth = Math.max(MIN_DIALOG_WIDTH, viewport.safeRight - viewport.safeLeft);
+  const maxDialogHeight = Math.max(MIN_DIALOG_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
+  const minDialogWidth = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(420, safeWidth) : MIN_DIALOG_WIDTH;
+  const minDialogHeight = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(360, maxDialogHeight) : MIN_DIALOG_HEIGHT;
+  const maxDialogWidth = Math.max(minDialogWidth, safeWidth);
+  const dialogWidth = !disableResize && persisted.width
+    ? clampNumber(persisted.width, minDialogWidth, maxDialogWidth)
+    : undefined;
+  const dialogHeight = !disableResize && persisted.height
+    ? clampNumber(persisted.height, minDialogHeight, maxDialogHeight)
+    : undefined;
+  const effectiveWidth = dialogWidth ?? innerRef.current?.offsetWidth ?? 500;
+  const effectiveHeight = dialogHeight ?? innerRef.current?.offsetHeight ?? 400;
+  const clampedTotalX = clampNumber(
+    totalX,
+    viewport.safeLeft - viewport.width / 2 + effectiveWidth / 2,
+    viewport.safeRight - viewport.width / 2 - effectiveWidth / 2,
+  );
+  const clampedTotalY = clampNumber(
+    totalY,
+    -viewport.height / 2 + effectiveHeight / 2 + VIEWPORT_MARGIN,
+    viewport.height / 2 - effectiveHeight / 2 - VIEWPORT_MARGIN,
+  );
+
   const sizeStyle: React.CSSProperties = {};
-  if (!disableResize && persisted.width) sizeStyle.width = persisted.width;
-  if (!disableResize && persisted.height) sizeStyle.height = persisted.height;
+  if (!disableResize && dialogWidth) sizeStyle.width = dialogWidth;
+  if (!disableResize && dialogHeight) sizeStyle.height = dialogHeight;
 
   return (
     <DialogPortal>
@@ -161,10 +224,10 @@ const DialogContent = React.forwardRef<
         style={{
           ...style,
           ...sizeStyle,
-          transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
+          transform: `translate(calc(-50% + ${clampedTotalX}px), calc(-50% + ${clampedTotalY}px))`,
         }}
         className={cn(
-          "fixed left-[50%] top-[50%] z-[401] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          "fixed left-[50%] top-[50%] z-[10050] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
           !disableResize && "resize overflow-hidden min-w-[320px] min-h-[240px] max-w-[calc(100vw-96px)] max-h-[calc(100vh-96px)]",
           disableResize && "max-h-[90vh] overflow-hidden",
           className,

@@ -1,140 +1,42 @@
 import * as React from "react";
-import { ChevronLeft, ChevronRight, ChevronsUpDown } from "lucide-react";
-import { DayPicker, useNavigation, useDayPicker, type CaptionProps } from "react-day-picker";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-const HE_MONTHS = [
-  "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
-  "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
-];
-
-/**
- * Compact single-row caption: [‹] [Month ▾] · [Year ▾] [›]
- * Always fits in one line — month and year use native <select> overlays so they
- * can never wrap or overflow the calendar panel.
- */
-function CompactCaption(props: CaptionProps) {
-  const { goToMonth, nextMonth, previousMonth } = useNavigation();
-  const { fromYear, toYear, fromDate, toDate } = useDayPicker();
-
-  const month = props.displayMonth.getMonth();
-  const year = props.displayMonth.getFullYear();
-
-  const minYear = fromYear ?? fromDate?.getFullYear() ?? year - 60;
-  const maxYear = toYear ?? toDate?.getFullYear() ?? year + 10;
-  const years = React.useMemo(() => {
-    const out: number[] = [];
-    for (let y = maxYear; y >= minYear; y--) out.push(y);
-    return out;
-  }, [minYear, maxYear]);
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    goToMonth(new Date(year, Number(e.target.value), 1));
-  };
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    goToMonth(new Date(Number(e.target.value), month, 1));
-  };
-
-  const pillBase =
-    "relative inline-flex items-center gap-1 h-8 rounded-md border border-primary/40 bg-background px-2 text-sm font-medium text-foreground shadow-sm hover:bg-accent/40 transition-colors min-w-0";
-
-  return (
-    <div className="flex items-center justify-between gap-2 px-1 pt-1 w-full min-w-0" dir="rtl">
-      <button
-        type="button"
-        aria-label="חודש קודם"
-        onClick={() => previousMonth && goToMonth(previousMonth)}
-        disabled={!previousMonth}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-8 w-8 shrink-0 p-0 opacity-70 hover:opacity-100 disabled:opacity-30",
-        )}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
-
-      <div className="flex flex-1 items-center justify-center gap-1 min-w-0 overflow-hidden whitespace-nowrap">
-        {/* Month pill */}
-        <label className={cn(pillBase, "max-w-[44%] truncate")}>
-          <span className="truncate">{HE_MONTHS[month]}</span>
-          <ChevronsUpDown className="h-3 w-3 opacity-60 shrink-0" />
-          <select
-            aria-label="בחר חודש"
-            value={month}
-            onChange={handleMonthChange}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            {HE_MONTHS.map((name, idx) => (
-              <option key={name} value={idx}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <span className="text-muted-foreground text-xs select-none">/</span>
-
-        {/* Year pill */}
-        <label className={cn(pillBase, "max-w-[40%] truncate")}>
-          <span className="truncate tabular-nums">{year}</span>
-          <ChevronsUpDown className="h-3 w-3 opacity-60 shrink-0" />
-          <select
-            aria-label="בחר שנה"
-            value={year}
-            onChange={handleYearChange}
-            className="absolute inset-0 cursor-pointer opacity-0"
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <button
-        type="button"
-        aria-label="חודש הבא"
-        onClick={() => nextMonth && goToMonth(nextMonth)}
-        disabled={!nextMonth}
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "h-8 w-8 shrink-0 p-0 opacity-70 hover:opacity-100 disabled:opacity-30",
-        )}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  fromYear,
-  toYear,
   ...props
 }: CalendarProps) {
-  const currentYear = new Date().getFullYear();
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       dir="rtl"
-      fromYear={fromYear ?? currentYear - 60}
-      toYear={toYear ?? currentYear + 10}
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
-        caption: "relative items-center",
-        caption_label: "sr-only",
-        nav: "hidden",
+        caption: "flex justify-center pt-1 relative items-center",
+        caption_dropdowns: "flex items-center justify-center gap-2 px-10 w-full",
+        caption_label:
+          "flex h-9 min-w-[104px] items-center justify-center rounded-md border border-primary/40 bg-background px-3 text-sm font-medium text-foreground shadow-sm",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        dropdown: "absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0",
+        dropdown_icon: "ms-1 h-3.5 w-3.5 opacity-70",
+        vhidden: "sr-only",
+        nav: "space-x-1 flex items-center",
+        nav_button: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+        ),
+        nav_button_previous: "absolute left-1",
+        nav_button_next: "absolute right-1",
         table: "w-full border-collapse space-y-1",
         head_row: "flex w-full",
         head_cell:
@@ -158,7 +60,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Caption: CompactCaption,
+        IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
       }}
       {...props}
     />
@@ -167,4 +70,3 @@ function Calendar({
 Calendar.displayName = "Calendar";
 
 export { Calendar };
-

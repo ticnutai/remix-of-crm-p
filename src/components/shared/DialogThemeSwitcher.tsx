@@ -117,6 +117,7 @@ export const dialogThemes: Record<DialogThemeId, { name: string; colors: DialogT
 };
 
 const DIALOG_THEME_KEY = 'dialog-color-theme';
+const DIALOG_VIEWPORT_MARGIN = 24;
 
 export function useDialogTheme() {
   const [themeId, setThemeId] = useState<DialogThemeId>(() => {
@@ -151,13 +152,18 @@ export function useDialogResize(initialWidth = 500, minWidth = 350, minHeight = 
     const onMouseMove = (ev: MouseEvent) => {
       let newWidth = startWidth;
       let newHeight = startHeight;
+      const maxWidth = Math.max(minWidth, window.innerWidth - DIALOG_VIEWPORT_MARGIN * 2);
+      const maxHeight = Math.max(minHeight, window.innerHeight - DIALOG_VIEWPORT_MARGIN * 2);
 
       if (direction.includes('e')) newWidth = Math.max(minWidth, startWidth + (ev.clientX - startX));
       if (direction.includes('w')) newWidth = Math.max(minWidth, startWidth - (ev.clientX - startX));
       if (direction.includes('s')) newHeight = Math.max(minHeight, startHeight + (ev.clientY - startY));
       if (direction.includes('n')) newHeight = Math.max(minHeight, startHeight - (ev.clientY - startY));
 
-      setSize({ width: newWidth, height: newHeight });
+      setSize({
+        width: Math.min(newWidth, maxWidth),
+        height: Math.min(newHeight, maxHeight),
+      });
     };
 
     const onMouseUp = () => {
