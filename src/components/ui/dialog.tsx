@@ -185,20 +185,23 @@ const DialogContent = React.forwardRef<
   const totalX = (hasSavedPos ? 0 : stack.x) + drag.x;
   const totalY = (hasSavedPos ? 0 : stack.y) + drag.y;
 
-  const maxDialogWidth = Math.max(MIN_DIALOG_WIDTH, viewport.width - VIEWPORT_MARGIN * 2);
+  const safeWidth = Math.max(MIN_DIALOG_WIDTH, viewport.safeRight - viewport.safeLeft);
+  const minDialogWidth = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(420, safeWidth) : MIN_DIALOG_WIDTH;
+  const minDialogHeight = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(360, maxDialogHeight) : MIN_DIALOG_HEIGHT;
+  const maxDialogWidth = Math.max(minDialogWidth, safeWidth);
   const maxDialogHeight = Math.max(MIN_DIALOG_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
   const dialogWidth = !disableResize && persisted.width
-    ? clampNumber(persisted.width, MIN_DIALOG_WIDTH, maxDialogWidth)
+    ? clampNumber(persisted.width, minDialogWidth, maxDialogWidth)
     : undefined;
   const dialogHeight = !disableResize && persisted.height
-    ? clampNumber(persisted.height, MIN_DIALOG_HEIGHT, maxDialogHeight)
+    ? clampNumber(persisted.height, minDialogHeight, maxDialogHeight)
     : undefined;
   const effectiveWidth = dialogWidth ?? innerRef.current?.offsetWidth ?? 500;
   const effectiveHeight = dialogHeight ?? innerRef.current?.offsetHeight ?? 400;
   const clampedTotalX = clampNumber(
     totalX,
-    -viewport.width / 2 + effectiveWidth / 2 + VIEWPORT_MARGIN,
-    viewport.width / 2 - effectiveWidth / 2 - VIEWPORT_MARGIN,
+    viewport.safeLeft - viewport.width / 2 + effectiveWidth / 2,
+    viewport.safeRight - viewport.width / 2 - effectiveWidth / 2,
   );
   const clampedTotalY = clampNumber(
     totalY,
