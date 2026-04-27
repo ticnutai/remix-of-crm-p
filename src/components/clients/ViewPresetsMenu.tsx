@@ -178,19 +178,24 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
     toast.success("התצוגה נמחקה");
   };
 
-  // Style matching the other icon buttons in Clients header
+  // Distinct style — gold-filled pill so it stands out among the other header icons
   const triggerStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "32px",
+    gap: "6px",
     height: "32px",
+    padding: "0 12px",
     borderRadius: "8px",
-    border: "1px solid #d4a843",
-    background: "transparent",
-    color: "#d4a843",
+    border: "1.5px solid #d4a843",
+    background: "linear-gradient(135deg, #f5d27a, #d4a843)",
+    color: "#1e293b",
     cursor: "pointer",
     transition: "all 0.2s ease",
+    fontSize: "12px",
+    fontWeight: 600,
+    boxShadow: "0 2px 6px rgba(212, 168, 67, 0.25)",
+    whiteSpace: "nowrap",
   };
 
   return (
@@ -202,15 +207,16 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
             title="תצוגות מוכנות / שינוי פריסה"
             aria-label="תצוגות מוכנות"
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#fef9e7";
-              e.currentTarget.style.color = "#1e293b";
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 4px 10px rgba(212, 168, 67, 0.4)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#d4a843";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 6px rgba(212, 168, 67, 0.25)";
             }}
           >
-            <LayoutTemplate style={{ width: "16px", height: "16px" }} />
+            <LayoutTemplate style={{ width: "14px", height: "14px" }} />
+            <span>תצוגות</span>
           </button>
         </DropdownMenuTrigger>
 
