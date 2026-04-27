@@ -444,7 +444,7 @@ export function TimerSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-hidden bg-background p-0" dir="rtl">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-hidden bg-background p-0" dir="rtl">
         <DialogHeader className="p-4 pb-0">
           <DialogTitle className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
