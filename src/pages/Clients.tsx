@@ -62,6 +62,7 @@ import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog"
 import { CategoryTagsManager } from "@/components/clients/CategoryTagsManager";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
+import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
 import { useInactiveClients } from "@/components/alerts";
 import {
@@ -2568,6 +2569,24 @@ export default function Clients() {
                     >
                       <BarChart3 style={{ width: "16px", height: "16px" }} />
                     </button>
+
+                    <ViewPresetsMenu
+                      current={{
+                        viewMode,
+                        minimalColumns,
+                        sortBy: filters.sortBy,
+                        showStagesView,
+                        showStatisticsView,
+                      }}
+                      onApply={(state: ViewPresetState) => {
+                        setViewMode(state.viewMode);
+                        setMinimalColumns(state.minimalColumns);
+                        setFilters((prev) => ({ ...prev, sortBy: state.sortBy }));
+                        saveSortBy(state.sortBy);
+                        setShowStagesView(state.showStagesView);
+                        setShowStatisticsView(state.showStatisticsView);
+                      }}
+                    />
 
                     {(isAdmin || isManager) && (
                       <button
