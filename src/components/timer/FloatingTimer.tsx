@@ -478,6 +478,7 @@ function FloatingTimerContent() {
         >
           {/* Main Timer Button - Circular Navy with Gold Border - Long press to drag */}
           <button
+            data-floating-timer-btn
             onMouseDown={handleLongPressStart}
             onMouseUp={handleLongPressEnd}
             onMouseLeave={handleLongPressEnd}
