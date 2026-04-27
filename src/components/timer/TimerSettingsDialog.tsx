@@ -204,6 +204,8 @@ const defaultTheme: TimerTheme = {
   entryTextColor: 'hsl(0, 0%, 100%)',
   entryFontSize: 14,
   entryFontFamily: 'Heebo',
+  // Floating timer icon default
+  floatingButtonShape: 'circle',
   // Button defaults
   buttonShape: 'rounded',
   buttonSize: 40,
