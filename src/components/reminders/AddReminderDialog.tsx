@@ -225,6 +225,15 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       remind_at: initialValues.remind_at ?? prev.remind_at,
     }));
 
+    if (initialValues.remind_at) {
+      const dt = new Date(initialValues.remind_at);
+      if (!isNaN(dt.getTime())) {
+        setReminderDateText(format(dt, 'dd/MM/yyyy'));
+        setReminderTimeText(format(dt, 'HH:mm'));
+        setReminderDateError(null);
+      }
+    }
+
     if (initialValues.client_id) {
       setClientIds([initialValues.client_id]);
     }
