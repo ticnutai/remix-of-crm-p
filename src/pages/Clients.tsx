@@ -62,6 +62,7 @@ import { BulkConsultantDialog } from "@/components/clients/BulkConsultantDialog"
 import { CategoryTagsManager } from "@/components/clients/CategoryTagsManager";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
+import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
 import { useInactiveClients } from "@/components/alerts";
 import {
