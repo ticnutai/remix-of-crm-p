@@ -59,6 +59,8 @@ export interface TimerTheme {
   entryTextColor?: string; // Color for time entry text (descriptions)
   entryFontSize?: number; // Font size for time entry descriptions
   entryFontFamily?: string; // Font for time entries
+  // Floating Timer Icon (the round button on the page)
+  floatingButtonShape?: 'circle' | 'rounded' | 'square'; // Shape of the floating timer icon
   // Button customization
   buttonShape?: 'circle' | 'rounded' | 'square'; // Shape of action buttons
   buttonSize?: number; // Size of action buttons (px)
@@ -202,6 +204,8 @@ const defaultTheme: TimerTheme = {
   entryTextColor: 'hsl(0, 0%, 100%)',
   entryFontSize: 14,
   entryFontFamily: 'Heebo',
+  // Floating timer icon default
+  floatingButtonShape: 'circle',
   // Button defaults
   buttonShape: 'rounded',
   buttonSize: 40,
@@ -1170,6 +1174,36 @@ export function TimerSettingsDialog({
                 {/* Elements Tab - Buttons, Tags, Inputs */}
                 <TabsContent value="elements" className="mt-0 space-y-4">
                   <div className="space-y-4">
+                    {/* Floating Timer Icon Customization */}
+                    <div className="p-3 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent space-y-3">
+                      <Label className="text-sm font-medium flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        איקון הטיימר הצף (הכפתור הראשי)
+                      </Label>
+                      <div className="space-y-2">
+                        <Label className="text-xs">צורת האיקון</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['circle', 'rounded', 'square'] as const).map((shape) => (
+                            <Button
+                              key={shape}
+                              size="sm"
+                              variant={(localTheme.floatingButtonShape || 'circle') === shape ? 'default' : 'outline'}
+                              onClick={() => handleColorChange('floatingButtonShape', shape)}
+                              className="text-xs gap-1"
+                            >
+                              <div className={cn(
+                                "w-4 h-4 bg-primary/50",
+                                shape === 'circle' && "rounded-full",
+                                shape === 'rounded' && "rounded-md",
+                                shape === 'square' && "rounded-none"
+                              )} />
+                              {shape === 'circle' ? 'עגול' : shape === 'rounded' ? 'מעוגל' : 'מרובע'}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Action Buttons Customization */}
                     <div className="p-3 rounded-xl border bg-gradient-to-br from-primary/5 to-transparent space-y-3">
                       <Label className="text-sm font-medium flex items-center gap-2">

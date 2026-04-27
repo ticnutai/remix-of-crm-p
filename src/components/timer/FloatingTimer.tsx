@@ -484,7 +484,10 @@ function FloatingTimerContent() {
             onTouchStart={handleLongPressStart}
             onTouchEnd={handleLongPressEnd}
             className={cn(
-              "group relative rounded-full transition-[shadow,border-color,transform] duration-300 ease-out",
+              "group relative transition-[shadow,border-color,transform] duration-300 ease-out",
+              timerTheme.floatingButtonShape === 'square' && "rounded-none",
+              timerTheme.floatingButtonShape === 'rounded' && "rounded-2xl",
+              (!timerTheme.floatingButtonShape || timerTheme.floatingButtonShape === 'circle') && "rounded-full",
               "bg-gradient-to-br from-[hsl(220,60%,20%)] via-[hsl(220,60%,25%)] to-[hsl(220,60%,18%)]",
               "border-2 border-[hsl(45,80%,50%)]",
               "shadow-[0_0_20px_rgba(180,140,50,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]",
@@ -503,7 +506,12 @@ function FloatingTimerContent() {
           >
             {/* Static glow when running */}
             {timerState.isRunning && (
-              <span className="absolute inset-0 rounded-full bg-[hsl(45,80%,50%)]/15" />
+              <span className={cn(
+                "absolute inset-0 bg-[hsl(45,80%,50%)]/15",
+                timerTheme.floatingButtonShape === 'square' && "rounded-none",
+                timerTheme.floatingButtonShape === 'rounded' && "rounded-2xl",
+                (!timerTheme.floatingButtonShape || timerTheme.floatingButtonShape === 'circle') && "rounded-full",
+              )} />
             )}
 
             <span className="relative flex flex-col items-center justify-center h-full w-full">
@@ -1019,40 +1027,32 @@ function FloatingTimerContent() {
               </TooltipProvider>
             )}
 
-            {/* Global Billing Default Toggle */}
-            <TooltipProvider delayDuration={3000}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => {
-                      const newDefault = !billingDefault;
-                      setBillingDefault(newDefault);
-                      // Also update current entry if running
-                      if (timerState.currentEntry) {
-                        updateBillable(newDefault);
-                      }
-                      toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-all duration-200 border",
-                      billingDefault
-                        ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
-                        : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
-                    )}
-                    style={{
-                      color: billingDefault
-                        ? "hsl(45,80%,55%)"
-                        : timerTheme.accentColor,
-                    }}
-                  >
-                    <DollarSign className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {billingDefault ? "חיוב פעיל - לחץ לכיבוי לכל הטיימרים" : "חיוב כבוי - לחץ להפעלה לכל הטיימרים"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Global Billing Default Toggle - native title to avoid sticky tooltips */}
+            <button
+              onClick={() => {
+                const newDefault = !billingDefault;
+                setBillingDefault(newDefault);
+                // Also update current entry if running
+                if (timerState.currentEntry) {
+                  updateBillable(newDefault);
+                }
+                toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
+              }}
+              title={billingDefault ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
+              className={cn(
+                "p-1.5 rounded-lg transition-all duration-200 border",
+                billingDefault
+                  ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                  : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
+              )}
+              style={{
+                color: billingDefault
+                  ? "hsl(45,80%,55%)"
+                  : timerTheme.accentColor,
+              }}
+            >
+              <DollarSign className="h-4 w-4" />
+            </button>
 
             {/* Button Size Slider */}
             <TooltipProvider>
