@@ -406,6 +406,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
       </DialogTrigger>
       <DialogContent
         ref={containerRef}
+        dialogKey="add-reminder"
         className="p-0 overflow-visible navy-gold-dialog"
         dir="rtl"
         onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
