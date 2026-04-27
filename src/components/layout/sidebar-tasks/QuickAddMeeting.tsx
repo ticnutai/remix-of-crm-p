@@ -489,6 +489,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent
           ref={containerRef}
+          dialogKey="quick-add-meeting"
           className="p-0 overflow-visible navy-gold-dialog"
           dir="rtl"
           onKeyDown={(e) => { if (e.key === 'Escape') onOpenChange(false); }}
