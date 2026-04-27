@@ -506,7 +506,12 @@ function FloatingTimerContent() {
           >
             {/* Static glow when running */}
             {timerState.isRunning && (
-              <span className="absolute inset-0 rounded-full bg-[hsl(45,80%,50%)]/15" />
+              <span className={cn(
+                "absolute inset-0 bg-[hsl(45,80%,50%)]/15",
+                timerTheme.floatingButtonShape === 'square' && "rounded-none",
+                timerTheme.floatingButtonShape === 'rounded' && "rounded-2xl",
+                (!timerTheme.floatingButtonShape || timerTheme.floatingButtonShape === 'circle') && "rounded-full",
+              )} />
             )}
 
             <span className="relative flex flex-col items-center justify-center h-full w-full">
