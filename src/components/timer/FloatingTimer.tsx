@@ -1019,40 +1019,32 @@ function FloatingTimerContent() {
               </TooltipProvider>
             )}
 
-            {/* Global Billing Default Toggle */}
-            <TooltipProvider delayDuration={3000}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => {
-                      const newDefault = !billingDefault;
-                      setBillingDefault(newDefault);
-                      // Also update current entry if running
-                      if (timerState.currentEntry) {
-                        updateBillable(newDefault);
-                      }
-                      toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
-                    }}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-all duration-200 border",
-                      billingDefault
-                        ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
-                        : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
-                    )}
-                    style={{
-                      color: billingDefault
-                        ? "hsl(45,80%,55%)"
-                        : timerTheme.accentColor,
-                    }}
-                  >
-                    <DollarSign className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {billingDefault ? "חיוב פעיל - לחץ לכיבוי לכל הטיימרים" : "חיוב כבוי - לחץ להפעלה לכל הטיימרים"}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {/* Global Billing Default Toggle - native title to avoid sticky tooltips */}
+            <button
+              onClick={() => {
+                const newDefault = !billingDefault;
+                setBillingDefault(newDefault);
+                // Also update current entry if running
+                if (timerState.currentEntry) {
+                  updateBillable(newDefault);
+                }
+                toast.success(newDefault ? "חיוב פעיל לכל הטיימרים ✅" : "חיוב כבוי לכל הטיימרים ❌");
+              }}
+              title={billingDefault ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
+              className={cn(
+                "p-1.5 rounded-lg transition-all duration-200 border",
+                billingDefault
+                  ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                  : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
+              )}
+              style={{
+                color: billingDefault
+                  ? "hsl(45,80%,55%)"
+                  : timerTheme.accentColor,
+              }}
+            >
+              <DollarSign className="h-4 w-4" />
+            </button>
 
             {/* Button Size Slider */}
             <TooltipProvider>
