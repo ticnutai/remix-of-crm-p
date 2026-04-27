@@ -186,10 +186,10 @@ const DialogContent = React.forwardRef<
   const totalY = (hasSavedPos ? 0 : stack.y) + drag.y;
 
   const safeWidth = Math.max(MIN_DIALOG_WIDTH, viewport.safeRight - viewport.safeLeft);
+  const maxDialogHeight = Math.max(MIN_DIALOG_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
   const minDialogWidth = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(420, safeWidth) : MIN_DIALOG_WIDTH;
   const minDialogHeight = FORM_DIALOG_KEYS.has(dialogKey ?? '') ? Math.min(360, maxDialogHeight) : MIN_DIALOG_HEIGHT;
   const maxDialogWidth = Math.max(minDialogWidth, safeWidth);
-  const maxDialogHeight = Math.max(MIN_DIALOG_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
   const dialogWidth = !disableResize && persisted.width
     ? clampNumber(persisted.width, minDialogWidth, maxDialogWidth)
     : undefined;
