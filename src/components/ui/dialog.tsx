@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[400] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[400] bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -27,30 +27,126 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+// ---------- Stacking offset for multiple open dialogs ----------
+let openDialogCount = 0;
+const STACK_OFFSET = 28; // px shift per stacked dialog
+
+function useStackOffset() {
+  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+  React.useEffect(() => {
+    const idx = openDialogCount;
+    openDialogCount += 1;
+    setOffset({ x: idx * STACK_OFFSET, y: idx * STACK_OFFSET });
+    return () => {
+      openDialogCount = Math.max(0, openDialogCount - 1);
+    };
+  }, []);
+  return offset;
+}
+
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  /** Disable the drag/resize chrome (e.g. for confirm dialogs). */
+  disableDrag?: boolean;
+  disableResize?: boolean;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      dir="rtl"
-      aria-describedby={undefined}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-[401] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border-2 border-primary/40 bg-background p-6 text-right shadow-lg shadow-primary/10 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg max-h-[90vh] overflow-y-auto",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute left-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-        <X className="h-4 w-4" />
-        <span className="sr-only">סגור</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+  DialogContentProps
+>(({ className, children, disableDrag, disableResize, style, ...props }, ref) => {
+  const stack = useStackOffset();
+  const [drag, setDrag] = React.useState({ x: 0, y: 0 });
+  const dragStateRef = React.useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+
+  const onHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disableDrag) return;
+    // Don't start drag from interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest("button, a, input, textarea, select, [data-no-drag]")) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: drag.x,
+      origY: drag.y,
+    };
+  };
+  const onHeaderPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = dragStateRef.current;
+    if (!s) return;
+    setDrag({
+      x: s.origX + (e.clientX - s.startX),
+      y: s.origY + (e.clientY - s.startY),
+    });
+  };
+  const onHeaderPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = null;
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+  };
+
+  const totalX = stack.x + drag.x;
+  const totalY = stack.y + drag.y;
+
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        dir="rtl"
+        aria-describedby={undefined}
+        style={{
+          ...style,
+          // Apply stacking + drag offset on top of the centering transform
+          transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
+        }}
+        className={cn(
+          "fixed left-[50%] top-[50%] z-[401] flex flex-col w-full max-w-lg gap-0 border-2 border-primary/40 bg-background text-right shadow-2xl shadow-primary/20 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          // Resize: user can grab corner to resize
+          !disableResize && "resize overflow-hidden min-w-[320px] min-h-[240px] max-w-[95vw] max-h-[92vh]",
+          disableResize && "max-h-[90vh] overflow-hidden",
+          className,
+        )}
+        {...props}
+      >
+        {/* Drag handle bar */}
+        {!disableDrag && (
+          <div
+            onPointerDown={onHeaderPointerDown}
+            onPointerMove={onHeaderPointerMove}
+            onPointerUp={onHeaderPointerUp}
+            onPointerCancel={onHeaderPointerUp}
+            className="flex items-center justify-center h-6 shrink-0 cursor-grab active:cursor-grabbing select-none border-b border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors rounded-t-md"
+            title="גרור להזזת החלון"
+            data-dialog-drag-handle
+          >
+            <div className="w-10 h-1 rounded-full bg-primary/40" />
+          </div>
+        )}
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 grid gap-4">
+          {children}
+        </div>
+
+        <DialogPrimitive.Close
+          data-no-drag
+          className="absolute left-3 top-7 z-10 rounded-sm bg-background/80 p-1 opacity-80 ring-offset-background transition-opacity hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          aria-label="סגור (Esc)"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">סגור</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
