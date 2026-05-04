@@ -25,6 +25,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { withErrorBoundary } from "@/components/RouteErrorBoundary";
 import { DedupProvider } from "@/contexts/DedupContext";
 import { AutoPreload } from "@/components/AutoPreload";
+import { AttendanceFAB } from "@/components/attendance/AttendanceFAB";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -79,6 +80,8 @@ const SmartTools = lazy(() => import("./pages/SmartTools"));
 const DocumentEditorPage = lazy(() => import("./pages/DocumentEditorPage"));
 const PlanningGIS = lazy(() => import("./pages/PlanningGIS"));
 const PortalManagement = lazy(() => import("./pages/PortalManagement"));
+const Attendance = lazy(() => import("./pages/Attendance"));
+const AttendanceAdmin = lazy(() => import("./pages/AttendanceAdmin"));
 
 // Optimized QueryClient with aggressive caching and performance settings
 const queryClient = new QueryClient({
@@ -341,11 +344,22 @@ const App = () => {
                                 path="/portal-management"
                                 element={withErrorBoundary(PortalManagement)}
                               />
+                              <Route
+                                path="/attendance"
+                                element={withErrorBoundary(Attendance)}
+                              />
+                              <Route
+                                path="/attendance/admin"
+                                element={withErrorBoundary(AttendanceAdmin)}
+                              />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </Suspense>
 
                           <UnifiedDevTools />
+
+                          {/* Global Attendance Clock-in FAB */}
+                          <AttendanceFAB />
 
                           {/* Auto Preload - Background data prefetching */}
                           <AutoPreload />

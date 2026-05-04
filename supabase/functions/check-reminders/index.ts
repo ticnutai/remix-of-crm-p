@@ -168,15 +168,24 @@ const handler = async (req: Request): Promise<Response> => {
     // Get reminders that are due and not yet sent
     const { data: dueReminders, error: fetchError } = await supabase
       .from("reminders")
-      .select(
-        "*, profiles:user_id(full_name, email), email_templates:email_template_id(*)",
-      )
+      .select("*")
       .lte("remind_at", now)
       .eq("is_sent", false)
       .eq("is_dismissed", false);
 
     if (fetchError) {
       throw fetchError;
+    }
+
+    // Fetch profiles for email lookup
+    const userIds = [...new Set((dueReminders || []).map((r: any) => r.user_id).filter(Boolean))];
+    const profileMap: Record<string, { full_name: string; email: string }> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+      (profiles || []).forEach((p: any) => { profileMap[p.id] = p; });
     }
 
     console.log(`Found ${dueReminders?.length || 0} due reminders`);
@@ -191,9 +200,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (dueReminders && dueReminders.length > 0) {
       for (const reminder of dueReminders) {
         try {
-          const profile = reminder.profiles as any;
+          const profile = profileMap[reminder.user_id] || null;
           const reminderTypes = reminder.reminder_types || ["browser"];
-          const emailTemplate = reminder.email_templates as any;
+          const emailTemplate = null; // email_template support removed (no FK)
 
           // Check if email should be sent
           if (reminderTypes.includes("email") && profile?.email) {

@@ -29,6 +29,7 @@ import {
   Bot,
   Palette,
   MapPinned,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -52,6 +53,10 @@ import {
   isTableAvailable,
   markTableUnavailable,
 } from "@/lib/supabaseTableCheck";
+import {
+  SidebarItemsCustomizerDialog,
+  useSidebarItemsConfig,
+} from "./SidebarItemsCustomizer";
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
@@ -61,6 +66,8 @@ const mainNavItems = [
   { title: "טבלת לקוחות", url: "/datatable-pro", icon: Table },
   { title: "עובדים", url: "/employees", icon: UserCog },
   { title: "לוגי זמן", url: "/time-logs", icon: Clock },
+  { title: "נוכחות שלי", url: "/attendance", icon: Clock },
+  { title: "נוכחות עובדים", url: "/attendance/admin", icon: UserCog, adminOnly: true },
   { title: "ניתוח זמנים", url: "/time-analytics", icon: Clock },
   { title: "משימות, פגישות ותזכורות", url: "/tasks-meetings", icon: Calendar },
   { title: "הצעות מחיר", url: "/quotes", icon: FileSpreadsheet },
@@ -101,8 +108,10 @@ export function OverlaySidebar({
   const [isOpen, setIsOpen] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+  const [isItemsDialogOpen, setIsItemsDialogOpen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const { isAdmin } = useAuth();
+  const { isHidden, orderItems } = useSidebarItemsConfig();
 
   // Sidebar theme
   const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(() => {
@@ -438,8 +447,11 @@ export function OverlaySidebar({
               >
                 ניווט ראשי
               </p>
-              {mainNavItems
-                .filter((item) => !item.adminOnly || isAdmin)
+              {orderItems(
+                mainNavItems.filter((item) => !item.adminOnly || isAdmin),
+                "main",
+              )
+                .filter((item) => !isHidden(item.url))
                 .map((item) => (
                   <Link
                     key={item.url}
@@ -579,8 +591,11 @@ export function OverlaySidebar({
               >
                 מערכת
               </p>
-              {systemNavItems
-                .filter((item) => !item.adminOnly || isAdmin)
+              {orderItems(
+                systemNavItems.filter((item) => !item.adminOnly || isAdmin),
+                "system",
+              )
+                .filter((item) => !isHidden(item.url))
                 .map((item) => (
                   <Link
                     key={item.url}
@@ -626,29 +641,50 @@ export function OverlaySidebar({
             style={{
               borderColor: `${themeBorder}40`,
               opacity: isHovering ? 1 : 0,
-              maxHeight: isHovering ? "80px" : "0px",
+              maxHeight: isHovering ? "140px" : "0px",
               padding: isHovering ? "12px" : "0px 12px",
               overflow: "hidden",
             }}
           >
-            <button
-              onClick={() => setIsThemeDialogOpen(true)}
-              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-              style={{
-                border: `2px solid ${themeAccent}`,
-                background: `${themeAccent}20`,
-                color: themeAccent,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${themeAccent}40`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${themeAccent}20`;
-              }}
-            >
-              <Palette className="h-5 w-5 shrink-0" />
-              <span className="text-sm font-semibold">ערכות נושא</span>
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setIsItemsDialogOpen(true)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                style={{
+                  border: `2px solid ${themeAccent}`,
+                  background: `${themeAccent}20`,
+                  color: themeAccent,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${themeAccent}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${themeAccent}20`;
+                }}
+                title="התאמת תפריט הניווט"
+              >
+                <SlidersHorizontal className="h-5 w-5 shrink-0" />
+                <span className="text-sm font-semibold">התאמת תפריט</span>
+              </button>
+              <button
+                onClick={() => setIsThemeDialogOpen(true)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                style={{
+                  border: `2px solid ${themeAccent}`,
+                  background: `${themeAccent}20`,
+                  color: themeAccent,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${themeAccent}40`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${themeAccent}20`;
+                }}
+              >
+                <Palette className="h-5 w-5 shrink-0" />
+                <span className="text-sm font-semibold">ערכות נושא</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -661,6 +697,18 @@ export function OverlaySidebar({
         onThemeChange={(newTheme) => {
           setSidebarTheme(newTheme);
         }}
+      />
+
+      {/* Sidebar Items Customizer Dialog */}
+      <SidebarItemsCustomizerDialog
+        open={isItemsDialogOpen}
+        onOpenChange={setIsItemsDialogOpen}
+        mainItems={mainNavItems
+          .filter((item) => !item.adminOnly || isAdmin)
+          .map((i) => ({ url: i.url, title: i.title, group: "main" }))}
+        systemItems={systemNavItems
+          .filter((item) => !item.adminOnly || isAdmin)
+          .map((i) => ({ url: i.url, title: i.title, group: "system" }))}
       />
     </>
   );

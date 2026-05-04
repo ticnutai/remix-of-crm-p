@@ -168,6 +168,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
+import {
+  PageCustomizerPanel,
+  PageCustomizerToolbar,
+  usePageCustomizer,
+  type PageSection,
+  type PageFeature,
+} from "@/components/page-customizer/PageCustomizer";
 import { he } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -3143,6 +3150,32 @@ export default function DataTablePro() {
     return counts;
   }, [filteredClients, dbClients]);
 
+  // ===== Page customizer (layout editor + feature toggles) =====
+  const pageSections: PageSection[] = useMemo(() => [
+    { id: "presets",     label: "פריסטים שמורים",   description: "סרגל הפריסטים מעל הטבלה" },
+    { id: "tabs",        label: "לשוניות (לקוחות / פרויקטים / ...)", description: "אזור הלשוניות הראשי" },
+    { id: "categories",  label: "סרגל קטגוריות",     description: "פאנל קטגוריות לקוחות בצד" },
+    { id: "filters",     label: "פאנל סינון",        description: "סינון מתקדם של לקוחות" },
+    { id: "table",       label: "הטבלה הראשית",      description: "טבלת הלקוחות / פרויקטים" },
+  ], []);
+  const pageFeatures: PageFeature[] = useMemo(() => [
+    { id: "presets",          label: "ניהול פריסטים",        description: "שמירה וטעינת פריסטי סינון" },
+    { id: "save-preset-btn",  label: "כפתור שמירת פריסט",    description: "כפתור 'שמור פריסט' בכותרת" },
+    { id: "gallery-link",     label: "קישור לגלריה",         description: "מעבר לעמוד גלריית לקוחות" },
+    { id: "categories-panel", label: "סרגל קטגוריות",         description: "הצגת סרגל הקטגוריות" },
+    { id: "filters-panel",    label: "פאנל סינון",           description: "סינון מתקדם" },
+    { id: "bulk-actions",     label: "פעולות גורפות",        description: "הפעלת פעולות על כמה שורות" },
+    { id: "row-actions",      label: "פעולות שורה",          description: "כפתורי עריכה/מחיקה בכל שורה" },
+    { id: "export",           label: "ייצוא נתונים",         description: "כפתורי ייצוא ל-Excel / CSV" },
+    { id: "import",           label: "ייבוא נתונים",         description: "ייבוא לקוחות מקובץ" },
+    { id: "style-settings",   label: "עיצוב טבלה",           description: "התאמת צבעים וגופנים" },
+  ], []);
+  const pageCustomizer = usePageCustomizer({
+    storageKey: "datatable-pro-customizer",
+    sections: pageSections,
+    features: pageFeatures,
+  });
+
   return (
     <AppLayout title="DataTable Pro">
       <div className="p-6 space-y-6 animate-fade-in w-full">
@@ -3159,17 +3192,23 @@ export default function DataTablePro() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Layout & Settings (non-blocking floating panel) */}
+            <PageCustomizerToolbar ctl={pageCustomizer} />
+
             {/* Navigation to Clients Gallery */}
-            <Button
-              variant="outline"
-              onClick={() => navigate("/clients")}
-              className="border-[hsl(45,70%,45%)] text-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)] hover:text-[hsl(222,47%,15%)] transition-all"
-            >
-              <LayoutGrid className="h-4 w-4 ml-2" />
-              גלריה
-            </Button>
+            {pageCustomizer.isEnabled("gallery-link") && (
+              <Button
+                variant="outline"
+                onClick={() => navigate("/clients")}
+                className="border-[hsl(45,70%,45%)] text-[hsl(45,70%,45%)] hover:bg-[hsl(45,70%,45%)] hover:text-[hsl(222,47%,15%)] transition-all"
+              >
+                <LayoutGrid className="h-4 w-4 ml-2" />
+                גלריה
+              </Button>
+            )}
 
             {/* Preset management */}
+            {pageCustomizer.isEnabled("save-preset-btn") && pageCustomizer.isEnabled("presets") && (
             <Dialog
               open={isPresetDialogOpen}
               onOpenChange={setIsPresetDialogOpen}
@@ -3211,11 +3250,12 @@ export default function DataTablePro() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </div>
 
         {/* Saved Presets */}
-        {presets.length > 0 && (
+        {pageCustomizer.isVisible("presets") && pageCustomizer.isEnabled("presets") && presets.length > 0 && (
           <Card>
             <CardHeader className="py-3">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -3249,6 +3289,7 @@ export default function DataTablePro() {
         )}
 
         {/* Tabs for different demos */}
+        {pageCustomizer.isVisible("tabs") && (
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
             <TabsList className="flex-wrap h-auto gap-1">
@@ -3345,6 +3386,7 @@ export default function DataTablePro() {
             )}
 
             {/* Table Style Settings */}
+            {pageCustomizer.isEnabled("style-settings") && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -3371,6 +3413,7 @@ export default function DataTablePro() {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            )}
           </div>
 
           {/* Create Table Dialog */}
@@ -3501,6 +3544,7 @@ export default function DataTablePro() {
                   <div className="w-px h-7 bg-border/60 mx-0.5" />
 
                   {/* Import */}
+                  {pageCustomizer.isEnabled("import") && (<>
                   <input
                     ref={clientFileInputRef}
                     type="file"
@@ -3531,6 +3575,7 @@ export default function DataTablePro() {
 
                   {/* Divider */}
                   <div className="w-px h-7 bg-border/60 mx-0.5" />
+                  </>)}
 
                   {/* Undo/Redo */}
                   <Button
@@ -3572,7 +3617,7 @@ export default function DataTablePro() {
                   <div className="w-px h-7 bg-border/60 mx-0.5" />
 
                   {/* Categories */}
-                  {categories.length > 0 && (
+                  {pageCustomizer.isVisible("categories") && pageCustomizer.isEnabled("categories-panel") && categories.length > 0 && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -3603,6 +3648,7 @@ export default function DataTablePro() {
                   )}
 
                   {/* Filter Panel (יועץ, סינון מתקדם) */}
+                  {pageCustomizer.isVisible("filters") && pageCustomizer.isEnabled("filters-panel") && (
                   <ClientFilterPanel
                     consultants={consultants}
                     activeFilters={clientFilter}
@@ -3638,6 +3684,7 @@ export default function DataTablePro() {
                     totalClients={dbClients.length}
                     filteredCount={displayClients.length}
                   />
+                  )}
 
                   {/* Restore Hidden Columns */}
                   {hiddenClientColumns.size > 0 && (
@@ -3684,7 +3731,8 @@ export default function DataTablePro() {
                   <div className="flex-1" />
 
                   {/* Bulk Actions */}
-                  {selectedClients.length > 0 ? (
+                  {pageCustomizer.isEnabled("bulk-actions") && (
+                  selectedClients.length > 0 ? (
                     <div className="flex items-center gap-1.5 bg-primary/5 rounded-lg px-2.5 py-1 border border-primary/20">
                       <Badge
                         variant="default"
@@ -3754,6 +3802,7 @@ export default function DataTablePro() {
                     <span className="text-xs text-muted-foreground">
                       ← סמן לקוחות לפעולות
                     </span>
+                  )
                   )}
                 </div>
 
@@ -3767,7 +3816,7 @@ export default function DataTablePro() {
               </CardHeader>
 
               {/* Collapsible Categories Panel - inside the card */}
-              {showCategories && categories.length > 0 && (
+              {pageCustomizer.isVisible("categories") && pageCustomizer.isEnabled("categories-panel") && showCategories && categories.length > 0 && (
                 <div
                   className="border-t border-b bg-muted/30 px-4 py-3"
                   dir="rtl"
@@ -3852,7 +3901,7 @@ export default function DataTablePro() {
                     selectable
                     filterable
                     globalSearch
-                    exportable
+                    exportable={pageCustomizer.isEnabled("export")}
                     showSummary
                     onCellEdit={handleClientCellEdit}
                     onSelectionChange={handleClientSelectionChange}
@@ -4050,7 +4099,7 @@ export default function DataTablePro() {
                   globalSearch
                   paginated
                   pageSizeOptions={[10, 25, 50, 100]}
-                  exportable
+                  exportable={pageCustomizer.isEnabled("export")}
                   columnToggle
                   showSummary
                   onCellEdit={handleProjectCellEdit}
@@ -4191,7 +4240,7 @@ export default function DataTablePro() {
                   globalSearch
                   paginated
                   pageSizeOptions={[10, 25, 50, 100]}
-                  exportable
+                  exportable={pageCustomizer.isEnabled("export")}
                   columnToggle
                   showSummary
                   striped
@@ -4222,6 +4271,7 @@ export default function DataTablePro() {
             </TabsContent>
           ))}
         </Tabs>
+        )}
 
         {/* Edit Client Name Dialog */}
         <Dialog
@@ -4268,6 +4318,9 @@ export default function DataTablePro() {
             setSelectedClients([]);
           }}
         />
+
+        {/* Non-blocking floating customizer panel */}
+        <PageCustomizerPanel ctl={pageCustomizer} />
       </div>
     </AppLayout>
   );
