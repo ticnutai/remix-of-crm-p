@@ -1,11 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +35,7 @@ import {
   Check,
   Plus,
   TableRowsSplit,
+  Move,
 } from 'lucide-react';
 import { ColumnDef, FilterState } from '../types';
 import { cn } from '@/lib/utils';
@@ -99,6 +96,74 @@ export function TableToolbar<T>({
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<string | null>(null);
+
+  // Floating panel state (draggable + resizable)
+  const [colsPanelOpen, setColsPanelOpen] = useState(false);
+  const POS_KEY = 'table-columns-customizer-pos';
+  const SIZE_KEY = 'table-columns-customizer-size';
+  const defaultPos = () => {
+    if (typeof window === 'undefined') return { x: 100, y: 100 };
+    return { x: Math.max(20, window.innerWidth - 460), y: 100 };
+  };
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(POS_KEY) : null;
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return defaultPos();
+  });
+  const [size, setSize] = useState<{ w: number; h: number }>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(SIZE_KEY) : null;
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { w: 420, h: 560 };
+  });
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const resizeRef = useRef<{ sx: number; sy: number; sw: number; sh: number } | null>(null);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch {}
+  }, [pos]);
+  useEffect(() => {
+    try { window.localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch {}
+  }, [size]);
+
+  const onHeaderMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const nx = Math.max(0, Math.min(window.innerWidth - 100, ev.clientX - dragRef.current.dx));
+      const ny = Math.max(0, Math.min(window.innerHeight - 60, ev.clientY - dragRef.current.dy));
+      setPos({ x: nx, y: ny });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const onResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    resizeRef.current = { sx: e.clientX, sy: e.clientY, sw: size.w, sh: size.h };
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return;
+      const nw = Math.max(320, Math.min(900, resizeRef.current.sw + (ev.clientX - resizeRef.current.sx)));
+      const nh = Math.max(280, Math.min(window.innerHeight - 40, resizeRef.current.sh + (ev.clientY - resizeRef.current.sy)));
+      setSize({ w: nw, h: nh });
+    };
+    const onUp = () => {
+      resizeRef.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -268,54 +333,78 @@ export function TableToolbar<T>({
           </Button>
         )}
 
-        {/* Column visibility - icon only */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 gap-2 border-[#D4AF37]"
-              title="עמודות"
-            >
-              <Columns className="h-4 w-4 text-[#D4AF37]" />
-              <span className="hidden md:inline text-xs text-[#D4AF37]">עמודות</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
+        {/* Column visibility - opens floating draggable/resizable panel */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-3 gap-2 border-[#D4AF37]"
+          title="עמודות"
+          onClick={() => setColsPanelOpen(o => !o)}
+        >
+          <Columns className="h-4 w-4 text-[#D4AF37]" />
+          <span className="hidden md:inline text-xs text-[#D4AF37]">עמודות</span>
+        </Button>
+
+        {colsPanelOpen && typeof document !== 'undefined' && createPortal(
+          <div
             dir="rtl"
-            className="w-96 p-0 bg-white border border-[#D4AF37] shadow-2xl z-50 rounded-xl"
+            style={{
+              position: 'fixed',
+              left: pos.x,
+              top: pos.y,
+              width: size.w,
+              height: size.h,
+              zIndex: 9999,
+            }}
+            className="bg-white border border-[#D4AF37] shadow-2xl rounded-xl flex flex-col overflow-hidden pointer-events-auto"
           >
-            {/* Header */}
-            <div className="p-4 border-b border-[#D4AF37]/40 bg-gradient-to-l from-[#1e3a8a]/5 to-white">
+            {/* Header (drag handle) */}
+            <div
+              className="p-3 border-b border-[#D4AF37]/40 bg-gradient-to-l from-[#1e3a8a]/5 to-white cursor-move select-none"
+              onMouseDown={onHeaderMouseDown}
+            >
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-[#1e3a8a] flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <Move className="h-4 w-4 text-[#1e3a8a]/40" />
+                  <h3 className="text-base font-bold text-[#1e3a8a] flex items-center gap-2">
                     <Columns className="h-5 w-5 text-[#D4AF37]" />
-                    ניהול עמודות 
+                    ניהול עמודות
                   </h3>
-                  <p className="text-sm text-[#1e3a8a]/70 mt-1">גרור לשינוי סדר, בחר למחיקה</p>
                 </div>
-                {/* Add Column Button */}
-                {onAddColumn && (
+                <div className="flex items-center gap-1">
+                  {onAddColumn && (
+                    <Button
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onAddColumn(); }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="bg-gradient-to-r from-[#D4AF37] to-[#F4BF37] hover:from-[#F4BF37] hover:to-[#D4AF37] text-[#1e3a8a] font-bold shadow-md h-7 px-2"
+                    >
+                      <Plus className="h-3.5 w-3.5 ml-1" />
+                      הוסף
+                    </Button>
+                  )}
                   <Button
+                    variant="ghost"
                     size="sm"
-                    onClick={onAddColumn}
-                    className="bg-gradient-to-r from-[#D4AF37] to-[#F4BF37] hover:from-[#F4BF37] hover:to-[#D4AF37] text-[#1e3a8a] font-bold shadow-md"
+                    onClick={(e) => { e.stopPropagation(); setColsPanelOpen(false); }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="h-7 w-7 p-0 text-[#1e3a8a] hover:bg-[#1e3a8a]/10"
+                    title="סגור"
                   >
-                    <Plus className="h-4 w-4 ml-1" />
-                    הוסף
+                    <X className="h-4 w-4" />
                   </Button>
-                )}
+                </div>
               </div>
-              
-              {/* Select All & Delete Selected Actions */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#D4AF37]/20">
+              <p className="text-xs text-[#1e3a8a]/70 mt-1">גרור את הכותרת להזזה • גרור פינה ימנית-תחתונה לשינוי גודל</p>
+            </div>
+            {/* Sub-actions */}
+            <div className="px-3 py-2 border-b border-[#D4AF37]/20 bg-white">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSelectAll}
-                  className="flex-1 border-[#1e3a8a]/20 hover:bg-[#1e3a8a]/10 text-[#1e3a8a]"
+                  className="flex-1 border-[#1e3a8a]/20 hover:bg-[#1e3a8a]/10 text-[#1e3a8a] h-8"
                 >
                   <Checkbox
                     checked={selectedColumns.size === columns.length && columns.length > 0}
@@ -323,12 +412,12 @@ export function TableToolbar<T>({
                   />
                   {selectedColumns.size === columns.length ? 'בטל הכל' : 'בחר הכל'}
                 </Button>
-                {selectedColumns.size > 0 && onDeleteColumns && (
+                {selectedColumns.size > 0 && (
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleDeleteSelected}
-                    className="flex-1"
+                    className="flex-1 h-8"
                   >
                     <Trash2 className="h-4 w-4 ml-1" />
                     מחק ({selectedColumns.size})
@@ -336,8 +425,10 @@ export function TableToolbar<T>({
                 )}
               </div>
             </div>
-            <ScrollArea className="h-80 bg-white">
-              <div className="p-3 space-y-2">
+            {/* List */}
+            <div className="flex-1 overflow-hidden flex flex-col bg-white">
+              <ScrollArea className="flex-1 bg-white">
+                <div className="p-3 space-y-2">
                 {columns.map((column, index) => (
                   <div
                     key={column.id}
@@ -449,10 +540,21 @@ export function TableToolbar<T>({
                     )}
                   </div>
                 ))}
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+                </div>
+              </ScrollArea>
+            </div>
+            {/* Resize handle (bottom-left in RTL, bottom-right in LTR coordinates) */}
+            <div
+              onMouseDown={onResizeMouseDown}
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-nwse-resize"
+              style={{ zIndex: 2 }}
+              title="שנה גודל"
+            >
+              <div className="w-0 h-0 border-b-[12px] border-l-[12px] border-b-[#D4AF37] border-l-transparent absolute bottom-0 left-0" />
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

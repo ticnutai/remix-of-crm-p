@@ -1819,7 +1819,6 @@ export default function DataTablePro() {
         accessorKey: "name",
         sortable: true,
         filterable: true,
-        sticky: "right",
         width: 180,
         editable: true,
         editType: "text",
@@ -2127,7 +2126,6 @@ export default function DataTablePro() {
         accessorKey: "full_name",
         sortable: true,
         filterable: true,
-        sticky: "right",
         width: 180,
         editable: isManager || isAdmin,
         editType: "text",
@@ -2324,12 +2322,10 @@ export default function DataTablePro() {
         accessorKey: "name",
         sortable: true,
         filterable: true,
-        sticky: "right",
         width: 200,
         editable: false, // Navigation column - not editable directly, edit via pencil button
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange("name", val),
-        deletable: false, // Name column cannot be deleted
         cell: (value, row) => (
           <div className="flex items-center gap-2 group">
             <ClientNameWithCategory
@@ -2608,7 +2604,6 @@ export default function DataTablePro() {
         width: 100,
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange("actions", val),
-        deletable: false, // Actions column cannot be deleted
         cell: (value, row) => (
           <Button
             variant="ghost"

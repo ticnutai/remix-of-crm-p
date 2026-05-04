@@ -389,7 +389,7 @@ export function TableHeader<T>({
                     ? () => onSort(accessorKey, false)
                     : undefined
                 }
-                canDelete={column.deletable !== false}
+                canDelete={true}
                 canHide={column.hideable !== false}
               >
                 {headerContent}
