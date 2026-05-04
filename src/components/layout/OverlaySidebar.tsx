@@ -490,107 +490,8 @@ export function OverlaySidebar({
                 ))}
             </div>
 
-            {/* Tasks & Meetings Widget */}
-            <div className="my-4 px-1">
-              <SidebarTasksMeetings isCollapsed={false} />
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Custom Tables */}
-            {tables && tables.length > 0 && (
-              <>
-                <div className="space-y-1 mb-4">
-                  <div className="flex items-center gap-2 px-3 py-2">
-                    <Table className="h-4 w-4" style={{ color: themeAccent }} />
-                    <p
-                      className="text-xs font-semibold uppercase tracking-wider"
-                      style={{ color: themeAccent }}
-                    >
-                      טבלאות מותאמות
-                    </p>
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] px-1.5 h-4 border-0"
-                      style={{
-                        backgroundColor: `${themeAccent}33`,
-                        color: themeAccent,
-                      }}
-                    >
-                      {tables.length}
-                    </Badge>
-                  </div>
-                  <div
-                    className="border rounded-lg p-1"
-                    style={{
-                      borderColor: `${themeBorder}40`,
-                      backgroundColor: `${themeAccent}0D`,
-                    }}
-                  >
-                    {tables.map((table) => (
-                      <Link
-                        key={table.id}
-                        to={`/custom-table/${table.id}`}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm text-right",
-                          location.pathname === `/custom-table/${table.id}`
-                            ? "font-medium shadow-lg"
-                            : "hover:text-current",
-                        )}
-                        style={{
-                          color:
-                            location.pathname === `/custom-table/${table.id}`
-                              ? themeBg
-                              : themeAccent,
-                          backgroundColor:
-                            location.pathname === `/custom-table/${table.id}`
-                              ? themeAccent
-                              : "transparent",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (
-                            location.pathname !== `/custom-table/${table.id}`
-                          ) {
-                            e.currentTarget.style.backgroundColor = `${themeAccent}33`;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (
-                            location.pathname !== `/custom-table/${table.id}`
-                          ) {
-                            e.currentTarget.style.backgroundColor =
-                              "transparent";
-                          }
-                        }}
-                      >
-                        <Table
-                          className="h-5 w-5 shrink-0"
-                          style={{
-                            color:
-                              location.pathname === `/custom-table/${table.id}`
-                                ? themeBg
-                                : themeAccent,
-                          }}
-                        />
-                        <span className="flex-1 text-right">
-                          {table.display_name}
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-                <Separator className="my-4" />
-              </>
-            )}
-
             {/* System Nav */}
             <div className="space-y-1">
-              <p
-                className="text-xs font-semibold px-3 py-2 uppercase tracking-wider"
-                style={{ color: themeAccent }}
-              >
-                מערכת
-              </p>
               {orderItems(
                 systemNavItems.filter((item) => !item.adminOnly || isAdmin),
                 "system",
@@ -641,49 +542,62 @@ export function OverlaySidebar({
             style={{
               borderColor: `${themeBorder}40`,
               opacity: isHovering ? 1 : 0,
-              maxHeight: isHovering ? "140px" : "0px",
+              maxHeight: isHovering ? "80px" : "0px",
               padding: isHovering ? "12px" : "0px 12px",
               overflow: "hidden",
             }}
           >
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => setIsItemsDialogOpen(true)}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                style={{
-                  border: `2px solid ${themeAccent}`,
-                  background: `${themeAccent}20`,
-                  color: themeAccent,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${themeAccent}40`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${themeAccent}20`;
-                }}
-                title="התאמת תפריט הניווט"
-              >
-                <SlidersHorizontal className="h-5 w-5 shrink-0" />
-                <span className="text-sm font-semibold">התאמת תפריט</span>
-              </button>
-              <button
-                onClick={() => setIsThemeDialogOpen(true)}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                style={{
-                  border: `2px solid ${themeAccent}`,
-                  background: `${themeAccent}20`,
-                  color: themeAccent,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${themeAccent}40`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${themeAccent}20`;
-                }}
-              >
-                <Palette className="h-5 w-5 shrink-0" />
-                <span className="text-sm font-semibold">ערכות נושא</span>
-              </button>
+            <div className="flex items-center justify-center gap-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsItemsDialogOpen(true)}
+                    className="flex items-center justify-center h-10 w-10 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer"
+                    style={{
+                      border: `1.5px solid ${themeAccent}`,
+                      background: `${themeAccent}15`,
+                      color: themeAccent,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${themeAccent}35`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${themeAccent}15`;
+                    }}
+                    aria-label="התאמת תפריט"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">התאמת תפריט</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsThemeDialogOpen(true)}
+                    className="flex items-center justify-center h-10 w-10 rounded-lg transition-all duration-200 hover:scale-110 cursor-pointer"
+                    style={{
+                      border: `1.5px solid ${themeAccent}`,
+                      background: `${themeAccent}15`,
+                      color: themeAccent,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = `${themeAccent}35`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = `${themeAccent}15`;
+                    }}
+                    aria-label="ערכות נושא"
+                  >
+                    <Palette className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs">ערכות נושא</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
