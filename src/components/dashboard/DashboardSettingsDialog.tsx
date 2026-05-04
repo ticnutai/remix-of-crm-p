@@ -151,7 +151,7 @@ export function DashboardSettingsDialog({
     if (typeof window === "undefined") return { x: 80, y: 80 };
     return { x: Math.max(20, window.innerWidth - 760), y: 80 };
   });
-  const [size, setSize] = useState<{ w: number; h: number }>(() => {
+  const [panelSize, setPanelSize] = useState<{ w: number; h: number }>(() => {
     try {
       const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIZE_KEY) : null;
       if (raw) return JSON.parse(raw);
@@ -167,8 +167,8 @@ export function DashboardSettingsDialog({
   }, [open, pos]);
   useEffect(() => {
     if (!open) return;
-    try { window.localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch {}
-  }, [open, size]);
+    try { window.localStorage.setItem(SIZE_KEY, JSON.stringify(panelSize)); } catch {}
+  }, [open, panelSize]);
 
   const onHeaderMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button, input, [role='tab']")) return;
@@ -191,7 +191,7 @@ export function DashboardSettingsDialog({
   const startResize = (corner: "se" | "sw" | "ne" | "nw") => (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    const start = { sx: e.clientX, sy: e.clientY, sw: size.w, sh: size.h, px: pos.x, py: pos.y };
+    const start = { sx: e.clientX, sy: e.clientY, sw: panelSize.w, sh: panelSize.h, px: pos.x, py: pos.y };
     const onMove = (ev: MouseEvent) => {
       const dx = ev.clientX - start.sx;
       const dy = ev.clientY - start.sy;
@@ -205,7 +205,7 @@ export function DashboardSettingsDialog({
       if (corner === "nw") { nw = start.sw - dx; nh = start.sh - dy; nx = start.px + dx; ny = start.py + dy; }
       nw = Math.max(380, Math.min(window.innerWidth - 20, nw));
       nh = Math.max(360, Math.min(window.innerHeight - 20, nh));
-      setSize({ w: nw, h: nh });
+      setPanelSize({ w: nw, h: nh });
       setPos({ x: Math.max(0, nx), y: Math.max(0, ny) });
     };
     const onUp = () => {
@@ -269,7 +269,7 @@ export function DashboardSettingsDialog({
   return createPortal(
     <div
       className="fixed z-[60] bg-white border border-[#D4AF37] shadow-2xl rounded-xl flex flex-col overflow-hidden pointer-events-auto"
-      style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
+      style={{ left: pos.x, top: pos.y, width: panelSize.w, height: panelSize.h }}
       dir="rtl"
     >
       {/* ======== HEADER (drag handle) ======== */}
