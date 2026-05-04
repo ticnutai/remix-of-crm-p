@@ -993,7 +993,7 @@ function FloatingTimerContent() {
           </div>
 
           {/* Settings & Resize Buttons */}
-          <div className="absolute top-3 left-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-1 left-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
             {/* Mobile Resize Button - Always visible on mobile */}
             {isMobile && (
               <TooltipProvider>
@@ -1001,17 +1001,17 @@ function FloatingTimerContent() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={cycleSizePreset}
-                      className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80 active:scale-95"
+                      className="p-0.5 rounded transition-all border border-transparent hover:opacity-80 active:scale-95"
                       style={{
                         color: timerTheme.accentColor,
                       }}
                     >
                       {currentSizePreset === "small" ? (
-                        <Minimize2 className="h-4 w-4" />
+                        <Minimize2 className="h-3 w-3" />
                       ) : currentSizePreset === "large" ? (
-                        <Maximize2 className="h-4 w-4" />
+                        <Maximize2 className="h-3 w-3" />
                       ) : (
-                        <Maximize2 className="h-4 w-4 opacity-60" />
+                        <Maximize2 className="h-3 w-3 opacity-60" />
                       )}
                     </button>
                   </TooltipTrigger>
@@ -1041,7 +1041,7 @@ function FloatingTimerContent() {
               }}
               title={billingDefault ? "חיוב פעיל - לחץ לכיבוי" : "חיוב כבוי - לחץ להפעלה"}
               className={cn(
-                "p-1.5 rounded-lg transition-all duration-200 border",
+                "p-0.5 rounded transition-all duration-200 border",
                 billingDefault
                   ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
                   : "border-[hsl(220,30%,40%)]/50 opacity-50 hover:opacity-80",
@@ -1052,7 +1052,7 @@ function FloatingTimerContent() {
                   : timerTheme.accentColor,
               }}
             >
-              <DollarSign className="h-4 w-4" />
+              <DollarSign className="h-3 w-3" />
             </button>
 
             {/* Button Size Slider */}
@@ -1062,7 +1062,7 @@ function FloatingTimerContent() {
                   <button
                     onClick={() => setShowSizeSlider(!showSizeSlider)}
                     className={cn(
-                      "p-1.5 rounded-lg transition-all border",
+                      "p-0.5 rounded transition-all border",
                       showSizeSlider
                         ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
                         : "border-transparent hover:opacity-80",
@@ -1071,7 +1071,7 @@ function FloatingTimerContent() {
                       color: timerTheme.accentColor,
                     }}
                   >
-                    <SlidersHorizontal className="h-4 w-4" />
+                    <SlidersHorizontal className="h-3 w-3" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">גודל כפתור צף</TooltipContent>
@@ -1084,12 +1084,12 @@ function FloatingTimerContent() {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="p-1.5 rounded-lg transition-all border border-transparent hover:opacity-80"
+                    className="p-0.5 rounded transition-all border border-transparent hover:opacity-80"
                     style={{
                       color: timerTheme.accentColor,
                     }}
                   >
-                    <Palette className="h-4 w-4" />
+                    <Palette className="h-3 w-3" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">הגדרות עיצוב</TooltipContent>
