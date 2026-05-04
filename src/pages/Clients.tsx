@@ -63,6 +63,12 @@ import { CategoryTagsManager } from "@/components/clients/CategoryTagsManager";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
 import { ViewPresetsMenu, type ViewPresetState } from "@/components/clients/ViewPresetsMenu";
+import {
+  usePageCustomizer,
+  PageCustomizerPanel,
+  type PageSection,
+  type PageFeature,
+} from "@/components/page-customizer/PageCustomizer";
 import { isValidPhoneForDisplay } from "@/lib/phone-utils";
 import { useInactiveClients } from "@/components/alerts";
 import {
@@ -363,6 +369,37 @@ export default function Clients() {
 
   // Built-in field visibility config
   const { isVisible, isConditionallyVisible } = useClientFieldConfig();
+
+  // ===== Page customizer (פריסה + פונקציות) =====
+  const clientsPageSections: PageSection[] = useMemo(() => [
+    { id: "header",       label: "כותרת ופעולות עליונות",   description: "כותרת הדף + כפתורי פעולה (הוסף/בחירה/שלבים/סטטיסטיקות)" },
+    { id: "search",       label: "סרגל חיפוש",              description: "תיבת חיפוש לקוחות בכותרת" },
+    { id: "filter-strip", label: "סרגל סינון מתקדם",        description: "סינון לפי שלבים, תאריכים, תזכורות, תגיות וקטגוריות" },
+    { id: "stats-view",   label: "תצוגת סטטיסטיקות",        description: "פאנל הסטטיסטיקות (כשפעיל)" },
+    { id: "stages-view",  label: "תצוגת שלבים",             description: "תצוגת לקוחות לפי שלבים (כשפעיל)" },
+    { id: "main-grid",    label: "גלריית הלקוחות",          description: "רשת/רשימה ראשית של הלקוחות" },
+  ], []);
+
+  const clientsPageFeatures: PageFeature[] = useMemo(() => [
+    { id: "add-client",       label: "כפתור הוסף לקוח",          description: "כפתור 'הוסף לקוח חדש' בכותרת" },
+    { id: "goto-table",       label: "מעבר לטבלת לקוחות",        description: "כפתור הניווט לדף DataTable Pro" },
+    { id: "bulk-select",      label: "מצב בחירה מרובה",          description: "אפשרות לבחור כמה לקוחות לפעולות גורפות" },
+    { id: "stages-toggle",    label: "מעבר לתצוגת שלבים",        description: "כפתור הצגת לקוחות לפי שלבים" },
+    { id: "stats-toggle",     label: "מעבר לסטטיסטיקות",         description: "כפתור הצגת תצוגת סטטיסטיקות" },
+    { id: "view-presets",     label: "תפריט תצוגות שמורות",      description: "שמירה וטעינה של פריסטי תצוגה" },
+    { id: "access-mgmt",      label: "ניהול גישות לפורטל",       description: "(מנהלים בלבד) כפתור ניהול גישות" },
+    { id: "search-bar",       label: "חיפוש בכותרת",             description: "פעיל/כבוי לתיבת החיפוש העליונה" },
+    { id: "filter-strip",     label: "סינון מתקדם",              description: "פעיל/כבוי לסרגל הסינון" },
+    { id: "inactive-alerts",  label: "התראות לקוחות לא פעילים",   description: "התראה אוטומטית על לקוחות שלא היה איתם קשר" },
+  ], []);
+
+  const pageCustomizer = usePageCustomizer({
+    storageKey: "clients-page-customizer",
+    sections: clientsPageSections,
+    features: clientsPageFeatures,
+  });
+  const pcVisible = pageCustomizer.isVisible;
+  const pcEnabled = pageCustomizer.isEnabled;
 
   // Filter state
   const [filters, setFilters] = useState<ClientFilterState>({
@@ -2510,6 +2547,18 @@ export default function Clients() {
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                     <button
+                      onClick={() => { pageCustomizer.setInitialTab("layout"); pageCustomizer.openPanel(); }}
+                      style={iconBtnBase}
+                      onMouseEnter={(e) => handleEnter(e, false)}
+                      onMouseLeave={(e) => handleLeave(e, false)}
+                      title="התאמה אישית של הדף (פריסה + פונקציות)"
+                      aria-label="התאמה אישית של הדף"
+                    >
+                      <Settings style={{ width: "16px", height: "16px" }} />
+                    </button>
+
+                    {pcEnabled("add-client") && (
+                    <button
                       onClick={() => setIsAddClientDialogOpen(true)}
                       style={iconBtnBase}
                       onMouseEnter={(e) => handleEnter(e, false)}
@@ -2519,7 +2568,9 @@ export default function Clients() {
                     >
                       <UserPlus style={{ width: "16px", height: "16px" }} />
                     </button>
+                    )}
 
+                    {pcEnabled("goto-table") && (
                     <button
                       onClick={() => navigate("/datatable-pro")}
                       style={iconBtnBase}
@@ -2530,7 +2581,9 @@ export default function Clients() {
                     >
                       <Rows3 style={{ width: "16px", height: "16px" }} />
                     </button>
+                    )}
 
+                    {pcEnabled("bulk-select") && (
                     <button
                       onClick={toggleSelectionMode}
                       style={{ ...iconBtnBase, ...(selectionMode ? activeStyle : {}) }}
@@ -2541,7 +2594,9 @@ export default function Clients() {
                     >
                       <CheckSquare style={{ width: "16px", height: "16px" }} />
                     </button>
+                    )}
 
+                    {pcEnabled("stages-toggle") && (
                     <button
                       onClick={() => {
                         setShowStagesView(!showStagesView);
@@ -2555,7 +2610,9 @@ export default function Clients() {
                     >
                       <Layers style={{ width: "16px", height: "16px" }} />
                     </button>
+                    )}
 
+                    {pcEnabled("stats-toggle") && (
                     <button
                       onClick={() => {
                         setShowStatisticsView(!showStatisticsView);
@@ -2569,7 +2626,9 @@ export default function Clients() {
                     >
                       <BarChart3 style={{ width: "16px", height: "16px" }} />
                     </button>
+                    )}
 
+                    {pcEnabled("view-presets") && (
                     <ViewPresetsMenu
                       current={{
                         viewMode,
@@ -2587,8 +2646,9 @@ export default function Clients() {
                         setShowStatisticsView(state.showStatisticsView);
                       }}
                     />
+                    )}
 
-                    {(isAdmin || isManager) && (
+                    {pcEnabled("access-mgmt") && (isAdmin || isManager) && (
                       <button
                         onClick={() => {
                           setShowAccessView(!showAccessView);
@@ -3257,6 +3317,7 @@ export default function Clients() {
               )}
 
               {/* Search - compact */}
+              {pcVisible("search") && pcEnabled("search-bar") && (
               <div
                 style={{
                   position: "relative",
@@ -3291,11 +3352,13 @@ export default function Clients() {
                   className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
                 />
               </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* ═══ Compact Row 2: Filter Strip ═══ */}
+        {pcVisible("filter-strip") && pcEnabled("filter-strip") && (
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
@@ -3335,22 +3398,23 @@ export default function Clients() {
             fetchCategoriesAndTags();
           }}
         />
+        )}
 
         {/* Statistics View - When Enabled */}
         {showAccessView ? (
           <div className="flex-1 overflow-auto">
             <ClientAccessSection />
           </div>
-        ) : showStatisticsView ? (
+        ) : showStatisticsView && pcVisible("stats-view") ? (
           <div className="flex-1 border rounded-lg bg-card overflow-hidden">
             <ClientsStatisticsView
               clients={clients}
               onClose={() => setShowStatisticsView(false)}
             />
           </div>
-        ) : showStagesView ? (
+        ) : showStagesView && pcVisible("stages-view") ? (
           <ClientsByStageView className="flex-1" />
-        ) : (
+        ) : pcVisible("main-grid") ? (
           <>
             {/* Clients Grid */}
             {/* Minimal View Column Selector */}
@@ -3709,7 +3773,7 @@ export default function Clients() {
             </div>
             {/* End of Clients Content Area with Sidebar */}
           </>
-        )}
+        ) : null}
       </div>
       {/* End of Main Container */}
 
@@ -4353,6 +4417,9 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Page Customizer Panel (פריסה + פונקציות) */}
+      <PageCustomizerPanel ctl={pageCustomizer} title="התאמה אישית של עמוד הלקוחות" />
     </AppLayout>
   );
 }
