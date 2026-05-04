@@ -438,12 +438,6 @@ function DashboardContent() {
               </Button>
             </div>
 
-            {/* Settings Dialog */}
-            <DashboardSettingsDialog
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-            />
-
             {/* Stats Cards - מציג skeleton בזמן טעינה */}
             {dashboardLoading ? (
               <DashboardStatsSkeleton />
