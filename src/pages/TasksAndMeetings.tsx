@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -127,12 +128,12 @@ const TasksAndMeetings = () => {
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") || "all",
   );
-  const [taskView, setTaskView] = useState<ViewType>("list");
+  const [taskView, setTaskView] = useSyncedSetting<ViewType>({ key: "tasks-meetings-view", defaultValue: "list" });
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<SortField>("event_date");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: "tasks-status-filter", defaultValue: "all" });
+  const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
+  const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
+  const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);

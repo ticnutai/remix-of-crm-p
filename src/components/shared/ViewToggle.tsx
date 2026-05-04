@@ -1,5 +1,6 @@
 // View Toggle Component - Switch between different view modes
 import React from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -180,26 +181,9 @@ export function ViewToggle({
   );
 }
 
-// Hook for managing view state with localStorage
+// Hook for managing view state with localStorage + cloud sync
 export function useViewMode(storageKey: string, defaultView: ViewMode = 'cards') {
-  const [viewMode, setViewMode] = React.useState<ViewMode>(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return (saved as ViewMode) || defaultView;
-    } catch {
-      return defaultView;
-    }
-  });
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, viewMode);
-    } catch (error) {
-      console.error('Error saving view mode:', error);
-    }
-  }, [viewMode, storageKey]);
-
-  return [viewMode, setViewMode] as const;
+  return useSyncedSetting<ViewMode>({ key: storageKey, defaultValue: defaultView });
 }
 
 // Grid View Component

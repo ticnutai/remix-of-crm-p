@@ -1,5 +1,6 @@
 // Reports Page - tenarch CRM Pro
 import React, { useState, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,15 +88,10 @@ type DateRange = "week" | "month" | "quarter" | "year";
 const Reports = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    return (localStorage.getItem("reports-date-range") as DateRange) || "month";
-  });
+  const [dateRange, setDateRange] = useSyncedSetting<DateRange>({ key: "reports-date-range", defaultValue: "month" });
   const [loading, setLoading] = useState(true);
 
-  // Save date range to localStorage
-  useEffect(() => {
-    localStorage.setItem("reports-date-range", dateRange);
-  }, [dateRange]);
+  // (date range persisted by useSyncedSetting)
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);

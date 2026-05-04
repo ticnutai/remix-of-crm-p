@@ -1,6 +1,7 @@
 // Time Analytics Page - tenarch CRM Pro
 // Professional time log analysis with insights and recommendations
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -113,8 +114,8 @@ export default function TimeAnalytics() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('30');
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
+  const [selectedPeriod, setSelectedPeriod] = useSyncedSetting<string>({ key: 'time-analytics-period', defaultValue: '30' });
+  const [selectedEmployee, setSelectedEmployee] = useSyncedSetting<string>({ key: 'time-analytics-employee', defaultValue: 'all' });
 
   const fetchData = useCallback(async () => {
     if (!user) return;

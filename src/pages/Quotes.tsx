@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -116,7 +117,7 @@ export default function Quotes() {
 
   // Saved quotes
   const [savedQuotesSearch, setSavedQuotesSearch] = useState("");
-  const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useState("all");
+  const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useSyncedSetting<string>({ key: "saved-quotes-status-filter", defaultValue: "all" });
   const [deleteSavedQuoteId, setDeleteSavedQuoteId] = useState<string | null>(null);
 
   const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
@@ -150,17 +151,11 @@ export default function Quotes() {
     return matchSearch && matchStatus;
   });
 
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    return localStorage.getItem('quotes-active-tab') || 'quotes';
-  });
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "quotes-active-tab", defaultValue: "quotes" });
   
   // Quotes state
-  const [searchTerm, setSearchTerm] = useState(() => {
-    return localStorage.getItem('quotes-search') || '';
-  });
-  const [statusFilter, setStatusFilter] = useState<string>(() => {
-    return localStorage.getItem('quotes-status-filter') || 'all';
-  });
+  const [searchTerm, setSearchTerm] = useSyncedSetting<string>({ key: "quotes-search", defaultValue: "" });
+  const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: "quotes-status-filter", defaultValue: "all" });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [paymentQuote, setPaymentQuote] = useState<Quote | null>(null);
@@ -168,12 +163,8 @@ export default function Quotes() {
   const [convertQuoteId, setConvertQuoteId] = useState<string | null>(null);
   
   // Contracts state
-  const [contractSearchTerm, setContractSearchTerm] = useState(() => {
-    return localStorage.getItem('contracts-search') || '';
-  });
-  const [contractStatusFilter, setContractStatusFilter] = useState<string>(() => {
-    return localStorage.getItem('contracts-status-filter') || 'all';
-  });
+  const [contractSearchTerm, setContractSearchTerm] = useSyncedSetting<string>({ key: "contracts-search", defaultValue: "" });
+  const [contractStatusFilter, setContractStatusFilter] = useSyncedSetting<string>({ key: "contracts-status-filter", defaultValue: "all" });
   const [isContractFormOpen, setIsContractFormOpen] = useState(false);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
@@ -192,25 +183,7 @@ export default function Quotes() {
   const [isSignatureDialogOpen, setIsSignatureDialogOpen] = useState(false);
   
   // Save filters to localStorage
-  React.useEffect(() => {
-    localStorage.setItem('quotes-active-tab', activeTab);
-  }, [activeTab]);
-  
-  React.useEffect(() => {
-    localStorage.setItem('quotes-search', searchTerm);
-  }, [searchTerm]);
-  
-  React.useEffect(() => {
-    localStorage.setItem('quotes-status-filter', statusFilter);
-  }, [statusFilter]);
-  
-  React.useEffect(() => {
-    localStorage.setItem('contracts-search', contractSearchTerm);
-  }, [contractSearchTerm]);
-  
-  React.useEffect(() => {
-    localStorage.setItem('contracts-status-filter', contractStatusFilter);
-  }, [contractStatusFilter]);
+  // (handled by useSyncedSetting above)
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('he-IL', {

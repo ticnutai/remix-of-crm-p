@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -233,7 +234,7 @@ export function KanbanBoard() {
   const { projects } = useProjects();
   const { toast } = useToast();
 
-  const [viewMode, setViewMode] = useState<"kanban" | "gantt">("kanban");
+  const [viewMode, setViewMode] = useSyncedSetting<"kanban" | "gantt">({ key: "kanban-view-mode", defaultValue: "kanban" });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
