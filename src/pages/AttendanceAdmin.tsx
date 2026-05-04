@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Download, FileText, AlertTriangle, Edit2, Mail } from "lucide-react";
+import { MonthlyTimesheet } from "@/components/attendance/MonthlyTimesheet";
 import {
   AttendanceRecord, listAllRecords,
   summarizeByUser, findMissingDays,
@@ -107,6 +108,7 @@ export default function AttendanceAdmin() {
             <TabsTrigger value="summary">סיכום לעובד</TabsTrigger>
             <TabsTrigger value="detail">פירוט יומי</TabsTrigger>
             <TabsTrigger value="missing">חוסרים</TabsTrigger>
+            <TabsTrigger value="timesheet">עריכה ידנית</TabsTrigger>
           </TabsList>
 
           <TabsContent value="summary">
@@ -230,6 +232,40 @@ export default function AttendanceAdmin() {
                     </div>
                   );
                 })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="timesheet">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Label>בחר עובד:</Label>
+                  <Select value={userFilter === "all" ? (summary[0]?.user_id ?? "") : userFilter} onValueChange={setUserFilter}>
+                    <SelectTrigger className="w-[260px]">
+                      <SelectValue placeholder="בחר עובד" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {summary.map(u => (
+                        <SelectItem key={u.user_id} value={u.user_id}>{u.full_name || u.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const sel = userFilter !== "all" ? userFilter : (summary[0]?.user_id ?? "");
+                  const selUser = summary.find(s => s.user_id === sel);
+                  if (!sel) return <p className="text-muted-foreground p-4">אין עובדים להצגה</p>;
+                  return (
+                    <MonthlyTimesheet
+                      userId={sel}
+                      employeeName={selUser?.full_name ?? selUser?.email}
+                      isManager={true}
+                    />
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>

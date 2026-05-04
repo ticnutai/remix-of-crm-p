@@ -13,6 +13,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { LogIn, LogOut, Coffee, Edit2, Download } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MonthlyTimesheet } from "@/components/attendance/MonthlyTimesheet";
 import {
   AttendanceRecord, getOpenShift, clockIn, clockOut,
   getOpenBreak, startBreak, endBreak,
@@ -130,6 +132,23 @@ export default function Attendance() {
           {profile?.full_name ?? user?.email} — דיווח שעות עבודה
         </p>
 
+        <Tabs defaultValue="timesheet" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="timesheet">גיליון חודשי</TabsTrigger>
+            <TabsTrigger value="quick">כניסה מהירה / היסטוריה</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timesheet" className="space-y-4">
+            {user && (
+              <MonthlyTimesheet
+                userId={user.id}
+                employeeName={profile?.full_name ?? user.email ?? undefined}
+                isManager={false}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="quick" className="space-y-4">
         {/* Clock in/out card */}
         <Card>
           <CardHeader>
@@ -258,6 +277,8 @@ export default function Attendance() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Edit dialog */}
