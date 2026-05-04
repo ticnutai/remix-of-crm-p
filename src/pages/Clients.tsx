@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useViewSettings, useUserSettings } from "@/hooks/useUserSettings";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useGoogleSheets } from "@/hooks/useGoogleSheets";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -203,7 +204,7 @@ export default function Clients() {
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
-  const [showAccessView, setShowAccessView] = useState(false);
+  const [showAccessView, setShowAccessView] = useSyncedSetting<boolean>({ key: "clients-show-access-view", defaultValue: false });
 
   // Wrapper: persist showStagesView to cloud
   const setShowStagesView = useCallback(

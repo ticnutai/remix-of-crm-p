@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -217,8 +218,8 @@ export function ManagerDashboard() {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: revenueData = [] } = useRevenueChart();
   const { isSupported, subscribe } = usePushNotifications(undefined);
-  const [showForecast, setShowForecast] = useState(false);
-  const [dashboardView, setDashboardView] = useState<'full' | 'compact'>('full');
+  const [showForecast, setShowForecast] = useSyncedSetting<boolean>({ key: 'dashboard-show-forecast', defaultValue: false });
+  const [dashboardView, setDashboardView] = useSyncedSetting<'full' | 'compact'>({ key: 'dashboard-view', defaultValue: 'full' });
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('he-IL', {

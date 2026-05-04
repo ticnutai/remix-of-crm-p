@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -379,14 +380,14 @@ export default function Finance() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [invoiceViewUrl, setInvoiceViewUrl] = useState<string | null>(null);
   const [isInvoiceViewDialogOpen, setIsInvoiceViewDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<string>("overview");
-  const [invoicesViewMode, setInvoicesViewMode] = useState<
+  const [filter, setFilter] = useSyncedSetting<string>({ key: "finance-filter", defaultValue: "all" });
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "finance-active-tab", defaultValue: "overview" });
+  const [invoicesViewMode, setInvoicesViewMode] = useSyncedSetting<
     "list" | "cards" | "grid3" | "grid4"
-  >("list");
+  >({ key: "finance-invoices-view-mode", defaultValue: "list" });
 
   // New finance features state
-  const [showAdvancedFeatures, setShowAdvancedFeatures] = useState(true);
+  const [showAdvancedFeatures, setShowAdvancedFeatures] = useSyncedSetting<boolean>({ key: "finance-show-advanced", defaultValue: true });
   const [isPartialPaymentDialogOpen, setIsPartialPaymentDialogOpen] =
     useState(false);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] =
@@ -397,27 +398,27 @@ export default function Finance() {
   const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
 
   // VAT rate
-  const [vatRate, setVatRate] = useState<number>(18);
+  const [vatRate, setVatRate] = useSyncedSetting<number>({ key: "finance-vat-rate", defaultValue: 18 });
 
   // Top clients limit
-  const [topClientsLimit, setTopClientsLimit] = useState<number>(5);
+  const [topClientsLimit, setTopClientsLimit] = useSyncedSetting<number>({ key: "finance-top-clients-limit", defaultValue: 5 });
 
   // View mode for analytics sections (year vs month)
-  const [strongestMonthsView, setStrongestMonthsView] = useState<
+  const [strongestMonthsView, setStrongestMonthsView] = useSyncedSetting<
     "year" | "month"
-  >("month");
-  const [yearBreakdownView, setYearBreakdownView] = useState<"year" | "month">(
-    "year",
-  );
-  const [topClientsView, setTopClientsView] = useState<"year" | "month">(
-    "year",
-  );
-  const [monthlyChartView, setMonthlyChartView] = useState<"year" | "month">(
-    "month",
-  );
-  const [revenueChartView, setRevenueChartView] = useState<"year" | "month">(
-    "month",
-  );
+  >({ key: "finance-strongest-months-view", defaultValue: "month" });
+  const [yearBreakdownView, setYearBreakdownView] = useSyncedSetting<"year" | "month">({
+    key: "finance-year-breakdown-view", defaultValue: "year",
+  });
+  const [topClientsView, setTopClientsView] = useSyncedSetting<"year" | "month">({
+    key: "finance-top-clients-view", defaultValue: "year",
+  });
+  const [monthlyChartView, setMonthlyChartView] = useSyncedSetting<"year" | "month">({
+    key: "finance-monthly-chart-view", defaultValue: "month",
+  });
+  const [revenueChartView, setRevenueChartView] = useSyncedSetting<"year" | "month">({
+    key: "finance-revenue-chart-view", defaultValue: "month",
+  });
   const [selectedViewYear, setSelectedViewYear] = useState<number>(
     new Date().getFullYear(),
   );
@@ -426,12 +427,12 @@ export default function Finance() {
   );
 
   // Advanced filters
-  const [dateFromFilter, setDateFromFilter] = useState<string>("");
-  const [dateToFilter, setDateToFilter] = useState<string>("");
-  const [yearFilter, setYearFilter] = useState<string>("all");
-  const [monthFilter, setMonthFilter] = useState<string>("all");
-  const [clientFilter, setClientFilter] = useState<string>("all");
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [dateFromFilter, setDateFromFilter] = useSyncedSetting<string>({ key: "finance-date-from", defaultValue: "" });
+  const [dateToFilter, setDateToFilter] = useSyncedSetting<string>({ key: "finance-date-to", defaultValue: "" });
+  const [yearFilter, setYearFilter] = useSyncedSetting<string>({ key: "finance-year-filter", defaultValue: "all" });
+  const [monthFilter, setMonthFilter] = useSyncedSetting<string>({ key: "finance-month-filter", defaultValue: "all" });
+  const [clientFilter, setClientFilter] = useSyncedSetting<string>({ key: "finance-client-filter", defaultValue: "all" });
+  const [showAnalytics, setShowAnalytics] = useSyncedSetting<boolean>({ key: "finance-show-analytics", defaultValue: false });
 
   // Page sections configuration
   const defaultSections: FinanceSection[] = [
@@ -691,7 +692,7 @@ export default function Finance() {
   ];
   const [financeWidgets, setFinanceWidgets] =
     useState<FinanceWidget[]>(defaultWidgets);
-  const [useTabsView, setUseTabsView] = useState(true);
+  const [useTabsView, setUseTabsView] = useSyncedSetting<boolean>({ key: "finance-use-tabs-view", defaultValue: true });
 
   // Form state
   const [invoiceForm, setInvoiceForm] = useState({

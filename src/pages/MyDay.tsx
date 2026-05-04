@@ -1,6 +1,7 @@
 // My Day Page - tenarch CRM Pro
 // Shows today's meetings, tasks, reminders and schedule
 import React, { useState, useEffect, useCallback, forwardRef } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,12 +136,8 @@ export default function MyDay() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [meetingsView, setMeetingsView] = useState<ViewType>(() => {
-    return (localStorage.getItem("myday-meetings-view") as ViewType) || "list";
-  });
-  const [tasksView, setTasksView] = useState<ViewType>(() => {
-    return (localStorage.getItem("myday-tasks-view") as ViewType) || "list";
-  });
+  const [meetingsView, setMeetingsView] = useSyncedSetting<ViewType>({ key: "myday-meetings-view", defaultValue: "list" });
+  const [tasksView, setTasksView] = useSyncedSetting<ViewType>({ key: "myday-tasks-view", defaultValue: "list" });
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -150,15 +147,6 @@ export default function MyDay() {
 
   // Clients for dropdowns
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
-
-  // Save view preferences to localStorage
-  useEffect(() => {
-    localStorage.setItem("myday-meetings-view", meetingsView);
-  }, [meetingsView]);
-
-  useEffect(() => {
-    localStorage.setItem("myday-tasks-view", tasksView);
-  }, [tasksView]);
 
   // Fetch clients
   useEffect(() => {
