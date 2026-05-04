@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useDeferredValue } from "react";
+import React, { useState, useMemo, useCallback, useDeferredValue, useEffect } from "react";
 import { DataTable } from "@/components/DataTable";
 import { ColumnDef, TableStyleConfig } from "@/components/DataTable/types";
 import {
@@ -173,8 +173,18 @@ export function UniversalDataTable<
     [],
   );
 
-  // Hidden columns state
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+  // Hidden columns state (persisted per table)
+  const HIDDEN_COLS_KEY = `udt-hidden-cols::${tableName}`;
+  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(HIDDEN_COLS_KEY) : null;
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch {}
+    return new Set<string>();
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify(Array.from(hiddenColumns))); } catch {}
+  }, [HIDDEN_COLS_KEY, hiddenColumns]);
 
   // Handle column hide
   const handleHideColumn = useCallback((columnId: string) => {
@@ -427,8 +437,13 @@ export function UniversalDataTable<
       result = [...columns, ...filteredDynamicColumns];
     }
 
+    // Apply hidden columns filter
+    if (hiddenColumns.size > 0) {
+      result = result.filter((c) => !c.id || !hiddenColumns.has(c.id));
+    }
+
     return result;
-  }, [baseColumns, filteredDynamicColumns]);
+  }, [baseColumns, filteredDynamicColumns, hiddenColumns]);
 
   // Handle cell edit for custom columns
   const handleCellEdit = useCallback(
@@ -681,20 +696,40 @@ export function UniversalDataTable<
                 const col = customColumns.find(
                   (c) => `custom_${c.column_key}` === columnId,
                 );
-                if (col) setDeleteColumnDialog({ open: true, column: col });
+                if (col) {
+                  setDeleteColumnDialog({ open: true, column: col });
+                } else {
+                  // Built-in column — hide instead of delete (persisted)
+                  handleHideColumn(columnId);
+                }
               }
             : undefined
         }
         onDeleteColumns={
           canDeleteColumns
             ? (columnIds: string[]) => {
-                // Delete multiple columns
+                const builtins: string[] = [];
                 columnIds.forEach(async (columnId) => {
                   const col = customColumns.find(
                     (c) => `custom_${c.column_key}` === columnId,
                   );
-                  if (col?.id) await deleteColumn(col.id);
+                  if (col?.id) {
+                    await deleteColumn(col.id);
+                  } else {
+                    builtins.push(columnId);
+                  }
                 });
+                if (builtins.length > 0) {
+                  setHiddenColumns((prev) => {
+                    const next = new Set(prev);
+                    builtins.forEach((id) => next.add(id));
+                    return next;
+                  });
+                  toast({
+                    title: `הוסתרו ${builtins.length} עמודות`,
+                    description: "ניתן להחזיר מתפריט העמודות",
+                  });
+                }
               }
             : undefined
         }
