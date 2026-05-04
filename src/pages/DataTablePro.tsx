@@ -3711,6 +3711,64 @@ export default function DataTablePro() {
                     </Button>
                   )}
 
+                  {/* Inline Category Chips (in same row as toolbar) */}
+                  {pageCustomizer.isVisible("categories") && pageCustomizer.isEnabled("categories-panel") && showCategories && categories.length > 0 && (
+                    <>
+                      {selectedCategoryIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategoryIds([])}
+                          className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                          title="נקה סינון קטגוריות"
+                        >
+                          <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                          נקה
+                        </button>
+                      )}
+                      {categories.map((category) => {
+                        const isSelected = selectedCategoryIds.includes(category.id);
+                        const count = categoryCounts[category.id] || 0;
+                        return (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedCategoryIds(
+                                  selectedCategoryIds.filter((id) => id !== category.id),
+                                );
+                              } else {
+                                setSelectedCategoryIds([
+                                  ...selectedCategoryIds,
+                                  category.id,
+                                ]);
+                              }
+                            }}
+                            className={`inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-medium transition-all border ${
+                              isSelected
+                                ? "bg-[#d4a843] text-white border-[#d4a843] shadow-sm"
+                                : "bg-background text-slate-700 border-border/60 hover:border-[#d4a843] hover:bg-[#fef9ee]"
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{
+                                backgroundColor: isSelected ? "#fff" : category.color,
+                                opacity: isSelected ? 0.9 : 1,
+                              }}
+                            />
+                            {category.name}
+                            {count > 0 && (
+                              <span className={isSelected ? "text-white/85" : "text-muted-foreground"}>
+                                ({count})
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+
                   {/* Filter Panel (יועץ, סינון מתקדם) */}
                   {pageCustomizer.isVisible("filters") && pageCustomizer.isEnabled("filters-panel") && (
                   <ClientFilterPanel
@@ -3879,72 +3937,7 @@ export default function DataTablePro() {
                 />
               </CardHeader>
 
-              {/* Collapsible Categories Panel - inside the card */}
-              {pageCustomizer.isVisible("categories") && pageCustomizer.isEnabled("categories-panel") && showCategories && categories.length > 0 && (
-                <div
-                  className="border-t border-b bg-muted/30 px-4 py-3"
-                  dir="rtl"
-                >
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {selectedCategoryIds.length > 0 && (
-                      <button
-                        onClick={() => setSelectedCategoryIds([])}
-                        className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 px-2 py-1 rounded hover:bg-destructive/10 transition-colors"
-                      >
-                        ✕ נקה
-                      </button>
-                    )}
-                    {categories.map((category) => {
-                      const isSelected = selectedCategoryIds.includes(
-                        category.id,
-                      );
-                      const count = categoryCounts[category.id] || 0;
-                      return (
-                        <button
-                          key={category.id}
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedCategoryIds(
-                                selectedCategoryIds.filter(
-                                  (id) => id !== category.id,
-                                ),
-                              );
-                            } else {
-                              setSelectedCategoryIds([
-                                ...selectedCategoryIds,
-                                category.id,
-                              ]);
-                            }
-                          }}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
-                            isSelected
-                              ? "bg-[#d4a843] text-white border-[#d4a843] shadow-sm"
-                              : "bg-white text-slate-700 border-slate-200 hover:border-[#d4a843] hover:bg-[#fef9ee]"
-                          }`}
-                        >
-                          <span
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{
-                              backgroundColor: isSelected
-                                ? "#fff"
-                                : category.color,
-                              opacity: isSelected ? 0.9 : 1,
-                            }}
-                          />
-                          {category.name}
-                          {count > 0 && (
-                            <span
-                              className={`text-xs ${isSelected ? "text-white/80" : "text-muted-foreground"}`}
-                            >
-                              ({count})
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Categories now render inline in the action bar above */}
 
               <CardContent className="p-0">
                 {dbLoading && localClients.length === 0 ? (
