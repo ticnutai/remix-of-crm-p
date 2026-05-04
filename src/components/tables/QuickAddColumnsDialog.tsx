@@ -1,12 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import React, { useState, useMemo, memo } from 'react';
+import { FloatingDialog } from '@/components/ui/FloatingDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -20,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Columns, FileText, Plus, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +33,7 @@ const COLUMN_TYPES = [
   { value: 'select', label: 'בחירה' },
 ];
 
-export function QuickAddColumnsDialog({
+export const QuickAddColumnsDialog = memo(function QuickAddColumnsDialog({
   open,
   onOpenChange,
   existingColumns = [],
@@ -111,18 +103,27 @@ export function QuickAddColumnsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Columns className="h-5 w-5 text-primary" />
-            הוספת עמודות מהירה
-          </DialogTitle>
-          <DialogDescription>
-            הוסף מספר עמודות בבת אחת - ריקות או מטקסט
-          </DialogDescription>
-        </DialogHeader>
-
+    <FloatingDialog
+      open={open}
+      onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(true); }}
+      storageKey="quick-add-columns"
+      icon={<Columns className="h-5 w-5 text-primary" />}
+      title="הוספת עמודות מהירה"
+      description="הוסף מספר עמודות בבת אחת - ריקות או מטקסט"
+      defaultWidth={620}
+      defaultHeight={560}
+      footer={
+        <>
+          <Button variant="outline" size="sm" onClick={handleClose}>
+            ביטול
+          </Button>
+          <Button size="sm" onClick={handleSubmit} disabled={columnCount === 0} className="gap-2">
+            <Plus className="h-4 w-4" />
+            הוסף {columnCount} עמודות
+          </Button>
+        </>
+      }
+    >
         <Tabs value={mode} onValueChange={(v) => setMode(v as 'empty' | 'text')} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="empty" className="gap-2">
@@ -281,21 +282,6 @@ export function QuickAddColumnsDialog({
             )}
           </TabsContent>
         </Tabs>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={handleClose}>
-            ביטול
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={columnCount === 0}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            הוסף {columnCount} עמודות
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FloatingDialog>
   );
-}
+});
