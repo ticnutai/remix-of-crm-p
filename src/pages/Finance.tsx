@@ -1998,7 +1998,9 @@ export default function Finance() {
                       setClientFilter("all");
                       setFilter("all");
                     }}
+                    className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
                     נקה
                   </Button>
                 </div>

@@ -966,9 +966,9 @@ export function ClientsFilterStrip({
             variant="ghost"
             size="sm"
             onClick={clearAllFilters}
-            className="gap-1 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
+            className="gap-1.5 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
           >
-            <X className="h-3 w-3" />
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
             נקה
           </Button>
         )}
