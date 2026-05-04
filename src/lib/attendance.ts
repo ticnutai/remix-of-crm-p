@@ -122,6 +122,10 @@ export async function getOpenShift(userId: string) {
 }
 
 export async function clockIn(userId: string, location?: { lat: number; lng: number }) {
+  // If there's already an open shift, return it instead of failing on the unique index
+  const existing = await getOpenShift(userId);
+  if (existing) return existing;
+
   const payload: Record<string, unknown> = { user_id: userId, clock_in: new Date().toISOString() };
   if (location) {
     payload.location_lat = location.lat;
@@ -132,7 +136,14 @@ export async function clockIn(userId: string, location?: { lat: number; lng: num
     .insert(payload)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    // 23505 = unique_violation → idx_attendance_one_open_per_user
+    if ((error as any).code === "23505") {
+      const fallback = await getOpenShift(userId);
+      if (fallback) return fallback;
+    }
+    throw error;
+  }
   return data as AttendanceRecord;
 }
 
@@ -192,25 +203,32 @@ export async function listMyRecords(userId: string, fromIso: string, toIso: stri
 }
 
 export async function listAllRecords(fromIso: string, toIso: string) {
-  // Manager view — fetch all + join profiles
+  // Manager view — fetch records first, then merge profiles in JS to avoid
+  // unreliable FK aliases that can return 400 on some Supabase setups.
   const { data, error } = await supabase
     .from("attendance_records" as any)
-    .select("*, profile:profiles!attendance_records_user_id_fkey(full_name,email)")
+    .select("*")
     .gte("clock_in", fromIso)
     .lte("clock_in", toIso)
     .order("clock_in", { ascending: false });
-  if (error) {
-    // fallback if FK alias not detected
-    const { data: data2, error: e2 } = await supabase
-      .from("attendance_records" as any)
-      .select("*")
-      .gte("clock_in", fromIso)
-      .lte("clock_in", toIso)
-      .order("clock_in", { ascending: false });
-    if (e2) throw e2;
-    return (data2 ?? []) as AttendanceRecord[];
-  }
-  return (data ?? []) as AttendanceRecord[];
+  if (error) throw error;
+  const records = (data ?? []) as AttendanceRecord[];
+
+  const userIds = Array.from(new Set(records.map((r) => r.user_id).filter(Boolean)));
+  if (userIds.length === 0) return records;
+
+  const { data: profiles } = await supabase
+    .from("profiles" as any)
+    .select("id, full_name, email")
+    .in("id", userIds);
+
+  const byId = new Map<string, { full_name?: string; email?: string }>();
+  (profiles ?? []).forEach((p: any) => byId.set(p.id, { full_name: p.full_name, email: p.email }));
+
+  return records.map((r) => ({
+    ...r,
+    profile: byId.get(r.user_id) ?? r.profile ?? null,
+  })) as AttendanceRecord[];
 }
 
 // ---------- summaries ----------
@@ -233,7 +251,7 @@ export function summarizeByUser(records: AttendanceRecord[]): UserSummary[] {
     if (!s) {
       s = {
         user_id: key,
-        full_name: r.profile?.full_name ?? r.user_id.slice(0, 8),
+        full_name: r.profile?.full_name ?? r.profile?.email ?? "ללא שם",
         email: r.profile?.email ?? "",
         shifts: 0, total_minutes: 0, break_minutes: 0,
         overtime_minutes: 0, missing_clock_outs: 0,

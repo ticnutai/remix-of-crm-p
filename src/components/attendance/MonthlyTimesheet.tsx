@@ -82,6 +82,29 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
   const [autoIn, setAutoIn] = useState("08:00");
   const [autoOut, setAutoOut] = useState("17:00");
   const [autoBreak, setAutoBreak] = useState(30);
+  const [resolvedName, setResolvedName] = useState<string | undefined>(employeeName);
+
+  // If parent didn't pass a name, fetch it once from profiles so we never show a UUID
+  useEffect(() => {
+    if (employeeName) { setResolvedName(employeeName); return; }
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data } = await supabase
+          .from("profiles" as any)
+          .select("full_name, email")
+          .eq("id", userId)
+          .maybeSingle();
+        if (!cancelled && data) {
+          const p = data as any;
+          setResolvedName(p.full_name || p.email || "ללא שם");
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, employeeName]);
 
   const monthLabel = `${month0 + 1}/${year}`;
 
@@ -262,7 +285,7 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
       {/* Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">גיליון נוכחות {employeeName ? `— ${employeeName}` : ""}</CardTitle>
+          <CardTitle className="text-base">גיליון נוכחות {resolvedName ? `— ${resolvedName}` : ""}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
