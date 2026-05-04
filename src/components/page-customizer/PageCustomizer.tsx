@@ -178,9 +178,9 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
     };
   }, [dragging, pos]);
 
-  if (!ctl.isOpen) return null;
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  if (!ctl.isOpen) return null;
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
