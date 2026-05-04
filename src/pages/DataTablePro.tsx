@@ -1185,10 +1185,20 @@ export default function DataTablePro() {
     actions: "פעולות",
   });
 
-  // Client hidden columns state
+  // Client hidden columns state (persisted across reloads)
+  const HIDDEN_CLIENT_COLS_KEY = "datatable-pro-hidden-client-cols";
   const [hiddenClientColumns, setHiddenClientColumns] = useState<Set<string>>(
-    new Set(),
+    () => {
+      try {
+        const raw = typeof window !== "undefined" ? window.localStorage.getItem(HIDDEN_CLIENT_COLS_KEY) : null;
+        if (raw) return new Set<string>(JSON.parse(raw));
+      } catch {}
+      return new Set<string>();
+    },
   );
+  useEffect(() => {
+    try { window.localStorage.setItem(HIDDEN_CLIENT_COLS_KEY, JSON.stringify(Array.from(hiddenClientColumns))); } catch {}
+  }, [hiddenClientColumns]);
 
   // Handle client column header change
   const handleClientHeaderChange = useCallback(
@@ -1601,21 +1611,35 @@ export default function DataTablePro() {
     [toast],
   );
 
-  // Delete column for clients (from DB)
+  // Delete column for clients
+  // - For DB-backed custom columns: delete from DB.
+  // - For built-in columns (e.g. "company"): treat delete as hide (persisted).
   const handleDeleteClientColumn = useCallback(
     async (columnId: string) => {
-      const { error } = await deleteClientCustomColumn(columnId);
-      if (!error) {
-        toast({ title: "נמחק", description: "העמודה נמחקה" });
+      // Try DB delete first; if column not found there, fall back to hide.
+      const isCustom = clientCustomColumns.some((c) => c.column_key === columnId || c.id === columnId);
+      if (isCustom) {
+        const { error } = await deleteClientCustomColumn(columnId);
+        if (!error) {
+          toast({ title: "נמחק", description: "העמודה נמחקה" });
+        } else {
+          toast({
+            title: "שגיאה",
+            description: "לא ניתן למחוק את העמודה",
+            variant: "destructive",
+          });
+        }
       } else {
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן למחוק את העמודה",
-          variant: "destructive",
+        // Built-in: hide it (persisted)
+        setHiddenClientColumns((prev) => {
+          const next = new Set(prev);
+          next.add(columnId);
+          return next;
         });
+        toast({ title: "העמודה הוסתרה", description: "ניתן להחזיר מרשימת העמודות המוסתרות" });
       }
     },
-    [deleteClientCustomColumn, toast],
+    [clientCustomColumns, deleteClientCustomColumn, toast],
   );
 
   // Employee cell formatting handlers
@@ -3326,14 +3350,59 @@ export default function DataTablePro() {
                   }[table.icon] || Table;
 
                 return (
-                  <TabsTrigger
-                    key={table.id}
-                    value={`custom_${table.id}`}
-                    className="flex items-center gap-2"
-                  >
-                    <IconComponent className="h-4 w-4" />
-                    {table.display_name}
-                  </TabsTrigger>
+                  <div key={table.id} className="relative group/tabitem inline-flex">
+                    <TabsTrigger
+                      value={`custom_${table.id}`}
+                      className="flex items-center gap-2 pr-12"
+                    >
+                      <IconComponent className="h-4 w-4" />
+                      {table.display_name}
+                    </TabsTrigger>
+                    {canManageCustomTables && (
+                      <div className="absolute left-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/tabitem:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const newName = window.prompt("שם חדש לטבלה:", table.display_name);
+                            if (newName && newName.trim() && newName.trim() !== table.display_name) {
+                              const ok = await updateCustomTable(table.id, { display_name: newName.trim() });
+                              if (ok) {
+                                refreshCustomTables();
+                                toast({ title: "השם עודכן" });
+                              }
+                            }
+                          }}
+                          className="p-1 rounded hover:bg-primary/10 text-primary"
+                          title="עריכת שם"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (window.confirm(`למחוק את הטבלה "${table.display_name}"?`)) {
+                              const ok = await deleteCustomTable(table.id);
+                              if (ok) {
+                                refreshCustomTables();
+                                if (activeTab === `custom_${table.id}`) setActiveTab("clients");
+                                toast({ title: "הטבלה נמחקה" });
+                              }
+                            }
+                          }}
+                          className="p-1 rounded hover:bg-red-100 text-red-600"
+                          title="מחיקה"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </TabsList>
