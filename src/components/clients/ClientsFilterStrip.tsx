@@ -12,6 +12,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Layers,
   Bell,
@@ -272,6 +274,37 @@ export function ClientsFilterStrip({
     tag.toLowerCase().includes(tagSearch.toLowerCase()),
   );
 
+  // Visible filter sections (persisted)
+  const FILTER_SECTIONS: { id: string; label: string }[] = [
+    { id: "sort", label: "מיון / תאריך" },
+    { id: "classification", label: "סיווג" },
+    { id: "categories", label: "קטגוריות" },
+    { id: "tags", label: "תגיות" },
+    { id: "stages", label: "שלבים" },
+    { id: "reminders", label: "תזכורות" },
+    { id: "tasks", label: "משימות" },
+    { id: "meetings", label: "פגישות" },
+  ];
+  const VISIBLE_FILTERS_KEY = "clients-filter-strip-visible-sections";
+  const [visibleFilterSections, setVisibleFilterSections] = useState<Set<string>>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(VISIBLE_FILTERS_KEY) : null;
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch {}
+    return new Set<string>(FILTER_SECTIONS.map((s) => s.id));
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem(VISIBLE_FILTERS_KEY, JSON.stringify(Array.from(visibleFilterSections))); } catch {}
+  }, [visibleFilterSections]);
+  const toggleFilterSection = (id: string) => {
+    setVisibleFilterSections((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const [filterSettingsOpen, setFilterSettingsOpen] = useState(false);
+
   return (
     <>
     <div
@@ -279,12 +312,44 @@ export function ClientsFilterStrip({
       className="bg-white rounded-lg border-2 border-[#d4a843] p-2 mb-2"
     >
       <div className="flex flex-wrap gap-1.5 items-center">
-        {/* Filter Icon */}
-        <div className="flex items-center gap-1 ml-1">
-          <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-        </div>
+        {/* Filter Settings Icon */}
+        <Popover open={filterSettingsOpen} onOpenChange={setFilterSettingsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7 bg-white border border-[#d4a843] hover:bg-[#fef9ee]"
+              title="הגדרת פילטרים מוצגים"
+            >
+              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[260px] p-0" dir="rtl" align="end">
+            <div className="p-3 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-sm">פילטרים מוצגים</h3>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setFilterSettingsOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-2 space-y-1">
+              {FILTER_SECTIONS.map((s) => {
+                const on = visibleFilterSections.has(s.id);
+                return (
+                  <div key={s.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      {on ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />}
+                      <Label htmlFor={`flt-${s.id}`} className="text-xs cursor-pointer">{s.label}</Label>
+                    </div>
+                    <Switch id={`flt-${s.id}`} checked={on} onCheckedChange={() => toggleFilterSection(s.id)} />
+                  </div>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Unified Sort & Date Filter */}
+        {visibleFilterSections.has("sort") && (
         <Popover open={sortDialogOpen} onOpenChange={setSortDialogOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -384,8 +449,10 @@ export function ClientsFilterStrip({
             </div>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Classification Filter (סיווג לקוחות) */}
+        {visibleFilterSections.has("classification") && (
         <Popover
           open={classificationDialogOpen}
           onOpenChange={setClassificationDialogOpen}
@@ -503,8 +570,10 @@ export function ClientsFilterStrip({
             </div>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Categories Filter */}
+        {visibleFilterSections.has("categories") && (
         <Popover
           open={categoriesDialogOpen}
           onOpenChange={setCategoriesDialogOpen}
@@ -655,8 +724,10 @@ export function ClientsFilterStrip({
             </ScrollArea>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Tags Filter */}
+        {visibleFilterSections.has("tags") && (
         <Popover open={tagsDialogOpen} onOpenChange={setTagsDialogOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -742,8 +813,10 @@ export function ClientsFilterStrip({
             </ScrollArea>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Stages Filter */}
+        {visibleFilterSections.has("stages") && (
         <Popover open={stagesDialogOpen} onOpenChange={setStagesDialogOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -823,10 +896,12 @@ export function ClientsFilterStrip({
             </ScrollArea>
           </PopoverContent>
         </Popover>
+        )}
 
         {/* Date filter merged into the unified Sort & Date dropdown above */}
 
         {/* Has Reminders Toggle */}
+        {visibleFilterSections.has("reminders") && (
         <Button
           variant="outline"
           size="sm"
@@ -843,8 +918,10 @@ export function ClientsFilterStrip({
             {clientsWithReminders.size}
           </Badge>
         </Button>
+        )}
 
         {/* Has Tasks Toggle */}
+        {visibleFilterSections.has("tasks") && (
         <Button
           variant="outline"
           size="sm"
@@ -861,8 +938,10 @@ export function ClientsFilterStrip({
             {clientsWithTasks.size}
           </Badge>
         </Button>
+        )}
 
         {/* Has Meetings Toggle */}
+        {visibleFilterSections.has("meetings") && (
         <Button
           variant="outline"
           size="sm"
@@ -879,6 +958,7 @@ export function ClientsFilterStrip({
             {clientsWithMeetings.size}
           </Badge>
         </Button>
+        )}
 
         {/* Clear All Filters */}
         {hasActiveFilters && (
