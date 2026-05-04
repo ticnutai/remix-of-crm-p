@@ -889,81 +889,12 @@ export function ClientsFilterStrip({
             className="gap-1 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
           >
             <X className="h-3 w-3" />
-            נקה פילטרים
+            נקה
           </Button>
         )}
       </div>
 
-      {/* Active Filters Summary */}
-      {hasActiveFilters && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {(filters.hiddenClassifications?.length || 0) > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0"
-            >
-              <ShieldCheck className="h-2.5 w-2.5 ml-0.5" />
-              {filters.hiddenClassifications!.length} מוסתרים
-            </Badge>
-          )}
-          {filters.categories.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
-            >
-              {filters.categories.length} קטגוריות
-            </Badge>
-          )}
-          {filters.tags.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
-            >
-              {filters.tags.length} תגיות
-            </Badge>
-          )}
-          {filters.stages.length > 0 && (
-            <Badge
-              variant="secondary"
-              className="bg-primary/10 text-primary text-[10px] px-1.5 py-0"
-            >
-              {filters.stages.length} שלבים
-            </Badge>
-          )}
-          {filters.dateFilter !== "all" && (
-            <Badge
-              variant="secondary"
-              className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0"
-            >
-              {dateFilterLabels[filters.dateFilter]}
-            </Badge>
-          )}
-          {filters.hasReminders === true && (
-            <Badge
-              variant="secondary"
-              className="bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0"
-            >
-              תזכורות
-            </Badge>
-          )}
-          {filters.hasTasks === true && (
-            <Badge
-              variant="secondary"
-              className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0"
-            >
-              משימות
-            </Badge>
-          )}
-          {filters.hasMeetings === true && (
-            <Badge
-              variant="secondary"
-              className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0"
-            >
-              פגישות
-            </Badge>
-          )}
-        </div>
-      )}
+      {/* Active Filters Summary removed per user request */}
     </div>
 
       {/* Add Clients to Category Dialog */}

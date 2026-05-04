@@ -1999,7 +1999,7 @@ export default function Finance() {
                       setFilter("all");
                     }}
                   >
-                    נקה פילטרים
+                    נקה
                   </Button>
                 </div>
               </div>

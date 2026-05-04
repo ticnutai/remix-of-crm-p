@@ -3518,51 +3518,7 @@ export default function Clients() {
                   </div>
                 ) : (
                   <>
-                    {/* Pagination Info Bar */}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "4px",
-                        padding: "4px 10px",
-                        backgroundColor: "#f1f5f9",
-                        borderRadius: "6px",
-                        direction: "rtl",
-                        border: "1px solid #e2e8f0",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "11px",
-                            color: "#475569",
-                            fontWeight: "500",
-                          }}
-                        >
-                          📊 מציג{" "}
-                          <strong style={{ color: "#1e3a5f" }}>
-                            {Math.min(displayedCount, filteredClients.length)}
-                          </strong>{" "}
-                          מתוך{" "}
-                          <strong style={{ color: "#1e3a5f" }}>
-                            {filteredClients.length}
-                          </strong>{" "}
-                          לקוחות
-                        </span>
-                        {clients.length !== filteredClients.length && (
-                          <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-                            (סה"כ במערכת: {clients.length})
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    {/* Pagination Info Bar removed per user request */}
 
                     <div
                       ref={scrollContainerRef}
