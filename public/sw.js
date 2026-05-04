@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'archflow-cache-v4';
-const STATIC_CACHE_NAME = 'archflow-static-v2';
-const DATA_CACHE_NAME = 'archflow-data-v1';
+const CACHE_NAME = 'archflow-cache-v5';
+const STATIC_CACHE_NAME = 'archflow-static-v3';
+const DATA_CACHE_NAME = 'archflow-data-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Resources to pre-cache
@@ -257,11 +257,6 @@ function getAllFromStore(store) {
   });
 }
 
-// Message handler
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
+// Note: SKIP_WAITING message handler defined earlier (~line 60)
 
 console.log('Service Worker loaded - ArchFlow PWA');
