@@ -334,11 +334,22 @@ function SortableRow({
         <div className="text-sm font-medium truncate">{label}</div>
         {description && <div className="text-xs text-muted-foreground truncate">{description}</div>}
       </div>
-      <Switch
-        checked={!hidden}
-        onCheckedChange={onToggle}
-        title={hidden ? "הפעל" : "כבה"}
-      />
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggle}
+          title={hidden ? "הפעל" : "כבה"}
+          className="h-7 w-7 p-0"
+        >
+          {hidden ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-primary" />}
+        </Button>
+        <Switch
+          checked={!hidden}
+          onCheckedChange={onToggle}
+          title={hidden ? "הפעל" : "כבה"}
+        />
+      </div>
     </div>
   );
 }
