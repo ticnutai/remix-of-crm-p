@@ -1,13 +1,7 @@
-// Dashboard Settings Dialog - Professional Widget & Theme Management
+// Dashboard Settings Floating Panel - Non-modal, draggable, resizable
 // tenarch CRM Pro - Rebuilt for clarity and functionality
-import React, { useState, useMemo } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -146,6 +140,82 @@ export function DashboardSettingsDialog({
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("layout");
 
+  // Floating panel state (draggable + resizable, persisted)
+  const POS_KEY = "dashboard-settings-panel-pos";
+  const SIZE_KEY = "dashboard-settings-panel-size";
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(POS_KEY) : null;
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    if (typeof window === "undefined") return { x: 80, y: 80 };
+    return { x: Math.max(20, window.innerWidth - 760), y: 80 };
+  });
+  const [size, setSize] = useState<{ w: number; h: number }>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(SIZE_KEY) : null;
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { w: 720, h: 640 };
+  });
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+  const resizeRef = useRef<{ sx: number; sy: number; sw: number; sh: number } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    try { window.localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch {}
+  }, [open, pos]);
+  useEffect(() => {
+    if (!open) return;
+    try { window.localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch {}
+  }, [open, size]);
+
+  const onHeaderMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, input, [role='tab']")) return;
+    dragRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const nx = Math.max(0, Math.min(window.innerWidth - 100, ev.clientX - dragRef.current.dx));
+      const ny = Math.max(0, Math.min(window.innerHeight - 60, ev.clientY - dragRef.current.dy));
+      setPos({ x: nx, y: ny });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const startResize = (corner: "se" | "sw" | "ne" | "nw") => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const start = { sx: e.clientX, sy: e.clientY, sw: size.w, sh: size.h, px: pos.x, py: pos.y };
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - start.sx;
+      const dy = ev.clientY - start.sy;
+      let nw = start.sw;
+      let nh = start.sh;
+      let nx = start.px;
+      let ny = start.py;
+      if (corner === "se") { nw = start.sw + dx; nh = start.sh + dy; }
+      if (corner === "sw") { nw = start.sw - dx; nh = start.sh + dy; nx = start.px + dx; }
+      if (corner === "ne") { nw = start.sw + dx; nh = start.sh - dy; ny = start.py + dy; }
+      if (corner === "nw") { nw = start.sw - dx; nh = start.sh - dy; nx = start.px + dx; ny = start.py + dy; }
+      nw = Math.max(380, Math.min(window.innerWidth - 20, nw));
+      nh = Math.max(360, Math.min(window.innerHeight - 20, nh));
+      setSize({ w: nw, h: nh });
+      setPos({ x: Math.max(0, nx), y: Math.max(0, ny) });
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   // Memoized sorted widgets
   const sortedWidgets = useMemo(
     () => [...widgets].sort((a, b) => a.order - b.order),
@@ -193,35 +263,41 @@ export function DashboardSettingsDialog({
     });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[850px] max-h-[90vh] p-0 overflow-hidden flex flex-col"
-        dir="rtl"
+  // Avoid all work when closed (no wasted renders / effects)
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed z-[60] bg-white border border-[#D4AF37] shadow-2xl rounded-xl flex flex-col overflow-hidden pointer-events-auto"
+      style={{ left: pos.x, top: pos.y, width: size.w, height: size.h }}
+      dir="rtl"
+    >
+      {/* ======== HEADER (drag handle) ======== */}
+      <div
+        onMouseDown={onHeaderMouseDown}
+        className="px-4 py-2 border-b bg-gradient-to-l from-muted/50 to-background cursor-move select-none"
       >
-        {/* ======== HEADER ======== */}
-        <DialogHeader className="px-8 pt-6 pb-5 border-b bg-gradient-to-l from-muted/50 to-background">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Settings2 className="h-6 w-6 text-primary" />
-                </div>
-                הגדרות דשבורד
-              </DialogTitle>
-              <DialogDescription className="mt-2 text-base">
-                התאם את מראה הדשבורד והווידג'טים לפי העדפותיך האישיות
-              </DialogDescription>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-primary/10">
+              <Settings2 className="h-4 w-4 text-primary" />
             </div>
-            <Badge
-              variant={isSaving ? "outline" : "secondary"}
-              className="gap-2 px-3 py-1.5"
-            >
-              <Cloud className={cn("h-4 w-4", isSaving && "animate-pulse")} />
+            <div>
+              <h2 className="text-base font-bold leading-tight">הגדרות דשבורד</h2>
+              <p className="text-[11px] text-muted-foreground leading-tight">תצוגה מקדימה חיה — גרור / מתח גדל</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant={isSaving ? "outline" : "secondary"} className="gap-1.5 px-2 py-0.5 text-[10px]">
+              <Cloud className={cn("h-3 w-3", isSaving && "animate-pulse")} />
               {isSaving ? "שומר..." : "מסונכרן"}
             </Badge>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)} title="סגור">
+              <span className="text-lg leading-none">×</span>
+            </Button>
           </div>
-        </DialogHeader>
+        </div>
+      </div>
 
         {/* ======== TABS ======== */}
         <Tabs
@@ -229,27 +305,27 @@ export function DashboardSettingsDialog({
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0 overflow-hidden"
         >
-          <div className="px-8 pt-5">
-            <TabsList className="grid w-full grid-cols-3 h-14 p-1 bg-muted/50">
+          <div className="px-3 pt-2">
+            <TabsList className="grid w-full grid-cols-3 h-10 p-1 bg-muted/50">
               <TabsTrigger
                 value="layout"
-                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+                className="gap-1.5 text-xs h-8 data-[state=active]:shadow-md"
               >
-                <LayoutGrid className="h-5 w-5" />
+                <LayoutGrid className="h-4 w-4" />
                 <span className="font-medium">פריסה ומרווחים</span>
               </TabsTrigger>
               <TabsTrigger
                 value="widgets"
-                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+                className="gap-1.5 text-xs h-8 data-[state=active]:shadow-md"
               >
-                <Grid3X3 className="h-5 w-5" />
+                <Grid3X3 className="h-4 w-4" />
                 <span className="font-medium">ווידג'טים</span>
               </TabsTrigger>
               <TabsTrigger
                 value="themes"
-                className="gap-2 text-sm h-12 data-[state=active]:shadow-md"
+                className="gap-1.5 text-xs h-8 data-[state=active]:shadow-md"
               >
-                <Palette className="h-5 w-5" />
+                <Palette className="h-4 w-4" />
                 <span className="font-medium">ערכות נושא</span>
               </TabsTrigger>
             </TabsList>
@@ -258,8 +334,7 @@ export function DashboardSettingsDialog({
           {/* ======== LAYOUT TAB ======== */}
           <TabsContent
             value="layout"
-            className="mt-0 px-8 py-6 overflow-y-auto"
-            style={{ maxHeight: "calc(90vh - 280px)" }}
+            className="mt-0 flex-1 px-3 py-3 overflow-y-auto"
             dir="rtl"
           >
             <div className="grid gap-8">
@@ -481,8 +556,7 @@ export function DashboardSettingsDialog({
           {/* ======== WIDGETS TAB ======== */}
           <TabsContent
             value="widgets"
-            className="mt-0 px-8 py-6 overflow-y-auto"
-            style={{ maxHeight: "calc(90vh - 280px)" }}
+            className="mt-0 flex-1 px-3 py-3 overflow-y-auto"
             dir="rtl"
           >
             <div className="space-y-8">
@@ -613,8 +687,7 @@ export function DashboardSettingsDialog({
           {/* ======== THEMES TAB ======== */}
           <TabsContent
             value="themes"
-            className="mt-0 px-8 py-6 overflow-y-auto"
-            style={{ maxHeight: "calc(90vh - 280px)" }}
+            className="mt-0 flex-1 px-3 py-3 overflow-y-auto"
             dir="rtl"
           >
             {/* Current Theme Card */}
@@ -749,19 +822,25 @@ export function DashboardSettingsDialog({
         </Tabs>
 
         {/* ======== FOOTER ======== */}
-        <div className="px-8 py-5 border-t bg-muted/30 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            💾 כל ההגדרות נשמרות אוטומטית ומסונכרנות בין המכשירים שלך
+        <div className="px-3 py-2 border-t bg-muted/30 flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            💾 ההגדרות נשמרות אוטומטית ומסונכרנות
           </p>
           <Button
             onClick={() => onOpenChange(false)}
-            size="lg"
-            className="px-8"
+            size="sm"
+            className="px-4"
           >
             סיום
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Resize handles (4 corners) */}
+        <div onMouseDown={startResize("se")} className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize" title="גרור לשינוי גודל" />
+        <div onMouseDown={startResize("sw")} className="absolute bottom-0 left-0 w-4 h-4 cursor-nesw-resize" title="גרור לשינוי גודל" />
+        <div onMouseDown={startResize("ne")} className="absolute top-0 right-0 w-4 h-4 cursor-nesw-resize" title="גרור לשינוי גודל" />
+        <div onMouseDown={startResize("nw")} className="absolute top-0 left-0 w-4 h-4 cursor-nwse-resize" title="גרור לשינוי גודל" />
+      </div>,
+    document.body,
   );
 }
