@@ -432,11 +432,29 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
 
   const safeCurrent = allThemes[currentTheme] || dialogThemes['navy-gold'];
 
+  // Track the trigger button position continuously while the menu is open so
+  // the menu stays anchored even if the host (e.g. a draggable dialog) moves.
   useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 4, left: rect.left });
-    }
+    if (!isOpen) return;
+    let rafId = 0;
+    let lastTop = -1;
+    let lastLeft = -1;
+    const tick = () => {
+      const el = buttonRef.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const top = rect.bottom + 4;
+        const left = rect.left;
+        if (top !== lastTop || left !== lastLeft) {
+          lastTop = top;
+          lastLeft = left;
+          setMenuPos({ top, left });
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [isOpen]);
 
   const openEditorForCurrent = () => {
