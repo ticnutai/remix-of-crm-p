@@ -819,13 +819,26 @@ interface DateChangeDialogProps {
   onSave: (d: Date | undefined) => void;
 }
 
+const RESIZE_MIN_W = 320;
+const RESIZE_MIN_H = 380;
+
+function getCursor(dir: string) {
+  const map: Record<string, string> = {
+    e: 'ew-resize', w: 'ew-resize', s: 'ns-resize', se: 'se-resize', sw: 'sw-resize',
+  };
+  return map[dir] ?? 'default';
+}
+
 const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange, value, onSave }) => {
   const { theme, themeId, setThemeId } = useDialogTheme();
   const [draft, setDraft] = useState<Date | undefined>(value);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
-  // Position is stored in a ref + applied directly to DOM for smooth dragging (no React re-renders).
+  // Position stored in ref — applied directly to DOM for smooth dragging (no React re-renders).
   const posRef = React.useRef<{ x: number; y: number } | null>(null);
   const dragStateRef = React.useRef<{ startX: number; startY: number; baseX: number; baseY: number; rafId: number | null } | null>(null);
+  // Size stored in ref during resize; committed to state on pointerup so React stays consistent.
+  const sizeRef = React.useRef({ w: 460, h: 0 });
+  const [committedSize, setCommittedSize] = useState({ w: 460, h: 0 });
   const [mounted, setMounted] = useState(false);
 
   // Reset draft when opened
@@ -850,7 +863,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     navyDark: theme.background,
   }), [theme.border, theme.title, theme.background]);
 
-  // Center after the panel is in DOM and we know its real size
+  // Center after the panel is in DOM and capture its natural size.
   useEffect(() => {
     if (!mounted) return;
     const el = panelRef.current;
@@ -860,8 +873,10 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     const y = Math.max(8, Math.round((window.innerHeight - rect.height) / 2));
     posRef.current = { x, y };
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    // eslint-disable-next-line no-console
-    console.log('[DateDialog] mounted+centered', { x, y, w: rect.width, h: rect.height, vw: window.innerWidth, vh: window.innerHeight });
+    // Commit the natural height so future re-renders preserve it.
+    const measuredH = Math.round(rect.height);
+    sizeRef.current = { w: Math.round(rect.width), h: measuredH };
+    setCommittedSize({ w: Math.round(rect.width), h: measuredH });
   }, [mounted]);
 
   // ESC to close
@@ -875,11 +890,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   const onPointerDown = (e: React.PointerEvent) => {
     if (!posRef.current) return;
     const target = e.target as HTMLElement;
-    if (target.closest('[data-no-drag]')) {
-      // eslint-disable-next-line no-console
-      console.log('[DateDialog] pointerdown ignored (data-no-drag)', target.tagName);
-      return;
-    }
+    if (target.closest('[data-no-drag]')) return;
     dragStateRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -888,9 +899,57 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
       rafId: null,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    // eslint-disable-next-line no-console
-    console.log('[DateDialog] drag start', { x: e.clientX, y: e.clientY, base: posRef.current });
   };
+
+  // Resize: applies size directly to DOM during drag, commits to state on release.
+  const startResize = React.useCallback((dir: string, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = panelRef.current;
+    if (!el || !posRef.current) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = el.offsetWidth;
+    const startH = el.offsetHeight;
+    const startPx = posRef.current.x;
+    const startPy = posRef.current.y;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const maxW = window.innerWidth - 32;
+      const maxH = window.innerHeight - 32;
+      let newW = startW;
+      let newH = startH;
+      let newPx = startPx;
+      if (dir.includes('e')) newW = Math.max(RESIZE_MIN_W, Math.min(maxW, startW + dx));
+      if (dir.includes('w')) {
+        newW = Math.max(RESIZE_MIN_W, Math.min(maxW, startW - dx));
+        newPx = startPx + (startW - newW);
+      }
+      if (dir.includes('s')) newH = Math.max(RESIZE_MIN_H, Math.min(maxH, startH + dy));
+      sizeRef.current = { w: newW, h: newH };
+      el.style.width = `${newW}px`;
+      el.style.height = `${newH}px`;
+      if (newPx !== posRef.current!.x) {
+        posRef.current = { x: newPx, y: posRef.current!.y };
+        el.style.transform = `translate3d(${newPx}px, ${posRef.current.y}px, 0)`;
+      }
+    };
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      setCommittedSize({ ...sizeRef.current });
+    };
+
+    document.body.style.cursor = getCursor(dir);
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
   const onPointerMove = (e: React.PointerEvent) => {
     const s = dragStateRef.current;
     if (!s) return;
@@ -928,11 +987,12 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     <div
       ref={panelRef}
       data-testid="date-change-dialog"
-      className="fixed z-[1000] rounded-lg shadow-2xl overflow-visible"
+      className="fixed z-[1000] rounded-lg shadow-2xl overflow-visible flex flex-col"
       style={{
         top: 0,
         left: 0,
-        width: 460,
+        width: committedSize.w,
+        height: committedSize.h > 0 ? committedSize.h : undefined,
         // Initial off-screen — centering effect applies translate3d once measured
         transform: posRef.current ? `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0)` : 'translate3d(-9999px, -9999px, 0)',
         background: theme.backgroundGradient || theme.background,
@@ -972,7 +1032,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
         </div>
       </div>
 
-      <div className="px-5 py-4" data-no-drag>
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4" data-no-drag>
         <SmartDateTimePicker
           value={draft}
           onChange={(d) => setDraft(d)}
@@ -984,7 +1044,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
       </div>
 
       <div
-        className="px-5 py-3 flex items-center justify-end gap-2"
+        className="px-5 py-3 flex items-center justify-end gap-2 shrink-0"
         style={{ borderTop: `1px solid ${theme.headerBorder}`, background: theme.background }}
         data-no-drag
       >
@@ -1001,6 +1061,48 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
         >
           שמור תאריך
         </Button>
+      </div>
+
+      {/* ── Resize handles ── */}
+      {/* Right edge */}
+      <div
+        data-no-drag
+        className="absolute top-3 bottom-3 -right-1 w-2.5 cursor-ew-resize group"
+        onPointerDown={(e) => startResize('e', e)}
+      >
+        <div className="absolute top-1/2 -translate-y-1/2 right-0.5 w-1 h-8 rounded-full bg-current opacity-0 group-hover:opacity-20 transition-opacity" />
+      </div>
+      {/* Left edge */}
+      <div
+        data-no-drag
+        className="absolute top-3 bottom-3 -left-1 w-2.5 cursor-ew-resize group"
+        onPointerDown={(e) => startResize('w', e)}
+      >
+        <div className="absolute top-1/2 -translate-y-1/2 left-0.5 w-1 h-8 rounded-full bg-current opacity-0 group-hover:opacity-20 transition-opacity" />
+      </div>
+      {/* Bottom edge */}
+      <div
+        data-no-drag
+        className="absolute -bottom-1 left-3 right-3 h-2.5 cursor-ns-resize group"
+        onPointerDown={(e) => startResize('s', e)}
+      >
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-0.5 h-1 w-8 rounded-full bg-current opacity-0 group-hover:opacity-20 transition-opacity" />
+      </div>
+      {/* Bottom-right corner */}
+      <div
+        data-no-drag
+        className="absolute -bottom-1 -right-1 w-4 h-4 cursor-se-resize group"
+        onPointerDown={(e) => startResize('se', e)}
+      >
+        <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-sm bg-current opacity-0 group-hover:opacity-25 transition-opacity" />
+      </div>
+      {/* Bottom-left corner */}
+      <div
+        data-no-drag
+        className="absolute -bottom-1 -left-1 w-4 h-4 cursor-sw-resize group"
+        onPointerDown={(e) => startResize('sw', e)}
+      >
+        <div className="absolute bottom-0.5 left-0.5 w-2.5 h-2.5 rounded-sm bg-current opacity-0 group-hover:opacity-25 transition-opacity" />
       </div>
     </div>,
     document.body,
