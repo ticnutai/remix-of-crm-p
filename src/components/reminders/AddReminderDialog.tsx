@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { FloatingDialog } from '@/components/ui/FloatingDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,8 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2, CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
+import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2 } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useReminders, ReminderInsert } from '@/hooks/useReminders';
@@ -33,8 +25,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { SmartDateTimePicker } from '@/components/ui/SmartDateTimePicker';
 
-import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -101,7 +94,6 @@ const RINGTONES = [
 export function AddReminderDialog({ entityType, entityId, trigger, initialValues }: AddReminderDialogProps) {
   const { themeId, theme, setThemeId } = useDialogTheme();
   const sidebarColors = getSidebarColors(theme);
-  const { size, containerRef, startResize } = useDialogResize(500);
   const [open, setOpen] = useState(false);
   const { createReminder } = useReminders();
   const { toast } = useToast();
@@ -117,7 +109,6 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   const [customRingtoneUrl, setCustomRingtoneUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isReminderCalendarOpen, setIsReminderCalendarOpen] = useState(false);
   const [reminderDateText, setReminderDateText] = useState('');
   const [reminderTimeText, setReminderTimeText] = useState('');
   const [reminderDateError, setReminderDateError] = useState<string | null>(null);
@@ -394,55 +385,88 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
     }
   };
 
+  // Render: external trigger (cloned with onClick) + FloatingDialog
+  const triggerEl = trigger ? (
+    React.isValidElement(trigger)
+      ? React.cloneElement(trigger as React.ReactElement<any>, {
+          onClick: (e: React.MouseEvent) => {
+            (trigger as any).props?.onClick?.(e);
+            if (!e.defaultPrevented) setOpen(true);
+          },
+        })
+      : <span onClick={() => setOpen(true)}>{trigger}</span>
+  ) : (
+    <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
+      <Bell className="h-4 w-4" />
+      הוסף תזכורת
+    </Button>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={setOpen} modal={false}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" size="sm" className="gap-2">
-            <Bell className="h-4 w-4" />
-            הוסף תזכורת
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent
-        ref={containerRef}
-        dialogKey="add-reminder"
-        className="p-0 navy-gold-dialog"
-        dir="rtl"
-        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
-        style={{
-          background: theme.backgroundGradient,
-          border: `2px solid ${theme.border}`,
-          width: `${size.width}px`,
-          maxWidth: 'calc(100vw - 48px)',
-          maxHeight: 'calc(100vh - 48px)',
-          ...(size.height ? { height: `${size.height}px` } : {}),
-        }}
-      >
-        <ResizeHandles onResize={startResize} />
-        <DialogHeader
-          className="px-5 pt-5 pb-3"
-          style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
-        >
-          <div className="flex items-center gap-3">
+    <>
+      {triggerEl}
+      <FloatingDialog
+        open={open}
+        onOpenChange={setOpen}
+        storageKey="add-reminder"
+        defaultWidth={520}
+        minWidth={400}
+        minHeight={460}
+        className="navy-gold-dialog"
+        contentClassName="gold-scrollbar"
+        title={
+          <div className="flex items-center gap-3 w-full">
             <div
-              className="flex items-center justify-center w-10 h-10 rounded-lg"
+              className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
               style={{ background: theme.iconBg }}
             >
               <Bell className="h-5 w-5" style={{ color: theme.iconColor }} />
             </div>
-            <DialogTitle
-              className="text-lg font-bold flex-1"
-              style={{ color: theme.title }}
-            >
+            <span className="text-base font-bold flex-1 truncate" style={{ color: theme.title }}>
               תזכורת חדשה
-            </DialogTitle>
+            </span>
             <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
           </div>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(85vh - 120px)' }}>
-          <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 gold-scrollbar">
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              style={{ color: theme.cancelText }}
+            >
+              ביטול
+            </Button>
+            <Button
+              type="submit"
+              form="add-reminder-form"
+              disabled={!form.title || !form.remind_at || isSubmitting}
+              className="gap-2"
+              style={{
+                background: theme.buttonBg,
+                color: theme.buttonText,
+                border: `1px solid ${theme.buttonBorder}`,
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  שומר...
+                </>
+              ) : (
+                <>
+                  <Bell className="h-4 w-4" />
+                  צור תזכורת
+                </>
+              )}
+            </Button>
+          </>
+        }
+      >
+        <div className="rounded-lg" style={{ background: theme.backgroundGradient }}>
+        <form id="add-reminder-form" onSubmit={handleSubmit}>
+          <div className="px-2 py-1 space-y-4">
             {/* Title */}
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
@@ -459,82 +483,40 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               />
             </div>
             
-            {/* Remind At - Manual date + time + Broad calendar */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
-                מתי להזכיר *
-              </Label>
-              <div className="flex gap-2">
-                {/* Manual date input */}
-                <Input
-                  value={reminderDateText}
-                  onChange={(e) => handleReminderDateChange(e.target.value)}
-                  placeholder="dd/mm/yyyy"
-                  className={cn('flex-1 text-right', brandedInputClass)}
-                  style={brandedInputStyle}
-                  inputMode="numeric"
-                  dir="ltr"
-                />
-                {/* Manual time input */}
-                <Input
-                  value={reminderTimeText}
-                  onChange={(e) => handleReminderTimeChange(e.target.value)}
-                  placeholder="HH:MM"
-                  className={cn('w-24 text-right', brandedInputClass)}
-                  style={brandedInputStyle}
-                  inputMode="numeric"
-                  dir="ltr"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="px-3 gap-2 shrink-0"
-                  style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
-                  title="בחר מלוח שנה"
-                  onClick={() => setIsReminderCalendarOpen((v) => !v)}
-                  aria-expanded={isReminderCalendarOpen}
-                >
-                  <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-                  <span className="text-xs">לוח</span>
-                </Button>
-              </div>
-              {isReminderCalendarOpen && (
-                <div
-                  className="mt-3 w-[340px] max-w-full min-w-[300px] max-h-[48vh] resize overflow-auto rounded-lg border-2 bg-background p-2 shadow-xl"
-                  style={{ borderColor: sidebarColors.gold }}
-                  data-no-drag
-                >
-                  <Calendar
-                    mode="single"
-                    selected={form.remind_at ? new Date(form.remind_at) : undefined}
-                    onSelect={(d) => {
-                      if (!d) return;
-                      const dateStr = format(d, 'dd/MM/yyyy');
-                      setReminderDateText(dateStr);
-                      const tStr = reminderTimeText || '09:00';
-                      setReminderTimeText(tStr);
-                      updateRemindAt(dateStr, tStr);
-                      setIsReminderCalendarOpen(false);
-                    }}
-                    locale={he}
-                    captionLayout="dropdown-buttons"
-                    fromYear={2000}
-                    toYear={2100}
-                    showOutsideDays
-                    initialFocus
-                    className="p-2 pointer-events-auto"
-                  />
-                </div>
-              )}
-              {reminderDateError && (
-                <p className="text-xs" style={{ color: '#ef4444' }}>{reminderDateError}</p>
-              )}
-              {form.remind_at && !reminderDateError && (
-                <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
-                  {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
-                </p>
-              )}
-            </div>
+            {/* Remind At — SmartDateTimePicker (date + TimeWheelPicker) */}
+            <SmartDateTimePicker
+              value={form.remind_at ? new Date(form.remind_at) : undefined}
+              onChange={(d) => {
+                if (!d) {
+                  setReminderDateText('');
+                  setReminderDateError('יש להזין תאריך');
+                  setForm((f) => ({ ...f, remind_at: '' }));
+                  return;
+                }
+                const dateStr = format(d, 'dd/MM/yyyy');
+                setReminderDateText(dateStr);
+                const tStr = reminderTimeText || '09:00';
+                if (!reminderTimeText) setReminderTimeText(tStr);
+                updateRemindAt(dateStr, tStr);
+              }}
+              showTime
+              time={reminderTimeText || '09:00'}
+              onTimeChange={(t) => handleReminderTimeChange(t)}
+              label="מתי להזכיר"
+              required
+              accent={{
+                gold: sidebarColors.gold,
+                goldLight: sidebarColors.goldLight,
+                navy: sidebarColors.navy,
+                navyDark: sidebarColors.navyDark,
+              }}
+              error={reminderDateError}
+            />
+            {form.remind_at && !reminderDateError && (
+              <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
+                {format(new Date(form.remind_at), 'EEEE, d בMMMM yyyy בשעה HH:mm', { locale: he })}
+              </p>
+            )}
 
             {/* Client Assignment - Multi Select */}
             <div className="space-y-2">
@@ -926,43 +908,9 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
             </div>
           </div>
 
-          <DialogFooter
-            className="px-5 py-4 gap-2"
-            style={{ borderTop: `1px solid ${theme.headerBorder}` }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              style={{ color: theme.cancelText }}
-            >
-              ביטול
-            </Button>
-            <Button
-              type="submit"
-              disabled={!form.title || !form.remind_at || isSubmitting}
-              className="gap-2"
-              style={{
-                background: theme.buttonBg,
-                color: theme.buttonText,
-                border: `1px solid ${theme.buttonBorder}`,
-              }}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  שומר...
-                </>
-              ) : (
-                <>
-                  <Bell className="h-4 w-4" />
-                  צור תזכורת
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </form>
+        </div>
+      </FloatingDialog>
+    </>
   );
 }
