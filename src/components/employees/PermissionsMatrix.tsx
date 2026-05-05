@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Crown, Eye, Pencil, Trash2, Save, RefreshCcw, ShieldCheck, Users,
-  ShieldAlert, UserCog, UserCheck, ChevronDown, ChevronUp, Loader2, Info,
+  ShieldAlert, UserCog, UserCheck, ChevronDown, ChevronUp, Loader2, Info, Power,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -348,13 +348,15 @@ export function PermissionsMatrix({ employees }: { employees: Employee[] }) {
 
             return (
               <Card key={group} className="overflow-hidden">
-                {/* Group header */}
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between px-5 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-right"
+                {/* Group header — div instead of button to avoid nested button issue */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="w-full flex items-center justify-between px-5 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-right cursor-pointer select-none"
                   onClick={() =>
                     setCollapsedGroups(prev => ({ ...prev, [group]: !prev[group] }))
                   }
+                  onKeyDown={e => e.key === 'Enter' && setCollapsedGroups(prev => ({ ...prev, [group]: !prev[group] }))}
                 >
                   <span className="flex items-center gap-2 font-semibold text-sm">
                     <GroupIcon className="h-4 w-4 text-muted-foreground" />
@@ -405,13 +407,14 @@ export function PermissionsMatrix({ employees }: { employees: Employee[] }) {
 
                     {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                   </span>
-                </button>
+                </div>
 
                 {/* Module rows */}
                 {!collapsed && (
                   <div className="divide-y">
                     {/* Column header */}
-                    <div className="grid grid-cols-[1fr_80px_80px_80px] items-center px-5 py-2 text-xs font-semibold text-muted-foreground bg-muted/10">
+                    <div className="grid grid-cols-[40px_1fr_80px_80px_80px] items-center px-5 py-2 text-xs font-semibold text-muted-foreground bg-muted/10">
+                      <span></span>
                       <span>מודול</span>
                       <span className="text-center flex items-center justify-center gap-1">
                         <Eye className="h-3 w-3" /> צפייה
@@ -427,11 +430,43 @@ export function PermissionsMatrix({ employees }: { employees: Employee[] }) {
                     {mods.map(mod => {
                       const p = draft[mod.key] ?? noAccess();
                       const isLoading = loadingUser;
+                      const isEnabled = p.can_view || p.can_edit || p.can_delete;
                       return (
                         <div
                           key={mod.key}
-                          className={`grid grid-cols-[1fr_80px_80px_80px] items-center px-5 py-3 hover:bg-muted/10 transition-colors ${mod.adminOnly ? "opacity-60" : ""}`}
+                          className={`grid grid-cols-[40px_1fr_80px_80px_80px] items-center px-5 py-3 hover:bg-muted/10 transition-colors ${mod.adminOnly ? "opacity-60" : ""}`}
                         >
+                          {/* Power toggle — on/off icon */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  disabled={isLoading}
+                                  onClick={() => {
+                                    setDraft(prev => ({
+                                      ...prev,
+                                      [mod.key]: isEnabled
+                                        ? noAccess()
+                                        : { can_view: true, can_edit: false, can_delete: false },
+                                    }));
+                                    setDirty(true);
+                                  }}
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                                    isEnabled
+                                      ? "bg-green-100 text-green-600 hover:bg-red-100 hover:text-red-500"
+                                      : "bg-muted text-muted-foreground hover:bg-green-100 hover:text-green-600"
+                                  }`}
+                                >
+                                  <Power className="h-3.5 w-3.5" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="right">
+                                <p className="text-xs">{isEnabled ? "כבה גישה" : "הפעל גישה"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+
                           <span className="text-sm flex items-center gap-2">
                             {mod.label}
                             {mod.adminOnly && (
