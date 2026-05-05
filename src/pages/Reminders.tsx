@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useReminders, Reminder } from '@/hooks/useReminders';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
@@ -46,6 +47,7 @@ const reminderTypeLabels: Record<string, string> = {
 export default function Reminders() {
   const { reminders, loading, deleteReminder, dismissReminder } = useReminders();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [remindersTab, setRemindersTab] = useSyncedSetting<string>({ key: 'reminders-tab', defaultValue: 'pending' });
 
   const pendingReminders = reminders.filter(r => !r.is_sent && !r.is_dismissed && isFuture(new Date(r.remind_at)));
   const todayReminders = reminders.filter(r => isToday(new Date(r.remind_at)));
@@ -226,7 +228,7 @@ export default function Reminders() {
         </div>
 
         {/* Reminders Tabs */}
-        <Tabs defaultValue="pending" dir="rtl">
+        <Tabs value={remindersTab} onValueChange={setRemindersTab} dir="rtl">
           <TabsList>
             <TabsTrigger value="pending" className="gap-2">
               <Clock className="h-4 w-4" />

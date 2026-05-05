@@ -1,5 +1,6 @@
 // DataTable Pro - Advanced Table System with Supabase Sync
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate, Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { UniversalDataTable } from "@/components/tables/UniversalDataTable";
@@ -398,7 +399,7 @@ const PRESETS_STORAGE_KEY = "datatable-pro-presets";
 export default function DataTablePro() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("clients");
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "datatable-pro-active-tab", defaultValue: "clients" });
 
   // Table styling configuration
   const {

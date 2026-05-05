@@ -116,6 +116,7 @@ export default function TimeAnalytics() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useSyncedSetting<string>({ key: 'time-analytics-period', defaultValue: '30' });
   const [selectedEmployee, setSelectedEmployee] = useSyncedSetting<string>({ key: 'time-analytics-employee', defaultValue: 'all' });
+  const [timeAnalyticsTab, setTimeAnalyticsTab] = useSyncedSetting<string>({ key: 'time-analytics-tab', defaultValue: 'trend' });
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -465,7 +466,7 @@ export default function TimeAnalytics() {
         </Card>
 
         {/* Charts */}
-        <Tabs defaultValue="trend" className="space-y-6" dir="rtl">
+        <Tabs value={timeAnalyticsTab} onValueChange={setTimeAnalyticsTab} className="space-y-6" dir="rtl">
           <TabsList>
             <TabsTrigger value="trend" className="gap-2">
               <Activity className="h-4 w-4" />
