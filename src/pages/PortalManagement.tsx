@@ -1,5 +1,6 @@
 // Admin Portal Management - Overview of all client portal activity
 import { useState, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -85,7 +86,7 @@ export default function PortalManagement() {
   const { clients } = useClients();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "portal-management-active-tab", defaultValue: "overview" });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 

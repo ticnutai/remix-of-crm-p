@@ -2,6 +2,7 @@
 // מעקב אחרי כל השינויים במערכת
 
 import React, { useState } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { useQuery } from '@tanstack/react-query';
 import {
   Card,
@@ -127,8 +128,8 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export function AuditLog() {
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [entityFilter, setEntityFilter] = useSyncedSetting<string>({ key: 'audit-log-entity-filter', defaultValue: 'all' });
+  const [actionFilter, setActionFilter] = useSyncedSetting<string>({ key: 'audit-log-action-filter', defaultValue: 'all' });
   const [searchQuery, setSearchQuery] = useState('');
   const [daysBack, setDaysBack] = useState(30);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);

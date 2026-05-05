@@ -1,5 +1,6 @@
 // History Page - Undo/Redo Actions & Activity Log
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -186,8 +187,9 @@ export default function History() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAction, setSelectedAction] = useState<string>('all');
-  const [selectedEntity, setSelectedEntity] = useState<string>('all');
+  const [historyTab, setHistoryTab] = useSyncedSetting<string>({ key: 'history-active-tab', defaultValue: 'undo-redo' });
+  const [selectedAction, setSelectedAction] = useSyncedSetting<string>({ key: 'history-selected-action', defaultValue: 'all' });
+  const [selectedEntity, setSelectedEntity] = useSyncedSetting<string>({ key: 'history-selected-entity', defaultValue: 'all' });
   const [dateFrom, setDateFrom] = useState<Date | undefined>(subDays(new Date(), 7));
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [profiles, setProfiles] = useState<Record<string, string>>({});
@@ -452,7 +454,7 @@ export default function History() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="undo-redo" className="space-y-4">
+        <Tabs value={historyTab} onValueChange={setHistoryTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="undo-redo" className="gap-2">
               <Undo2 className="h-4 w-4" />

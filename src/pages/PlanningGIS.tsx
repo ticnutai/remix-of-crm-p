@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,13 +112,13 @@ function PlanningGIS() {
   const [projects, setProjects] = useState<PlanningProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: "planning-gis-status-filter", defaultValue: "all" });
+  const [typeFilter, setTypeFilter] = useSyncedSetting<string>({ key: "planning-gis-type-filter", defaultValue: "all" });
   const [addDialog, setAddDialog] = useState(false);
   const [editDialog, setEditDialog] = useState<PlanningProject | null>(null);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{ id: string; name: string }[]>([]);
-  const [activeTab, setActiveTab] = useState("projects");
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "planning-gis-active-tab", defaultValue: "projects" });
 
   // Form state
   const [formData, setFormData] = useState({

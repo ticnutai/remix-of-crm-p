@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -80,8 +81,8 @@ export default function EmailAnalytics() {
     clickRate: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('7d');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [timeFilter, setTimeFilter] = useSyncedSetting<string>({ key: 'email-analytics-time-filter', defaultValue: '7d' });
+  const [statusFilter, setStatusFilter] = useSyncedSetting<string>({ key: 'email-analytics-status-filter', defaultValue: 'all' });
 
   useEffect(() => {
     if (user) {
