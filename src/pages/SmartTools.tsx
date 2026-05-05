@@ -4,6 +4,7 @@
  */
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { SmartAlerts } from "@/components/alerts/SmartAlerts";
 import { AIChat } from "@/components/chat/AIChat";
 import { ChatMessenger } from "@/components/chat/ChatMessenger";
@@ -14,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 
 function SmartToolsInner() {
   const { totalUnread } = useChat();
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "smart-tools-active-tab", defaultValue: "alerts" });
 
   return (
     <div className="container mx-auto p-6 space-y-6" dir="rtl">
@@ -26,7 +28,7 @@ function SmartToolsInner() {
         </div>
       </div>
 
-      <Tabs defaultValue="alerts" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="alerts" className="gap-2">
             <Bell className="h-4 w-4" />

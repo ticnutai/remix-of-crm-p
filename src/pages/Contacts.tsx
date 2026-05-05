@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -430,7 +431,7 @@ export default function Contacts() {
   }, [cachedMessages, directMessages]);
 
   // State
-  const [activeTab, setActiveTab] = useState("senders");
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "contacts-active-tab", defaultValue: "senders" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<
     Set<string>

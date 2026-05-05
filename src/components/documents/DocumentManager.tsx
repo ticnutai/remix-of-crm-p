@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +121,7 @@ function useDocuments(folder?: string, clientId?: string) {
 }
 
 export function DocumentManager() {
-  const [selectedFolder, setSelectedFolder] = useState("all");
+  const [selectedFolder, setSelectedFolder] = useSyncedSetting<string>({ key: "documents-selected-folder", defaultValue: "all" });
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);

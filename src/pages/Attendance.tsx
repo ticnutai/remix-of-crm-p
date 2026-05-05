@@ -1,5 +1,6 @@
 // Attendance — employee self-service clock in/out + history.
 import React, { useEffect, useMemo, useState } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Attendance() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const [attendanceTab, setAttendanceTab] = useSyncedSetting<string>({ key: "attendance-tab", defaultValue: "timesheet" });
   const [openShift, setOpenShift]   = useState<AttendanceRecord | null>(null);
   const [openBreak, setOpenBreak2]  = useState<AttendanceBreak | null>(null);
   const [records, setRecords]       = useState<AttendanceRecord[]>([]);
@@ -132,7 +134,7 @@ export default function Attendance() {
           {profile?.full_name ?? user?.email} — דיווח שעות עבודה
         </p>
 
-        <Tabs defaultValue="timesheet" className="space-y-4">
+        <Tabs value={attendanceTab} onValueChange={setAttendanceTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="timesheet">גיליון חודשי</TabsTrigger>
             <TabsTrigger value="quick">כניסה מהירה / היסטוריה</TabsTrigger>

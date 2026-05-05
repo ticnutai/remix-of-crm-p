@@ -1,6 +1,7 @@
 // Attendance Admin — manager dashboard with summary, daily detail,
 // missing-days detection, edit any record, exports.
 import React, { useEffect, useMemo, useState } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,8 +36,9 @@ export default function AttendanceAdmin() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
-  const [userFilter, setUserFilter] = useState<string>("all");
+  const [userFilter, setUserFilter] = useSyncedSetting<string>({ key: "attendance-admin-user-filter", defaultValue: "all" });
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "attendance-admin-tab", defaultValue: "summary" });
 
   const allowed = isAdmin || isManager || isSuperManager;
 
@@ -103,7 +105,7 @@ export default function AttendanceAdmin() {
           <Stat label="חוסרי יציאה" value={summary.reduce((s, u) => s + u.missing_clock_outs, 0).toString()} />
         </div>
 
-        <Tabs defaultValue="summary" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList>
             <TabsTrigger value="summary">סיכום לעובד</TabsTrigger>
             <TabsTrigger value="detail">פירוט יומי</TabsTrigger>

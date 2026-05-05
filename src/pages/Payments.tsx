@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -492,8 +493,9 @@ function DebtRow({ debt }: { debt: ClientDebt }) {
 export default function Payments() {
   const { debts, alerts, totals, isLoading, refresh } = useAllClientsPayments();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterOverdue, setFilterOverdue] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<string>('outstanding');
+  const [filterOverdue, setFilterOverdue] = useSyncedSetting<string>({ key: 'payments-filter-overdue', defaultValue: 'all' });
+  const [sortBy, setSortBy] = useSyncedSetting<string>({ key: 'payments-sort-by', defaultValue: 'outstanding' });
+  const [paymentsTab, setPaymentsTab] = useSyncedSetting<string>({ key: 'payments-tab', defaultValue: 'debts' });
   const [addDebtOpen, setAddDebtOpen] = useState(false);
 
   // Filter and sort debts
@@ -634,7 +636,7 @@ export default function Payments() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="debts" className="space-y-4">
+        <Tabs value={paymentsTab} onValueChange={setPaymentsTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3 max-w-lg">
             <TabsTrigger value="debts" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />

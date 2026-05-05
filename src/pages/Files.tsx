@@ -11,6 +11,7 @@ import React, {
   useRef,
   useMemo,
 } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout";
 import {
   Card,
@@ -296,9 +297,9 @@ export default function Files() {
   const { isConnected, getAccessToken } = useGoogleServices();
 
   // State
-  const [activeTab, setActiveTab] = useState<
+  const [activeTab, setActiveTab] = useSyncedSetting<
     "drive" | "local" | "linked" | "stats"
-  >(isConnected ? "drive" : "local");
+  >({ key: "files-active-tab", defaultValue: isConnected ? "drive" : "local" });
   const [hasLoaded, setHasLoaded] = useState(false);
   const [currentFolder, setCurrentFolder] = useState<
     { id: string; name: string }[]
@@ -306,9 +307,9 @@ export default function Files() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DriveFile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "grid" | "table">("list");
-  const [sortBy, setSortBy] = useState("date-desc");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [viewMode, setViewMode] = useSyncedSetting<"list" | "grid" | "table">({ key: "files-view-mode", defaultValue: "list" });
+  const [sortBy, setSortBy] = useSyncedSetting<string>({ key: "files-sort-by", defaultValue: "date-desc" });
+  const [filterCategory, setFilterCategory] = useSyncedSetting<string>({ key: "files-filter-category", defaultValue: "all" });
   const [starredFiles, setStarredFiles] = useState<Set<string>>(new Set());
 
   // Upload state

@@ -6,6 +6,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import ReactDOM from "react-dom";
 import DOMPurify from "dompurify";
 import { AppLayout } from "@/components/layout";
@@ -262,12 +263,10 @@ export default function Gmail() {
       }
     | undefined
   >(undefined);
-  const [activeTab, setActiveTab] = useState("inbox");
+  const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "gmail-active-tab", defaultValue: "inbox" });
 
   // Chat view state
-  const [viewMode, setViewMode] = useState<"list" | "chat" | "sender-chat">(
-    "list",
-  );
+  const [viewMode, setViewMode] = useSyncedSetting<"list" | "chat" | "sender-chat">({ key: "gmail-view-mode", defaultValue: "list" });
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [threadMessages, setThreadMessages] = useState<GmailMessage[]>([]);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
@@ -680,27 +679,14 @@ export default function Gmail() {
     null,
   );
   const [filterByClient, setFilterByClient] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"date" | "priority" | "sender">("date");
+  const [sortBy, setSortBy] = useSyncedSetting<"date" | "priority" | "sender">({ key: "gmail-sort-by", defaultValue: "date" });
   const [showFilters, setShowFilters] = useState(false);
-  const [displayDensity, setDisplayDensity] = useState<
+  const [displayDensity, setDisplayDensity] = useSyncedSetting<
     "compact" | "comfortable" | "spacious"
-  >(() => {
-    return (
-      (localStorage.getItem("gmail_display_density") as any) || "comfortable"
-    );
-  });
-  const [showPreview, setShowPreview] = useState(() => {
-    const saved = localStorage.getItem("gmail_show_preview");
-    return saved !== null ? saved === "true" : true;
-  });
+  >({ key: "gmail_display_density", defaultValue: "comfortable" });
+  const [showPreview, setShowPreview] = useSyncedSetting<boolean>({ key: "gmail_show_preview", defaultValue: true });
 
-  // Persist view preferences
-  useEffect(() => {
-    localStorage.setItem("gmail_display_density", displayDensity);
-  }, [displayDensity]);
-  useEffect(() => {
-    localStorage.setItem("gmail_show_preview", String(showPreview));
-  }, [showPreview]);
+  // Persist view preferences (handled by useSyncedSetting above)
   const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [selectedEmailForAction, setSelectedEmailForAction] =

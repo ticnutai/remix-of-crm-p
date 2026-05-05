@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -100,8 +101,8 @@ export default function AdvancedFiles() {
     search,
   } = useAdvancedFiles();
 
-  const [activeTab, setActiveTab] = useState<'files' | 'search' | 'stats' | 'settings'>('files');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activeTab, setActiveTab] = useSyncedSetting<'files' | 'search' | 'stats' | 'settings'>({ key: 'advanced-files-active-tab', defaultValue: 'files' });
+  const [viewMode, setViewMode] = useSyncedSetting<'grid' | 'list'>({ key: 'advanced-files-view-mode', defaultValue: 'grid' });
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
