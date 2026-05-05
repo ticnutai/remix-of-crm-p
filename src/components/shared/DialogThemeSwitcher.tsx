@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import { Palette, Pencil, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createPortal } from 'react-dom';
@@ -260,13 +260,32 @@ function withAlpha(hexOrRgb: string, a: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// ---- Module-level shared store so every useDialogTheme() consumer sees the same value ----
+const themeStore = (() => {
+  let themeId: DialogThemeId = (typeof localStorage !== 'undefined' && localStorage.getItem(DIALOG_THEME_KEY)) || 'navy-gold';
+  let customThemes: CustomThemeEntry[] = loadCustomThemesLocal();
+  const listeners = new Set<() => void>();
+  const emit = () => listeners.forEach((l) => l());
+  return {
+    subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; },
+    getThemeId: () => themeId,
+    getCustomThemes: () => customThemes,
+    setThemeId(id: DialogThemeId) {
+      if (themeId === id) return;
+      themeId = id;
+      emit();
+    },
+    setCustomThemes(list: CustomThemeEntry[]) {
+      customThemes = list;
+      emit();
+    },
+  };
+})();
+
 export function useDialogTheme() {
   const { user } = useAuth();
-  const [customThemes, setCustomThemes] = useState<CustomThemeEntry[]>(() => loadCustomThemesLocal());
-  const [themeId, setThemeIdState] = useState<DialogThemeId>(() => {
-    const saved = localStorage.getItem(DIALOG_THEME_KEY);
-    return saved || 'navy-gold';
-  });
+  const themeId = useSyncExternalStore(themeStore.subscribe, themeStore.getThemeId, themeStore.getThemeId);
+  const customThemes = useSyncExternalStore(themeStore.subscribe, themeStore.getCustomThemes, themeStore.getCustomThemes);
 
   // Load custom themes from cloud (overrides local on success)
   useEffect(() => {
@@ -283,7 +302,7 @@ export function useDialogTheme() {
         const v = (data as any)?.setting_value;
         if (alive && Array.isArray(v)) {
           const valid = v.filter((t: any) => t && typeof t.id === 'string' && t.colors);
-          setCustomThemes(valid);
+          themeStore.setCustomThemes(valid);
           saveCustomThemesLocal(valid);
         }
       } catch { /* ignore */ }
@@ -292,12 +311,14 @@ export function useDialogTheme() {
   }, [user?.id]);
 
   const setThemeId = useCallback((id: DialogThemeId) => {
-    setThemeIdState(id);
+    // eslint-disable-next-line no-console
+    console.log('[ThemeSwitcher] setThemeId', id);
+    themeStore.setThemeId(id);
     try { localStorage.setItem(DIALOG_THEME_KEY, id); } catch { /* ignore */ }
   }, []);
 
   const persistCustomThemes = useCallback(async (list: CustomThemeEntry[]) => {
-    setCustomThemes(list);
+    themeStore.setCustomThemes(list);
     saveCustomThemesLocal(list);
     if (!user?.id) return;
     try {
@@ -436,7 +457,12 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        data-testid="dialog-theme-switcher-trigger"
+        onClick={() => {
+          // eslint-disable-next-line no-console
+          console.log('[ThemeSwitcher] trigger click', { willOpen: !isOpen });
+          setIsOpen(!isOpen);
+        }}
         className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110"
         style={{
           background: safeCurrent.colors.iconBg,
@@ -451,6 +477,7 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
         <>
           <div className="fixed inset-0 z-[1600]" style={{ pointerEvents: 'auto' }} onClick={() => setIsOpen(false)} />
           <div
+            data-testid="dialog-theme-switcher-menu"
             className="fixed z-[1601] rounded-lg shadow-xl p-2 min-w-[220px] max-h-[60vh] overflow-y-auto border"
             style={{
               top: menuPos.top,

@@ -860,6 +860,8 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     const y = Math.max(8, Math.round((window.innerHeight - rect.height) / 2));
     posRef.current = { x, y };
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    // eslint-disable-next-line no-console
+    console.log('[DateDialog] mounted+centered', { x, y, w: rect.width, h: rect.height, vw: window.innerWidth, vh: window.innerHeight });
   }, [mounted]);
 
   // ESC to close
@@ -873,7 +875,11 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   const onPointerDown = (e: React.PointerEvent) => {
     if (!posRef.current) return;
     const target = e.target as HTMLElement;
-    if (target.closest('[data-no-drag]')) return;
+    if (target.closest('[data-no-drag]')) {
+      // eslint-disable-next-line no-console
+      console.log('[DateDialog] pointerdown ignored (data-no-drag)', target.tagName);
+      return;
+    }
     dragStateRef.current = {
       startX: e.clientX,
       startY: e.clientY,
@@ -882,6 +888,8 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
       rafId: null,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // eslint-disable-next-line no-console
+    console.log('[DateDialog] drag start', { x: e.clientX, y: e.clientY, base: posRef.current });
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const s = dragStateRef.current;
@@ -919,6 +927,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   return createPortal(
     <div
       ref={panelRef}
+      data-testid="date-change-dialog"
       className="fixed z-[1000] rounded-lg shadow-2xl overflow-visible"
       style={{
         top: 0,
@@ -937,6 +946,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     >
       {/* Drag handle / header */}
       <div
+        data-testid="date-change-dialog-handle"
         className="px-5 pt-4 pb-3 flex items-center justify-between gap-3 cursor-move select-none"
         style={{ borderBottom: `1px solid ${theme.headerBorder}`, touchAction: 'none' }}
         onPointerDown={onPointerDown}
