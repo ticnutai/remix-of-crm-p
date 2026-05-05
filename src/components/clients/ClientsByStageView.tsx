@@ -1,5 +1,6 @@
 // Clients By Stage View - Modern compact design with icons
 import React, { useState, useMemo, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -684,24 +685,29 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
   } = useClientsByConsultant();
   const { clients: allClients } = useClients();
 
-  // Load saved preferences from localStorage
-  const [viewFilter, setViewFilter] = useState<ViewFilter>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_VIEW_FILTER);
-    return (saved as ViewFilter) || "all";
-  });
+  // Synced view preferences (LS + cloud)
+  const [viewFilter, setViewFilter] = useSyncedSetting<ViewFilter>({ key: STORAGE_KEY_VIEW_FILTER, defaultValue: "all" });
   const [expandedClients, setExpandedClients] = useState<Set<string>>(
     new Set(),
   );
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_GROUPS);
-    return saved ? new Set(JSON.parse(saved)) : new Set();
-  });
-  const [expandedConsultants, setExpandedConsultants] = useState<Set<string>>(
-    () => {
-      const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_CONSULTANTS);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    },
-  );
+  const [expandedGroupsArr, setExpandedGroupsArr] = useSyncedSetting<string[]>({ key: STORAGE_KEY_EXPANDED_GROUPS, defaultValue: [] });
+  const expandedGroups = useMemo(() => new Set(expandedGroupsArr), [expandedGroupsArr]);
+  const setExpandedGroups = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setExpandedGroupsArr((prevArr) => {
+      const prev = new Set(prevArr);
+      const resolved = typeof next === "function" ? next(prev) : next;
+      return Array.from(resolved);
+    });
+  };
+  const [expandedConsultantsArr, setExpandedConsultantsArr] = useSyncedSetting<string[]>({ key: STORAGE_KEY_EXPANDED_CONSULTANTS, defaultValue: [] });
+  const expandedConsultants = useMemo(() => new Set(expandedConsultantsArr), [expandedConsultantsArr]);
+  const setExpandedConsultants = (next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setExpandedConsultantsArr((prevArr) => {
+      const prev = new Set(prevArr);
+      const resolved = typeof next === "function" ? next(prev) : next;
+      return Array.from(resolved);
+    });
+  };
 
   // Bulk add clients dialog state
   const [bulkAddDialogOpen, setBulkAddDialogOpen] = useState(false);
@@ -728,30 +734,11 @@ export function ClientsByStageView({ className }: ClientsByStageViewProps) {
     Set<string>
   >(new Set());
 
-  // Save view filter to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_VIEW_FILTER, viewFilter);
-  }, [viewFilter]);
-
-  // Save expanded groups to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY_EXPANDED_GROUPS,
-      JSON.stringify(Array.from(expandedGroups)),
-    );
-  }, [expandedGroups]);
-
-  // Save expanded consultants to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY_EXPANDED_CONSULTANTS,
-      JSON.stringify(Array.from(expandedConsultants)),
-    );
-  }, [expandedConsultants]);
+  // (view filter, expanded groups, and expanded consultants persisted by useSyncedSetting above)
 
   // Update expanded groups when stage names load (only if no saved state)
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_EXPANDED_GROUPS);
+    const saved = localStorage.getItem("synced::" + STORAGE_KEY_EXPANDED_GROUPS);
     if (!saved && allStageNames.length > 0 && expandedGroups.size === 0) {
       setExpandedGroups(new Set(allStageNames));
     }

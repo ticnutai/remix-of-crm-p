@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
   DndContext,
   closestCenter,
@@ -1499,17 +1500,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   // Show all stages by default
   const [showAllStages, setShowAllStages] = useState(true);
 
-  // Columns count for grid layout (persisted)
-  const COLUMNS_KEY = "stages-columns-count";
-  const [columnsCount, setColumnsCount] = useState<number>(() => {
-    const saved = localStorage.getItem(COLUMNS_KEY);
-    return saved ? parseInt(saved, 10) : 4;
-  });
-
-  // Save columns preference
-  useEffect(() => {
-    localStorage.setItem(COLUMNS_KEY, String(columnsCount));
-  }, [columnsCount]);
+  // Columns count for grid layout (persisted to LS + cloud)
+  const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "stages-columns-count", defaultValue: 4 });
 
   // Get grid columns class based on count
   const getGridColumnsClass = () => {

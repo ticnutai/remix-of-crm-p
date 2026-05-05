@@ -1,5 +1,6 @@
 // Timer Widget - tenarch CRM Pro - Unified Luxurious Design
 import React, { useState, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { useTimer } from "@/hooks/useTimer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,10 +113,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [showSavePanel, setShowSavePanel] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem(TIMER_COLLAPSED_KEY);
-    return saved === "true";
-  });
+  const [isCollapsed, setIsCollapsed] = useSyncedSetting<boolean>({ key: "timer-widget-collapsed", defaultValue: false });
   const [recentClients, setRecentClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem(RECENT_CLIENTS_KEY);
     return saved ? JSON.parse(saved) : [];
@@ -244,10 +242,7 @@ export function TimerWidget({ showTimerDisplay = true }: TimerWidgetProps) {
     setEditingNoteValue("");
   };
 
-  // Save collapsed state
-  useEffect(() => {
-    localStorage.setItem(TIMER_COLLAPSED_KEY, String(isCollapsed));
-  }, [isCollapsed]);
+  // (collapsed state persisted by useSyncedSetting above)
 
   // Fetch projects and clients
   useEffect(() => {

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
   DndContext,
   closestCenter,
@@ -586,10 +587,7 @@ export function ClientFoldersManager({
   );
 
   // Columns count for grid layout
-  const [columnsCount, setColumnsCount] = useState(() => {
-    const saved = localStorage.getItem("folder-stages-columns-count");
-    return saved ? parseInt(saved, 10) : 1; // Default 1 = list view
-  });
+  const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "folder-stages-columns-count", defaultValue: 1 });
 
   // Grid columns class helper
   const getGridColumnsClass = () => {
@@ -612,7 +610,6 @@ export function ClientFoldersManager({
 
   const handleColumnsChange = (count: number) => {
     setColumnsCount(count);
-    localStorage.setItem("folder-stages-columns-count", count.toString());
   };
 
   // Template dialogs state

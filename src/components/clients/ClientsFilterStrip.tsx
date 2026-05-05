@@ -1,5 +1,6 @@
 // Clients Filter Strip Component - tenarch CRM Pro
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { supabase } from "@/integrations/supabase/client";
 import { AddClientsToCategoryDialog } from './AddClientsToCategoryDialog';
 import { Button } from "@/components/ui/button";
@@ -285,17 +286,18 @@ export function ClientsFilterStrip({
     { id: "tasks", label: "משימות" },
     { id: "meetings", label: "פגישות" },
   ];
-  const VISIBLE_FILTERS_KEY = "clients-filter-strip-visible-sections";
-  const [visibleFilterSections, setVisibleFilterSections] = useState<Set<string>>(() => {
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(VISIBLE_FILTERS_KEY) : null;
-      if (raw) return new Set<string>(JSON.parse(raw));
-    } catch {}
-    return new Set<string>(FILTER_SECTIONS.map((s) => s.id));
+  const [visibleFilterSectionsArr, setVisibleFilterSectionsArr] = useSyncedSetting<string[]>({
+    key: "clients-filter-strip-visible-sections",
+    defaultValue: FILTER_SECTIONS.map((s) => s.id),
   });
-  useEffect(() => {
-    try { window.localStorage.setItem(VISIBLE_FILTERS_KEY, JSON.stringify(Array.from(visibleFilterSections))); } catch {}
-  }, [visibleFilterSections]);
+  const visibleFilterSections = useMemo(() => new Set(visibleFilterSectionsArr), [visibleFilterSectionsArr]);
+  const setVisibleFilterSections = useCallback((next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setVisibleFilterSectionsArr((prevArr) => {
+      const prev = new Set(prevArr);
+      const resolved = typeof next === "function" ? next(prev) : next;
+      return Array.from(resolved);
+    });
+  }, [setVisibleFilterSectionsArr]);
   const toggleFilterSection = (id: string) => {
     setVisibleFilterSections((prev) => {
       const n = new Set(prev);

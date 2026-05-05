@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { ChevronUp, ChevronDown, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 import { cn } from '@/lib/utils';
 
 interface CollapsibleSectionProps {
@@ -10,48 +11,25 @@ interface CollapsibleSectionProps {
   defaultCollapsed?: boolean;
 }
 
-const COLLAPSED_SECTIONS_KEY = 'finance-collapsed-sections';
-
 export function CollapsibleSection({ 
   id, 
   children, 
   className,
   defaultCollapsed = false 
 }: CollapsibleSectionProps) {
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Load from localStorage
-    const saved = localStorage.getItem(COLLAPSED_SECTIONS_KEY);
-    if (saved) {
-      try {
-        const collapsedSections = JSON.parse(saved);
-        return collapsedSections.includes(id);
-      } catch {
-        return defaultCollapsed;
-      }
-    }
-    return defaultCollapsed;
+  const [collapsedList, setCollapsedList] = useSyncedSetting<string[]>({
+    key: 'finance-collapsed-sections',
+    defaultValue: [],
   });
-
-  useEffect(() => {
-    // Save to localStorage when changed
-    const saved = localStorage.getItem(COLLAPSED_SECTIONS_KEY);
-    let collapsedSections: string[] = [];
-    if (saved) {
-      try {
-        collapsedSections = JSON.parse(saved);
-      } catch {
-        collapsedSections = [];
-      }
-    }
-
-    if (isCollapsed && !collapsedSections.includes(id)) {
-      collapsedSections.push(id);
-    } else if (!isCollapsed && collapsedSections.includes(id)) {
-      collapsedSections = collapsedSections.filter(s => s !== id);
-    }
-
-    localStorage.setItem(COLLAPSED_SECTIONS_KEY, JSON.stringify(collapsedSections));
-  }, [isCollapsed, id]);
+  const isCollapsed = collapsedList.includes(id);
+  const setIsCollapsed = (next: boolean) => {
+    setCollapsedList((prev) => {
+      const has = prev.includes(id);
+      if (next && !has) return [...prev, id];
+      if (!next && has) return prev.filter((s) => s !== id);
+      return prev;
+    });
+  };
 
   const toggleCollapse = (e: React.MouseEvent) => {
     e.stopPropagation();

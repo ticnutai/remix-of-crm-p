@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useDeferredValue, useEffect } from "react";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { DataTable } from "@/components/DataTable";
 import { ColumnDef, TableStyleConfig } from "@/components/DataTable/types";
 import {
@@ -173,18 +174,19 @@ export function UniversalDataTable<
     [],
   );
 
-  // Hidden columns state (persisted per table)
-  const HIDDEN_COLS_KEY = `udt-hidden-cols::${tableName}`;
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() => {
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(HIDDEN_COLS_KEY) : null;
-      if (raw) return new Set<string>(JSON.parse(raw));
-    } catch {}
-    return new Set<string>();
+  // Hidden columns state (persisted per table to LS + cloud)
+  const [hiddenColsArr, setHiddenColsArr] = useSyncedSetting<string[]>({
+    key: `udt-hidden-cols::${tableName}`,
+    defaultValue: [],
   });
-  useEffect(() => {
-    try { window.localStorage.setItem(HIDDEN_COLS_KEY, JSON.stringify(Array.from(hiddenColumns))); } catch {}
-  }, [HIDDEN_COLS_KEY, hiddenColumns]);
+  const hiddenColumns = useMemo(() => new Set(hiddenColsArr), [hiddenColsArr]);
+  const setHiddenColumns = useCallback((next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setHiddenColsArr((prevArr) => {
+      const prev = new Set(prevArr);
+      const resolved = typeof next === "function" ? next(prev) : next;
+      return Array.from(resolved);
+    });
+  }, [setHiddenColsArr]);
 
   // Handle column hide
   const handleHideColumn = useCallback((columnId: string) => {

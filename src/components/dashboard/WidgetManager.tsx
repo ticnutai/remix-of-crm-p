@@ -1,5 +1,6 @@
 // Widget Manager - Full Control System
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useSyncedSetting } from '@/hooks/useSyncedSetting';
 
 export type WidgetId = 
   | 'stats-clients' 
@@ -160,14 +161,7 @@ export function WidgetManagerProvider({ children }: { children: ReactNode }) {
     return defaultWidgets;
   });
 
-  const [autoLayout, setAutoLayout] = useState<boolean>(() => {
-    const saved = localStorage.getItem(AUTO_LAYOUT_KEY);
-    return saved === 'true';
-  });
-
-  useEffect(() => {
-    localStorage.setItem(AUTO_LAYOUT_KEY, String(autoLayout));
-  }, [autoLayout]);
+  const [autoLayout, setAutoLayout] = useSyncedSetting<boolean>({ key: 'dashboard-auto-layout', defaultValue: false });
 
   const toggleAutoLayout = () => setAutoLayout(prev => !prev);
 
