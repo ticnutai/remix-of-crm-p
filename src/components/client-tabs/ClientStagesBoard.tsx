@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
   DndContext,
@@ -821,66 +822,138 @@ interface DateChangeDialogProps {
 const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange, value, onSave }) => {
   const { theme, themeId, setThemeId } = useDialogTheme();
   const [draft, setDraft] = useState<Date | undefined>(value);
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const dragStateRef = React.useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    if (open) setDraft(value);
+    if (open) {
+      setDraft(value);
+      // initial centered position once
+      if (!pos) {
+        const w = 460;
+        const h = 520;
+        setPos({
+          x: Math.max(16, Math.round((window.innerWidth - w) / 2)),
+          y: Math.max(16, Math.round((window.innerHeight - h) / 2)),
+        });
+      }
+    }
   }, [open, value]);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-[460px] p-0 overflow-hidden"
-        style={{
-          background: theme.backgroundGradient || theme.background,
-          border: `1px solid ${theme.border}`,
-          color: theme.text,
-        }}
+  // close on ESC only (no overlay backdrop click — non-modal)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onOpenChange(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!pos) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-no-drag]')) return;
+    dragStateRef.current = { startX: e.clientX, startY: e.clientY, baseX: pos.x, baseY: pos.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    const s = dragStateRef.current;
+    if (!s) return;
+    const dx = e.clientX - s.startX;
+    const dy = e.clientY - s.startY;
+    const w = panelRef.current?.offsetWidth ?? 460;
+    const h = panelRef.current?.offsetHeight ?? 520;
+    const nx = Math.max(0, Math.min(window.innerWidth - w, s.baseX + dx));
+    const ny = Math.max(0, Math.min(window.innerHeight - h, s.baseY + dy));
+    setPos({ x: nx, y: ny });
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    dragStateRef.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+  };
+
+  if (!open || !pos) return null;
+
+  return createPortal(
+    <div
+      ref={panelRef}
+      className="fixed z-[300] rounded-lg shadow-2xl overflow-visible"
+      style={{
+        top: pos.y,
+        left: pos.x,
+        width: 460,
+        background: theme.backgroundGradient || theme.background,
+        border: `1px solid ${theme.border}`,
+        color: theme.text,
+      }}
+      dir="rtl"
+    >
+      {/* Drag handle / header */}
+      <div
+        className="px-5 pt-4 pb-3 flex items-center justify-between gap-3 cursor-move select-none"
+        style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
-        <div className="px-5 pt-5 pb-2 flex items-center justify-between gap-3" style={{ borderBottom: `1px solid ${theme.headerBorder}` }}>
-          <DialogHeader className="flex-1">
-            <DialogTitle style={{ color: theme.title }}>בחר תאריך ביצוע</DialogTitle>
-          </DialogHeader>
+        <div className="flex items-center gap-2">
+          <GripVertical className="h-4 w-4 opacity-60" style={{ color: theme.iconColor }} />
+          <h2 className="text-base font-semibold" style={{ color: theme.title }}>בחר תאריך ביצוע</h2>
+        </div>
+        <div className="flex items-center gap-1" data-no-drag>
           <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
-        </div>
-        <div className="px-5 py-4">
-          <SmartDateTimePicker
-            value={draft}
-            onChange={(d) => setDraft(d)}
-            label="תאריך יעד"
-            placeholder="dd/mm/yyyy"
-            allowClear
-            accent={{
-              gold: theme.border,
-              goldLight: theme.title,
-              navy: theme.background,
-              navyDark: theme.background,
-            }}
-          />
-        </div>
-        <DialogFooter
-          className="px-5 py-3 gap-2"
-          style={{ borderTop: `1px solid ${theme.headerBorder}`, background: theme.background }}
-        >
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={() => onOpenChange(false)}
-            style={{ color: theme.cancelText }}
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
+            style={{ background: theme.iconBg, color: theme.iconColor }}
+            title="סגור"
           >
-            ביטול
-          </Button>
-          <Button
-            onClick={() => onSave(draft)}
-            style={{
-              background: theme.buttonBg,
-              color: theme.buttonText,
-              border: `1px solid ${theme.buttonBorder}`,
-            }}
-          >
-            שמור תאריך
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-5 py-4" data-no-drag>
+        <SmartDateTimePicker
+          value={draft}
+          onChange={(d) => setDraft(d)}
+          label="תאריך יעד"
+          placeholder="dd/mm/yyyy"
+          allowClear
+          accent={{
+            gold: theme.border,
+            goldLight: theme.title,
+            navy: theme.background,
+            navyDark: theme.background,
+          }}
+        />
+      </div>
+
+      <div
+        className="px-5 py-3 flex items-center justify-end gap-2"
+        style={{ borderTop: `1px solid ${theme.headerBorder}`, background: theme.background }}
+        data-no-drag
+      >
+        <Button variant="ghost" onClick={() => onOpenChange(false)} style={{ color: theme.cancelText }}>
+          ביטול
+        </Button>
+        <Button
+          onClick={() => onSave(draft)}
+          style={{
+            background: theme.buttonBg,
+            color: theme.buttonText,
+            border: `1px solid ${theme.buttonBorder}`,
+          }}
+        >
+          שמור תאריך
+        </Button>
+      </div>
+    </div>,
+    document.body,
   );
 };
 
