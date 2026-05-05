@@ -821,6 +821,19 @@ interface DateChangeDialogProps {
 
 const RESIZE_MIN_W = 320;
 const RESIZE_MIN_H = 380;
+const DIALOG_LS_KEY = 'date-dialog-layout';
+
+interface DialogLayout { x: number; y: number; w: number; h: number; }
+
+function clampToViewport(l: DialogLayout): DialogLayout {
+  const w = Math.max(RESIZE_MIN_W, Math.min(window.innerWidth - 16, l.w));
+  const h = Math.max(RESIZE_MIN_H, Math.min(window.innerHeight - 16, l.h));
+  return { w, h, x: Math.max(0, Math.min(window.innerWidth - w - 8, l.x)), y: Math.max(0, Math.min(window.innerHeight - h - 8, l.y)) };
+}
+
+function readDialogLayout(): DialogLayout | null {
+  try { return JSON.parse(localStorage.getItem(DIALOG_LS_KEY) ?? '') as DialogLayout; } catch { return null; }
+}
 
 function getCursor(dir: string) {
   const map: Record<string, string> = {
@@ -840,6 +853,27 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   const sizeRef = React.useRef({ w: 460, h: 0 });
   const [committedSize, setCommittedSize] = useState({ w: 460, h: 0 });
   const [mounted, setMounted] = useState(false);
+  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ---- Layout persistence helpers ----
+  const saveLayout = React.useCallback(() => {
+    const pos = posRef.current;
+    const size = sizeRef.current;
+    if (!pos || !size.h) return;
+    const layout: DialogLayout = { x: pos.x, y: pos.y, w: size.w, h: size.h };
+    try { localStorage.setItem(DIALOG_LS_KEY, JSON.stringify(layout)); } catch { /* ignore */ }
+    // Debounced cloud save
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        await supabase
+          .from('user_preferences' as any)
+          .upsert({ user_id: user.id, date_dialog_layout: layout as any, updated_at: new Date().toISOString() } as any, { onConflict: 'user_id' });
+      } catch { /* silent */ }
+    }, 600);
+  }, []);
 
   // Reset draft when opened
   useEffect(() => {
@@ -863,20 +897,57 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     navyDark: theme.background,
   }), [theme.border, theme.title, theme.background]);
 
-  // Center after the panel is in DOM and capture its natural size.
+  // Restore saved layout (localStorage), or center for first-time open.
   useEffect(() => {
     if (!mounted) return;
     const el = panelRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = Math.max(8, Math.round((window.innerWidth - rect.width) / 2));
-    const y = Math.max(8, Math.round((window.innerHeight - rect.height) / 2));
-    posRef.current = { x, y };
-    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    // Commit the natural height so future re-renders preserve it.
-    const measuredH = Math.round(rect.height);
-    sizeRef.current = { w: Math.round(rect.width), h: measuredH };
-    setCommittedSize({ w: Math.round(rect.width), h: measuredH });
+    const saved = readDialogLayout();
+    if (saved) {
+      const c = clampToViewport(saved);
+      posRef.current = { x: c.x, y: c.y };
+      sizeRef.current = { w: c.w, h: c.h };
+      el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+      el.style.width = `${c.w}px`;
+      el.style.height = `${c.h}px`;
+      setCommittedSize({ w: c.w, h: c.h });
+    } else {
+      // First time ever — center in viewport
+      const rect = el.getBoundingClientRect();
+      const x = Math.max(8, Math.round((window.innerWidth - rect.width) / 2));
+      const y = Math.max(8, Math.round((window.innerHeight - rect.height) / 2));
+      posRef.current = { x, y };
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      const measuredH = Math.round(rect.height);
+      sizeRef.current = { w: Math.round(rect.width), h: measuredH };
+      setCommittedSize({ w: Math.round(rect.width), h: measuredH });
+    }
+    // Async: fetch from cloud — overrides localStorage for cross-device sync
+    void (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase
+          .from('user_preferences' as any)
+          .select('date_dialog_layout')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const cloudLayout = (data as any)?.date_dialog_layout as DialogLayout | null;
+        if (!cloudLayout) return;
+        const c = clampToViewport(cloudLayout);
+        // Update localStorage with cloud value
+        try { localStorage.setItem(DIALOG_LS_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+        // Apply to panel if still open
+        const panel = panelRef.current;
+        if (!panel) return;
+        posRef.current = { x: c.x, y: c.y };
+        sizeRef.current = { w: c.w, h: c.h };
+        panel.style.transform = `translate3d(${c.x}px, ${c.y}px, 0)`;
+        panel.style.width = `${c.w}px`;
+        panel.style.height = `${c.h}px`;
+        setCommittedSize({ w: c.w, h: c.h });
+      } catch { /* silent */ }
+    })();
   }, [mounted]);
 
   // ESC to close
@@ -943,13 +1014,15 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       setCommittedSize({ ...sizeRef.current });
+      // Save size + position after resize
+      saveLayout();
     };
 
     document.body.style.cursor = getCursor(dir);
     document.body.style.userSelect = 'none';
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-  }, []);
+  }, [saveLayout]);
   const onPointerMove = (e: React.PointerEvent) => {
     const s = dragStateRef.current;
     if (!s) return;
@@ -979,6 +1052,8 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     if (dragStateRef.current?.rafId) cancelAnimationFrame(dragStateRef.current.rafId);
     dragStateRef.current = null;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    // Save position after drag
+    saveLayout();
   };
 
   if (!open) return null;
