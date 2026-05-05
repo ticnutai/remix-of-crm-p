@@ -19,6 +19,30 @@ const HEB_MONTHS = [
   "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר",
 ];
 
+// ---- Hebrew (Jewish) calendar helpers via Intl ----
+// Uses the browser's built-in Hebrew calendar. Falls back gracefully if unavailable.
+const _hebDayFmt = (() => {
+  try { return new Intl.DateTimeFormat("he-u-ca-hebrew-nu-hebr", { day: "numeric" }); } catch { return null; }
+})();
+const _hebMonthYearFmt = (() => {
+  try { return new Intl.DateTimeFormat("he-u-ca-hebrew-nu-hebr", { month: "long", year: "numeric" }); } catch { return null; }
+})();
+const _hebFullFmt = (() => {
+  try { return new Intl.DateTimeFormat("he-u-ca-hebrew-nu-hebr", { day: "numeric", month: "long", year: "numeric" }); } catch { return null; }
+})();
+function hebDayLetters(d: Date): string {
+  if (!_hebDayFmt) return "";
+  try { return _hebDayFmt.format(d); } catch { return ""; }
+}
+function hebMonthYear(d: Date): string {
+  if (!_hebMonthYearFmt) return "";
+  try { return _hebMonthYearFmt.format(d); } catch { return ""; }
+}
+function hebFull(d: Date): string {
+  if (!_hebFullFmt) return "";
+  try { return _hebFullFmt.format(d); } catch { return ""; }
+}
+
 function ymd(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
@@ -311,6 +335,17 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
           </button>
         </div>
 
+        {/* Hebrew (Jewish) calendar month/year subtitle */}
+        {hebMonthYear(viewMonth) && (
+          <div
+            className="text-center text-[11px] font-medium mb-1.5 px-1"
+            style={{ color: accent.gold }}
+            title="לוח עברי"
+          >
+            {hebMonthYear(viewMonth)}
+          </div>
+        )}
+
         {/* Weekday header — RTL: Sun rightmost */}
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {HEB_DAYS_SHORT.map((d, i) => (
@@ -344,8 +379,9 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
                 tabIndex={isFocused ? 0 : -1}
                 aria-selected={isSelected}
                 aria-current={isToday ? "date" : undefined}
+                title={hebFull(d) || undefined}
                 className={cn(
-                  "aspect-square w-full flex items-center justify-center text-sm rounded-md transition-all relative",
+                  "aspect-square w-full flex flex-col items-center justify-center text-sm rounded-md transition-all relative leading-none",
                   "hover:scale-105 active:scale-95",
                 )}
                 style={{
@@ -371,7 +407,21 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
                   outlineOffset: -2,
                 }}
               >
-                {d.getDate()}
+                <span>{d.getDate()}</span>
+                {hebDayLetters(d) && (
+                  <span
+                    className="text-[9px] font-medium mt-0.5 opacity-80"
+                    style={{
+                      color: isSelected
+                        ? "#FFFFFF"
+                        : !inMonth
+                        ? "#e2e8f0"
+                        : accent.gold,
+                    }}
+                  >
+                    {hebDayLetters(d)}
+                  </span>
+                )}
                 {isToday && (
                   <span
                     className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
@@ -390,6 +440,9 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
           <span style={{ color: accent.goldLight }}>
             {format(value, "EEEE, d בMMMM yyyy", { locale: he })}
             {showTime && time && ` בשעה ${time}`}
+            {hebFull(value) && (
+              <span className="opacity-80"> · {hebFull(value)}</span>
+            )}
           </span>
           {isPastWithTime && (
             <span className="flex items-center gap-1 text-amber-500 font-medium">
