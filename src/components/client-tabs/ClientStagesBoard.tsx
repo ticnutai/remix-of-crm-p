@@ -842,6 +842,14 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
     setMounted(true);
   }, [open]);
 
+  // Stable accent so SmartDateTimePicker doesn't see a fresh object on every render
+  const pickerAccent = React.useMemo(() => ({
+    gold: theme.border,
+    goldLight: theme.title,
+    navy: theme.background,
+    navyDark: theme.background,
+  }), [theme.border, theme.title, theme.background]);
+
   // Center after the panel is in DOM and we know its real size
   useEffect(() => {
     if (!mounted) return;
@@ -889,8 +897,13 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
       const h = el.offsetHeight;
       const dx = clientX - s.startX;
       const dy = clientY - s.startY;
-      const nx = Math.max(0, Math.min(window.innerWidth - w, s.baseX + dx));
-      const ny = Math.max(0, Math.min(window.innerHeight - h, s.baseY + dy));
+      // Allow negative when panel is bigger than viewport (so user can drag it up to reveal bottom).
+      const minX = Math.min(0, window.innerWidth - w);
+      const maxX = Math.max(0, window.innerWidth - w);
+      const minY = Math.min(0, window.innerHeight - h);
+      const maxY = Math.max(0, window.innerHeight - h);
+      const nx = Math.max(minX, Math.min(maxX, s.baseX + dx));
+      const ny = Math.max(minY, Math.min(maxY, s.baseY + dy));
       posRef.current = { x: nx, y: ny };
       el.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
     });
@@ -954,12 +967,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
           label="תאריך יעד"
           placeholder="dd/mm/yyyy"
           allowClear
-          accent={{
-            gold: theme.border,
-            goldLight: theme.title,
-            navy: theme.background,
-            navyDark: theme.background,
-          }}
+          accent={pickerAccent}
         />
       </div>
 
