@@ -5,7 +5,7 @@ import { FloatingDialog } from '@/components/ui/FloatingDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Bell, Check, AlertTriangle, RotateCcw, Save, Plus, Calendar, Clock, MessageSquare, Tag } from 'lucide-react';
+import { Bell, Check, AlertTriangle, RotateCcw, Save, Plus, Calendar, Clock, MessageSquare, Tag, X } from 'lucide-react';
 import {
   DialogThemeColors,
   dialogThemes,
@@ -97,9 +97,22 @@ const FIELDS: FieldDef[] = [
   { key: 'calendarSelectedBg', label: 'יום נבחר בלוח', group: 'תוויות' },
   { key: 'calendarSelectedText', label: 'טקסט יום נבחר', group: 'תוויות', against: 'calendarSelectedBg' },
   { key: 'scrollThumb', label: 'גלילה (thumb)', group: 'תוויות' },
+  // Quick chips (date picker)
+  { key: 'chipBg', label: 'רקע צ\'יפ', group: 'צ\'יפים מהירים' },
+  { key: 'chipText', label: 'טקסט צ\'יפ', group: 'צ\'יפים מהירים', against: 'chipBg' },
+  { key: 'chipBorder', label: 'מסגרת צ\'יפ', group: 'צ\'יפים מהירים' },
+  { key: 'chipActiveBg', label: 'רקע צ\'יפ פעיל', group: 'צ\'יפים מהירים' },
+  { key: 'chipActiveText', label: 'טקסט צ\'יפ פעיל', group: 'צ\'יפים מהירים', against: 'chipActiveBg' },
+  { key: 'chipActiveBorder', label: 'מסגרת צ\'יפ פעיל', group: 'צ\'יפים מהירים' },
+  { key: 'chipClearBg', label: 'רקע "נקה"', group: 'צ\'יפים מהירים' },
+  { key: 'chipClearText', label: 'טקסט "נקה"', group: 'צ\'יפים מהירים', against: 'chipClearBg' },
+  { key: 'chipClearBorder', label: 'מסגרת "נקה"', group: 'צ\'יפים מהירים' },
+  // Hebrew calendar
+  { key: 'hebrewDateText', label: 'כותרת לוח עברי', group: 'לוח עברי', against: 'background' },
+  { key: 'hebrewDayText', label: 'מספרי ימים בעברית', group: 'לוח עברי', against: 'background' },
 ];
 
-const GROUPS = ['משטחים', 'טקסט על רקע', 'מצבים', 'שדות', 'כפתורים', 'אייקונים', 'תוויות'];
+const GROUPS = ['משטחים', 'טקסט על רקע', 'מצבים', 'שדות', 'כפתורים', 'אייקונים', 'תוויות', 'צ\'יפים מהירים', 'לוח עברי'];
 
 // Map each color field → which section in the live preview to scroll into view.
 const FIELD_TO_PREVIEW_SECTION: Partial<Record<keyof DialogThemeColors, string>> = {
@@ -135,6 +148,17 @@ const FIELD_TO_PREVIEW_SECTION: Partial<Record<keyof DialogThemeColors, string>>
   calendarSelectedBg: 'calendar',
   calendarSelectedText: 'calendar',
   scrollThumb: 'scroll',
+  chipBg: 'chips',
+  chipText: 'chips',
+  chipBorder: 'chips',
+  chipActiveBg: 'chips',
+  chipActiveText: 'chips',
+  chipActiveBorder: 'chips',
+  chipClearBg: 'chips',
+  chipClearText: 'chips',
+  chipClearBorder: 'chips',
+  hebrewDateText: 'calendar',
+  hebrewDayText: 'calendar',
 };
 
 export function ThemeEditor({ mode, baseId, onClose }: ThemeEditorProps) {
@@ -369,6 +393,34 @@ function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
 
       {/* ===== Body ===== */}
       <div data-preview-section="body" className="p-3 space-y-3">
+        {/* ----- Quick chips ----- */}
+        <div data-preview-section="chips">
+          <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>צ'יפים מהירים</div>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ background: colors.chipActiveBg, color: colors.chipActiveText, border: `1px solid ${colors.chipActiveBorder}` }}
+            >
+              היום
+            </button>
+            {['מחר', 'ראשון הבא', 'בעוד שבוע'].map((t) => (
+              <button
+                key={t}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
+                style={{ background: colors.chipBg, color: colors.chipText, border: `1px solid ${colors.chipBorder}` }}
+              >
+                {t}
+              </button>
+            ))}
+            <button
+              className="px-2.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+              style={{ background: colors.chipClearBg, color: colors.chipClearText, border: `1px solid ${colors.chipClearBorder}` }}
+            >
+              <X className="h-2.5 w-2.5" /> נקה
+            </button>
+          </div>
+        </div>
+
         {/* ----- Inputs ----- */}
         <div data-preview-section="inputs" className="space-y-2.5">
           <div>
@@ -417,6 +469,9 @@ function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
             className="rounded-lg p-2"
             style={{ background: colors.background, border: `1px solid ${colors.borderSub}` }}
           >
+            <div className="text-center text-[10px] font-medium mb-1" style={{ color: colors.hebrewDateText }}>
+              אייר תשפ״ו
+            </div>
             <div className="grid grid-cols-7 gap-0.5 mb-1">
               {['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'].map((d) => (
                 <div key={d} className="text-center text-[9px] font-semibold" style={{ color: colors.textMuted }}>{d}</div>
@@ -425,16 +480,18 @@ function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
             <div className="grid grid-cols-7 gap-0.5">
               {Array.from({ length: 21 }, (_, i) => i + 1).map((day) => {
                 const selected = day === 5;
+                const hebDay = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב','יג','יד','טו','טז','יז','יח','יט','כ','כא'][day - 1];
                 return (
                   <div
                     key={day}
-                    className="aspect-square flex items-center justify-center text-[10px] rounded font-medium"
+                    className="aspect-square flex flex-col items-center justify-center text-[10px] rounded font-medium leading-none"
                     style={{
                       background: selected ? colors.calendarSelectedBg : 'transparent',
                       color: selected ? colors.calendarSelectedText : colors.textOnSurface,
                     }}
                   >
-                    {day}
+                    <span>{day}</span>
+                    <span className="text-[7px] mt-0.5 opacity-80" style={{ color: selected ? colors.calendarSelectedText : colors.hebrewDayText }}>{hebDay}</span>
                   </div>
                 );
               })}

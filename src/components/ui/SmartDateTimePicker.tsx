@@ -11,6 +11,7 @@ import { ChevronRight, ChevronLeft, Clock, AlertTriangle, X } from "lucide-react
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { useDialogTheme } from "@/components/shared/DialogThemeSwitcher";
 
 const HEB_DAYS_FULL = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const HEB_DAYS_SHORT = ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"];
@@ -115,6 +116,9 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const [focusedDay, setFocusedDay] = useState<Date | null>(value ? startOfDay(value) : null);
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // Pull resolved theme colors so chips, hebrew date text, etc. respect the user's theme.
+  const { theme } = useDialogTheme();
 
   // Keep text input in sync if value changes externally
   useEffect(() => {
@@ -233,9 +237,9 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
                 onClick={() => selectDate(c.date)}
                 className="px-3 py-1 rounded-full text-xs font-medium transition-all"
                 style={{
-                  background: active ? accent.gold : "#FFFFFF",
-                  color: active ? accent.navyDark : accent.navy,
-                  border: `1px solid ${active ? accent.gold : `${accent.gold}60`}`,
+                  background: active ? theme.chipActiveBg : theme.chipBg,
+                  color: active ? theme.chipActiveText : theme.chipText,
+                  border: `1px solid ${active ? theme.chipActiveBorder : theme.chipBorder}`,
                 }}
               >
                 {c.label}
@@ -247,7 +251,7 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
               type="button"
               onClick={() => { onChange(undefined); setTextValue(""); setLocalError(null); }}
               className="px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1"
-              style={{ background: "#FFFFFF", color: "#ef4444", border: "1px solid #fecaca" }}
+              style={{ background: theme.chipClearBg, color: theme.chipClearText, border: `1px solid ${theme.chipClearBorder}` }}
             >
               <X className="h-3 w-3" /> נקה
             </button>
@@ -339,7 +343,7 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
         {hebMonthYear(viewMonth) && (
           <div
             className="text-center text-[11px] font-medium mb-1.5 px-1"
-            style={{ color: accent.gold }}
+            style={{ color: theme.hebrewDateText }}
             title="לוח עברי"
           >
             {hebMonthYear(viewMonth)}
@@ -416,7 +420,7 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
                         ? "#FFFFFF"
                         : !inMonth
                         ? "#e2e8f0"
-                        : accent.gold,
+                        : theme.hebrewDayText,
                     }}
                   >
                     {hebDayLetters(d)}

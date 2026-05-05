@@ -62,6 +62,30 @@ export interface DialogThemeColors {
   calendarSelectedText?: string;
   /** Scrollbar thumb. */
   scrollThumb?: string;
+  // ---- Quick chips (date picker, etc.) ----
+  /** Chip background (inactive). Falls back to `inputBg`. */
+  chipBg?: string;
+  /** Chip text (inactive). Falls back to `text`. */
+  chipText?: string;
+  /** Chip border (inactive). Falls back to `borderSub`. */
+  chipBorder?: string;
+  /** Active chip background. Falls back to `border`. */
+  chipActiveBg?: string;
+  /** Active chip text. Falls back to `buttonText`. */
+  chipActiveText?: string;
+  /** Active chip border. Falls back to `border`. */
+  chipActiveBorder?: string;
+  /** "Clear" chip background. Falls back to `inputBg`. */
+  chipClearBg?: string;
+  /** "Clear" chip text. Falls back to `errorText` / red. */
+  chipClearText?: string;
+  /** "Clear" chip border. Falls back to a soft red. */
+  chipClearBorder?: string;
+  // ---- Hebrew (Jewish) calendar date display ----
+  /** Hebrew month/year subtitle in calendar. Falls back to `border`. */
+  hebrewDateText?: string;
+  /** Hebrew day numeral inside each calendar cell. Falls back to `border`. */
+  hebrewDayText?: string;
 }
 
 export const dialogThemes: Record<DialogThemeId, { name: string; colors: DialogThemeColors }> = {
@@ -198,6 +222,17 @@ export function resolveTheme(c: DialogThemeColors): Required<DialogThemeColors> 
     calendarSelectedBg: c.calendarSelectedBg ?? c.border,
     calendarSelectedText: c.calendarSelectedText ?? c.buttonText,
     scrollThumb: c.scrollThumb ?? withAlpha(c.border, 0.5),
+    chipBg: c.chipBg ?? '#FFFFFF',
+    chipText: c.chipText ?? c.text,
+    chipBorder: c.chipBorder ?? withAlpha(c.border, 0.4),
+    chipActiveBg: c.chipActiveBg ?? c.border,
+    chipActiveText: c.chipActiveText ?? c.buttonText,
+    chipActiveBorder: c.chipActiveBorder ?? c.border,
+    chipClearBg: c.chipClearBg ?? '#FFFFFF',
+    chipClearText: c.chipClearText ?? (c.errorText ?? '#ef4444'),
+    chipClearBorder: c.chipClearBorder ?? '#fecaca',
+    hebrewDateText: c.hebrewDateText ?? c.border,
+    hebrewDayText: c.hebrewDayText ?? c.border,
   };
 }
 
