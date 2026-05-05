@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { TimeWheelPicker } from "@/components/ui/TimeWheelPicker";
 import { ChevronRight, ChevronLeft, Clock, AlertTriangle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -242,15 +243,11 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
           style={{ background: "#FFFFFF", borderColor: accent.gold, color: accent.navyDark }}
         />
         {showTime && (
-          <div className="flex items-center gap-1.5 px-2 rounded-md" style={{ background: "#FFFFFF", border: `1px solid ${accent.gold}` }}>
-            <Clock className="h-4 w-4" style={{ color: accent.gold }} />
-            <Input
-              type="time"
+          <div className="shrink-0" style={{ minWidth: 130 }}>
+            <TimeWheelPicker
               value={time ?? ""}
-              onChange={(e) => onTimeChange?.(e.target.value)}
-              dir="ltr"
-              className="border-0 p-0 w-[90px] text-center bg-transparent focus-visible:ring-0"
-              style={{ color: accent.navyDark }}
+              onChange={(t) => onTimeChange?.(t)}
+              accent={accent}
             />
           </div>
         )}

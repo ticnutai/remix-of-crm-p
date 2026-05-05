@@ -48,6 +48,7 @@ import {
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
+import { TimeWheelPicker } from "@/components/ui/TimeWheelPicker";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 // Dynamic sidebar colors based on theme
@@ -384,17 +385,19 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
         return (
           <div className="relative">
             {toggleBtn}
-            <Select value={value} onValueChange={onChange}>
-              <SelectTrigger className="text-right pl-8" style={brandedInputStyle}>
-                <Clock className="h-4 w-4 ml-auto" style={{ color: sidebarColors.gold }} />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {timeOptions.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="pl-8">
+              <TimeWheelPicker
+                value={value}
+                onChange={onChange}
+                triggerStyle={brandedInputStyle as React.CSSProperties}
+                accent={{
+                  gold: sidebarColors.gold,
+                  goldLight: sidebarColors.goldLight ?? "#E8D9B8",
+                  navy: sidebarColors.navy ?? "#1B2A4E",
+                  navyDark: sidebarColors.navyDark ?? "#0F1A33",
+                }}
+              />
+            </div>
           </div>
         );
       }
