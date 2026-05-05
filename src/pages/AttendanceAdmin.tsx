@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Download, FileText, AlertTriangle, Edit2, Mail } from "lucide-react";
 import { MonthlyTimesheet } from "@/components/attendance/MonthlyTimesheet";
 import {
-  AttendanceRecord, listAllRecords,
+  AttendanceRecord, AttendanceUser, listAllRecords, listAllUsers,
   summarizeByUser, findMissingDays,
   formatDate, formatTime, formatMinutes,
   exportSummaryToExcel, exportDetailToExcel, exportSummaryToPdf,
@@ -34,6 +34,7 @@ export default function AttendanceAdmin() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [allUsers, setAllUsers] = useState<AttendanceUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
   const [userFilter, setUserFilter] = useSyncedSetting<string>({ key: "attendance-admin-user-filter", defaultValue: "all" });
@@ -57,8 +58,12 @@ export default function AttendanceAdmin() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const recs = await listAllRecords(range.from.toISOString(), range.to.toISOString());
+      const [recs, users] = await Promise.all([
+        listAllRecords(range.from.toISOString(), range.to.toISOString()),
+        listAllUsers(),
+      ]);
       setRecords(recs);
+      setAllUsers(users);
     } catch (e: any) {
       toast({ title: "שגיאה בטעינה", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -66,9 +71,9 @@ export default function AttendanceAdmin() {
 
   useEffect(() => { if (allowed) refresh(); /* eslint-disable-next-line */ }, [allowed, monthOffset]);
 
-  const summary = useMemo(() => summarizeByUser(records), [records]);
+  const summary = useMemo(() => summarizeByUser(records, allUsers), [records, allUsers]);
   const filtered = useMemo(() => userFilter === "all" ? records : records.filter(r => r.user_id === userFilter), [records, userFilter]);
-  const missing  = useMemo(() => findMissingDays(records, range.from, new Date()), [records, range]);
+  const missing  = useMemo(() => findMissingDays(records, range.from, new Date(), allUsers.map(u => u.id)), [records, range, allUsers]);
 
   const totalAll = summary.reduce((s, u) => s + u.total_minutes, 0);
   const totalOt  = summary.reduce((s, u) => s + u.overtime_minutes, 0);
@@ -98,8 +103,9 @@ export default function AttendanceAdmin() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Stat label="סה״כ עובדים" value={summary.length.toString()} />
+          <Stat label="ללא דיווח כלל" value={summary.filter(u => u.shifts === 0 && u.missing_clock_outs === 0).length.toString()} />
           <Stat label="סה״כ שעות" value={formatMinutes(totalAll)} />
           <Stat label="שעות נוספות" value={formatMinutes(totalOt)} />
           <Stat label="חוסרי יציאה" value={summary.reduce((s, u) => s + u.missing_clock_outs, 0).toString()} />
@@ -133,7 +139,12 @@ export default function AttendanceAdmin() {
                     {!loading && summary.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-muted-foreground">אין נתונים</td></tr>}
                     {summary.map(u => (
                       <tr key={u.user_id} className="border-b hover:bg-muted/40">
-                        <td className="p-2 font-medium">{u.full_name}</td>
+                        <td className="p-2 font-medium">
+                          {u.full_name}
+                          {u.shifts === 0 && u.missing_clock_outs === 0 && (
+                            <Badge variant="destructive" className="mr-2">ללא דיווח</Badge>
+                          )}
+                        </td>
                         <td className="p-2 text-xs text-muted-foreground">{u.email}</td>
                         <td className="p-2">{u.shifts}</td>
                         <td className="p-2 font-semibold">{formatMinutes(u.total_minutes)}</td>

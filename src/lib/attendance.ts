@@ -231,6 +231,28 @@ export async function listAllRecords(fromIso: string, toIso: string) {
   })) as AttendanceRecord[];
 }
 
+// Manager view — fetch ALL active users (profiles) so admin can see employees
+// who have zero attendance records this month too.
+export interface AttendanceUser {
+  id: string;
+  full_name: string;
+  email: string;
+}
+export async function listAllUsers(): Promise<AttendanceUser[]> {
+  const { data, error } = await supabase
+    .from("profiles" as any)
+    .select("id, full_name, email, is_active")
+    .order("full_name", { ascending: true });
+  if (error) throw error;
+  return (data ?? [])
+    .filter((p: any) => p.is_active !== false)
+    .map((p: any) => ({
+      id: p.id,
+      full_name: p.full_name ?? p.email ?? "ללא שם",
+      email: p.email ?? "",
+    }));
+}
+
 // ---------- summaries ----------
 export interface UserSummary {
   user_id: string;
@@ -243,8 +265,21 @@ export interface UserSummary {
   missing_clock_outs: number;
 }
 
-export function summarizeByUser(records: AttendanceRecord[]): UserSummary[] {
+export function summarizeByUser(
+  records: AttendanceRecord[],
+  allUsers: AttendanceUser[] = [],
+): UserSummary[] {
   const map = new Map<string, UserSummary>();
+  // Seed with every known user so users with zero records still appear.
+  for (const u of allUsers) {
+    map.set(u.id, {
+      user_id: u.id,
+      full_name: u.full_name,
+      email: u.email,
+      shifts: 0, total_minutes: 0, break_minutes: 0,
+      overtime_minutes: 0, missing_clock_outs: 0,
+    });
+  }
   for (const r of records) {
     const key = r.user_id;
     let s = map.get(key);
@@ -257,6 +292,9 @@ export function summarizeByUser(records: AttendanceRecord[]): UserSummary[] {
         overtime_minutes: 0, missing_clock_outs: 0,
       };
       map.set(key, s);
+    } else if ((!s.full_name || s.full_name === "ללא שם") && r.profile?.full_name) {
+      s.full_name = r.profile.full_name;
+      s.email = r.profile.email ?? s.email;
     }
     if (r.clock_out) {
       s.shifts += 1;
@@ -267,13 +305,18 @@ export function summarizeByUser(records: AttendanceRecord[]): UserSummary[] {
       s.missing_clock_outs += 1;
     }
   }
-  return Array.from(map.values()).sort((a, b) => b.total_minutes - a.total_minutes);
+  // Sort: users with hours first (desc), then zero-hour users alphabetically.
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.total_minutes !== a.total_minutes) return b.total_minutes - a.total_minutes;
+    return a.full_name.localeCompare(b.full_name, "he");
+  });
 }
 
 export function findMissingDays(
   records: AttendanceRecord[],
   from: Date,
   to: Date,
+  allUserIds: string[] = [],
 ): Record<string, string[]> {
   // returns { user_id: [yyyy-mm-dd, ...] } for weekdays without ANY record
   const days: string[] = [];
@@ -284,6 +327,10 @@ export function findMissingDays(
     cur.setDate(cur.getDate() + 1);
   }
   const present = new Map<string, Set<string>>();
+  // Seed every known user with empty set so they get a full missing list if they never clocked in.
+  for (const u of allUserIds) {
+    if (!present.has(u)) present.set(u, new Set());
+  }
   for (const r of records) {
     const u = r.user_id;
     const day = ymd(new Date(r.clock_in));
