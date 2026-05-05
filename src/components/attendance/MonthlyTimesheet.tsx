@@ -108,6 +108,7 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
 
   const monthLabel = `${month0 + 1}/${year}`;
 
+  // Full reload — shows spinner. Use only for initial mount and month navigation.
   const reload = async () => {
     setLoading(true);
     try {
@@ -118,6 +119,15 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
     } finally {
       setLoading(false);
     }
+  };
+
+  // Silent refresh — updates records without touching loading state so the
+  // table never disappears. Use after per-row saves/deletes.
+  const silentReload = async () => {
+    try {
+      const recs = await listMonthRecords(userId, year, month0);
+      setRecords(recs);
+    } catch { /* ignore — user sees saved data already */ }
   };
 
   useEffect(() => { void reload(); }, [userId, year, month0]);
@@ -153,7 +163,8 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
         day_type: patch.day_type ?? (cur?.day_type as DayType) ?? "work",
         notes: patch.notes ?? cur?.notes ?? null,
       });
-      await reload();
+      // Silent: don't flash the table with a loading spinner on every field blur.
+      void silentReload();
     } catch (e: any) {
       toast.error(e?.message ?? "שמירה נכשלה");
     }
@@ -162,13 +173,13 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
   const handleDelete = async (id?: string) => {
     if (!id) return;
     if (!confirm("למחוק את הרשומה?")) return;
-    try { await deleteRecord(id); await reload(); toast.success("נמחק"); }
+    try { await deleteRecord(id); void silentReload(); toast.success("נמחק"); }
     catch (e: any) { toast.error(e?.message ?? "שגיאה במחיקה"); }
   };
 
   const handleApprove = async (id?: string, approve = true) => {
     if (!id) return;
-    try { await approveRecord(id, approve); await reload(); toast.success(approve ? "אושר" : "בוטל אישור"); }
+    try { await approveRecord(id, approve); void silentReload(); toast.success(approve ? "אושר" : "בוטל אישור"); }
     catch (e: any) { toast.error(e?.message ?? "שגיאה"); }
   };
 
@@ -378,7 +389,7 @@ interface DayRowProps {
   isManager: boolean;
 }
 
-function DayRow({ cell, onSave, onDelete, onApprove, isManager }: DayRowProps) {
+const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, isManager }: DayRowProps) {
   const r = cell.record;
   const [ci, setCi] = useState(r?.clock_in ? r.clock_in.slice(11, 16) : "");
   const [co, setCo] = useState(r?.clock_out ? r.clock_out.slice(11, 16) : "");
@@ -505,6 +516,6 @@ function DayRow({ cell, onSave, onDelete, onApprove, isManager }: DayRowProps) {
       </td>
     </tr>
   );
-}
+});
 
 export default MonthlyTimesheet;
