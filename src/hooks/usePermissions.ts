@@ -140,7 +140,7 @@ export interface UsePermissionsResult {
 }
 
 export function usePermissions(): UsePermissionsResult {
-  const { user, profile } = useAuth();
+  const { user, profile, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [perms, setPerms] = useState<PermissionsMap>({});
 
@@ -149,6 +149,8 @@ export function usePermissions(): UsePermissionsResult {
   );
 
   const fetchPerms = useCallback(async () => {
+    // Keep loading until auth is settled — prevents flash of "no access"
+    if (authLoading) return;
     if (!user) { setLoading(false); return; }
 
     // Admins: skip DB, grant everything
@@ -187,7 +189,7 @@ export function usePermissions(): UsePermissionsResult {
     } finally {
       setLoading(false);
     }
-  }, [user, isAdmin]);
+  }, [user, isAdmin, authLoading]);
 
   useEffect(() => { void fetchPerms(); }, [fetchPerms]);
 

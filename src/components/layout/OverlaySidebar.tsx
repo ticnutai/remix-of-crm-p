@@ -455,7 +455,7 @@ export function OverlaySidebar({
                 "main",
               )
                 .filter((item) => !isHidden(item.url))
-                .filter((item) => permsLoading || !item.moduleKey || isAdminPerm || canPerm(item.moduleKey, "view"))
+                .filter((item) => permsLoading || isAdmin || !item.moduleKey || isAdminPerm || canPerm(item.moduleKey, "view"))
                 .map((item) => (
                   <Link
                     key={item.url}
