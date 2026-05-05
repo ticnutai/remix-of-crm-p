@@ -48,6 +48,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
+import { useDialogTheme } from "@/components/shared/DialogThemeSwitcher";
 import {
   Phone,
   FolderOpen,
@@ -792,47 +794,94 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
 
       {/* Date Picker Dialog */}
       {editingDate && updateTaskCompletedDate && (
-        <Dialog open={editingDate} onOpenChange={setEditingDate}>
-          <DialogContent className="sm:max-w-[350px]">
-            <DialogHeader>
-              <DialogTitle>בחר תאריך ביצוע</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col items-center">
-              <Calendar
-                mode="single"
-                selected={
-                  task.completed_at ? parseISO(task.completed_at) : undefined
-                }
-                onSelect={(date) => {
-                  if (date) {
-                    updateTaskCompletedDate(task.id, date.toISOString());
-                  }
-                  setEditingDate(false);
-                }}
-                locale={he}
-                initialFocus
-              />
-              {task.completed_at && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-destructive"
-                  onClick={() => {
-                    updateTaskCompletedDate(task.id, null);
-                    setEditingDate(false);
-                  }}
-                >
-                  <X className="h-4 w-4 ml-1" />
-                  נקה תאריך
-                </Button>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DateChangeDialog
+          open={editingDate}
+          onOpenChange={setEditingDate}
+          value={task.completed_at ? parseISO(task.completed_at) : undefined}
+          onSave={(d) => {
+            updateTaskCompletedDate(task.id, d ? d.toISOString() : null);
+            setEditingDate(false);
+          }}
+        />
       )}
     </ContextMenu>
   );
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Themed date-change dialog (uses SmartDateTimePicker + DialogTheme)
+// ────────────────────────────────────────────────────────────────────────────
+interface DateChangeDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  value: Date | undefined;
+  onSave: (d: Date | undefined) => void;
+}
+
+const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange, value, onSave }) => {
+  const { theme } = useDialogTheme();
+  const [draft, setDraft] = useState<Date | undefined>(value);
+
+  useEffect(() => {
+    if (open) setDraft(value);
+  }, [open, value]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="sm:max-w-[460px] p-0 overflow-hidden"
+        style={{
+          background: theme.backgroundGradient || theme.background,
+          border: `1px solid ${theme.border}`,
+          color: theme.text,
+        }}
+      >
+        <div className="px-5 pt-5 pb-2" style={{ borderBottom: `1px solid ${theme.headerBorder}` }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: theme.title }}>בחר תאריך ביצוע</DialogTitle>
+          </DialogHeader>
+        </div>
+        <div className="px-5 py-4">
+          <SmartDateTimePicker
+            value={draft}
+            onChange={(d) => setDraft(d)}
+            label="תאריך יעד"
+            placeholder="dd/mm/yyyy"
+            allowClear
+            accent={{
+              gold: theme.border,
+              goldLight: theme.title,
+              navy: theme.background,
+              navyDark: theme.background,
+            }}
+          />
+        </div>
+        <DialogFooter
+          className="px-5 py-3 gap-2"
+          style={{ borderTop: `1px solid ${theme.headerBorder}`, background: theme.background }}
+        >
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            style={{ color: theme.cancelText }}
+          >
+            ביטול
+          </Button>
+          <Button
+            onClick={() => onSave(draft)}
+            style={{
+              background: theme.buttonBg,
+              color: theme.buttonText,
+              border: `1px solid ${theme.buttonBorder}`,
+            }}
+          >
+            שמור תאריך
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 // Sortable Task Item for Expanded Dialog
 interface SortableExpandedTaskProps {
