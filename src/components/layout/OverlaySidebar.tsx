@@ -40,6 +40,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCustomTables } from "@/hooks/useCustomTables";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import { SidebarTasksMeetings } from "./sidebar-tasks";
 import {
@@ -60,28 +61,28 @@ import {
 
 // Navigation items - SIMPLIFIED
 const mainNavItems = [
-  { title: "לוח בקרה", url: "/", icon: LayoutDashboard },
-  { title: "היום שלי", url: "/my-day", icon: Calendar },
-  { title: "לקוחות", url: "/clients", icon: Users },
-  { title: "טבלת לקוחות", url: "/datatable-pro", icon: Table },
-  { title: "עובדים", url: "/employees", icon: UserCog },
-  { title: "לוגי זמן", url: "/time-logs", icon: Clock },
-  { title: "נוכחות שלי", url: "/attendance", icon: Clock },
-  { title: "נוכחות עובדים", url: "/attendance/admin", icon: UserCog, adminOnly: true },
-  { title: "שכר ופנסיה (HR)", url: "/hr", icon: Wallet, adminOnly: true },
-  { title: "ניתוח זמנים", url: "/time-analytics", icon: Clock },
-  { title: "משימות, פגישות ותזכורות", url: "/tasks-meetings", icon: Calendar },
-  { title: "הצעות מחיר", url: "/quotes", icon: FileSpreadsheet },
-  { title: "כספים", url: "/finance", icon: Wallet, adminOnly: true },
-  { title: "תשלומים", url: "/payments", icon: Wallet },
-  { title: "דוחות", url: "/reports", icon: FileSpreadsheet },
-  { title: "לוח שנה", url: "/calendar", icon: Calendar },
-  { title: "Gmail", url: "/gmail", icon: Mail },
-  { title: "אנשי קשר", url: "/contacts", icon: Users },
-  { title: "קבצים", url: "/files", icon: HardDrive },
-  { title: "תכנון & GIS", url: "/planning-gis", icon: MapPinned },
-  { title: "כלים חכמים", url: "/smart-tools", icon: Bot },
-  { title: "פורטל לקוחות", url: "/portal-management", icon: Users },
+  { title: "לוח בקרה",                   url: "/",                 icon: LayoutDashboard, moduleKey: "dashboard" },
+  { title: "היום שלי",                   url: "/my-day",            icon: Calendar,        moduleKey: "my-day" },
+  { title: "לקוחות",                     url: "/clients",           icon: Users,           moduleKey: "clients" },
+  { title: "טבלת לקוחות",                url: "/datatable-pro",     icon: Table,           moduleKey: "datatable" },
+  { title: "עובדים",                     url: "/employees",         icon: UserCog,         moduleKey: "employees" },
+  { title: "לוגי זמן",                    url: "/time-logs",         icon: Clock,           moduleKey: "time-logs" },
+  { title: "נוכחות שלי",                  url: "/attendance",        icon: Clock,           moduleKey: "attendance" },
+  { title: "נוכחות עובדים",               url: "/attendance/admin",  icon: UserCog,         moduleKey: "attendance-admin", adminOnly: true },
+  { title: "שכר ופנסיה (HR)",             url: "/hr",               icon: Wallet,          moduleKey: "hr",              adminOnly: true },
+  { title: "ניתוח זמנים",                 url: "/time-analytics",    icon: Clock,           moduleKey: "time-analytics" },
+  { title: "משימות, פגישות ותזכורות", url: "/tasks-meetings",    icon: Calendar,        moduleKey: "tasks-meetings" },
+  { title: "הצעות מחיר",                  url: "/quotes",            icon: FileSpreadsheet, moduleKey: "quotes" },
+  { title: "כספים",                     url: "/finance",           icon: Wallet,          moduleKey: "finance",         adminOnly: true },
+  { title: "תשלומים",                    url: "/payments",          icon: Wallet,          moduleKey: "payments" },
+  { title: "דוחות",                      url: "/reports",           icon: FileSpreadsheet, moduleKey: "reports" },
+  { title: "לוח שנה",                   url: "/calendar",          icon: Calendar,        moduleKey: "calendar" },
+  { title: "Gmail",                          url: "/gmail",            icon: Mail,            moduleKey: "gmail" },
+  { title: "אנשי קשר",                  url: "/contacts",          icon: Users,           moduleKey: "contacts" },
+  { title: "קבצים",                     url: "/files",             icon: HardDrive,       moduleKey: "files" },
+  { title: "תכנון & GIS",               url: "/planning-gis",      icon: MapPinned,       moduleKey: "planning-gis" },
+  { title: "כלים חכמים",                  url: "/smart-tools",       icon: Bot,             moduleKey: "smart-tools" },
+  { title: "פורטל לקוחות",               url: "/portal-management", icon: Users,           moduleKey: "portal-management" },
 ];
 
 const systemNavItems = [
@@ -113,6 +114,7 @@ export function OverlaySidebar({
   const [isHovering, setIsHovering] = useState(false);
   const { isAdmin } = useAuth();
   const { isHidden, orderItems } = useSidebarItemsConfig();
+  const { can: canPerm, loading: permsLoading, isAdmin: isAdminPerm } = usePermissions();
 
   // Sidebar theme
   const [sidebarTheme, setSidebarTheme] = useState<SidebarTheme>(() => {
@@ -453,6 +455,7 @@ export function OverlaySidebar({
                 "main",
               )
                 .filter((item) => !isHidden(item.url))
+                .filter((item) => !item.moduleKey || isAdminPerm || canPerm(item.moduleKey, "view"))
                 .map((item) => (
                   <Link
                     key={item.url}

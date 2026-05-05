@@ -45,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { PermissionsMatrix } from "@/components/employees/PermissionsMatrix";
 import {
   Users,
   UserPlus,
@@ -1209,6 +1210,15 @@ export default function Employees() {
               <Receipt className="h-4 w-4" />
               <span>תלוש שכר</span>
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger
+                value="permissions"
+                className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Shield className="h-4 w-4" />
+                <span>הרשאות</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Employees Tab */}
@@ -1729,6 +1739,13 @@ export default function Employees() {
               </div>
             )}
           </TabsContent>
+
+          {/* Permissions Tab */}
+          {isAdmin && (
+            <TabsContent value="permissions" className="space-y-6">
+              <PermissionsMatrix employees={employees} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
