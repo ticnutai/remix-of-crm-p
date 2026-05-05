@@ -416,6 +416,28 @@ export function useDialogResize(initialWidth = 500, minWidth = 350, minHeight = 
 }
 
 // --- Theme Switcher ---
+
+const MENU_WIDTH = 240;
+const MENU_MARGIN = 8; // min distance from viewport edge
+
+/** Compute the best (top, left) for the dropdown so it stays fully on-screen. */
+function calcMenuPos(btn: HTMLButtonElement): { top: number; left: number } {
+  const r = btn.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Prefer opening below the button; flip up if too close to the bottom.
+  const spaceBelow = vh - r.bottom;
+  const top = spaceBelow > 200 ? r.bottom + 6 : r.top - 6; // flip-up handled by transform below
+  const flipUp = spaceBelow <= 200;
+
+  // Prefer aligning the right edge of the menu with the right edge of the button (RTL).
+  let left = r.right - MENU_WIDTH;
+  left = Math.max(MENU_MARGIN, Math.min(left, vw - MENU_WIDTH - MENU_MARGIN));
+
+  return { top: flipUp ? r.top : top, left };
+}
+
 interface DialogThemeSwitcherProps {
   currentTheme: DialogThemeId;
   onThemeChange: (id: DialogThemeId) => void;
@@ -423,6 +445,7 @@ interface DialogThemeSwitcherProps {
 
 export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogThemeSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [flipUp, setFlipUp] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'edit' | 'new'>('new');
   const [editorBaseId, setEditorBaseId] = useState<string>('navy-gold');
@@ -432,23 +455,24 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
 
   const safeCurrent = allThemes[currentTheme] || dialogThemes['navy-gold'];
 
-  // Track the trigger button position continuously while the menu is open so
-  // the menu stays anchored even if the host (e.g. a draggable dialog) moves.
+  // While the menu is open, track the trigger's screen position every frame
+  // so the dropdown stays anchored even when the host dialog is dragged.
   useEffect(() => {
     if (!isOpen) return;
-    let rafId = 0;
+    let rafId: number;
     let lastTop = -1;
     let lastLeft = -1;
+
     const tick = () => {
-      const el = buttonRef.current;
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        const top = rect.bottom + 4;
-        const left = rect.left;
+      const btn = buttonRef.current;
+      if (btn) {
+        const { top, left } = calcMenuPos(btn);
+        const flipped = window.innerHeight - btn.getBoundingClientRect().bottom <= 200;
         if (top !== lastTop || left !== lastLeft) {
           lastTop = top;
           lastLeft = left;
           setMenuPos({ top, left });
+          setFlipUp(flipped);
         }
       }
       rafId = requestAnimationFrame(tick);
@@ -457,136 +481,141 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
     return () => cancelAnimationFrame(rafId);
   }, [isOpen]);
 
-  const openEditorForCurrent = () => {
-    setEditorBaseId(currentTheme);
-    setEditorMode('edit');
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
+  const close = useCallback(() => setIsOpen(false), []);
+
+  const selectTheme = useCallback((id: string) => {
+    onThemeChange(id);
+    setIsOpen(false);
+  }, [onThemeChange]);
+
+  const openEditor = useCallback((mode: 'edit' | 'new', baseId: string) => {
+    setEditorBaseId(baseId);
+    setEditorMode(mode);
     setEditorOpen(true);
     setIsOpen(false);
-  };
-  const openEditorAsNew = () => {
-    setEditorBaseId(currentTheme);
-    setEditorMode('new');
-    setEditorOpen(true);
-    setIsOpen(false);
-  };
+  }, []);
+
+  const customThemes = Object.entries(allThemes).filter(([, t]) => (t as any).isCustom);
 
   return (
     <>
+      {/* Trigger button */}
       <button
         ref={buttonRef}
         type="button"
         data-testid="dialog-theme-switcher-trigger"
-        onClick={() => {
-          // eslint-disable-next-line no-console
-          console.log('[ThemeSwitcher] trigger click', { willOpen: !isOpen });
-          setIsOpen(!isOpen);
-        }}
-        className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110"
+        data-no-drag
+        onClick={() => setIsOpen((v) => !v)}
+        className="flex items-center justify-center w-7 h-7 rounded-full transition-all hover:scale-110 focus-visible:outline-none focus-visible:ring-2"
         style={{
           background: safeCurrent.colors.iconBg,
           border: `1.5px solid ${safeCurrent.colors.border}40`,
         }}
-        title="שנה ערכת צבעים"
+        title="שנה ערכת נושא"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
       >
         <Palette className="h-3.5 w-3.5" style={{ color: safeCurrent.colors.iconColor }} />
       </button>
 
+      {/* Dropdown menu — portalled to body so it escapes any overflow:hidden parent */}
       {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-[1600]" style={{ pointerEvents: 'auto' }} onClick={() => setIsOpen(false)} />
+          {/* Backdrop: captures outside clicks without blocking pointer events on the menu */}
+          <div
+            className="fixed inset-0 z-[1600]"
+            onClick={close}
+          />
+
+          {/* Menu panel */}
           <div
             data-testid="dialog-theme-switcher-menu"
-            className="fixed z-[1601] rounded-lg shadow-xl p-2 min-w-[220px] max-h-[60vh] overflow-y-auto border"
+            role="listbox"
+            dir="rtl"
+            className="fixed z-[1601] rounded-xl shadow-2xl border overflow-hidden"
             style={{
               top: menuPos.top,
               left: menuPos.left,
-              background: '#FFFFFF',
-              borderColor: '#E0E0E0',
-              pointerEvents: 'auto',
+              width: MENU_WIDTH,
+              maxHeight: '60vh',
+              overflowY: 'auto',
+              background: '#fff',
+              borderColor: '#e5e7eb',
+              // Animate origin based on whether we flipped up or down
+              transformOrigin: flipUp ? 'bottom left' : 'top left',
             }}
-            dir="rtl"
+            // Stop propagation so drag handlers behind this don't fire
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            {/* Built-in themes */}
+            <div className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
               ערכות מובנות
             </div>
-            {(Object.entries(dialogThemes) as [string, typeof dialogThemes[DialogThemeId]][]).map(([id, t]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => { onThemeChange(id); setIsOpen(false); }}
-                className={cn(
-                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-right text-sm transition-colors",
-                  currentTheme === id ? "bg-blue-50 font-bold" : "hover:bg-gray-50"
-                )}
-              >
-                <div className="flex gap-1">
-                  <span className="w-4 h-4 rounded-full border" style={{ background: t.colors.background, borderColor: t.colors.border }} />
-                  <span className="w-4 h-4 rounded-full border" style={{ background: t.colors.border, borderColor: t.colors.border }} />
-                </div>
-                <span style={{ color: '#333' }}>{t.name}</span>
-              </button>
-            ))}
+            <div className="px-1 pb-1">
+              {(Object.entries(dialogThemes) as [string, { name: string; colors: DialogThemeColors }][]).map(([id, t]) => (
+                <ThemeRow
+                  key={id}
+                  id={id}
+                  name={t.name}
+                  colors={t.colors}
+                  isActive={currentTheme === id}
+                  onSelect={selectTheme}
+                />
+              ))}
+            </div>
 
-            {Object.entries(allThemes).filter(([, t]) => (t as any).isCustom).length > 0 && (
+            {/* Custom themes */}
+            {customThemes.length > 0 && (
               <>
-                <div className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <div className="mx-3 border-t border-gray-100" />
+                <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                   ערכות שלי
                 </div>
-                {Object.entries(allThemes)
-                  .filter(([, t]) => (t as any).isCustom)
-                  .map(([id, t]) => (
-                    <div key={id} className="flex items-stretch">
-                      <button
-                        type="button"
-                        onClick={() => { onThemeChange(id); setIsOpen(false); }}
-                        className={cn(
-                          "flex-1 flex items-center gap-2.5 px-3 py-2 rounded-md text-right text-sm transition-colors",
-                          currentTheme === id ? "bg-blue-50 font-bold" : "hover:bg-gray-50"
-                        )}
-                      >
-                        <div className="flex gap-1">
-                          <span className="w-4 h-4 rounded-full border" style={{ background: t.colors.background, borderColor: t.colors.border }} />
-                          <span className="w-4 h-4 rounded-full border" style={{ background: t.colors.border, borderColor: t.colors.border }} />
-                        </div>
-                        <span style={{ color: '#333' }} className="truncate">{t.name}</span>
-                      </button>
-                      <button
-                        type="button"
-                        title="ערוך ערכה"
-                        onClick={() => { setEditorBaseId(id); setEditorMode('edit'); setEditorOpen(true); setIsOpen(false); }}
-                        className="px-2 rounded-md hover:bg-gray-100"
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-gray-500" />
-                      </button>
-                      <button
-                        type="button"
-                        title="מחק ערכה"
-                        onClick={() => { if (confirm(`למחוק את "${t.name}"?`)) deleteCustomTheme(id); }}
-                        className="px-2 rounded-md hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </button>
-                    </div>
+                <div className="px-1 pb-1">
+                  {customThemes.map(([id, t]) => (
+                    <ThemeRow
+                      key={id}
+                      id={id}
+                      name={t.name}
+                      colors={t.colors}
+                      isActive={currentTheme === id}
+                      onSelect={selectTheme}
+                      onEdit={() => openEditor('edit', id)}
+                      onDelete={() => {
+                        if (window.confirm(`למחוק את "${t.name}"?`)) deleteCustomTheme(id);
+                      }}
+                    />
                   ))}
+                </div>
               </>
             )}
 
-            <div className="border-t border-gray-200 mt-2 pt-2 flex flex-col gap-1">
+            {/* Footer actions */}
+            <div className="mx-3 border-t border-gray-100" />
+            <div className="px-1 py-1">
               <button
                 type="button"
-                onClick={openEditorForCurrent}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-right text-sm hover:bg-gray-50"
+                onClick={() => openEditor('edit', currentTheme)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-right text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <Pencil className="h-3.5 w-3.5 text-gray-600" />
-                <span style={{ color: '#333' }}>ערוך ערכה נוכחית</span>
+                <Pencil className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+                ערוך ערכה נוכחית
               </button>
               <button
                 type="button"
-                onClick={openEditorAsNew}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-right text-sm hover:bg-gray-50"
+                onClick={() => openEditor('new', currentTheme)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-right text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                <Plus className="h-3.5 w-3.5 text-gray-600" />
-                <span style={{ color: '#333' }}>צור ערכה חדשה</span>
+                <Plus className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+                צור ערכה חדשה
               </button>
             </div>
           </div>
@@ -594,6 +623,7 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
         document.body,
       )}
 
+      {/* Lazy-loaded theme editor */}
       {editorOpen && (
         <React.Suspense fallback={null}>
           <ThemeEditorLazy
@@ -607,6 +637,64 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
         </React.Suspense>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ThemeRow — a single selectable row inside the dropdown
+// ---------------------------------------------------------------------------
+interface ThemeRowProps {
+  id: string;
+  name: string;
+  colors: DialogThemeColors;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}
+
+function ThemeRow({ id, name, colors, isActive, onSelect, onEdit, onDelete }: ThemeRowProps) {
+  return (
+    <div className={cn('flex items-stretch rounded-lg', isActive && 'bg-blue-50')}>
+      <button
+        type="button"
+        role="option"
+        aria-selected={isActive}
+        onClick={() => onSelect(id)}
+        className={cn(
+          'flex-1 flex items-center gap-2.5 px-3 py-2 text-right text-sm transition-colors rounded-lg',
+          isActive ? 'font-semibold text-blue-700' : 'text-gray-700 hover:bg-gray-50',
+        )}
+      >
+        {/* Two-dot color swatch */}
+        <span className="flex gap-1 shrink-0">
+          <span className="w-4 h-4 rounded-full border" style={{ background: colors.background, borderColor: colors.border }} />
+          <span className="w-4 h-4 rounded-full border" style={{ background: colors.border, borderColor: colors.border }} />
+        </span>
+        <span className="truncate">{name}</span>
+      </button>
+
+      {onEdit && (
+        <button
+          type="button"
+          title="ערוך ערכה"
+          onClick={onEdit}
+          className="px-2 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <Pencil className="h-3.5 w-3.5 text-gray-400" />
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          title="מחק ערכה"
+          onClick={onDelete}
+          className="px-2 rounded-lg hover:bg-red-50 transition-colors"
+        >
+          <Trash2 className="h-3.5 w-3.5 text-red-400" />
+        </button>
+      )}
+    </div>
   );
 }
 
