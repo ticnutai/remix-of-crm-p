@@ -31,6 +31,7 @@ import { he } from "date-fns/locale";
 import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -114,6 +115,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<string>("medium");
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+    const [dueTime, setDueTime] = useState<string>("");
     const [clientIds, setClientIds] = useState<string[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -177,6 +179,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
       setDescription("");
       setPriority("medium");
       setDueDate(undefined);
+      setDueTime("");
       setDueDateText("");
       setDateError(null);
       setClientIds([]);
@@ -193,7 +196,18 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           title: title.trim(),
           description: description.trim() || null,
           priority,
-          due_date: dueDate ? dueDate.toISOString() : null,
+          due_date: dueDate
+            ? (() => {
+                const dt = new Date(dueDate);
+                if (dueTime) {
+                  const [hh, mm] = dueTime.split(":").map(Number);
+                  if (!isNaN(hh) && !isNaN(mm)) dt.setHours(hh, mm, 0, 0);
+                } else {
+                  dt.setHours(0, 0, 0, 0);
+                }
+                return dt.toISOString();
+              })()
+            : null,
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "pending",
           is_private: isPrivate,
@@ -379,80 +393,22 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 </div>
               </div>
 
-              {/* Due Date - Manual input + Calendar picker */}
-              <div className="space-y-2">
-                <Label
-                  className="text-sm font-medium"
-                  style={{ color: sidebarColors.goldLight }}
-                >
-                  תאריך יעד
-                </Label>
-                <div className="flex gap-2">
-                  {/* Manual text input */}
-                  <Input
-                    value={dueDateText}
-                    onChange={(e) => handleManualDateChange(e.target.value)}
-                    placeholder="dd/mm/yyyy"
-                    className={cn("flex-1 text-right", brandedInputClass)}
-                    style={brandedInputStyle}
-                    inputMode="numeric"
-                    dir="ltr"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="px-3 gap-2 shrink-0"
-                    style={{
-                      ...brandedInputStyle,
-                      color: sidebarColors.navyDark,
-                    }}
-                    title="בחר מלוח שנה"
-                    onClick={() => setIsCalendarOpen((v) => !v)}
-                    aria-expanded={isCalendarOpen}
-                  >
-                    <CalendarIcon
-                      className="h-4 w-4"
-                      style={{ color: sidebarColors.gold }}
-                    />
-                    <span className="text-xs">לוח</span>
-                  </Button>
-                </div>
-                {isCalendarOpen && (
-                  <div
-                    className="mt-3 w-[340px] max-w-full min-w-[300px] max-h-[48vh] resize overflow-auto rounded-lg border-2 bg-background p-2 shadow-xl"
-                    style={{ borderColor: sidebarColors.gold }}
-                    data-no-drag
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={dueDate}
-                      onSelect={(date) => {
-                        setDueDate(date);
-                        setDueDateText(date ? format(date, "dd/MM/yyyy") : "");
-                        setDateError(null);
-                        setIsCalendarOpen(false);
-                      }}
-                      locale={he}
-                      captionLayout="dropdown-buttons"
-                      fromYear={2000}
-                      toYear={2100}
-                      showOutsideDays
-                      initialFocus
-                      className="p-2 pointer-events-auto"
-                    />
-                  </div>
-                )}
-                {dateError && (
-                  <p className="text-xs" style={{ color: "#ef4444" }}>
-                    {dateError}
-                  </p>
-                )}
-                {dueDate && !dateError && (
-                  <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
-                    {format(dueDate, "EEEE, d בMMMM yyyy", { locale: he })}
-                  </p>
-                )}
-              </div>
+              {/* Due Date + Optional Time — SmartDateTimePicker */}
+              <SmartDateTimePicker
+                label="תאריך יעד"
+                value={dueDate}
+                onChange={setDueDate}
+                showTime
+                time={dueTime}
+                onTimeChange={setDueTime}
+                accent={{
+                  gold: sidebarColors.gold,
+                  goldLight: sidebarColors.goldLight,
+                  navy: sidebarColors.navy,
+                  navyDark: sidebarColors.navyDark,
+                }}
+                error={dateError}
+              />
 
 
               {/* Client Assignment - Multi Select */}

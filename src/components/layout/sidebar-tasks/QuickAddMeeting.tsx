@@ -47,6 +47,7 @@ import {
 } from "@/components/reminders/InlineReminderSection";
 import { LocationPicker } from "@/components/location/LocationPicker";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
+import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 // Dynamic sidebar colors based on theme
@@ -618,71 +619,21 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 </div>
               </div>
 
-              {/* Date - Manual input + Broad calendar */}
-              <div className="space-y-2">
-                <Label
-                  className="text-sm font-medium"
-                  style={{ color: sidebarColors.goldLight }}
-                >
-                  תאריך *
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={dateText}
-                    onChange={(e) => handleManualDateChange(e.target.value)}
-                    placeholder="dd/mm/yyyy"
-                    className={cn("flex-1 text-right")}
-                    style={brandedInputStyle}
-                    inputMode="numeric"
-                    dir="ltr"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="px-3 gap-2 shrink-0"
-                    style={{ ...brandedInputStyle, color: sidebarColors.navyDark }}
-                    title="בחר מלוח שנה"
-                    onClick={() => setIsCalendarOpen((v) => !v)}
-                    aria-expanded={isCalendarOpen}
-                  >
-                    <CalendarIcon className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-                    <span className="text-xs">לוח</span>
-                  </Button>
-                </div>
-                {isCalendarOpen && (
-                  <div
-                    className="mt-3 w-[340px] max-w-full min-w-[300px] max-h-[48vh] resize overflow-auto rounded-lg border-2 bg-background p-2 shadow-xl"
-                    style={{ borderColor: sidebarColors.gold }}
-                    data-no-drag
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(newDate) => {
-                        setDate(newDate);
-                        setDateText(newDate ? format(newDate, "dd/MM/yyyy") : "");
-                        setDateError(null);
-                        setIsCalendarOpen(false);
-                      }}
-                      locale={he}
-                      captionLayout="dropdown-buttons"
-                      fromYear={2000}
-                      toYear={2100}
-                      showOutsideDays
-                      initialFocus
-                      className="p-2 pointer-events-auto"
-                    />
-                  </div>
-                )}
-                {dateError && (
-                  <p className="text-xs" style={{ color: "#ef4444" }}>{dateError}</p>
-                )}
-                {date && !dateError && (
-                  <p className="text-xs" style={{ color: sidebarColors.goldLight }}>
-                    {format(date, "EEEE, d בMMMM yyyy", { locale: he })}
-                  </p>
-                )}
-              </div>
+              {/* Date — SmartDateTimePicker (no time, time is separate below) */}
+              <SmartDateTimePicker
+                label="תאריך"
+                required
+                value={date}
+                onChange={(d) => { setDate(d); setDateError(null); }}
+                accent={{
+                  gold: sidebarColors.gold,
+                  goldLight: sidebarColors.goldLight,
+                  navy: sidebarColors.navy,
+                  navyDark: sidebarColors.navyDark,
+                }}
+                error={dateError}
+                allowClear={false}
+              />
 
 
               {/* Time Range */}
