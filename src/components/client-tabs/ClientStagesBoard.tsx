@@ -919,7 +919,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   return createPortal(
     <div
       ref={panelRef}
-      className="fixed z-[300] rounded-lg shadow-2xl overflow-visible"
+      className="fixed z-[1000] rounded-lg shadow-2xl overflow-visible"
       style={{
         top: 0,
         left: 0,
@@ -930,6 +930,8 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
         border: `1px solid ${theme.border}`,
         color: theme.text,
         willChange: 'transform',
+        // Force interactivity even when an ancestor Radix Dialog disables body pointer-events
+        pointerEvents: 'auto',
       }}
       dir="rtl"
     >

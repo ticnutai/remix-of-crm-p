@@ -449,14 +449,15 @@ export function DialogThemeSwitcher({ currentTheme, onThemeChange }: DialogTheme
 
       {isOpen && createPortal(
         <>
-          <div className="fixed inset-0 z-[600]" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-[1600]" style={{ pointerEvents: 'auto' }} onClick={() => setIsOpen(false)} />
           <div
-            className="fixed z-[601] rounded-lg shadow-xl p-2 min-w-[220px] max-h-[60vh] overflow-y-auto border"
+            className="fixed z-[1601] rounded-lg shadow-xl p-2 min-w-[220px] max-h-[60vh] overflow-y-auto border"
             style={{
               top: menuPos.top,
               left: menuPos.left,
               background: '#FFFFFF',
               borderColor: '#E0E0E0',
+              pointerEvents: 'auto',
             }}
             dir="rtl"
           >
