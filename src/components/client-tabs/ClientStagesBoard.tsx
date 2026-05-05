@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
-import { useDialogTheme } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import {
   Phone,
   FolderOpen,
@@ -819,7 +819,7 @@ interface DateChangeDialogProps {
 }
 
 const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange, value, onSave }) => {
-  const { theme } = useDialogTheme();
+  const { theme, themeId, setThemeId } = useDialogTheme();
   const [draft, setDraft] = useState<Date | undefined>(value);
 
   useEffect(() => {
@@ -836,10 +836,11 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
           color: theme.text,
         }}
       >
-        <div className="px-5 pt-5 pb-2" style={{ borderBottom: `1px solid ${theme.headerBorder}` }}>
-          <DialogHeader>
+        <div className="px-5 pt-5 pb-2 flex items-center justify-between gap-3" style={{ borderBottom: `1px solid ${theme.headerBorder}` }}>
+          <DialogHeader className="flex-1">
             <DialogTitle style={{ color: theme.title }}>בחר תאריך ביצוע</DialogTitle>
           </DialogHeader>
+          <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
         </div>
         <div className="px-5 py-4">
           <SmartDateTimePicker
