@@ -348,13 +348,50 @@ function ColorRow({ label, value, onChange, onReset, onFocus, contrastAgainst }:
 }
 
 // ---- Live preview ----
+type MockType = 'reminder' | 'task' | 'meeting';
+type TabKey = 'details' | 'link' | 'notifications';
+
+const MOCK_META: Record<MockType, { title: string; saveLabel: string }> = {
+  reminder: { title: 'תזכורת חדשה', saveLabel: 'שמור תזכורת' },
+  task: { title: 'משימה חדשה', saveLabel: 'צור משימה' },
+  meeting: { title: 'פגישה חדשה', saveLabel: 'צור פגישה' },
+};
+
 function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
+  const [mock, setMock] = useState<MockType>('reminder');
+  const [tab, setTab] = useState<TabKey>('details');
+
+  const meta = MOCK_META[mock];
+
   return (
     <div
       className="rounded-xl border-2 overflow-hidden shadow-lg"
       style={{ borderColor: colors.border, background: colors.backgroundGradient || colors.background }}
       dir="rtl"
     >
+      {/* ===== Mock-type selector (above the dialog) ===== */}
+      <div
+        className="flex items-center gap-1 px-2 py-1.5"
+        style={{ background: '#0000000a', borderBottom: `1px solid ${colors.headerBorder}` }}
+      >
+        <span className="text-[10px] font-medium opacity-70" style={{ color: colors.title }}>סוג דיאלוג:</span>
+        {(['reminder','task','meeting'] as MockType[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMock(m)}
+            className="px-2 py-0.5 rounded text-[10px] font-medium"
+            style={{
+              background: mock === m ? colors.chipActiveBg : colors.chipBg,
+              color: mock === m ? colors.chipActiveText : colors.chipText,
+              border: `1px solid ${mock === m ? colors.chipActiveBorder : colors.chipBorder}`,
+            }}
+          >
+            {MOCK_META[m].title.replace(' חדשה', '').replace(' חדש', '')}
+          </button>
+        ))}
+      </div>
+
       {/* ===== Header ===== */}
       <div
         data-preview-section="header"
@@ -362,212 +399,51 @@ function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
         style={{ borderBottom: `1px solid ${colors.headerBorder}` }}
       >
         <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style={{ background: colors.iconBg }}>
-          <Bell className="h-4 w-4" style={{ color: colors.iconColor }} />
+          {mock === 'reminder' && <Bell className="h-4 w-4" style={{ color: colors.iconColor }} />}
+          {mock === 'task' && <Check className="h-4 w-4" style={{ color: colors.iconColor }} />}
+          {mock === 'meeting' && <Calendar className="h-4 w-4" style={{ color: colors.iconColor }} />}
         </div>
-        <div className="text-sm font-bold flex-1 truncate" style={{ color: colors.title }}>תזכורת חדשה</div>
+        <div className="text-sm font-bold flex-1 truncate" style={{ color: colors.title }}>{meta.title}</div>
         <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold" style={{ background: colors.badgeBg, color: colors.badgeText }}>
           חדש
         </span>
       </div>
 
-      {/* ===== Tabs ===== */}
+      {/* ===== Tabs (clickable) ===== */}
       <div
         data-preview-section="tabs"
         className="flex items-center gap-1 px-3 pt-2"
         style={{ borderBottom: `1px solid ${colors.dividerColor}` }}
       >
-        {['פרטים', 'שיוך', 'התראות'].map((t, i) => (
-          <button
-            key={t}
-            className="px-2.5 py-1.5 text-[11px] font-medium rounded-t"
-            style={{
-              color: i === 0 ? colors.title : colors.textMuted,
-              background: i === 0 ? colors.hoverBg : 'transparent',
-              borderBottom: i === 0 ? `2px solid ${colors.focusRing}` : '2px solid transparent',
-            }}
-          >
-            {t}
-          </button>
-        ))}
+        {([
+          { id: 'details' as TabKey, label: 'פרטים' },
+          { id: 'link' as TabKey, label: 'שיוך' },
+          { id: 'notifications' as TabKey, label: 'התראות' },
+        ]).map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className="px-2.5 py-1.5 text-[11px] font-medium rounded-t cursor-pointer"
+              style={{
+                color: active ? colors.title : colors.textMuted,
+                background: active ? colors.hoverBg : 'transparent',
+                borderBottom: active ? `2px solid ${colors.focusRing}` : '2px solid transparent',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ===== Body ===== */}
+      {/* ===== Body (per tab) ===== */}
       <div data-preview-section="body" className="p-3 space-y-3">
-        {/* ----- Quick chips ----- */}
-        <div data-preview-section="chips">
-          <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>צ'יפים מהירים</div>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
-              style={{ background: colors.chipActiveBg, color: colors.chipActiveText, border: `1px solid ${colors.chipActiveBorder}` }}
-            >
-              היום
-            </button>
-            {['מחר', 'ראשון הבא', 'בעוד שבוע'].map((t) => (
-              <button
-                key={t}
-                className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
-                style={{ background: colors.chipBg, color: colors.chipText, border: `1px solid ${colors.chipBorder}` }}
-              >
-                {t}
-              </button>
-            ))}
-            <button
-              className="px-2.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
-              style={{ background: colors.chipClearBg, color: colors.chipClearText, border: `1px solid ${colors.chipClearBorder}` }}
-            >
-              <X className="h-2.5 w-2.5" /> נקה
-            </button>
-          </div>
-        </div>
-
-        {/* ----- Inputs ----- */}
-        <div data-preview-section="inputs" className="space-y-2.5">
-          <div>
-            <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>כותרת התזכורת</div>
-            <input
-              defaultValue="פגישה עם לקוח"
-              className="w-full h-8 px-2 rounded text-xs outline-none"
-              style={{
-                background: colors.inputBg,
-                border: `1px solid ${colors.inputBorder}`,
-                color: colors.inputText,
-                boxShadow: `0 0 0 2px ${colors.focusRing}33`,
-              }}
-            />
-            <div className="text-[10px] mt-1" style={{ color: colors.helperText }}>זה נראה כפוקוס פעיל</div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
-                <Calendar className="h-3 w-3" /> תאריך
-              </div>
-              <input
-                defaultValue="05/05/2026"
-                className="w-full h-8 px-2 rounded text-xs"
-                style={{ background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.inputText }}
-              />
-            </div>
-            <div>
-              <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
-                <Clock className="h-3 w-3" /> שעה
-              </div>
-              <input
-                defaultValue="14:30"
-                className="w-full h-8 px-2 rounded text-xs"
-                style={{ background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.inputText }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ----- Mini calendar ----- */}
-        <div data-preview-section="calendar">
-          <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>בחירת יום</div>
-          <div
-            className="rounded-lg p-2"
-            style={{ background: colors.background, border: `1px solid ${colors.borderSub}` }}
-          >
-            <div className="text-center text-[10px] font-medium mb-1" style={{ color: colors.hebrewDateText }}>
-              אייר תשפ״ו
-            </div>
-            <div className="grid grid-cols-7 gap-0.5 mb-1">
-              {['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'].map((d) => (
-                <div key={d} className="text-center text-[9px] font-semibold" style={{ color: colors.textMuted }}>{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-0.5">
-              {Array.from({ length: 21 }, (_, i) => i + 1).map((day) => {
-                const selected = day === 5;
-                const hebDay = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב','יג','יד','טו','טז','יז','יח','יט','כ','כא'][day - 1];
-                return (
-                  <div
-                    key={day}
-                    className="aspect-square flex flex-col items-center justify-center text-[10px] rounded font-medium leading-none"
-                    style={{
-                      background: selected ? colors.calendarSelectedBg : 'transparent',
-                      color: selected ? colors.calendarSelectedText : colors.textOnSurface,
-                    }}
-                  >
-                    <span>{day}</span>
-                    <span className="text-[7px] mt-0.5 opacity-80" style={{ color: selected ? colors.calendarSelectedText : colors.hebrewDayText }}>{hebDay}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ----- Body text ----- */}
-        <div className="space-y-1">
-          <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
-            <MessageSquare className="h-3 w-3" /> הערות
-          </div>
-          <div className="text-xs leading-relaxed" style={{ color: colors.text }}>
-            טקסט גוף ראשי — תיאור מפורט של התזכורת.
-          </div>
-          <div className="text-xs leading-relaxed" style={{ color: colors.textOnSurface }}>
-            טקסט משני על משטח — האם הוא קריא?
-          </div>
-          <div className="text-[11px]" style={{ color: colors.textMuted }}>טקסט עמום (פחות בולט)</div>
-        </div>
-
-        {/* ----- Statuses ----- */}
-        <div data-preview-section="statuses" className="space-y-1.5">
-          <div className="text-[11px] font-medium" style={{ color: colors.label }}>הודעות מערכת</div>
-          <div className="text-[11px] flex items-center gap-1" style={{ color: colors.errorText }}>
-            <AlertTriangle className="h-3 w-3" /> שגיאה: שדה חובה חסר
-          </div>
-          <div className="text-[11px] flex items-center gap-1" style={{ color: colors.successText }}>
-            <Check className="h-3 w-3" /> נשמר בהצלחה
-          </div>
-          <div className="text-[11px]" style={{ color: colors.warningText }}>
-            ⚠ שים לב: התאריך בעבר
-          </div>
-          <div className="text-[11px]">
-            <a style={{ color: colors.linkColor, textDecoration: 'underline' }}>פתח עזרה</a>
-          </div>
-        </div>
-
-        {/* ----- Badges ----- */}
-        <div data-preview-section="badges" className="flex flex-wrap gap-1.5">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1" style={{ background: colors.badgeBg, color: colors.badgeText }}>
-            <Tag className="h-2.5 w-2.5" /> עדיפות גבוהה
-          </span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: colors.badgeBg, color: colors.badgeText }}>
-            דחוף
-          </span>
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: colors.badgeBg, color: colors.badgeText }}>
-            <Check className="inline h-2.5 w-2.5 ml-0.5" />הושלם
-          </span>
-        </div>
-
-        {/* ----- Hover row ----- */}
-        <div
-          className="text-xs px-2 py-1.5 rounded"
-          style={{ background: colors.hoverBg, color: colors.textOnSurface }}
-        >
-          פריט ברשימה בריחוף
-        </div>
-
-        {/* ----- Scrollbar sample ----- */}
-        <div data-preview-section="scroll">
-          <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>גלילה</div>
-          <div
-            className="h-16 rounded text-[10px] p-2 overflow-y-auto"
-            style={{
-              background: colors.inputBg,
-              border: `1px solid ${colors.borderSub}`,
-              color: colors.textOnSurface,
-              scrollbarColor: `${colors.scrollThumb} transparent`,
-            }}
-          >
-            <div style={{ height: 80 }}>
-              שורה 1<br />שורה 2<br />שורה 3<br />שורה 4<br />שורה 5<br />שורה 6
-            </div>
-          </div>
-        </div>
+        {tab === 'details' && <DetailsTab colors={colors} mock={mock} />}
+        {tab === 'link' && <LinkTab colors={colors} />}
+        {tab === 'notifications' && <NotificationsTab colors={colors} />}
       </div>
 
       {/* ===== Footer ===== */}
@@ -586,9 +462,284 @@ function PreviewPanel({ colors }: { colors: Required<DialogThemeColors> }) {
           className="px-3 py-1.5 rounded text-xs font-bold"
           style={{ background: colors.buttonBg, color: colors.buttonText, border: `1px solid ${colors.buttonBorder}` }}
         >
-          שמור תזכורת
+          {meta.saveLabel}
         </button>
       </div>
     </div>
+  );
+}
+
+// ----- Tab: Details -----
+function DetailsTab({ colors, mock }: { colors: Required<DialogThemeColors>; mock: MockType }) {
+  return (
+    <>
+      {/* Quick chips */}
+      <div data-preview-section="chips">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>תאריך מהיר</div>
+        <div className="flex flex-wrap gap-1.5">
+          <button className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
+            style={{ background: colors.chipActiveBg, color: colors.chipActiveText, border: `1px solid ${colors.chipActiveBorder}` }}>היום</button>
+          {['מחר', 'ראשון הבא', 'בעוד שבוע'].map((t) => (
+            <button key={t} className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ background: colors.chipBg, color: colors.chipText, border: `1px solid ${colors.chipBorder}` }}>{t}</button>
+          ))}
+          <button className="px-2.5 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+            style={{ background: colors.chipClearBg, color: colors.chipClearText, border: `1px solid ${colors.chipClearBorder}` }}>
+            <X className="h-2.5 w-2.5" /> נקה
+          </button>
+        </div>
+      </div>
+
+      {/* Inputs */}
+      <div data-preview-section="inputs" className="space-y-2.5">
+        <div>
+          <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>
+            {mock === 'meeting' ? 'כותרת הפגישה' : mock === 'task' ? 'כותרת המשימה' : 'כותרת התזכורת'}
+          </div>
+          <input defaultValue={mock === 'meeting' ? 'פגישת היכרות' : mock === 'task' ? 'הכנת הצעת מחיר' : 'פגישה עם לקוח'}
+            className="w-full h-8 px-2 rounded text-xs outline-none"
+            style={{
+              background: colors.inputBg,
+              border: `1px solid ${colors.inputBorder}`,
+              color: colors.inputText,
+              boxShadow: `0 0 0 2px ${colors.focusRing}33`,
+            }}
+          />
+          <div className="text-[10px] mt-1" style={{ color: colors.helperText }}>זה נראה כפוקוס פעיל</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
+              <Calendar className="h-3 w-3" /> תאריך
+            </div>
+            <input defaultValue="05/05/2026" className="w-full h-8 px-2 rounded text-xs"
+              style={{ background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.inputText }} />
+          </div>
+          <div>
+            <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
+              <Clock className="h-3 w-3" /> שעה
+            </div>
+            <input defaultValue="14:30" className="w-full h-8 px-2 rounded text-xs"
+              style={{ background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.inputText }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Mini calendar */}
+      <div data-preview-section="calendar">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>בחירת יום</div>
+        <div className="rounded-lg p-2" style={{ background: colors.background, border: `1px solid ${colors.borderSub}` }}>
+          <div className="text-center text-[10px] font-medium mb-1" style={{ color: colors.hebrewDateText }}>אייר תשפ״ו</div>
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
+            {['ש', 'ו', 'ה', 'ד', 'ג', 'ב', 'א'].map((d) => (
+              <div key={d} className="text-center text-[9px] font-semibold" style={{ color: colors.textMuted }}>{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {Array.from({ length: 21 }, (_, i) => i + 1).map((day) => {
+              const selected = day === 5;
+              const hebDay = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב','יג','יד','טו','טז','יז','יח','יט','כ','כא'][day - 1];
+              return (
+                <div key={day}
+                  className="aspect-square flex flex-col items-center justify-center text-[10px] rounded font-medium leading-none"
+                  style={{
+                    background: selected ? colors.calendarSelectedBg : 'transparent',
+                    color: selected ? colors.calendarSelectedText : colors.textOnSurface,
+                  }}
+                >
+                  <span>{day}</span>
+                  <span className="text-[7px] mt-0.5 opacity-80" style={{ color: selected ? colors.calendarSelectedText : colors.hebrewDayText }}>{hebDay}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Body texts */}
+      <div className="space-y-1">
+        <div className="text-[11px] font-medium mb-1 flex items-center gap-1" style={{ color: colors.label }}>
+          <MessageSquare className="h-3 w-3" /> הערות
+        </div>
+        <div className="text-xs leading-relaxed" style={{ color: colors.text }}>טקסט גוף ראשי — תיאור מפורט.</div>
+        <div className="text-xs leading-relaxed" style={{ color: colors.textOnSurface }}>טקסט משני על משטח — קריא?</div>
+        <div className="text-[11px]" style={{ color: colors.textMuted }}>טקסט עמום (פחות בולט)</div>
+      </div>
+
+      {/* Statuses */}
+      <div data-preview-section="statuses" className="space-y-1.5">
+        <div className="text-[11px] font-medium" style={{ color: colors.label }}>הודעות מערכת</div>
+        <div className="text-[11px] flex items-center gap-1" style={{ color: colors.errorText }}>
+          <AlertTriangle className="h-3 w-3" /> שגיאה: שדה חובה חסר
+        </div>
+        <div className="text-[11px] flex items-center gap-1" style={{ color: colors.successText }}>
+          <Check className="h-3 w-3" /> נשמר בהצלחה
+        </div>
+        <div className="text-[11px]" style={{ color: colors.warningText }}>⚠ שים לב: התאריך בעבר</div>
+        <div className="text-[11px]"><a style={{ color: colors.linkColor, textDecoration: 'underline' }}>פתח עזרה</a></div>
+      </div>
+
+      {/* Badges */}
+      <div data-preview-section="badges" className="flex flex-wrap gap-1.5">
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1" style={{ background: colors.badgeBg, color: colors.badgeText }}>
+          <Tag className="h-2.5 w-2.5" /> עדיפות גבוהה
+        </span>
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: colors.badgeBg, color: colors.badgeText }}>דחוף</span>
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium" style={{ background: colors.badgeBg, color: colors.badgeText }}>
+          <Check className="inline h-2.5 w-2.5 ml-0.5" />הושלם
+        </span>
+      </div>
+
+      {/* Hover row */}
+      <div className="text-xs px-2 py-1.5 rounded" style={{ background: colors.hoverBg, color: colors.textOnSurface }}>פריט ברשימה בריחוף</div>
+
+      {/* Scroll sample */}
+      <div data-preview-section="scroll">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>גלילה</div>
+        <div className="h-16 rounded text-[10px] p-2 overflow-y-auto"
+          style={{
+            background: colors.inputBg,
+            border: `1px solid ${colors.borderSub}`,
+            color: colors.textOnSurface,
+            scrollbarColor: `${colors.scrollThumb} transparent`,
+          }}>
+          <div style={{ height: 80 }}>שורה 1<br />שורה 2<br />שורה 3<br />שורה 4<br />שורה 5<br />שורה 6</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ----- Tab: Link / Assignment -----
+function LinkTab({ colors }: { colors: Required<DialogThemeColors> }) {
+  const items = [
+    { name: 'דני כהן', sub: 'לקוח · 050-1234567' },
+    { name: 'שירה לוי', sub: 'איש קשר · shira@example.co.il' },
+    { name: 'חברת אקמה בע"מ', sub: 'לקוח · ח.פ 514000000' },
+  ];
+  return (
+    <>
+      <div data-preview-section="inputs">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>חיפוש לקוח / איש קשר</div>
+        <input
+          placeholder="הקלד לחיפוש..."
+          className="w-full h-8 px-2 rounded text-xs outline-none"
+          style={{ background: colors.inputBg, border: `1px solid ${colors.inputBorder}`, color: colors.inputText }}
+        />
+        <div className="text-[10px] mt-1" style={{ color: colors.helperText }}>חיפוש לפי שם, טלפון או אימייל</div>
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>תוצאות</div>
+        {items.map((it, i) => (
+          <div
+            key={it.name}
+            className="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer"
+            style={{
+              background: i === 0 ? colors.hoverBg : 'transparent',
+              border: i === 0 ? `1px solid ${colors.borderSub}` : '1px solid transparent',
+            }}
+          >
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
+              style={{ background: colors.iconBg, color: colors.iconColor }}>
+              {it.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium truncate" style={{ color: colors.text }}>{it.name}</div>
+              <div className="text-[10px] truncate" style={{ color: colors.textMuted }}>{it.sub}</div>
+            </div>
+            {i === 0 && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: colors.badgeBg, color: colors.badgeText }}>נבחר</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-1">
+        <div className="text-[11px] font-medium" style={{ color: colors.label }}>שויך ל:</div>
+        <div className="flex flex-wrap gap-1.5">
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1"
+            style={{ background: colors.badgeBg, color: colors.badgeText }}>
+            דני כהן <X className="h-2.5 w-2.5 cursor-pointer" />
+          </span>
+        </div>
+      </div>
+
+      <div className="text-[11px]" style={{ color: colors.textMuted }}>
+        ניתן לשייך ליותר מאיש קשר אחד. <a style={{ color: colors.linkColor, textDecoration: 'underline' }}>הוסף חדש</a>
+      </div>
+    </>
+  );
+}
+
+// ----- Tab: Notifications -----
+function NotificationsTab({ colors }: { colors: Required<DialogThemeColors> }) {
+  const channels = [
+    { name: 'התראת מערכת (push)', enabled: true },
+    { name: 'אימייל', enabled: true },
+    { name: 'SMS', enabled: false },
+    { name: 'WhatsApp', enabled: false },
+  ];
+  const reminders = ['בזמן', '5 דקות לפני', '15 דקות לפני', 'שעה לפני', 'יום לפני'];
+  return (
+    <>
+      <div className="space-y-1.5">
+        <div className="text-[11px] font-medium" style={{ color: colors.label }}>ערוצי התראה</div>
+        {channels.map((c) => (
+          <div key={c.name} className="flex items-center justify-between px-2 py-1.5 rounded"
+            style={{ background: colors.hoverBg, border: `1px solid ${colors.borderSub}` }}>
+            <div className="flex items-center gap-2">
+              <Bell className="h-3 w-3" style={{ color: colors.iconColor }} />
+              <span className="text-xs" style={{ color: colors.text }}>{c.name}</span>
+            </div>
+            {/* Toggle switch mock */}
+            <div className="w-8 h-4 rounded-full relative transition-colors"
+              style={{ background: c.enabled ? colors.chipActiveBg : colors.chipBorder, border: `1px solid ${c.enabled ? colors.chipActiveBorder : colors.borderSub}` }}>
+              <div className="absolute top-0.5 w-3 h-3 rounded-full transition-all"
+                style={{
+                  background: c.enabled ? colors.chipActiveText : colors.chipBg,
+                  right: c.enabled ? 2 : 'auto',
+                  left: c.enabled ? 'auto' : 2,
+                }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div data-preview-section="chips">
+        <div className="text-[11px] font-medium mb-1" style={{ color: colors.label }}>זמן תזכורת</div>
+        <div className="flex flex-wrap gap-1.5">
+          {reminders.map((r, i) => (
+            <button key={r}
+              className="px-2.5 py-0.5 rounded-full text-[10px] font-medium"
+              style={{
+                background: i === 1 ? colors.chipActiveBg : colors.chipBg,
+                color: i === 1 ? colors.chipActiveText : colors.chipText,
+                border: `1px solid ${i === 1 ? colors.chipActiveBorder : colors.chipBorder}`,
+              }}>
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div data-preview-section="statuses" className="space-y-1">
+        <div className="text-[11px] font-medium" style={{ color: colors.label }}>סטטוס שליחה</div>
+        <div className="text-[11px] flex items-center gap-1" style={{ color: colors.successText }}>
+          <Check className="h-3 w-3" /> אימייל נשלח לפני 2 דקות
+        </div>
+        <div className="text-[11px] flex items-center gap-1" style={{ color: colors.warningText }}>
+          <AlertTriangle className="h-3 w-3" /> SMS ממתין לשליחה
+        </div>
+        <div className="text-[11px] flex items-center gap-1" style={{ color: colors.errorText }}>
+          <AlertTriangle className="h-3 w-3" /> WhatsApp נכשל — <a style={{ color: colors.linkColor, textDecoration: 'underline' }}>נסה שוב</a>
+        </div>
+      </div>
+
+      <div className="text-[11px]" style={{ color: colors.textMuted }}>
+        ההתראות יישלחו אוטומטית לפי הגדרות אלה.
+      </div>
+    </>
   );
 }
