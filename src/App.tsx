@@ -82,6 +82,7 @@ const PlanningGIS = lazy(() => import("./pages/PlanningGIS"));
 const PortalManagement = lazy(() => import("./pages/PortalManagement"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const AttendanceAdmin = lazy(() => import("./pages/AttendanceAdmin"));
+const HRPayroll = lazy(() => import("./pages/HRPayroll"));
 
 // Optimized QueryClient with aggressive caching and performance settings
 const queryClient = new QueryClient({
@@ -351,6 +352,10 @@ const App = () => {
                               <Route
                                 path="/attendance/admin"
                                 element={withErrorBoundary(AttendanceAdmin)}
+                              />
+                              <Route
+                                path="/hr"
+                                element={withErrorBoundary(HRPayroll)}
                               />
                               <Route path="*" element={<NotFound />} />
                             </Routes>

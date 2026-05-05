@@ -68,6 +68,7 @@ const mainNavItems = [
   { title: "לוגי זמן", url: "/time-logs", icon: Clock },
   { title: "נוכחות שלי", url: "/attendance", icon: Clock },
   { title: "נוכחות עובדים", url: "/attendance/admin", icon: UserCog, adminOnly: true },
+  { title: "שכר ופנסיה (HR)", url: "/hr", icon: Wallet, adminOnly: true },
   { title: "ניתוח זמנים", url: "/time-analytics", icon: Clock },
   { title: "משימות, פגישות ותזכורות", url: "/tasks-meetings", icon: Calendar },
   { title: "הצעות מחיר", url: "/quotes", icon: FileSpreadsheet },
