@@ -110,9 +110,14 @@ const FIELDS: FieldDef[] = [
   // Hebrew calendar
   { key: 'hebrewDateText', label: 'כותרת לוח עברי', group: 'לוח עברי', against: 'background' },
   { key: 'hebrewDayText', label: 'מספרי ימים בעברית', group: 'לוח עברי', against: 'background' },
+  // Inner section panel (e.g. "תזכורת וסנכרון" inside dialogs)
+  { key: 'sectionBg', label: 'רקע סקציה פנימית', group: 'סקציות פנימיות' },
+  { key: 'sectionBorder', label: 'מסגרת סקציה פנימית', group: 'סקציות פנימיות' },
+  { key: 'sectionTitle', label: 'כותרת סקציה פנימית', group: 'סקציות פנימיות', against: 'sectionBg' },
+  { key: 'sectionLabel', label: 'תווית בסקציה פנימית', group: 'סקציות פנימיות', against: 'sectionBg' },
 ];
 
-const GROUPS = ['משטחים', 'טקסט על רקע', 'מצבים', 'שדות', 'כפתורים', 'אייקונים', 'תוויות', 'צ\'יפים מהירים', 'לוח עברי'];
+const GROUPS = ['משטחים', 'טקסט על רקע', 'מצבים', 'שדות', 'כפתורים', 'אייקונים', 'תוויות', 'צ\'יפים מהירים', 'לוח עברי', 'סקציות פנימיות'];
 
 // Map each color field → which section in the live preview to scroll into view.
 const FIELD_TO_PREVIEW_SECTION: Partial<Record<keyof DialogThemeColors, string>> = {
@@ -159,6 +164,10 @@ const FIELD_TO_PREVIEW_SECTION: Partial<Record<keyof DialogThemeColors, string>>
   chipClearBorder: 'chips',
   hebrewDateText: 'calendar',
   hebrewDayText: 'calendar',
+  sectionBg: 'innerSection',
+  sectionBorder: 'innerSection',
+  sectionTitle: 'innerSection',
+  sectionLabel: 'innerSection',
 };
 
 export function ThemeEditor({ mode, baseId, onClose }: ThemeEditorProps) {
@@ -684,6 +693,26 @@ function NotificationsTab({ colors }: { colors: Required<DialogThemeColors> }) {
   const reminders = ['בזמן', '5 דקות לפני', '15 דקות לפני', 'שעה לפני', 'יום לפני'];
   return (
     <>
+      {/* Inner section panel mock — mirrors "תזכורת וסנכרון" inside real dialogs */}
+      <div data-preview-section="innerSection" className="rounded-lg p-2.5 space-y-2"
+        style={{ background: colors.sectionBg, border: `1px solid ${colors.sectionBorder}` }}>
+        <div className="flex items-center gap-2">
+          <Bell className="h-3.5 w-3.5" style={{ color: colors.iconColor }} />
+          <span className="text-xs font-semibold" style={{ color: colors.sectionTitle }}>תזכורת וסנכרון</span>
+        </div>
+        <div className="text-[10px]" style={{ color: colors.sectionLabel }}>מתי להזכיר?</div>
+        <div className="flex flex-wrap gap-1">
+          {reminders.slice(0, 4).map((r, i) => (
+            <span key={r} className="px-2 py-0.5 rounded text-[10px]"
+              style={{
+                background: i === 1 ? colors.chipActiveBg : colors.chipBg,
+                color: i === 1 ? colors.chipActiveText : colors.chipText,
+                border: `1px solid ${i === 1 ? colors.chipActiveBorder : colors.chipBorder}`,
+              }}>{r}</span>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-1.5">
         <div className="text-[11px] font-medium" style={{ color: colors.label }}>ערוצי התראה</div>
         {channels.map((c) => (

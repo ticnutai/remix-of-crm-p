@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { addMinutes, addHours } from "date-fns";
 import { toast } from "sonner";
+import { useDialogTheme } from "@/components/shared/DialogThemeSwitcher";
 
 // Sidebar colors (matches the dialog theme)
 const sidebarColors = {
@@ -119,6 +120,7 @@ export function InlineReminderSection({
   onReminderConfigChange,
 }: InlineReminderSectionProps) {
   const { createReminder } = useReminders();
+  const { theme: dialogTheme } = useDialogTheme();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ── expanded by default ──────────────────────────────────────────────────
@@ -342,13 +344,13 @@ export function InlineReminderSection({
         type="button"
         className="flex items-center gap-2 w-full py-2.5 px-3 rounded-lg border text-sm transition-all hover:opacity-80"
         style={{
-          background: `${sidebarColors.navyLight}30`,
-          borderColor: `${sidebarColors.gold}30`,
-          color: sidebarColors.goldLight,
+          background: dialogTheme.sectionBg,
+          borderColor: dialogTheme.sectionBorder,
+          color: dialogTheme.sectionLabel,
         }}
         onClick={() => setExpanded(true)}
       >
-        <Bell className="h-4 w-4" style={{ color: sidebarColors.gold }} />
+        <Bell className="h-4 w-4" style={{ color: dialogTheme.iconColor }} />
         <span>הוסף תזכורת וסנכרון לוח שנה</span>
         <ChevronDown className="h-3.5 w-3.5 mr-auto" />
       </button>
@@ -360,15 +362,15 @@ export function InlineReminderSection({
     <div
       className="space-y-3 rounded-lg p-3"
       style={{
-        background: `${sidebarColors.navyLight}55`,
-        border: `1px solid ${sidebarColors.gold}50`,
+        background: dialogTheme.sectionBg,
+        border: `1px solid ${dialogTheme.sectionBorder}`,
       }}
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4" style={{ color: sidebarColors.gold }} />
-          <span className="text-sm font-medium" style={{ color: sidebarColors.goldLight }}>
+          <Bell className="h-4 w-4" style={{ color: dialogTheme.iconColor }} />
+          <span className="text-sm font-medium" style={{ color: dialogTheme.sectionTitle }}>
             תזכורת וסנכרון
           </span>
         </div>
@@ -376,7 +378,7 @@ export function InlineReminderSection({
           type="button"
           className="p-1 hover:opacity-70 transition-opacity"
           onClick={() => setExpanded(false)}
-          style={{ color: sidebarColors.goldLight }}
+          style={{ color: dialogTheme.sectionLabel }}
         >
           <ChevronUp className="h-4 w-4" />
         </button>
@@ -384,7 +386,7 @@ export function InlineReminderSection({
 
       {/* Quick time presets — editable */}
       <div>
-        <Label className="text-[11px] mb-1.5 block" style={{ color: sidebarColors.goldLight }}>
+        <Label className="text-[11px] mb-1.5 block" style={{ color: dialogTheme.sectionLabel }}>
           מתי להזכיר?
         </Label>
 

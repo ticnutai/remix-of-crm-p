@@ -86,6 +86,15 @@ export interface DialogThemeColors {
   hebrewDateText?: string;
   /** Hebrew day numeral inside each calendar cell. Falls back to `border`. */
   hebrewDayText?: string;
+  // ---- Inner section blocks (e.g. "תזכורת וסנכרון" panel inside dialogs) ----
+  /** Background of an inner grouped section panel. Falls back to a soft tint of `border`. */
+  sectionBg?: string;
+  /** Border of an inner section panel. Falls back to a soft tint of `border`. */
+  sectionBorder?: string;
+  /** Title text inside an inner section. Falls back to `title`. */
+  sectionTitle?: string;
+  /** Label/sub-label text inside an inner section. Falls back to `label`. */
+  sectionLabel?: string;
 }
 
 export const dialogThemes: Record<DialogThemeId, { name: string; colors: DialogThemeColors }> = {
@@ -233,6 +242,10 @@ export function resolveTheme(c: DialogThemeColors): Required<DialogThemeColors> 
     chipClearBorder: c.chipClearBorder ?? '#fecaca',
     hebrewDateText: c.hebrewDateText ?? c.border,
     hebrewDayText: c.hebrewDayText ?? c.border,
+    sectionBg: c.sectionBg ?? withAlpha(c.border, 0.18),
+    sectionBorder: c.sectionBorder ?? withAlpha(c.border, 0.4),
+    sectionTitle: c.sectionTitle ?? c.title,
+    sectionLabel: c.sectionLabel ?? c.label,
   };
 }
 
