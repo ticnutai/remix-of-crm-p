@@ -823,77 +823,107 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
   const { theme, themeId, setThemeId } = useDialogTheme();
   const [draft, setDraft] = useState<Date | undefined>(value);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
-  const dragStateRef = React.useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(null);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  // Position is stored in a ref + applied directly to DOM for smooth dragging (no React re-renders).
+  const posRef = React.useRef<{ x: number; y: number } | null>(null);
+  const dragStateRef = React.useRef<{ startX: number; startY: number; baseX: number; baseY: number; rafId: number | null } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
+  // Reset draft when opened
   useEffect(() => {
-    if (open) {
-      setDraft(value);
-      // initial centered position once
-      if (!pos) {
-        const w = 460;
-        const h = 520;
-        setPos({
-          x: Math.max(16, Math.round((window.innerWidth - w) / 2)),
-          y: Math.max(16, Math.round((window.innerHeight - h) / 2)),
-        });
-      }
-    }
+    if (open) setDraft(value);
   }, [open, value]);
 
-  // close on ESC only (no overlay backdrop click — non-modal)
+  // Mount + center on open
+  useEffect(() => {
+    if (!open) {
+      setMounted(false);
+      return;
+    }
+    setMounted(true);
+  }, [open]);
+
+  // Center after the panel is in DOM and we know its real size
+  useEffect(() => {
+    if (!mounted) return;
+    const el = panelRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = Math.max(8, Math.round((window.innerWidth - rect.width) / 2));
+    const y = Math.max(8, Math.round((window.innerHeight - rect.height) / 2));
+    posRef.current = { x, y };
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+  }, [mounted]);
+
+  // ESC to close
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onOpenChange]);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!pos) return;
+    if (!posRef.current) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-no-drag]')) return;
-    dragStateRef.current = { startX: e.clientX, startY: e.clientY, baseX: pos.x, baseY: pos.y };
+    dragStateRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      baseX: posRef.current.x,
+      baseY: posRef.current.y,
+      rafId: null,
+    };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const s = dragStateRef.current;
     if (!s) return;
-    const dx = e.clientX - s.startX;
-    const dy = e.clientY - s.startY;
-    const w = panelRef.current?.offsetWidth ?? 460;
-    const h = panelRef.current?.offsetHeight ?? 520;
-    const nx = Math.max(0, Math.min(window.innerWidth - w, s.baseX + dx));
-    const ny = Math.max(0, Math.min(window.innerHeight - h, s.baseY + dy));
-    setPos({ x: nx, y: ny });
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    if (s.rafId !== null) return;
+    s.rafId = requestAnimationFrame(() => {
+      s.rafId = null;
+      const el = panelRef.current;
+      if (!el) return;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const dx = clientX - s.startX;
+      const dy = clientY - s.startY;
+      const nx = Math.max(0, Math.min(window.innerWidth - w, s.baseX + dx));
+      const ny = Math.max(0, Math.min(window.innerHeight - h, s.baseY + dy));
+      posRef.current = { x: nx, y: ny };
+      el.style.transform = `translate3d(${nx}px, ${ny}px, 0)`;
+    });
   };
   const onPointerUp = (e: React.PointerEvent) => {
+    if (dragStateRef.current?.rafId) cancelAnimationFrame(dragStateRef.current.rafId);
     dragStateRef.current = null;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
   };
 
-  if (!open || !pos) return null;
+  if (!open) return null;
 
   return createPortal(
     <div
       ref={panelRef}
       className="fixed z-[300] rounded-lg shadow-2xl overflow-visible"
       style={{
-        top: pos.y,
-        left: pos.x,
+        top: 0,
+        left: 0,
         width: 460,
+        // Initial off-screen — centering effect applies translate3d once measured
+        transform: posRef.current ? `translate3d(${posRef.current.x}px, ${posRef.current.y}px, 0)` : 'translate3d(-9999px, -9999px, 0)',
         background: theme.backgroundGradient || theme.background,
         border: `1px solid ${theme.border}`,
         color: theme.text,
+        willChange: 'transform',
       }}
       dir="rtl"
     >
       {/* Drag handle / header */}
       <div
         className="px-5 pt-4 pb-3 flex items-center justify-between gap-3 cursor-move select-none"
-        style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
+        style={{ borderBottom: `1px solid ${theme.headerBorder}`, touchAction: 'none' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
