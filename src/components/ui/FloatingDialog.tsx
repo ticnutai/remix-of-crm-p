@@ -145,7 +145,10 @@ export function FloatingDialog({
     const w = size.w ?? defaultWidth;
     const h = panelRef.current?.offsetHeight ?? size.h ?? 360;
     const x = Math.max(8, Math.round((window.innerWidth - w) / 2));
-    const y = Math.max(8, Math.round((window.innerHeight - h) / 2));
+    // If panel is taller than viewport, anchor near top so the header stays reachable.
+    const y = h >= window.innerHeight - 16
+      ? 8
+      : Math.max(8, Math.round((window.innerHeight - h) / 2));
     setPos({ x, y });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pos]);
@@ -162,6 +165,15 @@ export function FloatingDialog({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onOpenChange]);
+
+  // Recompute style on window resize so maxHeight stays fresh
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const onResize = () => forceTick((n) => n + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open]);
 
   const persist = useCallback(
     (next: PersistedRect) => {
@@ -333,12 +345,17 @@ export function FloatingDialog({
 
   const style = useMemo<React.CSSProperties>(() => {
     if (!pos) return { visibility: "hidden", position: "fixed", top: 0, left: 0 };
+    // Cap height so the body's overflow-auto actually triggers when the
+    // dialog would otherwise grow beyond the viewport.
+    const maxH = Math.max(200, window.innerHeight - pos.y - 16);
     return {
       position: "fixed",
       top: pos.y,
       left: pos.x,
       width: size.w,
       height: size.h,
+      maxHeight: maxH,
+      maxWidth: `calc(100vw - 16px)`,
       zIndex: 60,
     };
   }, [pos, size.w, size.h]);
@@ -389,7 +406,7 @@ export function FloatingDialog({
       </div>
 
       {/* Body */}
-      <div className={cn("flex-1 overflow-auto px-3 py-3", contentClassName)}>
+      <div className={cn("flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3", contentClassName)}>
         {children}
       </div>
 
