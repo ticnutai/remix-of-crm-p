@@ -2,13 +2,7 @@
 import React, { useState, useEffect, forwardRef } from "react";
 import { Meeting, MeetingInsert } from "@/hooks/useMeetingsOptimized";
 import { useReminders } from "@/hooks/useReminders";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { FloatingDialog } from "@/components/ui/FloatingDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,7 +46,7 @@ import {
   InlineReminderConfig,
 } from "@/components/reminders/InlineReminderSection";
 import { LocationPicker } from "@/components/location/LocationPicker";
-import { useDialogTheme, DialogThemeSwitcher, useDialogResize, ResizeHandles } from "@/components/shared/DialogThemeSwitcher";
+import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 // Dynamic sidebar colors based on theme
@@ -158,7 +152,6 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
     const sidebarColors = getSidebarColors(theme);
-    const { size, containerRef, startResize } = useDialogResize(500);
     const { createReminder, updateReminder, reminders } = useReminders();
     const { preferences, savePreferences: saveUserPrefs } = useUserPreferences();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -486,64 +479,86 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const selectedClients = clients.filter(c => clientIds.includes(c.id));
 
     return (
-      <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
-        <DialogContent
-          ref={containerRef}
-          dialogKey="quick-add-meeting"
-          className="p-0 navy-gold-dialog"
-          dir="rtl"
-          onKeyDown={(e) => { if (e.key === 'Escape') onOpenChange(false); }}
-          style={{
-            background: theme.backgroundGradient,
-            border: `2px solid ${theme.border}`,
-            width: `${size.width}px`,
-            maxWidth: 'calc(100vw - 48px)',
-            maxHeight: 'calc(100vh - 48px)',
-            ...(size.height ? { height: `${size.height}px` } : {}),
-          }}
-        >
-          <ResizeHandles onResize={startResize} />
-          <DialogHeader
-            className="px-5 pt-5 pb-3"
-            style={{ borderBottom: `1px solid ${theme.headerBorder}` }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="flex items-center justify-center w-10 h-10 rounded-lg"
-                style={{ background: theme.iconBg }}
-              >
-                <CalendarIcon2
-                  className="h-5 w-5"
-                  style={{ color: theme.iconColor }}
-                />
-              </div>
-              <DialogTitle
-                className="text-lg font-bold flex-1"
-                style={{ color: theme.title }}
-              >
-                {editingMeeting ? "עריכת פגישה" : "פגישה חדשה"}
-              </DialogTitle>
-              <button
-                type="button"
-                onClick={() => setIsPrivate((p) => !p)}
-                title={isPrivate ? "פרטי — רק את/ה רואה פגישה זו (גם אדמין לא)" : "לחץ כדי לסמן כפרטי"}
-                aria-pressed={isPrivate}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all"
-                style={{
-                  background: isPrivate ? `${sidebarColors.gold}25` : "transparent",
-                  borderColor: isPrivate ? sidebarColors.gold : `${sidebarColors.gold}40`,
-                  color: isPrivate ? sidebarColors.gold : sidebarColors.goldLight,
-                }}
-              >
-                {isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-                <span>פרטי</span>
-              </button>
-              <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
+      <FloatingDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        storageKey="quick-add-meeting"
+        defaultWidth={560}
+        minWidth={380}
+        minHeight={460}
+        className="navy-gold-dialog"
+        contentClassName="gold-scrollbar"
+        title={
+          <div className="flex items-center gap-3 w-full">
+            <div
+              className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0"
+              style={{ background: theme.iconBg }}
+            >
+              <CalendarIcon2 className="h-5 w-5" style={{ color: theme.iconColor }} />
             </div>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit} className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(85vh - 120px)' }}>
-            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1 gold-scrollbar">
+            <span className="text-base font-bold flex-1 truncate" style={{ color: theme.title }}>
+              {editingMeeting ? "עריכת פגישה" : "פגישה חדשה"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsPrivate((p) => !p)}
+              title={isPrivate ? "פרטי — רק את/ה רואה פגישה זו (גם אדמין לא)" : "לחץ כדי לסמן כפרטי"}
+              aria-pressed={isPrivate}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-all shrink-0"
+              style={{
+                background: isPrivate ? `${sidebarColors.gold}25` : "transparent",
+                borderColor: isPrivate ? sidebarColors.gold : `${sidebarColors.gold}40`,
+                color: isPrivate ? sidebarColors.gold : sidebarColors.goldLight,
+              }}
+            >
+              {isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+              <span>פרטי</span>
+            </button>
+            <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
+          </div>
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              style={{ color: theme.cancelText }}
+            >
+              ביטול
+            </Button>
+            <Button
+              type="submit"
+              form="quick-add-meeting-form"
+              disabled={!title.trim() || !date || isSubmitting}
+              className="gap-2"
+              style={{
+                background: theme.buttonBg,
+                color: theme.buttonText,
+                border: `1px solid ${theme.buttonBorder}`,
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  שומר...
+                </>
+              ) : (
+                <>
+                  <CalendarIcon2 className="h-4 w-4" />
+                  {editingMeeting ? "עדכן פגישה" : "צור פגישה"}
+                </>
+              )}
+            </Button>
+          </>
+        }
+      >
+        <div
+          className="rounded-lg"
+          style={{ background: theme.backgroundGradient }}
+        >
+          <form id="quick-add-meeting-form" onSubmit={handleSubmit}>
+            <div className="px-2 py-1 space-y-4">
               {/* Title */}
               <div className="space-y-2">
                 <Label
@@ -948,45 +963,9 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 />
               </div>
             </div>
-
-            <DialogFooter
-              className="px-5 py-4 gap-2"
-              style={{ borderTop: `1px solid ${theme.headerBorder}` }}
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                style={{ color: theme.cancelText }}
-              >
-                ביטול
-              </Button>
-              <Button
-                type="submit"
-                disabled={!title.trim() || !date || isSubmitting}
-                className="gap-2"
-                style={{
-                  background: theme.buttonBg,
-                  color: theme.buttonText,
-                  border: `1px solid ${theme.buttonBorder}`,
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    שומר...
-                  </>
-                ) : (
-                  <>
-                    <CalendarIcon2 className="h-4 w-4" />
-                    {editingMeeting ? "עדכן פגישה" : "צור פגישה"}
-                  </>
-                )}
-              </Button>
-            </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </FloatingDialog>
     );
   },
 );
