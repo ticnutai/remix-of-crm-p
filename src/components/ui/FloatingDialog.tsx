@@ -100,16 +100,6 @@ export function FloatingDialog({
     w: defaultWidth,
     h: defaultHeight,
   });
-  const draggingRef = useRef<{ dx: number; dy: number } | null>(null);
-  const resizingRef = useRef<{
-    corner: "se" | "sw" | "ne" | "nw";
-    startX: number;
-    startY: number;
-    startW: number;
-    startH: number;
-    startPosX: number;
-    startPosY: number;
-  } | null>(null);
   const cloudSaveTimerRef = useRef<number | null>(null);
 
   // Initial load from localStorage + cloud (only when first opened)
@@ -199,99 +189,146 @@ export function FloatingDialog({
     [storageKey, cloudSync, user?.id],
   );
 
-  // Drag from header
-  const onHeaderMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  // Drag from header — uses Pointer Events + direct DOM mutation via rAF
+  // to avoid re-rendering the (heavy) dialog body on every move.
+  const onHeaderPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
-      if (target.closest("button, input, textarea, select, [role='tab'], a")) return;
+      if (target.closest("button, input, textarea, select, [role='tab'], a, [data-no-drag]")) return;
       if (!pos) return;
+      if (e.button !== 0 && e.pointerType === "mouse") return;
       e.preventDefault();
-      draggingRef.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
-      const onMove = (ev: MouseEvent) => {
-        if (!draggingRef.current) return;
-        const nx = Math.max(
-          -((size.w ?? defaultWidth) - 80),
-          Math.min(window.innerWidth - 80, ev.clientX - draggingRef.current.dx),
+
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const startPointerX = e.clientX;
+      const startPointerY = e.clientY;
+      const startX = pos.x;
+      const startY = pos.y;
+      const w = size.w ?? defaultWidth;
+
+      let latestX = startX;
+      let latestY = startY;
+      let rafId: number | null = null;
+      const apply = () => {
+        rafId = null;
+        panel.style.left = latestX + "px";
+        panel.style.top = latestY + "px";
+      };
+
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - startPointerX;
+        const dy = ev.clientY - startPointerY;
+        latestX = Math.max(
+          -(w - 80),
+          Math.min(window.innerWidth - 80, startX + dx),
         );
-        const ny = Math.max(
+        latestY = Math.max(
           0,
-          Math.min(window.innerHeight - 40, ev.clientY - draggingRef.current.dy),
+          Math.min(window.innerHeight - 40, startY + dy),
         );
-        setPos({ x: nx, y: ny });
+        if (rafId == null) rafId = requestAnimationFrame(apply);
       };
+
+      const cleanup = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("blur", onUp);
+        if (rafId != null) cancelAnimationFrame(rafId);
+        try { (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      };
+
       const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        draggingRef.current = null;
-        setPos((p) => {
-          if (p) persist({ x: p.x, y: p.y, w: size.w, h: size.h });
-          return p;
-        });
+        cleanup();
+        // Commit final position to React state (single re-render) + persist
+        setPos({ x: latestX, y: latestY });
+        persist({ x: latestX, y: latestY, w: size.w, h: size.h });
       };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
+
+      try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      window.addEventListener("blur", onUp);
     },
     [pos, size.w, size.h, defaultWidth, persist],
   );
 
   const startResize = useCallback(
-    (corner: "se" | "sw" | "ne" | "nw") => (e: React.MouseEvent) => {
+    (corner: "se" | "sw" | "ne" | "nw") => (e: React.PointerEvent) => {
       if (!pos) return;
       e.preventDefault();
       e.stopPropagation();
-      const rect = panelRef.current?.getBoundingClientRect();
-      const startW = rect?.width ?? size.w ?? defaultWidth;
-      const startH = rect?.height ?? size.h ?? 360;
-      resizingRef.current = {
-        corner,
-        startX: e.clientX,
-        startY: e.clientY,
-        startW,
-        startH,
-        startPosX: pos.x,
-        startPosY: pos.y,
+      const panel = panelRef.current;
+      if (!panel) return;
+      const rect = panel.getBoundingClientRect();
+      const startW = rect.width;
+      const startH = rect.height;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startPosX = pos.x;
+      const startPosY = pos.y;
+
+      let latestW = startW, latestH = startH, latestX = startPosX, latestY = startPosY;
+      let rafId: number | null = null;
+      const apply = () => {
+        rafId = null;
+        panel.style.width = latestW + "px";
+        panel.style.height = latestH + "px";
+        panel.style.left = latestX + "px";
+        panel.style.top = latestY + "px";
       };
-      const onMove = (ev: MouseEvent) => {
-        const r = resizingRef.current;
-        if (!r) return;
-        const dx = ev.clientX - r.startX;
-        const dy = ev.clientY - r.startY;
-        let newW = r.startW;
-        let newH = r.startH;
-        let newX = r.startPosX;
-        let newY = r.startPosY;
-        if (r.corner === "se") {
-          newW = Math.max(minWidth, r.startW + dx);
-          newH = Math.max(minHeight, r.startH + dy);
-        } else if (r.corner === "sw") {
-          newW = Math.max(minWidth, r.startW - dx);
-          newH = Math.max(minHeight, r.startH + dy);
-          newX = r.startPosX + (r.startW - newW);
-        } else if (r.corner === "ne") {
-          newW = Math.max(minWidth, r.startW + dx);
-          newH = Math.max(minHeight, r.startH - dy);
-          newY = r.startPosY + (r.startH - newH);
-        } else if (r.corner === "nw") {
-          newW = Math.max(minWidth, r.startW - dx);
-          newH = Math.max(minHeight, r.startH - dy);
-          newX = r.startPosX + (r.startW - newW);
-          newY = r.startPosY + (r.startH - newH);
+
+      const onMove = (ev: PointerEvent) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        let newW = startW, newH = startH, newX = startPosX, newY = startPosY;
+        if (corner === "se") {
+          newW = Math.max(minWidth, startW + dx);
+          newH = Math.max(minHeight, startH + dy);
+        } else if (corner === "sw") {
+          newW = Math.max(minWidth, startW - dx);
+          newH = Math.max(minHeight, startH + dy);
+          newX = startPosX + (startW - newW);
+        } else if (corner === "ne") {
+          newW = Math.max(minWidth, startW + dx);
+          newH = Math.max(minHeight, startH - dy);
+          newY = startPosY + (startH - newH);
+        } else if (corner === "nw") {
+          newW = Math.max(minWidth, startW - dx);
+          newH = Math.max(minHeight, startH - dy);
+          newX = startPosX + (startW - newW);
+          newY = startPosY + (startH - newH);
         }
-        setSize({ w: newW, h: newH });
-        setPos({ x: newX, y: newY });
+        latestW = newW; latestH = newH; latestX = newX; latestY = newY;
+        if (rafId == null) rafId = requestAnimationFrame(apply);
       };
+
+      const cleanup = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("blur", onUp);
+        if (rafId != null) cancelAnimationFrame(rafId);
+        try { (e.target as HTMLElement).releasePointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      };
+
       const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-        resizingRef.current = null;
-        setPos((p) =>
-          p ? (persist({ x: p.x, y: p.y, w: size.w, h: size.h }), p) : p,
-        );
+        cleanup();
+        setSize({ w: latestW, h: latestH });
+        setPos({ x: latestX, y: latestY });
+        persist({ x: latestX, y: latestY, w: latestW, h: latestH });
       };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
+
+      try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch { /* ignore */ }
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      window.addEventListener("blur", onUp);
     },
-    [pos, size.w, size.h, defaultWidth, minWidth, minHeight, persist],
+    [pos, minWidth, minHeight, persist],
   );
 
   const style = useMemo<React.CSSProperties>(() => {
@@ -323,7 +360,8 @@ export function FloatingDialog({
     >
       {/* Header (drag handle) */}
       <div
-        onMouseDown={onHeaderMouseDown}
+        onPointerDown={onHeaderPointerDown}
+        style={{ touchAction: "none" }}
         className="flex items-start justify-between gap-2 px-3 py-2 border-b bg-muted/40 cursor-move select-none"
       >
         <div className="flex-1 min-w-0">
@@ -364,20 +402,24 @@ export function FloatingDialog({
 
       {/* Resize handles */}
       <span
-        onMouseDown={startResize("se")}
-        className="absolute bottom-0 right-0 h-3 w-3 cursor-se-resize"
+        onPointerDown={startResize("se")}
+        style={{ touchAction: "none" }}
+        className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize"
       />
       <span
-        onMouseDown={startResize("sw")}
-        className="absolute bottom-0 left-0 h-3 w-3 cursor-sw-resize"
+        onPointerDown={startResize("sw")}
+        style={{ touchAction: "none" }}
+        className="absolute bottom-0 left-0 h-4 w-4 cursor-sw-resize"
       />
       <span
-        onMouseDown={startResize("ne")}
-        className="absolute top-0 right-0 h-3 w-3 cursor-ne-resize"
+        onPointerDown={startResize("ne")}
+        style={{ touchAction: "none" }}
+        className="absolute top-0 right-0 h-4 w-4 cursor-ne-resize"
       />
       <span
-        onMouseDown={startResize("nw")}
-        className="absolute top-0 left-0 h-3 w-3 cursor-nw-resize"
+        onPointerDown={startResize("nw")}
+        style={{ touchAction: "none" }}
+        className="absolute top-0 left-0 h-4 w-4 cursor-nw-resize"
       />
     </div>,
     document.body,
