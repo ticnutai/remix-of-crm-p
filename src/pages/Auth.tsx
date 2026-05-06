@@ -90,12 +90,27 @@ export default function Auth() {
     if (!user) return;
     if (authView === 'reset') return;
 
-    // Redirect clients to client portal, others to main dashboard
-    if (isClient) {
-      navigate('/client-portal');
-    } else {
-      navigate('/');
-    }
+    // Check approval status
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('approval_status')
+        .eq('id', user.id)
+        .maybeSingle();
+      const status = (data as any)?.approval_status;
+      if (status === 'pending') {
+        setAuthView('pending');
+        return;
+      }
+      if (status === 'rejected') {
+        toast({ title: 'הגישה נדחתה', description: 'הבקשה שלך לא אושרה. פנה למנהל המערכת.', variant: 'destructive' });
+        await supabase.auth.signOut();
+        return;
+      }
+      // approved → route by role
+      if (isClient) navigate('/client-portal');
+      else navigate('/');
+    })();
   }, [user, isClient, navigate, authView]);
 
   const handleLogin = async (e: React.FormEvent) => {
