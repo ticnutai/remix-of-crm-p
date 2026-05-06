@@ -324,7 +324,28 @@ export default function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {authView === 'forgot' ? (
+            {authView === 'pending' ? (
+              <div className="text-center space-y-4 py-6">
+                <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-secondary/20 text-secondary">
+                  <Clock className="h-7 w-7" />
+                </div>
+                <h3 className="text-lg font-semibold">ממתין לאישור מנהל</h3>
+                <p className="text-sm text-muted-foreground">
+                  הבקשה שלך התקבלה. מנהל המערכת יקבל הודעה ויאשר את החשבון שלך בקרוב.
+                  לאחר אישור תוכל להיכנס ולקבל גישה למערכת.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    setAuthView('auth');
+                  }}
+                >
+                  התנתק
+                </Button>
+              </div>
+            ) : authView === 'forgot' ? (
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">אימייל</Label>
