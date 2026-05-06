@@ -47,6 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PermissionsMatrix } from "@/components/employees/PermissionsMatrix";
 import { UserApprovalsTab } from "@/components/employees/UserApprovalsTab";
+import { AddEmployeePanel } from "@/components/employees/AddEmployeePanel";
 import { HRPayrollContent } from "@/pages/HRPayroll";
 import {
   Users,
@@ -1780,179 +1781,47 @@ export default function Employees() {
         </Tabs>
       </div>
 
-      {/* Add Employee Dialog */}
-      <Dialog open={addDialog} onOpenChange={setAddDialog}>
-        <DialogContent className="sm:max-w-[500px]" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              הוספת עובד חדש
-            </DialogTitle>
-            <DialogDescription>
-              הזן את פרטי העובד החדש. ישלח אליו אימייל לאיפוס סיסמה.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="add_email">אימייל *</Label>
-              <div className="relative">
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="add_email"
-                  type="email"
-                  value={addForm.email}
-                  onChange={(e) =>
-                    setAddForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  className="pr-10"
-                  dir="ltr"
-                  placeholder="employee@example.com"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="add_full_name">שם מלא *</Label>
-              <div className="relative">
-                <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="add_full_name"
-                  value={addForm.full_name}
-                  onChange={(e) =>
-                    setAddForm((f) => ({ ...f, full_name: e.target.value }))
-                  }
-                  className="pr-10"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="add_phone">טלפון</Label>
-                <div className="relative">
-                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="add_phone"
-                    value={addForm.phone}
-                    onChange={(e) =>
-                      setAddForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                    className="pr-10"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="add_hourly_rate">תעריף שעתי (₪)</Label>
-                <div className="relative">
-                  <DollarSign className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="add_hourly_rate"
-                    type="number"
-                    value={addForm.hourly_rate}
-                    onChange={(e) =>
-                      setAddForm((f) => ({ ...f, hourly_rate: e.target.value }))
-                    }
-                    className="pr-10"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="add_department">מחלקה</Label>
-                <div className="relative">
-                  <Building className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="add_department"
-                    value={addForm.department}
-                    onChange={(e) =>
-                      setAddForm((f) => ({ ...f, department: e.target.value }))
-                    }
-                    className="pr-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="add_position">משרה</Label>
-                <div className="relative">
-                  <Briefcase className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="add_position"
-                    value={addForm.position}
-                    onChange={(e) =>
-                      setAddForm((f) => ({ ...f, position: e.target.value }))
-                    }
-                    className="pr-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {isAdmin && (
-              <div className="grid gap-2">
-                <Label htmlFor="add_role">הרשאה</Label>
-                <Select
-                  value={addForm.role}
-                  onValueChange={(
-                    value: "admin" | "super_manager" | "manager" | "employee",
-                  ) => setAddForm((f) => ({ ...f, role: value }))}
-                >
-                  <SelectTrigger className="bg-background">
-                    <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover">
-                    <SelectItem value="admin">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-red-600" />
-                        אדמין
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="super_manager">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-destructive" />
-                        מנהל על
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="manager">
-                      <div className="flex items-center gap-2">
-                        <UserCog className="h-4 w-4 text-secondary" />
-                        מנהל
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="employee">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        עובד
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialog(false)}>
-              ביטול
-            </Button>
-            <Button
-              onClick={handleAddEmployee}
-              disabled={isAdding}
-              className="btn-gold"
-            >
-              {isAdding && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-              הוסף עובד
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Add Employee Panel — floating, draggable, resizable */}
+      <AddEmployeePanel
+        open={addDialog}
+        onClose={() => setAddDialog(false)}
+        isAdmin={isAdmin}
+        isSaving={isAdding}
+        onSubmit={async (form) => {
+          if (!form.email || !form.full_name) {
+            toast({ title: "שגיאה", description: "נא למלא אימייל ושם מלא", variant: "destructive" });
+            return;
+          }
+          setIsAdding(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("create-employee", {
+              body: {
+                email: form.email,
+                full_name: form.full_name,
+                phone: form.phone || null,
+                department: form.department || null,
+                position: form.position || null,
+                hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null,
+                role: form.role,
+              },
+            });
+            if (error || !data?.success) {
+              toast({ title: "שגיאה", description: error?.message || data?.error || "לא ניתן ליצור עובד", variant: "destructive" });
+              return;
+            }
+            const msg = data.is_existing_user
+              ? `משתמש קיים ${form.full_name} נוסף כעובד`
+              : `עובד חדש ${form.full_name} נוסף. נשלח אימייל לאיפוס סיסמה.`;
+            toast({ title: "עובד נוסף", description: msg });
+            setAddDialog(false);
+            fetchEmployees();
+          } catch {
+            toast({ title: "שגיאה", description: "אירעה שגיאה בהוספת העובד", variant: "destructive" });
+          } finally {
+            setIsAdding(false);
+          }
+        }}
+      />
 
       {/* Edit Employee Dialog */}
       <Dialog
