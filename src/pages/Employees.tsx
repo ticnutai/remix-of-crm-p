@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PermissionsMatrix } from "@/components/employees/PermissionsMatrix";
+import { UserApprovalsTab } from "@/components/employees/UserApprovalsTab";
 import {
   Users,
   UserPlus,
@@ -75,6 +76,7 @@ import {
   Search,
   X,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 
 // Interface for time entries
@@ -1219,6 +1221,15 @@ export default function Employees() {
                 <span>הרשאות</span>
               </TabsTrigger>
             )}
+            {isAdmin && (
+              <TabsTrigger
+                value="approvals"
+                className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>אישור משתמשים</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Employees Tab */}
@@ -1744,6 +1755,11 @@ export default function Employees() {
           {isAdmin && (
             <TabsContent value="permissions" className="space-y-6">
               <PermissionsMatrix employees={employees} />
+            </TabsContent>
+          )}
+            {isAdmin && (
+            <TabsContent value="approvals" className="space-y-6">
+              <UserApprovalsTab />
             </TabsContent>
           )}
         </Tabs>
