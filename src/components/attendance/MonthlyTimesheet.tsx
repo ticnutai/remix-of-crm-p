@@ -24,6 +24,7 @@ import {
 } from "@/lib/attendance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BigTimePicker } from "@/components/ui/BigTimePicker";
 import {
   Select,
   SelectContent,
@@ -359,11 +360,11 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label htmlFor="auto-in">כניסה</Label>
-                <Input id="auto-in" type="time" value={autoIn} onChange={e => setAutoIn(e.target.value)} />
+                <BigTimePicker id="auto-in" value={autoIn} onChange={setAutoIn} />
               </div>
               <div>
                 <Label htmlFor="auto-out">יציאה</Label>
-                <Input id="auto-out" type="time" value={autoOut} onChange={e => setAutoOut(e.target.value)} />
+                <BigTimePicker id="auto-out" value={autoOut} onChange={setAutoOut} />
               </div>
             </div>
             <div>
@@ -444,15 +445,40 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
   const dateObj = new Date(cell.date);
   const isToday = cell.date === new Date().toISOString().slice(0, 10);
 
-  const rowClass = `border-b ${cell.isWeekend ? "bg-muted/20 text-muted-foreground" : ""} ${isToday ? "bg-primary/5" : ""} ${approved ? "bg-emerald-50/40" : ""}`;
+  // Auto-scroll today's row into view once on mount
+  const rowRef = React.useRef<HTMLTableRowElement>(null);
+  React.useEffect(() => {
+    if (isToday) {
+      const t = setTimeout(() => {
+        rowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 200);
+      return () => clearTimeout(t);
+    }
+  }, [isToday]);
+
+  const rowClass = [
+    "border-b",
+    cell.isWeekend ? "bg-muted/20 text-muted-foreground" : "",
+    isToday
+      ? "bg-amber-100/70 dark:bg-amber-900/30 ring-2 ring-amber-400 ring-inset font-semibold"
+      : "",
+    approved && !isToday ? "bg-emerald-50/40" : "",
+  ].filter(Boolean).join(" ");
 
   const commit = () => {
     onSave({ clock_in: ci || undefined, clock_out: co || undefined, break_minutes: br, day_type: dt, notes });
   };
 
   return (
-    <tr className={rowClass}>
-      <td className="p-2 tabular-nums">{dateObj.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}</td>
+    <tr ref={rowRef} className={rowClass} data-today={isToday || undefined}>
+      <td className="p-2 tabular-nums">
+        <div className="flex items-center gap-1.5">
+          <span>{dateObj.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}</span>
+          {isToday && (
+            <Badge className="bg-amber-500 hover:bg-amber-500 text-white text-[10px] h-5 px-1.5">היום</Badge>
+          )}
+        </div>
+      </td>
       <td className="p-2">{DOW[cell.weekday]}</td>
       <td className="p-2">
         <Select value={dt} onValueChange={(v: DayType) => { setDt(v); onSave({ day_type: v }); }} disabled={locked}>
@@ -467,19 +493,19 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
         </Select>
       </td>
       <td className="p-2">
-        <Input
-          type="time" className="h-8 w-[100px]"
-          value={ci} onChange={e => setCi(e.target.value)}
-          onFocus={onFocusField} onBlur={onBlurField(commit)}
-          disabled={locked || dt !== "work" && dt !== "wfh"}
+        <BigTimePicker
+          className="h-8 w-[110px]"
+          value={ci}
+          onChange={(v) => { setCi(v); onSave({ clock_in: v || undefined }); }}
+          disabled={locked || (dt !== "work" && dt !== "wfh")}
         />
       </td>
       <td className="p-2">
-        <Input
-          type="time" className="h-8 w-[100px]"
-          value={co} onChange={e => setCo(e.target.value)}
-          onFocus={onFocusField} onBlur={onBlurField(commit)}
-          disabled={locked || dt !== "work" && dt !== "wfh"}
+        <BigTimePicker
+          className="h-8 w-[110px]"
+          value={co}
+          onChange={(v) => { setCo(v); onSave({ clock_out: v || undefined }); }}
+          disabled={locked || (dt !== "work" && dt !== "wfh")}
         />
       </td>
       <td className="p-2">

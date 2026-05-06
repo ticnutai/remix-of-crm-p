@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BigTimePicker } from "@/components/ui/BigTimePicker";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -430,17 +431,15 @@ export function RemindersManager() {
                   </div>
                   <div>
                     <label className="text-sm font-medium">שעה</label>
-                    <Input
-                      type="time"
+                    <BigTimePicker
                       value={formData.remind_time}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setFormData({
                           ...formData,
-                          remind_time: e.target.value,
+                          remind_time: v,
                         })
                       }
                       className="mt-1"
-                      required
                     />
                   </div>
                 </div>
