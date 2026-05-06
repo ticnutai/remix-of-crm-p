@@ -109,11 +109,8 @@ interface PayrollRun {
 const sb = supabase as any;
 
 // =============================================================================
-export default function HRPayroll() {
-  const { isAdmin, isManager, isSuperManager, isLoading } = useAuth();
-  const navigate = useNavigate();
+export function HRPayrollContent() {
   const { toast } = useToast();
-  const allowed = isAdmin || isManager || isSuperManager;
 
   const [activeTab, setActiveTab] = useSyncedSetting<string>({
     key: "hr-payroll-tab", defaultValue: "overview",
@@ -122,10 +119,6 @@ export default function HRPayroll() {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !allowed) navigate("/");
-  }, [isLoading, allowed, navigate]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -148,65 +141,75 @@ export default function HRPayroll() {
     } finally { setLoading(false); }
   }, [toast]);
 
-  useEffect(() => { if (allowed) refresh(); }, [allowed, refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  return (
+    <div className="container mx-auto p-4 space-y-4" dir="rtl">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Coins className="h-6 w-6 text-primary" /> משאבי אנוש ושכר
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            ניהול עובדים, חופשות, פנסיה וחישובי שכר חודשיים (משוער).
+          </p>
+        </div>
+        <Button onClick={refresh} disabled={loading} variant="outline">
+          רענן נתונים
+        </Button>
+      </div>
+
+      <div className="rounded-md border bg-amber-50 dark:bg-amber-950/30 border-amber-300 p-3 text-sm flex items-start gap-2">
+        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+        <div>
+          <strong>הערה חשובה:</strong> חישובי השכר, המס וההפרשות הם <u>משוערים</u>{" "}
+          ומבוססים על ערכי 2026 כברירת מחדל. אינם מהווים תחליף לתוכנת שכר רשמית
+          או רואה חשבון. לפני תשלום בפועל יש לאמת מול חשב שכר מורשה.
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="overview">סקירה</TabsTrigger>
+          <TabsTrigger value="employees">עובדים</TabsTrigger>
+          <TabsTrigger value="leaves">חופשות</TabsTrigger>
+          <TabsTrigger value="payroll">שכר ופנסיה</TabsTrigger>
+          <TabsTrigger value="reports">דוחות</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <OverviewTab employees={employees} leaves={leaves} payrollRuns={payrollRuns} />
+        </TabsContent>
+        <TabsContent value="employees" className="space-y-4">
+          <EmployeesTab employees={employees} onChanged={refresh} />
+        </TabsContent>
+        <TabsContent value="leaves" className="space-y-4">
+          <LeavesTab employees={employees} leaves={leaves} onChanged={refresh} />
+        </TabsContent>
+        <TabsContent value="payroll" className="space-y-4">
+          <PayrollTab employees={employees} runs={payrollRuns} onChanged={refresh} />
+        </TabsContent>
+        <TabsContent value="reports" className="space-y-4">
+          <ReportsTab employees={employees} leaves={leaves} runs={payrollRuns} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+export default function HRPayroll() {
+  const { isAdmin, isManager, isSuperManager, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const allowed = isAdmin || isManager || isSuperManager;
+
+  useEffect(() => {
+    if (!isLoading && !allowed) navigate("/");
+  }, [isLoading, allowed, navigate]);
 
   if (isLoading) return <AppLayout><div className="p-6">טוען...</div></AppLayout>;
   if (!allowed) return null;
 
-  return (
-    <AppLayout>
-      <div className="container mx-auto p-4 space-y-4" dir="rtl">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Coins className="h-6 w-6 text-primary" /> משאבי אנוש ושכר
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              ניהול עובדים, חופשות, פנסיה וחישובי שכר חודשיים (משוער).
-            </p>
-          </div>
-          <Button onClick={refresh} disabled={loading} variant="outline">
-            רענן נתונים
-          </Button>
-        </div>
-
-        <div className="rounded-md border bg-amber-50 dark:bg-amber-950/30 border-amber-300 p-3 text-sm flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <strong>הערה חשובה:</strong> חישובי השכר, המס וההפרשות הם <u>משוערים</u>{" "}
-            ומבוססים על ערכי 2026 כברירת מחדל. אינם מהווים תחליף לתוכנת שכר רשמית
-            או רואה חשבון. לפני תשלום בפועל יש לאמת מול חשב שכר מורשה.
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="flex flex-wrap h-auto">
-            <TabsTrigger value="overview">סקירה</TabsTrigger>
-            <TabsTrigger value="employees">עובדים</TabsTrigger>
-            <TabsTrigger value="leaves">חופשות</TabsTrigger>
-            <TabsTrigger value="payroll">שכר ופנסיה</TabsTrigger>
-            <TabsTrigger value="reports">דוחות</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            <OverviewTab employees={employees} leaves={leaves} payrollRuns={payrollRuns} />
-          </TabsContent>
-          <TabsContent value="employees" className="space-y-4">
-            <EmployeesTab employees={employees} onChanged={refresh} />
-          </TabsContent>
-          <TabsContent value="leaves" className="space-y-4">
-            <LeavesTab employees={employees} leaves={leaves} onChanged={refresh} />
-          </TabsContent>
-          <TabsContent value="payroll" className="space-y-4">
-            <PayrollTab employees={employees} runs={payrollRuns} onChanged={refresh} />
-          </TabsContent>
-          <TabsContent value="reports" className="space-y-4">
-            <ReportsTab employees={employees} leaves={leaves} runs={payrollRuns} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </AppLayout>
-  );
+  return <AppLayout><HRPayrollContent /></AppLayout>;
 }
 
 // =============================================================================

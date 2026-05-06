@@ -47,6 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PermissionsMatrix } from "@/components/employees/PermissionsMatrix";
 import { UserApprovalsTab } from "@/components/employees/UserApprovalsTab";
+import { HRPayrollContent } from "@/pages/HRPayroll";
 import {
   Users,
   UserPlus,
@@ -1230,6 +1231,15 @@ export default function Employees() {
                 <span>אישור משתמשים</span>
               </TabsTrigger>
             )}
+            {(isAdmin || isManager) && (
+              <TabsTrigger
+                value="hr-payroll"
+                className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <DollarSign className="h-4 w-4" />
+                <span>שכר ופנסיה</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Employees Tab */}
@@ -1760,6 +1770,11 @@ export default function Employees() {
             {isAdmin && (
             <TabsContent value="approvals" className="space-y-6">
               <UserApprovalsTab />
+            </TabsContent>
+          )}
+            {(isAdmin || isManager) && (
+            <TabsContent value="hr-payroll">
+              <HRPayrollContent />
             </TabsContent>
           )}
         </Tabs>
