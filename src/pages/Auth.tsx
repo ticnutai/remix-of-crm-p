@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Building2, Mail, Lock, User, Loader2, Clock } from 'lucide-react';
 import { z } from 'zod';
+import { lovable } from '@/integrations/lovable';
+import { supabase } from '@/integrations/supabase/client';
 
 const REMEMBER_ME_KEY = 'econtrol_remember_email';
 
