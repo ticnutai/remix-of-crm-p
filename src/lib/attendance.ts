@@ -434,6 +434,71 @@ export function attachRecordsToDays(cells: DayCell[], records: AttendanceRecord[
   return cells.map(c => ({ ...c, record: map.get(c.date) ?? null }));
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// LocalStorage cache — keeps month records available across reloads, instant
+// renders, and brief offline use. Cloud (Supabase) is still the source of
+// truth — cache is just a mirror keyed by user+month so all devices read the
+// same source.
+// ────────────────────────────────────────────────────────────────────────────
+const CACHE_PREFIX = "attendance-cache:v1";
+function cacheKey(userId: string, year: number, month0: number): string {
+  return `${CACHE_PREFIX}:${userId}:${year}-${String(month0 + 1).padStart(2, "0")}`;
+}
+
+export function getCachedMonthRecords(
+  userId: string, year: number, month0: number,
+): AttendanceRecord[] | null {
+  try {
+    const raw = localStorage.getItem(cacheKey(userId, year, month0));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as AttendanceRecord[];
+    if (parsed && Array.isArray(parsed.records)) return parsed.records as AttendanceRecord[];
+    return null;
+  } catch { return null; }
+}
+
+function writeCache(userId: string, year: number, month0: number, recs: AttendanceRecord[]): void {
+  try {
+    localStorage.setItem(
+      cacheKey(userId, year, month0),
+      JSON.stringify({ records: recs, savedAt: Date.now() }),
+    );
+  } catch { /* quota / private mode — silent */ }
+}
+
+function updateCacheForRecord(rec: AttendanceRecord): void {
+  if (!rec || !rec.user_id) return;
+  const dateStr = rec.work_date ?? (rec.clock_in ? rec.clock_in.slice(0, 10) : null);
+  if (!dateStr) return;
+  const [y, m] = dateStr.split("-").map(Number);
+  if (!y || !m) return;
+  const cur = getCachedMonthRecords(rec.user_id, y, m - 1) ?? [];
+  const idx = cur.findIndex(r => r.id === rec.id || (r.work_date && r.work_date === rec.work_date));
+  const next = idx >= 0 ? cur.map((r, i) => (i === idx ? rec : r)) : [...cur, rec];
+  writeCache(rec.user_id, y, m - 1, next);
+}
+
+function removeFromCacheById(userId: string, recordId: string): void {
+  try {
+    // Sweep all months for this user — cheap (few keys).
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(`${CACHE_PREFIX}:${userId}:`)) continue;
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        const list: AttendanceRecord[] = Array.isArray(parsed) ? parsed : (parsed?.records ?? []);
+        const filtered = list.filter(r => r.id !== recordId);
+        if (filtered.length !== list.length) {
+          localStorage.setItem(k, JSON.stringify({ records: filtered, savedAt: Date.now() }));
+        }
+      } catch { /* ignore one bad key */ }
+    }
+  } catch { /* ignore */ }
+}
+
 export async function listMonthRecords(userId: string, year: number, month0: number): Promise<AttendanceRecord[]> {
   const from = `${year}-${String(month0 + 1).padStart(2, "0")}-01`;
   const lastDay = new Date(year, month0 + 1, 0).getDate();
@@ -446,8 +511,15 @@ export async function listMonthRecords(userId: string, year: number, month0: num
     .gte("work_date", from)
     .lte("work_date", to)
     .order("work_date", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as AttendanceRecord[];
+  if (error) {
+    // Network / auth failure — fall back to cache so the user keeps seeing data.
+    const cached = getCachedMonthRecords(userId, year, month0);
+    if (cached) return cached;
+    throw error;
+  }
+  const recs = (data ?? []) as AttendanceRecord[];
+  writeCache(userId, year, month0, recs);
+  return recs;
 }
 
 export interface ManualEntryInput {
@@ -525,7 +597,9 @@ export async function upsertManualEntry(input: ManualEntryInput): Promise<Attend
       .select()
       .single();
     if (error) throw error;
-    return data as AttendanceRecord;
+    const rec = data as AttendanceRecord;
+    updateCacheForRecord(rec);
+    return rec;
   }
   const { data, error } = await supabase
     .from("attendance_records" as any)
@@ -533,12 +607,22 @@ export async function upsertManualEntry(input: ManualEntryInput): Promise<Attend
     .select()
     .single();
   if (error) throw error;
-  return data as AttendanceRecord;
+  const rec = data as AttendanceRecord;
+  updateCacheForRecord(rec);
+  return rec;
 }
 
 export async function deleteRecord(id: string): Promise<void> {
+  // Find owner for cache cleanup
+  const { data: row } = await supabase
+    .from("attendance_records" as any)
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await supabase.from("attendance_records" as any).delete().eq("id", id);
   if (error) throw error;
+  const uid = (row as any)?.user_id;
+  if (uid) removeFromCacheById(uid, id);
 }
 
 export async function approveRecord(id: string, approve: boolean): Promise<void> {

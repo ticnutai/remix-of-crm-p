@@ -15,6 +15,7 @@ import {
   exportPayrollCsv,
   exportTimesheetPdf,
   formatMinutes,
+  getCachedMonthRecords,
   isoToLocalHHMM,
   listMonthRecords,
   lockMonth,
@@ -109,8 +110,20 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
 
   const monthLabel = `${month0 + 1}/${year}`;
 
-  // Full reload — shows spinner. Use only for initial mount and month navigation.
+  // Full reload — shows spinner only when we don't have a local cache yet.
+  // If we have cached records (from localStorage) we render those instantly
+  // and refresh from the cloud silently in the background.
   const reload = async () => {
+    const cached = getCachedMonthRecords(userId, year, month0);
+    if (cached && cached.length > 0) {
+      setRecords(cached);
+      // background refresh
+      try {
+        const recs = await listMonthRecords(userId, year, month0);
+        setRecords(recs);
+      } catch { /* keep cached view */ }
+      return;
+    }
     setLoading(true);
     try {
       const recs = await listMonthRecords(userId, year, month0);
