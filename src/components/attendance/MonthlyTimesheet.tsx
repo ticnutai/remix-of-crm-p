@@ -397,7 +397,19 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
   const [dt, setDt] = useState<DayType>((r?.day_type as DayType) ?? (cell.isWeekend ? "absent" : "work"));
   const [notes, setNotes] = useState(r?.notes ?? "");
 
+  // Track how many inputs in this row are currently focused.
+  // If any input is focused, don't reset local state from DB updates
+  // (silentReload can fire mid-edit and would otherwise overwrite what the user typed).
+  const focusCount = React.useRef(0);
+  const onFocusField = () => { focusCount.current += 1; };
+  const onBlurField = (save: () => void) => () => {
+    focusCount.current = Math.max(0, focusCount.current - 1);
+    save();
+  };
+
   useEffect(() => {
+    // Skip reset while the user is actively editing a field in this row.
+    if (focusCount.current > 0) return;
     setCi(r?.clock_in ? r.clock_in.slice(11, 16) : "");
     setCo(r?.clock_out ? r.clock_out.slice(11, 16) : "");
     setBr(r?.break_minutes ?? 0);
@@ -443,21 +455,24 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
       <td className="p-2">
         <Input
           type="time" className="h-8 w-[100px]"
-          value={ci} onChange={e => setCi(e.target.value)} onBlur={commit}
+          value={ci} onChange={e => setCi(e.target.value)}
+          onFocus={onFocusField} onBlur={onBlurField(commit)}
           disabled={locked || dt !== "work" && dt !== "wfh"}
         />
       </td>
       <td className="p-2">
         <Input
           type="time" className="h-8 w-[100px]"
-          value={co} onChange={e => setCo(e.target.value)} onBlur={commit}
+          value={co} onChange={e => setCo(e.target.value)}
+          onFocus={onFocusField} onBlur={onBlurField(commit)}
           disabled={locked || dt !== "work" && dt !== "wfh"}
         />
       </td>
       <td className="p-2">
         <Input
           type="number" min={0} max={300} className="h-8 w-[70px]"
-          value={br} onChange={e => setBr(Number(e.target.value || 0))} onBlur={commit}
+          value={br} onChange={e => setBr(Number(e.target.value || 0))}
+          onFocus={onFocusField} onBlur={onBlurField(commit)}
           disabled={locked || dt !== "work" && dt !== "wfh"}
         />
       </td>
@@ -475,7 +490,8 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
       <td className="p-2">
         <Input
           className="h-8 min-w-[140px]"
-          value={notes} onChange={e => setNotes(e.target.value)} onBlur={commit}
+          value={notes} onChange={e => setNotes(e.target.value)}
+          onFocus={onFocusField} onBlur={onBlurField(commit)}
           disabled={locked}
           placeholder="—"
         />
