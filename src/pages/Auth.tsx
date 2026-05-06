@@ -35,7 +35,25 @@ export default function Auth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [authView, setAuthView] = useState<'auth' | 'forgot' | 'reset'>('auth');
+  const [authView, setAuthView] = useState<'auth' | 'forgot' | 'reset' | 'pending'>('auth');
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin + '/auth',
+      });
+      if (result.error) {
+        toast({ title: 'שגיאה בכניסה עם Google', description: (result.error as Error).message, variant: 'destructive' });
+        setGoogleLoading(false);
+      }
+      // If redirected, browser navigates away. If tokens received, useEffect will route.
+    } catch (e: any) {
+      toast({ title: 'שגיאה בכניסה עם Google', description: e?.message ?? 'נסה שוב', variant: 'destructive' });
+      setGoogleLoading(false);
+    }
+  };
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState(() => {
