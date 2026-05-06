@@ -15,6 +15,7 @@ import {
   exportPayrollCsv,
   exportTimesheetPdf,
   formatMinutes,
+  isoToLocalHHMM,
   listMonthRecords,
   lockMonth,
   summarizeMonth,
@@ -157,8 +158,8 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
       await upsertManualEntry({
         user_id: userId,
         date: cell.date,
-        clock_in: patch.clock_in ?? (cur?.clock_in ? cur.clock_in.slice(11, 16) : undefined),
-        clock_out: patch.clock_out ?? (cur?.clock_out ? cur.clock_out.slice(11, 16) : undefined),
+        clock_in: patch.clock_in ?? (cur?.clock_in ? isoToLocalHHMM(cur.clock_in) : undefined),
+        clock_out: patch.clock_out ?? (cur?.clock_out ? isoToLocalHHMM(cur.clock_out) : undefined),
         break_minutes: patch.break_minutes ?? cur?.break_minutes ?? 0,
         day_type: patch.day_type ?? (cur?.day_type as DayType) ?? "work",
         notes: patch.notes ?? cur?.notes ?? null,
@@ -391,8 +392,8 @@ interface DayRowProps {
 
 const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, isManager }: DayRowProps) {
   const r = cell.record;
-  const [ci, setCi] = useState(r?.clock_in ? r.clock_in.slice(11, 16) : "");
-  const [co, setCo] = useState(r?.clock_out ? r.clock_out.slice(11, 16) : "");
+  const [ci, setCi] = useState(isoToLocalHHMM(r?.clock_in));
+  const [co, setCo] = useState(isoToLocalHHMM(r?.clock_out));
   const [br, setBr] = useState<number>(r?.break_minutes ?? 0);
   const [dt, setDt] = useState<DayType>((r?.day_type as DayType) ?? (cell.isWeekend ? "absent" : "work"));
   const [notes, setNotes] = useState(r?.notes ?? "");
@@ -410,8 +411,8 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
   useEffect(() => {
     // Skip reset while the user is actively editing a field in this row.
     if (focusCount.current > 0) return;
-    setCi(r?.clock_in ? r.clock_in.slice(11, 16) : "");
-    setCo(r?.clock_out ? r.clock_out.slice(11, 16) : "");
+    setCi(isoToLocalHHMM(r?.clock_in));
+    setCo(isoToLocalHHMM(r?.clock_out));
     setBr(r?.break_minutes ?? 0);
     setDt((r?.day_type as DayType) ?? (cell.isWeekend ? "absent" : "work"));
     setNotes(r?.notes ?? "");

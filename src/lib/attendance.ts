@@ -469,6 +469,20 @@ function combineDateTime(date: string, hhmm: string): string {
   return dt.toISOString();
 }
 
+/**
+ * Convert an ISO timestamp from DB to "HH:MM" in the browser's local timezone.
+ * NOTE: do NOT use `iso.slice(11, 16)` — that returns UTC time and shifts
+ * Israel times by 2-3 hours (DST), which makes saved times appear to "revert".
+ */
+export function isoToLocalHHMM(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 export async function upsertManualEntry(input: ManualEntryInput): Promise<AttendanceRecord> {
   const dayType: DayType = input.day_type ?? "work";
   const hasTimes = !!(input.clock_in && input.clock_out);
@@ -561,8 +575,8 @@ export async function copyPreviousMonth(userId: string, year: number, month0: nu
     const lastInTarget = new Date(year, month0 + 1, 0).getDate();
     if (targetDay > lastInTarget) continue;
     const targetDate = `${year}-${String(month0 + 1).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
-    const ci = r.clock_in.slice(11, 16);
-    const co = r.clock_out ? r.clock_out.slice(11, 16) : null;
+    const ci = isoToLocalHHMM(r.clock_in);
+    const co = r.clock_out ? isoToLocalHHMM(r.clock_out) : null;
     if (!co) continue;
     try {
       await upsertManualEntry({
@@ -651,8 +665,8 @@ export function exportPayrollCsv(
     const day = date ? new Date(date).toLocaleDateString("he-IL", { weekday: "short" }) : "";
     return [
       date, day,
-      r.clock_in ? r.clock_in.slice(11, 16) : "",
-      r.clock_out ? r.clock_out.slice(11, 16) : "",
+      isoToLocalHHMM(r.clock_in),
+      isoToLocalHHMM(r.clock_out),
       String(r.break_minutes ?? 0),
       String(r.duration_minutes ?? 0),
       r.day_type ?? "work",
@@ -683,8 +697,8 @@ export function exportTimesheetPdf(
     head: [["Date","In","Out","Break","Total","Type","Notes"]],
     body: records.map(r => [
       r.work_date ?? (r.clock_in ?? "").slice(0,10),
-      r.clock_in ? r.clock_in.slice(11, 16) : "-",
-      r.clock_out ? r.clock_out.slice(11, 16) : "-",
+      r.clock_in ? isoToLocalHHMM(r.clock_in) : "-",
+      r.clock_out ? isoToLocalHHMM(r.clock_out) : "-",
       formatMinutes(r.break_minutes ?? 0),
       formatMinutes(r.duration_minutes ?? 0),
       r.day_type ?? "work",
