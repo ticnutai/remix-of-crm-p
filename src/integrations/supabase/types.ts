@@ -6087,6 +6087,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           avatar_url: string | null
           created_at: string
           custom_data: Json | null
@@ -6098,9 +6101,13 @@ export type Database = {
           is_active: boolean | null
           phone: string | null
           position: string | null
+          requested_role: string | null
           updated_at: string
         }
         Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           custom_data?: Json | null
@@ -6112,9 +6119,13 @@ export type Database = {
           is_active?: boolean | null
           phone?: string | null
           position?: string | null
+          requested_role?: string | null
           updated_at?: string
         }
         Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           avatar_url?: string | null
           created_at?: string
           custom_data?: Json | null
@@ -6126,6 +6137,7 @@ export type Database = {
           is_active?: boolean | null
           phone?: string | null
           position?: string | null
+          requested_role?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -7965,6 +7977,13 @@ export type Database = {
       }
     }
     Functions: {
+      approve_user: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       attendance_lock_month: {
         Args: {
           p_lock: boolean
@@ -8197,6 +8216,7 @@ export type Database = {
         Returns: boolean
       }
       quick_health_check: { Args: never; Returns: Json }
+      reject_user: { Args: { _user_id: string }; Returns: undefined }
       run_system_diagnostic: { Args: never; Returns: Json }
       run_system_health_check: { Args: never; Returns: Json }
       search_files: {
