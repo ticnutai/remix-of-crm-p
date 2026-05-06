@@ -83,6 +83,7 @@ const PortalManagement = lazy(() => import("./pages/PortalManagement"));
 const Attendance = lazy(() => import("./pages/Attendance"));
 const AttendanceAdmin = lazy(() => import("./pages/AttendanceAdmin"));
 const HRPayroll = lazy(() => import("./pages/HRPayroll"));
+const UserApprovals = lazy(() => import("./pages/UserApprovals"));
 
 // Optimized QueryClient with aggressive caching and performance settings
 const queryClient = new QueryClient({
@@ -145,6 +146,10 @@ const App = () => {
                               <Route
                                 path="/auth"
                                 element={withErrorBoundary(Auth)}
+                              />
+                              <Route
+                                path="/user-approvals"
+                                element={withErrorBoundary(UserApprovals)}
                               />
                               <Route
                                 path="/clients"
