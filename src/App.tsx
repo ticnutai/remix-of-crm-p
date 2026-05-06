@@ -148,6 +148,10 @@ const App = () => {
                                 element={withErrorBoundary(Auth)}
                               />
                               <Route
+                                path="/user-approvals"
+                                element={withErrorBoundary(UserApprovals)}
+                              />
+                              <Route
                                 path="/clients"
                                 element={withErrorBoundary(Clients)}
                               />
