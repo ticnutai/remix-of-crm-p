@@ -130,6 +130,157 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_audit_log: {
+        Row: {
+          action: string
+          changed_by: string
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_audit_log_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_breaks: {
+        Row: {
+          attendance_id: string
+          break_end: string | null
+          break_start: string
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          attendance_id: string
+          break_end?: string | null
+          break_start?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          attendance_id?: string
+          break_end?: string | null
+          break_start?: string
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_breaks_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_records: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          break_minutes: number
+          clock_in: string
+          clock_out: string | null
+          created_at: string
+          day_type: string
+          duration_minutes: number | null
+          edited_at: string | null
+          edited_by: string | null
+          id: string
+          is_edited: boolean
+          location_lat: number | null
+          location_lng: number | null
+          locked: boolean
+          manual_entry: boolean
+          notes: string | null
+          updated_at: string
+          user_id: string
+          work_date: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          break_minutes?: number
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          day_type?: string
+          duration_minutes?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
+          id?: string
+          is_edited?: boolean
+          location_lat?: number | null
+          location_lng?: number | null
+          locked?: boolean
+          manual_entry?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          work_date?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          break_minutes?: number
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          day_type?: string
+          duration_minutes?: number | null
+          edited_at?: string | null
+          edited_by?: string | null
+          id?: string
+          is_edited?: boolean
+          location_lat?: number | null
+          location_lng?: number | null
+          locked?: boolean
+          manual_entry?: boolean
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string | null
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -7695,6 +7846,17 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_monthly_summary: {
+        Row: {
+          month: string | null
+          overtime_minutes: number | null
+          shifts_count: number | null
+          total_break_minutes: number | null
+          total_minutes: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       chat_analytics: {
         Row: {
           avg_response_minutes: number | null
@@ -7803,6 +7965,15 @@ export type Database = {
       }
     }
     Functions: {
+      attendance_lock_month: {
+        Args: {
+          p_lock: boolean
+          p_month: number
+          p_user_id: string
+          p_year: number
+        }
+        Returns: number
+      }
       check_auth_hooks_v2: {
         Args: never
         Returns: {
@@ -8014,6 +8185,7 @@ export type Database = {
         | { Args: never; Returns: boolean }
         | { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_manager: { Args: { _user_id: string }; Returns: boolean }
+      is_attendance_manager: { Args: never; Returns: boolean }
       is_client: { Args: { _user_id: string }; Returns: boolean }
       is_email_unsubscribed: { Args: { p_email: string }; Returns: boolean }
       mark_mentions_read: {
