@@ -1,0 +1,466 @@
+# Page snapshot
+
+```yaml
+- generic:
+  - generic:
+    - list
+    - region "Notifications alt+T"
+    - generic:
+      - generic:
+        - banner:
+          - generic:
+            - generic:
+              - heading [level=1]: אחיאלי עופר
+            - generic:
+              - button [disabled]:
+                - img
+              - button [disabled]:
+                - img
+            - generic:
+              - button:
+                - img
+                - generic: חיפוש...
+                - generic:
+                  - generic: ⌘
+                  - text: K
+              - button:
+                - img
+              - button:
+                - img
+                - generic: "1"
+              - button:
+                - img
+              - button:
+                - img
+              - button:
+                - img
+              - button:
+                - generic: י
+                - generic: יעקב טננבאום
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - img
+                - generic:
+                  - button:
+                    - img
+                    - text: PDF
+                  - button:
+                    - img
+                    - text: רענן
+                  - button:
+                    - img
+                    - text: ערוך
+                  - generic: יש גישה לפורטל
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - heading [level=1]: אחיאלי עופר
+                        - generic:
+                          - generic: פעיל
+                          - generic: היתרים
+                    - generic:
+                      - link:
+                        - /url: mailto:oferac7@gmail.com
+                        - generic: oferac7@gmail.com
+                        - img
+                      - generic:
+                        - generic: האתרוג 33
+                        - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - paragraph: פרויקטים פעילים
+                        - paragraph: "0"
+                        - paragraph: מתוך 1 פרויקטים
+                      - generic:
+                        - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - paragraph: שעות החודש
+                        - paragraph: "0"
+                        - paragraph: "סה\"כ: 35.2 שעות"
+                      - generic:
+                        - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - paragraph: הכנסות
+                        - paragraph: ₪0
+                        - paragraph: 0 חשבוניות ממתינות
+                      - generic:
+                        - img
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - paragraph: משימות פתוחות
+                        - paragraph: "0"
+                        - paragraph: 0 פגישות קרובות
+                      - generic:
+                        - img
+              - generic:
+                - generic:
+                  - tablist:
+                    - tab [selected]:
+                      - img
+                      - text: שלבי עבודה
+                    - button:
+                      - img
+                      - text: כל הנתונים
+                      - img
+                  - button:
+                    - img
+                - tabpanel:
+                  - generic:
+                    - generic:
+                      - heading [level=3]: מעקב שלבי לקוח
+                    - generic:
+                      - generic:
+                        - button:
+                          - img
+                          - text: תיקייה חדשה
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                            - text: לוח
+                          - button:
+                            - img
+                            - text: רשימה
+                          - button:
+                            - img
+                            - text: טבלה
+                        - button:
+                          - img
+                        - button:
+                          - img
+                        - button:
+                          - img
+                          - text: הוסף מתבנית
+                        - button:
+                          - img
+                          - text: שמור כתבנית
+                        - button:
+                          - img
+                        - button:
+                          - img
+                          - text: הסתר שלבים
+                        - generic:
+                          - button: "2"
+                          - button: "3"
+                          - button: "4"
+                          - button: "5"
+                          - button: "6"
+                        - checkbox
+                        - generic: בחר הכל
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - img
+                            - heading [level=3]: הגשה
+                            - generic:
+                              - generic:
+                                - img
+                                - generic:
+                                  - generic: 0%
+                              - generic:
+                                - generic: 0/1
+                          - generic:
+                            - generic:
+                              - generic:
+                                - button:
+                                  - img
+                                - button
+                                - generic:
+                                  - paragraph:
+                                    - generic: __pw_1778007868351
+                                - generic:
+                                  - button:
+                                    - img
+                                  - button:
+                                    - img
+                                  - button:
+                                    - img
+                            - status
+                            - generic:
+                              - generic:
+                                - button:
+                                  - img
+                                  - text: הוסף משימה
+                                - button:
+                                  - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                          - heading [level=3]: פרויקטים אחרונים
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - paragraph: לךף
+                                  - paragraph: "-"
+                                - generic: planning
+                    - generic:
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                          - heading [level=3]: משימות פתוחות
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - paragraph: אין משימות פתוחות
+                    - generic:
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                          - heading [level=3]: פגישות קרובות
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - paragraph: אין פגישות קרובות
+                    - generic:
+                      - generic:
+                        - heading [level=3]: חשבוניות אחרונות
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - paragraph: אין חשבוניות
+                    - generic:
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                          - heading [level=3]: תזכורות אחרונות
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - paragraph: אין תזכורות
+                    - generic:
+                      - generic:
+                        - heading [level=3]: הערות
+                        - generic:
+                          - button:
+                            - img
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - paragraph: "גוש: 4981; מגרש: 33; חלקה: 42; מפה חתומה: 2022-06-21 00:00:00; מועד קבלת תיק מידע: 21.08.22; תז/פרטי: רחל 051335560; נסח טאבו: יש; הגא: צריך יועץ מיגון; מהנדס: יש; היתר בתנאים: יש;"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - img
+              - generic:
+                - generic: tenarch
+                - generic: CRM Pro Max
+            - button:
+              - img
+          - generic:
+            - generic:
+              - paragraph: ניווט ראשי
+              - link:
+                - /url: /
+                - img
+                - generic: לוח בקרה
+              - link:
+                - /url: /my-day
+                - img
+                - generic: היום שלי
+              - link:
+                - /url: /clients
+                - img
+                - generic: לקוחות
+              - link:
+                - /url: /datatable-pro
+                - img
+                - generic: טבלת לקוחות
+              - link:
+                - /url: /employees
+                - img
+                - generic: עובדים
+              - link:
+                - /url: /time-logs
+                - img
+                - generic: לוגי זמן
+              - link:
+                - /url: /attendance
+                - img
+                - generic: נוכחות שלי
+              - link:
+                - /url: /attendance/admin
+                - img
+                - generic: נוכחות עובדים
+              - link:
+                - /url: /hr
+                - img
+                - generic: שכר ופנסיה (HR)
+              - link:
+                - /url: /time-analytics
+                - img
+                - generic: ניתוח זמנים
+              - link:
+                - /url: /tasks-meetings
+                - img
+                - generic: משימות, פגישות ותזכורות
+              - link:
+                - /url: /quotes
+                - img
+                - generic: הצעות מחיר
+              - link:
+                - /url: /finance
+                - img
+                - generic: כספים
+              - link:
+                - /url: /payments
+                - img
+                - generic: תשלומים
+              - link:
+                - /url: /reports
+                - img
+                - generic: דוחות
+              - link:
+                - /url: /calendar
+                - img
+                - generic: לוח שנה
+              - link:
+                - /url: /gmail
+                - img
+                - generic: Gmail
+              - link:
+                - /url: /contacts
+                - img
+                - generic: אנשי קשר
+              - link:
+                - /url: /files
+                - img
+                - generic: קבצים
+              - link:
+                - /url: /planning-gis
+                - img
+                - generic: תכנון & GIS
+              - link:
+                - /url: /smart-tools
+                - img
+                - generic: כלים חכמים
+              - link:
+                - /url: /portal-management
+                - img
+                - generic: פורטל לקוחות
+            - generic:
+              - link:
+                - /url: /backups
+                - img
+                - generic: גיבויים וייבוא
+              - link:
+                - /url: /history
+                - img
+                - generic: היסטוריה
+              - link:
+                - /url: /settings
+                - img
+                - generic: הגדרות
+              - link:
+                - /url: /tests
+                - img
+                - generic: בדיקות
+          - generic:
+            - generic:
+              - button:
+                - img
+              - button:
+                - img
+      - generic:
+        - button:
+          - generic:
+            - img
+    - generic:
+      - button:
+        - img
+      - button:
+        - img
+        - generic: כניסה
+  - dialog [ref=e2]:
+    - generic "גרור להזזת החלון" [ref=e3]
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - button [ref=e8] [cursor=pointer]:
+            - img
+          - generic [ref=e9]:
+            - generic [ref=e10]:
+              - heading "הגשה" [level=2] [ref=e11]
+              - paragraph [ref=e12]: 0 מתוך 1 משימות הושלמו (0%)
+            - img [ref=e14]
+        - button "הפעל טיימר ימים" [ref=e19] [cursor=pointer]:
+          - img
+          - text: הפעל טיימר ימים
+      - generic [ref=e20]:
+        - tablist [ref=e22]:
+          - tab "כרטיסים" [selected] [ref=e23] [cursor=pointer]:
+            - img [ref=e24]
+            - text: כרטיסים
+          - tab "טבלה" [ref=e27] [cursor=pointer]:
+            - img [ref=e28]
+            - text: טבלה
+        - tabpanel "כרטיסים" [active] [ref=e30]:
+          - generic [ref=e31]:
+            - checkbox [ref=e32] [cursor=pointer]
+            - generic [ref=e33]: בחר הכל
+          - generic [ref=e34]:
+            - checkbox [ref=e35] [cursor=pointer]
+            - generic [ref=e37]:
+              - button [ref=e38]:
+                - img [ref=e39]
+              - button [ref=e46] [cursor=pointer]
+              - paragraph [ref=e49]:
+                - generic [ref=e50]: __pw_1778007868351
+              - generic [ref=e51]:
+                - button [ref=e52] [cursor=pointer]:
+                  - img
+                - button [ref=e53] [cursor=pointer]:
+                  - img
+                - button [ref=e54] [cursor=pointer]:
+                  - img
+          - status [ref=e55]
+      - generic [ref=e56]:
+        - button "הוסף משימה" [ref=e57] [cursor=pointer]:
+          - img
+          - text: הוסף משימה
+        - button "הוספה מרובה" [ref=e58] [cursor=pointer]:
+          - img
+          - text: הוספה מרובה
+        - button "מספור" [ref=e59] [cursor=pointer]:
+          - img
+          - text: מספור
+    - button "סגור (Esc)" [ref=e60] [cursor=pointer]:
+      - img [ref=e61]
+      - generic [ref=e64]: סגור
+```

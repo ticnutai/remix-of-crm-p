@@ -12,12 +12,9 @@
 //   {isVisible("kpis") && isEnabled("kpis") && <KpiSection />}
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { GripVertical, LayoutTemplate, Settings as SettingsIcon, X, RotateCcw, Eye, EyeOff, Power } from "lucide-react";
+import { GripVertical, LayoutTemplate, Settings as SettingsIcon, X, RotateCcw, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -147,7 +144,6 @@ interface PanelProps {
 }
 
 export function PageCustomizerPanel({ ctl, title = "התאמה אישית של העמוד" }: PanelProps) {
-  // Floating non-blocking panel — draggable across the screen.
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     try {
       const raw = localStorage.getItem("page-customizer-pos");
@@ -194,7 +190,7 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
     });
   };
 
-  const toggleHidden = (id: string) => {
+  const toggleSection = (id: string) => {
     ctl.setConfig({
       ...ctl.config,
       hiddenSections: { ...ctl.config.hiddenSections, [id]: !ctl.config.hiddenSections[id] },
@@ -211,167 +207,187 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
   return (
     <div
       style={{ left: pos.x, top: pos.y }}
-      className="fixed z-50 w-[380px] max-h-[80vh] rounded-lg border bg-background shadow-2xl flex flex-col"
+      className="fixed z-50 w-[380px] rounded-xl border bg-background shadow-2xl flex flex-col overflow-hidden"
       dir="rtl"
     >
-      {/* Drag handle / header */}
+      {/* Header / drag handle */}
       <div
-        className="flex items-center justify-between p-2 border-b cursor-move bg-muted/40 rounded-t-lg select-none"
+        className="flex items-center justify-between px-3 py-2 border-b bg-muted/50 cursor-move select-none"
         onMouseDown={(e) => {
           dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
           setDragging(true);
         }}
       >
-        <div className="flex items-center gap-2 text-sm font-medium">
+        <div className="flex items-center gap-2 text-sm font-semibold">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
           {title}
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={ctl.reset} title="איפוס">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={ctl.reset} title="איפוס">
             <RotateCcw className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={ctl.closePanel} title="סגור">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={ctl.closePanel} title="סגור">
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue={ctl.initialTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="m-2 grid grid-cols-2">
-          <TabsTrigger value="layout"><LayoutTemplate className="h-4 w-4 ml-1" /> פריסה</TabsTrigger>
-          <TabsTrigger value="features"><SettingsIcon className="h-4 w-4 ml-1" /> פונקציות</TabsTrigger>
+      <Tabs defaultValue={ctl.initialTab} className="flex flex-col">
+        <TabsList className="m-3 mb-0 grid grid-cols-2">
+          <TabsTrigger value="layout" className="gap-1.5">
+            <LayoutTemplate className="h-4 w-4" />
+            פריסה
+          </TabsTrigger>
+          <TabsTrigger value="features" className="gap-1.5">
+            <SettingsIcon className="h-4 w-4" />
+            פונקציות
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="layout" className="flex-1 overflow-hidden m-0">
-          <ScrollArea className="h-[55vh] p-3">
-            <p className="text-xs text-muted-foreground mb-2">
-              גרור כדי לשנות את סדר חלקי העמוד. לחץ על העין כדי להסתיר.
+        {/* ── LAYOUT TAB ── */}
+        <TabsContent value="layout" className="m-0">
+          <div className="px-3 pt-3 pb-1">
+            <p className="text-xs text-muted-foreground">
+              לחץ על כפתור ההדלקה כדי להציג/להסתיר חלק. גרור לשינוי סדר.
             </p>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={ctl.config.sectionOrder} strategy={verticalListSortingStrategy}>
-                <div className="space-y-1">
-                  {ctl.orderedSections.map(s => (
-                    <SortableRow
-                      key={s.id}
-                      id={s.id}
-                      label={s.label}
-                      description={s.description}
-                      hidden={!!ctl.config.hiddenSections[s.id]}
-                      onToggle={() => toggleHidden(s.id)}
-                    />
-                  ))}
+          </div>
+          <ScrollArea className="max-h-[55vh]">
+            <div className="px-3 pb-3 pt-2 space-y-2">
+              {ctl.orderedSections.length === 0 && (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  לא הוגדרו חלקים לעמוד זה.
                 </div>
-              </SortableContext>
-            </DndContext>
+              )}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                <SortableContext items={ctl.config.sectionOrder} strategy={verticalListSortingStrategy}>
+                  {ctl.orderedSections.map(s => {
+                    const visible = !ctl.config.hiddenSections[s.id];
+                    return (
+                      <SortableRow
+                        key={s.id}
+                        id={s.id}
+                        label={s.label}
+                        description={s.description}
+                        active={visible}
+                        onToggle={() => toggleSection(s.id)}
+                      />
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="features" className="flex-1 overflow-hidden m-0">
-          <ScrollArea className="h-[55vh] p-3">
-            <p className="text-xs text-muted-foreground mb-2">
-              הפעל / כבה פונקציות בעמוד.
+        {/* ── FEATURES TAB ── */}
+        <TabsContent value="features" className="m-0">
+          <div className="px-3 pt-3 pb-1">
+            <p className="text-xs text-muted-foreground">
+              לחץ על כפתור ההדלקה כדי להפעיל/לכבות פונקציה.
             </p>
-            <div className="space-y-2">
-              {ctl.features.map(f => {
-                const enabled = !ctl.config.disabledFeatures[f.id];
-                return (
-                  <div
-                    key={f.id}
-                    className={`flex items-center gap-3 border rounded-lg p-3 transition-colors ${
-                      enabled ? "bg-green-50 border-green-200" : "bg-muted/30 border-muted opacity-70"
-                    }`}
-                  >
-                    {/* Power toggle button */}
-                    <button
-                      type="button"
-                      onClick={() => toggleFeature(f.id)}
-                      title={enabled ? "כבה פונקציה" : "הפעל פונקציה"}
-                      className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                        enabled
-                          ? "bg-green-500 text-white hover:bg-red-500"
-                          : "bg-muted text-muted-foreground hover:bg-green-500 hover:text-white"
-                      }`}
-                    >
-                      <Power className="h-4 w-4" />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium flex items-center gap-2">
-                        {f.label}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                          enabled ? "bg-green-100 text-green-700" : "bg-muted-foreground/20 text-muted-foreground"
-                        }`}>
-                          {enabled ? "פעיל" : "כבוי"}
-                        </span>
-                      </div>
-                      {f.description && (
-                        <p className="text-xs text-muted-foreground truncate">{f.description}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+          </div>
+          <ScrollArea className="max-h-[55vh]">
+            <div className="px-3 pb-3 pt-2 space-y-2">
               {ctl.features.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-6">
+                <div className="text-sm text-muted-foreground text-center py-8">
                   לא הוגדרו פונקציות לעמוד זה.
                 </div>
               )}
+              {ctl.features.map(f => {
+                const enabled = !ctl.config.disabledFeatures[f.id];
+                return (
+                  <PowerRow
+                    key={f.id}
+                    label={f.label}
+                    description={f.description}
+                    active={enabled}
+                    onToggle={() => toggleFeature(f.id)}
+                  />
+                );
+              })}
             </div>
           </ScrollArea>
         </TabsContent>
       </Tabs>
 
-      <Separator />
-      <div className="p-2 text-[11px] text-muted-foreground text-center">
+      <div className="px-3 py-2 border-t bg-muted/30 text-[11px] text-muted-foreground text-center">
         השינויים נשמרים אוטומטית במכשיר זה
       </div>
     </div>
   );
 }
 
+/* ── Shared power-row (used in both tabs for features, and via SortableRow for sections) ── */
+function PowerRow({
+  label, description, active, onToggle,
+}: { label: string; description?: string; active: boolean; onToggle: () => void }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-lg border p-3 transition-all",
+        active ? "bg-green-50 border-green-200" : "bg-muted/30 border-muted/60 opacity-70",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        title={active ? "כבה" : "הפעל"}
+        className={cn(
+          "shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-sm",
+          active
+            ? "bg-green-500 text-white hover:bg-red-500"
+            : "bg-muted text-muted-foreground hover:bg-green-500 hover:text-white",
+        )}
+      >
+        <Power className="h-4 w-4" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium flex items-center gap-2 flex-wrap">
+          {label}
+          <span
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
+              active ? "bg-green-100 text-green-700" : "bg-muted-foreground/20 text-muted-foreground",
+            )}
+          >
+            {active ? "פעיל" : "כבוי"}
+          </span>
+        </div>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Sortable row (layout tab) — drag handle + PowerRow ── */
 function SortableRow({
-  id, label, description, hidden, onToggle,
-}: { id: string; label: string; description?: string; hidden: boolean; onToggle: () => void }) {
+  id, label, description, active, onToggle,
+}: { id: string; label: string; description?: string; active: boolean; onToggle: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center gap-2 border rounded p-2 bg-background",
-        hidden && "opacity-60",
-      )}
-    >
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2">
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
-        title="גרור"
+        type="button"
+        className="shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1 rounded"
+        title="גרור לשינוי סדר"
       >
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{label}</div>
-        {description && <div className="text-xs text-muted-foreground truncate">{description}</div>}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onToggle}
-          title={hidden ? "הפעל" : "כבה"}
-          className="h-7 w-7 p-0"
-        >
-          {hidden ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-primary" />}
-        </Button>
-        <Switch
-          checked={!hidden}
-          onCheckedChange={onToggle}
-          title={hidden ? "הפעל" : "כבה"}
+        <PowerRow
+          label={label}
+          description={description}
+          active={active}
+          onToggle={onToggle}
         />
       </div>
     </div>
