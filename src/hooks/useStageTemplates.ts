@@ -112,12 +112,6 @@ export function useStageTemplates() {
           (t) => t.template_id === template.id && !t.template_stage_id,
         );
 
-        // Debug log
-        console.log(
-          `Template "${template.name}": ${templateStages.length} stages, tasks per stage:`,
-          templateStages.map((s) => `${s.stage_name}: ${s.tasks?.length || 0}`),
-        );
-
         return {
           ...template,
           stages: templateStages,
@@ -714,22 +708,24 @@ export function useStageTemplates() {
         const stage = template?.stages?.find((s) => s.id === stageId);
         const nextOrder = (stage?.tasks?.length ?? 0);
         
-        const { error } = await db
+        const { data, error } = await db
           .from("stage_template_tasks")
           .insert({
             template_id: templateId,
             template_stage_id: stageId,
             title,
             sort_order: nextOrder,
-          });
+          })
+          .select()
+          .single();
         if (error) throw error;
         toast({ title: "המשימה נוספה לתבנית" });
         await loadTemplates();
-        return true;
+        return data as TemplateTask;
       } catch (error) {
         console.error("Error adding task to template:", error);
         toast({ title: "שגיאה בהוספת המשימה", variant: "destructive" });
-        return false;
+        return null;
       }
     },
     [templates, toast, loadTemplates],

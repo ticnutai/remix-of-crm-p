@@ -118,6 +118,8 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
   
   const { profile } = useAuth();
   const isManager = profile?.role === 'admin' || profile?.role === 'manager';
+  const isTimerTabTask = (task: ClientStageTask) =>
+    task.task_type === 'timer_tab' && Boolean(task.auto_timer_days);
   
   const [filterStage, setFilterStage] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -263,7 +265,9 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                       <TableRow 
                         className={cn(
                           "transition-colors cursor-context-menu",
-                          task.completed && !task.background_color && "bg-green-50/50 dark:bg-green-950/10"
+                          task.completed && !task.background_color && "bg-green-50/50 dark:bg-green-950/10",
+                          isTimerTabTask(task) && task.started_at && task.target_working_days && !task.background_color && "bg-sky-50/70 dark:bg-sky-950/10",
+                          isTimerTabTask(task) && !task.started_at && !task.background_color && "hover:bg-sky-50/60 dark:hover:bg-sky-950/10"
                         )}
                         style={{ 
                           backgroundColor: task.background_color || undefined,
@@ -300,15 +304,38 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                               autoFocus
                             />
                           ) : (
-                            <span 
+                            <div
                               className={cn(
-                                task.completed && "line-through text-muted-foreground",
-                                task.is_bold && "font-bold"
+                                isTimerTabTask(task) && !task.completed && !task.started_at && task.auto_timer_days && 'cursor-pointer'
                               )}
-                              style={{ color: task.text_color || undefined }}
+                              onClick={() => {
+                                if (
+                                  isTimerTabTask(task) &&
+                                  !task.completed &&
+                                  !task.started_at &&
+                                  task.auto_timer_days
+                                ) {
+                                  startTaskTimer(task.id, task.auto_timer_days);
+                                }
+                              }}
                             >
-                              {task.title}
-                            </span>
+                              <span 
+                                className={cn(
+                                  'flex items-center justify-end gap-1.5',
+                                  task.completed && "line-through text-muted-foreground",
+                                  task.is_bold && "font-bold"
+                                )}
+                                style={{ color: task.text_color || undefined }}
+                              >
+                                {isTimerTabTask(task) && <Timer className="h-3.5 w-3.5 text-sky-600 shrink-0" />}
+                                <span>{task.title}</span>
+                              </span>
+                              {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  לחץ להפעלת {task.auto_timer_days} ימי עבודה
+                                </div>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                     
@@ -346,35 +373,47 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                           </Button>
                         </div>
                       ) : (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-muted-foreground hover:text-primary"
-                            >
-                              <Timer className="h-4 w-4 ml-1" />
-                              <span className="text-xs">הפעל</span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 p-2" align="center">
-                            <div className="space-y-1">
-                              <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
-                              {TARGET_DAYS_OPTIONS.map(option => (
-                                <Button
-                                  key={option.value}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start text-xs h-7"
-                                  onClick={() => startTaskTimer(task.id, option.value)}
-                                >
-                                  <Play className="h-3 w-3 ml-2 text-green-600" />
-                                  {option.label}
-                                </Button>
-                              ))}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                        isTimerTabTask(task) && task.auto_timer_days ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-sky-700 hover:text-sky-800"
+                            onClick={() => startTaskTimer(task.id, task.auto_timer_days!)}
+                          >
+                            <Timer className="h-4 w-4 ml-1" />
+                            <span className="text-xs">הפעל {task.auto_timer_days}</span>
+                          </Button>
+                        ) : (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-muted-foreground hover:text-primary"
+                              >
+                                <Timer className="h-4 w-4 ml-1" />
+                                <span className="text-xs">הפעל</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2" align="center">
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-center mb-2">בחר ימי יעד</p>
+                                {TARGET_DAYS_OPTIONS.map(option => (
+                                  <Button
+                                    key={option.value}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-xs h-7"
+                                    onClick={() => startTaskTimer(task.id, option.value)}
+                                  >
+                                    <Play className="h-3 w-3 ml-2 text-green-600" />
+                                    {option.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )
                       )}
                     </TableCell>
                     

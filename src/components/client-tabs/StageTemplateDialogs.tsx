@@ -91,6 +91,7 @@ interface SortableStageItemProps {
   isRenaming: boolean;
   isDeleting: boolean;
   isStageExpanded: boolean;
+  quickAddingStageId: string | null;
   renamingStage: { stageId: string; name: string } | null;
   setRenamingStage: (v: { stageId: string; name: string } | null) => void;
   handleRenameStage: () => void;
@@ -98,6 +99,8 @@ interface SortableStageItemProps {
   deletingStageId: string | null;
   expandedEditStage: string | null;
   setExpandedEditStage: (v: string | null) => void;
+  focusTaskInputForStage: string | null;
+  setFocusTaskInputForStage: (v: string | null) => void;
   newTaskName: string;
   setNewTaskName: (v: string) => void;
   addingTask: boolean;
@@ -105,6 +108,7 @@ interface SortableStageItemProps {
   setRenamingTask: (v: { taskId: string; title: string } | null) => void;
   deletingTaskId: string | null;
   handleAddTask: (stageId: string) => void;
+  handleQuickAddTask: (stageId: string) => void;
   handleRenameTask: (taskId: string) => void;
   handleDeleteTask: (taskId: string) => void;
 }
@@ -114,12 +118,15 @@ function SortableStageItem({
   isRenaming,
   isDeleting,
   isStageExpanded,
+  quickAddingStageId,
   renamingStage,
   setRenamingStage,
   handleRenameStage,
   handleDeleteStage,
   expandedEditStage,
   setExpandedEditStage,
+  focusTaskInputForStage,
+  setFocusTaskInputForStage,
   newTaskName,
   setNewTaskName,
   addingTask,
@@ -127,6 +134,7 @@ function SortableStageItem({
   setRenamingTask,
   deletingTaskId,
   handleAddTask,
+  handleQuickAddTask,
   handleRenameTask,
   handleDeleteTask,
 }: SortableStageItemProps) {
@@ -147,6 +155,19 @@ function SortableStageItem({
   };
 
   const StageIcon = STAGE_ICONS[stage.stage_icon] || FolderOpen;
+  const addTaskInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isStageExpanded && focusTaskInputForStage === stage.id) {
+      addTaskInputRef.current?.focus();
+      setFocusTaskInputForStage(null);
+    }
+  }, [
+    isStageExpanded,
+    focusTaskInputForStage,
+    setFocusTaskInputForStage,
+    stage.id,
+  ]);
 
   return (
     <div
@@ -219,6 +240,23 @@ function SortableStageItem({
             <Badge variant="outline" className="text-[10px]">
               {stage.tasks?.length || 0} משימות
             </Badge>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-primary hover:text-primary"
+              title="הוסף משימה לתבנית"
+              disabled={quickAddingStageId === stage.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleQuickAddTask(stage.id);
+              }}
+            >
+              {quickAddingStageId === stage.id ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -304,6 +342,7 @@ function SortableStageItem({
           <div className="flex items-center gap-2 pr-4 border-t border-dashed pt-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
             <Plus className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
             <Input
+              ref={addTaskInputRef}
               value={newTaskName}
               onChange={(e) => setNewTaskName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAddTask(stage.id); }}
@@ -747,7 +786,9 @@ export function ApplyTemplateDialog({
   // Task editing state
   const [expandedEditStage, setExpandedEditStage] = useState<string | null>(null);
   const [newTaskName, setNewTaskName] = useState("");
+  const [focusTaskInputForStage, setFocusTaskInputForStage] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState(false);
+  const [quickAddingStageId, setQuickAddingStageId] = useState<string | null>(null);
   const [renamingTask, setRenamingTask] = useState<{
     taskId: string;
     title: string;
@@ -790,6 +831,24 @@ export function ApplyTemplateDialog({
     await addTaskToTemplateStage(templateId, stageId, newTaskName.trim());
     setNewTaskName("");
     setAddingTask(false);
+  };
+
+  const handleQuickAddTask = async (templateId: string, stageId: string) => {
+    setExpandedEditStage(stageId);
+    setFocusTaskInputForStage(null);
+    setQuickAddingStageId(stageId);
+    const createdTask = await addTaskToTemplateStage(
+      templateId,
+      stageId,
+      "משימה חדשה",
+    );
+    if (createdTask?.id) {
+      setRenamingTask({
+        taskId: createdTask.id,
+        title: createdTask.title,
+      });
+    }
+    setQuickAddingStageId(null);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -1069,6 +1128,7 @@ export function ApplyTemplateDialog({
                                   );
                                   setNewStageName("");
                                   setRenamingStage(null);
+                                  setFocusTaskInputForStage(null);
                                 }}
                                 className={cn(
                                   "flex items-center gap-1.5 text-xs rounded px-2 py-1 transition-colors",
@@ -1112,6 +1172,7 @@ export function ApplyTemplateDialog({
                                     isRenaming={isRenaming}
                                     isDeleting={isDeleting}
                                     isStageExpanded={isStageExpanded}
+                                    quickAddingStageId={quickAddingStageId}
                                     renamingStage={renamingStage}
                                     setRenamingStage={setRenamingStage}
                                     handleRenameStage={() => handleRenameStage(stage.id)}
@@ -1119,6 +1180,8 @@ export function ApplyTemplateDialog({
                                     deletingStageId={deletingStageId}
                                     expandedEditStage={expandedEditStage}
                                     setExpandedEditStage={setExpandedEditStage}
+                                    focusTaskInputForStage={focusTaskInputForStage}
+                                    setFocusTaskInputForStage={setFocusTaskInputForStage}
                                     newTaskName={newTaskName}
                                     setNewTaskName={setNewTaskName}
                                     addingTask={addingTask}
@@ -1126,6 +1189,7 @@ export function ApplyTemplateDialog({
                                     setRenamingTask={setRenamingTask}
                                     deletingTaskId={deletingTaskId}
                                     handleAddTask={(stageId: string) => handleAddTask(template.id, stageId)}
+                                    handleQuickAddTask={(stageId: string) => handleQuickAddTask(template.id, stageId)}
                                     handleRenameTask={handleRenameTask}
                                     handleDeleteTask={handleDeleteTask}
                                   />

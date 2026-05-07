@@ -2474,6 +2474,7 @@ export type Database = {
       }
       client_stage_tasks: {
         Row: {
+          auto_timer_days: number | null
           background_color: string | null
           client_id: string
           completed: boolean
@@ -2485,12 +2486,14 @@ export type Database = {
           stage_id: string
           started_at: string | null
           target_working_days: number | null
+          task_type: string
           text_color: string | null
           timer_display_style: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          auto_timer_days?: number | null
           background_color?: string | null
           client_id: string
           completed?: boolean
@@ -2502,12 +2505,14 @@ export type Database = {
           stage_id: string
           started_at?: string | null
           target_working_days?: number | null
+          task_type?: string
           text_color?: string | null
           timer_display_style?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          auto_timer_days?: number | null
           background_color?: string | null
           client_id?: string
           completed?: boolean
@@ -2519,6 +2524,7 @@ export type Database = {
           stage_id?: string
           started_at?: string | null
           target_working_days?: number | null
+          task_type?: string
           text_color?: string | null
           timer_display_style?: number | null
           title?: string

@@ -7,6 +7,8 @@ export interface ClientStageTask {
   client_id: string;
   stage_id: string;
   title: string;
+  task_type?: "task" | "timer_tab";
+  auto_timer_days?: number | null;
   completed: boolean;
   completed_at: string | null;
   sort_order: number;
@@ -79,6 +81,29 @@ function removeDuplicateTasks(tasks: ClientStageTask[]): ClientStageTask[] {
   return Array.from(seen.values());
 }
 
+type AddTaskOptions = {
+  linkedClientId?: string | null;
+  linkedContactId?: string | null;
+  taskType?: "task" | "timer_tab";
+  autoTimerDays?: number | null;
+};
+
+function isSchemaColumnError(error: unknown): boolean {
+  const e = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
+  const text = `${e?.message || ""} ${e?.details || ""} ${e?.hint || ""}`.toLowerCase();
+  return (
+    e?.code === "PGRST204" ||
+    e?.code === "42703" ||
+    text.includes("schema cache") ||
+    text.includes("could not find the")
+  );
+}
+
 export function useClientStages(clientId: string) {
   const [stages, setStages] = useState<ClientStage[]>([]);
   const [tasks, setTasks] = useState<ClientStageTask[]>([]);
@@ -111,6 +136,13 @@ export function useClientStages(clientId: string) {
 
   // Load stages and tasks
   const loadData = useCallback(async () => {
+    if (!clientId) {
+      setStages([]);
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const loadedStages = await initializeStages();
@@ -139,7 +171,7 @@ export function useClientStages(clientId: string) {
   const addTask = async (
     stageId: string,
     title: string,
-    linkedClientId?: string | null,
+    linkedClientIdOrOptions?: string | null | AddTaskOptions,
     linkedContactId?: string | null,
   ) => {
     try {
@@ -147,25 +179,75 @@ export function useClientStages(clientId: string) {
         .filter((t) => t.stage_id === stageId)
         .reduce((max, t) => Math.max(max, t.sort_order), -1);
 
-      const { data, error } = await supabase
+      const options: AddTaskOptions =
+        linkedClientIdOrOptions &&
+        typeof linkedClientIdOrOptions === "object" &&
+        !Array.isArray(linkedClientIdOrOptions)
+          ? linkedClientIdOrOptions
+          : {
+              linkedClientId: linkedClientIdOrOptions ?? null,
+              linkedContactId,
+            };
+
+      const taskType = options?.taskType ?? "task";
+
+      const minimalInsert = {
+        client_id: clientId,
+        stage_id: stageId,
+        title,
+        sort_order: maxSortOrder + 1,
+      };
+
+      const fullInsert: Record<string, unknown> = {
+        ...minimalInsert,
+        ...(options?.linkedClientId
+          ? { linked_client_id: options.linkedClientId }
+          : {}),
+        ...(options?.linkedContactId
+          ? { linked_contact_id: options.linkedContactId }
+          : {}),
+      };
+
+      if (taskType === "timer_tab") {
+        fullInsert.task_type = taskType;
+        fullInsert.auto_timer_days = options?.autoTimerDays ?? null;
+      }
+
+      let { data, error } = await supabase
         .from("client_stage_tasks")
-        .insert({
-          client_id: clientId,
-          stage_id: stageId,
-          title,
-          sort_order: maxSortOrder + 1,
-          ...(linkedClientId ? { linked_client_id: linkedClientId } : {}),
-          ...(linkedContactId ? { linked_contact_id: linkedContactId } : {}),
-        })
+        .insert(fullInsert)
         .select()
         .single();
+
+      // Backward compatibility: if this project is missing newer columns,
+      // retry with the minimal legacy payload.
+      if (error && isSchemaColumnError(error)) {
+        const fallback = await supabase
+          .from("client_stage_tasks")
+          .insert(minimalInsert)
+          .select()
+          .single();
+
+        data = fallback.data;
+        error = fallback.error;
+
+        if (!error && taskType === "timer_tab") {
+          toast({
+            title: "שימו לב",
+            description: "טאב הטיימר נשמר כמשימה רגילה (נדרשת מיגרציה במסד הנתונים)",
+          });
+        }
+      }
 
       if (error) throw error;
 
       setTasks((prev) => [...prev, data]);
       toast({
         title: "הצלחה",
-        description: "המשימה נוספה בהצלחה",
+        description:
+          taskType === "timer_tab"
+            ? "טאב הטיימר נוסף בהצלחה"
+            : "המשימה נוספה בהצלחה",
       });
       return data;
     } catch (error: unknown) {

@@ -327,6 +327,10 @@ interface SortableTaskProps {
   stopTaskTimer?: (taskId: string) => void;
   cycleTaskTimerStyle?: (taskId: string) => void;
 }
+
+const isTimerTabTask = (task: ClientStageTask) =>
+  task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
+
 const SortableTaskItem = React.memo(function SortableTaskItem({
   task,
   stage,
@@ -362,6 +366,17 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
     opacity: isDragging ? 0.5 : 1,
     backgroundColor: task.background_color || undefined,
   };
+  const isTimerTab = isTimerTabTask(task);
+  const isTimerTabActive =
+    isTimerTab && Boolean(task.started_at && task.target_working_days);
+  const canStartTimerTab =
+    isTimerTab && !task.completed && Boolean(startTaskTimer && task.auto_timer_days);
+
+  const handleTimerTabClick = () => {
+    if (!canStartTimerTab || isTimerTabActive || !task.auto_timer_days) return;
+    startTaskTimer?.(task.id, task.auto_timer_days);
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -373,7 +388,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
             task.completed && !task.background_color
               ? "bg-white dark:bg-gray-900 border border-[#85868C]"
               : !task.background_color &&
-                  "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-transparent",
+                  (isTimerTabActive
+                    ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-300 dark:border-sky-800 shadow-sm shadow-sky-100/80"
+                    : isTimerTab
+                      ? "bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50/60 dark:hover:bg-sky-950/10"
+                      : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-transparent"),
             isDragging && "shadow-lg ring-2 ring-primary/20",
           )}
         >
@@ -451,20 +470,49 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
               </Button>
             </div>
           ) : (
-            <div className="flex-1 min-w-0">
+            <div
+              className={cn(
+                "flex-1 min-w-0",
+                canStartTimerTab && !isTimerTabActive && "cursor-pointer",
+              )}
+              onClick={handleTimerTabClick}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && canStartTimerTab) {
+                  e.preventDefault();
+                  handleTimerTabClick();
+                }
+              }}
+              role={isTimerTab ? "button" : undefined}
+              tabIndex={isTimerTab ? 0 : undefined}
+              aria-label={
+                isTimerTab && task.auto_timer_days
+                  ? `הפעל טאב טיימר ${task.title} ל-${task.auto_timer_days} ימי עבודה`
+                  : undefined
+              }
+            >
               <p
                 className={cn(
                   "text-sm text-right break-words text-[#1a2c5f] dark:text-slate-200",
                   task.completed &&
                     "line-through text-emerald-600 dark:text-emerald-400",
                   task.is_bold && "font-bold",
+                  isTimerTab && "flex items-center justify-end gap-1.5",
                 )}
                 style={{
                   color: task.text_color || undefined,
                 }}
               >
+                {isTimerTab && <Timer className="h-3.5 w-3.5 shrink-0 text-sky-600" />}
                 <TaskTitleWithConsultants taskId={task.id} title={task.title} />
               </p>
+              {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
+                <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                    טאב טיימר
+                  </span>
+                  <span>לחץ להפעלת {task.auto_timer_days} ימי עבודה</span>
+                </div>
+              )}
               {/* Day Counter - if timer is active - click to change style */}
               {Boolean(task.started_at && task.target_working_days) && (
                 <div className="flex items-center gap-1 mt-1">
@@ -1200,6 +1248,12 @@ interface SortableExpandedTaskProps {
   >;
   handleToggleTask: (task: ClientStageTask) => void;
   handleDeleteTask: (taskId: string) => void;
+  startTaskTimer?: (
+    taskId: string,
+    targetDays: number,
+    startDate?: string,
+  ) => void;
+  cycleTaskTimerStyle?: (taskId: string) => void;
 }
 function SortableExpandedTaskItem({
   task,
@@ -1210,6 +1264,8 @@ function SortableExpandedTaskItem({
   setEditingTask,
   handleToggleTask,
   handleDeleteTask,
+  startTaskTimer,
+  cycleTaskTimerStyle,
 }: SortableExpandedTaskProps) {
   const {
     attributes,
@@ -1226,6 +1282,11 @@ function SortableExpandedTaskItem({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  const isTimerTab = isTimerTabTask(task);
+  const isTimerTabActive =
+    isTimerTab && Boolean(task.started_at && task.target_working_days);
+  const canStartTimerTab =
+    isTimerTab && !task.completed && Boolean(startTaskTimer && task.auto_timer_days);
   return (
     <div
       ref={setNodeRef}
@@ -1234,7 +1295,11 @@ function SortableExpandedTaskItem({
         "flex items-center gap-3 p-4 rounded-lg transition-all group",
         task.completed
           ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900"
-          : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700",
+          : isTimerTabActive
+            ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900"
+            : isTimerTab
+              ? "bg-slate-50 dark:bg-slate-900/30 hover:bg-sky-50 dark:hover:bg-sky-950/10 border border-dashed border-slate-300 dark:border-slate-700"
+              : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700",
         isDragging && "shadow-lg ring-2 ring-primary/20",
       )}
     >
@@ -1282,16 +1347,42 @@ function SortableExpandedTaskItem({
         )}
       </button>
 
-      <div className="flex-1 min-w-0">
+      <div
+        className={cn(
+          "flex-1 min-w-0",
+          canStartTimerTab && !isTimerTabActive && "cursor-pointer",
+        )}
+        onClick={() => {
+          if (!canStartTimerTab || isTimerTabActive || !task.auto_timer_days) return;
+          startTaskTimer?.(task.id, task.auto_timer_days);
+        }}
+      >
         <p
           className={cn(
             "text-base text-right text-[#1a2c5f] dark:text-slate-200 font-medium",
             task.completed &&
               "line-through text-emerald-600 dark:text-emerald-400",
+            isTimerTab && "flex items-center justify-end gap-2",
           )}
         >
+          {isTimerTab && <Timer className="h-4 w-4 shrink-0 text-sky-600" />}
           <TaskTitleWithConsultants taskId={task.id} title={task.title} />
         </p>
+        {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
+          <p className="mt-1 text-xs text-right text-slate-500 dark:text-slate-400">
+            לחץ להפעלת {task.auto_timer_days} ימי עבודה
+          </p>
+        )}
+        {Boolean(task.started_at && task.target_working_days) && (
+          <div className="mt-2 flex justify-end">
+            <TaskTimerBadge
+              startedAt={task.started_at}
+              targetDays={task.target_working_days}
+              displayStyle={task.timer_display_style}
+              onStyleChange={() => cycleTaskTimerStyle?.(task.id)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Task Actions */}
@@ -1905,6 +1996,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   const [addTaskDialog, setAddTaskDialog] = useState<{
     stageId: string;
     title: string;
+    taskType: "task" | "timer_tab";
+    autoTimerDays: string;
     linkedClientId?: string | null;
     linkedContactId?: string | null;
     linkedLabel?: string;
@@ -1958,11 +2051,23 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   };
   const handleAddTaskFromDialog = async () => {
     if (!addTaskDialog || !addTaskDialog.title.trim()) return;
+    const autoTimerDays = Number.parseInt(addTaskDialog.autoTimerDays, 10);
+    if (
+      addTaskDialog.taskType === "timer_tab" &&
+      (!Number.isFinite(autoTimerDays) || autoTimerDays <= 0)
+    ) {
+      return;
+    }
     await addTask(
       addTaskDialog.stageId,
       addTaskDialog.title,
-      addTaskDialog.linkedClientId ?? null,
-      addTaskDialog.linkedContactId ?? null,
+      {
+        linkedClientId: addTaskDialog.linkedClientId ?? null,
+        linkedContactId: addTaskDialog.linkedContactId ?? null,
+        taskType: addTaskDialog.taskType,
+        autoTimerDays:
+          addTaskDialog.taskType === "timer_tab" ? autoTimerDays : null,
+      },
     );
     setAddTaskDialog(null);
   };
@@ -3206,11 +3311,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                         setAddTaskDialog({
                           stageId: stage.stage_id,
                           title: "",
+                          taskType: "task",
+                          autoTimerDays: "",
                         })
                       }
                     >
                       <Plus className="h-4 w-4 ml-2" />
-                      הוסף משימה
+                      הוסף משימה / טאב
                     </Button>
                     <Button
                       size="sm"
@@ -3659,6 +3766,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                                     setEditingTask={setEditingTask}
                                     handleToggleTask={handleToggleTask}
                                     handleDeleteTask={handleDeleteTask}
+                                    startTaskTimer={startTaskTimer}
+                                    cycleTaskTimerStyle={cycleTaskTimerStyle}
                                   />
                                 </div>
                               </div>
@@ -3845,11 +3954,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                         setAddTaskDialog({
                           stageId: expandedStageData.stage_id,
                           title: "",
+                          taskType: "task",
+                          autoTimerDays: "",
                         });
                       }}
                     >
                       <Plus className="h-4 w-4 ml-2" />
-                      הוסף משימה
+                      הוסף משימה / טאב
                     </Button>
                     <Button
                       variant="outline"
@@ -3896,9 +4007,29 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
       >
         <DialogContent className="sm:max-w-[440px]" dir="rtl">
           <DialogHeader className="text-right">
-            <DialogTitle>הוספת משימה</DialogTitle>
+            <DialogTitle>הוספת משימה / טאב טיימר</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <Tabs
+              value={addTaskDialog?.taskType ?? "task"}
+              onValueChange={(value) =>
+                setAddTaskDialog((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        taskType: value as "task" | "timer_tab",
+                      }
+                    : null,
+                )
+              }
+              dir="rtl"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="task">משימה רגילה</TabsTrigger>
+                <TabsTrigger value="timer_tab">טאב טיימר</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             <Input
               value={addTaskDialog?.title ?? ""}
               onChange={(e) =>
@@ -3910,10 +4041,62 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 if (e.key === "Enter") handleAddTaskFromDialog();
                 if (e.key === "Escape") setAddTaskDialog(null);
               }}
-              placeholder="שם המשימה..."
+              placeholder={
+                addTaskDialog?.taskType === "timer_tab"
+                  ? "שם טאב הטיימר..."
+                  : "שם המשימה..."
+              }
               className="text-right"
               autoFocus
             />
+
+            {addTaskDialog?.taskType === "timer_tab" && (
+              <div className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/60 p-3 dark:border-sky-900 dark:bg-sky-950/10">
+                <p className="text-sm font-medium text-right">
+                  כמה ימי עבודה יופעלו בלחיצה על הטאב?
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {TARGET_DAYS_OPTIONS.slice(0, 6).map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      size="sm"
+                      variant={
+                        addTaskDialog.autoTimerDays === String(option.value)
+                          ? "default"
+                          : "outline"
+                      }
+                      className="text-xs"
+                      onClick={() =>
+                        setAddTaskDialog((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                autoTimerDays: String(option.value),
+                              }
+                            : null,
+                        )
+                      }
+                    >
+                      {option.value} ימים
+                    </Button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={addTaskDialog.autoTimerDays}
+                  onChange={(e) =>
+                    setAddTaskDialog((prev) =>
+                      prev ? { ...prev, autoTimerDays: e.target.value } : null,
+                    )
+                  }
+                  placeholder="או הזן מספר ימי עבודה"
+                  className="text-right"
+                />
+              </div>
+            )}
 
             {/* Client / Contact link picker */}
             <div className="space-y-1.5">
@@ -4050,10 +4233,15 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           <DialogFooter className="flex-row-reverse gap-2">
             <Button
               onClick={handleAddTaskFromDialog}
-              disabled={!addTaskDialog?.title.trim()}
+              disabled={
+                !addTaskDialog?.title.trim() ||
+                (addTaskDialog.taskType === "timer_tab" &&
+                  (!addTaskDialog.autoTimerDays.trim() ||
+                    Number.parseInt(addTaskDialog.autoTimerDays, 10) <= 0))
+              }
             >
               <Plus className="h-4 w-4 ml-2" />
-              הוסף
+              {addTaskDialog?.taskType === "timer_tab" ? "הוסף טאב" : "הוסף"}
             </Button>
             <Button variant="ghost" onClick={() => setAddTaskDialog(null)}>
               ביטול

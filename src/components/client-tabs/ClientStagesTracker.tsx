@@ -16,11 +16,13 @@ import {
   Plus,
   ListPlus,
   Loader2,
-  Bell
+  Bell,
+  Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStages } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
+import { TaskTimerBadge } from './StageTimerDisplay';
 
 interface ClientStagesTrackerProps {
   clientId: string;
@@ -36,11 +38,14 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTrackerProps) {
-  const { stages, loading, addTask, addBulkTasks, toggleTask, updateTask, deleteTask } = useClientStages(clientId);
+  const { stages, loading, addTask, addBulkTasks, toggleTask, updateTask, deleteTask, startTaskTimer } = useClientStages(clientId);
   
   const [editingTask, setEditingTask] = useState<{ stageId: string; taskId: string; title: string } | null>(null);
-  const [addingTask, setAddingTask] = useState<{ stageId: string; title: string } | null>(null);
+  const [addingTask, setAddingTask] = useState<{ stageId: string; title: string; taskType: 'task' | 'timer_tab'; autoTimerDays: string } | null>(null);
   const [bulkAddDialog, setBulkAddDialog] = useState<{ stageId: string; tasks: string } | null>(null);
+
+  const isTimerTabTask = (task: { task_type?: string | null; auto_timer_days?: number | null }) =>
+    task.task_type === 'timer_tab' && Boolean(task.auto_timer_days);
 
   const getStageIcon = (iconName: string | null) => {
     if (!iconName) return Phone;
@@ -53,7 +58,16 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
 
   const handleAddTask = async (stageId: string) => {
     if (!addingTask || !addingTask.title.trim()) return;
-    await addTask(stageId, addingTask.title);
+    const autoTimerDays = Number.parseInt(addingTask.autoTimerDays, 10);
+    if (addingTask.taskType === 'timer_tab') {
+      if (!Number.isFinite(autoTimerDays) || autoTimerDays <= 0) return;
+      await addTask(stageId, addingTask.title, {
+        taskType: 'timer_tab',
+        autoTimerDays,
+      });
+    } else {
+      await addTask(stageId, addingTask.title);
+    }
     setAddingTask(null);
   };
 
@@ -175,7 +189,13 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                       key={task.id}
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-md transition-colors flex-row-reverse",
-                        task.completed ? "bg-green-50 dark:bg-green-950/20" : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                        task.completed
+                          ? "bg-green-50 dark:bg-green-950/20"
+                          : isTimerTabTask(task) && task.started_at && task.target_working_days
+                            ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900"
+                            : isTimerTabTask(task)
+                              ? "border border-dashed border-slate-300 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-sky-950/10"
+                              : "hover:bg-gray-50 dark:hover:bg-gray-800"
                       )}
                     >
                       <Checkbox
@@ -209,12 +229,48 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                         </div>
                       ) : (
                         <>
-                          <span className={cn(
-                            "flex-1 text-sm text-right",
-                            task.completed && "line-through text-gray-500"
-                          )}>
-                            {task.title}
-                          </span>
+                          <div
+                            className={cn(
+                              "flex-1 text-right",
+                              isTimerTabTask(task) &&
+                                !task.completed &&
+                                !task.started_at &&
+                                task.auto_timer_days &&
+                                'cursor-pointer'
+                            )}
+                            onClick={() => {
+                              if (
+                                isTimerTabTask(task) &&
+                                !task.completed &&
+                                !task.started_at &&
+                                task.auto_timer_days
+                              ) {
+                                startTaskTimer(task.id, task.auto_timer_days);
+                              }
+                            }}
+                          >
+                            <span className={cn(
+                              "flex items-center justify-end gap-1.5 text-sm",
+                              task.completed && "line-through text-gray-500"
+                            )}>
+                              {isTimerTabTask(task) && <Timer className="h-3.5 w-3.5 text-sky-600 shrink-0" />}
+                              <span>{task.title}</span>
+                            </span>
+                            {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
+                              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                לחץ להפעלת {task.auto_timer_days} ימי עבודה
+                              </div>
+                            )}
+                            {task.started_at && task.target_working_days && (
+                              <div className="mt-1 flex justify-end">
+                                <TaskTimerBadge
+                                  startedAt={task.started_at}
+                                  targetDays={task.target_working_days}
+                                  displayStyle={task.timer_display_style}
+                                />
+                              </div>
+                            )}
+                          </div>
                           
                           {task.completed && task.completed_at && (
                             <Badge variant="outline" className="text-xs">
@@ -260,27 +316,61 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
 
               {/* Add Task Input */}
               {addingTask?.stageId === stage.stage_id ? (
-                <div className="flex gap-2 pt-2 flex-row-reverse">
-                  <Input
-                    value={addingTask.title}
-                    onChange={(e) => setAddingTask({ ...addingTask, title: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAddTask(stage.stage_id);
-                      } else if (e.key === 'Escape') {
-                        setAddingTask(null);
+                <div className="space-y-2 pt-2">
+                  <div className="flex gap-2 flex-row-reverse">
+                    <Button
+                      size="sm"
+                      variant={addingTask.taskType === 'task' ? 'default' : 'outline'}
+                      onClick={() => setAddingTask({ ...addingTask, taskType: 'task', autoTimerDays: '' })}
+                    >
+                      משימה
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={addingTask.taskType === 'timer_tab' ? 'default' : 'outline'}
+                      onClick={() => setAddingTask({ ...addingTask, taskType: 'timer_tab' })}
+                    >
+                      טאב טיימר
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 flex-row-reverse">
+                    <Input
+                      value={addingTask.title}
+                      onChange={(e) => setAddingTask({ ...addingTask, title: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddTask(stage.stage_id);
+                        } else if (e.key === 'Escape') {
+                          setAddingTask(null);
+                        }
+                      }}
+                      placeholder={addingTask.taskType === 'timer_tab' ? 'שם טאב הטיימר...' : 'שם המשימה...'}
+                      className="h-8 text-right"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleAddTask(stage.stage_id)}
+                      disabled={
+                        !addingTask.title.trim() ||
+                        (addingTask.taskType === 'timer_tab' &&
+                          (!addingTask.autoTimerDays.trim() || Number.parseInt(addingTask.autoTimerDays, 10) <= 0))
                       }
-                    }}
-                    placeholder="שם המשימה..."
-                    className="h-8 text-right"
-                    autoFocus
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => handleAddTask(stage.stage_id)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {addingTask.taskType === 'timer_tab' && (
+                    <Input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={addingTask.autoTimerDays}
+                      onChange={(e) => setAddingTask({ ...addingTask, autoTimerDays: e.target.value })}
+                      placeholder="ימי עבודה להפעלה"
+                      className="h-8 text-right"
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="flex gap-2 pt-2 flex-row-reverse">
@@ -288,10 +378,10 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                     size="sm"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => setAddingTask({ stageId: stage.stage_id, title: '' })}
+                    onClick={() => setAddingTask({ stageId: stage.stage_id, title: '', taskType: 'task', autoTimerDays: '' })}
                   >
                     <Plus className="h-4 w-4 ml-2" />
-                    הוסף משימה
+                    הוסף משימה / טאב
                   </Button>
                   <Button
                     size="sm"
