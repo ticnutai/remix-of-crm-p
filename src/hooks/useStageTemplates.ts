@@ -14,6 +14,8 @@ export interface TemplateTask {
   template_stage_id: string | null;
   title: string;
   sort_order: number;
+  task_type?: "task" | "timer_tab" | null;
+  auto_timer_days?: number | null;
   // Content fields (saved when includeTaskContent is true)
   completed?: boolean;
   completed_at?: string | null;
@@ -48,6 +50,8 @@ export interface StageTemplate {
   tasks?: TemplateTask[]; // For single-stage templates
 }
 
+type TemplateTaskType = "task" | "timer_tab";
+
 export interface ClientStage {
   id: string;
   client_id: string;
@@ -60,6 +64,14 @@ export interface ClientStage {
     title: string;
     completed: boolean;
     sort_order: number;
+    task_type?: "task" | "timer_tab" | null;
+    auto_timer_days?: number | null;
+    completed_at?: string | null;
+    background_color?: string | null;
+    text_color?: string | null;
+    is_bold?: boolean;
+    target_working_days?: number | null;
+    started_at?: string | null;
   }[];
 }
 
@@ -168,12 +180,19 @@ export function useStageTemplates() {
 
         // Create template tasks
         if (stage.tasks && stage.tasks.length > 0) {
-          const templateTasks = stage.tasks.map((task, index) => ({
-            template_id: template.id,
-            template_stage_id: templateStage.id,
-            title: task.title,
-            sort_order: task.sort_order ?? index,
-          }));
+          const templateTasks = stage.tasks.map((task, index) => {
+            const isTimerTab =
+              task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
+
+            return {
+              template_id: template.id,
+              template_stage_id: templateStage.id,
+              title: task.title,
+              sort_order: task.sort_order ?? index,
+              task_type: isTimerTab ? "timer_tab" : "task",
+              auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
+            };
+          });
 
           const { error: tasksError } = await db
             .from("stage_template_tasks")
@@ -320,13 +339,32 @@ export function useStageTemplates() {
               stage.stage_name,
             );
             const templateTasks = stage.tasks.map((task: any, index) => {
-              // Basic task fields only - the content fields might not exist in the DB
-              return {
+              const isTimerTab =
+                task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
+
+              const baseTask = {
                 template_id: template.id,
                 template_stage_id: templateStage.id,
                 title: task.title,
                 sort_order: task.sort_order ?? index,
+                task_type: isTimerTab ? "timer_tab" : "task",
+                auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
               };
+
+              if (includeTaskContent) {
+                return {
+                  ...baseTask,
+                  completed: task.completed || false,
+                  completed_at: task.completed_at || null,
+                  background_color: task.background_color || null,
+                  text_color: task.text_color || null,
+                  is_bold: task.is_bold || false,
+                  target_working_days: task.target_working_days || null,
+                  started_at: task.started_at || null,
+                };
+              }
+
+              return baseTask;
             });
 
             console.log(
@@ -430,12 +468,18 @@ export function useStageTemplates() {
             // Create tasks for this stage
             if (templateStage.tasks && templateStage.tasks.length > 0) {
               const tasks = templateStage.tasks.map((task) => {
+                const isTimerTab =
+                  task.task_type === "timer_tab" &&
+                  Boolean(task.auto_timer_days);
+
                 const baseTask: any = {
                   client_id: clientId,
                   stage_id: stageId,
                   title: task.title,
                   sort_order: task.sort_order,
                   completed: false,
+                  task_type: isTimerTab ? "timer_tab" : "task",
+                  auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
                 };
 
                 // If template includes content, apply saved task state
@@ -772,6 +816,79 @@ export function useStageTemplates() {
     [toast, loadTemplates],
   );
 
+  // Update timer-tab settings for a template task
+  const updateTemplateTaskTimerSettings = useCallback(
+    async (
+      taskId: string,
+      taskType: TemplateTaskType,
+      autoTimerDays: number | null,
+    ) => {
+      try {
+        const normalizedDays =
+          taskType === "timer_tab"
+            ? Math.max(1, autoTimerDays ?? 1)
+            : null;
+
+        const { error } = await db
+          .from("stage_template_tasks")
+          .update({
+            task_type: taskType,
+            auto_timer_days: normalizedDays,
+          })
+          .eq("id", taskId);
+
+        if (error) throw error;
+
+        await loadTemplates();
+        return true;
+      } catch (error) {
+        console.error("Error updating template task timer settings:", error);
+        toast({
+          title: "שגיאה בעדכון טאב טיימר",
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
+  // Quick-upgrade selected template tasks to timer tabs
+  const bulkUpgradeTemplateTasksToTimerTabs = useCallback(
+    async (taskIds: string[], autoTimerDays: number) => {
+      if (!taskIds.length) return true;
+
+      try {
+        const normalizedDays = Math.max(1, autoTimerDays);
+
+        const { error } = await db
+          .from("stage_template_tasks")
+          .update({
+            task_type: "timer_tab",
+            auto_timer_days: normalizedDays,
+          })
+          .in("id", taskIds);
+
+        if (error) throw error;
+
+        await loadTemplates();
+        toast({
+          title: "בוצע שדרוג מהיר",
+          description: `שודרגו ${taskIds.length} משימות לטאב טיימר`,
+        });
+        return true;
+      } catch (error) {
+        console.error("Error bulk-upgrading template tasks:", error);
+        toast({
+          title: "שגיאה בשדרוג מהיר",
+          variant: "destructive",
+        });
+        return false;
+      }
+    },
+    [toast, loadTemplates],
+  );
+
   // Delete template
   const deleteTemplate = useCallback(
     async (templateId: string) => {
@@ -1059,6 +1176,8 @@ export function useStageTemplates() {
     addTaskToTemplateStage,
     deleteTaskFromTemplate,
     renameTaskInTemplate,
+    updateTemplateTaskTimerSettings,
+    bulkUpgradeTemplateTasksToTimerTabs,
     reorderTemplateStages,
     getClientsForCopy,
     getClientStages,

@@ -111,6 +111,14 @@ interface SortableStageItemProps {
   handleQuickAddTask: (stageId: string) => void;
   handleRenameTask: (taskId: string) => void;
   handleDeleteTask: (taskId: string) => void;
+  selectedTaskIdsForUpgrade: Set<string>;
+  onToggleTaskForUpgrade: (taskId: string) => void;
+  onToggleStageTasksForUpgrade: (taskIds: string[]) => void;
+  handleUpdateTaskTimerConfig: (
+    taskId: string,
+    taskType: "task" | "timer_tab",
+    autoTimerDays: number | null,
+  ) => void;
 }
 
 function SortableStageItem({
@@ -137,6 +145,10 @@ function SortableStageItem({
   handleQuickAddTask,
   handleRenameTask,
   handleDeleteTask,
+  selectedTaskIdsForUpgrade,
+  onToggleTaskForUpgrade,
+  onToggleStageTasksForUpgrade,
+  handleUpdateTaskTimerConfig,
 }: SortableStageItemProps) {
   const {
     attributes,
@@ -156,6 +168,31 @@ function SortableStageItem({
 
   const StageIcon = STAGE_ICONS[stage.stage_icon] || FolderOpen;
   const addTaskInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [timerDaysDraft, setTimerDaysDraft] = useState<Record<string, string>>({});
+
+  const stageTaskIds = (stage.tasks || []).map((t: any) => t.id);
+  const selectedInStageCount = stageTaskIds.filter((id) => selectedTaskIdsForUpgrade.has(id)).length;
+  const allStageTasksSelected = stageTaskIds.length > 0 && selectedInStageCount === stageTaskIds.length;
+
+  const commitTimerDays = (task: any) => {
+    const rawDays = timerDaysDraft[task.id] ?? String(task.auto_timer_days || "");
+    const parsedDays = Number.parseInt(rawDays, 10);
+
+    if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
+      setTimerDaysDraft((prev) => ({
+        ...prev,
+        [task.id]: String(task.auto_timer_days || 7),
+      }));
+      return;
+    }
+
+    handleUpdateTaskTimerConfig(task.id, "timer_tab", parsedDays);
+    setTimerDaysDraft((prev) => {
+      const next = { ...prev };
+      delete next[task.id];
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isStageExpanded && focusTaskInputForStage === stage.id) {
@@ -293,11 +330,35 @@ function SortableStageItem({
       {/* Expanded tasks list */}
       {isStageExpanded && (
         <div className="border-t bg-muted/20 px-3 py-2 space-y-1.5">
+          {stageTaskIds.length > 0 && (
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pb-1 border-b border-dashed">
+              <span>
+                בחירה לשדרוג מהיר: {selectedInStageCount}/{stageTaskIds.length}
+              </span>
+              <button
+                className="text-primary hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleStageTasksForUpgrade(stageTaskIds);
+                }}
+              >
+                {allStageTasksSelected ? "בטל בחירה בשלב" : "בחר הכל בשלב"}
+              </button>
+            </div>
+          )}
           {(stage.tasks || []).map((task: any) => {
             const isTaskRenaming = renamingTask?.taskId === task.id;
             const isTaskDeleting = deletingTaskId === task.id;
+            const taskType: "task" | "timer_tab" =
+              task.task_type === "timer_tab" ? "timer_tab" : "task";
             return (
               <div key={task.id} className="flex items-center gap-2 pr-4">
+                <Checkbox
+                  checked={selectedTaskIdsForUpgrade.has(task.id)}
+                  onCheckedChange={() => onToggleTaskForUpgrade(task.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-3.5 w-3.5"
+                />
                 <CheckSquare className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 {isTaskRenaming ? (
                   <>
@@ -324,6 +385,58 @@ function SortableStageItem({
                 ) : (
                   <>
                     <span className="flex-1 text-xs text-foreground">{task.title}</span>
+                    <div className="flex items-center gap-1">
+                      <Select
+                        value={taskType}
+                        onValueChange={(value) => {
+                          const nextType = value as "task" | "timer_tab";
+                          if (nextType === "task") {
+                            const approved = confirm(
+                              "מעבר למשימה רגילה יבטל את טאב הטיימר וימחק את ימי הטיימר. להמשיך?",
+                            );
+                            if (!approved) return;
+                            handleUpdateTaskTimerConfig(task.id, "task", null);
+                            return;
+                          }
+                          const fallbackDays =
+                            task.auto_timer_days && task.auto_timer_days > 0
+                              ? task.auto_timer_days
+                              : 7;
+                          handleUpdateTaskTimerConfig(task.id, "timer_tab", fallbackDays);
+                        }}
+                      >
+                        <SelectTrigger className="h-6 w-[92px] px-2 text-[10px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="task">משימה</SelectItem>
+                          <SelectItem value="timer_tab">טאב טיימר</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {taskType === "timer_tab" && (
+                        <Input
+                          type="number"
+                          min="1"
+                          value={timerDaysDraft[task.id] ?? String(task.auto_timer_days || "")}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            setTimerDaysDraft((prev) => ({
+                              ...prev,
+                              [task.id]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => commitTimerDays(task)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitTimerDays(task);
+                            }
+                          }}
+                          placeholder="ימים"
+                          className="h-6 w-[62px] px-2 text-[10px]"
+                        />
+                      )}
+                    </div>
                     <Button size="icon" variant="ghost" className="h-6 w-6" style={{ opacity: 1 }}
                       onClick={(e) => { e.stopPropagation(); setRenamingTask({ taskId: task.id, title: task.title }); }}>
                       <Pencil className="h-3 w-3" />
@@ -650,6 +763,9 @@ export function SaveAllStagesDialog({
                   </span>
                 )}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                סוג טאב טיימר וימי טיימר מוגדרים נשמרים תמיד כחלק מהתבנית
+              </p>
             </div>
           </div>
 
@@ -756,6 +872,8 @@ export function ApplyTemplateDialog({
     addTaskToTemplateStage,
     deleteTaskFromTemplate,
     renameTaskInTemplate,
+    updateTemplateTaskTimerSettings,
+    bulkUpgradeTemplateTasksToTimerTabs,
     reorderTemplateStages,
   } = useStageTemplates();
 
@@ -794,6 +912,10 @@ export function ApplyTemplateDialog({
     title: string;
   } | null>(null);
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
+  const [selectedTaskIdsForUpgradeByTemplate, setSelectedTaskIdsForUpgradeByTemplate] =
+    useState<Record<string, Set<string>>>({});
+  const [upgradeDaysByTemplate, setUpgradeDaysByTemplate] = useState<Record<string, string>>({});
+  const [bulkUpgradingTemplateId, setBulkUpgradingTemplateId] = useState<string | null>(null);
 
   const handleStageDragEnd = async (event: DragEndEvent, template: StageTemplate) => {
     const { active, over } = event;
@@ -861,6 +983,62 @@ export function ApplyTemplateDialog({
     if (!renamingTask || !renamingTask.title.trim()) return;
     await renameTaskInTemplate(taskId, renamingTask.title.trim());
     setRenamingTask(null);
+  };
+
+  const handleUpdateTaskTimerConfig = async (
+    taskId: string,
+    taskType: "task" | "timer_tab",
+    autoTimerDays: number | null,
+  ) => {
+    await updateTemplateTaskTimerSettings(taskId, taskType, autoTimerDays);
+  };
+
+  const toggleTaskForQuickUpgrade = (templateId: string, taskId: string) => {
+    setSelectedTaskIdsForUpgradeByTemplate((prev) => {
+      const current = prev[templateId] ? new Set(prev[templateId]) : new Set<string>();
+      if (current.has(taskId)) {
+        current.delete(taskId);
+      } else {
+        current.add(taskId);
+      }
+      return { ...prev, [templateId]: current };
+    });
+  };
+
+  const toggleStageTasksForQuickUpgrade = (templateId: string, taskIds: string[]) => {
+    setSelectedTaskIdsForUpgradeByTemplate((prev) => {
+      const current = prev[templateId] ? new Set(prev[templateId]) : new Set<string>();
+      const allSelected = taskIds.length > 0 && taskIds.every((id) => current.has(id));
+
+      if (allSelected) {
+        taskIds.forEach((id) => current.delete(id));
+      } else {
+        taskIds.forEach((id) => current.add(id));
+      }
+
+      return { ...prev, [templateId]: current };
+    });
+  };
+
+  const handleBulkUpgradeSelectedTasks = async (templateId: string) => {
+    const selectedSet = selectedTaskIdsForUpgradeByTemplate[templateId];
+    const selectedIds = selectedSet ? Array.from(selectedSet) : [];
+    if (!selectedIds.length) return;
+
+    const daysRaw = upgradeDaysByTemplate[templateId] ?? "7";
+    const days = Number.parseInt(daysRaw, 10);
+    if (!Number.isFinite(days) || days <= 0) return;
+
+    setBulkUpgradingTemplateId(templateId);
+    const success = await bulkUpgradeTemplateTasksToTimerTabs(selectedIds, days);
+    setBulkUpgradingTemplateId(null);
+
+    if (success) {
+      setSelectedTaskIdsForUpgradeByTemplate((prev) => ({
+        ...prev,
+        [templateId]: new Set<string>(),
+      }));
+    }
   };
 
   const filteredTemplates = templates.filter(
@@ -1004,6 +1182,13 @@ export function ApplyTemplateDialog({
                   const allChecked =
                     effectiveSelected.size === allStageIds.length;
                   const noneChecked = effectiveSelected.size === 0;
+                  const selectedTaskIdsForUpgrade =
+                    selectedTaskIdsForUpgradeByTemplate[template.id] ||
+                    new Set<string>();
+                  const selectedTaskCountForUpgrade =
+                    selectedTaskIdsForUpgrade.size;
+                  const upgradeDaysValue =
+                    upgradeDaysByTemplate[template.id] ?? "7";
 
                   return (
                     <div
@@ -1147,95 +1332,150 @@ export function ApplyTemplateDialog({
 
                           {/* EDIT STAGES MODE */}
                           {editStagesMode === template.id ? (
-                            <DndContext
-                              sensors={dndSensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={(event) => handleStageDragEnd(event, template)}
-                            >
-                            <SortableContext
-                              items={(template.stages || []).map((s) => s.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                            <div className="space-y-2 mb-3 max-h-[350px] overflow-y-auto">
-                              {(template.stages || []).map((stage) => {
-                                const StageIcon =
-                                  STAGE_ICONS[stage.stage_icon] || FolderOpen;
-                                const isRenaming =
-                                  renamingStage?.stageId === stage.id;
-                                const isDeleting = deletingStageId === stage.id;
-                                const isStageExpanded = expandedEditStage === stage.id;
-
-                                return (
-                                  <SortableStageItem
-                                    key={stage.id}
-                                    stage={stage}
-                                    isRenaming={isRenaming}
-                                    isDeleting={isDeleting}
-                                    isStageExpanded={isStageExpanded}
-                                    quickAddingStageId={quickAddingStageId}
-                                    renamingStage={renamingStage}
-                                    setRenamingStage={setRenamingStage}
-                                    handleRenameStage={() => handleRenameStage(stage.id)}
-                                    handleDeleteStage={() => handleDeleteStage(stage.id)}
-                                    deletingStageId={deletingStageId}
-                                    expandedEditStage={expandedEditStage}
-                                    setExpandedEditStage={setExpandedEditStage}
-                                    focusTaskInputForStage={focusTaskInputForStage}
-                                    setFocusTaskInputForStage={setFocusTaskInputForStage}
-                                    newTaskName={newTaskName}
-                                    setNewTaskName={setNewTaskName}
-                                    addingTask={addingTask}
-                                    renamingTask={renamingTask}
-                                    setRenamingTask={setRenamingTask}
-                                    deletingTaskId={deletingTaskId}
-                                    handleAddTask={(stageId: string) => handleAddTask(template.id, stageId)}
-                                    handleQuickAddTask={(stageId: string) => handleQuickAddTask(template.id, stageId)}
-                                    handleRenameTask={handleRenameTask}
-                                    handleDeleteTask={handleDeleteTask}
-                                  />
-                                );
-                              })}
-
-                              {/* Add new stage row */}
-                              <div
-                                className="flex items-center gap-2 border border-dashed rounded-lg px-3 py-2"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <Input
-                                  value={newStageName}
-                                  onChange={(e) =>
-                                    setNewStageName(e.target.value)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                      handleAddStage(template.id);
-                                  }}
-                                  placeholder="שם שלב חדש..."
-                                  className="h-7 flex-1 text-sm border-0 bg-transparent focus-visible:ring-0"
-                                />
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs text-primary"
-                                  disabled={
-                                    !newStageName.trim() || addingStage
-                                  }
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddStage(template.id);
-                                  }}
-                                >
-                                  {addingStage ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    "הוסף"
-                                  )}
-                                </Button>
+                            <>
+                              <div className="mb-2 rounded-lg border bg-background/70 p-2">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="text-xs text-muted-foreground">
+                                    שדרוג מהיר לטאב טיימר: {selectedTaskCountForUpgrade} משימות נבחרו
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={upgradeDaysValue}
+                                      onChange={(e) =>
+                                        setUpgradeDaysByTemplate((prev) => ({
+                                          ...prev,
+                                          [template.id]: e.target.value,
+                                        }))
+                                      }
+                                      placeholder="ימים"
+                                      className="h-7 w-20 text-xs"
+                                    />
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs"
+                                      disabled={
+                                        selectedTaskCountForUpgrade === 0 ||
+                                        bulkUpgradingTemplateId === template.id ||
+                                        !Number.isFinite(
+                                          Number.parseInt(upgradeDaysValue, 10),
+                                        ) ||
+                                        Number.parseInt(upgradeDaysValue, 10) <= 0
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBulkUpgradeSelectedTasks(template.id);
+                                      }}
+                                    >
+                                      {bulkUpgradingTemplateId === template.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin ml-1" />
+                                      ) : null}
+                                      שדרג נבחרות
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                            </SortableContext>
-                            </DndContext>
+
+                              <DndContext
+                                sensors={dndSensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(event) => handleStageDragEnd(event, template)}
+                              >
+                              <SortableContext
+                                items={(template.stages || []).map((s) => s.id)}
+                                strategy={verticalListSortingStrategy}
+                              >
+                              <div className="space-y-2 mb-3 max-h-[350px] overflow-y-auto">
+                                {(template.stages || []).map((stage) => {
+                                  const StageIcon =
+                                    STAGE_ICONS[stage.stage_icon] || FolderOpen;
+                                  const isRenaming =
+                                    renamingStage?.stageId === stage.id;
+                                  const isDeleting = deletingStageId === stage.id;
+                                  const isStageExpanded = expandedEditStage === stage.id;
+
+                                  return (
+                                    <SortableStageItem
+                                      key={stage.id}
+                                      stage={stage}
+                                      isRenaming={isRenaming}
+                                      isDeleting={isDeleting}
+                                      isStageExpanded={isStageExpanded}
+                                      quickAddingStageId={quickAddingStageId}
+                                      renamingStage={renamingStage}
+                                      setRenamingStage={setRenamingStage}
+                                      handleRenameStage={() => handleRenameStage(stage.id)}
+                                      handleDeleteStage={() => handleDeleteStage(stage.id)}
+                                      deletingStageId={deletingStageId}
+                                      expandedEditStage={expandedEditStage}
+                                      setExpandedEditStage={setExpandedEditStage}
+                                      focusTaskInputForStage={focusTaskInputForStage}
+                                      setFocusTaskInputForStage={setFocusTaskInputForStage}
+                                      newTaskName={newTaskName}
+                                      setNewTaskName={setNewTaskName}
+                                      addingTask={addingTask}
+                                      renamingTask={renamingTask}
+                                      setRenamingTask={setRenamingTask}
+                                      deletingTaskId={deletingTaskId}
+                                      handleAddTask={(stageId: string) => handleAddTask(template.id, stageId)}
+                                      handleQuickAddTask={(stageId: string) => handleQuickAddTask(template.id, stageId)}
+                                      handleRenameTask={handleRenameTask}
+                                      handleDeleteTask={handleDeleteTask}
+                                      selectedTaskIdsForUpgrade={selectedTaskIdsForUpgrade}
+                                      onToggleTaskForUpgrade={(taskId: string) =>
+                                        toggleTaskForQuickUpgrade(template.id, taskId)
+                                      }
+                                      onToggleStageTasksForUpgrade={(taskIds: string[]) =>
+                                        toggleStageTasksForQuickUpgrade(template.id, taskIds)
+                                      }
+                                      handleUpdateTaskTimerConfig={handleUpdateTaskTimerConfig}
+                                    />
+                                  );
+                                })}
+
+                                {/* Add new stage row */}
+                                <div
+                                  className="flex items-center gap-2 border border-dashed rounded-lg px-3 py-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  <Input
+                                    value={newStageName}
+                                    onChange={(e) =>
+                                      setNewStageName(e.target.value)
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter")
+                                        handleAddStage(template.id);
+                                    }}
+                                    placeholder="שם שלב חדש..."
+                                    className="h-7 flex-1 text-sm border-0 bg-transparent focus-visible:ring-0"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-xs text-primary"
+                                    disabled={
+                                      !newStageName.trim() || addingStage
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddStage(template.id);
+                                    }}
+                                  >
+                                    {addingStage ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      "הוסף"
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              </SortableContext>
+                              </DndContext>
+                            </>
                           ) : (
                             /* NORMAL VIEW MODE */
                             <>

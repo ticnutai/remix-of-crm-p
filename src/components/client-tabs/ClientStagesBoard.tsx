@@ -374,6 +374,10 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
 
   const handleTimerTabClick = () => {
     if (!canStartTimerTab || isTimerTabActive || !task.auto_timer_days) return;
+    const approved = confirm(
+      `להפעיל את הטאב "${task.title}" ל-${task.auto_timer_days} ימי עבודה?`,
+    );
+    if (!approved) return;
     startTaskTimer?.(task.id, task.auto_timer_days);
   };
 
@@ -389,9 +393,9 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
               ? "bg-white dark:bg-gray-900 border border-[#85868C]"
               : !task.background_color &&
                   (isTimerTabActive
-                    ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-300 dark:border-sky-800 shadow-sm shadow-sky-100/80"
+                    ? "bg-gradient-to-l from-sky-100 via-cyan-100/80 to-white dark:from-sky-950/30 dark:via-cyan-950/20 dark:to-slate-950 border border-sky-300 dark:border-sky-800 shadow-sm shadow-sky-100/80"
                     : isTimerTab
-                      ? "bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-700 hover:border-sky-300 hover:bg-sky-50/60 dark:hover:bg-sky-950/10"
+                      ? "bg-gradient-to-l from-cyan-50 via-sky-50/80 to-white dark:from-cyan-950/20 dark:via-sky-950/10 dark:to-slate-950 border border-cyan-300/80 dark:border-cyan-800/70 hover:border-sky-400 hover:shadow-[0_0_0_1px_rgba(56,189,248,0.45),0_8px_20px_-14px_rgba(2,132,199,0.8)]"
                       : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-transparent"),
             isDragging && "shadow-lg ring-2 ring-primary/20",
           )}
@@ -507,10 +511,10 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
               </p>
               {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
                 <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">
+                  <span className="rounded-full bg-cyan-100 px-2 py-0.5 font-medium text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-200">
                     טאב טיימר
                   </span>
-                  <span>לחץ להפעלת {task.auto_timer_days} ימי עבודה</span>
+                  <span>לחץ והאשר להפעלת {task.auto_timer_days} ימי עבודה</span>
                 </div>
               )}
               {/* Day Counter - if timer is active - click to change style */}
@@ -1296,9 +1300,9 @@ function SortableExpandedTaskItem({
         task.completed
           ? "bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900"
           : isTimerTabActive
-            ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900"
+            ? "bg-gradient-to-l from-sky-100 via-cyan-100/70 to-white dark:from-sky-950/30 dark:via-cyan-950/20 dark:to-slate-950 border border-sky-300 dark:border-sky-800"
             : isTimerTab
-              ? "bg-slate-50 dark:bg-slate-900/30 hover:bg-sky-50 dark:hover:bg-sky-950/10 border border-dashed border-slate-300 dark:border-slate-700"
+              ? "bg-gradient-to-l from-cyan-50 via-sky-50/70 to-white dark:from-cyan-950/20 dark:via-sky-950/10 dark:to-slate-950 hover:from-cyan-100 hover:to-sky-100 dark:hover:from-cyan-950/30 dark:hover:to-sky-950/20 border border-cyan-300/80 dark:border-cyan-800/70"
               : "bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-gray-200 dark:border-gray-700",
         isDragging && "shadow-lg ring-2 ring-primary/20",
       )}
@@ -1354,6 +1358,10 @@ function SortableExpandedTaskItem({
         )}
         onClick={() => {
           if (!canStartTimerTab || isTimerTabActive || !task.auto_timer_days) return;
+          const approved = confirm(
+            `להפעיל את הטאב "${task.title}" ל-${task.auto_timer_days} ימי עבודה?`,
+          );
+          if (!approved) return;
           startTaskTimer?.(task.id, task.auto_timer_days);
         }}
       >
@@ -1370,7 +1378,7 @@ function SortableExpandedTaskItem({
         </p>
         {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
           <p className="mt-1 text-xs text-right text-slate-500 dark:text-slate-400">
-            לחץ להפעלת {task.auto_timer_days} ימי עבודה
+            לחץ והאשר להפעלת {task.auto_timer_days} ימי עבודה
           </p>
         )}
         {Boolean(task.started_at && task.target_working_days) && (
@@ -2042,7 +2050,30 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
     return iconMap[iconName] || Phone;
   };
   const handleToggleTask = async (task: ClientStageTask) => {
-    await toggleTask(task.id);
+    const isTimerTab = isTimerTabTask(task);
+    const hasTimerCount = Boolean(task.started_at || task.target_working_days);
+    const shouldClearTimerOnUncomplete = isTimerTab && task.completed && hasTimerCount;
+    const shouldAutoStartOnComplete =
+      isTimerTab &&
+      !task.completed &&
+      !task.started_at &&
+      !task.target_working_days &&
+      Boolean(task.auto_timer_days && startTaskTimer);
+
+    if (shouldClearTimerOnUncomplete) {
+      const approved = confirm(
+        "ביטול סימון ההשלמה ימחק את מניין הימים של טאב הטיימר. להמשיך?",
+      );
+      if (!approved) return;
+    }
+
+    const toggled = await toggleTask(task.id, {
+      clearTimerOnUncomplete: shouldClearTimerOnUncomplete,
+    });
+
+    if (toggled && shouldAutoStartOnComplete && task.auto_timer_days) {
+      await startTaskTimer?.(task.id, task.auto_timer_days);
+    }
   };
   const handleAddTask = async (stageId: string) => {
     if (!addingTask || !addingTask.title.trim()) return;

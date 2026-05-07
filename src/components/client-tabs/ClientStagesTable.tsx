@@ -178,6 +178,40 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
     }
   };
 
+  const confirmAndStartTimerTab = (task: ClientStageTask) => {
+    if (!isTimerTabTask(task) || task.completed || task.started_at || !task.auto_timer_days) return;
+    const approved = confirm(`להפעיל את הטאב "${task.title}" ל-${task.auto_timer_days} ימי עבודה?`);
+    if (!approved) return;
+    startTaskTimer(task.id, task.auto_timer_days);
+  };
+
+  const handleToggleTask = async (task: ClientStageTask) => {
+    const shouldAutoStartOnComplete =
+      isTimerTabTask(task) &&
+      !task.completed &&
+      !task.started_at &&
+      !task.target_working_days &&
+      Boolean(task.auto_timer_days);
+
+    const shouldClearTimerOnUncomplete =
+      isTimerTabTask(task) &&
+      task.completed &&
+      Boolean(task.started_at || task.target_working_days);
+
+    if (shouldClearTimerOnUncomplete) {
+      const approved = confirm('ביטול סימון ההשלמה ימחק את מניין הימים של טאב הטיימר. להמשיך?');
+      if (!approved) return;
+    }
+
+    const toggled = await toggleTask(task.id, {
+      clearTimerOnUncomplete: shouldClearTimerOnUncomplete,
+    });
+
+    if (toggled && shouldAutoStartOnComplete && task.auto_timer_days) {
+      await startTaskTimer(task.id, task.auto_timer_days);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -266,8 +300,8 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                         className={cn(
                           "transition-colors cursor-context-menu",
                           task.completed && !task.background_color && "bg-green-50/50 dark:bg-green-950/10",
-                          isTimerTabTask(task) && task.started_at && task.target_working_days && !task.background_color && "bg-sky-50/70 dark:bg-sky-950/10",
-                          isTimerTabTask(task) && !task.started_at && !task.background_color && "hover:bg-sky-50/60 dark:hover:bg-sky-950/10"
+                          isTimerTabTask(task) && task.started_at && task.target_working_days && !task.background_color && "bg-gradient-to-l from-sky-100/80 via-cyan-100/60 to-transparent dark:from-sky-950/20 dark:via-cyan-950/10",
+                          isTimerTabTask(task) && !task.started_at && !task.background_color && "bg-gradient-to-l from-cyan-50/70 via-sky-50/60 to-transparent dark:from-cyan-950/10 dark:via-sky-950/5 border-r-2 border-cyan-300/70 dark:border-cyan-800/70 hover:from-cyan-100/70 hover:via-sky-100/60 dark:hover:from-cyan-950/20 dark:hover:via-sky-950/10"
                         )}
                         style={{ 
                           backgroundColor: task.background_color || undefined,
@@ -315,7 +349,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                                   !task.started_at &&
                                   task.auto_timer_days
                                 ) {
-                                  startTaskTimer(task.id, task.auto_timer_days);
+                                  confirmAndStartTimerTab(task);
                                 }
                               }}
                             >
@@ -332,7 +366,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                               </span>
                               {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
                                 <div className="mt-1 text-xs text-muted-foreground">
-                                  לחץ להפעלת {task.auto_timer_days} ימי עבודה
+                                  לחץ והאשר להפעלת {task.auto_timer_days} ימי עבודה
                                 </div>
                               )}
                             </div>
@@ -344,7 +378,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2"
-                        onClick={() => toggleTask(task.id)}
+                        onClick={() => handleToggleTask(task)}
                       >
                         {task.completed ? (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -378,7 +412,7 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                             variant="ghost"
                             size="sm"
                             className="h-8 px-2 text-sky-700 hover:text-sky-800"
-                            onClick={() => startTaskTimer(task.id, task.auto_timer_days!)}
+                            onClick={() => confirmAndStartTimerTab(task)}
                           >
                             <Timer className="h-4 w-4 ml-1" />
                             <span className="text-xs">הפעל {task.auto_timer_days}</span>
@@ -635,6 +669,14 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                               <Square className="h-4 w-4" />
                               <span>עצור טיימר</span>
                             </ContextMenuItem>
+                            ) : isTimerTabTask(task) && task.auto_timer_days ? (
+                              <ContextMenuItem
+                                onClick={() => confirmAndStartTimerTab(task)}
+                                className="flex items-center gap-2"
+                              >
+                                <Play className="h-4 w-4 text-green-600" />
+                                <span>הפעל {task.auto_timer_days} ימי עבודה</span>
+                              </ContextMenuItem>
                           ) : (
                             TARGET_DAYS_OPTIONS.map(option => (
                               <ContextMenuItem 

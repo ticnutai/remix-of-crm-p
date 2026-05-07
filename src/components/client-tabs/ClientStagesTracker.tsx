@@ -20,7 +20,7 @@ import {
   Timer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useClientStages } from '@/hooks/useClientStages';
+import { useClientStages, type ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { TaskTimerBadge } from './StageTimerDisplay';
 
@@ -52,8 +52,38 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
     return iconMap[iconName] || Phone;
   };
 
-  const handleToggleTask = async (taskId: string) => {
-    await toggleTask(taskId);
+  const handleToggleTask = async (task: ClientStageTask) => {
+    const shouldAutoStartOnComplete =
+      isTimerTabTask(task) &&
+      !task.completed &&
+      !task.started_at &&
+      !task.target_working_days &&
+      Boolean(task.auto_timer_days);
+
+    const shouldClearTimerOnUncomplete =
+      isTimerTabTask(task) &&
+      task.completed &&
+      Boolean(task.started_at || task.target_working_days);
+
+    if (shouldClearTimerOnUncomplete) {
+      const approved = confirm('ביטול סימון ההשלמה ימחק את מניין הימים של טאב הטיימר. להמשיך?');
+      if (!approved) return;
+    }
+
+    const toggled = await toggleTask(task.id, {
+      clearTimerOnUncomplete: shouldClearTimerOnUncomplete,
+    });
+
+    if (toggled && shouldAutoStartOnComplete && task.auto_timer_days) {
+      await startTaskTimer(task.id, task.auto_timer_days);
+    }
+  };
+
+  const confirmAndStartTimerTab = (task: ClientStageTask) => {
+    if (!isTimerTabTask(task) || task.completed || task.started_at || !task.auto_timer_days) return;
+    const approved = confirm(`להפעיל את הטאב "${task.title}" ל-${task.auto_timer_days} ימי עבודה?`);
+    if (!approved) return;
+    startTaskTimer(task.id, task.auto_timer_days);
   };
 
   const handleAddTask = async (stageId: string) => {
@@ -192,15 +222,15 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                         task.completed
                           ? "bg-green-50 dark:bg-green-950/20"
                           : isTimerTabTask(task) && task.started_at && task.target_working_days
-                            ? "bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-900"
+                            ? "bg-gradient-to-l from-sky-100 via-cyan-100/70 to-white dark:from-sky-950/30 dark:via-cyan-950/20 dark:to-slate-950 border border-sky-300 dark:border-sky-800"
                             : isTimerTabTask(task)
-                              ? "border border-dashed border-slate-300 dark:border-slate-700 hover:bg-sky-50 dark:hover:bg-sky-950/10"
+                              ? "bg-gradient-to-l from-cyan-50 via-sky-50/70 to-white dark:from-cyan-950/20 dark:via-sky-950/10 dark:to-slate-950 border border-cyan-300/80 dark:border-cyan-800/70 hover:from-cyan-100 hover:to-sky-100 dark:hover:from-cyan-950/30 dark:hover:to-sky-950/20"
                               : "hover:bg-gray-50 dark:hover:bg-gray-800"
                       )}
                     >
                       <Checkbox
                         checked={task.completed}
-                        onCheckedChange={() => handleToggleTask(task.id)}
+                        onCheckedChange={() => handleToggleTask(task)}
                         className="shrink-0"
                       />
                       
@@ -245,7 +275,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                                 !task.started_at &&
                                 task.auto_timer_days
                               ) {
-                                startTaskTimer(task.id, task.auto_timer_days);
+                                confirmAndStartTimerTab(task);
                               }
                             }}
                           >
@@ -258,7 +288,7 @@ export function ClientStagesTracker({ clientId, onTaskComplete }: ClientStagesTr
                             </span>
                             {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
                               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                לחץ להפעלת {task.auto_timer_days} ימי עבודה
+                                לחץ והאשר להפעלת {task.auto_timer_days} ימי עבודה
                               </div>
                             )}
                             {task.started_at && task.target_working_days && (

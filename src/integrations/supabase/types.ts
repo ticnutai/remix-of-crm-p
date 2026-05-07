@@ -7033,6 +7033,7 @@ export type Database = {
       }
       stage_template_tasks: {
         Row: {
+          auto_timer_days: number | null
           background_color: string | null
           completed: boolean | null
           completed_at: string | null
@@ -7041,6 +7042,7 @@ export type Database = {
           is_bold: boolean | null
           sort_order: number
           started_at: string | null
+          task_type: string
           target_working_days: number | null
           template_id: string
           template_stage_id: string | null
@@ -7048,6 +7050,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          auto_timer_days?: number | null
           background_color?: string | null
           completed?: boolean | null
           completed_at?: string | null
@@ -7056,6 +7059,7 @@ export type Database = {
           is_bold?: boolean | null
           sort_order?: number
           started_at?: string | null
+          task_type?: string
           target_working_days?: number | null
           template_id: string
           template_stage_id?: string | null
@@ -7063,6 +7067,7 @@ export type Database = {
           title: string
         }
         Update: {
+          auto_timer_days?: number | null
           background_color?: string | null
           completed?: boolean | null
           completed_at?: string | null
@@ -7071,6 +7076,7 @@ export type Database = {
           is_bold?: boolean | null
           sort_order?: number
           started_at?: string | null
+          task_type?: string
           target_working_days?: number | null
           template_id?: string
           template_stage_id?: string | null

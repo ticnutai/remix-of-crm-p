@@ -88,6 +88,10 @@ type AddTaskOptions = {
   autoTimerDays?: number | null;
 };
 
+type ToggleTaskOptions = {
+  clearTimerOnUncomplete?: boolean;
+};
+
 function isSchemaColumnError(error: unknown): boolean {
   const e = error as {
     code?: string;
@@ -300,18 +304,36 @@ export function useClientStages(clientId: string) {
   };
 
   // Toggle task completion
-  const toggleTask = async (taskId: string) => {
+  const toggleTask = async (taskId: string, options?: ToggleTaskOptions) => {
     try {
       const task = tasks.find((t) => t.id === taskId);
-      if (!task) return;
+      if (!task) return false;
 
       const newCompleted = !task.completed;
+      const completedAt = newCompleted ? new Date().toISOString() : null;
+      const shouldClearTimer =
+        Boolean(options?.clearTimerOnUncomplete) &&
+        task.task_type === "timer_tab" &&
+        !newCompleted;
+
+      const updates: {
+        completed: boolean;
+        completed_at: string | null;
+        started_at?: null;
+        target_working_days?: null;
+      } = {
+        completed: newCompleted,
+        completed_at: completedAt,
+      };
+
+      if (shouldClearTimer) {
+        updates.started_at = null;
+        updates.target_working_days = null;
+      }
+
       const { error } = await supabase
         .from("client_stage_tasks")
-        .update({
-          completed: newCompleted,
-          completed_at: newCompleted ? new Date().toISOString() : null,
-        })
+        .update(updates as any)
         .eq("id", taskId);
 
       if (error) throw error;
@@ -322,11 +344,18 @@ export function useClientStages(clientId: string) {
             ? {
                 ...t,
                 completed: newCompleted,
-                completed_at: newCompleted ? new Date().toISOString() : null,
+                completed_at: completedAt,
+                ...(shouldClearTimer
+                  ? {
+                      started_at: null,
+                      target_working_days: null,
+                    }
+                  : {}),
               }
             : t,
         ),
       );
+      return true;
     } catch (error: unknown) {
       console.error("Error toggling task:", error);
       toast({
@@ -334,6 +363,7 @@ export function useClientStages(clientId: string) {
         description: "לא ניתן לעדכן משימה",
         variant: "destructive",
       });
+      return false;
     }
   };
 
@@ -1293,22 +1323,25 @@ export function useClientStages(clientId: string) {
         if (!templateStageId || !stage.tasks) continue;
 
         for (const task of stage.tasks) {
+          const isTimerTab =
+            task.task_type === "timer_tab" && Boolean(task.auto_timer_days);
+
           tasksToInsert.push({
+            template_id: template.id,
             template_stage_id: templateStageId,
             title: task.title,
             sort_order: task.sort_order,
+            task_type: isTimerTab ? "timer_tab" : "task",
+            auto_timer_days: isTimerTab ? task.auto_timer_days || null : null,
             // Include full content if requested
             ...(includeTaskContent && {
+              completed: task.completed || false,
+              completed_at: task.completed_at || null,
               background_color: task.background_color || null,
               text_color: task.text_color || null,
               is_bold: task.is_bold || false,
               target_working_days: task.target_working_days || null,
-              // Store completed state and date in metadata
-              metadata: {
-                completed: task.completed,
-                completed_at: task.completed_at,
-                started_at: task.started_at,
-              },
+              started_at: task.started_at || null,
             }),
           });
         }
@@ -1423,25 +1456,26 @@ export function useClientStages(clientId: string) {
       if (templateTasks && templateTasks.length > 0) {
         const tasksToInsert = templateTasks.map((tt) => {
           const clientStageId = stageIdMap.get(tt.template_stage_id);
-          const metadata = (tt as any).metadata || {};
+          const isTimerTab =
+            (tt as any).task_type === "timer_tab" &&
+            Boolean((tt as any).auto_timer_days);
 
           return {
             client_id: clientId,
             stage_id: clientStageId,
             title: tt.title,
             sort_order: tt.sort_order,
-            completed: includeContent && metadata.completed ? true : false,
-            completed_at:
-              includeContent && metadata.completed_at
-                ? metadata.completed_at
-                : null,
+            task_type: isTimerTab ? "timer_tab" : "task",
+            auto_timer_days: isTimerTab ? (tt as any).auto_timer_days || null : null,
+            completed: includeContent ? Boolean((tt as any).completed) : false,
+            completed_at: includeContent ? ((tt as any).completed_at ?? null) : null,
             // Include styling if present and includeContent is true
             ...(includeContent && {
               background_color: (tt as any).background_color || null,
               text_color: (tt as any).text_color || null,
               is_bold: (tt as any).is_bold || false,
               target_working_days: (tt as any).target_working_days || null,
-              started_at: metadata.started_at || null,
+              started_at: (tt as any).started_at || null,
             }),
           };
         });
