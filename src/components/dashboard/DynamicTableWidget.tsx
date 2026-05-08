@@ -363,10 +363,37 @@ export function DynamicTableWidget({
     }
   }, [selectedTable, sortOption]);
 
+  // Navigate to client/project profile when clicking the "name" cell on those tables
+  const NAVIGABLE_NAME_TABLES: Record<string, (id: string) => string> = {
+    clients: (id) => `/clients/${id}`,
+    projects: (id) => `/projects/${id}`,
+  };
+
   // Make a column editable with inline editing capability
   const makeEditableColumn = (col: ColumnDef<any>): ColumnDef<any> => {
     const accessorKey = col.accessorKey as string;
-    
+
+    // Special-case: clickable navigation for the name column on certain tables
+    const navBuilder = NAVIGABLE_NAME_TABLES[selectedTable.id];
+    if (navBuilder && accessorKey === 'name') {
+      return {
+        ...col,
+        cell: (value: any, row: any) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(navBuilder(row.id));
+            }}
+            className="text-right font-medium text-primary hover:underline cursor-pointer truncate"
+            title={`פתח את כרטיס הלקוח: ${value ?? ''}`}
+          >
+            {value ?? '-'}
+          </button>
+        ),
+      };
+    }
+
     // Skip making certain columns editable
     if (['id', 'created_at', 'updated_at', 'user_id', 'owner_id'].includes(accessorKey)) {
       return col;
