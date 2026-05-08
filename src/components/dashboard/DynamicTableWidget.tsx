@@ -201,6 +201,15 @@ export function DynamicTableWidget({
   };
   
   const [selectedTable, setSelectedTable] = useState<TableOption>(getSavedTable);
+
+  // Sort option per table (persisted)
+  const getSavedSort = (tableId: string): SortOption | null => {
+    const opts = SORT_OPTIONS[tableId];
+    if (!opts) return null;
+    const savedId = localStorage.getItem(SORT_KEY_PREFIX + tableId);
+    return opts.find(o => o.id === savedId) || opts[0];
+  };
+  const [sortOption, setSortOption] = useState<SortOption | null>(() => getSavedSort(getSavedTable().id));
   const [tableData, setTableData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customTables, setCustomTables] = useState<TableOption[]>([]);
