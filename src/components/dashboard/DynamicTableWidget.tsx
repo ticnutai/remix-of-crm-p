@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import {
   Users,
+  ArrowUpDown,
   Briefcase,
   CheckSquare,
   Calendar,
@@ -43,6 +44,17 @@ import { DataTable, ColumnDef } from '@/components/DataTable';
 import { useDashboardTheme } from './DashboardThemeProvider';
 
 const SELECTED_TABLE_KEY = 'dashboard-selected-table';
+const SORT_KEY_PREFIX = 'dashboard-table-sort-';
+
+type SortOption = { id: string; label: string; column: string; ascending: boolean };
+
+const SORT_OPTIONS: Record<string, SortOption[]> = {
+  clients: [
+    { id: 'recent', label: 'טופלו לאחרונה', column: 'updated_at', ascending: false },
+    { id: 'created', label: 'נוספו לאחרונה', column: 'created_at', ascending: false },
+    { id: 'name', label: 'שם (א-ת)', column: 'name', ascending: true },
+  ],
+};
 
 // Navigation paths for each table
 const TABLE_NAVIGATION_MAP: Record<string, string> = {
@@ -189,6 +201,15 @@ export function DynamicTableWidget({
   };
   
   const [selectedTable, setSelectedTable] = useState<TableOption>(getSavedTable);
+
+  // Sort option per table (persisted)
+  const getSavedSort = (tableId: string): SortOption | null => {
+    const opts = SORT_OPTIONS[tableId];
+    if (!opts) return null;
+    const savedId = localStorage.getItem(SORT_KEY_PREFIX + tableId);
+    return opts.find(o => o.id === savedId) || opts[0];
+  };
+  const [sortOption, setSortOption] = useState<SortOption | null>(() => getSavedSort(getSavedTable().id));
   const [tableData, setTableData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customTables, setCustomTables] = useState<TableOption[]>([]);
@@ -315,10 +336,16 @@ export function DynamicTableWidget({
           }
         } else {
           // Fetch standard table data
-          const { data, error } = await supabase
+          let query = supabase
             .from(selectedTable.tableName as any)
             .select('*')
             .limit(100);
+
+          if (sortOption) {
+            query = query.order(sortOption.column, { ascending: sortOption.ascending, nullsFirst: false });
+          }
+
+          const { data, error } = await query;
 
           if (!error && data) {
             setTableData(data);
@@ -334,12 +361,39 @@ export function DynamicTableWidget({
     if (selectedTable) {
       fetchData();
     }
-  }, [selectedTable]);
+  }, [selectedTable, sortOption]);
+
+  // Navigate to client/project profile when clicking the "name" cell on those tables
+  const NAVIGABLE_NAME_TABLES: Record<string, (id: string) => string> = {
+    clients: (id) => `/clients/${id}`,
+    projects: (id) => `/projects/${id}`,
+  };
 
   // Make a column editable with inline editing capability
   const makeEditableColumn = (col: ColumnDef<any>): ColumnDef<any> => {
     const accessorKey = col.accessorKey as string;
-    
+
+    // Special-case: clickable navigation for the name column on certain tables
+    const navBuilder = NAVIGABLE_NAME_TABLES[selectedTable.id];
+    if (navBuilder && accessorKey === 'name') {
+      return {
+        ...col,
+        cell: (value: any, row: any) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(navBuilder(row.id));
+            }}
+            className="text-right font-medium text-primary hover:underline cursor-pointer truncate"
+            title={`פתח את כרטיס הלקוח: ${value ?? ''}`}
+          >
+            {value ?? '-'}
+          </button>
+        ),
+      };
+    }
+
     // Skip making certain columns editable
     if (['id', 'created_at', 'updated_at', 'user_id', 'owner_id'].includes(accessorKey)) {
       return col;
@@ -425,7 +479,15 @@ export function DynamicTableWidget({
   const handleTableChange = (table: TableOption) => {
     setSelectedTable(table);
     localStorage.setItem(SELECTED_TABLE_KEY, table.id);
+    setSortOption(getSavedSort(table.id));
   };
+
+  const handleSortChange = (option: SortOption) => {
+    setSortOption(option);
+    localStorage.setItem(SORT_KEY_PREFIX + selectedTable.id, option.id);
+  };
+
+  const sortOptionsForTable = SORT_OPTIONS[selectedTable.id];
 
   return (
     <div className="space-y-4">
@@ -558,6 +620,44 @@ export function DynamicTableWidget({
               עבור לדף {selectedTable.name} המלא
             </TooltipContent>
           </Tooltip>
+        )}
+
+        {/* Sort dropdown - only for tables with sort options (e.g. clients) */}
+        {sortOptionsForTable && sortOption && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className={cn(
+                  "h-12 px-4 gap-2 font-medium",
+                  (isNavyGold || isModernDark) && "border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 text-[hsl(222,47%,25%)]"
+                )}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="text-xs opacity-80">מיון:</span>
+                <span>{sortOption.label}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 bg-popover border-2 border-border shadow-xl z-[100]">
+              <DropdownMenuLabel className="text-xs">מיון רשימה</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {sortOptionsForTable.map(opt => (
+                <DropdownMenuItem
+                  key={opt.id}
+                  onClick={() => handleSortChange(opt)}
+                  className={cn(
+                    "cursor-pointer",
+                    sortOption.id === opt.id && "bg-primary/10 font-bold"
+                  )}
+                >
+                  {sortOption.id === opt.id && <Check className="h-4 w-4 text-primary" />}
+                  <span className="flex-1">{opt.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         </div>
         
