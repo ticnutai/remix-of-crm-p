@@ -336,10 +336,16 @@ export function DynamicTableWidget({
           }
         } else {
           // Fetch standard table data
-          const { data, error } = await supabase
+          let query = supabase
             .from(selectedTable.tableName as any)
             .select('*')
             .limit(100);
+
+          if (sortOption) {
+            query = query.order(sortOption.column, { ascending: sortOption.ascending, nullsFirst: false });
+          }
+
+          const { data, error } = await query;
 
           if (!error && data) {
             setTableData(data);
@@ -355,7 +361,7 @@ export function DynamicTableWidget({
     if (selectedTable) {
       fetchData();
     }
-  }, [selectedTable]);
+  }, [selectedTable, sortOption]);
 
   // Make a column editable with inline editing capability
   const makeEditableColumn = (col: ColumnDef<any>): ColumnDef<any> => {
