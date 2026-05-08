@@ -4544,52 +4544,166 @@ export type Database = {
           },
         ]
       }
+      employee_leaves: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          days: number
+          employee_id: string
+          end_date: string
+          id: string
+          leave_type: string
+          notes: string | null
+          paid: boolean
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          days: number
+          employee_id: string
+          end_date: string
+          id?: string
+          leave_type: string
+          notes?: string | null
+          paid?: boolean
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          days?: number
+          employee_id?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          notes?: string | null
+          paid?: boolean
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_leaves_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_leave_balance"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_leaves_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
+          bank_account: string | null
+          birth_date: string | null
           created_at: string | null
           department: string | null
           email: string | null
+          employment_type: string
           hire_date: string | null
           hourly_rate: number | null
           id: string
+          id_number: string | null
+          is_active: boolean
+          meal_allowance: number | null
+          monthly_salary: number | null
           name: string
           notes: string | null
+          pension_employee_pct: number | null
+          pension_employer_pct: number | null
+          pension_severance_pct: number | null
           phone: string | null
           position: string | null
           profile_id: string | null
+          standard_monthly_hours: number | null
           status: string | null
+          study_fund_employee_pct: number | null
+          study_fund_employer_pct: number | null
+          tax_credit_points: number | null
+          termination_date: string | null
+          transport_allowance: number | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          bank_account?: string | null
+          birth_date?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
+          employment_type?: string
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          id_number?: string | null
+          is_active?: boolean
+          meal_allowance?: number | null
+          monthly_salary?: number | null
           name: string
           notes?: string | null
+          pension_employee_pct?: number | null
+          pension_employer_pct?: number | null
+          pension_severance_pct?: number | null
           phone?: string | null
           position?: string | null
           profile_id?: string | null
+          standard_monthly_hours?: number | null
           status?: string | null
+          study_fund_employee_pct?: number | null
+          study_fund_employer_pct?: number | null
+          tax_credit_points?: number | null
+          termination_date?: string | null
+          transport_allowance?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          bank_account?: string | null
+          birth_date?: string | null
           created_at?: string | null
           department?: string | null
           email?: string | null
+          employment_type?: string
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          id_number?: string | null
+          is_active?: boolean
+          meal_allowance?: number | null
+          monthly_salary?: number | null
           name?: string
           notes?: string | null
+          pension_employee_pct?: number | null
+          pension_employer_pct?: number | null
+          pension_severance_pct?: number | null
           phone?: string | null
           position?: string | null
           profile_id?: string | null
+          standard_monthly_hours?: number | null
           status?: string | null
+          study_fund_employee_pct?: number | null
+          study_fund_employer_pct?: number | null
+          tax_credit_points?: number | null
+          termination_date?: string | null
+          transport_allowance?: number | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -5948,6 +6062,129 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_runs: {
+        Row: {
+          base_pay: number | null
+          calculation_meta: Json | null
+          created_at: string
+          created_by: string | null
+          employee_id: string
+          employer_total_cost: number | null
+          gross_total: number | null
+          health_tax: number | null
+          id: string
+          income_tax: number | null
+          meal: number | null
+          national_insurance: number | null
+          net_total: number | null
+          notes: string | null
+          other_additions: number | null
+          other_deductions: number | null
+          overtime_hours_125: number | null
+          overtime_hours_150: number | null
+          overtime_pay: number | null
+          pension_employee: number | null
+          pension_employer: number | null
+          pension_severance: number | null
+          pensionable_base: number | null
+          period_month: number
+          period_year: number
+          sick_days: number | null
+          status: string
+          study_fund_employee: number | null
+          study_fund_employer: number | null
+          transport: number | null
+          updated_at: string
+          vacation_days: number | null
+          worked_hours: number | null
+        }
+        Insert: {
+          base_pay?: number | null
+          calculation_meta?: Json | null
+          created_at?: string
+          created_by?: string | null
+          employee_id: string
+          employer_total_cost?: number | null
+          gross_total?: number | null
+          health_tax?: number | null
+          id?: string
+          income_tax?: number | null
+          meal?: number | null
+          national_insurance?: number | null
+          net_total?: number | null
+          notes?: string | null
+          other_additions?: number | null
+          other_deductions?: number | null
+          overtime_hours_125?: number | null
+          overtime_hours_150?: number | null
+          overtime_pay?: number | null
+          pension_employee?: number | null
+          pension_employer?: number | null
+          pension_severance?: number | null
+          pensionable_base?: number | null
+          period_month: number
+          period_year: number
+          sick_days?: number | null
+          status?: string
+          study_fund_employee?: number | null
+          study_fund_employer?: number | null
+          transport?: number | null
+          updated_at?: string
+          vacation_days?: number | null
+          worked_hours?: number | null
+        }
+        Update: {
+          base_pay?: number | null
+          calculation_meta?: Json | null
+          created_at?: string
+          created_by?: string | null
+          employee_id?: string
+          employer_total_cost?: number | null
+          gross_total?: number | null
+          health_tax?: number | null
+          id?: string
+          income_tax?: number | null
+          meal?: number | null
+          national_insurance?: number | null
+          net_total?: number | null
+          notes?: string | null
+          other_additions?: number | null
+          other_deductions?: number | null
+          overtime_hours_125?: number | null
+          overtime_hours_150?: number | null
+          overtime_pay?: number | null
+          pension_employee?: number | null
+          pension_employer?: number | null
+          pension_severance?: number | null
+          pensionable_base?: number | null
+          period_month?: number
+          period_year?: number
+          sick_days?: number | null
+          status?: string
+          study_fund_employee?: number | null
+          study_fund_employer?: number | null
+          transport?: number | null
+          updated_at?: string
+          vacation_days?: number | null
+          worked_hours?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_leave_balance"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           action: string
@@ -7042,8 +7279,8 @@ export type Database = {
           is_bold: boolean | null
           sort_order: number
           started_at: string | null
-          task_type: string
           target_working_days: number | null
+          task_type: string
           template_id: string
           template_stage_id: string | null
           text_color: string | null
@@ -7059,8 +7296,8 @@ export type Database = {
           is_bold?: boolean | null
           sort_order?: number
           started_at?: string | null
-          task_type?: string
           target_working_days?: number | null
+          task_type?: string
           template_id: string
           template_stage_id?: string | null
           text_color?: string | null
@@ -7076,8 +7313,8 @@ export type Database = {
           is_bold?: boolean | null
           sort_order?: number
           started_at?: string | null
-          task_type?: string
           target_working_days?: number | null
+          task_type?: string
           template_id?: string
           template_stage_id?: string | null
           text_color?: string | null
@@ -7381,6 +7618,13 @@ export type Database = {
             foreignKeyName: "time_entries_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employee_leave_balance"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -7446,6 +7690,54 @@ export type Database = {
           },
           {
             foreignKeyName: "time_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permissions: {
+        Row: {
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          id: string
+          module: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          id?: string
+          module: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          id?: string
+          module?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -7987,8 +8279,42 @@ export type Database = {
           },
         ]
       }
+      employee_leave_balance: {
+        Row: {
+          annual_entitlement_days: number | null
+          employee_id: string | null
+          hire_date: string | null
+          name: string | null
+          used_sick_days_ytd: number | null
+          used_vacation_days_ytd: number | null
+          years_of_service: number | null
+        }
+        Insert: {
+          annual_entitlement_days?: never
+          employee_id?: string | null
+          hire_date?: string | null
+          name?: string | null
+          used_sick_days_ytd?: never
+          used_vacation_days_ytd?: never
+          years_of_service?: never
+        }
+        Update: {
+          annual_entitlement_days?: never
+          employee_id?: string | null
+          hire_date?: string | null
+          name?: string | null
+          used_sick_days_ytd?: never
+          used_vacation_days_ytd?: never
+          years_of_service?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      annual_leave_entitlement: {
+        Args: { years_of_service: number }
+        Returns: number
+      }
       approve_user: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -8267,6 +8593,17 @@ export type Database = {
           uploaded_by: string
           view_count: number
         }[]
+      }
+      set_user_module_permission: {
+        Args: {
+          p_by: string
+          p_delete: boolean
+          p_edit: boolean
+          p_module: string
+          p_user_id: string
+          p_view: boolean
+        }
+        Returns: undefined
       }
       toggle_file_star: { Args: { p_file_id: string }; Returns: boolean }
       toggle_file_tag: {
