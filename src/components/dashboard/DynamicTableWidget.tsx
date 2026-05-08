@@ -43,8 +43,8 @@ import {
 import { DataTable, ColumnDef } from '@/components/DataTable';
 import { useDashboardTheme } from './DashboardThemeProvider';
 
-const SELECTED_TABLE_KEY = 'dashboard-selected-table';
-const SORT_KEY_PREFIX = 'dashboard-table-sort-';
+const SELECTED_TABLE_KEY_BASE = 'dashboard-selected-table';
+const SORT_KEY_PREFIX_BASE = 'dashboard-table-sort-';
 
 type SortOption = { id: string; label: string; column: string; ascending: boolean };
 
@@ -53,6 +53,44 @@ const SORT_OPTIONS: Record<string, SortOption[]> = {
     { id: 'recent', label: 'טופלו לאחרונה', column: 'updated_at', ascending: false },
     { id: 'created', label: 'נוספו לאחרונה', column: 'created_at', ascending: false },
     { id: 'name', label: 'שם (א-ת)', column: 'name', ascending: true },
+  ],
+  profiles: [
+    { id: 'recent', label: 'עודכנו לאחרונה', column: 'updated_at', ascending: false },
+    { id: 'created', label: 'נוספו לאחרונה', column: 'created_at', ascending: false },
+    { id: 'name', label: 'שם (א-ת)', column: 'full_name', ascending: true },
+  ],
+  projects: [
+    { id: 'recent', label: 'עודכנו לאחרונה', column: 'updated_at', ascending: false },
+    { id: 'created', label: 'נוצרו לאחרונה', column: 'created_at', ascending: false },
+    { id: 'name', label: 'שם (א-ת)', column: 'name', ascending: true },
+  ],
+  tasks: [
+    { id: 'recent', label: 'עודכנו לאחרונה', column: 'updated_at', ascending: false },
+    { id: 'due', label: 'תאריך יעד', column: 'due_date', ascending: true },
+    { id: 'created', label: 'נוצרו לאחרונה', column: 'created_at', ascending: false },
+  ],
+  meetings: [
+    { id: 'upcoming', label: 'הקרובות', column: 'start_time', ascending: true },
+    { id: 'recent', label: 'אחרונות', column: 'start_time', ascending: false },
+  ],
+  reminders: [
+    { id: 'upcoming', label: 'הקרובות', column: 'remind_at', ascending: true },
+    { id: 'recent', label: 'אחרונות', column: 'remind_at', ascending: false },
+  ],
+  time_entries: [
+    { id: 'recent', label: 'אחרונים', column: 'start_time', ascending: false },
+  ],
+  invoices: [
+    { id: 'recent', label: 'אחרונות', column: 'issue_date', ascending: false },
+    { id: 'amount', label: 'לפי סכום', column: 'amount', ascending: false },
+  ],
+  quotes: [
+    { id: 'recent', label: 'אחרונות', column: 'created_at', ascending: false },
+    { id: 'amount', label: 'לפי סכום', column: 'total_amount', ascending: false },
+  ],
+  expenses: [
+    { id: 'recent', label: 'אחרונות', column: 'expense_date', ascending: false },
+    { id: 'amount', label: 'לפי סכום', column: 'amount', ascending: false },
   ],
 };
 
@@ -180,15 +218,21 @@ const tableColumns: Record<string, ColumnDef<any>[]> = {
 interface DynamicTableWidgetProps {
   defaultTableId?: string;
   variant?: 'default' | 'gold' | 'navy';
+  instanceId?: string;
 }
 
 export function DynamicTableWidget({ 
   defaultTableId = 'clients',
   variant = 'default',
+  instanceId = 'default',
 }: DynamicTableWidgetProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { currentTheme } = useDashboardTheme();
+
+  const SELECTED_TABLE_KEY = `${SELECTED_TABLE_KEY_BASE}-${instanceId}`;
+  const SORT_KEY_PREFIX = `${SORT_KEY_PREFIX_BASE}${instanceId}-`;
+
   
   // Load saved table from localStorage
   const getSavedTable = (): TableOption => {

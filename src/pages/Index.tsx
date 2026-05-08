@@ -723,7 +723,39 @@ function DashboardContent() {
                             >
                               <div className="p-4">
                                 <DynamicTableWidget
+                                  instanceId="primary"
                                   defaultTableId="clients"
+                                  variant={
+                                    isNavyGold
+                                      ? "gold"
+                                      : isModernDark
+                                        ? "navy"
+                                        : "default"
+                                  }
+                                />
+                              </div>
+                            </ThemedWidget>
+                          </FadeIn>
+                        </WidgetContainer>
+                      );
+
+                    case "table-clients-2":
+                      return (
+                        <WidgetContainer
+                          key={layout.id}
+                          widgetId="table-clients-2"
+                        >
+                          <FadeIn delay={delay}>
+                            <ThemedWidget
+                              widgetId="table-clients-2"
+                              title="טבלה דינמית נוספת"
+                              titleIcon={<Users className="h-5 w-5" />}
+                              noPadding
+                            >
+                              <div className="p-4">
+                                <DynamicTableWidget
+                                  instanceId="secondary"
+                                  defaultTableId="profiles"
                                   variant={
                                     isNavyGold
                                       ? "gold"
