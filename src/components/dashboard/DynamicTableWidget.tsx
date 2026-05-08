@@ -621,6 +621,44 @@ export function DynamicTableWidget({
             </TooltipContent>
           </Tooltip>
         )}
+
+        {/* Sort dropdown - only for tables with sort options (e.g. clients) */}
+        {sortOptionsForTable && sortOption && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className={cn(
+                  "h-12 px-4 gap-2 font-medium",
+                  (isNavyGold || isModernDark) && "border-[hsl(222,47%,25%)] hover:bg-[hsl(222,47%,20%)]/10 text-[hsl(222,47%,25%)]"
+                )}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="text-xs opacity-80">מיון:</span>
+                <span>{sortOption.label}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 bg-popover border-2 border-border shadow-xl z-[100]">
+              <DropdownMenuLabel className="text-xs">מיון רשימה</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {sortOptionsForTable.map(opt => (
+                <DropdownMenuItem
+                  key={opt.id}
+                  onClick={() => handleSortChange(opt)}
+                  className={cn(
+                    "cursor-pointer",
+                    sortOption.id === opt.id && "bg-primary/10 font-bold"
+                  )}
+                >
+                  {sortOption.id === opt.id && <Check className="h-4 w-4 text-primary" />}
+                  <span className="flex-1">{opt.label}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         </div>
         
         {isLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
