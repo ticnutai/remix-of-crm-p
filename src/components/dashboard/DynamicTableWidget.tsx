@@ -218,15 +218,21 @@ const tableColumns: Record<string, ColumnDef<any>[]> = {
 interface DynamicTableWidgetProps {
   defaultTableId?: string;
   variant?: 'default' | 'gold' | 'navy';
+  instanceId?: string;
 }
 
 export function DynamicTableWidget({ 
   defaultTableId = 'clients',
   variant = 'default',
+  instanceId = 'default',
 }: DynamicTableWidgetProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { currentTheme } = useDashboardTheme();
+
+  const SELECTED_TABLE_KEY = `${SELECTED_TABLE_KEY_BASE}-${instanceId}`;
+  const SORT_KEY_PREFIX = `${SORT_KEY_PREFIX_BASE}${instanceId}-`;
+
   
   // Load saved table from localStorage
   const getSavedTable = (): TableOption => {
