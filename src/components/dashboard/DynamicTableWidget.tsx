@@ -479,7 +479,15 @@ export function DynamicTableWidget({
   const handleTableChange = (table: TableOption) => {
     setSelectedTable(table);
     localStorage.setItem(SELECTED_TABLE_KEY, table.id);
+    setSortOption(getSavedSort(table.id));
   };
+
+  const handleSortChange = (option: SortOption) => {
+    setSortOption(option);
+    localStorage.setItem(SORT_KEY_PREFIX + selectedTable.id, option.id);
+  };
+
+  const sortOptionsForTable = SORT_OPTIONS[selectedTable.id];
 
   return (
     <div className="space-y-4">
