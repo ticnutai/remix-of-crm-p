@@ -49,8 +49,9 @@ export const DEFAULT_LAYOUTS: WidgetLayout[] = [
   { id: 'chart-hours', name: 'גרף שעות עבודה', visible: true, order: 8, size: 'full', collapsed: false },
   { id: 'table-hours', name: 'טבלת שעות', visible: true, order: 9, size: 'full', collapsed: false },
   { id: 'table-clients', name: 'רשימת לקוחות', visible: true, order: 10, size: 'full', collapsed: false },
-  { id: 'table-vip', name: 'לקוחות VIP', visible: true, order: 11, size: 'full', collapsed: false },
-  { id: 'features-info', name: 'תכונות ומידע', visible: true, order: 12, size: 'full', collapsed: false },
+  { id: 'table-clients-2', name: 'טבלה דינמית נוספת', visible: false, order: 11, size: 'full', collapsed: false },
+  { id: 'table-vip', name: 'לקוחות VIP', visible: true, order: 12, size: 'full', collapsed: false },
+  { id: 'features-info', name: 'תכונות ומידע', visible: true, order: 13, size: 'full', collapsed: false },
 ];
 
 const STORAGE_KEY = 'widget-layouts-v3';
