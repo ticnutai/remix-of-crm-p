@@ -44,6 +44,17 @@ import { DataTable, ColumnDef } from '@/components/DataTable';
 import { useDashboardTheme } from './DashboardThemeProvider';
 
 const SELECTED_TABLE_KEY = 'dashboard-selected-table';
+const SORT_KEY_PREFIX = 'dashboard-table-sort-';
+
+type SortOption = { id: string; label: string; column: string; ascending: boolean };
+
+const SORT_OPTIONS: Record<string, SortOption[]> = {
+  clients: [
+    { id: 'recent', label: 'טופלו לאחרונה', column: 'updated_at', ascending: false },
+    { id: 'created', label: 'נוספו לאחרונה', column: 'created_at', ascending: false },
+    { id: 'name', label: 'שם (א-ת)', column: 'name', ascending: true },
+  ],
+};
 
 // Navigation paths for each table
 const TABLE_NAVIGATION_MAP: Record<string, string> = {
