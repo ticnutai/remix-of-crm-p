@@ -48,7 +48,12 @@ const reminderTypeLabels: Record<string, string> = {
 };
 
 export default function Reminders() {
-  const { reminders, loading, deleteReminder, dismissReminder } = useReminders();
+  const { reminders: allReminders, loading, deleteReminder, dismissReminder } = useReminders();
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: 'reminders-view-scope', defaultValue: 'all' });
+  const effectiveScope: ViewScope = isAdmin ? viewScope : 'mine';
+  const reminders = allReminders.filter(r => effectiveScope !== 'mine' || !user || r.user_id === user.id);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [remindersTab, setRemindersTab] = useSyncedSetting<string>({ key: 'reminders-tab', defaultValue: 'pending' });
 
