@@ -127,6 +127,10 @@ export function RemindersTabContent() {
     dismissReminder,
     updateReminder,
   } = useReminders();
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  const [viewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
+  const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [reminderSortBy, setReminderSortBy] = useState<SortField>("event_date");
@@ -145,10 +149,12 @@ export function RemindersTabContent() {
   };
 
   const filteredReminders = reminders.filter(
-    (r) =>
-      !searchQuery ||
-      r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.message?.toLowerCase().includes(searchQuery.toLowerCase()),
+    (r) => {
+      if (effectiveScope === "mine" && user && r.user_id !== user.id) return false;
+      return !searchQuery ||
+        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    },
   );
 
   // Sort reminders
