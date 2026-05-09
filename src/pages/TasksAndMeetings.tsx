@@ -136,6 +136,10 @@ const TasksAndMeetings = () => {
   const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
   const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
+  const { isAdmin } = usePermissions();
+  const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
+  const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
+
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
