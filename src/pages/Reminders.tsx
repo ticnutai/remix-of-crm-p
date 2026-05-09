@@ -29,6 +29,9 @@ import { Bell, Trash2, Check, Clock, Mail, Volume2, BellRing, Plus } from 'lucid
 import { format, isPast, isFuture, isToday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ScopeToggle, ViewScope } from '@/components/shared/ScopeToggle';
 
 const reminderTypeIcons: Record<string, React.ReactNode> = {
   browser: <BellRing className="h-4 w-4" />,
