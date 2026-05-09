@@ -309,8 +309,15 @@ const TasksAndMeetings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Scope filter helpers (admin can see all; others always see only their own)
+  const ownsTask = (t: Task) => !user || t.created_by === user.id || t.assigned_to === user.id;
+  const ownsMeeting = (m: Meeting) =>
+    !user || m.created_by === user.id || (m.attendees || []).includes(user.id);
+  const ownsReminder = (r: Reminder) => !user || r.user_id === user.id;
+
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
+    if (effectiveScope === "mine" && !ownsTask(task)) return false;
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -328,11 +335,15 @@ const TasksAndMeetings = () => {
 
   // Filter meetings
   const filteredMeetings = meetings.filter((meeting) => {
+    if (effectiveScope === "mine" && !ownsMeeting(meeting)) return false;
     return (
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  // Filter reminders by scope (used inside RemindersTabContent below)
+  const scopedReminders = reminders.filter((r) => effectiveScope !== "mine" || ownsReminder(r));
 
   // Sort tasks
   const sortedTasks = sortItems(
