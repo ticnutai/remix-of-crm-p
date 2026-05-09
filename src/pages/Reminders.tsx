@@ -198,9 +198,6 @@ export default function Reminders() {
               }
             />
           </div>
-              </Button>
-            }
-          />
         </div>
 
         {/* Stats Cards */}
