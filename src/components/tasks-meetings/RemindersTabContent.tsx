@@ -2,6 +2,10 @@
 import React, { useState, useMemo } from "react";
 import { useReminders, Reminder } from "@/hooks/useReminders";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
+import type { ViewScope } from "@/components/shared/ScopeToggle";
 import {
   sortItems,
   processDedup,
