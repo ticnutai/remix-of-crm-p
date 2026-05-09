@@ -863,6 +863,9 @@ const TasksAndMeetings = () => {
             {activeTab === "tasks" && (
               <TasksViewToggle view={taskView} onViewChange={setTaskView} />
             )}
+            {isAdmin && (
+              <ScopeToggle scope={viewScope} onChange={setViewScope} />
+            )}
           </div>
 
           {/* Filters - hide on "all" tab */}
