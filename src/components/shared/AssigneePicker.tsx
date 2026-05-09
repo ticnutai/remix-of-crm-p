@@ -54,12 +54,12 @@ export function AssigneePicker(props: Props) {
 
   const toggle = (id: string) => {
     if (props.multi) {
-      const next = props.value.includes(id)
-        ? props.value.filter(v => v !== id)
-        : [...props.value, id];
-      props.onChange(next);
+      const cur = props.value as string[];
+      const next = cur.includes(id) ? cur.filter(v => v !== id) : [...cur, id];
+      (props.onChange as (v: string[]) => void)(next);
     } else {
-      props.onChange(props.value === id ? null : id);
+      const cur = props.value as string | null;
+      (props.onChange as (v: string | null) => void)(cur === id ? null : id);
       setOpen(false);
     }
   };
