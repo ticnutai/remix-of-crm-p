@@ -187,11 +187,17 @@ export default function Reminders() {
               <p className="text-muted-foreground text-sm">ניהול כל התזכורות שלך</p>
             </div>
           </div>
-          <AddReminderDialog
-            trigger={
-              <Button className="gap-2 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,30%)]">
-                <Plus className="h-4 w-4" />
-                תזכורת חדשה
+          <div className="flex items-center gap-2">
+            {isAdmin && <ScopeToggle scope={viewScope} onChange={setViewScope} />}
+            <AddReminderDialog
+              trigger={
+                <Button className="gap-2 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,30%)]">
+                  <Plus className="h-4 w-4" />
+                  תזכורת חדשה
+                </Button>
+              }
+            />
+          </div>
               </Button>
             }
           />
