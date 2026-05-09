@@ -62,6 +62,8 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { ScopeToggle, ViewScope } from "@/components/shared/ScopeToggle";
+import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { parseISO } from "date-fns";
@@ -134,6 +136,10 @@ const TasksAndMeetings = () => {
   const [priorityFilter, setPriorityFilter] = useSyncedSetting<string>({ key: "tasks-priority-filter", defaultValue: "all" });
   const [sortBy, setSortBy] = useSyncedSetting<SortField>({ key: "tasks-sort-by", defaultValue: "event_date" });
   const [sortOrder, setSortOrder] = useSyncedSetting<SortOrder>({ key: "tasks-sort-order", defaultValue: "desc" });
+  const { isAdmin } = usePermissions();
+  const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
+  const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
+
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -303,8 +309,15 @@ const TasksAndMeetings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Scope filter helpers (admin can see all; others always see only their own)
+  const ownsTask = (t: Task) => !user || t.created_by === user.id || t.assigned_to === user.id;
+  const ownsMeeting = (m: Meeting) =>
+    !user || m.created_by === user.id || (m.attendees || []).includes(user.id);
+  const ownsReminder = (r: Reminder) => !user || r.user_id === user.id;
+
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
+    if (effectiveScope === "mine" && !ownsTask(task)) return false;
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -322,11 +335,15 @@ const TasksAndMeetings = () => {
 
   // Filter meetings
   const filteredMeetings = meetings.filter((meeting) => {
+    if (effectiveScope === "mine" && !ownsMeeting(meeting)) return false;
     return (
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  // Filter reminders by scope (used inside RemindersTabContent below)
+  const scopedReminders = reminders.filter((r) => effectiveScope !== "mine" || ownsReminder(r));
 
   // Sort tasks
   const sortedTasks = sortItems(
@@ -845,6 +862,9 @@ const TasksAndMeetings = () => {
 
             {activeTab === "tasks" && (
               <TasksViewToggle view={taskView} onViewChange={setTaskView} />
+            )}
+            {isAdmin && (
+              <ScopeToggle scope={viewScope} onChange={setViewScope} />
             )}
           </div>
 

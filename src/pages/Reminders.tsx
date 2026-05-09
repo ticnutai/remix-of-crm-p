@@ -29,6 +29,9 @@ import { Bell, Trash2, Check, Clock, Mail, Volume2, BellRing, Plus } from 'lucid
 import { format, isPast, isFuture, isToday } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import { ScopeToggle, ViewScope } from '@/components/shared/ScopeToggle';
 
 const reminderTypeIcons: Record<string, React.ReactNode> = {
   browser: <BellRing className="h-4 w-4" />,
@@ -45,7 +48,12 @@ const reminderTypeLabels: Record<string, string> = {
 };
 
 export default function Reminders() {
-  const { reminders, loading, deleteReminder, dismissReminder } = useReminders();
+  const { reminders: allReminders, loading, deleteReminder, dismissReminder } = useReminders();
+  const { user } = useAuth();
+  const { isAdmin } = usePermissions();
+  const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: 'reminders-view-scope', defaultValue: 'all' });
+  const effectiveScope: ViewScope = isAdmin ? viewScope : 'mine';
+  const reminders = allReminders.filter(r => effectiveScope !== 'mine' || !user || r.user_id === user.id);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [remindersTab, setRemindersTab] = useSyncedSetting<string>({ key: 'reminders-tab', defaultValue: 'pending' });
 
@@ -179,14 +187,17 @@ export default function Reminders() {
               <p className="text-muted-foreground text-sm">ניהול כל התזכורות שלך</p>
             </div>
           </div>
-          <AddReminderDialog
-            trigger={
-              <Button className="gap-2 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,30%)]">
-                <Plus className="h-4 w-4" />
-                תזכורת חדשה
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            {isAdmin && <ScopeToggle scope={viewScope} onChange={setViewScope} />}
+            <AddReminderDialog
+              trigger={
+                <Button className="gap-2 bg-[hsl(220,60%,25%)] hover:bg-[hsl(220,60%,30%)]">
+                  <Plus className="h-4 w-4" />
+                  תזכורת חדשה
+                </Button>
+              }
+            />
+          </div>
         </div>
 
         {/* Stats Cards */}
