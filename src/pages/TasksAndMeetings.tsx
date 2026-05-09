@@ -62,6 +62,8 @@ import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { ScopeToggle, ViewScope } from "@/components/shared/ScopeToggle";
+import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { parseISO } from "date-fns";
