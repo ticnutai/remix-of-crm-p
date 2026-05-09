@@ -45,7 +45,11 @@ export function AssigneePicker(props: Props) {
     );
   }, [members, isAdmin, user?.id, search]);
 
-  const selectedIds = props.multi ? props.value : props.value ? [props.value] : [];
+  const selectedIds: string[] = props.multi
+    ? (props.value as string[])
+    : props.value
+      ? [props.value as string]
+      : [];
   const selectedMembers = members.filter(m => selectedIds.includes(m.id));
 
   const toggle = (id: string) => {
