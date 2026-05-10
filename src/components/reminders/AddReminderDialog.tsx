@@ -26,6 +26,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { SmartDateTimePicker } from '@/components/ui/SmartDateTimePicker';
+import { AssigneePicker } from '@/components/shared/AssigneePicker';
+import { useAuth } from '@/hooks/useAuth';
+import { useReminders as _u } from '@/hooks/useReminders';
 
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 
