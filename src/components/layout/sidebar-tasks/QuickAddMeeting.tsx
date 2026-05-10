@@ -246,6 +246,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     useEffect(() => {
       if (open && editingMeeting) {
         setIsPrivate(Boolean((editingMeeting as any).is_private));
+        setAttendees(((editingMeeting as any).attendees as string[]) || []);
       }
     }, [open, editingMeeting]);
 
