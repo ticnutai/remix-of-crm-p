@@ -746,6 +746,15 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                 )}
               </div>
 
+              {/* Meeting attendees (team members) */}
+              <AssigneePicker
+                multi
+                label="משתתפים מהצוות"
+                value={attendees}
+                onChange={setAttendees}
+                placeholder="הוסף עובדים משתתפים"
+              />
+
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
                 <Label
