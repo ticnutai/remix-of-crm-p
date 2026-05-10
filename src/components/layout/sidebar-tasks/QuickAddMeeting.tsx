@@ -50,6 +50,7 @@ import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogT
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
 import { TimeWheelPicker } from "@/components/ui/TimeWheelPicker";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
