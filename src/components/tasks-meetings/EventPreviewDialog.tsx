@@ -305,6 +305,42 @@ export function EventPreviewDialog({
                 }
               />
             )}
+            {isAdmin && (
+              <Popover open={reassignOpen} onOpenChange={setReassignOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 whitespace-nowrap"
+                    style={{ borderColor: GOLD, color: NAVY }}
+                    title="שייך מחדש"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    שיוך
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 rtl" align="start" side="bottom">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium" style={{ color: NAVY }}>
+                      {type === "meeting" ? "שיוך משתתפים" : "שייך מחדש לעובד"}
+                    </p>
+                    {type === "meeting" ? (
+                      <AssigneePicker multi value={reassignAttendees} onChange={setReassignAttendees} placeholder="בחר משתתפים" />
+                    ) : (
+                      <AssigneePicker value={reassignValue} onChange={setReassignValue} placeholder="בחר נמען" />
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setReassignOpen(false)} disabled={reassigning}>
+                        ביטול
+                      </Button>
+                      <Button size="sm" onClick={handleReassign} disabled={reassigning} style={{ backgroundColor: NAVY, color: "#fff" }}>
+                        {reassigning ? "מעדכן..." : "עדכן שיוך"}
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             {onPinToggle && (
               <Button
                 type="button"
