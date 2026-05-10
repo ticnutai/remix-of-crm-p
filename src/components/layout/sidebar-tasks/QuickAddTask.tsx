@@ -421,6 +421,14 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               />
 
 
+              {/* Assign to team member */}
+              <AssigneePicker
+                label="שייך לעובד"
+                value={assignedTo}
+                onChange={setAssignedTo}
+                placeholder="בחר עובד מבצע"
+              />
+
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
                 <Label
