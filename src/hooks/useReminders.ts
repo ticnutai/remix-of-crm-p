@@ -59,6 +59,7 @@ export interface ReminderInsert {
   recipient_phone?: string;
   is_recurring?: boolean;
   recurring_interval?: string;
+  user_id?: string; // optional override (admin assignment); defaults to current user
 }
 
 // Decode literal unicode escapes stored in DB (e.g. \u05de → מ)
