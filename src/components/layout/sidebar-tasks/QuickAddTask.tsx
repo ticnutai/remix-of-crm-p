@@ -220,6 +220,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "pending",
           is_private: isPrivate,
+          assigned_to: assignedTo,
         });
         resetForm();
         onOpenChange(false);
