@@ -286,7 +286,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "scheduled",
           is_private: isPrivate,
-        });
+          attendees,
+        } as any);
 
         const meetingId = editingMeeting?.id ?? (createdMeeting as any)?.id;
 
