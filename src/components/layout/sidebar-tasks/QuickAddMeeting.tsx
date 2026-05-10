@@ -166,6 +166,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [endTime, setEndTime] = useState("10:00");
     const [location, setLocation] = useState("");
     const [clientIds, setClientIds] = useState<string[]>([]);
+    const [attendees, setAttendees] = useState<string[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
