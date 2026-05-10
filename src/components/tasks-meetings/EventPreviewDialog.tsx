@@ -21,6 +21,13 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { usePermissions } from "@/hooks/usePermissions";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { UserPlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface EventPreviewDialogProps {
   open: boolean;
@@ -91,6 +98,12 @@ export function EventPreviewDialog({
   const [dialogWidth, setDialogWidth] = useState(420);
   const [dialogHeight, setDialogHeight] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignValue, setReassignValue] = useState<string | null>(null);
+  const [reassignAttendees, setReassignAttendees] = useState<string[]>([]);
+  const [reassigning, setReassigning] = useState(false);
+  const { isAdmin } = usePermissions();
+  const queryClient = useQueryClient();
   const resizingRef = useRef<{ edge: string; startX: number; startY: number; startW: number; startH: number } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -140,6 +153,40 @@ export function EventPreviewDialog({
       JSON.stringify({ width: dialogWidth }),
     );
   }, [dialogWidth]);
+
+  // Initialize reassign values from event
+  useEffect(() => {
+    if (!event) return;
+    if (type === "task") setReassignValue(event.assigned_to || event.user_id || null);
+    else if (type === "reminder") setReassignValue(event.user_id || null);
+    else if (type === "meeting") setReassignAttendees(Array.isArray(event.attendees) ? event.attendees : []);
+  }, [event, type]);
+
+  const handleReassign = useCallback(async () => {
+    if (!event) return;
+    setReassigning(true);
+    try {
+      let res;
+      if (type === "task") {
+        res = await (supabase as any).from("tasks").update({ assigned_to: reassignValue }).eq("id", event.id);
+      } else if (type === "reminder") {
+        if (!reassignValue) { toast.error("יש לבחור נמען"); setReassigning(false); return; }
+        res = await (supabase as any).from("reminders").update({ user_id: reassignValue }).eq("id", event.id);
+      } else if (type === "meeting") {
+        res = await (supabase as any).from("meetings").update({ attendees: reassignAttendees }).eq("id", event.id);
+      }
+      if (res?.error) throw res.error;
+      toast.success("השיוך עודכן");
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      setReassignOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "השיוך נכשל");
+    } finally {
+      setReassigning(false);
+    }
+  }, [event, type, reassignValue, reassignAttendees, queryClient]);
 
   const anchoredStyle = useMemo(() => {
     if (!anchorPoint) return undefined;
@@ -257,6 +304,42 @@ export function EventPreviewDialog({
                   </Button>
                 }
               />
+            )}
+            {isAdmin && (
+              <Popover open={reassignOpen} onOpenChange={setReassignOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 whitespace-nowrap"
+                    style={{ borderColor: GOLD, color: NAVY }}
+                    title="שייך מחדש"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    שיוך
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 rtl" align="start" side="bottom">
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium" style={{ color: NAVY }}>
+                      {type === "meeting" ? "שיוך משתתפים" : "שייך מחדש לעובד"}
+                    </p>
+                    {type === "meeting" ? (
+                      <AssigneePicker multi value={reassignAttendees} onChange={setReassignAttendees} placeholder="בחר משתתפים" />
+                    ) : (
+                      <AssigneePicker value={reassignValue} onChange={setReassignValue} placeholder="בחר נמען" />
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setReassignOpen(false)} disabled={reassigning}>
+                        ביטול
+                      </Button>
+                      <Button size="sm" onClick={handleReassign} disabled={reassigning} style={{ backgroundColor: NAVY, color: "#fff" }}>
+                        {reassigning ? "מעדכן..." : "עדכן שיוך"}
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
             {onPinToggle && (
               <Button
