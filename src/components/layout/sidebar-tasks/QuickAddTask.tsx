@@ -32,6 +32,8 @@ import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { useAuth } from "@/hooks/useAuth";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
