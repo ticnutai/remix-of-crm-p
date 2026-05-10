@@ -21,6 +21,13 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { usePermissions } from "@/hooks/usePermissions";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { UserPlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface EventPreviewDialogProps {
   open: boolean;
