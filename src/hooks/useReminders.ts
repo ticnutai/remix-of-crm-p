@@ -124,7 +124,7 @@ export function useReminders() {
         .from("reminders")
         .insert({
           ...reminder,
-          user_id: user.id,
+          user_id: reminder.user_id || user.id,
         })
         .select()
         .single();
