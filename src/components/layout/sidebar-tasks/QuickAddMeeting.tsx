@@ -259,6 +259,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setEndTime("10:00");
       setLocation("");
       setClientIds([]);
+      setAttendees([]);
       setReminderConfig(null);
       setIsPrivate(false);
     };
