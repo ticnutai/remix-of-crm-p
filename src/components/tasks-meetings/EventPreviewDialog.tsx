@@ -98,6 +98,12 @@ export function EventPreviewDialog({
   const [dialogWidth, setDialogWidth] = useState(420);
   const [dialogHeight, setDialogHeight] = useState<number | undefined>(undefined);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignValue, setReassignValue] = useState<string | null>(null);
+  const [reassignAttendees, setReassignAttendees] = useState<string[]>([]);
+  const [reassigning, setReassigning] = useState(false);
+  const { isAdmin } = usePermissions();
+  const queryClient = useQueryClient();
   const resizingRef = useRef<{ edge: string; startX: number; startY: number; startW: number; startH: number } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
