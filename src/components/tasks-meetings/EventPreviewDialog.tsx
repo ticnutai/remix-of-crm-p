@@ -154,6 +154,40 @@ export function EventPreviewDialog({
     );
   }, [dialogWidth]);
 
+  // Initialize reassign values from event
+  useEffect(() => {
+    if (!event) return;
+    if (type === "task") setReassignValue(event.assigned_to || event.user_id || null);
+    else if (type === "reminder") setReassignValue(event.user_id || null);
+    else if (type === "meeting") setReassignAttendees(Array.isArray(event.attendees) ? event.attendees : []);
+  }, [event, type]);
+
+  const handleReassign = useCallback(async () => {
+    if (!event) return;
+    setReassigning(true);
+    try {
+      let res;
+      if (type === "task") {
+        res = await (supabase as any).from("tasks").update({ assigned_to: reassignValue }).eq("id", event.id);
+      } else if (type === "reminder") {
+        if (!reassignValue) { toast.error("יש לבחור נמען"); setReassigning(false); return; }
+        res = await (supabase as any).from("reminders").update({ user_id: reassignValue }).eq("id", event.id);
+      } else if (type === "meeting") {
+        res = await (supabase as any).from("meetings").update({ attendees: reassignAttendees }).eq("id", event.id);
+      }
+      if (res?.error) throw res.error;
+      toast.success("השיוך עודכן");
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      setReassignOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "השיוך נכשל");
+    } finally {
+      setReassigning(false);
+    }
+  }, [event, type, reassignValue, reassignAttendees, queryClient]);
+
   const anchoredStyle = useMemo(() => {
     if (!anchorPoint) return undefined;
     const margin = 12;
