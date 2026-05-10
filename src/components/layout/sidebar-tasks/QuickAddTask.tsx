@@ -32,6 +32,8 @@ import { NotificationOptions } from "./NotificationOptions";
 import { InlineReminderSection } from "@/components/reminders/InlineReminderSection";
 import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogThemeSwitcher";
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
+import { useAuth } from "@/hooks/useAuth";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -109,6 +111,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     _ref,
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
+    const { user } = useAuth();
     const sidebarColors = getSidebarColors(theme);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState("");
@@ -117,12 +120,18 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
     const [dueTime, setDueTime] = useState<string>("");
     const [clientIds, setClientIds] = useState<string[]>([]);
+    const [assignedTo, setAssignedTo] = useState<string | null>(null);
     const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
     const [dueDateText, setDueDateText] = useState("");
     const [dateError, setDateError] = useState<string | null>(null);
+
+    // Default assigned_to = current user
+    useEffect(() => {
+      if (open && !assignedTo && user?.id) setAssignedTo(user.id);
+    }, [open, user?.id]);
 
     // Parse manual date input - supports dd/MM/yyyy, dd-MM-yyyy, dd.MM.yyyy, yyyy-MM-dd
     const parseManualDate = (value: string): Date | null => {
@@ -211,6 +220,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "pending",
           is_private: isPrivate,
+          assigned_to: assignedTo,
         });
         resetForm();
         onOpenChange(false);
@@ -410,6 +420,14 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
                 error={dateError}
               />
 
+
+              {/* Assign to team member */}
+              <AssigneePicker
+                label="שייך לעובד"
+                value={assignedTo}
+                onChange={setAssignedTo}
+                placeholder="בחר עובד מבצע"
+              />
 
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">

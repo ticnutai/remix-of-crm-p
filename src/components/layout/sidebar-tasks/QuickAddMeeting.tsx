@@ -50,6 +50,7 @@ import { useDialogTheme, DialogThemeSwitcher } from "@/components/shared/DialogT
 import { SmartDateTimePicker } from "@/components/ui/SmartDateTimePicker";
 import { TimeWheelPicker } from "@/components/ui/TimeWheelPicker";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { AssigneePicker } from "@/components/shared/AssigneePicker";
 
 // Dynamic sidebar colors based on theme
 function getSidebarColors(theme: ReturnType<typeof useDialogTheme>['theme']) {
@@ -165,6 +166,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     const [endTime, setEndTime] = useState("10:00");
     const [location, setLocation] = useState("");
     const [clientIds, setClientIds] = useState<string[]>([]);
+    const [attendees, setAttendees] = useState<string[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [isClientPickerOpen, setIsClientPickerOpen] = useState(false);
@@ -244,6 +246,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
     useEffect(() => {
       if (open && editingMeeting) {
         setIsPrivate(Boolean((editingMeeting as any).is_private));
+        setAttendees(((editingMeeting as any).attendees as string[]) || []);
       }
     }, [open, editingMeeting]);
 
@@ -256,6 +259,7 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
       setEndTime("10:00");
       setLocation("");
       setClientIds([]);
+      setAttendees([]);
       setReminderConfig(null);
       setIsPrivate(false);
     };
@@ -282,7 +286,8 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
           client_id: clientIds.length > 0 ? clientIds[0] : null,
           status: "scheduled",
           is_private: isPrivate,
-        });
+          attendees,
+        } as any);
 
         const meetingId = editingMeeting?.id ?? (createdMeeting as any)?.id;
 
@@ -740,6 +745,15 @@ export const QuickAddMeeting = forwardRef<HTMLDivElement, QuickAddMeetingProps>(
                   </div>
                 )}
               </div>
+
+              {/* Meeting attendees (team members) */}
+              <AssigneePicker
+                multi
+                label="משתתפים מהצוות"
+                value={attendees}
+                onChange={setAttendees}
+                placeholder="הוסף עובדים משתתפים"
+              />
 
               {/* Client Assignment - Multi Select */}
               <div className="space-y-2">
