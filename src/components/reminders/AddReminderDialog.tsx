@@ -97,9 +97,17 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   const { themeId, theme, setThemeId } = useDialogTheme();
   const sidebarColors = getSidebarColors(theme);
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
   const { createReminder } = useReminders();
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(null);
+  const [sendCopyToMe, setSendCopyToMe] = useState(false);
+
+  useEffect(() => {
+    if (open && !assignedUserId && user?.id) setAssignedUserId(user.id);
+  }, [open, user?.id]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [clients, setClients] = useState<{ id: string; name: string; email: string | null; phone: string | null; whatsapp: string | null }[]>([]);
