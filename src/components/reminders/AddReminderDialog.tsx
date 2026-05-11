@@ -16,7 +16,7 @@ import {
 import { Bell, Plus, Volume2, Upload, X, Mail, MessageSquare, Phone, UserPlus, Search, Loader2 } from 'lucide-react';
 import { format, parse } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { useReminders, ReminderInsert } from '@/hooks/useReminders';
+import { useReminders, ReminderInsert, Reminder } from '@/hooks/useReminders';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -61,6 +61,9 @@ interface AddReminderDialogProps {
     remind_at?: string;
     client_id?: string;
   };
+  editingReminder?: Reminder | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const reminderTypes = [
@@ -93,12 +96,21 @@ const RINGTONES = [
   { id: 'soft', name: 'רך ונעים', url: 'https://assets.mixkit.co/active_storage/sfx/2877/2877-preview.mp3' },
 ];
 
-export function AddReminderDialog({ entityType, entityId, trigger, initialValues }: AddReminderDialogProps) {
+export function AddReminderDialog({ entityType, entityId, trigger, initialValues, editingReminder, open: controlledOpen, onOpenChange: controlledOnOpenChange }: AddReminderDialogProps) {
   const { themeId, theme, setThemeId } = useDialogTheme();
   const sidebarColors = getSidebarColors(theme);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (isControlled) {
+      controlledOnOpenChange?.(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
   const { user } = useAuth();
-  const { createReminder } = useReminders();
+  const { createReminder, updateReminder } = useReminders();
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [assignedUserId, setAssignedUserId] = useState<string | null>(null);
@@ -240,6 +252,28 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
     }
   }, [open, initialValues]);
 
+  useEffect(() => {
+    if (!open || !editingReminder) return;
+
+    setForm((prev) => ({
+      ...prev,
+      title: editingReminder.title,
+      message: editingReminder.message ?? '',
+      remind_at: editingReminder.remind_at,
+    }));
+
+    const dt = new Date(editingReminder.remind_at);
+    if (!isNaN(dt.getTime())) {
+      setReminderDateText(format(dt, 'dd/MM/yyyy'));
+      setReminderTimeText(format(dt, 'HH:mm'));
+      setReminderDateError(null);
+    }
+
+    if (editingReminder.reminder_type) {
+      setSelectedTypes([editingReminder.reminder_type]);
+    }
+  }, [open, editingReminder]);
+
   const toggleReminderType = (type: string) => {
     setSelectedTypes(prev => 
       prev.includes(type) 
@@ -364,7 +398,16 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
         email_template_id: selectedTemplate,
       };
       
-      await createReminder(reminderData);
+      if (editingReminder) {
+        await updateReminder(editingReminder.id, {
+          title: reminderData.title,
+          message: reminderData.message,
+          remind_at: reminderData.remind_at,
+          reminder_type: reminderData.reminder_type,
+        });
+      } else {
+        await createReminder(reminderData);
+      }
       
       // Reset form
       setForm({
@@ -396,7 +439,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
   };
 
   // Render: external trigger (cloned with onClick) + FloatingDialog
-  const triggerEl = trigger ? (
+  const triggerEl = !isControlled && trigger ? (
     React.isValidElement(trigger)
       ? React.cloneElement(trigger as React.ReactElement<any>, {
           onClick: (e: React.MouseEvent) => {
@@ -405,12 +448,12 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
           },
         })
       : <span onClick={() => setOpen(true)}>{trigger}</span>
-  ) : (
+  ) : !isControlled ? (
     <Button variant="outline" size="sm" className="gap-2" onClick={() => setOpen(true)}>
       <Bell className="h-4 w-4" />
       הוסף תזכורת
     </Button>
-  );
+  ) : null;
 
   return (
     <>
@@ -433,7 +476,7 @@ export function AddReminderDialog({ entityType, entityId, trigger, initialValues
               <Bell className="h-5 w-5" style={{ color: theme.iconColor }} />
             </div>
             <span className="text-base font-bold flex-1 truncate" style={{ color: theme.title }}>
-              תזכורת חדשה
+              {editingReminder ? 'עריכת תזכורת' : 'תזכורת חדשה'}
             </span>
             <DialogThemeSwitcher currentTheme={themeId} onThemeChange={setThemeId} />
           </div>

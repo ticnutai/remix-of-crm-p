@@ -623,7 +623,12 @@ export function SaveAllStagesDialog({
   const { saveMultiStageTemplate } = useStageTemplates();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
+  const [selectedTaskIdsByStage, setSelectedTaskIdsByStage] = useState<
+    Record<string, Set<string>>
+  >({});
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [includeTaskContent, setIncludeTaskContent] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -631,20 +636,170 @@ export function SaveAllStagesDialog({
     if (open) {
       setName("");
       setDescription("");
+      setTaskSearchQuery("");
       setIncludeTaskContent(false);
       // Select all by default
       setSelectedStages(new Set(stages.map((s) => s.stage_id)));
+
+      // Select all tasks by default for each stage
+      const initialTaskSelection = stages.reduce<Record<string, Set<string>>>(
+        (acc, stage) => {
+          acc[stage.stage_id] = new Set((stage.tasks || []).map((task) => task.id));
+          return acc;
+        },
+        {},
+      );
+      setSelectedTaskIdsByStage(initialTaskSelection);
+      setExpandedStages(new Set());
     }
   }, [open, stages]);
 
   const toggleStage = (stageId: string) => {
-    const newSet = new Set(selectedStages);
-    if (newSet.has(stageId)) {
-      newSet.delete(stageId);
-    } else {
-      newSet.add(stageId);
+    const stage = stages.find((s) => s.stage_id === stageId);
+
+    setSelectedStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stageId)) {
+        next.delete(stageId);
+      } else {
+        next.add(stageId);
+      }
+      return next;
+    });
+
+    // Ensure stage has a task selection set initialized when toggled on
+    if (stage?.tasks?.length) {
+      setSelectedTaskIdsByStage((prev) => {
+        if (prev[stageId]) return prev;
+        return {
+          ...prev,
+          [stageId]: new Set(stage.tasks!.map((task) => task.id)),
+        };
+      });
     }
-    setSelectedStages(newSet);
+  };
+
+  const handleCategoryClick = (stageId: string) => {
+    const stage = stages.find((s) => s.stage_id === stageId);
+
+    toggleStageExpansion(stageId);
+
+    // Opening a category should allow immediate task selection
+    setSelectedStages((prev) => {
+      if (prev.has(stageId)) return prev;
+      const next = new Set(prev);
+      next.add(stageId);
+      return next;
+    });
+
+    // Initialize task selection for this stage if missing
+    if (stage?.tasks?.length) {
+      setSelectedTaskIdsByStage((prev) => {
+        if (prev[stageId]) return prev;
+        return {
+          ...prev,
+          [stageId]: new Set(stage.tasks.map((task) => task.id)),
+        };
+      });
+    }
+  };
+
+  const toggleStageExpansion = (stageId: string) => {
+    setExpandedStages((prev) => {
+      const next = new Set(prev);
+      if (next.has(stageId)) {
+        next.delete(stageId);
+      } else {
+        next.add(stageId);
+      }
+      return next;
+    });
+  };
+
+  const getStageTaskIds = (stageId: string) => {
+    const stage = stages.find((s) => s.stage_id === stageId);
+    return (stage?.tasks || []).map((task) => task.id);
+  };
+
+  const toggleTaskSelection = (stageId: string, taskId: string) => {
+    setSelectedTaskIdsByStage((prev) => {
+      const stageTaskIds = getStageTaskIds(stageId);
+      const current = prev[stageId]
+        ? new Set(prev[stageId])
+        : new Set(stageTaskIds);
+
+      if (current.has(taskId)) {
+        current.delete(taskId);
+      } else {
+        current.add(taskId);
+      }
+
+      return {
+        ...prev,
+        [stageId]: current,
+      };
+    });
+
+    // Selecting a task should automatically include the stage
+    setSelectedStages((prev) => {
+      if (prev.has(stageId)) return prev;
+      const next = new Set(prev);
+      next.add(stageId);
+      return next;
+    });
+  };
+
+  const toggleAllTasksInStage = (stageId: string) => {
+    const stageTaskIds = getStageTaskIds(stageId);
+
+    setSelectedTaskIdsByStage((prev) => {
+      const current = prev[stageId]
+        ? new Set(prev[stageId])
+        : new Set(stageTaskIds);
+      const allSelected =
+        stageTaskIds.length > 0 && stageTaskIds.every((id) => current.has(id));
+
+      return {
+        ...prev,
+        [stageId]: allSelected ? new Set<string>() : new Set(stageTaskIds),
+      };
+    });
+
+    // Bulk task operations should keep the stage included
+    setSelectedStages((prev) => {
+      if (prev.has(stageId)) return prev;
+      const next = new Set(prev);
+      next.add(stageId);
+      return next;
+    });
+  };
+
+  const selectOnlyIncompleteTasksInStage = (stageId: string) => {
+    const stage = stages.find((s) => s.stage_id === stageId);
+    const incompleteTaskIds = (stage?.tasks || [])
+      .filter((task) => !task.completed)
+      .map((task) => task.id);
+
+    setSelectedTaskIdsByStage((prev) => ({
+      ...prev,
+      [stageId]: new Set(incompleteTaskIds),
+    }));
+
+    setSelectedStages((prev) => {
+      if (prev.has(stageId)) return prev;
+      const next = new Set(prev);
+      next.add(stageId);
+      return next;
+    });
+  };
+
+  const getSelectedTasksForStage = (stage: ClientStage) => {
+    if (!stage.tasks || stage.tasks.length === 0) return [];
+
+    const selectedTaskIds = selectedTaskIdsByStage[stage.stage_id];
+    if (!selectedTaskIds) return stage.tasks;
+
+    return stage.tasks.filter((task) => selectedTaskIds.has(task.id));
   };
 
   const handleSave = async () => {
@@ -656,7 +811,12 @@ export function SaveAllStagesDialog({
       return;
     }
 
-    const stagesToSave = stages.filter((s) => selectedStages.has(s.stage_id));
+    const stagesToSave = stages
+      .filter((s) => selectedStages.has(s.stage_id))
+      .map((stage) => ({
+        ...stage,
+        tasks: getSelectedTasksForStage(stage),
+      }));
 
     console.log("[SaveAllStagesDialog] Saving template:", {
       name,
@@ -689,15 +849,33 @@ export function SaveAllStagesDialog({
     }
   };
 
-  const totalTasks = stages
-    .filter((s) => selectedStages.has(s.stage_id))
-    .reduce((sum, s) => sum + (s.tasks?.length || 0), 0);
+  const selectedStagesList = stages.filter((s) => selectedStages.has(s.stage_id));
+
+  const normalizedSearch = taskSearchQuery.trim().toLowerCase();
+  const visibleStages =
+    normalizedSearch.length === 0
+      ? stages
+      : stages.filter((stage) => {
+          const stageNameMatch = stage.stage_name
+            .toLowerCase()
+            .includes(normalizedSearch);
+          const taskMatch = (stage.tasks || []).some((task) =>
+            task.title.toLowerCase().includes(normalizedSearch),
+          );
+          return stageNameMatch || taskMatch;
+        });
+
+  const totalTasks = selectedStagesList.reduce(
+    (sum, stage) => sum + getSelectedTasksForStage(stage).length,
+    0,
+  );
 
   // Count completed tasks for preview
-  const completedTasks = stages
-    .filter((s) => selectedStages.has(s.stage_id))
+  const completedTasks = selectedStagesList
     .reduce(
-      (sum, s) => sum + (s.tasks?.filter((t: any) => t.completed)?.length || 0),
+      (sum, stage) =>
+        sum +
+        getSelectedTasksForStage(stage).filter((task: any) => task.completed).length,
       0,
     );
 
@@ -710,7 +888,7 @@ export function SaveAllStagesDialog({
             שמור כל השלבים כתבנית
           </DialogTitle>
           <DialogDescription>
-            בחר את השלבים לשמירה ותן שם לתבנית
+            בחר שלבים, פתח כל שלב ובחר את המשימות המדויקות לשמירה
           </DialogDescription>
         </DialogHeader>
 
@@ -773,36 +951,211 @@ export function SaveAllStagesDialog({
 
           {/* Stages selection */}
           <div className="space-y-2">
-            <Label>בחר שלבים ({selectedStages.size} נבחרו)</Label>
-            <ScrollArea className="h-[200px] border rounded-lg p-2">
+            <Label>בחר שלבים ומשימות ({selectedStages.size} שלבים נבחרו)</Label>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 px-2"
+                onClick={() =>
+                  setSelectedStages(new Set(stages.map((stage) => stage.stage_id)))
+                }
+              >
+                בחר את כל השלבים
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                onClick={() => setSelectedStages(new Set())}
+              >
+                נקה בחירת שלבים
+              </Button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={taskSearchQuery}
+                onChange={(e) => setTaskSearchQuery(e.target.value)}
+                placeholder="חיפוש שלב או משימה..."
+                className="pr-9 h-8"
+              />
+            </div>
+
+            <ScrollArea className="h-[280px] border rounded-lg p-2">
               <div className="space-y-2">
-                {stages.map((stage) => {
+                {visibleStages.length === 0 && (
+                  <div className="text-center text-sm text-muted-foreground py-6">
+                    לא נמצאו שלבים או משימות לחיפוש הזה
+                  </div>
+                )}
+
+                {visibleStages.map((stage) => {
                   const Icon =
                     STAGE_ICONS[stage.stage_icon || "FolderOpen"] || FolderOpen;
+                  const isStageSelected = selectedStages.has(stage.stage_id);
+                  const isExpanded = expandedStages.has(stage.stage_id);
+                  const stageTasks = stage.tasks || [];
+                  const visibleTasks =
+                    normalizedSearch.length === 0
+                      ? stageTasks
+                      : stageTasks.filter((task) =>
+                          task.title.toLowerCase().includes(normalizedSearch),
+                        );
+                  const selectedTaskIds =
+                    selectedTaskIdsByStage[stage.stage_id] ||
+                    new Set(stageTasks.map((task) => task.id));
+                  const selectedTaskCount = stageTasks.filter((task) =>
+                    selectedTaskIds.has(task.id),
+                  ).length;
+                  const incompleteTasksCount = stageTasks.filter(
+                    (task) => !task.completed,
+                  ).length;
+                  const allTasksSelected =
+                    stageTasks.length > 0 &&
+                    selectedTaskCount === stageTasks.length;
+
                   return (
-                    <div
-                      key={stage.stage_id}
-                      className={cn(
-                        "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
-                        selectedStages.has(stage.stage_id)
-                          ? "bg-primary/10 border border-primary/30"
-                          : "hover:bg-muted",
-                      )}
-                      onClick={() => toggleStage(stage.stage_id)}
-                    >
-                      <Checkbox
-                        checked={selectedStages.has(stage.stage_id)}
-                        onCheckedChange={() => toggleStage(stage.stage_id)}
-                      />
-                      <Icon className="h-4 w-4 text-primary" />
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">
-                          {stage.stage_name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {stage.tasks?.length || 0} משימות
+                    <div key={stage.stage_id} className="space-y-1">
+                      <div
+                        className={cn(
+                          "rounded-lg border transition-colors",
+                          isStageSelected
+                            ? "bg-primary/10 border-primary/30"
+                            : "hover:bg-muted/50",
+                        )}
+                      >
+                        <div className="flex items-center gap-2 p-2">
+                          <Checkbox
+                            checked={isStageSelected}
+                            onCheckedChange={() => toggleStage(stage.stage_id)}
+                          />
+                          <Icon className="h-4 w-4 text-primary flex-shrink-0" />
+
+                          <button
+                            type="button"
+                            className="flex-1 text-right min-w-0"
+                            onClick={() => handleCategoryClick(stage.stage_id)}
+                          >
+                            <div className="font-medium text-sm truncate">
+                              {stage.stage_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                              <span>
+                                {selectedTaskCount} מתוך {stageTasks.length} משימות
+                              </span>
+                              {normalizedSearch.length > 0 && (
+                                <span>
+                                  • {visibleTasks.length} תוצאות חיפוש
+                                </span>
+                              )}
+                            </div>
+                          </button>
+
+                          {stageTasks.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() =>
+                                  selectOnlyIncompleteTasksInStage(stage.stage_id)
+                                }
+                                disabled={!isStageSelected}
+                              >
+                                רק לא הושלמו ({incompleteTasksCount})
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => toggleAllTasksInStage(stage.stage_id)}
+                                disabled={!isStageSelected}
+                              >
+                                {allTasksSelected ? "בטל הכל" : "בחר הכל"}
+                              </Button>
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => toggleStageExpansion(stage.stage_id)}
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
+
+                      {isExpanded && (
+                        <div className="rounded-lg border bg-muted/30 p-2 space-y-2">
+                          {stageTasks.length === 0 ? (
+                            <div className="text-xs text-muted-foreground px-1">
+                              אין משימות בשלב הזה
+                            </div>
+                          ) : visibleTasks.length === 0 ? (
+                            <div className="text-xs text-muted-foreground px-1">
+                              אין משימות תואמות לחיפוש בשלב הזה
+                            </div>
+                          ) : (
+                            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                              {visibleTasks.map((task: any) => {
+                                const isTaskSelected = selectedTaskIds.has(task.id);
+                                return (
+                                  <div
+                                    key={task.id}
+                                    className={cn(
+                                      "flex items-start gap-2 p-2 rounded-md border bg-background/80",
+                                      !isStageSelected && "opacity-60",
+                                    )}
+                                  >
+                                    <Checkbox
+                                      checked={isTaskSelected}
+                                      disabled={!isStageSelected}
+                                      onCheckedChange={() =>
+                                        toggleTaskSelection(stage.stage_id, task.id)
+                                      }
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div
+                                        className={cn(
+                                          "text-sm truncate",
+                                          includeTaskContent && task.completed
+                                            ? "line-through text-muted-foreground"
+                                            : "",
+                                        )}
+                                      >
+                                        {task.title}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground">
+                                        {task.task_type === "timer_tab"
+                                          ? "טאב טיימר"
+                                          : "משימה רגילה"}
+                                      </div>
+                                    </div>
+                                    {task.completed && (
+                                      <Badge variant="outline" className="text-[10px]">
+                                        הושלמה
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -813,7 +1166,10 @@ export function SaveAllStagesDialog({
           {/* Summary */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
             <Badge variant="secondary">{selectedStages.size} שלבים</Badge>
-            <Badge variant="secondary">{totalTasks} משימות</Badge>
+            <Badge variant="secondary">{totalTasks} משימות נבחרו</Badge>
+            {completedTasks > 0 && (
+              <Badge variant="outline">{completedTasks} הושלמו</Badge>
+            )}
             {includeTaskContent && (
               <Badge variant="default" className="bg-primary">
                 כולל מילוי

@@ -147,6 +147,8 @@ const TasksAndMeetings = () => {
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [reminderEditOpen, setReminderEditOpen] = useState(false);
 
   // Preview dialog
   const [previewEvent, setPreviewEvent] = useState<any>(null);
@@ -1583,7 +1585,10 @@ const TasksAndMeetings = () => {
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
-                            if (!selectionMode.reminders) setActiveTab("reminders");
+                            if (!selectionMode.reminders) {
+                              setEditingReminder(reminder);
+                              setReminderEditOpen(true);
+                            }
                           }}
                           title="עריכה"
                         >
@@ -1731,7 +1736,20 @@ const TasksAndMeetings = () => {
           onEdit={() => {
             if (previewType === "task") handleEditTask(previewEvent);
             else if (previewType === "meeting") handleEditMeeting(previewEvent);
-            else setActiveTab("reminders");
+            else {
+              setEditingReminder(previewEvent);
+              setReminderEditOpen(true);
+            }
+          }}
+        />
+
+        {/* Reminder Edit Dialog */}
+        <AddReminderDialog
+          editingReminder={editingReminder}
+          open={reminderEditOpen}
+          onOpenChange={(o) => {
+            setReminderEditOpen(o);
+            if (!o) setEditingReminder(null);
           }}
         />
       </div>

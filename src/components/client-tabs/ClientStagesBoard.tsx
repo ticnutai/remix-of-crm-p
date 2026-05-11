@@ -90,6 +90,7 @@ import {
   UserRound,
   Building2,
   Check,
+  RotateCcw,
   LayoutGrid,
   List,
   Table,
@@ -287,6 +288,297 @@ const TARGET_DAYS_OPTIONS = [
     label: "90 ימי עבודה",
   },
 ];
+
+const TIMER_TAB_PRESET_COUNT = 6;
+const TIMER_TAB_PRESET_DEFAULTS = [7, 14, 21, 30, 45, 60];
+
+const normalizeTimerTabDayPresets = (value: unknown): number[] => {
+  if (!Array.isArray(value)) return [...TIMER_TAB_PRESET_DEFAULTS];
+
+  const parsed = value
+    .map((item) => Number.parseInt(String(item), 10))
+    .filter((days) => Number.isFinite(days) && days > 0 && days <= 365);
+
+  const normalized: number[] = [];
+  parsed.forEach((days) => {
+    if (!normalized.includes(days)) normalized.push(days);
+  });
+
+  TIMER_TAB_PRESET_DEFAULTS.forEach((fallback) => {
+    if (
+      normalized.length < TIMER_TAB_PRESET_COUNT &&
+      !normalized.includes(fallback)
+    ) {
+      normalized.push(fallback);
+    }
+  });
+
+  return normalized.slice(0, TIMER_TAB_PRESET_COUNT);
+};
+
+interface StageBoardTheme {
+  id: string;
+  name: string;
+  borderColor: string;
+  cardBackgroundColor: string;
+  headerFromColor: string;
+  headerToColor: string;
+  headerTextColor: string;
+  iconBackgroundColor: string;
+  iconColor: string;
+  progressTrackColor: string;
+  progressColor: string;
+  badgeBackgroundColor: string;
+  badgeTextColor: string;
+  activeBorderColor: string;
+  activeCardBackgroundColor: string;
+  activeHeaderFromColor: string;
+  activeHeaderToColor: string;
+  activeHeaderTextColor: string;
+  activeProgressColor: string;
+  activeBadgeBackgroundColor: string;
+  activeBadgeTextColor: string;
+  activeGlowColor: string;
+}
+
+const STAGE_THEME_PRESETS: StageBoardTheme[] = [
+  {
+    id: "classic-gold",
+    name: "זהב קלאסי",
+    borderColor: "#d4a843",
+    cardBackgroundColor: "#fffdf6",
+    headerFromColor: "#f5d25f",
+    headerToColor: "#d9a623",
+    headerTextColor: "#1f2937",
+    iconBackgroundColor: "#fff4cc",
+    iconColor: "#a16207",
+    progressTrackColor: "#f3e8c4",
+    progressColor: "#d4a843",
+    badgeBackgroundColor: "#fff0bf",
+    badgeTextColor: "#7c5600",
+    activeBorderColor: "#a16207",
+    activeCardBackgroundColor: "#fffbeb",
+    activeHeaderFromColor: "#a16207",
+    activeHeaderToColor: "#d4a843",
+    activeHeaderTextColor: "#f8fafc",
+    activeProgressColor: "#f59e0b",
+    activeBadgeBackgroundColor: "#fcd34d",
+    activeBadgeTextColor: "#1f2937",
+    activeGlowColor: "#f59e0b",
+  },
+  {
+    id: "deep-ocean",
+    name: "אוקיינוס עמוק",
+    borderColor: "#1d4ed8",
+    cardBackgroundColor: "#f4f8ff",
+    headerFromColor: "#1e40af",
+    headerToColor: "#2563eb",
+    headerTextColor: "#eff6ff",
+    iconBackgroundColor: "#dbeafe",
+    iconColor: "#1e3a8a",
+    progressTrackColor: "#bfdbfe",
+    progressColor: "#1d4ed8",
+    badgeBackgroundColor: "#dbeafe",
+    badgeTextColor: "#1e3a8a",
+    activeBorderColor: "#1e3a8a",
+    activeCardBackgroundColor: "#e8f1ff",
+    activeHeaderFromColor: "#1e3a8a",
+    activeHeaderToColor: "#2563eb",
+    activeHeaderTextColor: "#eff6ff",
+    activeProgressColor: "#2563eb",
+    activeBadgeBackgroundColor: "#93c5fd",
+    activeBadgeTextColor: "#1e3a8a",
+    activeGlowColor: "#3b82f6",
+  },
+  {
+    id: "emerald-flow",
+    name: "אמרלד מודרני",
+    borderColor: "#059669",
+    cardBackgroundColor: "#f2fcf8",
+    headerFromColor: "#047857",
+    headerToColor: "#10b981",
+    headerTextColor: "#ecfdf5",
+    iconBackgroundColor: "#d1fae5",
+    iconColor: "#065f46",
+    progressTrackColor: "#a7f3d0",
+    progressColor: "#059669",
+    badgeBackgroundColor: "#d1fae5",
+    badgeTextColor: "#065f46",
+    activeBorderColor: "#065f46",
+    activeCardBackgroundColor: "#dcfce7",
+    activeHeaderFromColor: "#065f46",
+    activeHeaderToColor: "#10b981",
+    activeHeaderTextColor: "#ecfdf5",
+    activeProgressColor: "#10b981",
+    activeBadgeBackgroundColor: "#6ee7b7",
+    activeBadgeTextColor: "#064e3b",
+    activeGlowColor: "#10b981",
+  },
+];
+
+const isHexColor = (value: unknown): value is string =>
+  typeof value === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
+
+const sanitizeStageTheme = (
+  candidate: Partial<StageBoardTheme>,
+  fallback: StageBoardTheme,
+  fallbackId: string,
+  fallbackName: string,
+): StageBoardTheme => ({
+  id:
+    typeof candidate.id === "string" && candidate.id.trim()
+      ? candidate.id.trim()
+      : fallbackId,
+  name:
+    typeof candidate.name === "string" && candidate.name.trim()
+      ? candidate.name.trim()
+      : fallbackName,
+  borderColor: isHexColor(candidate.borderColor)
+    ? candidate.borderColor
+    : fallback.borderColor,
+  cardBackgroundColor: isHexColor(candidate.cardBackgroundColor)
+    ? candidate.cardBackgroundColor
+    : fallback.cardBackgroundColor,
+  headerFromColor: isHexColor(candidate.headerFromColor)
+    ? candidate.headerFromColor
+    : fallback.headerFromColor,
+  headerToColor: isHexColor(candidate.headerToColor)
+    ? candidate.headerToColor
+    : fallback.headerToColor,
+  headerTextColor: isHexColor(candidate.headerTextColor)
+    ? candidate.headerTextColor
+    : fallback.headerTextColor,
+  iconBackgroundColor: isHexColor(candidate.iconBackgroundColor)
+    ? candidate.iconBackgroundColor
+    : fallback.iconBackgroundColor,
+  iconColor: isHexColor(candidate.iconColor)
+    ? candidate.iconColor
+    : fallback.iconColor,
+  progressTrackColor: isHexColor(candidate.progressTrackColor)
+    ? candidate.progressTrackColor
+    : fallback.progressTrackColor,
+  progressColor: isHexColor(candidate.progressColor)
+    ? candidate.progressColor
+    : fallback.progressColor,
+  badgeBackgroundColor: isHexColor(candidate.badgeBackgroundColor)
+    ? candidate.badgeBackgroundColor
+    : fallback.badgeBackgroundColor,
+  badgeTextColor: isHexColor(candidate.badgeTextColor)
+    ? candidate.badgeTextColor
+    : fallback.badgeTextColor,
+  activeBorderColor: isHexColor(candidate.activeBorderColor)
+    ? candidate.activeBorderColor
+    : fallback.activeBorderColor,
+  activeCardBackgroundColor: isHexColor(candidate.activeCardBackgroundColor)
+    ? candidate.activeCardBackgroundColor
+    : fallback.activeCardBackgroundColor,
+  activeHeaderFromColor: isHexColor(candidate.activeHeaderFromColor)
+    ? candidate.activeHeaderFromColor
+    : fallback.activeHeaderFromColor,
+  activeHeaderToColor: isHexColor(candidate.activeHeaderToColor)
+    ? candidate.activeHeaderToColor
+    : fallback.activeHeaderToColor,
+  activeHeaderTextColor: isHexColor(candidate.activeHeaderTextColor)
+    ? candidate.activeHeaderTextColor
+    : fallback.activeHeaderTextColor,
+  activeProgressColor: isHexColor(candidate.activeProgressColor)
+    ? candidate.activeProgressColor
+    : fallback.activeProgressColor,
+  activeBadgeBackgroundColor: isHexColor(candidate.activeBadgeBackgroundColor)
+    ? candidate.activeBadgeBackgroundColor
+    : fallback.activeBadgeBackgroundColor,
+  activeBadgeTextColor: isHexColor(candidate.activeBadgeTextColor)
+    ? candidate.activeBadgeTextColor
+    : fallback.activeBadgeTextColor,
+  activeGlowColor: isHexColor(candidate.activeGlowColor)
+    ? candidate.activeGlowColor
+    : fallback.activeGlowColor,
+});
+
+const normalizeStageThemes = (value: unknown): StageBoardTheme[] => {
+  const fallbackList = STAGE_THEME_PRESETS.map((theme) => ({ ...theme }));
+  if (!Array.isArray(value)) return fallbackList;
+
+  const mapped = value
+    .map((item, index) => {
+      const fallback =
+        STAGE_THEME_PRESETS[index % STAGE_THEME_PRESETS.length] ||
+        STAGE_THEME_PRESETS[0];
+      const source =
+        item && typeof item === "object"
+          ? (item as Partial<StageBoardTheme>)
+          : {};
+
+      return sanitizeStageTheme(
+        source,
+        fallback,
+        typeof source.id === "string" && source.id.trim()
+          ? source.id.trim()
+          : `stage-theme-${index + 1}`,
+        typeof source.name === "string" && source.name.trim()
+          ? source.name.trim()
+          : `ערכת נושא ${index + 1}`,
+      );
+    })
+    .filter((theme) => theme.id.length > 0);
+
+  const unique: StageBoardTheme[] = [];
+  mapped.forEach((theme) => {
+    if (!unique.some((existing) => existing.id === theme.id)) {
+      unique.push(theme);
+    }
+  });
+
+  return unique.length > 0 ? unique : fallbackList;
+};
+
+type StageThemeColorKey = Exclude<keyof StageBoardTheme, "id" | "name">;
+
+const STAGE_THEME_COLOR_FIELDS: Array<{
+  key: StageThemeColorKey;
+  label: string;
+}> = [
+  { key: "borderColor", label: "צבע מסגרת" },
+  { key: "cardBackgroundColor", label: "רקע כרטיס" },
+  { key: "headerFromColor", label: "גרדיאנט כותרת - התחלה" },
+  { key: "headerToColor", label: "גרדיאנט כותרת - סיום" },
+  { key: "headerTextColor", label: "טקסט בכותרת" },
+  { key: "iconBackgroundColor", label: "רקע אייקון" },
+  { key: "iconColor", label: "צבע אייקון" },
+  { key: "progressTrackColor", label: "רקע מד התקדמות" },
+  { key: "progressColor", label: "צבע מד התקדמות" },
+  { key: "badgeBackgroundColor", label: "רקע תג" },
+  { key: "badgeTextColor", label: "טקסט תג" },
+  { key: "activeBorderColor", label: "[שלב פעיל] צבע מסגרת" },
+  { key: "activeCardBackgroundColor", label: "[שלב פעיל] רקע כרטיס" },
+  { key: "activeHeaderFromColor", label: "[שלב פעיל] כותרת - התחלה" },
+  { key: "activeHeaderToColor", label: "[שלב פעיל] כותרת - סיום" },
+  { key: "activeHeaderTextColor", label: "[שלב פעיל] טקסט כותרת" },
+  { key: "activeProgressColor", label: "[שלב פעיל] צבע התקדמות" },
+  { key: "activeBadgeBackgroundColor", label: "[שלב פעיל] רקע תג" },
+  { key: "activeBadgeTextColor", label: "[שלב פעיל] טקסט תג" },
+  { key: "activeGlowColor", label: "[שלב פעיל] צבע זוהר" },
+];
+
+const createStageThemeId = () =>
+  `custom-stage-theme-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const createStageThemeDraft = (base?: StageBoardTheme): StageBoardTheme => {
+  const fallback = STAGE_THEME_PRESETS[0];
+  const id = createStageThemeId();
+  const baseName = base?.name || "ערכת נושא";
+
+  return sanitizeStageTheme(
+    {
+      ...(base || fallback),
+      id,
+      name: `${baseName} מותאם`,
+    },
+    fallback,
+    id,
+    `${baseName} מותאם`,
+  );
+};
 
 // Sortable Task Item Component
 interface SortableTaskProps {
@@ -1951,6 +2243,86 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
   // Columns count for grid layout (persisted to LS + cloud)
   const [columnsCount, setColumnsCount] = useSyncedSetting<number>({ key: "stages-columns-count", defaultValue: 4 });
+  const [stageBoardThemesRaw, setStageBoardThemesRaw] = useSyncedSetting<
+    StageBoardTheme[]
+  >({
+    key: "stages-board-themes-v1",
+    defaultValue: STAGE_THEME_PRESETS,
+  });
+  const [activeStageThemeId, setActiveStageThemeId] = useSyncedSetting<string>({
+    key: "stages-board-active-theme-v1",
+    defaultValue: STAGE_THEME_PRESETS[0].id,
+  });
+  const [timerTabQuickDays, setTimerTabQuickDays] = useSyncedSetting<
+    number[]
+  >({
+    key: "timer-tab-quick-days",
+    defaultValue: TIMER_TAB_PRESET_DEFAULTS,
+  });
+  const [timerTabPresetEditorOpen, setTimerTabPresetEditorOpen] =
+    useState(false);
+  const [timerTabPresetDraft, setTimerTabPresetDraft] = useState<string[]>(
+    () => TIMER_TAB_PRESET_DEFAULTS.map(String),
+  );
+  const [stageThemeDialogOpen, setStageThemeDialogOpen] = useState(false);
+  const [editingStageThemeId, setEditingStageThemeId] = useState<string | null>(
+    null,
+  );
+  const [stageThemeDraft, setStageThemeDraft] = useState<StageBoardTheme>(() =>
+    createStageThemeDraft(STAGE_THEME_PRESETS[0]),
+  );
+  const stageThemeColorRafRef = React.useRef<number | null>(null);
+  const pendingStageThemeColorUpdateRef = React.useRef<
+    { key: StageThemeColorKey; value: string } | null
+  >(null);
+
+  const stageBoardThemes = useMemo(
+    () => normalizeStageThemes(stageBoardThemesRaw),
+    [stageBoardThemesRaw],
+  );
+
+  const activeStageTheme = useMemo(() => {
+    return (
+      stageBoardThemes.find((theme) => theme.id === activeStageThemeId) ||
+      stageBoardThemes[0] ||
+      STAGE_THEME_PRESETS[0]
+    );
+  }, [stageBoardThemes, activeStageThemeId]);
+
+  const stageThemeLivePreview = useMemo(
+    () =>
+      sanitizeStageTheme(
+        stageThemeDraft,
+        activeStageTheme,
+        stageThemeDraft.id || activeStageTheme.id,
+        stageThemeDraft.name?.trim() || activeStageTheme.name,
+      ),
+    [stageThemeDraft, activeStageTheme],
+  );
+
+  useEffect(() => {
+    if (JSON.stringify(stageBoardThemesRaw) !== JSON.stringify(stageBoardThemes)) {
+      setStageBoardThemesRaw(stageBoardThemes);
+    }
+  }, [stageBoardThemesRaw, stageBoardThemes, setStageBoardThemesRaw]);
+
+  useEffect(() => {
+    if (!stageBoardThemes.some((theme) => theme.id === activeStageThemeId)) {
+      setActiveStageThemeId(stageBoardThemes[0]?.id || STAGE_THEME_PRESETS[0].id);
+    }
+  }, [stageBoardThemes, activeStageThemeId, setActiveStageThemeId]);
+
+  const timerTabQuickDayOptions = useMemo(
+    () => normalizeTimerTabDayPresets(timerTabQuickDays),
+    [timerTabQuickDays],
+  );
+
+  useEffect(() => {
+    const normalized = normalizeTimerTabDayPresets(timerTabQuickDays);
+    if (JSON.stringify(normalized) !== JSON.stringify(timerTabQuickDays)) {
+      setTimerTabQuickDays(normalized);
+    }
+  }, [timerTabQuickDays, setTimerTabQuickDays]);
 
   // Get grid columns class based on count
   const getGridColumnsClass = () => {
@@ -2080,6 +2452,212 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
     await addTask(stageId, addingTask.title);
     setAddingTask(null);
   };
+  const updateTimerTabPresetDraft = (index: number, value: string) => {
+    setTimerTabPresetDraft((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+  const resetTimerTabPresetDraft = () => {
+    const defaults = [...TIMER_TAB_PRESET_DEFAULTS];
+    setTimerTabPresetDraft(defaults.map(String));
+    setTimerTabQuickDays(defaults);
+  };
+  const saveTimerTabPresetDraft = () => {
+    const parsed = timerTabPresetDraft.map((item) =>
+      Number.parseInt(item, 10),
+    );
+    const hasInvalid = parsed.some(
+      (days) => !Number.isFinite(days) || days <= 0 || days > 365,
+    );
+
+    if (hasInvalid) {
+      alert("יש להזין ערכים תקינים בין 1 ל-365 בכל הכפתורים.");
+      return;
+    }
+
+    setTimerTabQuickDays(parsed);
+    setTimerTabPresetEditorOpen(false);
+
+    if (addTaskDialog?.taskType === "timer_tab" && !addTaskDialog.autoTimerDays) {
+      setAddTaskDialog((prev) =>
+        prev
+          ? {
+              ...prev,
+              autoTimerDays: String(parsed[0]),
+            }
+          : null,
+      );
+    }
+  };
+
+  const handleOpenThemeManager = () => {
+    setStageThemeDialogOpen(true);
+    setEditingStageThemeId(null);
+    setStageThemeDraft(createStageThemeDraft(activeStageTheme));
+  };
+
+  const handleStartCreateStageTheme = () => {
+    setEditingStageThemeId(null);
+    setStageThemeDraft(createStageThemeDraft(activeStageTheme));
+  };
+
+  const handleStartEditStageTheme = (themeId: string) => {
+    const sourceTheme = stageBoardThemes.find((theme) => theme.id === themeId);
+    if (!sourceTheme) return;
+    setEditingStageThemeId(themeId);
+    setStageThemeDraft({ ...sourceTheme });
+  };
+
+  const handleStageThemeColorChange = (
+    key: StageThemeColorKey,
+    value: string,
+  ) => {
+    pendingStageThemeColorUpdateRef.current = { key, value };
+
+    if (stageThemeColorRafRef.current !== null) return;
+
+    stageThemeColorRafRef.current = window.requestAnimationFrame(() => {
+      stageThemeColorRafRef.current = null;
+      const pending = pendingStageThemeColorUpdateRef.current;
+      pendingStageThemeColorUpdateRef.current = null;
+      if (!pending) return;
+
+      setStageThemeDraft((prev) => {
+        if (prev[pending.key] === pending.value) return prev;
+        return {
+          ...prev,
+          [pending.key]: pending.value,
+        };
+      });
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (stageThemeColorRafRef.current !== null) {
+        window.cancelAnimationFrame(stageThemeColorRafRef.current);
+      }
+    };
+  }, []);
+
+  const handleSaveStageThemeDraft = () => {
+    const fallback = STAGE_THEME_PRESETS[0];
+    const persistedId =
+      editingStageThemeId || stageThemeDraft.id || createStageThemeId();
+    const persistedName =
+      stageThemeDraft.name.trim() || "ערכת נושא מותאמת";
+
+    const normalizedTheme = sanitizeStageTheme(
+      {
+        ...stageThemeDraft,
+        id: persistedId,
+        name: persistedName,
+      },
+      fallback,
+      persistedId,
+      persistedName,
+    );
+
+    setStageBoardThemesRaw((prev) => {
+      const normalizedList = normalizeStageThemes(prev);
+      if (editingStageThemeId) {
+        return normalizedList.map((theme) =>
+          theme.id === editingStageThemeId ? normalizedTheme : theme,
+        );
+      }
+
+      const withoutDuplicateId = normalizedList.filter(
+        (theme) => theme.id !== normalizedTheme.id,
+      );
+      return [...withoutDuplicateId, normalizedTheme];
+    });
+
+    setActiveStageThemeId(normalizedTheme.id);
+    setEditingStageThemeId(normalizedTheme.id);
+    setStageThemeDraft({ ...normalizedTheme });
+  };
+
+  const handleDuplicateStageTheme = (themeId: string) => {
+    const sourceTheme = stageBoardThemes.find((theme) => theme.id === themeId);
+    if (!sourceTheme) return;
+
+    const duplicatedId = createStageThemeId();
+    const duplicatedTheme = sanitizeStageTheme(
+      {
+        ...sourceTheme,
+        id: duplicatedId,
+        name: `${sourceTheme.name} העתק`,
+      },
+      STAGE_THEME_PRESETS[0],
+      duplicatedId,
+      `${sourceTheme.name} העתק`,
+    );
+
+    setStageBoardThemesRaw((prev) => [
+      ...normalizeStageThemes(prev),
+      duplicatedTheme,
+    ]);
+    setActiveStageThemeId(duplicatedTheme.id);
+    setEditingStageThemeId(duplicatedTheme.id);
+    setStageThemeDraft({ ...duplicatedTheme });
+  };
+
+  const handleDeleteStageTheme = (themeId: string) => {
+    if (stageBoardThemes.length <= 1) {
+      alert("חייבת להישאר לפחות ערכת נושא אחת.");
+      return;
+    }
+
+    const themeToDelete = stageBoardThemes.find((theme) => theme.id === themeId);
+    if (!themeToDelete) return;
+
+    if (!confirm(`למחוק את ערכת הנושא \"${themeToDelete.name}\"?`)) {
+      return;
+    }
+
+    const nextThemes = stageBoardThemes.filter((theme) => theme.id !== themeId);
+    setStageBoardThemesRaw(nextThemes);
+
+    if (activeStageThemeId === themeId) {
+      setActiveStageThemeId(nextThemes[0].id);
+    }
+
+    if (editingStageThemeId === themeId) {
+      setEditingStageThemeId(null);
+      setStageThemeDraft(createStageThemeDraft(nextThemes[0]));
+    }
+  };
+
+  const handleResetStageThemes = () => {
+    const resetThemes = STAGE_THEME_PRESETS.map((theme) => ({ ...theme }));
+    setStageBoardThemesRaw(resetThemes);
+    setActiveStageThemeId(resetThemes[0].id);
+    setEditingStageThemeId(null);
+    setStageThemeDraft(createStageThemeDraft(resetThemes[0]));
+  };
+
+  const handleResetStageThemeDraftToDefault = () => {
+    const defaultTheme = STAGE_THEME_PRESETS[0];
+
+    setStageThemeDraft((prev) => {
+      const preservedId = editingStageThemeId || prev.id || createStageThemeId();
+      const preservedName = prev.name.trim() || `${defaultTheme.name} מותאם`;
+
+      return sanitizeStageTheme(
+        {
+          ...defaultTheme,
+          id: preservedId,
+          name: preservedName,
+        },
+        defaultTheme,
+        preservedId,
+        preservedName,
+      );
+    });
+  };
+
   const handleAddTaskFromDialog = async () => {
     if (!addTaskDialog || !addTaskDialog.title.trim()) return;
     const autoTimerDays = Number.parseInt(addTaskDialog.autoTimerDays, 10);
@@ -2320,7 +2898,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [copiedStage, pasteStageData]);
   const calculateProgress = (stage: (typeof stages)[0]) => {
-    if (!stage.tasks || stage.tasks.length === 0) return 0;
+    if (!stage.tasks || stage.tasks.length === 0) return 100;
     const completed = stage.tasks.filter((t) => t.completed).length;
     return Math.round((completed / stage.tasks.length) * 100);
   };
@@ -2342,8 +2920,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
     > = {};
     sortedStages.forEach((stage) => {
       const progress = calculateProgress(stage);
-      const totalTasks = stage.tasks?.length || 0;
-      const isCompleted = totalTasks > 0 && progress === 100;
+      const hasIncompleteTask = (stage.tasks || []).some((task) => !task.completed);
+      const isCompleted = !hasIncompleteTask;
       info[stage.stage_id] = {
         isCompleted,
         progress,
@@ -2355,9 +2933,9 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   // Find the active stage index (first non-completed stage)
   const activeStageIndex = useMemo(() => {
     return sortedStages.findIndex(
-      (stage) => !stageCompletionInfo[stage.stage_id]?.isCompleted,
+      (stage) => (stage.tasks || []).some((task) => !task.completed),
     );
-  }, [sortedStages, stageCompletionInfo]);
+  }, [sortedStages]);
 
   // Get expanded stage data
   const expandedStageData = useMemo(
@@ -2566,6 +3144,15 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
         >
           <Settings2 className="h-4 w-4" />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleOpenThemeManager}
+          className="h-8 w-8 p-0"
+          title={`ערכת נושא פעילה: ${activeStageTheme.name}`}
+        >
+          <Palette className="h-4 w-4" style={{ color: activeStageTheme.iconColor }} />
+        </Button>
 
         {/* Template Actions */}
         <div className="border-r border-border pr-2 mr-2" />
@@ -2616,8 +3203,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           style={
             showAllStages
               ? {
-                  backgroundColor: "#d4a843",
-                  color: "#1e293b",
+                  backgroundColor: activeStageTheme.progressColor,
+                  color: activeStageTheme.headerTextColor,
                 }
               : {}
           }
@@ -2646,7 +3233,10 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 className="h-8 w-8 p-0"
                 style={
                   columnsCount === count
-                    ? { backgroundColor: "#d4a843", color: "#1e293b" }
+                    ? {
+                        backgroundColor: activeStageTheme.progressColor,
+                        color: activeStageTheme.headerTextColor,
+                      }
                     : {}
                 }
                 onClick={() => setColumnsCount(count)}
@@ -2700,6 +3290,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
       </div>
 
       {/* Stages Grid - RTL direction */}
+      {!stageThemeDialogOpen && (
       <div
         className={cn(
           "grid gap-4",
@@ -2727,60 +3318,106 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           const isActiveStage = index === activeStageIndex;
           const isFutureStage =
             activeStageIndex !== -1 && index > activeStageIndex;
+          const isPastStage =
+            activeStageIndex !== -1 && index < activeStageIndex && !isStageCompleted;
+          const isActiveUncompleted = isActiveStage && !isStageCompleted;
+
+          const effectiveBorderColor = isActiveUncompleted
+            ? activeStageTheme.activeBorderColor
+            : isStageCompleted
+              ? activeStageTheme.progressColor
+              : activeStageTheme.borderColor;
+          const effectiveCardBackgroundColor = isActiveUncompleted
+            ? activeStageTheme.activeCardBackgroundColor
+            : activeStageTheme.cardBackgroundColor;
+          const effectiveHeaderFromColor = isActiveUncompleted
+            ? activeStageTheme.activeHeaderFromColor
+            : activeStageTheme.headerFromColor;
+          const effectiveHeaderToColor = isActiveUncompleted
+            ? activeStageTheme.activeHeaderToColor
+            : activeStageTheme.headerToColor;
+          const effectiveHeaderTextColor = isActiveUncompleted
+            ? activeStageTheme.activeHeaderTextColor
+            : activeStageTheme.headerTextColor;
+          const effectiveProgressColor = isActiveUncompleted
+            ? activeStageTheme.activeProgressColor
+            : activeStageTheme.progressColor;
+          const effectiveBadgeBackgroundColor = isActiveUncompleted
+            ? activeStageTheme.activeBadgeBackgroundColor
+            : activeStageTheme.badgeBackgroundColor;
+          const effectiveBadgeTextColor = isActiveUncompleted
+            ? activeStageTheme.activeBadgeTextColor
+            : activeStageTheme.badgeTextColor;
+
+          const cardStyle: React.CSSProperties = {
+            borderColor: effectiveBorderColor,
+            backgroundColor: effectiveCardBackgroundColor,
+            boxShadow:
+              isActiveUncompleted
+                ? `0 0 0 1px ${activeStageTheme.activeGlowColor}66, 0 10px 24px ${activeStageTheme.activeGlowColor}44`
+                : undefined,
+          };
+
+          const headerStyle: React.CSSProperties = {
+            background: `linear-gradient(135deg, ${effectiveHeaderFromColor}, ${effectiveHeaderToColor})`,
+            color: effectiveHeaderTextColor,
+            borderBottom: `1px solid ${effectiveBorderColor}`,
+            opacity: isFutureStage ? 0.75 : 1,
+            filter:
+              isStageCompleted
+                ? "saturate(0.8) brightness(0.95)"
+                : isActiveUncompleted
+                  ? "saturate(1.1)"
+                  : undefined,
+          };
+
           return (
             <Card
               key={stage.id}
               className={cn(
-                "relative flex flex-col h-full transition-all duration-300 border-2 border-amber-400/60",
+                "relative flex flex-col h-full transition-all duration-300 border-2",
                 // Selected stage highlight
                 selectedStages.has(stage.stage_id) &&
                   "ring-2 ring-primary ring-offset-2",
-                // Completed stage: white background with thick gold border
-                isStageCompleted &&
-                  "bg-white dark:bg-gray-900 border-[3px] border-amber-500 shadow-md shadow-amber-500/20",
-                // Active stage: gold gradient (current behavior for first stage)
+                // Completed stage style emphasis
+                isStageCompleted && "border-[3px] shadow-md",
+                // Active stage emphasis
                 isActiveStage &&
                   !isStageCompleted &&
-                  "border-yellow-500 shadow-lg shadow-yellow-500/10",
-                // Future stages: thin gold border
-                isFutureStage && "border-amber-400/60",
+                  "shadow-lg",
+                // Future stages: slightly faded card
+                isFutureStage && "opacity-[0.98]",
+                // Past unresolved stage emphasis
+                isPastStage && "ring-1 ring-amber-500/50",
               )}
+              style={cardStyle}
               onMouseEnter={() => setHoveredStage(stage.stage_id)}
               onMouseLeave={() => setHoveredStage(null)}
             >
-              {/* Selection Checkbox - Top Right, visible on hover or when selected */}
-              {(isHovered || selectedStages.has(stage.stage_id)) && (
-                <div className="absolute top-2 right-10 z-30">
+              {/* Selection Checkbox - Top left corner, visible on hover or when selected */}
+                  {(isHovered || selectedStages.has(stage.stage_id)) && (
+                    <div className="absolute top-2 left-2 z-30">
                   <Checkbox
                     checked={selectedStages.has(stage.stage_id)}
                     onCheckedChange={() => toggleStageSelection(stage.stage_id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-white border-2 border-gray-400 h-5 w-5 shadow-sm hover:border-blue-500 cursor-pointer"
+                    className="h-7 w-7 rounded-full border-2 border-white bg-gradient-to-br from-white to-slate-100 shadow-[0_6px_14px_rgba(15,23,42,0.28)] ring-1 ring-primary/30 cursor-pointer transition-all hover:scale-105 hover:ring-primary/50 data-[state=checked]:border-emerald-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-emerald-500 data-[state=checked]:to-emerald-600 data-[state=checked]:text-white [&_svg]:h-4 [&_svg]:w-4"
                   />
                 </div>
               )}
               {/* Header - Clickable to expand */}
               <div
-                className={cn(
-                  "p-4 rounded-t-lg relative cursor-pointer transition-all hover:opacity-90",
-                  // Completed stage: white/light gradient with gold accent
-                  isStageCompleted &&
-                    "bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-amber-950/30 dark:via-gray-900 dark:to-amber-950/30 border-b-2 border-amber-400",
-                  // Active stage: gold gradient
-                  isActiveStage &&
-                    !isStageCompleted &&
-                    "bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600",
-                  // Future stages: blue gradient
-                  !isStageCompleted &&
-                    !isActiveStage &&
-                    "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950",
-                )}
+                className="p-4 rounded-t-lg relative cursor-pointer transition-all hover:opacity-90"
+                style={headerStyle}
                 onClick={() => setExpandedStage(stage.stage_id)}
               >
                 {/* Completed indicator */}
                 {isStageCompleted && (
                   <div className="absolute top-2 right-2">
-                    <CheckCircle2 className="h-6 w-6 text-amber-500" />
+                    <CheckCircle2
+                      className="h-6 w-6"
+                      style={{ color: effectiveProgressColor }}
+                    />
                   </div>
                 )}
 
@@ -2800,10 +3437,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 {/* Header Actions - visible on hover - Bottom Right */}
                 {isHovered && (
                   <div
-                    className={cn(
-                      "absolute bottom-2 right-2 flex gap-1",
-                      isActiveStage && !isStageCompleted && "text-white",
-                    )}
+                    className="absolute bottom-2 right-2 flex gap-1"
+                    style={{ color: effectiveHeaderTextColor }}
                   >
                     {/* Edit Stage Button */}
                     <Button
@@ -3167,40 +3802,51 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                 <div className="flex items-center justify-between mb-3">
                   <div
-                    className={cn(
-                      "p-2 rounded-lg shadow-sm",
-                      isStageCompleted
-                        ? "bg-amber-100 dark:bg-amber-900/30"
-                        : isActiveStage
-                          ? "bg-white/90"
-                          : "bg-white dark:bg-gray-800",
-                    )}
+                    className="p-2 rounded-lg shadow-sm"
+                    style={{ backgroundColor: activeStageTheme.iconBackgroundColor }}
                   >
                     <Icon
-                      className={cn(
-                        "h-5 w-5",
-                        isStageCompleted
-                          ? "text-amber-600"
-                          : isActiveStage
-                            ? "text-yellow-600"
-                            : "text-primary",
-                      )}
+                      className="h-5 w-5"
+                      style={{ color: activeStageTheme.iconColor }}
                     />
                   </div>
                 </div>
 
                 <h3
-                  className={cn(
-                    "font-semibold text-lg mb-2 text-right",
-                    isStageCompleted
-                      ? "text-amber-700 dark:text-amber-400"
-                      : isActiveStage
-                        ? "text-white"
-                        : "text-foreground",
-                  )}
+                  className="font-semibold text-lg mb-2 text-right"
+                  style={{ color: effectiveHeaderTextColor }}
                 >
                   {stage.stage_name}
                 </h3>
+
+                <div className="flex items-center justify-end mb-2">
+                  {isStageCompleted ? (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] border-transparent"
+                      style={{
+                        backgroundColor: activeStageTheme.badgeBackgroundColor,
+                        color: activeStageTheme.badgeTextColor,
+                      }}
+                    >
+                      הושלם
+                    </Badge>
+                  ) : isActiveStage ? (
+                    <Badge
+                      className="text-[10px] border-transparent"
+                      style={{
+                        backgroundColor: activeStageTheme.activeBadgeBackgroundColor,
+                        color: activeStageTheme.activeBadgeTextColor,
+                      }}
+                    >
+                      שלב פעיל עכשיו
+                    </Badge>
+                  ) : isFutureStage ? (
+                    <Badge variant="outline" className="text-[10px]">
+                      שלב עתידי
+                    </Badge>
+                  ) : null}
+                </div>
 
                 <div className="flex items-center gap-2 justify-end">
                   {/* Progress Circle */}
@@ -3210,35 +3856,19 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                         cx="24"
                         cy="24"
                         r="20"
-                        stroke="currentColor"
+                        stroke={activeStageTheme.progressTrackColor}
                         strokeWidth="3"
                         fill="none"
-                        className={cn(
-                          isStageCompleted
-                            ? "text-amber-200 dark:text-amber-900"
-                            : isActiveStage
-                              ? "text-white/30"
-                              : "text-gray-200 dark:text-gray-700",
-                        )}
                       />
                       <circle
                         cx="24"
                         cy="24"
                         r="20"
-                        stroke="currentColor"
+                        stroke={effectiveProgressColor}
                         strokeWidth="3"
                         fill="none"
                         strokeLinecap="round"
-                        className={cn(
-                          "transition-all duration-500",
-                          isStageCompleted
-                            ? "text-amber-500"
-                            : isActiveStage
-                              ? "text-white"
-                              : progress === 100
-                                ? "text-green-500"
-                                : "text-primary",
-                        )}
+                        className="transition-all duration-500"
                         strokeDasharray={2 * Math.PI * 20}
                         strokeDashoffset={
                           2 * Math.PI * 20 * (1 - progress / 100)
@@ -3247,14 +3877,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span
-                        className={cn(
-                          "text-xs font-bold",
-                          isStageCompleted
-                            ? "text-amber-600"
-                            : isActiveStage
-                              ? "text-white"
-                              : "text-foreground",
-                        )}
+                        className="text-xs font-bold"
+                        style={{ color: effectiveHeaderTextColor }}
                       >
                         {progress}%
                       </span>
@@ -3263,21 +3887,12 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                   <div className="text-right">
                     <Badge
-                      variant={
-                        isStageCompleted
-                          ? "secondary"
-                          : isActiveStage
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className={cn(
-                        "text-xs",
-                        isStageCompleted &&
-                          "bg-amber-100 text-amber-700 border-amber-300",
-                        isActiveStage &&
-                          !isStageCompleted &&
-                          "bg-white/90 text-yellow-700 border-0",
-                      )}
+                      variant="secondary"
+                      className="text-xs border-transparent"
+                      style={{
+                        backgroundColor: effectiveBadgeBackgroundColor,
+                        color: effectiveBadgeTextColor,
+                      }}
                     >
                       {completedTasks}/{totalTasks}
                     </Badge>
@@ -3370,6 +3985,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           );
         })}
       </div>
+      )}
 
       {/* Expanded Stage Dialog */}
       <Dialog
@@ -3390,7 +4006,6 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
               const completedTasks =
                 expandedStageData.tasks?.filter((t) => t.completed).length || 0;
               const totalTasks = expandedStageData.tasks?.length || 0;
-              const isFirstStage = expandedStageData.sort_order === 0;
               const allSelected =
                 expandedStageData.tasks &&
                 expandedStageData.tasks.length > 0 &&
@@ -3399,12 +4014,12 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 <>
                   {/* Expanded Header */}
                   <div
-                    className={cn(
-                      "p-6 -m-6 mb-4 rounded-t-lg",
-                      isFirstStage
-                        ? "bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600"
-                        : "bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950",
-                    )}
+                    className="p-6 -m-6 mb-4 rounded-t-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${activeStageTheme.headerFromColor}, ${activeStageTheme.headerToColor})`,
+                      color: activeStageTheme.headerTextColor,
+                      borderBottom: `1px solid ${activeStageTheme.borderColor}`,
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <Button
@@ -3414,10 +4029,8 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           setExpandedStage(null);
                           clearSelection();
                         }}
-                        className={cn(
-                          "h-8 w-8 p-0",
-                          isFirstStage && "text-white hover:bg-white/20",
-                        )}
+                        className="h-8 w-8 p-0 hover:bg-white/20"
+                        style={{ color: activeStageTheme.headerTextColor }}
                       >
                         <X className="h-5 w-5" />
                       </Button>
@@ -3425,20 +4038,14 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                       <div className="flex items-center gap-4">
                         <div className="text-left">
                           <h2
-                            className={cn(
-                              "text-2xl font-bold",
-                              isFirstStage ? "text-white" : "text-foreground",
-                            )}
+                            className="text-2xl font-bold"
+                            style={{ color: activeStageTheme.headerTextColor }}
                           >
                             {expandedStageData.stage_name}
                           </h2>
                           <p
-                            className={cn(
-                              "text-sm",
-                              isFirstStage
-                                ? "text-white/80"
-                                : "text-muted-foreground",
-                            )}
+                            className="text-sm"
+                            style={{ color: activeStageTheme.headerTextColor }}
                           >
                             {completedTasks} מתוך {totalTasks} משימות הושלמו (
                             {progress}%)
@@ -3446,18 +4053,12 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                         </div>
 
                         <div
-                          className={cn(
-                            "p-3 rounded-lg shadow-sm",
-                            isFirstStage
-                              ? "bg-white/90"
-                              : "bg-white dark:bg-gray-800",
-                          )}
+                          className="p-3 rounded-lg shadow-sm"
+                          style={{ backgroundColor: activeStageTheme.iconBackgroundColor }}
                         >
                           <Icon
-                            className={cn(
-                              "h-8 w-8",
-                              isFirstStage ? "text-yellow-600" : "text-primary",
-                            )}
+                            className="h-8 w-8"
+                            style={{ color: activeStageTheme.iconColor }}
                           />
                         </div>
                       </div>
@@ -3466,20 +4067,14 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     {/* Progress Bar */}
                     <div className="mt-4">
                       <div
-                        className={cn(
-                          "h-2 rounded-full overflow-hidden",
-                          isFirstStage
-                            ? "bg-white/30"
-                            : "bg-gray-200 dark:bg-gray-700",
-                        )}
+                        className="h-2 rounded-full overflow-hidden"
+                        style={{ backgroundColor: activeStageTheme.progressTrackColor }}
                       >
                         <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500",
-                            isFirstStage ? "bg-white" : "bg-primary",
-                          )}
+                          className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${progress}%`,
+                            backgroundColor: activeStageTheme.progressColor,
                           }}
                         />
                       </div>
@@ -3498,19 +4093,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                               cycleStageTimerStyle(expandedStageData.stage_id)
                             }
                             size="lg"
-                            className={
-                              isFirstStage ? "bg-white/90 text-gray-800" : ""
-                            }
+                            className="bg-white/90 text-gray-800"
                           />
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={cn(
-                              "text-xs",
-                              isFirstStage
-                                ? "text-white/80 hover:text-white hover:bg-white/20"
-                                : "text-muted-foreground hover:text-red-500",
-                            )}
+                            className="text-xs hover:bg-white/20"
+                            style={{ color: activeStageTheme.headerTextColor }}
                             onClick={() =>
                               stopStageTimer(expandedStageData.stage_id)
                             }
@@ -3523,13 +4112,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
-                              variant={isFirstStage ? "secondary" : "outline"}
+                              variant="secondary"
                               size="sm"
-                              className={cn(
-                                "text-xs",
-                                isFirstStage &&
-                                  "bg-white/90 hover:bg-white text-gray-800",
-                              )}
+                              className="text-xs"
+                              style={{
+                                backgroundColor: activeStageTheme.iconBackgroundColor,
+                                color: activeStageTheme.iconColor,
+                              }}
                             >
                               <Timer className="h-3.5 w-3.5 ml-1" />
                               הפעל טיימר ימים
@@ -4033,6 +4622,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           if (!open) {
             setAddTaskDialog(null);
             setClientPickerOpen(false);
+            setTimerTabPresetEditorOpen(false);
           }
         }}
       >
@@ -4083,17 +4673,98 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
             {addTaskDialog?.taskType === "timer_tab" && (
               <div className="space-y-2 rounded-lg border border-sky-200 bg-sky-50/60 p-3 dark:border-sky-900 dark:bg-sky-950/10">
-                <p className="text-sm font-medium text-right">
-                  כמה ימי עבודה יופעלו בלחיצה על הטאב?
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <Popover
+                    open={timerTabPresetEditorOpen}
+                    onOpenChange={(open) => {
+                      setTimerTabPresetEditorOpen(open);
+                      if (open) {
+                        setTimerTabPresetDraft(
+                          timerTabQuickDayOptions.map(String),
+                        );
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full border border-sky-200 bg-white/90 hover:bg-white"
+                        title="עריכת כפתורי ימים"
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-80 space-y-3 p-3"
+                      align="start"
+                      dir="rtl"
+                    >
+                      <p className="text-sm font-medium text-right">
+                        עריכת כפתורי ימי עבודה
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {timerTabPresetDraft.map((days, idx) => (
+                          <div key={`timer-tab-preset-${idx}`} className="space-y-1">
+                            <p className="text-xs text-muted-foreground text-right">
+                              כפתור {idx + 1}
+                            </p>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="365"
+                              value={days}
+                              onChange={(e) =>
+                                updateTimerTabPresetDraft(idx, e.target.value)
+                              }
+                              className="h-8 text-right"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={resetTimerTabPresetDraft}
+                        >
+                          איפוס
+                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setTimerTabPresetEditorOpen(false)}
+                          >
+                            ביטול
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={saveTimerTabPresetDraft}
+                          >
+                            שמור
+                          </Button>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <p className="text-sm font-medium text-right">
+                    כמה ימי עבודה יופעלו בלחיצה על הטאב?
+                  </p>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {TARGET_DAYS_OPTIONS.slice(0, 6).map((option) => (
+                  {timerTabQuickDayOptions.map((days, idx) => (
                     <Button
-                      key={option.value}
+                      key={`${days}-${idx}`}
                       type="button"
                       size="sm"
                       variant={
-                        addTaskDialog.autoTimerDays === String(option.value)
+                        addTaskDialog.autoTimerDays === String(days)
                           ? "default"
                           : "outline"
                       }
@@ -4103,13 +4774,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           prev
                             ? {
                                 ...prev,
-                                autoTimerDays: String(option.value),
+                                autoTimerDays: String(days),
                               }
                             : null,
                         )
                       }
                     >
-                      {option.value} ימים
+                      {days} ימים
                     </Button>
                   ))}
                 </div>
@@ -4525,6 +5196,491 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
           <DialogFooter>
             <Button onClick={() => setManageStagesDialog(false)}>סגור</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stage Theme Manager Dialog */}
+      <Dialog
+        open={stageThemeDialogOpen}
+        onOpenChange={(open) => {
+          setStageThemeDialogOpen(open);
+          if (!open) {
+            setEditingStageThemeId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl" dir="rtl">
+          <DialogHeader className="text-right">
+            <DialogTitle className="flex items-center justify-end gap-2">
+              <Palette
+                className="h-5 w-5"
+                style={{ color: activeStageTheme.iconColor }}
+              />
+              ערכות נושא לעמוד השלבים
+            </DialogTitle>
+            <DialogDescription className="text-right">
+              בחר ערכת נושא מוכנה, ערוך ערכה קיימת, או צור ערכה מותאמת עם שליטה
+              מלאה בצבעי מסגרות, טקסטים, רקעים ומדדי התקדמות.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2 lg:grid-cols-[1.1fr_1fr]">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleResetStageThemes}
+                  className="gap-1"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  איפוס ערכות ברירת מחדל
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{stageBoardThemes.length} ערכות</Badge>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="gap-1"
+                    onClick={handleStartCreateStageTheme}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    ערכה חדשה
+                  </Button>
+                </div>
+              </div>
+
+              <div className="max-h-[52vh] space-y-2 overflow-y-auto rounded-lg border p-2">
+                {stageBoardThemes.map((theme) => {
+                  const isActive = activeStageTheme.id === theme.id;
+                  const isEditing = editingStageThemeId === theme.id;
+                  const isPreset = STAGE_THEME_PRESETS.some(
+                    (preset) => preset.id === theme.id,
+                  );
+
+                  return (
+                    <div
+                      key={theme.id}
+                      className={cn(
+                        "rounded-md border p-2 space-y-2",
+                        isActive && "ring-2 ring-primary/40",
+                      )}
+                      style={{
+                        borderColor: theme.borderColor,
+                        backgroundColor: theme.cardBackgroundColor,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          {isPreset && (
+                            <Badge variant="outline" className="text-[10px]">
+                              מובנית
+                            </Badge>
+                          )}
+                          {isActive && (
+                            <Badge className="text-[10px]">פעילה</Badge>
+                          )}
+                        </div>
+
+                        <p
+                          className="font-medium text-sm"
+                          style={{ color: theme.badgeTextColor }}
+                        >
+                          {theme.name}
+                        </p>
+                      </div>
+
+                      <div
+                        className="rounded-md border overflow-hidden"
+                        style={{ borderColor: theme.borderColor }}
+                      >
+                        <div
+                          className="px-2 py-1.5 text-xs flex items-center justify-between"
+                          style={{
+                            background: `linear-gradient(135deg, ${theme.headerFromColor}, ${theme.headerToColor})`,
+                            color: theme.headerTextColor,
+                          }}
+                        >
+                          <span>72%</span>
+                          <span>{theme.name}</span>
+                        </div>
+                        <div
+                          className="px-2 py-1 text-[11px]"
+                          style={{
+                            backgroundColor: theme.badgeBackgroundColor,
+                            color: theme.badgeTextColor,
+                          }}
+                        >
+                          תצוגה מקדימה
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isActive ? "default" : "outline"}
+                          className="h-7 text-xs"
+                          onClick={() => setActiveStageThemeId(theme.id)}
+                        >
+                          {isActive ? "פעילה" : "הפעל"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant={isEditing ? "default" : "ghost"}
+                          className="h-7 w-7"
+                          onClick={() => handleStartEditStageTheme(theme.id)}
+                          title="עריכה"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => handleDuplicateStageTheme(theme.id)}
+                          title="שכפול"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteStageTheme(theme.id)}
+                          disabled={stageBoardThemes.length <= 1}
+                          title="מחיקה"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={handleResetStageThemeDraftToDefault}
+                    title="איפוס הערכה לערכי ברירת מחדל"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Badge variant="outline">
+                    {editingStageThemeId ? "מצב עריכה" : "מצב יצירה"}
+                  </Badge>
+                </div>
+                <h4 className="font-semibold">עורך ערכת נושא</h4>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium block text-right">
+                  שם הערכה
+                </label>
+                <Input
+                  value={stageThemeDraft.name}
+                  onChange={(e) =>
+                    setStageThemeDraft((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
+                  placeholder="לדוגמה: כחול אלגנט"
+                  className="text-right"
+                />
+              </div>
+
+              <div
+                className="rounded-md border p-2 space-y-2"
+                style={{
+                  borderColor: stageThemeLivePreview.borderColor,
+                  backgroundColor: stageThemeLivePreview.cardBackgroundColor,
+                }}
+              >
+                <p className="text-xs text-right font-medium text-muted-foreground">
+                  תצוגה מקדימה מלאה בזמן אמת
+                </p>
+
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  <div
+                    className="rounded-md border overflow-hidden"
+                    style={{ borderColor: stageThemeLivePreview.borderColor }}
+                  >
+                    <div
+                      className="px-3 py-1.5 text-[11px] text-right"
+                      style={{
+                        backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
+                        color: stageThemeLivePreview.badgeTextColor,
+                      }}
+                    >
+                      שלב רגיל
+                    </div>
+                    <div
+                      className="px-3 py-2 space-y-2"
+                      style={{
+                        background: `linear-gradient(135deg, ${stageThemeLivePreview.headerFromColor}, ${stageThemeLivePreview.headerToColor})`,
+                        color: stageThemeLivePreview.headerTextColor,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <Pencil className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <Timer className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs">{stageThemeDraft.name || "ערכת נושא"}</span>
+                          <div
+                            className="h-7 w-7 rounded-md"
+                            style={{
+                              backgroundColor: stageThemeLivePreview.iconBackgroundColor,
+                              color: stageThemeLivePreview.iconColor,
+                            }}
+                          >
+                            <Palette className="h-4 w-4 m-1.5" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <Badge
+                          className="border-transparent"
+                          style={{
+                            backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
+                            color: stageThemeLivePreview.badgeTextColor,
+                          }}
+                        >
+                          4/7
+                        </Badge>
+
+                        <div className="relative w-10 h-10">
+                          <svg className="w-full h-full -rotate-90">
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="16"
+                              stroke={stageThemeLivePreview.progressTrackColor}
+                              strokeWidth="3"
+                              fill="none"
+                            />
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="16"
+                              stroke={stageThemeLivePreview.progressColor}
+                              strokeWidth="3"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeDasharray={2 * Math.PI * 16}
+                              strokeDashoffset={2 * Math.PI * 16 * (1 - 0.68)}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
+                            68%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="p-2 space-y-1.5"
+                      style={{ backgroundColor: stageThemeLivePreview.cardBackgroundColor }}
+                    >
+                      <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/70">
+                        <span className="text-muted-foreground">06/05</span>
+                        <span>איסוף מסמכים</span>
+                      </div>
+                      <Button size="sm" variant="outline" className="w-full h-7 text-xs">
+                        <Plus className="h-3.5 w-3.5 ml-1" />
+                        הוסף משימה / טאב
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    className="rounded-md border overflow-hidden"
+                    style={{
+                      borderColor: stageThemeLivePreview.activeBorderColor,
+                      boxShadow: `0 0 0 1px ${stageThemeLivePreview.activeGlowColor}66, 0 10px 22px ${stageThemeLivePreview.activeGlowColor}33`,
+                    }}
+                  >
+                    <div
+                      className="px-3 py-1.5 text-[11px] text-right"
+                      style={{
+                        backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
+                        color: stageThemeLivePreview.activeBadgeTextColor,
+                      }}
+                    >
+                      שלב נוכחי מודגש
+                    </div>
+                    <div
+                      className="px-3 py-2 space-y-2"
+                      style={{
+                        background: `linear-gradient(135deg, ${stageThemeLivePreview.activeHeaderFromColor}, ${stageThemeLivePreview.activeHeaderToColor})`,
+                        color: stageThemeLivePreview.activeHeaderTextColor,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge
+                          className="border-transparent"
+                          style={{
+                            backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
+                            color: stageThemeLivePreview.activeBadgeTextColor,
+                          }}
+                        >
+                          שלב פעיל עכשיו
+                        </Badge>
+                        <span className="text-xs">כאן אתה כרגע</span>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="relative w-10 h-10">
+                          <svg className="w-full h-full -rotate-90">
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="16"
+                              stroke={stageThemeLivePreview.progressTrackColor}
+                              strokeWidth="3"
+                              fill="none"
+                            />
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="16"
+                              stroke={stageThemeLivePreview.activeProgressColor}
+                              strokeWidth="3"
+                              fill="none"
+                              strokeLinecap="round"
+                              strokeDasharray={2 * Math.PI * 16}
+                              strokeDashoffset={2 * Math.PI * 16 * (1 - 0.45)}
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
+                            45%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="p-2 space-y-1.5"
+                      style={{ backgroundColor: stageThemeLivePreview.activeCardBackgroundColor }}
+                    >
+                      <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/80">
+                        <span className="text-muted-foreground">היום</span>
+                        <span>בדיקה פעילה</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-md border overflow-hidden"
+                  style={{ borderColor: stageThemeLivePreview.borderColor }}
+                >
+                  <div
+                    className="px-3 py-2"
+                    style={{
+                      background: `linear-gradient(135deg, ${stageThemeLivePreview.headerFromColor}, ${stageThemeLivePreview.headerToColor})`,
+                      color: stageThemeLivePreview.headerTextColor,
+                    }}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="h-6 px-2"
+                        style={{
+                          backgroundColor: stageThemeLivePreview.iconBackgroundColor,
+                          color: stageThemeLivePreview.iconColor,
+                        }}
+                      >
+                        <Timer className="h-3.5 w-3.5 ml-1" />
+                        הפעל טיימר
+                      </Button>
+                      <span>תצוגת חלון מורחב</span>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: stageThemeLivePreview.progressTrackColor }}>
+                      <div className="h-full rounded-full" style={{ width: "72%", backgroundColor: stageThemeLivePreview.progressColor }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid max-h-[32vh] grid-cols-1 gap-2 overflow-y-auto rounded-md border p-2 md:grid-cols-2">
+                {STAGE_THEME_COLOR_FIELDS.map((field) => {
+                  const colorValue = stageThemeLivePreview[field.key];
+
+                  return (
+                    <div key={field.key} className="rounded-md border p-2 space-y-1">
+                      <label className="text-xs font-medium block text-right">
+                        {field.label}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="color"
+                          value={colorValue}
+                          onChange={(e) =>
+                            handleStageThemeColorChange(field.key, e.target.value)
+                          }
+                          className="h-8 w-10 p-1"
+                        />
+                        <Input
+                          value={stageThemeDraft[field.key]}
+                          onChange={(e) =>
+                            handleStageThemeColorChange(field.key, e.target.value)
+                          }
+                          className="h-8 text-xs"
+                          placeholder="#000000"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartCreateStageTheme}
+                >
+                  נקה לטיוטה חדשה
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1"
+                  onClick={handleSaveStageThemeDraft}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  שמור ערכה
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStageThemeDialogOpen(false)}>
+              סגור
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
