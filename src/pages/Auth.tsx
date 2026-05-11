@@ -1,4 +1,4 @@
-// Authentication Page - טכנולוגיות מתקדמות e-control
+// Authentication Page - TENARCH CRM Pro
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
