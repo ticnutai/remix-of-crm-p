@@ -41,6 +41,7 @@ import {
   EyeOff,
   CheckSquare2,
   CheckCheck,
+  Pencil,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
