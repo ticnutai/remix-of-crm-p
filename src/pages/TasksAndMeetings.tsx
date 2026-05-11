@@ -1583,6 +1583,16 @@ const TasksAndMeetings = () => {
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
+                            if (!selectionMode.reminders) setActiveTab("reminders");
+                          }}
+                          title="עריכה"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
                             if (!selectionMode.reminders) {
                               const row = event.currentTarget.closest(".group") as HTMLElement | null;
                               const anchorPoint = getPreviewAnchorFromElement(row);
