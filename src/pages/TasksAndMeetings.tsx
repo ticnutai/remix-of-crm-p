@@ -41,6 +41,7 @@ import {
   EyeOff,
   CheckSquare2,
   CheckCheck,
+  Pencil,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
@@ -1150,6 +1151,16 @@ const TasksAndMeetings = () => {
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
+                            if (!selectionMode.tasks) handleEditTask(task);
+                          }}
+                          title="עריכה"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
                             if (!selectionMode.tasks) {
                               const row = event.currentTarget.closest(".group") as HTMLElement | null;
                               const anchorPoint = getPreviewAnchorFromElement(row);
@@ -1351,6 +1362,16 @@ const TasksAndMeetings = () => {
                             {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.meetings) handleEditMeeting(meeting);
+                          }}
+                          title="עריכה"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
@@ -1558,6 +1579,16 @@ const TasksAndMeetings = () => {
                             {format(new Date(reminder.remind_at), "dd/MM/yyyy · HH:mm", { locale: he })}
                           </p>
                         </div>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.reminders) setActiveTab("reminders");
+                          }}
+                          title="עריכה"
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
