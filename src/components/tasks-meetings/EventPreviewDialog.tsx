@@ -305,6 +305,22 @@ export function EventPreviewDialog({
                 }
               />
             )}
+            {onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 whitespace-nowrap"
+                style={{ borderColor: GOLD, color: NAVY }}
+                onClick={() => {
+                  onEdit();
+                  onOpenChange(false);
+                }}
+                title="ערוך"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                עריכה
+              </Button>
+            )}
             {isAdmin && (
               <Popover open={reassignOpen} onOpenChange={setReassignOpen}>
                 <PopoverTrigger asChild>
