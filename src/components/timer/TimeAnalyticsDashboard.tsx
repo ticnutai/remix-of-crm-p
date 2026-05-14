@@ -48,6 +48,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TimelineView } from './TimelineView';
 import { CalendarView } from './CalendarView';
+import { GroupEntriesDialog } from './GroupEntriesDialog';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Clock,
   Users,
@@ -152,6 +154,7 @@ export function TimeAnalyticsDashboard({
   defaultHourlyRate = 150,
 }: TimeAnalyticsDashboardProps) {
   // State
+  const { isAdmin } = usePermissions();
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [groupBy, setGroupBy] = useState<GroupBy>('user');
   const [dateRange, setDateRange] = useState<DateRange>('month');
@@ -160,6 +163,27 @@ export function TimeAnalyticsDashboard({
   const [showBillableOnly, setShowBillableOnly] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [timelineDate, setTimelineDate] = useState<Date>(new Date());
+  const [openedGroup, setOpenedGroup] = useState<{ id: string; name: string; color: string } | null>(null);
+
+  // Get entries that match the currently opened group
+  const openedGroupEntries = useMemo(() => {
+    if (!openedGroup) return [] as TimeEntry[];
+    return filteredEntries.filter((entry) => {
+      switch (groupBy) {
+        case 'user':
+          return entry.user_id === openedGroup.id;
+        case 'client':
+          return (entry.client_id || 'none') === openedGroup.id;
+        case 'project':
+          return (entry.project_id || 'none') === openedGroup.id;
+        case 'date':
+          return format(parseISO(entry.start_time), 'yyyy-MM-dd') === openedGroup.id;
+        default:
+          return true;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedGroup, groupBy]);
   
   // Quick add form
   const [quickAddForm, setQuickAddForm] = useState({
@@ -365,6 +389,8 @@ export function TimeAnalyticsDashboard({
             key={group.id} 
             className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
             style={{ borderColor: `${group.color}30` }}
+            onClick={() => setOpenedGroup({ id: group.id, name: group.name, color: group.color })}
+            title={isAdmin ? 'לחץ לצפייה ועריכת כל הרישומים' : 'לחץ לצפייה בכל הרישומים'}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -456,7 +482,11 @@ export function TimeAnalyticsDashboard({
               const billablePercentage = group.totalMinutes > 0 ? (group.billableMinutes / group.totalMinutes) * 100 : 0;
               
               return (
-                <TableRow key={group.id} className="hover:bg-muted/30">
+                <TableRow
+                  key={group.id}
+                  className="hover:bg-muted/30 cursor-pointer"
+                  onClick={() => setOpenedGroup({ id: group.id, name: group.name, color: group.color })}
+                >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <div 
@@ -526,7 +556,11 @@ export function TimeAnalyticsDashboard({
             const billablePercentage = group.totalMinutes > 0 ? (group.billableMinutes / group.totalMinutes) * 100 : 0;
             
             return (
-              <div key={group.id} className="space-y-2">
+              <div
+                key={group.id}
+                className="space-y-2 cursor-pointer hover:opacity-90"
+                onClick={() => setOpenedGroup({ id: group.id, name: group.name, color: group.color })}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div 
@@ -1039,6 +1073,21 @@ export function TimeAnalyticsDashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Group entries dialog - admin can edit/delete; others can view */}
+      {openedGroup && (
+        <GroupEntriesDialog
+          open={!!openedGroup}
+          onOpenChange={(o) => { if (!o) setOpenedGroup(null); }}
+          groupName={openedGroup.name}
+          groupColor={openedGroup.color}
+          entries={openedGroupEntries}
+          users={users}
+          clients={clients}
+          projects={projects}
+          canEdit={isAdmin}
+        />
+      )}
     </div>
   );
 }
