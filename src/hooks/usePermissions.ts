@@ -140,13 +140,9 @@ export interface UsePermissionsResult {
 }
 
 export function usePermissions(): UsePermissionsResult {
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [perms, setPerms] = useState<PermissionsMap>({});
-
-  const isAdmin = !!(
-    profile?.role === "admin" || profile?.role === "super_manager"
-  );
 
   const fetchPerms = useCallback(async () => {
     // Keep loading until auth is settled — prevents flash of "no access"
