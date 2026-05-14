@@ -140,8 +140,7 @@ export function GroupEntriesDialog({
         .from("time_entries")
         .update({
           description: editState.description || null,
-          duration_minutes: newDuration,
-          end_time: newEnd.toISOString(),
+          end_time: newEnd.toISOString(), // duration_minutes is a generated column — update end_time instead
           is_billable: editState.is_billable,
           hourly_rate: editState.hourly_rate || null,
         })
