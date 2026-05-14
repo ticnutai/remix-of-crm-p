@@ -556,7 +556,11 @@ export function TimeAnalyticsDashboard({
             const billablePercentage = group.totalMinutes > 0 ? (group.billableMinutes / group.totalMinutes) * 100 : 0;
             
             return (
-              <div key={group.id} className="space-y-2">
+              <div
+                key={group.id}
+                className="space-y-2 cursor-pointer hover:opacity-90"
+                onClick={() => setOpenedGroup({ id: group.id, name: group.name, color: group.color })}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div 
