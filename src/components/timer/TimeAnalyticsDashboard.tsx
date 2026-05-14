@@ -165,26 +165,6 @@ export function TimeAnalyticsDashboard({
   const [timelineDate, setTimelineDate] = useState<Date>(new Date());
   const [openedGroup, setOpenedGroup] = useState<{ id: string; name: string; color: string } | null>(null);
 
-  // Get entries that match the currently opened group
-  const openedGroupEntries = useMemo(() => {
-    if (!openedGroup) return [] as TimeEntry[];
-    return filteredEntries.filter((entry) => {
-      switch (groupBy) {
-        case 'user':
-          return entry.user_id === openedGroup.id;
-        case 'client':
-          return (entry.client_id || 'none') === openedGroup.id;
-        case 'project':
-          return (entry.project_id || 'none') === openedGroup.id;
-        case 'date':
-          return format(parseISO(entry.start_time), 'yyyy-MM-dd') === openedGroup.id;
-        default:
-          return true;
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openedGroup, groupBy]);
-  
   // Quick add form
   const [quickAddForm, setQuickAddForm] = useState({
     user_id: '',
@@ -253,6 +233,26 @@ export function TimeAnalyticsDashboard({
       return true;
     });
   }, [timeEntries, dateRange, selectedUser, selectedClient, showBillableOnly]);
+
+  // Get entries that match the currently opened group
+  const openedGroupEntries = useMemo(() => {
+    if (!openedGroup) return [] as TimeEntry[];
+    return filteredEntries.filter((entry) => {
+      switch (groupBy) {
+        case 'user':
+          return entry.user_id === openedGroup.id;
+        case 'client':
+          return (entry.client_id || 'none') === openedGroup.id;
+        case 'project':
+          return (entry.project_id || 'none') === openedGroup.id;
+        case 'date':
+          return format(parseISO(entry.start_time), 'yyyy-MM-dd') === openedGroup.id;
+        default:
+          return true;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedGroup, groupBy, filteredEntries]);
 
   // Calculate statistics
   const stats = useMemo(() => {
