@@ -226,7 +226,7 @@ export function GroupEntriesDialog({
                       <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                         <Clock className="h-3.5 w-3.5" />
                         <span>
-                          {format(parseISO(entry.start_time), "EEE d MMM yyyy, HH:mm", {
+                          {format(parseISO(entry.start_time), "EEE d MMM yyyy, HH:mm:ss", {
                             locale: he,
                           })}
                         </span>
