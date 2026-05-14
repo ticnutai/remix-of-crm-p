@@ -154,6 +154,7 @@ export function TimeAnalyticsDashboard({
   defaultHourlyRate = 150,
 }: TimeAnalyticsDashboardProps) {
   // State
+  const { isAdmin } = usePermissions();
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [groupBy, setGroupBy] = useState<GroupBy>('user');
   const [dateRange, setDateRange] = useState<DateRange>('month');
@@ -162,6 +163,27 @@ export function TimeAnalyticsDashboard({
   const [showBillableOnly, setShowBillableOnly] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [timelineDate, setTimelineDate] = useState<Date>(new Date());
+  const [openedGroup, setOpenedGroup] = useState<{ id: string; name: string; color: string } | null>(null);
+
+  // Get entries that match the currently opened group
+  const openedGroupEntries = useMemo(() => {
+    if (!openedGroup) return [] as TimeEntry[];
+    return filteredEntries.filter((entry) => {
+      switch (groupBy) {
+        case 'user':
+          return entry.user_id === openedGroup.id;
+        case 'client':
+          return (entry.client_id || 'none') === openedGroup.id;
+        case 'project':
+          return (entry.project_id || 'none') === openedGroup.id;
+        case 'date':
+          return format(parseISO(entry.start_time), 'yyyy-MM-dd') === openedGroup.id;
+        default:
+          return true;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openedGroup, groupBy]);
   
   // Quick add form
   const [quickAddForm, setQuickAddForm] = useState({
