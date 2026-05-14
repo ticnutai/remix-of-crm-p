@@ -413,6 +413,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           {message.timestamp.toLocaleTimeString('he-IL', {
             hour: '2-digit',
             minute: '2-digit',
+            second: '2-digit',
           })}
         </div>
         

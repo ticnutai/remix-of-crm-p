@@ -289,7 +289,7 @@ export function CalendarWeekView({
                           </div>
                         </div>
                         <div className="text-[10px] opacity-75">
-                          {format(parseISO(meeting.start_time), "HH:mm")}
+                          {format(parseISO(meeting.start_time), "HH:mm:ss")}
                         </div>
                       </div>
                     );

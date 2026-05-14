@@ -50,7 +50,7 @@ export function SyncStatusIndicator() {
   const formatTime = (timestamp: number | null) => {
     if (!timestamp) return 'לא סונכרן עדיין';
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
   if (!isInitialized) {

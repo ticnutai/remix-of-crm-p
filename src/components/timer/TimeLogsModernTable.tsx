@@ -89,12 +89,6 @@ export function TimeLogsModernTable({
   loading = false,
   canDelete = false,
 }: TimeLogsModernTableProps) {
-  console.log("🔍 [TimeLogsModernTable] Component rendered", {
-    canDelete,
-    entriesCount: timeEntries.length,
-    hasOnDelete: !!onDelete,
-  });
-
   const [selectedEntries, setSelectedEntries] = useState<Set<string>>(
     new Set(),
   );
@@ -150,7 +144,7 @@ export function TimeLogsModernTable({
   };
 
   const formatTime = (dateString: string) => {
-    return format(new Date(dateString), "H:mm");
+    return format(new Date(dateString), "HH:mm:ss");
   };
 
   const formatDateFull = (dateString: string) => {
@@ -233,13 +227,6 @@ export function TimeLogsModernTable({
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    console.log(
-                      "🗑️ [TimeLogsModernTable] Bulk delete clicked",
-                      {
-                        selectedCount: selectedEntries.size,
-                        selectedIds: Array.from(selectedEntries),
-                      },
-                    );
                     // Delete all selected entries
                     const idsToDelete = Array.from(selectedEntries);
                     idsToDelete.forEach((id) => onDelete(id));
@@ -521,10 +508,6 @@ export function TimeLogsModernTable({
                                 {canDelete && (
                                   <DropdownMenuItem
                                     onClick={() => {
-                                      console.log(
-                                        "🗑️ [TimeLogsModernTable] Delete clicked",
-                                        { entryId: entry.id, canDelete },
-                                      );
                                       onDelete(entry.id);
                                     }}
                                     className="text-destructive focus:text-destructive focus:bg-destructive/10"

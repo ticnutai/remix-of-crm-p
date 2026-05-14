@@ -275,7 +275,7 @@ export function EmailSenderChatView({
   const formatMsgDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
-      return format(date, "HH:mm", { locale: he });
+      return format(date, "HH:mm:ss", { locale: he });
     } catch {
       return dateStr;
     }

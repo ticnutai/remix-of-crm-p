@@ -80,8 +80,8 @@ export function ClientChatPanel({
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
-    if (isToday(d)) return format(d, "HH:mm");
-    return format(d, "dd/MM HH:mm");
+    if (isToday(d)) return format(d, "HH:mm:ss");
+    return format(d, "dd/MM HH:mm:ss");
   };
 
   if (!clientConv && !activeConversation) {

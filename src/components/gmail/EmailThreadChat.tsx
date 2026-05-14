@@ -267,12 +267,12 @@ export const EmailThreadChat = ({
     try {
       const date = new Date(dateStr);
       if (isToday(date)) {
-        return format(date, "HH:mm", { locale: he });
+        return format(date, "HH:mm:ss", { locale: he });
       }
       if (isYesterday(date)) {
-        return "אתמול " + format(date, "HH:mm", { locale: he });
+        return "אתמול " + format(date, "HH:mm:ss", { locale: he });
       }
-      return format(date, "dd/MM HH:mm", { locale: he });
+      return format(date, "dd/MM HH:mm:ss", { locale: he });
     } catch {
       return dateStr;
     }

@@ -288,7 +288,7 @@ export function CalendarAgendaView({
                                   {event.title}
                                 </h4>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {format(event.time, "HH:mm")}
+                                  {format(event.time, "HH:mm:ss")}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">

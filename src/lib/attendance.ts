@@ -88,7 +88,7 @@ export function formatMinutes(mins?: number | null): string {
 export function formatTime(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 export function formatDate(iso?: string | null): string {

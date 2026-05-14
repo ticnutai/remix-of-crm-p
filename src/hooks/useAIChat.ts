@@ -230,7 +230,7 @@ export function useAIChat() {
       // Format upcoming meetings
       const upcomingMeetings = (upcomingMeetingsRes.data || [])
         .map(m => {
-          const time = new Date(m.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+          const time = new Date(m.start_time).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           return `- ${m.title} ב-${time}`;
         })
         .join('\n');

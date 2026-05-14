@@ -371,9 +371,9 @@ function MessageBubble({
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
-    if (isToday(d)) return format(d, "HH:mm");
-    if (isYesterday(d)) return `אתמול ${format(d, "HH:mm")}`;
-    return format(d, "dd/MM HH:mm");
+    if (isToday(d)) return format(d, "HH:mm:ss");
+    if (isYesterday(d)) return `אתמול ${format(d, "HH:mm:ss")}`;
+    return format(d, "dd/MM HH:mm:ss");
   };
 
   const totalReactions = Object.entries(msg.reactions || {}).map(
@@ -1376,7 +1376,7 @@ export function ChatMessenger() {
     setScheduleText("");
     setScheduleDate("");
     setScheduleTime("");
-    toast({ title: `⏰ הודעה תישלח ב-${format(dt, "dd/MM HH:mm")}` });
+    toast({ title: `⏰ הודעה תישלח ב-${format(dt, "dd/MM HH:mm:ss")}` });
   };
 
   const handleMsgSearch = async (q: string) => {
@@ -1410,7 +1410,7 @@ export function ChatMessenger() {
       .filter((m) => !m.is_deleted)
       .map(
         (m) =>
-          `[${format(new Date(m.created_at), "dd/MM/yyyy HH:mm")}] ${m.sender_name}: ${m.content || (m.file_name ? `📎 ${m.file_name}` : "")}`,
+          `[${format(new Date(m.created_at), "dd/MM/yyyy HH:mm:ss")}] ${m.sender_name}: ${m.content || (m.file_name ? `📎 ${m.file_name}` : "")}`,
       );
     const title =
       activeConversation.title || activeConversation.client_name || "שיחה";
@@ -2764,7 +2764,7 @@ export function ChatMessenger() {
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[10px] text-muted-foreground">
                         {s.saved_at
-                          ? format(new Date(s.saved_at), "dd/MM HH:mm")
+                          ? format(new Date(s.saved_at), "dd/MM HH:mm:ss")
                           : ""}
                       </span>
                       <Button

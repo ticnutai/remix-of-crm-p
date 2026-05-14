@@ -173,7 +173,7 @@ export function NotificationCenter() {
           user_id: m.created_by,
           type: "meeting" as NotificationType,
           title: m.title,
-          message: `פגישה ב-${format(new Date(m.start_time), "HH:mm", { locale: he })}`,
+          message: `פגישה ב-${format(new Date(m.start_time), "HH:mm:ss", { locale: he })}`,
           is_read: false,
           created_at: m.start_time,
           metadata: {

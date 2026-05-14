@@ -689,7 +689,7 @@ function AutoBackupSettings() {
             <p>
               גיבוי הבא:{" "}
               {autoBackupStatus?.nextBackup
-                ? format(new Date(autoBackupStatus.nextBackup), "dd/MM HH:mm")
+                ? format(new Date(autoBackupStatus.nextBackup), "dd/MM HH:mm:ss")
                 : "-"}
             </p>
           </div>
@@ -735,8 +735,8 @@ export default function Backups() {
     const now = new Date();
     const dateStr = now.toLocaleDateString("he-IL").replace(/\//g, "-");
     const timeStr = now
-      .toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
-      .replace(":", "");
+      .toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .replace(/:/g, "");
     return `tenarc-${dateStr}-${timeStr}`;
   };
   const [backupName, setBackupName] = useState(getDefaultBackupName);
@@ -3911,7 +3911,7 @@ export default function Backups() {
                               <div>
                                 {format(
                                   new Date(backup.created_at),
-                                  "dd/MM/yyyy HH:mm",
+                                  "dd/MM/yyyy HH:mm:ss",
                                   { locale: he },
                                 )}
                               </div>

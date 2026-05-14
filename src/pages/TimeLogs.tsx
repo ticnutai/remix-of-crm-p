@@ -769,7 +769,7 @@ export default function TimeLogs() {
           <div className="flex flex-col gap-0.5">
             <div>{format(date, "dd/MM/yy", { locale: he })}</div>
             <div className="text-xs text-muted-foreground">
-              {format(date, "H:mm")}
+              {format(date, "HH:mm:ss")}
             </div>
           </div>
         );
@@ -1702,6 +1702,21 @@ export default function TimeLogs() {
                 toolbarPortalId="timelogs-table-toolbar-slot"
                 maxViewportHeightOffset={260}
                 onCellEdit={async (row, columnId, newValue) => {
+                  const readOnlyColumns = new Set([
+                    "id",
+                    "duration_minutes",
+                    "created_at",
+                    "user_id",
+                  ]);
+                  if (readOnlyColumns.has(columnId)) {
+                    toast({
+                      title: "שדה לקריאה בלבד",
+                      description: "לא ניתן לעדכן שדה זה ישירות",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
                   const updateData: Record<string, any> = {
                     [columnId]: newValue,
                   };
@@ -1733,9 +1748,15 @@ export default function TimeLogs() {
                       description: "הרישום עודכן בהצלחה",
                     });
                   } else {
+                    console.error("🔴 [TimeLogs] Cell update failed", {
+                      rowId: row.id,
+                      columnId,
+                      updateData,
+                      error,
+                    });
                     toast({
                       title: "שגיאה",
-                      description: "לא ניתן לעדכן",
+                      description: error.message || "לא ניתן לעדכן",
                       variant: "destructive",
                     });
                   }

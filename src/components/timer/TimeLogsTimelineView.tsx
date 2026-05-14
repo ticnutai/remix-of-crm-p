@@ -174,11 +174,11 @@ export function TimeLogsTimelineView({
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-medium">
-                            {format(parseISO(entry.start_time), "H:mm")}
+                            {format(parseISO(entry.start_time), "HH:mm:ss")}
                             {entry.end_time && (
                               <span className="text-muted-foreground">
                                 {" - "}
-                                {format(parseISO(entry.end_time), "H:mm")}
+                                {format(parseISO(entry.end_time), "HH:mm:ss")}
                               </span>
                             )}
                           </div>

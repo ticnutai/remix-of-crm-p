@@ -1834,13 +1834,13 @@ export default function Gmail() {
       const now = new Date();
 
       if (isToday(date)) {
-        return format(date, "HH:mm", { locale: he });
+        return format(date, "HH:mm:ss", { locale: he });
       }
       if (isYesterday(date)) {
-        return "אתמול " + format(date, "HH:mm", { locale: he });
+        return "אתמול " + format(date, "HH:mm:ss", { locale: he });
       }
       if (isThisWeek(date)) {
-        return format(date, "EEEE HH:mm", { locale: he });
+        return format(date, "EEEE HH:mm:ss", { locale: he });
       }
       return format(date, "dd/MM/yyyy", { locale: he });
     } catch {

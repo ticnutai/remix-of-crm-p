@@ -1361,7 +1361,7 @@ const TasksAndMeetings = () => {
                         >
                           <p className="text-xs font-medium truncate">{meeting.title}</p>
                           <p className="text-[10px] text-muted-foreground">
-                            {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+                            {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                           </p>
                         </div>
                         <button
@@ -1578,7 +1578,7 @@ const TasksAndMeetings = () => {
                             {reminder.title}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
-                            {format(new Date(reminder.remind_at), "dd/MM/yyyy · HH:mm", { locale: he })}
+                            {format(new Date(reminder.remind_at), "dd/MM/yyyy · HH:mm:ss", { locale: he })}
                           </p>
                         </div>
                         <button

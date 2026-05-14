@@ -289,7 +289,7 @@ export function useSmartAlerts() {
       type: "info" as const,
       category: "meeting" as const,
       title: "פגישה היום",
-      message: `${meeting.title} ב-${new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`,
+      message: `${meeting.title} ב-${new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`,
       actionLabel: "צפה בפגישה",
       actionUrl: `/meetings/${meeting.id}`,
       data: meeting,

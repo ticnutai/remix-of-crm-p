@@ -61,7 +61,7 @@ export function ReadReceipts({
             <TooltipContent side="top" className="text-xs">
               <p>{u.full_name}</p>
               <p className="text-muted-foreground">
-                {format(new Date(u.last_read_at), "HH:mm", { locale: he })}
+                {format(new Date(u.last_read_at), "HH:mm:ss", { locale: he })}
               </p>
             </TooltipContent>
           </Tooltip>

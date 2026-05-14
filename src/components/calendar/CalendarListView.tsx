@@ -242,8 +242,8 @@ export function CalendarListView({
                           <div className="flex-1 min-w-0">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(meeting.start_time), "HH:mm")} -{" "}
-                              {format(parseISO(meeting.end_time), "HH:mm")}
+                              {format(parseISO(meeting.start_time), "HH:mm:ss")} -{" "}
+                              {format(parseISO(meeting.end_time), "HH:mm:ss")}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
@@ -339,7 +339,7 @@ export function CalendarListView({
                           <div className="flex-1 min-w-0">
                             <p className="font-medium">{reminder.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(reminder.remind_at), "HH:mm")}
+                              {format(parseISO(reminder.remind_at), "HH:mm:ss")}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
@@ -385,9 +385,9 @@ export function CalendarListView({
                                 "עבודה"}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {format(parseISO(entry.start_time), "HH:mm")}
+                              {format(parseISO(entry.start_time), "HH:mm:ss")}
                               {entry.end_time &&
-                                ` - ${format(parseISO(entry.end_time), "HH:mm")}`}
+                                ` - ${format(parseISO(entry.end_time), "HH:mm:ss")}`}
                             </p>
                           </div>
                           {entry.duration_minutes && (
