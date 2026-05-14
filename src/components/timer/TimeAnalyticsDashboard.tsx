@@ -1073,6 +1073,21 @@ export function TimeAnalyticsDashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Group entries dialog - admin can edit/delete; others can view */}
+      {openedGroup && (
+        <GroupEntriesDialog
+          open={!!openedGroup}
+          onOpenChange={(o) => { if (!o) setOpenedGroup(null); }}
+          groupName={openedGroup.name}
+          groupColor={openedGroup.color}
+          entries={openedGroupEntries}
+          users={users}
+          clients={clients}
+          projects={projects}
+          canEdit={isAdmin}
+        />
+      )}
     </div>
   );
 }
