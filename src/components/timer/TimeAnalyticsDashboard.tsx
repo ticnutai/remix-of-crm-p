@@ -389,6 +389,8 @@ export function TimeAnalyticsDashboard({
             key={group.id} 
             className="hover:shadow-lg transition-all duration-200 cursor-pointer border-2"
             style={{ borderColor: `${group.color}30` }}
+            onClick={() => setOpenedGroup({ id: group.id, name: group.name, color: group.color })}
+            title={isAdmin ? 'לחץ לצפייה ועריכת כל הרישומים' : 'לחץ לצפייה בכל הרישומים'}
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
