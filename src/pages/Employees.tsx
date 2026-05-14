@@ -1938,7 +1938,7 @@ export default function Employees() {
                     <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover">
+                  <SelectContent className="bg-popover z-[10060]">
                     <SelectItem value="admin">
                       <div className="flex items-center gap-2">
                         <Crown className="h-4 w-4 text-red-600" />
