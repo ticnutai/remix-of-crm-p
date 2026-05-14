@@ -132,15 +132,20 @@ export function TimeLogsModernTable({
   };
 
   const formatDuration = (minutes: number | null) => {
-    if (!minutes || minutes === 0) return "0 דק'";
+    if (!minutes || minutes === 0) return "0:00:00";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    // Under 1 hour: show minutes only
-    if (hours === 0) return `${mins} דק'`;
-    // Full hours: show H:00
-    if (mins === 0) return `${hours}:00`;
-    // Hours + minutes: show H:MM
-    return `${hours}:${mins.toString().padStart(2, "0")}`;
+    return `${hours}:${mins.toString().padStart(2, "0")}:00`;
+  };
+
+  const formatDurationExact = (startTime: string, endTime: string | null) => {
+    const start = new Date(startTime);
+    const end = endTime ? new Date(endTime) : new Date();
+    const totalSeconds = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hours}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const formatTime = (dateString: string) => {
@@ -459,7 +464,7 @@ export function TimeLogsModernTable({
                                   : "text-foreground",
                               )}
                             >
-                              {formatDuration(entry.duration_minutes)}
+                              {formatDurationExact(entry.start_time, entry.end_time)}
                             </div>
                             {entry.hourly_rate && entry.is_billable && (
                               <div className="flex items-center gap-1 text-xs bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-1 rounded-md font-medium">
