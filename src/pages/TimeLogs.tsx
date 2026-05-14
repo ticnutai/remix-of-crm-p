@@ -204,7 +204,8 @@ export default function TimeLogs() {
     setValue: setCloudSettings,
     isLoading: settingsLoading,
   } = useUserSettings<{
-    activeTab?: "analytics" | "list" | "summary";
+    activeTab?: "analytics" | "list" | "list2" | "summary";
+
     viewMode?: ViewMode;
     selectedClient?: string;
     selectedProject?: string;
@@ -226,7 +227,7 @@ export default function TimeLogs() {
 
   // Initialize from cloud or localStorage as fallback
   const [activeTab, setActiveTabLocal] = useState<
-    "analytics" | "list" | "summary"
+    "analytics" | "list" | "list2" | "summary"
   >(() => {
     const local = localStorage.getItem("timelogs-active-tab") as
       | "analytics"
@@ -1379,7 +1380,7 @@ export default function TimeLogs() {
         {/* Main Content - Unified Header with Tabs, Filters & Actions */}
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as any)}
+          onValueChange={(v) => setActiveTab(v as "analytics" | "list" | "list2" | "summary")}
           className="w-full flex-1 flex flex-col"
         >
           {/* Single Unified Bar: Title + Tabs + Filters + Actions */}
@@ -1414,6 +1415,12 @@ export default function TimeLogs() {
                 className="h-7 px-2 text-xs data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)]"
               >
                 ניתוח
+              </TabsTrigger>
+              <TabsTrigger
+                value="list2"
+                className="h-7 px-2 text-xs data-[state=active]:bg-[hsl(222,47%,20%)] data-[state=active]:text-[hsl(45,80%,55%)]"
+              >
+                רשימה 2
               </TabsTrigger>
             </TabsList>
 
@@ -1511,8 +1518,16 @@ export default function TimeLogs() {
               />
             )}
 
+            {/* DataTable toolbar slot for list2 tab */}
+            {activeTab === "list2" && (
+              <div
+                id="timelogs-list2-toolbar-slot"
+                className="flex-1 flex items-center justify-between gap-2 min-w-[520px]"
+              />
+            )}
+
             {/* Keep page export button for non-table views (table view uses column tools + freezes) */}
-            {!(activeTab === "list" && viewMode === "table") && (
+            {!(activeTab === "list" && viewMode === "table") && activeTab !== "list2" && (
               <Button
                 variant="outline"
                 size="icon"
@@ -1840,6 +1855,90 @@ export default function TimeLogs() {
                 onEntryClick={openEditDialog}
               />
             )}
+          </TabsContent>
+
+          {/* List2 Tab - Advanced Table (UniversalDataTable) */}
+          <TabsContent value="list2" className="mt-2 flex-1">
+            <UniversalDataTable
+              tableName="time_entries"
+              data={filteredEntries}
+              setData={setTimeEntries}
+              baseColumns={columns}
+              canAddColumns={isManager || isAdmin}
+              canDeleteColumns={isAdmin}
+              variant="navy"
+              paginated={false}
+              pageSize={100}
+              globalSearch={false}
+              striped
+              columnToggle
+              showSummary
+              exportable={false}
+              filterable
+              loading={isLoading}
+              emptyMessage="אין רישומי זמן"
+              toolbarPortalId="timelogs-list2-toolbar-slot"
+              maxViewportHeightOffset={260}
+              onCellEdit={async (row, columnId, newValue) => {
+                const readOnlyColumns = new Set([
+                  "id",
+                  "duration_minutes",
+                  "created_at",
+                  "user_id",
+                ]);
+                if (readOnlyColumns.has(columnId)) {
+                  toast({
+                    title: "שדה לקריאה בלבד",
+                    description: "לא ניתן לעדכן שדה זה ישירות",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                const updateData: Record<string, any> = {
+                  [columnId]: newValue,
+                };
+
+                if (columnId === "start_time" && row.end_time) {
+                  const oldStart = new Date(row.start_time);
+                  const oldEnd = new Date(row.end_time);
+                  const durationMs = oldEnd.getTime() - oldStart.getTime();
+                  const newStart = new Date(newValue);
+                  const newEnd = new Date(newStart.getTime() + durationMs);
+                  updateData.start_time = newStart.toISOString();
+                  updateData.end_time = newEnd.toISOString();
+                }
+
+                const { error } = await supabase
+                  .from("time_entries")
+                  .update(updateData)
+                  .eq("id", row.id);
+
+                if (!error) {
+                  setTimeEntries((prev) =>
+                    prev.map((e) =>
+                      e.id === row.id ? { ...e, ...updateData } : e,
+                    ),
+                  );
+                  toast({
+                    title: "עודכן",
+                    description: "הרישום עודכן בהצלחה",
+                  });
+                } else {
+                  console.error("🔴 [TimeLogs] Cell update failed", {
+                    rowId: row.id,
+                    columnId,
+                    updateData,
+                    error,
+                  });
+                  toast({
+                    title: "שגיאה",
+                    description: error.message || "לא ניתן לעדכן",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            />
           </TabsContent>
 
           {/* Summary Tab */}
