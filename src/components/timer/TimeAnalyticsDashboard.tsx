@@ -48,6 +48,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { TimelineView } from './TimelineView';
 import { CalendarView } from './CalendarView';
+import { GroupEntriesDialog } from './GroupEntriesDialog';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Clock,
   Users,
