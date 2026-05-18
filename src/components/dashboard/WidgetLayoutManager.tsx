@@ -118,6 +118,7 @@ interface WidgetLayoutContextType {
   toggleCollapse: (id: WidgetId) => void;
   resetAll: () => void;
   moveWidget: (id: WidgetId, direction: 'up' | 'down') => void;
+  reorderWidgets: (orderedIds: string[]) => void;
   autoArrangeWidgets: () => void;
   setGridGap: (gap: GridGap) => void;
   setGapX: (gap: number) => void;
@@ -512,6 +513,16 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   }, [updateLayouts]);
 
   // Move widget up or down
+  const reorderWidgets = useCallback((orderedIds: string[]) => {
+    updateLayouts(prev => {
+      const orderMap = new Map(orderedIds.map((id, idx) => [id, idx + 1]));
+      return prev.map(l => {
+        const newOrder = orderMap.get(l.id);
+        return newOrder !== undefined ? { ...l, order: newOrder } : l;
+      });
+    });
+  }, [updateLayouts]);
+
   const moveWidget = useCallback((id: WidgetId, direction: 'up' | 'down') => {
     updateLayouts(prev => {
       const sorted = [...prev].sort((a, b) => a.order - b.order);
@@ -680,6 +691,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       toggleCollapse,
       resetAll,
       moveWidget,
+      reorderWidgets,
       autoArrangeWidgets,
       setGridGap,
       setGapX,

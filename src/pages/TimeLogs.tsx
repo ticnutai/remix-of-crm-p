@@ -2106,21 +2106,7 @@ export default function TimeLogs() {
               {/* Start Time */}
               <div className="space-y-2">
                 <Label>שעת התחלה</Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={formData.start_hour}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        start_hour: parseInt(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-16 text-center"
-                  />
-                  <span>:</span>
+                <div className="flex gap-2 items-center justify-end" dir="ltr">
                   <Input
                     type="number"
                     min={0}
@@ -2130,6 +2116,20 @@ export default function TimeLogs() {
                       setFormData((prev) => ({
                         ...prev,
                         start_minute: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-16 text-center"
+                  />
+                  <span>:</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.start_hour}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        start_hour: parseInt(e.target.value) || 0,
                       }))
                     }
                     className="w-16 text-center"
@@ -2295,21 +2295,7 @@ export default function TimeLogs() {
               {/* Start Time for Edit Dialog */}
               <div className="space-y-2">
                 <Label>שעת התחלה</Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={formData.start_hour}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        start_hour: parseInt(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-16 text-center"
-                  />
-                  <span>:</span>
+                <div className="flex gap-2 items-center justify-end" dir="ltr">
                   <Input
                     type="number"
                     min={0}
@@ -2319,6 +2305,20 @@ export default function TimeLogs() {
                       setFormData((prev) => ({
                         ...prev,
                         start_minute: parseInt(e.target.value) || 0,
+                      }))
+                    }
+                    className="w-16 text-center"
+                  />
+                  <span>:</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={formData.start_hour}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        start_hour: parseInt(e.target.value) || 0,
                       }))
                     }
                     className="w-16 text-center"

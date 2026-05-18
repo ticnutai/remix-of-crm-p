@@ -58,6 +58,21 @@ import {
   GridGap,
 } from "./WidgetLayoutManager";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface DashboardSettingsDialogProps {
   open: boolean;
@@ -112,6 +127,111 @@ const GAP_OPTIONS: { value: GridGap; label: string; size: string }[] = [
 // MAIN COMPONENT
 // ============================================
 
+// Sortable widget row for drag-and-drop
+function SortableWidgetRow({
+  widget,
+  widgetsTotal,
+  moveWidget,
+  setSize,
+  toggleVisibility,
+}: {
+  widget: { id: string; name: string; visible: boolean; order: number; size: WidgetSize };
+  widgetsTotal: number;
+  moveWidget: (id: string, direction: 'up' | 'down') => void;
+  setSize: (id: string, size: WidgetSize) => void;
+  toggleVisibility: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: widget.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-5 p-5 rounded-2xl border-2 bg-card transition-all",
+        "hover:shadow-md hover:border-primary/30",
+        !widget.visible && "opacity-50 bg-muted/20 border-dashed",
+        isDragging && "shadow-xl border-primary/60 bg-primary/5",
+      )}
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none"
+      >
+        <GripVertical className="h-6 w-6" />
+      </div>
+
+      {/* Widget Info */}
+      <div className="flex-1 min-w-0">
+        <div className={cn("font-semibold text-base", !widget.visible && "line-through text-muted-foreground")}>
+          {widget.name}
+        </div>
+        <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+          <span>מיקום: {widget.order}</span>
+          <span>•</span>
+          <span>{SIZE_LABELS[widget.size]}</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-3">
+        {/* Move Buttons */}
+        <div className="flex flex-col gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 hover:bg-primary/10"
+            onClick={() => moveWidget(widget.id, "up")}
+            disabled={widget.order === 1}
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 hover:bg-primary/10"
+            onClick={() => moveWidget(widget.id, "down")}
+            disabled={widget.order === widgetsTotal}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Size Select */}
+        <Select value={widget.size} onValueChange={(value) => setSize(widget.id, value as WidgetSize)}>
+          <SelectTrigger className="w-[110px] h-10 font-medium">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SIZE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label} ({opt.width})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Visibility Toggle */}
+        <Button
+          variant={widget.visible ? "default" : "outline"}
+          size="icon"
+          className="h-10 w-10"
+          onClick={() => toggleVisibility(widget.id)}
+        >
+          {widget.visible ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardSettingsDialog({
   open,
   onOpenChange,
@@ -122,6 +242,7 @@ export function DashboardSettingsDialog({
     toggleVisibility,
     resetAll,
     moveWidget,
+    reorderWidgets,
     setSize,
     autoArrangeWidgets,
     gridGap,
@@ -139,6 +260,19 @@ export function DashboardSettingsDialog({
   } = useWidgetLayout();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("layout");
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleWidgetDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const sortedWidgets = [...widgets].sort((a, b) => a.order - b.order);
+    const oldIndex = sortedWidgets.findIndex(w => w.id === active.id);
+    const newIndex = sortedWidgets.findIndex(w => w.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newOrder = arrayMove(sortedWidgets, oldIndex, newIndex).map(w => w.id);
+    reorderWidgets(newOrder);
+  };
 
   // Floating panel state (draggable + resizable, persisted)
   const POS_KEY = "dashboard-settings-panel-pos";
@@ -559,129 +693,48 @@ export function DashboardSettingsDialog({
             className="mt-0 flex-1 px-3 py-3 overflow-y-auto"
             dir="rtl"
           >
-            <div className="space-y-8">
-              {(Object.keys(widgetsByCategory) as WidgetCategory[]).map(
-                (category) => {
-                  const categoryWidgets = widgetsByCategory[category];
-                  if (categoryWidgets.length === 0) return null;
-                  const { name, icon } = CATEGORY_INFO[category];
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleWidgetDragEnd}>
+              <SortableContext items={sortedWidgets.map(w => w.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-8">
+                  {(Object.keys(widgetsByCategory) as WidgetCategory[]).map(
+                    (category) => {
+                      const categoryWidgets = widgetsByCategory[category];
+                      if (categoryWidgets.length === 0) return null;
+                      const { name, icon } = CATEGORY_INFO[category];
 
-                  return (
-                    <section key={category}>
-                      {/* Category Header */}
-                      <div className="flex items-center gap-3 mb-4" dir="rtl">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                          {icon}
-                        </div>
-                        <h3 className="font-semibold text-lg">{name}</h3>
-                        <Badge variant="secondary" className="text-sm">
-                          {categoryWidgets.length} ווידג'טים
-                        </Badge>
-                      </div>
-
-                      {/* Widgets Grid */}
-                      <div className="space-y-3">
-                        {categoryWidgets.map((widget) => (
-                          <div
-                            key={widget.id}
-                            className={cn(
-                              "flex items-center gap-5 p-5 rounded-2xl border-2 bg-card transition-all",
-                              "hover:shadow-md hover:border-primary/30",
-                              !widget.visible &&
-                                "opacity-50 bg-muted/20 border-dashed",
-                            )}
-                          >
-                            {/* Drag Handle */}
-                            <div className="cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground">
-                              <GripVertical className="h-6 w-6" />
+                      return (
+                        <section key={category}>
+                          {/* Category Header */}
+                          <div className="flex items-center gap-3 mb-4" dir="rtl">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                              {icon}
                             </div>
-
-                            {/* Widget Info */}
-                            <div className="flex-1 min-w-0">
-                              <div
-                                className={cn(
-                                  "font-semibold text-base",
-                                  !widget.visible &&
-                                    "line-through text-muted-foreground",
-                                )}
-                              >
-                                {widget.name}
-                              </div>
-                              <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                                <span>מיקום: {widget.order}</span>
-                                <span>•</span>
-                                <span>{SIZE_LABELS[widget.size]}</span>
-                              </div>
-                            </div>
-
-                            {/* Controls */}
-                            <div className="flex items-center gap-3">
-                              {/* Move Buttons */}
-                              <div className="flex flex-col gap-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 hover:bg-primary/10"
-                                  onClick={() => moveWidget(widget.id, "up")}
-                                  disabled={widget.order === 1}
-                                >
-                                  <ChevronUp className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 hover:bg-primary/10"
-                                  onClick={() => moveWidget(widget.id, "down")}
-                                  disabled={widget.order === widgets.length}
-                                >
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              {/* Size Select */}
-                              <Select
-                                value={widget.size}
-                                onValueChange={(value) =>
-                                  setSize(widget.id, value as WidgetSize)
-                                }
-                              >
-                                <SelectTrigger className="w-[110px] h-10 font-medium">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {SIZE_OPTIONS.map((opt) => (
-                                    <SelectItem
-                                      key={opt.value}
-                                      value={opt.value}
-                                    >
-                                      {opt.label} ({opt.width})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-
-                              {/* Visibility Toggle */}
-                              <Button
-                                variant={widget.visible ? "default" : "outline"}
-                                size="icon"
-                                className="h-10 w-10"
-                                onClick={() => toggleVisibility(widget.id)}
-                              >
-                                {widget.visible ? (
-                                  <Eye className="h-5 w-5" />
-                                ) : (
-                                  <EyeOff className="h-5 w-5" />
-                                )}
-                              </Button>
-                            </div>
+                            <h3 className="font-semibold text-lg">{name}</h3>
+                            <Badge variant="secondary" className="text-sm">
+                              {categoryWidgets.length} ווידג'טים
+                            </Badge>
                           </div>
-                        ))}
-                      </div>
-                    </section>
-                  );
-                },
-              )}
-            </div>
+
+                          {/* Widgets Grid */}
+                          <div className="space-y-3">
+                            {categoryWidgets.map((widget) => (
+                              <SortableWidgetRow
+                                key={widget.id}
+                                widget={widget}
+                                widgetsTotal={widgets.length}
+                                moveWidget={moveWidget}
+                                setSize={setSize}
+                                toggleVisibility={toggleVisibility}
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      );
+                    },
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
           </TabsContent>
 
           {/* ======== THEMES TAB ======== */}
