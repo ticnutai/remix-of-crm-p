@@ -742,17 +742,7 @@ const TasksAndMeetings = () => {
     return { id: meetingId };
   };
 
-  if (authLoading) {
-    return (
-      <AppLayout title="משימות, פגישות ותזכורות">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!user) return null;
+  if (!authLoading && !user) return null;
 
   return (
     <AppLayout title="משימות, פגישות ותזכורות">

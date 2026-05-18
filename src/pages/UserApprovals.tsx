@@ -57,16 +57,7 @@ export default function UserApprovals() {
     if (isAdmin) fetchPending();
   }, [isAdmin]);
 
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      </AppLayout>
-    );
-  }
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isLoading && !isAdmin) return <Navigate to="/" replace />;
 
   const approve = async (userId: string) => {
     const role = selectedRoles[userId] || 'employee';

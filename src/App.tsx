@@ -137,7 +137,7 @@ const App = () => {
                             v7_relativeSplatPath: true,
                           }}
                         >
-                          <Suspense fallback={<FullPageLoader />}>
+                          <Suspense fallback={<div className="min-h-screen bg-background" />}>
                             <Routes>
                               <Route
                                 path="/"

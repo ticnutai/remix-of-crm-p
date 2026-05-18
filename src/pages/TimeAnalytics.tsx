@@ -333,17 +333,7 @@ export default function TimeAnalytics() {
     return (minutes / 60).toFixed(1);
   };
 
-  if (authLoading || loading) {
-    return (
-      <AppLayout title="ניתוח לוגי זמן">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!user) return null;
+  if (!authLoading && !user) return null;
 
   return (
     <AppLayout title="ניתוח לוגי זמן">
