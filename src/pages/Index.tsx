@@ -5,7 +5,6 @@ import { DataTable, ColumnDef } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FullPageLoader } from "@/components/ui/loading";
 import { PageTransition, FadeIn } from "@/components/ui/page-transition";
 import { InfoTooltipButton } from "@/components/ui/info-tooltip-button";
 import { formatPhoneDisplay } from "@/utils/phoneValidation";
@@ -353,11 +352,7 @@ function DashboardContent() {
     }
   }, [user, authLoading, navigate]);
 
-  if (authLoading) {
-    return <FullPageLoader message="טוען את לוח הבקרה..." />;
-  }
-
-  if (!user) return null;
+  if (!authLoading && !user) return null;
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `₪${(value / 1000000).toFixed(1)}M`;
