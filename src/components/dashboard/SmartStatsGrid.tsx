@@ -2,6 +2,7 @@
 // ווידג'ט סטטיסטיקות חכמות לדשבורד
 
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ interface SmartStat {
   color: string;
   bgColor: string;
   progress?: number;
+  href?: string;
 }
 
 export function useSmartDashboardStats() {
@@ -172,6 +174,7 @@ export function useSmartDashboardStats() {
         icon: <UserPlus className="h-5 w-5" />,
         color: "text-blue-600",
         bgColor: "bg-blue-500/10",
+        href: "/clients",
       },
       {
         id: "tasks-due",
@@ -182,6 +185,7 @@ export function useSmartDashboardStats() {
         color: data.tasksDueToday > 0 ? "text-orange-600" : "text-green-600",
         bgColor:
           data.tasksDueToday > 0 ? "bg-orange-500/10" : "bg-green-500/10",
+        href: "/tasks",
       },
       {
         id: "meetings-week",
@@ -191,6 +195,7 @@ export function useSmartDashboardStats() {
         icon: <Calendar className="h-5 w-5" />,
         color: "text-purple-600",
         bgColor: "bg-purple-500/10",
+        href: "/meetings",
       },
       {
         id: "conversion",
@@ -243,6 +248,7 @@ export function useSmartDashboardStats() {
 // Smart Stats Grid Component
 export function SmartStatsGrid({ className }: { className?: string }) {
   const { stats, isLoading } = useSmartDashboardStats();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return (
@@ -273,7 +279,11 @@ export function SmartStatsGrid({ className }: { className?: string }) {
       dir="rtl"
     >
       {stats.map((stat) => (
-        <Card key={stat.id} className="hover:shadow-md transition-shadow">
+        <Card
+          key={stat.id}
+          className={cn("hover:shadow-md transition-shadow", stat.href && "cursor-pointer")}
+          onClick={stat.href ? () => navigate(stat.href!) : undefined}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3 mb-2">
               <div className={cn("p-2 rounded-lg", stat.bgColor, stat.color)}>
