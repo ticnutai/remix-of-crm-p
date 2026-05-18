@@ -728,22 +728,27 @@ export default function Employees() {
     setIsResetting(true);
 
     try {
-      // Reset password via SQL using extensions.crypt (bcrypt)
-      const escapedPassword = newPassword.replace(/'/g, "''");
-      const { data: sqlResult, error: sqlError } = await supabase.rpc(
-        "execute_safe_migration",
-        {
-          p_migration_name: "admin_pw_reset_" + Date.now(),
-          p_migration_sql: `UPDATE auth.users SET encrypted_password = extensions.crypt('${escapedPassword}', extensions.gen_salt('bf')) WHERE id = '${resetPasswordDialog.employee.id}'`,
-        },
-      );
+      // Reset password via admin-reset-password edge function (uses Supabase Admin API)
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("לא מחובר");
 
-      if (sqlError || !(sqlResult as any)?.success) {
-        throw new Error(
-          sqlError?.message ||
-            (sqlResult as any)?.error ||
-            "שגיאה בעדכון סיסמה",
-        );
+      const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+      const response = await fetch(`${supabaseUrl}/functions/v1/admin-reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: resetPasswordDialog.employee.id,
+          newPassword,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || result.error) {
+        throw new Error(result.error || "שגיאה בעדכון סיסמה");
       }
 
       toast({

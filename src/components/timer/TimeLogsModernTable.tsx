@@ -497,7 +497,7 @@ export function TimeLogsModernTable({
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuContent align="end" className="w-48" onCloseAutoFocus={(e) => e.preventDefault()}>
                                 <DropdownMenuItem onClick={() => onEdit(entry)}>
                                   <Edit2 className="h-4 w-4 ml-2" />
                                   ערוך רישום
