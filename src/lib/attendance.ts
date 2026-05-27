@@ -118,7 +118,7 @@ export async function getOpenShift(userId: string) {
     .is("clock_out", null)
     .maybeSingle();
   if (error) throw error;
-  return data as AttendanceRecord | null;
+  return data as unknown as AttendanceRecord | null;
 }
 
 export async function clockIn(userId: string, location?: { lat: number; lng: number }) {
@@ -144,7 +144,7 @@ export async function clockIn(userId: string, location?: { lat: number; lng: num
     }
     throw error;
   }
-  return data as AttendanceRecord;
+  return data as unknown as AttendanceRecord;
 }
 
 export async function clockOut(recordId: string, notes?: string) {
@@ -155,7 +155,7 @@ export async function clockOut(recordId: string, notes?: string) {
     .select()
     .single();
   if (error) throw error;
-  return data as AttendanceRecord;
+  return data as unknown as AttendanceRecord;
 }
 
 export async function getOpenBreak(attendanceId: string) {
@@ -166,7 +166,7 @@ export async function getOpenBreak(attendanceId: string) {
     .is("break_end", null)
     .maybeSingle();
   if (error) throw error;
-  return data as AttendanceBreak | null;
+  return data as unknown as AttendanceBreak | null;
 }
 
 export async function startBreak(attendanceId: string, userId: string, reason?: string) {
@@ -176,7 +176,7 @@ export async function startBreak(attendanceId: string, userId: string, reason?: 
     .select()
     .single();
   if (error) throw error;
-  return data as AttendanceBreak;
+  return data as unknown as AttendanceBreak;
 }
 
 export async function endBreak(breakId: string) {
@@ -187,7 +187,7 @@ export async function endBreak(breakId: string) {
     .select()
     .single();
   if (error) throw error;
-  return data as AttendanceBreak;
+  return data as unknown as AttendanceBreak;
 }
 
 export async function listMyRecords(userId: string, fromIso: string, toIso: string) {
@@ -199,7 +199,7 @@ export async function listMyRecords(userId: string, fromIso: string, toIso: stri
     .lte("clock_in", toIso)
     .order("clock_in", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as AttendanceRecord[];
+  return (data ?? []) as unknown as AttendanceRecord[];
 }
 
 export async function listAllRecords(fromIso: string, toIso: string) {
@@ -212,7 +212,7 @@ export async function listAllRecords(fromIso: string, toIso: string) {
     .lte("clock_in", toIso)
     .order("clock_in", { ascending: false });
   if (error) throw error;
-  const records = (data ?? []) as AttendanceRecord[];
+  const records = (data ?? []) as unknown as AttendanceRecord[];
 
   const userIds = Array.from(new Set(records.map((r) => r.user_id).filter(Boolean)));
   if (userIds.length === 0) return records;
@@ -228,7 +228,7 @@ export async function listAllRecords(fromIso: string, toIso: string) {
   return records.map((r) => ({
     ...r,
     profile: byId.get(r.user_id) ?? r.profile ?? null,
-  })) as AttendanceRecord[];
+  })) as unknown as AttendanceRecord[];
 }
 
 // Manager view — fetch ALL active users (profiles) so admin can see employees
@@ -452,8 +452,8 @@ export function getCachedMonthRecords(
     const raw = localStorage.getItem(cacheKey(userId, year, month0));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed as AttendanceRecord[];
-    if (parsed && Array.isArray(parsed.records)) return parsed.records as AttendanceRecord[];
+    if (Array.isArray(parsed)) return parsed as unknown as AttendanceRecord[];
+    if (parsed && Array.isArray(parsed.records)) return parsed.records as unknown as AttendanceRecord[];
     return null;
   } catch { return null; }
 }
@@ -517,7 +517,7 @@ export async function listMonthRecords(userId: string, year: number, month0: num
     if (cached) return cached;
     throw error;
   }
-  const recs = (data ?? []) as AttendanceRecord[];
+  const recs = (data ?? []) as unknown as AttendanceRecord[];
   writeCache(userId, year, month0, recs);
   return recs;
 }
@@ -597,7 +597,7 @@ export async function upsertManualEntry(input: ManualEntryInput): Promise<Attend
       .select()
       .single();
     if (error) throw error;
-    const rec = data as AttendanceRecord;
+    const rec = data as unknown as AttendanceRecord;
     updateCacheForRecord(rec);
     return rec;
   }
@@ -607,7 +607,7 @@ export async function upsertManualEntry(input: ManualEntryInput): Promise<Attend
     .select()
     .single();
   if (error) throw error;
-  const rec = data as AttendanceRecord;
+  const rec = data as unknown as AttendanceRecord;
   updateCacheForRecord(rec);
   return rec;
 }
