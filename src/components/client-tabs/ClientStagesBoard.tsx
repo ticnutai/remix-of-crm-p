@@ -5226,7 +5226,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           }
         }}
       >
-        <DialogContent className="max-w-5xl" dir="rtl">
+        <DialogContent className="max-w-[96vw] max-h-[92vh] overflow-y-auto" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center justify-end gap-2">
               <Palette
