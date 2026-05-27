@@ -26,8 +26,20 @@ const MODE_SIZES: Record<PipMode, { width: number; height: number }> = {
   mini: { width: 110, height: 110 },
 };
 
+function isTopLevelBrowsingContext() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self === window.top;
+  } catch {
+    return false;
+  }
+}
 export function isDocumentPiPSupported() {
-  return typeof window !== "undefined" && "documentPictureInPicture" in window;
+  return (
+    typeof window !== "undefined" &&
+    "documentPictureInPicture" in window &&
+    isTopLevelBrowsingContext()
+  );
 }
 export function requestOpenTimerPiP() {
   window.dispatchEvent(new CustomEvent(PIP_OPEN_EVENT));
@@ -149,6 +161,12 @@ export function TimerPiPController() {
       setContainer(root);
     } catch (e) {
       console.error("PiP open failed", e);
+      autoOpenedRef.current = false;
+      const msg = (e as Error)?.message || "";
+      if (msg.includes("top-level browsing context")) {
+        // Inside an iframe (e.g. Lovable preview). Silently skip — feature works in the published site.
+        return;
+      }
       toast.error("פתיחת חלון צף נכשלה");
     }
   }, [pipWindow, mode]);
