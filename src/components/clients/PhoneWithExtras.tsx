@@ -3,7 +3,7 @@
 // all the extra numbers with click-to-copy.
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Phone, Copy } from "lucide-react";
-import { isValidPhoneForDisplay } from "@/lib/phone-validation";
+import { isValidPhoneForDisplay } from "@/lib/phone-utils";
 import { toast } from "sonner";
 
 interface Props {
