@@ -2393,7 +2393,7 @@ export default function Clients() {
               gap: "6px",
             }}
           >
-            {isValidPhoneForDisplay(client.phone) && (
+            {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
               <div
                 style={{
                   display: "flex",
@@ -2403,12 +2403,13 @@ export default function Clients() {
                 }}
                 dir="ltr"
               >
-                <Phone
-                  style={{ width: "16px", height: "16px", flexShrink: 0 }}
+                <PhoneWithExtras
+                  phone={client.phone}
+                  additionalPhones={(client as any).additional_phones}
+                  fontSize={14}
+                  iconSize={16}
+                  color="#1e3a5f"
                 />
-                <span style={{ fontSize: "14px", fontWeight: "500" }}>
-                  {client.phone}
-                </span>
               </div>
             )}
             {client.email && viewMode !== "compact" && (
