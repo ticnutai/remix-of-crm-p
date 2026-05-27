@@ -1716,13 +1716,18 @@ export default function Clients() {
                 color: "#64748b",
               }}
             >
-              {isValidPhoneForDisplay(client.phone) && (
+              {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
                   dir="ltr"
                 >
-                  <Phone style={{ width: "14px", height: "14px" }} />
-                  <span style={{ fontSize: "13px" }}>{client.phone}</span>
+                  <PhoneWithExtras
+                    phone={client.phone}
+                    additionalPhones={(client as any).additional_phones}
+                    fontSize={13}
+                    iconSize={14}
+                    color="#64748b"
+                  />
                 </div>
               )}
               {client.email && (
