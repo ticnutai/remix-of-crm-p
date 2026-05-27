@@ -183,15 +183,16 @@ export function useClientStages(clientId: string) {
         .filter((t) => t.stage_id === stageId)
         .reduce((max, t) => Math.max(max, t.sort_order), -1);
 
-      const options: AddTaskOptions =
+      const options: AddTaskOptions = (
         linkedClientIdOrOptions &&
         typeof linkedClientIdOrOptions === "object" &&
         !Array.isArray(linkedClientIdOrOptions)
           ? linkedClientIdOrOptions
           : {
-              linkedClientId: linkedClientIdOrOptions ?? null,
-              linkedContactId,
-            };
+              linkedClientId: (linkedClientIdOrOptions as string | null) ?? null,
+              linkedContactId: linkedContactId ?? null,
+            }
+      ) as AddTaskOptions;
 
       const taskType = options?.taskType ?? "task";
 
