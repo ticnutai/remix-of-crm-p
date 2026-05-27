@@ -5638,12 +5638,21 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 </div>
               </div>
 
-              <div className="grid max-h-[32vh] grid-cols-1 gap-2 overflow-y-auto rounded-md border p-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 rounded-md border p-2">
                 {STAGE_THEME_COLOR_FIELDS.map((field) => {
                   const colorValue = stageThemeLivePreview[field.key];
+                  const isHighlighted = highlightedColorKey === field.key;
 
                   return (
-                    <div key={field.key} className="rounded-md border p-2 space-y-1">
+                    <div
+                      key={field.key}
+                      id={`stage-color-field-${field.key}`}
+                      className={cn(
+                        "rounded-md border p-2 space-y-1 transition-all",
+                        isHighlighted &&
+                          "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.03] shadow-lg",
+                      )}
+                    >
                       <label className="text-xs font-medium block text-right">
                         {field.label}
                       </label>
@@ -5654,14 +5663,14 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           onChange={(e) =>
                             handleStageThemeColorChange(field.key, e.target.value)
                           }
-                          className="h-8 w-10 p-1"
+                          className="h-8 w-10 p-1 shrink-0"
                         />
                         <Input
                           value={stageThemeDraft[field.key]}
                           onChange={(e) =>
                             handleStageThemeColorChange(field.key, e.target.value)
                           }
-                          className="h-8 text-xs"
+                          className="h-8 text-xs min-w-0"
                           placeholder="#000000"
                         />
                       </div>
