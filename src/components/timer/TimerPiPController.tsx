@@ -230,9 +230,13 @@ export function TimerPiPController() {
         {timerState.isRunning ? <Pause size={14} /> : <Play size={14} />}
       </button>
       <button
-        onClick={() => void stopTimer()}
+        onClick={() => {
+          if (timerState.isRunning) pauseTimer();
+          requestStopFromPiP();
+          try { window.opener?.focus?.(); } catch { /* ignore */ }
+        }}
         disabled={!timerState.currentEntry}
-        title="עצור ושמור"
+        title="עצור ופתח דיאלוג שמירה"
         style={iconBtn("primary")}
       >
         <Square size={12} fill="currentColor" />
