@@ -5269,7 +5269,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 </div>
               </div>
 
-              <div className="max-h-[52vh] space-y-2 overflow-y-auto rounded-lg border p-2">
+              <div className="grid gap-2 rounded-lg border p-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {stageBoardThemes.map((theme) => {
                   const isActive = activeStageTheme.id === theme.id;
                   const isEditing = editingStageThemeId === theme.id;
