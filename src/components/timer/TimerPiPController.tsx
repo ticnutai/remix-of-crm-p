@@ -2,7 +2,7 @@
 // 3 modes: compact (single-row), full (with client name), mini (icon-only).
 // Controls hide by default and fade in on hover.
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useTimer } from "@/hooks/useTimer";
 import { useClients } from "@/hooks/useClients";
 import { Play, Pause, Square, PictureInPicture2, Maximize2, Minimize2, Minus } from "lucide-react";
