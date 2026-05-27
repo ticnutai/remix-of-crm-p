@@ -12,6 +12,11 @@ const AUTO_PIP_KEY = "timer-auto-pip";
 const PIP_MODE_KEY = "timer-pip-mode";
 const PIP_OPEN_EVENT = "timer:open-pip";
 const PIP_TOGGLE_AUTO_EVENT = "timer:toggle-auto-pip";
+export const PIP_REQUEST_STOP_EVENT = "timer:request-stop-dialog";
+
+export function requestStopFromPiP() {
+  window.dispatchEvent(new CustomEvent(PIP_REQUEST_STOP_EVENT));
+}
 
 type PipMode = "compact" | "full" | "mini";
 
