@@ -2275,6 +2275,22 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   const pendingStageThemeColorUpdateRef = React.useRef<
     { key: StageThemeColorKey; value: string } | null
   >(null);
+  const [highlightedColorKey, setHighlightedColorKey] =
+    useState<StageThemeColorKey | null>(null);
+  const highlightTimerRef = React.useRef<number | null>(null);
+  const focusStageColorField = React.useCallback((key: StageThemeColorKey) => {
+    const el = document.getElementById(`stage-color-field-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setHighlightedColorKey(key);
+    if (highlightTimerRef.current) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedColorKey((curr) => (curr === key ? null : curr));
+    }, 1800);
+  }, []);
 
   const stageBoardThemes = useMemo(
     () => normalizeStageThemes(stageBoardThemesRaw),
