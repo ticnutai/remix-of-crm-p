@@ -372,6 +372,7 @@ export default function ClientProfile() {
     name: "",
     email: "",
     phone: "",
+    additional_phones: [] as string[],
     company: "",
     address: "",
     notes: "",
