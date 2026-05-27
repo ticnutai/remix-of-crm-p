@@ -161,6 +161,12 @@ export function TimerPiPController() {
       setContainer(root);
     } catch (e) {
       console.error("PiP open failed", e);
+      autoOpenedRef.current = false;
+      const msg = (e as Error)?.message || "";
+      if (msg.includes("top-level browsing context")) {
+        // Inside an iframe (e.g. Lovable preview). Silently skip — feature works in the published site.
+        return;
+      }
       toast.error("פתיחת חלון צף נכשלה");
     }
   }, [pipWindow, mode]);
