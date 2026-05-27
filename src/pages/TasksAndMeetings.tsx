@@ -315,7 +315,7 @@ const TasksAndMeetings = () => {
   // Scope filter helpers (admin can see all; others always see only their own)
   const ownsTask = (t: Task) => !user || t.created_by === user.id || t.assigned_to === user.id;
   const ownsMeeting = (m: Meeting) =>
-    !user || m.created_by === user.id || (m.attendees || []).includes(user.id);
+    !user || m.created_by === user.id || (((m as any).attendees as string[] | undefined) || []).includes(user.id);
   const ownsReminder = (r: Reminder) => !user || r.user_id === user.id;
 
   // Filter tasks
