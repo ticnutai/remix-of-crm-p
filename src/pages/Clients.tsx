@@ -1968,7 +1968,7 @@ export default function Clients() {
               paddingTop: "12px",
             }}
           >
-            {isValidPhoneForDisplay(client.phone) && (
+            {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
               <div
                 style={{
                   display: "flex",
@@ -1978,12 +1978,13 @@ export default function Clients() {
                 }}
                 dir="ltr"
               >
-                <Phone
-                  style={{ width: "14px", height: "14px", color: "#c9a227" }}
+                <PhoneWithExtras
+                  phone={client.phone}
+                  additionalPhones={(client as any).additional_phones}
+                  fontSize={13}
+                  iconSize={14}
+                  color="#1e3a5f"
                 />
-                <span style={{ fontSize: "13px", fontWeight: "500" }}>
-                  {client.phone}
-                </span>
               </div>
             )}
             {client.email && (
