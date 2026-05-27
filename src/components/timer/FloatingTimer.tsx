@@ -147,6 +147,22 @@ function FloatingTimerContent() {
   // Cancel confirmation state
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
+  // Listen for stop request from PiP floating window — open the same save dialog.
+  useEffect(() => {
+    const handler = () => {
+      if (!timerState.currentEntry) return;
+      setStoppedElapsed(timerState.elapsed);
+      setStopBillable(timerState.currentEntry?.is_billable ?? billingDefault);
+      setStopHourlyRate(timerState.currentEntry?.hourly_rate?.toString() || "");
+      if (timerState.isRunning) pauseTimer();
+      setIsStopDialogOpen(true);
+      setOpen(true);
+      try { window.focus(); } catch { /* ignore */ }
+    };
+    window.addEventListener("timer:request-stop-dialog", handler);
+    return () => window.removeEventListener("timer:request-stop-dialog", handler);
+  }, [timerState, billingDefault, pauseTimer]);
+
   // Minimized state
   const [isMinimized, setIsMinimized] = useState(() => {
     const saved = localStorage.getItem(TIMER_MINIMIZED_KEY);
