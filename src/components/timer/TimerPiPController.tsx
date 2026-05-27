@@ -2,7 +2,7 @@
 // 3 modes: compact (single-row), full (with client name), mini (icon-only).
 // Controls hide by default and fade in on hover.
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { useTimer } from "@/hooks/useTimer";
 import { useClients } from "@/hooks/useClients";
 import { Play, Pause, Square, PictureInPicture2, Maximize2, Minimize2, Minus } from "lucide-react";
@@ -130,9 +130,18 @@ export function TimerPiPController() {
       root.id = "pip-root";
       pip.document.body.appendChild(root);
 
+      // When user closes PiP (incl. "Back to tab"), unmount the portal SYNCHRONOUSLY
+      // before the PiP document is destroyed — otherwise React tries to remove
+      // children from a detached document and throws (which the ErrorBoundary catches).
       pip.addEventListener("pagehide", () => {
-        setPipWindow(null);
-        setContainer(null);
+        try {
+          flushSync(() => {
+            setContainer(null);
+            setPipWindow(null);
+          });
+        } catch (err) {
+          console.warn("PiP cleanup warning:", err);
+        }
         autoOpenedRef.current = false;
       });
 
