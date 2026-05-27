@@ -130,9 +130,18 @@ export function TimerPiPController() {
       root.id = "pip-root";
       pip.document.body.appendChild(root);
 
+      // When user closes PiP (incl. "Back to tab"), unmount the portal SYNCHRONOUSLY
+      // before the PiP document is destroyed — otherwise React tries to remove
+      // children from a detached document and throws (which the ErrorBoundary catches).
       pip.addEventListener("pagehide", () => {
-        setPipWindow(null);
-        setContainer(null);
+        try {
+          flushSync(() => {
+            setContainer(null);
+            setPipWindow(null);
+          });
+        } catch (err) {
+          console.warn("PiP cleanup warning:", err);
+        }
         autoOpenedRef.current = false;
       });
 
