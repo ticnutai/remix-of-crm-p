@@ -320,7 +320,7 @@ export function TimerPiPController() {
     );
   }
 
-  // ===== COMPACT MODE — single row: time + hover controls =====
+  // ===== COMPACT MODE — client name above + time row + hover controls =====
   if (mode === "compact") {
     return createPortal(
       <div
@@ -336,8 +336,8 @@ export function TimerPiPController() {
           gap: 10,
         }}
       >
-        {/* status dot + time */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {/* status dot + (client name above time) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
           <span
             style={{
               width: 8,
@@ -348,18 +348,36 @@ export function TimerPiPController() {
               flexShrink: 0,
             }}
           />
-          <div
-            style={{
-              fontFamily: "JetBrains Mono, monospace",
-              fontSize: 22,
-              fontWeight: 400,
-              color: timeColor,
-              letterSpacing: "0.06em",
-              fontVariantNumeric: "tabular-nums",
-              textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
-            }}
-          >
-            {timeText}
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0, lineHeight: 1.1 }}>
+            {clientName && (
+              <div
+                style={{
+                  fontSize: 10,
+                  color: GOLD_SOFT,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.02em",
+                  marginBottom: 2,
+                }}
+                title={clientName}
+              >
+                {clientName}
+              </div>
+            )}
+            <div
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 16,
+                fontWeight: 400,
+                color: timeColor,
+                letterSpacing: "0.05em",
+                fontVariantNumeric: "tabular-nums",
+                textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+              }}
+            >
+              {timeText}
+            </div>
           </div>
         </div>
         {Toolbar}
@@ -367,6 +385,7 @@ export function TimerPiPController() {
       container,
     );
   }
+
 
   // ===== FULL MODE — client name + time + controls =====
   return createPortal(
