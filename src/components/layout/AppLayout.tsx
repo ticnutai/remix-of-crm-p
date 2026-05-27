@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AppHeader } from './AppHeader';
 import { FloatingTimer } from '@/components/timer/FloatingTimer';
+import { TimerPiPController } from '@/components/timer/TimerPiPController';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { OverlaySidebar } from './OverlaySidebar';
 // loadGesturesConfig removed for debug
