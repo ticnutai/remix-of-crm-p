@@ -120,6 +120,16 @@ function FloatingTimerContent() {
   const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const pipSupported = isDocumentPiPSupported();
+  const [autoPip, setAutoPipState] = useState<boolean>(() => getAutoPiPEnabled());
+  const toggleAutoPip = useCallback(() => {
+    setAutoPipState((prev) => {
+      const next = !prev;
+      setAutoPiPEnabled(next);
+      toast.success(next ? "פתיחה אוטומטית של חלון צף הופעלה" : "פתיחה אוטומטית כובתה");
+      return next;
+    });
+  }, []);
 
   // Get current client name from current entry
   const currentClientName = timerState.currentEntry?.client_id
