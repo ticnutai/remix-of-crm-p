@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
+import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -1528,7 +1529,7 @@ export default function Clients() {
           </h3>
 
           {/* Phone */}
-          {isValidPhoneForDisplay(client.phone) && (
+          {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
             <div
               style={{
                 display: "flex",
@@ -1540,8 +1541,13 @@ export default function Clients() {
               }}
               dir="ltr"
             >
-              <Phone style={{ width: "12px", height: "12px" }} />
-              <span style={{ fontSize: "11px" }}>{client.phone}</span>
+              <PhoneWithExtras
+                phone={client.phone}
+                additionalPhones={(client as any).additional_phones}
+                fontSize={11}
+                iconSize={12}
+                color="#64748b"
+              />
             </div>
           )}
 
@@ -1710,13 +1716,18 @@ export default function Clients() {
                 color: "#64748b",
               }}
             >
-              {isValidPhoneForDisplay(client.phone) && (
+              {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
                 <div
                   style={{ display: "flex", alignItems: "center", gap: "6px" }}
                   dir="ltr"
                 >
-                  <Phone style={{ width: "14px", height: "14px" }} />
-                  <span style={{ fontSize: "13px" }}>{client.phone}</span>
+                  <PhoneWithExtras
+                    phone={client.phone}
+                    additionalPhones={(client as any).additional_phones}
+                    fontSize={13}
+                    iconSize={14}
+                    color="#64748b"
+                  />
                 </div>
               )}
               {client.email && (
@@ -1957,7 +1968,7 @@ export default function Clients() {
               paddingTop: "12px",
             }}
           >
-            {isValidPhoneForDisplay(client.phone) && (
+            {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
               <div
                 style={{
                   display: "flex",
@@ -1967,12 +1978,13 @@ export default function Clients() {
                 }}
                 dir="ltr"
               >
-                <Phone
-                  style={{ width: "14px", height: "14px", color: "#c9a227" }}
+                <PhoneWithExtras
+                  phone={client.phone}
+                  additionalPhones={(client as any).additional_phones}
+                  fontSize={13}
+                  iconSize={14}
+                  color="#1e3a5f"
                 />
-                <span style={{ fontSize: "13px", fontWeight: "500" }}>
-                  {client.phone}
-                </span>
               </div>
             )}
             {client.email && (
@@ -2381,7 +2393,7 @@ export default function Clients() {
               gap: "6px",
             }}
           >
-            {isValidPhoneForDisplay(client.phone) && (
+            {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
               <div
                 style={{
                   display: "flex",
@@ -2391,12 +2403,13 @@ export default function Clients() {
                 }}
                 dir="ltr"
               >
-                <Phone
-                  style={{ width: "16px", height: "16px", flexShrink: 0 }}
+                <PhoneWithExtras
+                  phone={client.phone}
+                  additionalPhones={(client as any).additional_phones}
+                  fontSize={14}
+                  iconSize={16}
+                  color="#1e3a5f"
                 />
-                <span style={{ fontSize: "14px", fontWeight: "500" }}>
-                  {client.phone}
-                </span>
               </div>
             )}
             {client.email && viewMode !== "compact" && (

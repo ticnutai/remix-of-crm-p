@@ -60,6 +60,7 @@ import { ColumnOptionsMenu } from "@/components/DataTable/components/ColumnOptio
 import { ClientFilterPanel } from "@/components/clients/ClientFilterPanel";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
+import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
 import {
   Loader2,
   Database,
@@ -2414,7 +2415,19 @@ export default function DataTablePro() {
         editType: "text",
         headerEditable: true,
         onHeaderChange: (val) => handleClientHeaderChange("phone", val),
-        cell: (value) => (value ? <span dir="ltr">{value}</span> : null),
+        cell: (value, row: any) => {
+          const extras = Array.isArray(row?.additional_phones) ? row.additional_phones : [];
+          if (!value && extras.length === 0) return null;
+          return (
+            <PhoneWithExtras
+              phone={value as string}
+              additionalPhones={extras}
+              fontSize={13}
+              iconSize={12}
+              showIcon={false}
+            />
+          );
+        },
       },
       {
         id: "status",
