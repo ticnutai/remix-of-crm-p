@@ -472,10 +472,14 @@ export default function ClientProfile() {
   // Save client edits
   const handleSaveEdit = async () => {
     const customData = buildCustomData(editCustomFieldValues);
+    const cleanedAdditional = (editForm.additional_phones || [])
+      .map((p) => (p || "").trim())
+      .filter((p) => p.length > 0);
     await updateClient({
       ...editForm,
+      additional_phones: cleanedAdditional,
       ...(Object.keys(customData).length > 0 ? { custom_data: customData } as any : {}),
-    });
+    } as any);
     setIsEditDialogOpen(false);
   };
 
