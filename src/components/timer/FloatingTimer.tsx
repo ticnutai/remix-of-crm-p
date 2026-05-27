@@ -1095,6 +1095,35 @@ function FloatingTimerContent() {
               </Tooltip>
             </TooltipProvider>
 
+            {/* Picture-in-Picture (floats above all desktop windows) */}
+            {pipSupported && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={requestOpenTimerPiP}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        toggleAutoPip();
+                      }}
+                      className={cn(
+                        "p-0.5 rounded transition-all border",
+                        autoPip
+                          ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                          : "border-transparent hover:opacity-80",
+                      )}
+                      style={{ color: timerTheme.accentColor }}
+                    >
+                      <PictureInPicture2 className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    חלון צף מעל כל החלונות{autoPip ? " (אוטומטי פעיל)" : ""} · קליק ימני לשינוי
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
             {/* Settings Button */}
             <TooltipProvider>
               <Tooltip>
