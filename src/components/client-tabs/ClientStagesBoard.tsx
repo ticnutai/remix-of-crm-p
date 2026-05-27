@@ -2275,6 +2275,22 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   const pendingStageThemeColorUpdateRef = React.useRef<
     { key: StageThemeColorKey; value: string } | null
   >(null);
+  const [highlightedColorKey, setHighlightedColorKey] =
+    useState<StageThemeColorKey | null>(null);
+  const highlightTimerRef = React.useRef<number | null>(null);
+  const focusStageColorField = React.useCallback((key: StageThemeColorKey) => {
+    const el = document.getElementById(`stage-color-field-${key}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    setHighlightedColorKey(key);
+    if (highlightTimerRef.current) {
+      window.clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedColorKey((curr) => (curr === key ? null : curr));
+    }, 1800);
+  }, []);
 
   const stageBoardThemes = useMemo(
     () => normalizeStageThemes(stageBoardThemesRaw),
@@ -5210,7 +5226,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
           }
         }}
       >
-        <DialogContent className="max-w-5xl" dir="rtl">
+        <DialogContent className="max-w-[96vw] max-h-[92vh] overflow-y-auto" dir="rtl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center justify-end gap-2">
               <Palette
@@ -5225,7 +5241,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2 lg:grid-cols-[1.1fr_1fr]">
+          <div className="grid gap-4 py-2 grid-cols-1">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <Button
@@ -5253,7 +5269,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 </div>
               </div>
 
-              <div className="max-h-[52vh] space-y-2 overflow-y-auto rounded-lg border p-2">
+              <div className="grid gap-2 rounded-lg border p-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {stageBoardThemes.map((theme) => {
                   const isActive = activeStageTheme.id === theme.id;
                   const isEditing = editingStageThemeId === theme.id;
@@ -5416,24 +5432,36 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                   <div
-                    className="rounded-md border overflow-hidden"
+                    className="rounded-md border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/60 transition-all"
                     style={{ borderColor: stageThemeLivePreview.borderColor }}
+                    onClick={() => focusStageColorField("borderColor")}
+                    title="לחץ לעריכת צבע מסגרת"
                   >
                     <div
-                      className="px-3 py-1.5 text-[11px] text-right"
+                      className="px-3 py-1.5 text-[11px] text-right cursor-pointer hover:brightness-110 transition-all"
                       style={{
                         backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
                         color: stageThemeLivePreview.badgeTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("badgeBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע תג"
                     >
                       שלב רגיל
                     </div>
                     <div
-                      className="px-3 py-2 space-y-2"
+                      className="px-3 py-2 space-y-2 cursor-pointer hover:brightness-110 transition-all"
                       style={{
                         background: `linear-gradient(135deg, ${stageThemeLivePreview.headerFromColor}, ${stageThemeLivePreview.headerToColor})`,
                         color: stageThemeLivePreview.headerTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("headerFromColor");
+                      }}
+                      title="לחץ לעריכת גרדיאנט כותרת"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1">
@@ -5442,13 +5470,27 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           <Timer className="h-3.5 w-3.5" />
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs">{stageThemeDraft.name || "ערכת נושא"}</span>
+                          <span
+                            className="text-xs cursor-pointer hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusStageColorField("headerTextColor");
+                            }}
+                            title="לחץ לעריכת טקסט כותרת"
+                          >
+                            {stageThemeDraft.name || "ערכת נושא"}
+                          </span>
                           <div
-                            className="h-7 w-7 rounded-md"
+                            className="h-7 w-7 rounded-md cursor-pointer hover:ring-2 hover:ring-primary"
                             style={{
                               backgroundColor: stageThemeLivePreview.iconBackgroundColor,
                               color: stageThemeLivePreview.iconColor,
                             }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusStageColorField("iconBackgroundColor");
+                            }}
+                            title="לחץ לעריכת רקע אייקון"
                           >
                             <Palette className="h-4 w-4 m-1.5" />
                           </div>
@@ -5457,16 +5499,28 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                       <div className="flex items-center justify-end gap-2">
                         <Badge
-                          className="border-transparent"
+                          className="border-transparent cursor-pointer hover:brightness-110"
                           style={{
                             backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
                             color: stageThemeLivePreview.badgeTextColor,
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("badgeBackgroundColor");
+                          }}
+                          title="לחץ לעריכת תג"
                         >
                           4/7
                         </Badge>
 
-                        <div className="relative w-10 h-10">
+                        <div
+                          className="relative w-10 h-10 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("progressColor");
+                          }}
+                          title="לחץ לעריכת צבע התקדמות"
+                        >
                           <svg className="w-full h-full -rotate-90">
                             <circle
                               cx="20"
@@ -5496,8 +5550,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     </div>
 
                     <div
-                      className="p-2 space-y-1.5"
+                      className="p-2 space-y-1.5 cursor-pointer hover:brightness-105"
                       style={{ backgroundColor: stageThemeLivePreview.cardBackgroundColor }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("cardBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע כרטיס"
                     >
                       <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/70">
                         <span className="text-muted-foreground">06/05</span>
@@ -5511,43 +5570,74 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                   </div>
 
                   <div
-                    className="rounded-md border overflow-hidden"
+                    className="rounded-md border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/60 transition-all"
                     style={{
                       borderColor: stageThemeLivePreview.activeBorderColor,
                       boxShadow: `0 0 0 1px ${stageThemeLivePreview.activeGlowColor}66, 0 10px 22px ${stageThemeLivePreview.activeGlowColor}33`,
                     }}
+                    onClick={() => focusStageColorField("activeBorderColor")}
+                    title="לחץ לעריכת מסגרת שלב פעיל"
                   >
                     <div
-                      className="px-3 py-1.5 text-[11px] text-right"
+                      className="px-3 py-1.5 text-[11px] text-right cursor-pointer hover:brightness-110"
                       style={{
                         backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
                         color: stageThemeLivePreview.activeBadgeTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeBadgeBackgroundColor");
+                      }}
+                      title="לחץ לעריכת תג שלב פעיל"
                     >
                       שלב נוכחי מודגש
                     </div>
                     <div
-                      className="px-3 py-2 space-y-2"
+                      className="px-3 py-2 space-y-2 cursor-pointer hover:brightness-110"
                       style={{
                         background: `linear-gradient(135deg, ${stageThemeLivePreview.activeHeaderFromColor}, ${stageThemeLivePreview.activeHeaderToColor})`,
                         color: stageThemeLivePreview.activeHeaderTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeHeaderFromColor");
+                      }}
+                      title="לחץ לעריכת גרדיאנט שלב פעיל"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Badge
-                          className="border-transparent"
+                          className="border-transparent cursor-pointer"
                           style={{
                             backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
                             color: stageThemeLivePreview.activeBadgeTextColor,
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeBadgeBackgroundColor");
+                          }}
                         >
                           שלב פעיל עכשיו
                         </Badge>
-                        <span className="text-xs">כאן אתה כרגע</span>
+                        <span
+                          className="text-xs cursor-pointer hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeHeaderTextColor");
+                          }}
+                        >
+                          כאן אתה כרגע
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-end gap-2">
-                        <div className="relative w-10 h-10">
+                        <div
+                          className="relative w-10 h-10 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeProgressColor");
+                          }}
+                          title="לחץ לעריכת התקדמות שלב פעיל"
+                        >
                           <svg className="w-full h-full -rotate-90">
                             <circle
                               cx="20"
@@ -5577,8 +5667,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     </div>
 
                     <div
-                      className="p-2 space-y-1.5"
+                      className="p-2 space-y-1.5 cursor-pointer hover:brightness-105"
                       style={{ backgroundColor: stageThemeLivePreview.activeCardBackgroundColor }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeCardBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע כרטיס פעיל"
                     >
                       <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/80">
                         <span className="text-muted-foreground">היום</span>
@@ -5622,12 +5717,21 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                 </div>
               </div>
 
-              <div className="grid max-h-[32vh] grid-cols-1 gap-2 overflow-y-auto rounded-md border p-2 md:grid-cols-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 rounded-md border p-2">
                 {STAGE_THEME_COLOR_FIELDS.map((field) => {
                   const colorValue = stageThemeLivePreview[field.key];
+                  const isHighlighted = highlightedColorKey === field.key;
 
                   return (
-                    <div key={field.key} className="rounded-md border p-2 space-y-1">
+                    <div
+                      key={field.key}
+                      id={`stage-color-field-${field.key}`}
+                      className={cn(
+                        "rounded-md border p-2 space-y-1 transition-all",
+                        isHighlighted &&
+                          "ring-2 ring-primary ring-offset-2 ring-offset-background scale-[1.03] shadow-lg",
+                      )}
+                    >
                       <label className="text-xs font-medium block text-right">
                         {field.label}
                       </label>
@@ -5638,14 +5742,14 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           onChange={(e) =>
                             handleStageThemeColorChange(field.key, e.target.value)
                           }
-                          className="h-8 w-10 p-1"
+                          className="h-8 w-10 p-1 shrink-0"
                         />
                         <Input
                           value={stageThemeDraft[field.key]}
                           onChange={(e) =>
                             handleStageThemeColorChange(field.key, e.target.value)
                           }
-                          className="h-8 text-xs"
+                          className="h-8 text-xs min-w-0"
                           placeholder="#000000"
                         />
                       </div>
