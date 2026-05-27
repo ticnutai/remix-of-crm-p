@@ -5570,43 +5570,74 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                   </div>
 
                   <div
-                    className="rounded-md border overflow-hidden"
+                    className="rounded-md border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/60 transition-all"
                     style={{
                       borderColor: stageThemeLivePreview.activeBorderColor,
                       boxShadow: `0 0 0 1px ${stageThemeLivePreview.activeGlowColor}66, 0 10px 22px ${stageThemeLivePreview.activeGlowColor}33`,
                     }}
+                    onClick={() => focusStageColorField("activeBorderColor")}
+                    title="לחץ לעריכת מסגרת שלב פעיל"
                   >
                     <div
-                      className="px-3 py-1.5 text-[11px] text-right"
+                      className="px-3 py-1.5 text-[11px] text-right cursor-pointer hover:brightness-110"
                       style={{
                         backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
                         color: stageThemeLivePreview.activeBadgeTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeBadgeBackgroundColor");
+                      }}
+                      title="לחץ לעריכת תג שלב פעיל"
                     >
                       שלב נוכחי מודגש
                     </div>
                     <div
-                      className="px-3 py-2 space-y-2"
+                      className="px-3 py-2 space-y-2 cursor-pointer hover:brightness-110"
                       style={{
                         background: `linear-gradient(135deg, ${stageThemeLivePreview.activeHeaderFromColor}, ${stageThemeLivePreview.activeHeaderToColor})`,
                         color: stageThemeLivePreview.activeHeaderTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeHeaderFromColor");
+                      }}
+                      title="לחץ לעריכת גרדיאנט שלב פעיל"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Badge
-                          className="border-transparent"
+                          className="border-transparent cursor-pointer"
                           style={{
                             backgroundColor: stageThemeLivePreview.activeBadgeBackgroundColor,
                             color: stageThemeLivePreview.activeBadgeTextColor,
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeBadgeBackgroundColor");
+                          }}
                         >
                           שלב פעיל עכשיו
                         </Badge>
-                        <span className="text-xs">כאן אתה כרגע</span>
+                        <span
+                          className="text-xs cursor-pointer hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeHeaderTextColor");
+                          }}
+                        >
+                          כאן אתה כרגע
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-end gap-2">
-                        <div className="relative w-10 h-10">
+                        <div
+                          className="relative w-10 h-10 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("activeProgressColor");
+                          }}
+                          title="לחץ לעריכת התקדמות שלב פעיל"
+                        >
                           <svg className="w-full h-full -rotate-90">
                             <circle
                               cx="20"
@@ -5636,8 +5667,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     </div>
 
                     <div
-                      className="p-2 space-y-1.5"
+                      className="p-2 space-y-1.5 cursor-pointer hover:brightness-105"
                       style={{ backgroundColor: stageThemeLivePreview.activeCardBackgroundColor }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("activeCardBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע כרטיס פעיל"
                     >
                       <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/80">
                         <span className="text-muted-foreground">היום</span>
