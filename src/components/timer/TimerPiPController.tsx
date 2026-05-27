@@ -178,10 +178,11 @@ export function TimerPiPController() {
     width: "100vw",
     boxSizing: "border-box",
     background: `linear-gradient(135deg, ${NAVY_DEEP}, ${NAVY})`,
-    border: `1px solid hsla(45, 70%, 55%, 0.45)`,
-    borderRadius: mode === "mini" ? "50%" : 18,
-    boxShadow:
-      "0 12px 40px -8px hsla(220, 80%, 5%, 0.6), inset 0 1px 0 hsla(0,0%,100%,0.05)",
+    border: mode === "mini" ? `1px solid hsla(45, 70%, 55%, 0.45)` : "none",
+    borderRadius: mode === "mini" ? "50%" : 0,
+    boxShadow: mode === "mini"
+      ? "0 12px 40px -8px hsla(220, 80%, 5%, 0.6), inset 0 1px 0 hsla(0,0%,100%,0.05)"
+      : "inset 0 1px 0 hsla(45,70%,55%,0.18)",
     overflow: "hidden",
     position: "relative",
     userSelect: "none",
