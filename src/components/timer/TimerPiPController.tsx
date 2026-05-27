@@ -118,10 +118,12 @@ export function TimerPiPController() {
 
       pip.document.documentElement.dir = "rtl";
       pip.document.documentElement.lang = "he";
+      pip.document.documentElement.style.background = "hsl(220, 65%, 9%)";
       pip.document.body.style.margin = "0";
-      pip.document.body.style.background = "transparent";
+      pip.document.body.style.background = "hsl(220, 65%, 9%)";
       pip.document.body.style.color = "hsl(0, 0%, 100%)";
       pip.document.body.style.fontFamily = "Heebo, sans-serif";
+      pip.document.body.style.overflow = "hidden";
       pip.document.title = "טיימר tenarch";
 
       const root = pip.document.createElement("div");
