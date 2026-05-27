@@ -60,6 +60,7 @@ import { ColumnOptionsMenu } from "@/components/DataTable/components/ColumnOptio
 import { ClientFilterPanel } from "@/components/clients/ClientFilterPanel";
 import { CategoriesSidebar } from "@/components/clients/CategoriesSidebar";
 import { ClientNameWithCategory } from "@/components/clients/ClientNameWithCategory";
+import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
 import {
   Loader2,
   Database,
