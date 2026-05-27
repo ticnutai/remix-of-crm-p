@@ -1380,7 +1380,7 @@ export default function TimeLogs() {
         {/* Main Content - Unified Header with Tabs, Filters & Actions */}
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as "analytics" | "list" | "list2" | "summary")}
+          onValueChange={(v) => setActiveTab(v as any)}
           className="w-full flex-1 flex flex-col"
         >
           {/* Single Unified Bar: Title + Tabs + Filters + Actions */}
