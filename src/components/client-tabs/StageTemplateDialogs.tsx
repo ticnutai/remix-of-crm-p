@@ -2037,7 +2037,7 @@ export function CopyStagesDialog({
     setSelectedClient(clientId);
     setLoading(true);
     const stages = await getClientStages(clientId);
-    setClientStages(stages);
+    setClientStages(stages as any);
     setSelectedStages(new Set(stages.map((s) => s.stage_id)));
     setLoading(false);
   };

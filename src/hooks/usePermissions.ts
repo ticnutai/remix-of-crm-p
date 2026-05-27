@@ -167,7 +167,7 @@ export function usePermissions(): UsePermissionsResult {
 
       if (error) throw error;
 
-      const rows = (data ?? []) as PermRow[];
+      const rows = (data ?? []) as unknown as PermRow[];
       const map: PermissionsMap = Object.fromEntries(
         MODULES.map(m => [m.key, noAccess()])          // default: no access
       );

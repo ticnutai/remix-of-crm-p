@@ -162,7 +162,7 @@ export function useClientStages(clientId: string) {
       if (tasksError) throw tasksError;
 
       // Remove duplicates (same stage_id + title) - keep oldest
-      const uniqueTasks = removeDuplicateTasks(loadedTasks || []);
+      const uniqueTasks = removeDuplicateTasks((loadedTasks || []) as any);
       setTasks(uniqueTasks);
     } catch (error: unknown) {
       console.error("Error loading data:", error);
@@ -183,15 +183,16 @@ export function useClientStages(clientId: string) {
         .filter((t) => t.stage_id === stageId)
         .reduce((max, t) => Math.max(max, t.sort_order), -1);
 
-      const options: AddTaskOptions =
+      const options: AddTaskOptions = (
         linkedClientIdOrOptions &&
         typeof linkedClientIdOrOptions === "object" &&
         !Array.isArray(linkedClientIdOrOptions)
           ? linkedClientIdOrOptions
           : {
-              linkedClientId: linkedClientIdOrOptions ?? null,
-              linkedContactId,
-            };
+              linkedClientId: (linkedClientIdOrOptions as string | null) ?? null,
+              linkedContactId: linkedContactId ?? null,
+            }
+      ) as AddTaskOptions;
 
       const taskType = options?.taskType ?? "task";
 
@@ -219,7 +220,7 @@ export function useClientStages(clientId: string) {
 
       let { data, error } = await supabase
         .from("client_stage_tasks")
-        .insert(fullInsert)
+        .insert(fullInsert as any)
         .select()
         .single();
 
@@ -245,7 +246,7 @@ export function useClientStages(clientId: string) {
 
       if (error) throw error;
 
-      setTasks((prev) => [...prev, data]);
+      setTasks((prev) => [...prev, data as any]);
       toast({
         title: "הצלחה",
         description:
@@ -286,7 +287,7 @@ export function useClientStages(clientId: string) {
 
       if (error) throw error;
 
-      setTasks((prev) => [...prev, ...data]);
+      setTasks((prev) => [...prev, ...(data as any[])]);
       toast({
         title: "הצלחה",
         description: `${data.length} משימות נוספו בהצלחה`,

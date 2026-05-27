@@ -1,18 +1,26 @@
 // Document Picture-in-Picture controller for the floating timer.
-// Opens a small always-on-top window (Chrome/Edge/Brave 116+) that floats
-// above all desktop windows, mirroring the timer state and controls.
-import { useEffect, useRef, useState, useCallback } from "react";
+// 3 modes: compact (single-row), full (with client name), mini (icon-only).
+// Controls hide by default and fade in on hover.
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTimer } from "@/hooks/useTimer";
 import { useClients } from "@/hooks/useClients";
-import { Play, Pause, Square, PictureInPicture2 } from "lucide-react";
+import { Play, Pause, Square, PictureInPicture2, Maximize2, Minimize2, Minus } from "lucide-react";
 import { toast } from "sonner";
 
 const AUTO_PIP_KEY = "timer-auto-pip";
+const PIP_MODE_KEY = "timer-pip-mode";
 const PIP_OPEN_EVENT = "timer:open-pip";
 const PIP_TOGGLE_AUTO_EVENT = "timer:toggle-auto-pip";
 
-// Public helpers consumed by the FloatingTimer header buttons.
+type PipMode = "compact" | "full" | "mini";
+
+const MODE_SIZES: Record<PipMode, { width: number; height: number }> = {
+  full: { width: 280, height: 150 },
+  compact: { width: 260, height: 64 },
+  mini: { width: 110, height: 110 },
+};
+
 export function isDocumentPiPSupported() {
   return typeof window !== "undefined" && "documentPictureInPicture" in window;
 }
@@ -28,6 +36,11 @@ export function setAutoPiPEnabled(enabled: boolean) {
   window.localStorage.setItem(AUTO_PIP_KEY, String(enabled));
   window.dispatchEvent(new CustomEvent(PIP_TOGGLE_AUTO_EVENT, { detail: enabled }));
 }
+function getInitialMode(): PipMode {
+  if (typeof window === "undefined") return "compact";
+  const v = window.localStorage.getItem(PIP_MODE_KEY) as PipMode | null;
+  return v && ["compact", "full", "mini"].includes(v) ? v : "compact";
+}
 
 function formatHMS(seconds: number) {
   const h = Math.floor(seconds / 3600);
@@ -41,11 +54,32 @@ export function TimerPiPController() {
   const { clients } = useClients();
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [mode, setModeState] = useState<PipMode>(getInitialMode);
+  const [hovered, setHovered] = useState(false);
   const autoOpenedRef = useRef(false);
 
   const clientName = timerState.currentEntry?.client_id
     ? clients.find((c) => c.id === timerState.currentEntry?.client_id)?.name
     : null;
+
+  const setMode = useCallback((next: PipMode) => {
+    setModeState(next);
+    window.localStorage.setItem(PIP_MODE_KEY, next);
+    if (pipWindow) {
+      const { width, height } = MODE_SIZES[next];
+      try {
+        pipWindow.resizeTo(width, height);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pipWindow]);
+
+  const cycleMode = useCallback(() => {
+    const order: PipMode[] = ["full", "compact", "mini"];
+    const next = order[(order.indexOf(mode) + 1) % order.length];
+    setMode(next);
+  }, [mode, setMode]);
 
   const openPiP = useCallback(async () => {
     if (!isDocumentPiPSupported()) {
@@ -57,13 +91,10 @@ export function TimerPiPController() {
       return;
     }
     try {
+      const { width, height } = MODE_SIZES[mode];
       // @ts-expect-error - Document PiP API not yet in lib.dom
-      const pip: Window = await window.documentPictureInPicture.requestWindow({
-        width: 280,
-        height: 160,
-      });
+      const pip: Window = await window.documentPictureInPicture.requestWindow({ width, height });
 
-      // Copy stylesheets so Tailwind / app theme renders inside the PiP window.
       [...document.styleSheets].forEach((sheet) => {
         try {
           const rules = [...sheet.cssRules].map((r) => r.cssText).join("");
@@ -71,7 +102,6 @@ export function TimerPiPController() {
           style.textContent = rules;
           pip.document.head.appendChild(style);
         } catch {
-          // Cross-origin sheet → re-link instead.
           if (sheet.href) {
             const link = pip.document.createElement("link");
             link.rel = "stylesheet";
@@ -84,7 +114,7 @@ export function TimerPiPController() {
       pip.document.documentElement.dir = "rtl";
       pip.document.documentElement.lang = "he";
       pip.document.body.style.margin = "0";
-      pip.document.body.style.background = "hsl(220, 60%, 12%)";
+      pip.document.body.style.background = "transparent";
       pip.document.body.style.color = "hsl(0, 0%, 100%)";
       pip.document.body.style.fontFamily = "Heebo, sans-serif";
       pip.document.title = "טיימר tenarch";
@@ -105,16 +135,14 @@ export function TimerPiPController() {
       console.error("PiP open failed", e);
       toast.error("פתיחת חלון צף נכשלה");
     }
-  }, [pipWindow]);
+  }, [pipWindow, mode]);
 
-  // Listen to external requests to open PiP.
   useEffect(() => {
     const handler = () => void openPiP();
     window.addEventListener(PIP_OPEN_EVENT, handler);
     return () => window.removeEventListener(PIP_OPEN_EVENT, handler);
   }, [openPiP]);
 
-  // Auto-open when timer starts (if user enabled it).
   useEffect(() => {
     if (!timerState.isRunning) {
       autoOpenedRef.current = false;
@@ -127,106 +155,263 @@ export function TimerPiPController() {
     void openPiP();
   }, [timerState.isRunning, pipWindow, openPiP]);
 
+  // Tokens — kept in JS because PiP is in a sibling document.
+  const NAVY = "hsl(220, 60%, 13%)";
+  const NAVY_DEEP = "hsl(220, 65%, 9%)";
+  const GOLD = "hsl(45, 70%, 50%)";
+  const GOLD_SOFT = "hsla(45, 70%, 60%, 0.85)";
+  const WHITE = "hsl(0, 0%, 100%)";
+  const RUNNING_GLOW = "0 0 14px hsla(45,80%,55%,0.55)";
+
+  const timeColor = timerState.isRunning ? GOLD : WHITE;
+  const timeText = formatHMS(timerState.elapsed);
+
+  const shell: React.CSSProperties = useMemo(() => ({
+    height: "100vh",
+    width: "100vw",
+    boxSizing: "border-box",
+    background: `linear-gradient(135deg, ${NAVY_DEEP}, ${NAVY})`,
+    border: `1px solid hsla(45, 70%, 55%, 0.45)`,
+    borderRadius: mode === "mini" ? "50%" : 18,
+    boxShadow:
+      "0 12px 40px -8px hsla(220, 80%, 5%, 0.6), inset 0 1px 0 hsla(0,0%,100%,0.05)",
+    overflow: "hidden",
+    position: "relative",
+    userSelect: "none",
+  }), [mode]);
+
+  const iconBtn = (variant: "ghost" | "primary"): React.CSSProperties => ({
+    height: 28,
+    width: 28,
+    borderRadius: 10,
+    border: `1px solid hsla(45,70%,55%,${variant === "primary" ? 1 : 0.35})`,
+    background:
+      variant === "primary"
+        ? `linear-gradient(135deg, ${GOLD}, hsl(45, 80%, 42%))`
+        : "hsla(0,0%,100%,0.06)",
+    color: variant === "primary" ? NAVY : WHITE,
+    cursor: timerState.currentEntry ? "pointer" : "not-allowed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "transform 150ms ease, background 150ms ease",
+    padding: 0,
+  });
+
   if (!container) return null;
 
+  // Toolbar (mode switch + controls). Hidden until hover.
+  const Toolbar = (
+    <div
+      style={{
+        display: "flex",
+        gap: 6,
+        alignItems: "center",
+        opacity: hovered ? 1 : 0,
+        transform: hovered ? "translateY(0)" : "translateY(2px)",
+        transition: "opacity 180ms ease, transform 180ms ease",
+        pointerEvents: hovered ? "auto" : "none",
+      }}
+    >
+      <button
+        onClick={() => (timerState.isRunning ? pauseTimer() : resumeTimer())}
+        disabled={!timerState.currentEntry}
+        title={timerState.isRunning ? "השהה" : "המשך"}
+        style={iconBtn("ghost")}
+      >
+        {timerState.isRunning ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+      <button
+        onClick={() => void stopTimer()}
+        disabled={!timerState.currentEntry}
+        title="עצור ושמור"
+        style={iconBtn("primary")}
+      >
+        <Square size={12} fill="currentColor" />
+      </button>
+      <button
+        onClick={cycleMode}
+        title="החלף מצב תצוגה"
+        style={{ ...iconBtn("ghost"), width: 26, height: 26 }}
+      >
+        {mode === "full" ? (
+          <Minimize2 size={12} />
+        ) : mode === "compact" ? (
+          <Minus size={12} />
+        ) : (
+          <Maximize2 size={12} />
+        )}
+      </button>
+    </div>
+  );
+
+  // ===== MINI MODE — round badge with time only =====
+  if (mode === "mini") {
+    return createPortal(
+      <div
+        dir="rtl"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onDoubleClick={() => setMode("compact")}
+        style={{
+          ...shell,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+        }}
+        title="לחץ פעמיים להגדלה"
+      >
+        <div
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 18,
+            fontWeight: 500,
+            color: timeColor,
+            textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+            letterSpacing: "0.04em",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {timeText.slice(0, 5)}
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 6,
+            fontSize: 9,
+            color: GOLD_SOFT,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          :{timeText.slice(6)}
+        </div>
+        {/* hover overlay: cycle button */}
+        <button
+          onClick={cycleMode}
+          title="הגדל"
+          style={{
+            position: "absolute",
+            top: 4,
+            right: 4,
+            ...iconBtn("ghost"),
+            width: 22,
+            height: 22,
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 180ms ease",
+          }}
+        >
+          <Maximize2 size={10} />
+        </button>
+      </div>,
+      container,
+    );
+  }
+
+  // ===== COMPACT MODE — single row: time + hover controls =====
+  if (mode === "compact") {
+    return createPortal(
+      <div
+        dir="rtl"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          ...shell,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 14px",
+          gap: 10,
+        }}
+      >
+        {/* status dot + time */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: timerState.isRunning ? GOLD : "hsla(0,0%,100%,0.3)",
+              boxShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+              flexShrink: 0,
+            }}
+          />
+          <div
+            style={{
+              fontFamily: "JetBrains Mono, monospace",
+              fontSize: 22,
+              fontWeight: 400,
+              color: timeColor,
+              letterSpacing: "0.06em",
+              fontVariantNumeric: "tabular-nums",
+              textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+            }}
+          >
+            {timeText}
+          </div>
+        </div>
+        {Toolbar}
+      </div>,
+      container,
+    );
+  }
+
+  // ===== FULL MODE — client name + time + controls =====
   return createPortal(
     <div
       dir="rtl"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        height: "100vh",
-        width: "100vw",
+        ...shell,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 12,
-        padding: 12,
-        background:
-          "linear-gradient(135deg, hsl(220,60%,15%), hsl(220,60%,20%))",
-        border: "2px solid hsl(45,80%,50%)",
-        boxSizing: "border-box",
-        userSelect: "none",
+        gap: 6,
+        padding: "10px 14px",
       }}
     >
       {clientName && (
         <div
           style={{
-            fontSize: 12,
-            color: "hsl(45,80%,70%)",
-            maxWidth: "90%",
+            fontSize: 11,
+            color: GOLD_SOFT,
+            maxWidth: "92%",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            letterSpacing: "0.02em",
           }}
         >
           {clientName}
         </div>
       )}
-      <div
-        style={{
-          fontSize: 36,
-          fontFamily: "JetBrains Mono, monospace",
-          letterSpacing: "0.1em",
-          fontWeight: 300,
-          color: timerState.isRunning
-            ? "hsl(45,85%,55%)"
-            : "hsl(0,0%,100%)",
-          textShadow: timerState.isRunning
-            ? "0 0 12px hsla(45,85%,55%,0.6)"
-            : "none",
-        }}
-      >
-        {formatHMS(timerState.elapsed)}
-      </div>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button
-          onClick={() =>
-            timerState.isRunning ? pauseTimer() : resumeTimer()
-          }
-          disabled={!timerState.currentEntry}
-          title={timerState.isRunning ? "השהה" : "המשך"}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
           style={{
-            height: 40,
-            width: 40,
-            borderRadius: 12,
-            border: "2px solid hsl(45,80%,55%)",
-            background: timerState.isRunning
-              ? "hsla(0,0%,100%,0.15)"
-              : "hsl(0,0%,100%)",
-            color: timerState.isRunning ? "hsl(0,0%,100%)" : "hsl(45,80%,40%)",
-            cursor: timerState.currentEntry ? "pointer" : "not-allowed",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: timerState.isRunning ? GOLD : "hsla(0,0%,100%,0.3)",
+            boxShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+          }}
+        />
+        <div
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 30,
+            fontWeight: 300,
+            color: timeColor,
+            letterSpacing: "0.08em",
+            fontVariantNumeric: "tabular-nums",
+            textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
           }}
         >
-          {timerState.isRunning ? (
-            <Pause size={18} />
-          ) : (
-            <Play size={18} />
-          )}
-        </button>
-        <button
-          onClick={() => void stopTimer()}
-          disabled={!timerState.currentEntry}
-          title="עצור ושמור"
-          style={{
-            height: 40,
-            width: 40,
-            borderRadius: 12,
-            border: "2px solid hsl(45,80%,55%)",
-            background:
-              "linear-gradient(135deg, hsl(45,80%,50%), hsl(45,90%,45%))",
-            color: "hsl(220,60%,15%)",
-            cursor: timerState.currentEntry ? "pointer" : "not-allowed",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Square size={16} fill="currentColor" />
-        </button>
+          {timeText}
+        </div>
       </div>
+      <div style={{ marginTop: 4 }}>{Toolbar}</div>
     </div>,
     container,
   );
