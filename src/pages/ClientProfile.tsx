@@ -450,6 +450,9 @@ export default function ClientProfile() {
         name: client.name || "",
         email: client.email || "",
         phone: client.phone || "",
+        additional_phones: Array.isArray((client as any).additional_phones)
+          ? ((client as any).additional_phones as string[])
+          : [],
         company: client.company || "",
         address: client.address || "",
         notes: client.notes || "",
