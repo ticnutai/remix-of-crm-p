@@ -220,7 +220,7 @@ export function useClientStages(clientId: string) {
 
       let { data, error } = await supabase
         .from("client_stage_tasks")
-        .insert(fullInsert)
+        .insert(fullInsert as any)
         .select()
         .single();
 
