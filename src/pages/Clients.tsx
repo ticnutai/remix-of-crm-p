@@ -1529,7 +1529,7 @@ export default function Clients() {
           </h3>
 
           {/* Phone */}
-          {isValidPhoneForDisplay(client.phone) && (
+          {(isValidPhoneForDisplay(client.phone) || ((client as any).additional_phones?.length ?? 0) > 0) && (
             <div
               style={{
                 display: "flex",
@@ -1541,8 +1541,13 @@ export default function Clients() {
               }}
               dir="ltr"
             >
-              <Phone style={{ width: "12px", height: "12px" }} />
-              <span style={{ fontSize: "11px" }}>{client.phone}</span>
+              <PhoneWithExtras
+                phone={client.phone}
+                additionalPhones={(client as any).additional_phones}
+                fontSize={11}
+                iconSize={12}
+                color="#64748b"
+              />
             </div>
           )}
 
