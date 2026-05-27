@@ -5432,24 +5432,36 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
                   <div
-                    className="rounded-md border overflow-hidden"
+                    className="rounded-md border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/60 transition-all"
                     style={{ borderColor: stageThemeLivePreview.borderColor }}
+                    onClick={() => focusStageColorField("borderColor")}
+                    title="לחץ לעריכת צבע מסגרת"
                   >
                     <div
-                      className="px-3 py-1.5 text-[11px] text-right"
+                      className="px-3 py-1.5 text-[11px] text-right cursor-pointer hover:brightness-110 transition-all"
                       style={{
                         backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
                         color: stageThemeLivePreview.badgeTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("badgeBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע תג"
                     >
                       שלב רגיל
                     </div>
                     <div
-                      className="px-3 py-2 space-y-2"
+                      className="px-3 py-2 space-y-2 cursor-pointer hover:brightness-110 transition-all"
                       style={{
                         background: `linear-gradient(135deg, ${stageThemeLivePreview.headerFromColor}, ${stageThemeLivePreview.headerToColor})`,
                         color: stageThemeLivePreview.headerTextColor,
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("headerFromColor");
+                      }}
+                      title="לחץ לעריכת גרדיאנט כותרת"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1">
@@ -5458,13 +5470,27 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                           <Timer className="h-3.5 w-3.5" />
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs">{stageThemeDraft.name || "ערכת נושא"}</span>
+                          <span
+                            className="text-xs cursor-pointer hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusStageColorField("headerTextColor");
+                            }}
+                            title="לחץ לעריכת טקסט כותרת"
+                          >
+                            {stageThemeDraft.name || "ערכת נושא"}
+                          </span>
                           <div
-                            className="h-7 w-7 rounded-md"
+                            className="h-7 w-7 rounded-md cursor-pointer hover:ring-2 hover:ring-primary"
                             style={{
                               backgroundColor: stageThemeLivePreview.iconBackgroundColor,
                               color: stageThemeLivePreview.iconColor,
                             }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              focusStageColorField("iconBackgroundColor");
+                            }}
+                            title="לחץ לעריכת רקע אייקון"
                           >
                             <Palette className="h-4 w-4 m-1.5" />
                           </div>
@@ -5473,16 +5499,28 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
 
                       <div className="flex items-center justify-end gap-2">
                         <Badge
-                          className="border-transparent"
+                          className="border-transparent cursor-pointer hover:brightness-110"
                           style={{
                             backgroundColor: stageThemeLivePreview.badgeBackgroundColor,
                             color: stageThemeLivePreview.badgeTextColor,
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("badgeBackgroundColor");
+                          }}
+                          title="לחץ לעריכת תג"
                         >
                           4/7
                         </Badge>
 
-                        <div className="relative w-10 h-10">
+                        <div
+                          className="relative w-10 h-10 cursor-pointer hover:scale-110 transition-transform"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            focusStageColorField("progressColor");
+                          }}
+                          title="לחץ לעריכת צבע התקדמות"
+                        >
                           <svg className="w-full h-full -rotate-90">
                             <circle
                               cx="20"
@@ -5512,8 +5550,13 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
                     </div>
 
                     <div
-                      className="p-2 space-y-1.5"
+                      className="p-2 space-y-1.5 cursor-pointer hover:brightness-105"
                       style={{ backgroundColor: stageThemeLivePreview.cardBackgroundColor }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        focusStageColorField("cardBackgroundColor");
+                      }}
+                      title="לחץ לעריכת רקע כרטיס"
                     >
                       <div className="rounded border p-2 text-xs flex items-center justify-between bg-background/70">
                         <span className="text-muted-foreground">06/05</span>
