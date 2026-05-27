@@ -365,7 +365,7 @@ export function useDialogTheme() {
     allThemes,
     saveCustomTheme,
     deleteCustomTheme,
-    isCurrentCustom: !!themeMeta.isCustom,
+    isCurrentCustom: !!(themeMeta as any).isCustom,
   };
 }
 

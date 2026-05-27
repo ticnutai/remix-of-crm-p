@@ -46,7 +46,14 @@ import {
   DollarSign,
   SlidersHorizontal,
   X,
+  PictureInPicture2,
 } from "lucide-react";
+import {
+  isDocumentPiPSupported,
+  requestOpenTimerPiP,
+  getAutoPiPEnabled,
+  setAutoPiPEnabled,
+} from "./TimerPiPController";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -113,6 +120,16 @@ function FloatingTimerContent() {
   const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const pipSupported = isDocumentPiPSupported();
+  const [autoPip, setAutoPipState] = useState<boolean>(() => getAutoPiPEnabled());
+  const toggleAutoPip = useCallback(() => {
+    setAutoPipState((prev) => {
+      const next = !prev;
+      setAutoPiPEnabled(next);
+      toast.success(next ? "פתיחה אוטומטית של חלון צף הופעלה" : "פתיחה אוטומטית כובתה");
+      return next;
+    });
+  }, []);
 
   // Get current client name from current entry
   const currentClientName = timerState.currentEntry?.client_id
@@ -1077,6 +1094,35 @@ function FloatingTimerContent() {
                 <TooltipContent side="bottom">גודל כפתור צף</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            {/* Picture-in-Picture (floats above all desktop windows) */}
+            {pipSupported && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={requestOpenTimerPiP}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        toggleAutoPip();
+                      }}
+                      className={cn(
+                        "p-0.5 rounded transition-all border",
+                        autoPip
+                          ? "bg-[hsl(45,80%,50%)]/20 border-[hsl(45,80%,50%)]/50"
+                          : "border-transparent hover:opacity-80",
+                      )}
+                      style={{ color: timerTheme.accentColor }}
+                    >
+                      <PictureInPicture2 className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    חלון צף מעל כל החלונות{autoPip ? " (אוטומטי פעיל)" : ""} · קליק ימני לשינוי
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
 
             {/* Settings Button */}
             <TooltipProvider>
