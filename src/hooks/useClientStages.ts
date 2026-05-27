@@ -162,7 +162,7 @@ export function useClientStages(clientId: string) {
       if (tasksError) throw tasksError;
 
       // Remove duplicates (same stage_id + title) - keep oldest
-      const uniqueTasks = removeDuplicateTasks(loadedTasks || []);
+      const uniqueTasks = removeDuplicateTasks((loadedTasks || []) as any);
       setTasks(uniqueTasks);
     } catch (error: unknown) {
       console.error("Error loading data:", error);
