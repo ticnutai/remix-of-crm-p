@@ -64,7 +64,7 @@ const DropdownMenuContent = React.forwardRef<
       align={align}
       collisionPadding={10}
       sticky="always"
-      dir="rtl"
+      
       onCloseAutoFocus={(e) => {
         e.preventDefault();
         onCloseAutoFocus?.(e);
