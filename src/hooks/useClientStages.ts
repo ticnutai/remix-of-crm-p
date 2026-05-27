@@ -287,7 +287,7 @@ export function useClientStages(clientId: string) {
 
       if (error) throw error;
 
-      setTasks((prev) => [...prev, ...data]);
+      setTasks((prev) => [...prev, ...(data as any[])]);
       toast({
         title: "הצלחה",
         description: `${data.length} משימות נוספו בהצלחה`,
