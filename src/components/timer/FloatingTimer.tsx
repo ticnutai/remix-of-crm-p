@@ -54,11 +54,6 @@ import {
   getAutoPiPEnabled,
   setAutoPiPEnabled,
 } from "./TimerPiPController";
-// dummy line to keep numbering
-const __PIP_SUPPORTED__ = true;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-void __PIP_SUPPORTED__;
-const __KEEP__ = () => null; void __KEEP__;
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
