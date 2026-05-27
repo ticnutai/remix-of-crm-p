@@ -267,8 +267,9 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
         </Sheet>
       )}
       
-      {/* Floating Timer Button */}
+      {/* Floating Timer Button + Document Picture-in-Picture window */}
       <FloatingTimer />
+      <TimerPiPController />
     </div>
   );
 });
