@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/layout";
+import { PhoneWithExtras } from "@/components/clients/PhoneWithExtras";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
