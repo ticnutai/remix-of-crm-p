@@ -2848,6 +2848,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          additional_phones: Json
           address: string | null
           aguda_address: string | null
           aguda_email: string | null
@@ -2891,6 +2892,7 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          additional_phones?: Json
           address?: string | null
           aguda_address?: string | null
           aguda_email?: string | null
@@ -2934,6 +2936,7 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          additional_phones?: Json
           address?: string | null
           aguda_address?: string | null
           aguda_email?: string | null

@@ -372,6 +372,7 @@ export default function ClientProfile() {
     name: "",
     email: "",
     phone: "",
+    additional_phones: [] as string[],
     company: "",
     address: "",
     notes: "",
@@ -449,6 +450,9 @@ export default function ClientProfile() {
         name: client.name || "",
         email: client.email || "",
         phone: client.phone || "",
+        additional_phones: Array.isArray((client as any).additional_phones)
+          ? ((client as any).additional_phones as string[])
+          : [],
         company: client.company || "",
         address: client.address || "",
         notes: client.notes || "",
@@ -468,10 +472,14 @@ export default function ClientProfile() {
   // Save client edits
   const handleSaveEdit = async () => {
     const customData = buildCustomData(editCustomFieldValues);
+    const cleanedAdditional = (editForm.additional_phones || [])
+      .map((p) => (p || "").trim())
+      .filter((p) => p.length > 0);
     await updateClient({
       ...editForm,
+      additional_phones: cleanedAdditional,
       ...(Object.keys(customData).length > 0 ? { custom_data: customData } as any : {}),
-    });
+    } as any);
     setIsEditDialogOpen(false);
   };
 
@@ -2495,9 +2503,26 @@ export default function ClientProfile() {
                   )}
                   {fieldConfig.isVisible("phone") && (
                     <div className="space-y-2">
-                      <Label>טלפון</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>טלפון</Label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              additional_phones: [...(prev.additional_phones || []), ""],
+                            }))
+                          }
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                          title="הוסף מספר נוסף"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          הוסף מספר
+                        </button>
+                      </div>
                       <Input
                         value={editForm.phone}
+                        placeholder="מספר ראשי"
                         onChange={(e) =>
                           setEditForm((prev) => ({
                             ...prev,
@@ -2505,6 +2530,36 @@ export default function ClientProfile() {
                           }))
                         }
                       />
+                      {(editForm.additional_phones || []).map((p, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Input
+                            value={p}
+                            placeholder={`מספר נוסף ${idx + 1}`}
+                            onChange={(e) =>
+                              setEditForm((prev) => {
+                                const next = [...(prev.additional_phones || [])];
+                                next[idx] = e.target.value;
+                                return { ...prev, additional_phones: next };
+                              })
+                            }
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                additional_phones: (prev.additional_phones || []).filter(
+                                  (_, i) => i !== idx,
+                                ),
+                              }))
+                            }
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                            title="הסר מספר"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
