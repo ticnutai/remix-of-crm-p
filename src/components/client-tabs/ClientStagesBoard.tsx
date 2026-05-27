@@ -5241,7 +5241,7 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-2 lg:grid-cols-[1.1fr_1fr]">
+          <div className="grid gap-4 py-2 grid-cols-1">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <Button
