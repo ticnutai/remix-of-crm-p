@@ -12,6 +12,11 @@ const AUTO_PIP_KEY = "timer-auto-pip";
 const PIP_MODE_KEY = "timer-pip-mode";
 const PIP_OPEN_EVENT = "timer:open-pip";
 const PIP_TOGGLE_AUTO_EVENT = "timer:toggle-auto-pip";
+export const PIP_REQUEST_STOP_EVENT = "timer:request-stop-dialog";
+
+export function requestStopFromPiP() {
+  window.dispatchEvent(new CustomEvent(PIP_REQUEST_STOP_EVENT));
+}
 
 type PipMode = "compact" | "full" | "mini";
 
@@ -113,10 +118,12 @@ export function TimerPiPController() {
 
       pip.document.documentElement.dir = "rtl";
       pip.document.documentElement.lang = "he";
+      pip.document.documentElement.style.background = "hsl(220, 65%, 9%)";
       pip.document.body.style.margin = "0";
-      pip.document.body.style.background = "transparent";
+      pip.document.body.style.background = "hsl(220, 65%, 9%)";
       pip.document.body.style.color = "hsl(0, 0%, 100%)";
       pip.document.body.style.fontFamily = "Heebo, sans-serif";
+      pip.document.body.style.overflow = "hidden";
       pip.document.title = "טיימר tenarch";
 
       const root = pip.document.createElement("div");
@@ -171,10 +178,11 @@ export function TimerPiPController() {
     width: "100vw",
     boxSizing: "border-box",
     background: `linear-gradient(135deg, ${NAVY_DEEP}, ${NAVY})`,
-    border: `1px solid hsla(45, 70%, 55%, 0.45)`,
-    borderRadius: mode === "mini" ? "50%" : 18,
-    boxShadow:
-      "0 12px 40px -8px hsla(220, 80%, 5%, 0.6), inset 0 1px 0 hsla(0,0%,100%,0.05)",
+    border: mode === "mini" ? `1px solid hsla(45, 70%, 55%, 0.45)` : "none",
+    borderRadius: mode === "mini" ? "50%" : 0,
+    boxShadow: mode === "mini"
+      ? "0 12px 40px -8px hsla(220, 80%, 5%, 0.6), inset 0 1px 0 hsla(0,0%,100%,0.05)"
+      : "inset 0 1px 0 hsla(45,70%,55%,0.18)",
     overflow: "hidden",
     position: "relative",
     userSelect: "none",
@@ -222,9 +230,13 @@ export function TimerPiPController() {
         {timerState.isRunning ? <Pause size={14} /> : <Play size={14} />}
       </button>
       <button
-        onClick={() => void stopTimer()}
+        onClick={() => {
+          if (timerState.isRunning) pauseTimer();
+          requestStopFromPiP();
+          try { window.opener?.focus?.(); } catch { /* ignore */ }
+        }}
         disabled={!timerState.currentEntry}
-        title="עצור ושמור"
+        title="עצור ופתח דיאלוג שמירה"
         style={iconBtn("primary")}
       >
         <Square size={12} fill="currentColor" />
@@ -308,7 +320,7 @@ export function TimerPiPController() {
     );
   }
 
-  // ===== COMPACT MODE — single row: time + hover controls =====
+  // ===== COMPACT MODE — client name above + time row + hover controls =====
   if (mode === "compact") {
     return createPortal(
       <div
@@ -324,8 +336,8 @@ export function TimerPiPController() {
           gap: 10,
         }}
       >
-        {/* status dot + time */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {/* status dot + (client name above time) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
           <span
             style={{
               width: 8,
@@ -336,18 +348,36 @@ export function TimerPiPController() {
               flexShrink: 0,
             }}
           />
-          <div
-            style={{
-              fontFamily: "JetBrains Mono, monospace",
-              fontSize: 22,
-              fontWeight: 400,
-              color: timeColor,
-              letterSpacing: "0.06em",
-              fontVariantNumeric: "tabular-nums",
-              textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
-            }}
-          >
-            {timeText}
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0, lineHeight: 1.1 }}>
+            {clientName && (
+              <div
+                style={{
+                  fontSize: 10,
+                  color: GOLD_SOFT,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.02em",
+                  marginBottom: 2,
+                }}
+                title={clientName}
+              >
+                {clientName}
+              </div>
+            )}
+            <div
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 16,
+                fontWeight: 400,
+                color: timeColor,
+                letterSpacing: "0.05em",
+                fontVariantNumeric: "tabular-nums",
+                textShadow: timerState.isRunning ? RUNNING_GLOW : "none",
+              }}
+            >
+              {timeText}
+            </div>
           </div>
         </div>
         {Toolbar}
@@ -355,6 +385,7 @@ export function TimerPiPController() {
       container,
     );
   }
+
 
   // ===== FULL MODE — client name + time + controls =====
   return createPortal(
