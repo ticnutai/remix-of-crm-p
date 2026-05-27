@@ -26,8 +26,20 @@ const MODE_SIZES: Record<PipMode, { width: number; height: number }> = {
   mini: { width: 110, height: 110 },
 };
 
+function isTopLevelBrowsingContext() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self === window.top;
+  } catch {
+    return false;
+  }
+}
 export function isDocumentPiPSupported() {
-  return typeof window !== "undefined" && "documentPictureInPicture" in window;
+  return (
+    typeof window !== "undefined" &&
+    "documentPictureInPicture" in window &&
+    isTopLevelBrowsingContext()
+  );
 }
 export function requestOpenTimerPiP() {
   window.dispatchEvent(new CustomEvent(PIP_OPEN_EVENT));
