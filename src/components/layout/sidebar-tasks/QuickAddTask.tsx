@@ -261,7 +261,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               <CheckSquare className="h-5 w-5" style={{ color: theme.iconColor }} />
             </div>
             <span className="text-base font-bold flex-1 truncate" style={{ color: theme.title }}>
-              משימה חדשה
+              {isEditing ? "עריכת משימה" : "משימה חדשה"}
             </span>
             <button
               type="button"
