@@ -618,6 +618,7 @@ export default function ClientProfile() {
       console.log("✅ [ClientProfile] Meeting created successfully");
       toast({ title: "הפגישה נוצרה בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setMeetingForm({
         title: "",
         description: "",
