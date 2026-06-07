@@ -1874,6 +1874,7 @@ export default function ClientProfile() {
                         }
                       />
                       <SortMenu entity="reminders" iconOnly showGroup={false} />
+                      <UserFilterMenu />
                     </div>
                     <CardTitle className="text-lg">תזכורות אחרונות</CardTitle>
                   </div>
