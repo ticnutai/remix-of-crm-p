@@ -1494,7 +1494,7 @@ export default function ClientProfile() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                             title="ערוך פרויקט"
                             onClick={() => {
                               setEditingProjectId(project.id);
@@ -1571,7 +1571,7 @@ export default function ClientProfile() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                               title="ערוך משימה"
                               onClick={() => {
                                 setEditingTaskId(task.id);
@@ -1644,7 +1644,7 @@ export default function ClientProfile() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                                 title="ערוך פגישה"
                                 onClick={() => {
                                   setEditingMeetingObj(meeting);
@@ -1759,7 +1759,7 @@ export default function ClientProfile() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                               title="ערוך תזכורת"
                               onClick={() => {
                                 setEditingReminder(reminder);
@@ -2151,26 +2151,40 @@ export default function ClientProfile() {
                         className="p-4 hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="text-start">
-                            <Badge
-                              variant={
-                                reminder.is_dismissed ? "secondary" : "default"
-                              }
-                              className="border-[hsl(222,47%,25%)]"
+                          <div className="text-start flex items-center gap-2">
+                            <div>
+                              <Badge
+                                variant={
+                                  reminder.is_dismissed ? "secondary" : "default"
+                                }
+                                className="border-[hsl(222,47%,25%)]"
+                              >
+                                {reminder.is_dismissed
+                                  ? "נדחה"
+                                  : reminder.is_sent
+                                    ? "נשלח"
+                                    : "ממתין"}
+                              </Badge>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {format(
+                                  new Date(reminder.remind_at),
+                                  "dd/MM/yyyy HH:mm",
+                                  { locale: he },
+                                )}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              title="ערוך תזכורת"
+                              onClick={() => {
+                                setEditingReminder(reminder);
+                                setEditReminderOpen(true);
+                              }}
                             >
-                              {reminder.is_dismissed
-                                ? "נדחה"
-                                : reminder.is_sent
-                                  ? "נשלח"
-                                  : "ממתין"}
-                            </Badge>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {format(
-                                new Date(reminder.remind_at),
-                                "dd/MM/yyyy HH:mm",
-                                { locale: he },
-                              )}
-                            </p>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                           <div className="text-right">
                             <p className="font-medium">{reminder.title}</p>
