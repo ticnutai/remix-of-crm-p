@@ -19,6 +19,7 @@ import {
   getReminderSortValue,
   getGroupKey,
 } from "@/components/shared/SortMenu";
+import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
 import { useProfileNames } from "@/hooks/useProfileNames";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
@@ -493,21 +494,30 @@ export default function ClientProfile() {
     ...reminders.map((r: any) => r.created_by || r.user_id),
   ]);
 
+  const userFilter = useUserFilter();
+
   const sortedTasks = useMemo(
     () => sortItems(tasks as any[], taskSortPref.sortBy, taskSortPref.sortOrder, getTaskSortValue),
     [tasks, taskSortPref.sortBy, taskSortPref.sortOrder],
   );
   const sortedOpenTasks = useMemo(
-    () => sortedTasks.filter((t: any) => t.status !== "completed"),
-    [sortedTasks],
+    () =>
+      sortedTasks.filter(
+        (t: any) => t.status !== "completed" && userFilter.matches(t, "tasks"),
+      ),
+    [sortedTasks, userFilter],
   );
   const sortedMeetings = useMemo(
     () => sortItems(meetings as any[], meetingSortPref.sortBy, meetingSortPref.sortOrder, getMeetingSortValue),
     [meetings, meetingSortPref.sortBy, meetingSortPref.sortOrder],
   );
   const sortedUpcomingMeetings = useMemo(
-    () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
-    [sortedMeetings],
+    () =>
+      sortedMeetings.filter(
+        (m: any) =>
+          new Date(m.start_time) >= new Date() && userFilter.matches(m, "meetings"),
+      ),
+    [sortedMeetings, userFilter],
   );
   const clientReminders = useMemo(
     () =>
@@ -517,8 +527,10 @@ export default function ClientProfile() {
     [reminders, clientId],
   );
   const sortedReminders = useMemo(
-    () => sortItems(clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue),
-    [clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder],
+    () =>
+      sortItems(clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue)
+        .filter((r: any) => userFilter.matches(r, "reminders")),
+    [clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder, userFilter],
   );
   const remindersGroups = useMemo(
     () =>
@@ -1649,6 +1661,7 @@ export default function ClientProfile() {
                         <Plus className="h-4 w-4" />
                       </Button>
                       <SortMenu entity="tasks" iconOnly showGroup={false} />
+                      <UserFilterMenu />
                     </div>
                     <CardTitle className="text-lg">משימות פתוחות</CardTitle>
                   </div>
@@ -1734,6 +1747,7 @@ export default function ClientProfile() {
                         <Plus className="h-4 w-4" />
                       </Button>
                       <SortMenu entity="meetings" iconOnly showGroup={false} />
+                      <UserFilterMenu />
                     </div>
                     <CardTitle className="text-lg">פגישות קרובות</CardTitle>
                   </div>
@@ -1860,6 +1874,7 @@ export default function ClientProfile() {
                         }
                       />
                       <SortMenu entity="reminders" iconOnly showGroup={false} />
+                      <UserFilterMenu />
                     </div>
                     <CardTitle className="text-lg">תזכורות אחרונות</CardTitle>
                   </div>
