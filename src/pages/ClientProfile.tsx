@@ -16,6 +16,7 @@ import {
   useEntitySort,
   getTaskSortValue,
   getMeetingSortValue,
+  getReminderSortValue,
   getGroupKey,
 } from "@/components/shared/SortMenu";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
@@ -398,9 +399,11 @@ export default function ClientProfile() {
   // Cloud-synced sort preferences (shared with TasksAndMeetings page)
   const taskSortPref = useEntitySort("tasks");
   const meetingSortPref = useEntitySort("meetings");
+  const reminderSortPref = useEntitySort("reminders");
   const resolveUser = useProfileNames([
     ...tasks.map((t: any) => t.created_by),
     ...meetings.map((m: any) => m.created_by),
+    ...reminders.map((r: any) => r.created_by || r.user_id),
   ]);
 
   const sortedTasks = useMemo(
@@ -418,6 +421,17 @@ export default function ClientProfile() {
   const sortedUpcomingMeetings = useMemo(
     () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
     [sortedMeetings],
+  );
+  const sortedReminders = useMemo(
+    () => sortItems(reminders as any[], reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue),
+    [reminders, reminderSortPref.sortBy, reminderSortPref.sortOrder],
+  );
+  const remindersGroups = useMemo(
+    () =>
+      reminderSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedReminders }]
+        : groupItems(sortedReminders, (it) => getGroupKey(it, reminderSortPref.groupBy, "reminders", resolveUser)),
+    [sortedReminders, reminderSortPref.groupBy, resolveUser],
   );
 
   const tasksGroups = useMemo(
@@ -1719,26 +1733,29 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <AddReminderDialog
-                      entityType="client"
-                      entityId={clientId}
-                      trigger={
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:bg-primary/10"
-                          title="הוסף תזכורת"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
+                    <div className="flex items-center gap-1">
+                      <AddReminderDialog
+                        entityType="client"
+                        entityId={clientId}
+                        trigger={
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 hover:bg-primary/10"
+                            title="הוסף תזכורת"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <SortMenu entity="reminders" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">תזכורות אחרונות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {reminders
+                    {sortedReminders
                       .slice(0, 5)
                       .map((reminder) => (
                         <div

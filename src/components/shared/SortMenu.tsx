@@ -16,7 +16,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import type { SortField, SortOrder, GroupBy } from "@/utils/sortAndDedup";
 
-export type EntityKind = "tasks" | "meetings";
+export type EntityKind = "tasks" | "meetings" | "reminders";
 
 interface SortMenuProps {
   entity: EntityKind;
@@ -47,8 +47,19 @@ const FIELD_LABELS_MEETING: Record<SortField, string> = {
   status: "סטטוס",
 };
 
+const FIELD_LABELS_REMINDER: Record<SortField, string> = {
+  title: "שם / כותרת",
+  created_by: "מי הוסיף",
+  created_at: "תאריך יצירה",
+  due_date: "מועד תזכורת",
+  event_date: "מועד תזכורת",
+  priority: "עדיפות",
+  status: "סטטוס",
+};
+
 const TASK_FIELDS: SortField[] = ["title", "due_date", "created_by", "created_at", "priority", "status"];
 const MEETING_FIELDS: SortField[] = ["title", "event_date", "created_by", "created_at", "status"];
+const REMINDER_FIELDS: SortField[] = ["title", "event_date", "created_by", "created_at", "status"];
 
 const GROUP_LABELS: Record<GroupBy, string> = {
   none: "ללא קיבוץ",
@@ -60,6 +71,7 @@ const GROUP_LABELS: Record<GroupBy, string> = {
 
 const TASK_GROUPS: GroupBy[] = ["none", "created_by", "priority", "status", "date"];
 const MEETING_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
+const REMINDER_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
 
 /** Global cloud-synced sort state for a given entity ('tasks' | 'meetings'). */
 export function useEntitySort(entity: EntityKind) {
@@ -88,9 +100,24 @@ export function SortMenu({
   const { sortBy, setSortBy, sortOrder, setSortOrder, groupBy, setGroupBy } =
     useEntitySort(entity);
 
-  const labels = entity === "tasks" ? FIELD_LABELS_TASK : FIELD_LABELS_MEETING;
-  const fields = entity === "tasks" ? TASK_FIELDS : MEETING_FIELDS;
-  const groups = entity === "tasks" ? TASK_GROUPS : MEETING_GROUPS;
+  const labels =
+    entity === "tasks"
+      ? FIELD_LABELS_TASK
+      : entity === "meetings"
+        ? FIELD_LABELS_MEETING
+        : FIELD_LABELS_REMINDER;
+  const fields =
+    entity === "tasks"
+      ? TASK_FIELDS
+      : entity === "meetings"
+        ? MEETING_FIELDS
+        : REMINDER_FIELDS;
+  const groups =
+    entity === "tasks"
+      ? TASK_GROUPS
+      : entity === "meetings"
+        ? MEETING_GROUPS
+        : REMINDER_GROUPS;
 
   return (
     <DropdownMenu>
@@ -220,6 +247,26 @@ export function getMeetingSortValue(meeting: any, field: SortField): string | nu
   }
 }
 
+export function getReminderSortValue(reminder: any, field: SortField): string | null | undefined {
+  switch (field) {
+    case "created_at":
+      return reminder.created_at;
+    case "due_date":
+    case "event_date":
+      return reminder.remind_at;
+    case "title":
+      return reminder.title;
+    case "created_by":
+      return reminder.creator?.full_name || reminder.created_by || reminder.user_id;
+    case "status":
+      return reminder.is_dismissed ? "dismissed" : reminder.is_sent ? "sent" : "pending";
+    case "priority":
+      return null;
+    default:
+      return null;
+  }
+}
+
 /** Returns a group key for an item given current groupBy + entity. */
 export function getGroupKey(
   item: any,
@@ -229,13 +276,22 @@ export function getGroupKey(
 ): string {
   if (groupBy === "none") return "";
   if (groupBy === "created_by") {
-    return resolveUser(item.created_by) || "ללא משתמש";
+    return resolveUser(item.created_by || item.user_id) || "ללא משתמש";
   }
   if (groupBy === "priority") return item.priority || "—";
-  if (groupBy === "status") return item.status || "—";
+  if (groupBy === "status") {
+    if (entity === "reminders") {
+      return item.is_dismissed ? "נדחה" : item.is_sent ? "נשלח" : "ממתין";
+    }
+    return item.status || "—";
+  }
   if (groupBy === "date") {
     const raw =
-      entity === "tasks" ? item.due_date : item.start_time;
+      entity === "tasks"
+        ? item.due_date
+        : entity === "reminders"
+          ? item.remind_at
+          : item.start_time;
     if (!raw) return "ללא תאריך";
     try {
       const d = new Date(raw);
