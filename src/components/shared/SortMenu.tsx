@@ -247,6 +247,26 @@ export function getMeetingSortValue(meeting: any, field: SortField): string | nu
   }
 }
 
+export function getReminderSortValue(reminder: any, field: SortField): string | null | undefined {
+  switch (field) {
+    case "created_at":
+      return reminder.created_at;
+    case "due_date":
+    case "event_date":
+      return reminder.remind_at;
+    case "title":
+      return reminder.title;
+    case "created_by":
+      return reminder.creator?.full_name || reminder.created_by || reminder.user_id;
+    case "status":
+      return reminder.is_dismissed ? "dismissed" : reminder.is_sent ? "sent" : "pending";
+    case "priority":
+      return null;
+    default:
+      return null;
+  }
+}
+
 /** Returns a group key for an item given current groupBy + entity. */
 export function getGroupKey(
   item: any,
@@ -256,13 +276,22 @@ export function getGroupKey(
 ): string {
   if (groupBy === "none") return "";
   if (groupBy === "created_by") {
-    return resolveUser(item.created_by) || "ללא משתמש";
+    return resolveUser(item.created_by || item.user_id) || "ללא משתמש";
   }
   if (groupBy === "priority") return item.priority || "—";
-  if (groupBy === "status") return item.status || "—";
+  if (groupBy === "status") {
+    if (entity === "reminders") {
+      return item.is_dismissed ? "נדחה" : item.is_sent ? "נשלח" : "ממתין";
+    }
+    return item.status || "—";
+  }
   if (groupBy === "date") {
     const raw =
-      entity === "tasks" ? item.due_date : item.start_time;
+      entity === "tasks"
+        ? item.due_date
+        : entity === "reminders"
+          ? item.remind_at
+          : item.start_time;
     if (!raw) return "ללא תאריך";
     try {
       const d = new Date(raw);
