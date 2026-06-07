@@ -367,6 +367,14 @@ const TasksAndMeetings = () => {
     }
   };
 
+  // Collect all created_by ids to resolve to names for sorting "by user"
+  const allCreatorIds = [
+    ...sortedTasks.map((t) => t.created_by),
+    ...sortedMeetings.map((m) => m.created_by),
+    ...reminders.map((r: any) => r.created_by),
+  ];
+  const resolveUserName = useProfileNames(allCreatorIds);
+
   const sortedTasksForAllColumn = {
     tasks: [...sortedTasks].sort((a, b) => {
       const config = columnSortConfig.tasks;
@@ -374,6 +382,15 @@ const TasksAndMeetings = () => {
 
       if (config.field === "name") {
         return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "user") {
+        return (
+          resolveUserName(a.created_by).localeCompare(
+            resolveUserName(b.created_by),
+            "he",
+          ) * direction
+        );
       }
 
       if (config.field === "priority") {
@@ -395,6 +412,15 @@ const TasksAndMeetings = () => {
         return a.title.localeCompare(b.title, "he") * direction;
       }
 
+      if (config.field === "user") {
+        return (
+          resolveUserName(a.created_by).localeCompare(
+            resolveUserName(b.created_by),
+            "he",
+          ) * direction
+        );
+      }
+
       const timeA = new Date(a.start_time).getTime();
       const timeB = new Date(b.start_time).getTime();
       return (timeA - timeB) * direction;
@@ -405,6 +431,15 @@ const TasksAndMeetings = () => {
 
       if (config.field === "name") {
         return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "user") {
+        return (
+          resolveUserName((a as any).created_by).localeCompare(
+            resolveUserName((b as any).created_by),
+            "he",
+          ) * direction
+        );
       }
 
       if (config.field === "priority") {
@@ -424,8 +459,10 @@ const TasksAndMeetings = () => {
   const getSortFieldLabel = (field: ColumnSortField) => {
     if (field === "time") return "זמן";
     if (field === "name") return "שם";
+    if (field === "user") return "משתמש";
     return "עדיפות";
   };
+
 
   const handleTouchEnd = () => {
     if (longPressTimerRef.current) {
