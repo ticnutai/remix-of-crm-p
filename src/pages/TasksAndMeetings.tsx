@@ -85,7 +85,7 @@ const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
 
 type ColumnKey = "tasks" | "meetings" | "reminders";
-type ColumnSortField = "time" | "name" | "priority" | "user";
+type ColumnSortField = "time" | "name" | "priority" | "user" | "created";
 type ColumnSortConfig = {
   field: ColumnSortField;
   order: SortOrder;
@@ -335,6 +335,9 @@ const TasksAndMeetings = () => {
   const [hoveredMeetingId, setHoveredMeetingId] = useState<string | null>(null);
   const [hoveredReminderId, setHoveredReminderId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
+  const [showTinyTaskNumbers, setShowTinyTaskNumbers] = useState(false);
+  const [showTinyMeetingNumbers, setShowTinyMeetingNumbers] = useState(false);
+  const [showTinyReminderNumbers, setShowTinyReminderNumbers] = useState(false);
   const longPressTimerRef = useRef<number | null>(null);
 
   const clearSelection = (column: ColumnKey) => {
@@ -417,6 +420,12 @@ const TasksAndMeetings = () => {
         return (rankA - rankB) * direction;
       }
 
+      if (config.field === "created") {
+        const cA = new Date(a.created_at).getTime();
+        const cB = new Date(b.created_at).getTime();
+        return (cA - cB) * direction;
+      }
+
       const timeA = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER;
       const timeB = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER;
       return (timeA - timeB) * direction;
@@ -477,6 +486,7 @@ const TasksAndMeetings = () => {
     if (field === "time") return "זמן";
     if (field === "name") return "שם";
     if (field === "user") return "משתמש";
+    if (field === "created") return "יצירה";
     return "עדיפות";
   };
 
@@ -936,14 +946,29 @@ const TasksAndMeetings = () => {
 
           {/* ALL Content - 3 columns */}
           <TabsContent value="all" className="mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
               {/* Tasks Column */}
               <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-primary/10 to-primary/5 border-b">
+                <div className="flex items-center justify-between px-3 py-3 bg-gradient-to-l from-primary/10 to-primary/5 border-b">
                   <div className="flex items-center gap-2">
                     <CheckSquare className="h-4 w-4 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">משימות</h3>
-                    <span className="text-xs bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">{tasks.length}</span>
+                    <button
+                      type="button"
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                        showTinyTaskNumbers
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-primary/15 text-primary hover:bg-primary/25"
+                      }`}
+                      title={
+                        showTinyTaskNumbers
+                          ? "הסתר מספרים ליד המשימות"
+                          : "הצג מספר קטן ליד כל משימה"
+                      }
+                      onClick={() => setShowTinyTaskNumbers((prev) => !prev)}
+                    >
+                      {tasks.length}
+                    </button>
                   </div>
                   <div className="flex items-center gap-1">
                     <Select
@@ -955,9 +980,9 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
-                        <div className="flex items-center gap-1">
-                          <Filter className="h-3 w-3" />
+                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.tasks.field)}</span>
                         </div>
                       </SelectTrigger>
@@ -966,6 +991,7 @@ const TasksAndMeetings = () => {
                         <SelectItem value="name">שם</SelectItem>
                         <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
+                        <SelectItem value="created">יצירה</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -1007,6 +1033,7 @@ const TasksAndMeetings = () => {
                         <EyeOff className="h-3.5 w-3.5" />
                       )}
                     </Button>
+                    {selectedTaskIds.length > 0 && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1016,9 +1043,15 @@ const TasksAndMeetings = () => {
                     >
                       <CheckSquare2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setTaskDialogOpen(true)}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
+                    )}
+                    <button
+                      type="button"
+                      className="h-5 w-5 rounded-full bg-primary text-white flex items-center justify-center shadow-md hover:bg-primary/80 hover:scale-110 transition-all duration-150"
+                      title="הוסף משימה"
+                      onClick={() => setTaskDialogOpen(true)}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </button>
                   </div>
                 </div>
 
@@ -1045,7 +1078,7 @@ const TasksAndMeetings = () => {
                   ) : sortedTasks.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין משימות</p>
                   ) : (
-                    sortedTasksForAllColumn.tasks.slice(0, 20).map((task) => (
+                    sortedTasksForAllColumn.tasks.slice(0, 20).map((task, index) => (
                       <div
                         key={task.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
@@ -1073,34 +1106,16 @@ const TasksAndMeetings = () => {
                           }
                         }}
                       >
-                        {(selectionMode.tasks || hoveredTaskId === task.id) && (
-                          <button
-                            type="button"
-                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              selectedTaskIds.includes(task.id)
-                                ? "bg-primary border-primary text-primary-foreground"
-                                : "border-muted-foreground/40"
-                            }`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleTaskSelection(task.id);
-                            }}
-                            onDoubleClick={(event) => {
-                              event.stopPropagation();
-                              clearSelection("tasks");
-                            }}
-                            title="דאבל-קליק לביטול בחירה"
-                          >
-                            {selectedTaskIds.includes(task.id) && (
-                              <span className="text-[10px]">✓</span>
-                            )}
-                          </button>
+                        {showTinyTaskNumbers && (
+                          <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-[10px] leading-[18px] text-center font-medium">
+                            {index + 1}
+                          </span>
                         )}
                         <button
                           className={`shrink-0 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors ${
                             task.status === "completed"
-                              ? "bg-green-500 border-green-500 text-white"
-                              : "border-muted-foreground/40 hover:border-primary"
+                              ? "bg-green-500 border-green-500 text-white opacity-100"
+                              : "border-muted-foreground/40 hover:border-primary opacity-100 md:opacity-0 md:group-hover:opacity-100"
                           }`}
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1124,12 +1139,45 @@ const TasksAndMeetings = () => {
                           <p className={`text-xs font-medium truncate ${task.status === "completed" ? "line-through text-muted-foreground" : ""}`}>
                             {task.title}
                           </p>
+                          {hoveredTaskId === task.id && task.created_at && (() => {
+                            const days = (Date.now() - new Date(task.created_at).getTime()) / 86400000;
+                            const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+                            return (
+                              <p className="text-[10px] mt-0.5 flex items-center gap-1.5">
+                                <span className={color}>{new Date(task.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                                {task.status === "completed" && task.completed_at && (
+                                  <span className="text-green-600">{new Date(task.completed_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                                )}
+                              </p>
+                            );
+                          })()}
                           {task.due_date && (
                             <p className="text-[10px] text-muted-foreground">
                               {new Date(task.due_date).toLocaleDateString("he-IL")}
                             </p>
                           )}
                         </div>
+                        <button
+                          type="button"
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                            selectedTaskIds.includes(task.id)
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-muted-foreground/40"
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleTaskSelection(task.id);
+                          }}
+                          onDoubleClick={(event) => {
+                            event.stopPropagation();
+                            clearSelection("tasks");
+                          }}
+                          title="דאבל-קליק לביטול בחירה"
+                        >
+                          {selectedTaskIds.includes(task.id) && (
+                            <span className="text-[10px]">✓</span>
+                          )}
+                        </button>
                         <button
                           className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
@@ -1183,11 +1231,22 @@ const TasksAndMeetings = () => {
 
               {/* Meetings Column */}
               <div className="rounded-xl border-2 border-blue-500/20 bg-card shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-blue-500/10 to-blue-500/5 border-b">
+                <div className="flex items-center justify-between px-3 py-3 bg-gradient-to-l from-blue-500/10 to-blue-500/5 border-b">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-blue-500" />
                     <h3 className="font-bold text-sm text-foreground">פגישות</h3>
-                    <span className="text-xs bg-blue-500/15 text-blue-600 px-2 py-0.5 rounded-full font-medium">{meetings.length}</span>
+                    <button
+                      type="button"
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                        showTinyMeetingNumbers
+                          ? "bg-blue-500 text-white"
+                          : "bg-blue-500/15 text-blue-600 hover:bg-blue-500/25"
+                      }`}
+                      title={showTinyMeetingNumbers ? "הסתר מספרים" : "הצג מספר קטן ליד כל פגישה"}
+                      onClick={() => setShowTinyMeetingNumbers((prev) => !prev)}
+                    >
+                      {meetings.length}
+                    </button>
                   </div>
                   <div className="flex items-center gap-1">
                     <Select
@@ -1199,9 +1258,9 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
-                        <div className="flex items-center gap-1">
-                          <Filter className="h-3 w-3" />
+                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.meetings.field)}</span>
                         </div>
                       </SelectTrigger>
@@ -1251,6 +1310,7 @@ const TasksAndMeetings = () => {
                         <EyeOff className="h-3.5 w-3.5" />
                       )}
                     </Button>
+                    {selectedMeetingIds.length > 0 && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1260,9 +1320,15 @@ const TasksAndMeetings = () => {
                     >
                       <CheckSquare2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setMeetingDialogOpen(true)}>
-                      <Plus className="h-3.5 w-3.5" />
-                    </Button>
+                    )}
+                    <button
+                      type="button"
+                      className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md hover:bg-blue-400 hover:scale-110 transition-all duration-150"
+                      title="הוסף פגישה"
+                      onClick={() => setMeetingDialogOpen(true)}
+                    >
+                      <Plus className="h-2.5 w-2.5" />
+                    </button>
                   </div>
                 </div>
 
@@ -1289,7 +1355,7 @@ const TasksAndMeetings = () => {
                   ) : sortedMeetings.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין פגישות</p>
                   ) : (
-                    sortedTasksForAllColumn.meetings.slice(0, 20).map((meeting) => (
+                    sortedTasksForAllColumn.meetings.slice(0, 20).map((meeting, index) => (
                       <div
                         key={meeting.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
@@ -1317,30 +1383,32 @@ const TasksAndMeetings = () => {
                           }
                         }}
                       >
-                        {(selectionMode.meetings || hoveredMeetingId === meeting.id) && (
-                          <button
-                            type="button"
-                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              selectedMeetingIds.includes(meeting.id)
-                                ? "bg-blue-500 border-blue-500 text-white"
-                                : "border-muted-foreground/40"
-                            }`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleMeetingSelection(meeting.id);
-                            }}
-                            onDoubleClick={(event) => {
-                              event.stopPropagation();
-                              clearSelection("meetings");
-                            }}
-                            title="דאבל-קליק לביטול בחירה"
-                          >
-                            {selectedMeetingIds.includes(meeting.id) && (
-                              <span className="text-[10px]">✓</span>
-                            )}
-                          </button>
+                        <button
+                          type="button"
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                            selectedMeetingIds.includes(meeting.id)
+                              ? "bg-blue-500 border-blue-500 text-white"
+                              : "border-muted-foreground/40"
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleMeetingSelection(meeting.id);
+                          }}
+                          onDoubleClick={(event) => {
+                            event.stopPropagation();
+                            clearSelection("meetings");
+                          }}
+                          title="דאבל-קליק לביטול בחירה"
+                        >
+                          {selectedMeetingIds.includes(meeting.id) && (
+                            <span className="text-[10px]">✓</span>
+                          )}
+                        </button>
+                        {showTinyMeetingNumbers && (
+                          <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full border border-blue-400/30 bg-blue-500/10 text-blue-600 text-[10px] leading-[18px] text-center font-medium">
+                            {index + 1}
+                          </span>
                         )}
-                        <Calendar className="h-3.5 w-3.5 text-blue-400 shrink-0" />
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
                           onClick={() => {
@@ -1352,6 +1420,15 @@ const TasksAndMeetings = () => {
                           }}
                         >
                           <p className="text-xs font-medium truncate">{meeting.title}</p>
+                          {hoveredMeetingId === meeting.id && meeting.created_at && (() => {
+                            const days = (Date.now() - new Date(meeting.created_at).getTime()) / 86400000;
+                            const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+                            return (
+                              <p className={`text-[10px] ${color} mt-0.5`}>
+                                {new Date(meeting.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                              </p>
+                            );
+                          })()}
                           <p className="text-[10px] text-muted-foreground">
                             {new Date(meeting.start_time).toLocaleDateString("he-IL")} · {new Date(meeting.start_time).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                           </p>
@@ -1405,11 +1482,22 @@ const TasksAndMeetings = () => {
 
               {/* Reminders Column - simple list like the others */}
               <div className="rounded-xl border-2 border-amber-500/20 bg-card shadow-sm overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-amber-500/10 to-amber-500/5 border-b">
+                <div className="flex items-center justify-between px-3 py-3 bg-gradient-to-l from-amber-500/10 to-amber-500/5 border-b">
                   <div className="flex items-center gap-2">
                     <Bell className="h-4 w-4 text-amber-500" />
                     <h3 className="font-bold text-sm text-foreground">תזכורות</h3>
-                    <span className="text-xs bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full font-medium">{reminders.length}</span>
+                    <button
+                      type="button"
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                        showTinyReminderNumbers
+                          ? "bg-amber-500 text-white"
+                          : "bg-amber-500/15 text-amber-600 hover:bg-amber-500/25"
+                      }`}
+                      title={showTinyReminderNumbers ? "הסתר מספרים" : "הצג מספר קטן ליד כל תזכורת"}
+                      onClick={() => setShowTinyReminderNumbers((prev) => !prev)}
+                    >
+                      {reminders.length}
+                    </button>
                   </div>
                   <div className="flex items-center gap-1">
                     <Select
@@ -1421,9 +1509,9 @@ const TasksAndMeetings = () => {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-7 w-[86px] text-[11px] px-2">
-                        <div className="flex items-center gap-1">
-                          <Filter className="h-3 w-3" />
+                      <SelectTrigger className="h-6 w-[72px] text-[10px] px-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <Filter className="h-2.5 w-2.5" />
                           <span>{getSortFieldLabel(columnSortConfig.reminders.field)}</span>
                         </div>
                       </SelectTrigger>
@@ -1473,6 +1561,7 @@ const TasksAndMeetings = () => {
                         <EyeOff className="h-3.5 w-3.5" />
                       )}
                     </Button>
+                    {selectedReminderIds.length > 0 && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1482,11 +1571,16 @@ const TasksAndMeetings = () => {
                     >
                       <CheckSquare2 className="h-3.5 w-3.5" />
                     </Button>
+                    )}
                     <AddReminderDialog
                       trigger={
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
+                        <button
+                          type="button"
+                          className="h-5 w-5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md hover:bg-amber-400 hover:scale-110 transition-all duration-150"
+                          title="הוסף תזכורת"
+                        >
+                          <Plus className="h-2.5 w-2.5" />
+                        </button>
                       }
                     />
                   </div>
@@ -1515,7 +1609,7 @@ const TasksAndMeetings = () => {
                   ) : reminders.length === 0 ? (
                     <p className="text-center text-xs text-muted-foreground py-8">אין תזכורות</p>
                   ) : (
-                    sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder) => (
+                    sortedTasksForAllColumn.reminders.slice(0, 20).map((reminder, index) => (
                       <div
                         key={reminder.id}
                         className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent/50 transition-colors group text-right"
@@ -1543,30 +1637,32 @@ const TasksAndMeetings = () => {
                           }
                         }}
                       >
-                        {(selectionMode.reminders || hoveredReminderId === reminder.id) && (
-                          <button
-                            type="button"
-                            className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors ${
-                              selectedReminderIds.includes(reminder.id)
-                                ? "bg-amber-500 border-amber-500 text-white"
-                                : "border-muted-foreground/40"
-                            }`}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleReminderSelection(reminder.id);
-                            }}
-                            onDoubleClick={(event) => {
-                              event.stopPropagation();
-                              clearSelection("reminders");
-                            }}
-                            title="דאבל-קליק לביטול בחירה"
-                          >
-                            {selectedReminderIds.includes(reminder.id) && (
-                              <span className="text-[10px]">✓</span>
-                            )}
-                          </button>
+                        <button
+                          type="button"
+                          className={`shrink-0 h-4 w-4 rounded border flex items-center justify-center transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100 ${
+                            selectedReminderIds.includes(reminder.id)
+                              ? "bg-amber-500 border-amber-500 text-white"
+                              : "border-muted-foreground/40"
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleReminderSelection(reminder.id);
+                          }}
+                          onDoubleClick={(event) => {
+                            event.stopPropagation();
+                            clearSelection("reminders");
+                          }}
+                          title="דאבל-קליק לביטול בחירה"
+                        >
+                          {selectedReminderIds.includes(reminder.id) && (
+                            <span className="text-[10px]">✓</span>
+                          )}
+                        </button>
+                        {showTinyReminderNumbers && (
+                          <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-600 text-[10px] leading-[18px] text-center font-medium">
+                            {index + 1}
+                          </span>
                         )}
-                        <Bell className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                         <div
                           className="flex-1 min-w-0 text-right cursor-pointer"
                           onClick={() => {
@@ -1580,6 +1676,15 @@ const TasksAndMeetings = () => {
                           <p className={`text-xs font-medium truncate ${reminder.is_dismissed ? "line-through text-muted-foreground" : ""}`}>
                             {reminder.title}
                           </p>
+                          {hoveredReminderId === reminder.id && reminder.created_at && (() => {
+                            const days = (Date.now() - new Date(reminder.created_at).getTime()) / 86400000;
+                            const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+                            return (
+                              <p className={`text-[10px] ${color} mt-0.5`}>
+                                {new Date(reminder.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                              </p>
+                            );
+                          })()}
                           <p className="text-[10px] text-muted-foreground">
                             {format(new Date(reminder.remind_at), "dd/MM/yyyy · HH:mm:ss", { locale: he })}
                           </p>

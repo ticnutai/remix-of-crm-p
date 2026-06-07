@@ -421,11 +421,6 @@
     border-radius: 2px !important;
   }
 
-  [data-button-style="rounded"] button:not([data-floating-timer-btn]),
-  [data-button-style="rounded"] .btn {
-    border-radius: 6px !important;
-  }
-
   [data-button-style="pill"] button:not([data-floating-timer-btn]),
   [data-button-style="pill"] .btn {
     border-radius: 9999px !important;

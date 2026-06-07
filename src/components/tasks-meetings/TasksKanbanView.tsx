@@ -149,6 +149,19 @@ const DraggableTaskCard = React.memo(function DraggableTaskCard({
           </h4>
         </div>
 
+{task.created_at && (() => {
+          const days = (Date.now() - new Date(task.created_at).getTime()) / 86400000;
+          const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+          return (
+            <p className="text-xs hidden group-hover:flex items-center gap-1.5 text-right justify-end">
+              <span className={color}>{new Date(task.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+              {task.status === "completed" && task.completed_at && (
+                <span className="text-green-600">{new Date(task.completed_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+              )}
+            </p>
+          );
+        })()}
+
         <div className="flex items-center gap-2 justify-end flex-wrap">
           <PriorityIcon className={cn("h-3 w-3", priorityInfo.color)} />
           {task.due_date && (

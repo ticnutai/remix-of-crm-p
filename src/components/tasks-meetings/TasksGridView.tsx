@@ -144,13 +144,29 @@ export function TasksGridView({
                   <Checkbox
                     checked={task.status === "completed"}
                     onCheckedChange={() => onToggleComplete(task)}
-                    className="h-4 w-4 shrink-0"
+                    className={`h-4 w-4 shrink-0 transition-opacity ${
+                      task.status === "completed"
+                        ? "opacity-100"
+                        : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    }`}
                   />
                 </div>
               </div>
             </CardHeader>
 
             <CardContent className="pt-0 space-y-3">
+{task.created_at && (() => {
+                const days = (Date.now() - new Date(task.created_at).getTime()) / 86400000;
+                const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+                return (
+                  <p className="text-xs hidden group-hover:flex items-center gap-1.5">
+                    <span className={color}>{new Date(task.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                    {task.status === "completed" && task.completed_at && (
+                      <span className="text-green-600">{new Date(task.completed_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                    )}
+                  </p>
+                );
+              })()}
               {cleanDescription(task.description) && (
                 <p className="text-xs text-muted-foreground line-clamp-2 text-right">
                   {cleanDescription(task.description)}

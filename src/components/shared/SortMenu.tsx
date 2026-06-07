@@ -67,11 +67,12 @@ const GROUP_LABELS: Record<GroupBy, string> = {
   priority: "לפי עדיפות",
   status: "לפי סטטוס",
   date: "לפי תאריך",
+  created_at_date: "לפי תאריך יצירה",
 };
 
-const TASK_GROUPS: GroupBy[] = ["none", "created_by", "priority", "status", "date"];
-const MEETING_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
-const REMINDER_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
+const TASK_GROUPS: GroupBy[] = ["none", "created_by", "priority", "status", "date", "created_at_date"];
+const MEETING_GROUPS: GroupBy[] = ["none", "created_by", "status", "date", "created_at_date"];
+const REMINDER_GROUPS: GroupBy[] = ["none", "created_by", "status", "date", "created_at_date"];
 
 /** Global cloud-synced sort state for a given entity ('tasks' | 'meetings'). */
 export function useEntitySort(entity: EntityKind) {
@@ -298,6 +299,21 @@ export function getGroupKey(
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     } catch {
       return "ללא תאריך";
+    }
+  }
+  if (groupBy === "created_at_date") {
+    const raw = item.created_at;
+    if (!raw) return "ללא תאריך יצירה";
+    try {
+      const d = new Date(raw);
+      const now = new Date();
+      const diffDays = (now.getTime() - d.getTime()) / 86400000;
+      if (diffDays < 7) return "השבוע";
+      if (diffDays < 14) return "לפני שבועיים";
+      if (diffDays < 21) return "לפני שלושה שבועות";
+      return "ישן (מעל 3 שבועות)";
+    } catch {
+      return "ללא תאריך יצירה";
     }
   }
   return "";

@@ -156,6 +156,19 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(
                 </h3>
               </div>
 
+{task.created_at && (() => {
+                const days = (Date.now() - new Date(task.created_at).getTime()) / 86400000;
+                const color = days < 7 ? "text-green-600" : days < 14 ? "text-amber-500" : "text-red-500";
+                return (
+                  <p className="text-xs hidden group-hover:block mb-1 flex items-center gap-1.5">
+                    <span className={color}>{new Date(task.created_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                    {task.status === "completed" && task.completed_at && (
+                      <span className="text-green-600">{new Date(task.completed_at).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                    )}
+                  </p>
+                );
+              })()}
+
               {cleanDescription(task.description) && (
                 <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
                   {cleanDescription(task.description)}
@@ -210,12 +223,16 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(
               <Checkbox
                 checked={task.status === "completed"}
                 onCheckedChange={() => onToggleComplete(task)}
-                className="h-5 w-5"
+                className={`h-5 w-5 transition-opacity ${
+                  task.status === "completed"
+                    ? "opacity-100"
+                    : "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                }`}
               />
               <div
                 {...attributes}
                 {...listeners}
-                className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>
