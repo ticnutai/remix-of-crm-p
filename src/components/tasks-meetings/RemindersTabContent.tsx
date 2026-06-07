@@ -315,7 +315,7 @@ export function RemindersTabContent() {
       </TableCell>
       <TableCell>{getStatusBadge(reminder)}</TableCell>
       <TableCell>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {/* Snooze dropdown */}
           {!reminder.is_dismissed && (
             <DropdownMenu>

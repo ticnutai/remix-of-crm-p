@@ -119,7 +119,7 @@ const SortableTaskItem: React.FC<SortableTaskItemProps> = React.memo(
         <CardContent className="p-4">
           <div className="flex items-center gap-4 flex-row-reverse">
             {/* Actions */}
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
                 size="icon"

@@ -114,7 +114,7 @@ const DraggableTaskCard = React.memo(function DraggableTaskCard({
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="icon"

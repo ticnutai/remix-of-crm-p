@@ -388,6 +388,7 @@ export default function ClientProfile() {
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [editingReminder, setEditingReminder] = useState<any>(null);
   const [editReminderOpen, setEditReminderOpen] = useState(false);
+  const { toast } = useToast();
 
   const invalidateSyncedQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -395,6 +396,92 @@ export default function ClientProfile() {
     queryClient.invalidateQueries({ queryKey: ["reminders"] });
     queryClient.invalidateQueries({ queryKey: ["projects-list"] });
   }, [queryClient]);
+
+  const handleDeleteReminder = useCallback(
+    async (reminder: any) => {
+      if (!window.confirm("למחוק את התזכורת?")) return;
+
+      const { error } = await supabase
+        .from("reminders")
+        .delete()
+        .eq("id", reminder.id);
+
+      if (error) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן למחוק את התזכורת",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (editingReminder?.id === reminder.id) {
+        setEditReminderOpen(false);
+        setEditingReminder(null);
+      }
+
+      toast({ title: "התזכורת נמחקה" });
+      await refresh();
+      invalidateSyncedQueries();
+    },
+    [editingReminder?.id, refresh, invalidateSyncedQueries, toast],
+  );
+
+  const handleDeleteTask = useCallback(
+    async (task: any) => {
+      if (!window.confirm("למחוק את המשימה?")) return;
+
+      const { error } = await supabase.from("tasks").delete().eq("id", task.id);
+
+      if (error) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן למחוק את המשימה",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (editingTaskId === task.id) {
+        setEditingTaskId(null);
+        setEditingTaskInitial(undefined);
+        setIsAddTaskDialogOpen(false);
+      }
+
+      toast({ title: "המשימה נמחקה" });
+      await refresh();
+      invalidateSyncedQueries();
+    },
+    [editingTaskId, refresh, invalidateSyncedQueries, toast],
+  );
+
+  const handleDeleteMeeting = useCallback(
+    async (meeting: any) => {
+      if (!window.confirm("למחוק את הפגישה?")) return;
+
+      const { error } = await supabase.from("meetings").delete().eq("id", meeting.id);
+
+      if (error) {
+        toast({
+          title: "שגיאה",
+          description: "לא ניתן למחוק את הפגישה",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (editingMeetingObj?.id === meeting.id) {
+        setEditingMeetingObj(null);
+        setEditingMeetingInitial(undefined);
+        setIsAddMeetingDialogOpen(false);
+      }
+
+      toast({ title: "הפגישה נמחקה" });
+      await refresh();
+      invalidateSyncedQueries();
+    },
+    [editingMeetingObj?.id, refresh, invalidateSyncedQueries, toast],
+  );
 
   // Cloud-synced sort preferences (shared with TasksAndMeetings page)
   const taskSortPref = useEntitySort("tasks");
@@ -528,7 +615,6 @@ export default function ClientProfile() {
   });
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesText, setNotesText] = useState("");
-  const { toast } = useToast();
 
   // Open edit dialog
   const handleEditClick = () => {
@@ -1608,6 +1694,15 @@ export default function ClientProfile() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="מחק משימה"
+                              onClick={() => handleDeleteTask(task)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                             <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
                               {task.priority}
                             </Badge>
@@ -1683,6 +1778,15 @@ export default function ClientProfile() {
                                 }}
                               >
                                 <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                title="מחק פגישה"
+                                onClick={() => handleDeleteMeeting(meeting)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                               {meeting.location && (
                                 <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
@@ -1783,7 +1887,7 @@ export default function ClientProfile() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                               title="ערוך תזכורת"
                               onClick={() => {
                                 setEditingReminder(reminder);
@@ -1791,6 +1895,15 @@ export default function ClientProfile() {
                               }}
                             >
                               <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="מחק תזכורת"
+                              onClick={() => handleDeleteReminder(reminder)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                             <Badge
                               className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10"
@@ -1919,12 +2032,40 @@ export default function ClientProfile() {
                           </div>
                         )}
                         {g.items.map((task: any) => (
-                      <div
+                          <div
                         key={task.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
+                        className="group p-4 hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="ערוך משימה"
+                              onClick={() => {
+                                setEditingTaskId(task.id);
+                                setEditingTaskInitial({
+                                  title: task.title || "",
+                                  description: (task as any).description || "",
+                                  priority: (task as any).priority || "medium",
+                                  dueDate: task.due_date ? new Date(task.due_date) : undefined,
+                                  clientId: clientId,
+                                });
+                                setIsAddTaskDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="מחק משימה"
+                              onClick={() => handleDeleteTask(task)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                             <Badge
                               variant="outline"
                               className="border-[hsl(222,47%,25%)]"
@@ -1989,17 +2130,56 @@ export default function ClientProfile() {
                           </div>
                         )}
                         {g.items.map((meeting: any) => (
-                      <div
+                          <div
                         key={meeting.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
+                        className="group p-4 hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center justify-between">
-                          <Badge
-                            variant="outline"
-                            className="border-[hsl(222,47%,25%)]"
-                          >
-                            {meeting.status}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="ערוך פגישה"
+                              onClick={() => {
+                                const startDt = new Date(meeting.start_time);
+                                const endDt = (meeting as any).end_time
+                                  ? new Date((meeting as any).end_time)
+                                  : null;
+                                setEditingMeetingObj(meeting);
+                                setEditingMeetingInitial({
+                                  title: meeting.title || "",
+                                  description: (meeting as any).description || "",
+                                  meetingType: (meeting as any).meeting_type || "in_person",
+                                  date: startDt,
+                                  startTime: format(startDt, "HH:mm"),
+                                  endTime: endDt
+                                    ? format(endDt, "HH:mm")
+                                    : format(startDt, "HH:mm"),
+                                  location: meeting.location || "",
+                                  clientId: clientId,
+                                });
+                                setIsAddMeetingDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              title="מחק פגישה"
+                              onClick={() => handleDeleteMeeting(meeting)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Badge
+                              variant="outline"
+                              className="border-[hsl(222,47%,25%)]"
+                            >
+                              {meeting.status}
+                            </Badge>
+                          </div>
                           <div className="text-right">
                             <p className="font-medium">{meeting.title}</p>
                             <p className="text-sm text-muted-foreground">
@@ -2164,64 +2344,85 @@ export default function ClientProfile() {
           <TabsContent value="reminders" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                <CardTitle className="text-lg">תזכורות</CardTitle>
+                <div className="flex items-center justify-between">
+                  <SortMenu entity="reminders" />
+                  <CardTitle className="text-lg">תזכורות</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-96">
                   <div className="divide-y divide-border/30">
-                    {reminders.map((reminder) => (
-                      <div
-                        key={reminder.id}
-                        className="p-4 hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="text-start flex items-center gap-2">
-                            <div>
-                              <Badge
-                                variant={
-                                  reminder.is_dismissed ? "secondary" : "default"
-                                }
-                                className="border-[hsl(222,47%,25%)]"
-                              >
-                                {reminder.is_dismissed
-                                  ? "נדחה"
-                                  : reminder.is_sent
-                                    ? "נשלח"
-                                    : "ממתין"}
-                              </Badge>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {format(
-                                  new Date(reminder.remind_at),
-                                  "dd/MM/yyyy HH:mm",
-                                  { locale: he },
+                    {remindersGroups.map((g) => (
+                      <React.Fragment key={g.key || "all"}>
+                        {g.key && (
+                          <div className="px-4 py-2 bg-muted/40 text-right text-sm font-semibold sticky top-0 z-10 border-b">
+                            {g.key} <span className="text-muted-foreground font-normal">({g.items.length})</span>
+                          </div>
+                        )}
+                        {g.items.map((reminder: any) => (
+                          <div
+                            key={reminder.id}
+                            className="group p-4 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="text-start flex items-center gap-2">
+                                <div>
+                                  <Badge
+                                    variant={
+                                      reminder.is_dismissed ? "secondary" : "default"
+                                    }
+                                    className="border-[hsl(222,47%,25%)]"
+                                  >
+                                    {reminder.is_dismissed
+                                      ? "נדחה"
+                                      : reminder.is_sent
+                                        ? "נשלח"
+                                        : "ממתין"}
+                                  </Badge>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {format(
+                                      new Date(reminder.remind_at),
+                                      "dd/MM/yyyy HH:mm",
+                                      { locale: he },
+                                    )}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                  title="ערוך תזכורת"
+                                  onClick={() => {
+                                    setEditingReminder(reminder);
+                                    setEditReminderOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-destructive opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                  title="מחק תזכורת"
+                                  onClick={() => handleDeleteReminder(reminder)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">{reminder.title}</p>
+                                {reminder.message && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {reminder.message}
+                                  </p>
                                 )}
-                              </p>
+                              </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0"
-                              title="ערוך תזכורת"
-                              onClick={() => {
-                                setEditingReminder(reminder);
-                                setEditReminderOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium">{reminder.title}</p>
-                            {reminder.message && (
-                              <p className="text-sm text-muted-foreground">
-                                {reminder.message}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        ))}
+                      </React.Fragment>
                     ))}
-                    {reminders.length === 0 && (
+                    {sortedReminders.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">
                         אין תזכורות
                       </p>

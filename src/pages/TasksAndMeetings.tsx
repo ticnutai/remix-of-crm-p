@@ -42,6 +42,7 @@ import {
   CheckSquare2,
   CheckCheck,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
@@ -69,6 +70,16 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
 import { parseISO } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
@@ -95,6 +106,11 @@ const DEFAULT_COLUMN_HOVER_PREVIEW: Record<ColumnKey, boolean> = {
 type HoverDialogSettings = {
   openDelayMs: number;
   closeDelayMs: number;
+};
+
+type DeleteTarget = {
+  type: "task" | "meeting" | "reminder";
+  id: string;
 };
 
 const DEFAULT_HOVER_DIALOG_SETTINGS: HoverDialogSettings = {
@@ -318,6 +334,7 @@ const TasksAndMeetings = () => {
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [hoveredMeetingId, setHoveredMeetingId] = useState<string | null>(null);
   const [hoveredReminderId, setHoveredReminderId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
 
   const clearSelection = (column: ColumnKey) => {
@@ -649,9 +666,7 @@ const TasksAndMeetings = () => {
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (confirm("האם למחוק את המשימה?")) {
-      await deleteTask(id);
-    }
+    setPendingDelete({ type: "task", id });
   };
 
   const handleToggleComplete = async (task: Task) => {
@@ -669,9 +684,24 @@ const TasksAndMeetings = () => {
   };
 
   const handleDeleteMeeting = async (id: string) => {
-    if (confirm("האם למחוק את הפגישה?")) {
-      await deleteMeeting(id);
+    setPendingDelete({ type: "meeting", id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+
+    if (pendingDelete.type === "task") {
+      await deleteTask(pendingDelete.id);
+      setSelectedTaskIds((prev) => prev.filter((id) => id !== pendingDelete.id));
+    } else if (pendingDelete.type === "meeting") {
+      await deleteMeeting(pendingDelete.id);
+      setSelectedMeetingIds((prev) => prev.filter((id) => id !== pendingDelete.id));
+    } else {
+      await deleteReminder(pendingDelete.id);
+      setSelectedReminderIds((prev) => prev.filter((id) => id !== pendingDelete.id));
     }
+
+    setPendingDelete(null);
   };
 
   const handleCreateTask = async (task: TaskInsert) => {
@@ -1101,7 +1131,7 @@ const TasksAndMeetings = () => {
                           )}
                         </div>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) handleEditTask(task);
@@ -1111,7 +1141,17 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.tasks) handleDeleteTask(task.id);
+                          }}
+                          title="מחיקה"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.tasks) {
@@ -1317,7 +1357,7 @@ const TasksAndMeetings = () => {
                           </p>
                         </div>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) handleEditMeeting(meeting);
@@ -1327,7 +1367,17 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.meetings) handleDeleteMeeting(meeting.id);
+                          }}
+                          title="מחיקה"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.meetings) {
@@ -1535,7 +1585,7 @@ const TasksAndMeetings = () => {
                           </p>
                         </div>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
@@ -1548,7 +1598,19 @@ const TasksAndMeetings = () => {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!selectionMode.reminders) {
+                              setPendingDelete({ type: "reminder", id: reminder.id });
+                            }
+                          }}
+                          title="מחיקה"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                        <button
+                          className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md hover:bg-accent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                           onClick={(event) => {
                             event.stopPropagation();
                             if (!selectionMode.reminders) {
@@ -1705,6 +1767,37 @@ const TasksAndMeetings = () => {
             if (!o) setEditingReminder(null);
           }}
         />
+
+        <AlertDialog
+          open={!!pendingDelete}
+          onOpenChange={(open) => {
+            if (!open) setPendingDelete(null);
+          }}
+        >
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {pendingDelete?.type === "task"
+                  ? "מחיקת משימה"
+                  : pendingDelete?.type === "meeting"
+                    ? "מחיקת פגישה"
+                    : "מחיקת תזכורת"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                האם אתה בטוח שברצונך למחוק? לא ניתן לבטל פעולה זו.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row-reverse gap-2">
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                מחק
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );

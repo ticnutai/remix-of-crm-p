@@ -174,7 +174,7 @@ export function MeetingsListView({
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4 flex-row-reverse">
                         {/* Actions */}
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {/* Duplicate indicator */}
                           {dupMap.has(meeting.id) && (
                             <Button
