@@ -1380,6 +1380,7 @@ const TasksAndMeetings = () => {
                       <SelectContent>
                         <SelectItem value="time">זמן</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
                       </SelectContent>
                     </Select>
