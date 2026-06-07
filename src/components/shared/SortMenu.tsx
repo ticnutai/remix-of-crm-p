@@ -16,7 +16,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import type { SortField, SortOrder, GroupBy } from "@/utils/sortAndDedup";
 
-export type EntityKind = "tasks" | "meetings";
+export type EntityKind = "tasks" | "meetings" | "reminders";
 
 interface SortMenuProps {
   entity: EntityKind;
@@ -47,8 +47,19 @@ const FIELD_LABELS_MEETING: Record<SortField, string> = {
   status: "סטטוס",
 };
 
+const FIELD_LABELS_REMINDER: Record<SortField, string> = {
+  title: "שם / כותרת",
+  created_by: "מי הוסיף",
+  created_at: "תאריך יצירה",
+  due_date: "מועד תזכורת",
+  event_date: "מועד תזכורת",
+  priority: "עדיפות",
+  status: "סטטוס",
+};
+
 const TASK_FIELDS: SortField[] = ["title", "due_date", "created_by", "created_at", "priority", "status"];
 const MEETING_FIELDS: SortField[] = ["title", "event_date", "created_by", "created_at", "status"];
+const REMINDER_FIELDS: SortField[] = ["title", "event_date", "created_by", "created_at", "status"];
 
 const GROUP_LABELS: Record<GroupBy, string> = {
   none: "ללא קיבוץ",
@@ -60,6 +71,7 @@ const GROUP_LABELS: Record<GroupBy, string> = {
 
 const TASK_GROUPS: GroupBy[] = ["none", "created_by", "priority", "status", "date"];
 const MEETING_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
+const REMINDER_GROUPS: GroupBy[] = ["none", "created_by", "status", "date"];
 
 /** Global cloud-synced sort state for a given entity ('tasks' | 'meetings'). */
 export function useEntitySort(entity: EntityKind) {
