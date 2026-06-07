@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout";
 import { useClientData } from "@/hooks/useClientData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
 import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
