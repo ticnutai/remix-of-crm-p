@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
+import { useProfileNames } from "@/hooks/useProfileNames";
 import { EventPreviewDialog } from "@/components/tasks-meetings/EventPreviewDialog";
 import { isPast as isDatePast, isFuture } from "date-fns";
 import {
@@ -73,7 +74,7 @@ const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
 
 type ColumnKey = "tasks" | "meetings" | "reminders";
-type ColumnSortField = "time" | "name" | "priority";
+type ColumnSortField = "time" | "name" | "priority" | "user";
 type ColumnSortConfig = {
   field: ColumnSortField;
   order: SortOrder;
@@ -158,12 +159,12 @@ const TasksAndMeetings = () => {
   const [hoverDialogSettings, setHoverDialogSettings] = useState<HoverDialogSettings>(
     DEFAULT_HOVER_DIALOG_SETTINGS,
   );
-  const [columnSortConfig, setColumnSortConfig] = useState<
+  const [columnSortConfig, setColumnSortConfig] = useSyncedSetting<
     Record<ColumnKey, ColumnSortConfig>
-  >(DEFAULT_COLUMN_SORT_CONFIG);
-  const [columnHoverPreviewEnabled, setColumnHoverPreviewEnabled] = useState<
+  >({ key: "tasks-meetings-column-sort", defaultValue: DEFAULT_COLUMN_SORT_CONFIG });
+  const [columnHoverPreviewEnabled, setColumnHoverPreviewEnabled] = useSyncedSetting<
     Record<ColumnKey, boolean>
-  >(DEFAULT_COLUMN_HOVER_PREVIEW);
+  >({ key: "tasks-meetings-column-hover", defaultValue: DEFAULT_COLUMN_HOVER_PREVIEW });
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
 
@@ -205,89 +206,9 @@ const TasksAndMeetings = () => {
     );
   }, [hoverDialogSettings]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(COLUMN_SETTINGS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        sort?: Partial<Record<ColumnKey, Partial<ColumnSortConfig>>>;
-        hoverPreview?: Partial<Record<ColumnKey, boolean>>;
-      };
+  // columnSortConfig & columnHoverPreviewEnabled are now cloud-synced
+  // via useSyncedSetting (cross-device persistence).
 
-      if (parsed.sort) {
-        setColumnSortConfig((prev) => ({
-          tasks: {
-            field:
-              parsed.sort?.tasks?.field === "name" ||
-              parsed.sort?.tasks?.field === "priority" ||
-              parsed.sort?.tasks?.field === "time"
-                ? parsed.sort.tasks.field
-                : prev.tasks.field,
-            order:
-              parsed.sort?.tasks?.order === "asc" || parsed.sort?.tasks?.order === "desc"
-                ? parsed.sort.tasks.order
-                : prev.tasks.order,
-          },
-          meetings: {
-            field:
-              parsed.sort?.meetings?.field === "name" ||
-              parsed.sort?.meetings?.field === "priority" ||
-              parsed.sort?.meetings?.field === "time"
-                ? parsed.sort.meetings.field
-                : prev.meetings.field,
-            order:
-              parsed.sort?.meetings?.order === "asc" ||
-              parsed.sort?.meetings?.order === "desc"
-                ? parsed.sort.meetings.order
-                : prev.meetings.order,
-          },
-          reminders: {
-            field:
-              parsed.sort?.reminders?.field === "name" ||
-              parsed.sort?.reminders?.field === "priority" ||
-              parsed.sort?.reminders?.field === "time"
-                ? parsed.sort.reminders.field
-                : prev.reminders.field,
-            order:
-              parsed.sort?.reminders?.order === "asc" ||
-              parsed.sort?.reminders?.order === "desc"
-                ? parsed.sort.reminders.order
-                : prev.reminders.order,
-          },
-        }));
-      }
-
-      if (parsed.hoverPreview) {
-        setColumnHoverPreviewEnabled((prev) => ({
-          tasks:
-            typeof parsed.hoverPreview?.tasks === "boolean"
-              ? parsed.hoverPreview.tasks
-              : prev.tasks,
-          meetings:
-            typeof parsed.hoverPreview?.meetings === "boolean"
-              ? parsed.hoverPreview.meetings
-              : prev.meetings,
-          reminders:
-            typeof parsed.hoverPreview?.reminders === "boolean"
-              ? parsed.hoverPreview.reminders
-              : prev.reminders,
-        }));
-      }
-    } catch {
-      setColumnSortConfig(DEFAULT_COLUMN_SORT_CONFIG);
-      setColumnHoverPreviewEnabled(DEFAULT_COLUMN_HOVER_PREVIEW);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      COLUMN_SETTINGS_KEY,
-      JSON.stringify({
-        sort: columnSortConfig,
-        hoverPreview: columnHoverPreviewEnabled,
-      }),
-    );
-  }, [columnSortConfig, columnHoverPreviewEnabled]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -446,6 +367,14 @@ const TasksAndMeetings = () => {
     }
   };
 
+  // Collect all created_by ids to resolve to names for sorting "by user"
+  const allCreatorIds = [
+    ...sortedTasks.map((t) => t.created_by),
+    ...sortedMeetings.map((m) => m.created_by),
+    ...reminders.map((r: any) => r.created_by),
+  ];
+  const resolveUserName = useProfileNames(allCreatorIds);
+
   const sortedTasksForAllColumn = {
     tasks: [...sortedTasks].sort((a, b) => {
       const config = columnSortConfig.tasks;
@@ -453,6 +382,15 @@ const TasksAndMeetings = () => {
 
       if (config.field === "name") {
         return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "user") {
+        return (
+          resolveUserName(a.created_by).localeCompare(
+            resolveUserName(b.created_by),
+            "he",
+          ) * direction
+        );
       }
 
       if (config.field === "priority") {
@@ -474,6 +412,15 @@ const TasksAndMeetings = () => {
         return a.title.localeCompare(b.title, "he") * direction;
       }
 
+      if (config.field === "user") {
+        return (
+          resolveUserName(a.created_by).localeCompare(
+            resolveUserName(b.created_by),
+            "he",
+          ) * direction
+        );
+      }
+
       const timeA = new Date(a.start_time).getTime();
       const timeB = new Date(b.start_time).getTime();
       return (timeA - timeB) * direction;
@@ -484,6 +431,15 @@ const TasksAndMeetings = () => {
 
       if (config.field === "name") {
         return a.title.localeCompare(b.title, "he") * direction;
+      }
+
+      if (config.field === "user") {
+        return (
+          resolveUserName((a as any).created_by).localeCompare(
+            resolveUserName((b as any).created_by),
+            "he",
+          ) * direction
+        );
       }
 
       if (config.field === "priority") {
@@ -503,8 +459,10 @@ const TasksAndMeetings = () => {
   const getSortFieldLabel = (field: ColumnSortField) => {
     if (field === "time") return "זמן";
     if (field === "name") return "שם";
+    if (field === "user") return "משתמש";
     return "עדיפות";
   };
+
 
   const handleTouchEnd = () => {
     if (longPressTimerRef.current) {
@@ -976,6 +934,7 @@ const TasksAndMeetings = () => {
                       <SelectContent>
                         <SelectItem value="time">זמן</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1209,6 +1168,7 @@ const TasksAndMeetings = () => {
                       <SelectContent>
                         <SelectItem value="time">זמן</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority" disabled>עדיפות</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1420,6 +1380,7 @@ const TasksAndMeetings = () => {
                       <SelectContent>
                         <SelectItem value="time">זמן</SelectItem>
                         <SelectItem value="name">שם</SelectItem>
+                        <SelectItem value="user">משתמש</SelectItem>
                         <SelectItem value="priority">עדיפות</SelectItem>
                       </SelectContent>
                     </Select>
