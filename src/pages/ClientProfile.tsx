@@ -1783,7 +1783,7 @@ export default function ClientProfile() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 opacity-100 transition-opacity"
                               title="ערוך תזכורת"
                               onClick={() => {
                                 setEditingReminder(reminder);
@@ -1804,7 +1804,7 @@ export default function ClientProfile() {
                           </div>
                         </div>
                       ))}
-                    {reminders.length === 0 && (
+                    {sortedReminders.length === 0 && (
                       <p className="text-muted-foreground text-center py-4">
                         אין תזכורות
                       </p>
