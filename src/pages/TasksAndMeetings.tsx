@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { sortItems, SortField, SortOrder } from "@/utils/sortAndDedup";
 import { useReminders, Reminder } from "@/hooks/useReminders";
+import { useProfileNames } from "@/hooks/useProfileNames";
 import { EventPreviewDialog } from "@/components/tasks-meetings/EventPreviewDialog";
 import { isPast as isDatePast, isFuture } from "date-fns";
 import {
