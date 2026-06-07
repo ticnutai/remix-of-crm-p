@@ -73,7 +73,7 @@ const HOVER_DIALOG_SETTINGS_KEY = "tasks-meetings-hover-dialog-settings";
 const COLUMN_SETTINGS_KEY = "tasks-meetings-column-settings";
 
 type ColumnKey = "tasks" | "meetings" | "reminders";
-type ColumnSortField = "time" | "name" | "priority";
+type ColumnSortField = "time" | "name" | "priority" | "user";
 type ColumnSortConfig = {
   field: ColumnSortField;
   order: SortOrder;
