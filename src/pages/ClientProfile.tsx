@@ -1932,6 +1932,8 @@ export default function ClientProfile() {
                         )}
                       </div>
                     ))}
+                      </React.Fragment>
+                    ))}
                     {tasks.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">
                         אין משימות
