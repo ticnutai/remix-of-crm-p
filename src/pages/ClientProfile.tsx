@@ -1661,6 +1661,7 @@ export default function ClientProfile() {
                         <Plus className="h-4 w-4" />
                       </Button>
                       <SortMenu entity="tasks" iconOnly showGroup={false} />
+                      <UserFilterMenu />
                     </div>
                     <CardTitle className="text-lg">משימות פתוחות</CardTitle>
                   </div>
