@@ -95,6 +95,7 @@ export function FloatingDialog({
 }: FloatingDialogProps) {
   const { user } = useAuth();
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [size, setSize] = useState<{ w: number; h: number | undefined }>({
     w: defaultWidth,
@@ -152,6 +153,18 @@ export function FloatingDialog({
     setPos({ x, y });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, pos]);
+
+  // Always start dialog content from top on each open.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const id = window.requestAnimationFrame(() => {
+      if (bodyRef.current) {
+        bodyRef.current.scrollTop = 0;
+        bodyRef.current.scrollLeft = 0;
+      }
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
 
   // ESC closes
   useEffect(() => {
@@ -406,7 +419,10 @@ export function FloatingDialog({
       </div>
 
       {/* Body */}
-      <div className={cn("flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3", contentClassName)}>
+      <div
+        ref={bodyRef}
+        className={cn("flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3", contentClassName)}
+      >
         {children}
       </div>
 

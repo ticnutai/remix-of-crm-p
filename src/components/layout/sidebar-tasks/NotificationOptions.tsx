@@ -71,7 +71,6 @@ export function NotificationOptions({
   const [selectedChannels, setSelectedChannels] = useState<NotificationChannel[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [sendResults, setSendResults] = useState<{ channel: string; success: boolean }[]>([]);
-  const notificationRef = React.useRef<HTMLDivElement>(null);
   
   // Support both old single ID and new multi IDs
   const resolvedClientIds = selectedClientIds.length > 0 
@@ -99,15 +98,6 @@ export function NotificationOptions({
       setSelectedChannels([]);
     }
   }, [resolvedClientIds.join(',')]);
-
-  // Auto-scroll to notification section when clients are selected
-  useEffect(() => {
-    if (selectedClients.length > 0 && notificationRef.current) {
-      setTimeout(() => {
-        notificationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
-    }
-  }, [selectedClients.length]);
 
   const toggleChannel = (channel: NotificationChannel) => {
     if (!availableChannels[channel]) return;
@@ -194,7 +184,6 @@ export function NotificationOptions({
 
   return (
     <div 
-      ref={notificationRef}
       className="space-y-3 p-3 rounded-lg border"
       style={{ 
         background: `${sidebarColors.navyLight}30`,

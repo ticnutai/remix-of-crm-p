@@ -399,11 +399,11 @@ export const SmartDateTimePicker: React.FC<SmartDateTimePickerProps> = ({
                   color: isSelected
                     ? "#FFFFFF"
                     : !inMonth
-                    ? "#cbd5e1"
+                    ? "#7a9abf"
                     : isWeekend
-                    ? "#94a3b8"
+                    ? "#3a5a8a"
                     : isPastDay
-                    ? "#94a3b8"
+                    ? "#3a5a8a"
                     : accent.navyDark,
                   fontWeight: isToday || isSelected ? 700 : 500,
                   border: isToday && !isSelected ? `1.5px solid ${accent.gold}` : "1px solid transparent",
