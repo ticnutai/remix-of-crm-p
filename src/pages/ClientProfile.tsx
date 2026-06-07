@@ -16,6 +16,7 @@ import {
   useEntitySort,
   getTaskSortValue,
   getMeetingSortValue,
+  getReminderSortValue,
   getGroupKey,
 } from "@/components/shared/SortMenu";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
