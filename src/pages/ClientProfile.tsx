@@ -1999,6 +1999,8 @@ export default function ClientProfile() {
                         )}
                       </div>
                     ))}
+                      </React.Fragment>
+                    ))}
                     {meetings.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">
                         אין פגישות
