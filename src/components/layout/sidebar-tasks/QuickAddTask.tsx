@@ -96,6 +96,7 @@ interface QuickAddTaskProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (task: TaskInsert) => Promise<void>;
   clients?: Client[];
+  isEditing?: boolean;
   initialData?: {
     title?: string;
     description?: string;
@@ -107,7 +108,7 @@ interface QuickAddTaskProps {
 
 export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
   function QuickAddTask(
-    { open, onOpenChange, onSubmit, clients = [], initialData },
+    { open, onOpenChange, onSubmit, clients = [], initialData, isEditing = false },
     _ref,
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
