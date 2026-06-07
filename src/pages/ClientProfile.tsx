@@ -1412,10 +1412,10 @@ export default function ClientProfile() {
                     {projects.slice(0, 5).map((project) => (
                       <div
                         key={project.id}
-                        className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                        className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                       >
-                        <div className="text-right">
-                          <p className="font-medium">{project.name}</p>
+                        <div className="text-right flex-1 min-w-0">
+                          <p className="font-medium truncate">{project.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {project.start_date
                               ? format(
@@ -1426,9 +1426,32 @@ export default function ClientProfile() {
                               : "-"}
                           </p>
                         </div>
-                        <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                          {project.status}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="ערוך פרויקט"
+                            onClick={() => {
+                              setEditingProjectId(project.id);
+                              setProjectForm({
+                                name: project.name || "",
+                                description: (project as any).description || "",
+                                status: project.status || "planning",
+                                start_date: project.start_date
+                                  ? format(new Date(project.start_date), "yyyy-MM-dd")
+                                  : "",
+                                budget: (project as any).budget?.toString() || "",
+                              });
+                              setIsAddProjectDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                            {project.status}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                     {projects.length === 0 && (
