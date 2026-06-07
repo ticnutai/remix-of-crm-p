@@ -96,6 +96,7 @@ interface QuickAddTaskProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (task: TaskInsert) => Promise<void>;
   clients?: Client[];
+  isEditing?: boolean;
   initialData?: {
     title?: string;
     description?: string;
@@ -107,7 +108,7 @@ interface QuickAddTaskProps {
 
 export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
   function QuickAddTask(
-    { open, onOpenChange, onSubmit, clients = [], initialData },
+    { open, onOpenChange, onSubmit, clients = [], initialData, isEditing = false },
     _ref,
   ) {
     const { themeId, theme, setThemeId } = useDialogTheme();
@@ -260,7 +261,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               <CheckSquare className="h-5 w-5" style={{ color: theme.iconColor }} />
             </div>
             <span className="text-base font-bold flex-1 truncate" style={{ color: theme.title }}>
-              משימה חדשה
+              {isEditing ? "עריכת משימה" : "משימה חדשה"}
             </span>
             <button
               type="button"
@@ -309,7 +310,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               ) : (
                 <>
                   <CheckSquare className="h-4 w-4" />
-                  צור משימה
+                  {isEditing ? "עדכן משימה" : "צור משימה"}
                 </>
               )}
             </Button>

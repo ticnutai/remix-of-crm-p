@@ -10,6 +10,7 @@ import { AppLayout } from "@/components/layout";
 import { useClientData } from "@/hooks/useClientData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
 import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
@@ -368,6 +369,22 @@ export default function ClientProfile() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
   const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  // Edit states for overview cards
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTaskInitial, setEditingTaskInitial] = useState<any>(undefined);
+  const [editingMeetingObj, setEditingMeetingObj] = useState<any>(null);
+  const [editingMeetingInitial, setEditingMeetingInitial] = useState<any>(undefined);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingReminder, setEditingReminder] = useState<any>(null);
+  const [editReminderOpen, setEditReminderOpen] = useState(false);
+
+  const invalidateSyncedQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["reminders"] });
+    queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+  }, [queryClient]);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -553,6 +570,7 @@ export default function ClientProfile() {
       console.log("✅ [ClientProfile] Task created successfully:", data);
       toast({ title: "המשימה נוצרה בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setTaskForm({
         title: "",
         description: "",
@@ -600,6 +618,7 @@ export default function ClientProfile() {
       console.log("✅ [ClientProfile] Meeting created successfully");
       toast({ title: "הפגישה נוצרה בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setMeetingForm({
         title: "",
         description: "",
@@ -615,23 +634,35 @@ export default function ClientProfile() {
   const handleCreateProject = async () => {
     if (!projectForm.name || !user) return;
 
-    const { error } = await supabase.from("projects").insert({
-      ...projectForm,
-      client_id: clientId,
-      created_by: user.id,
-      budget: projectForm.budget ? parseFloat(projectForm.budget) : undefined,
-      start_date: projectForm.start_date || undefined,
-    });
+    const payload: any = {
+      name: projectForm.name,
+      description: projectForm.description || null,
+      status: projectForm.status,
+      budget: projectForm.budget ? parseFloat(projectForm.budget) : null,
+      start_date: projectForm.start_date || null,
+    };
+
+    let error;
+    if (editingProjectId) {
+      ({ error } = await supabase.from("projects").update(payload).eq("id", editingProjectId));
+    } else {
+      ({ error } = await supabase.from("projects").insert({
+        ...payload,
+        client_id: clientId,
+        created_by: user.id,
+      }));
+    }
 
     if (error) {
       toast({
-        title: "שגיאה ביצירת הפרויקט",
+        title: editingProjectId ? "שגיאה בעדכון הפרויקט" : "שגיאה ביצירת הפרויקט",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      toast({ title: "הפרויקט נוצר בהצלחה" });
+      toast({ title: editingProjectId ? "הפרויקט עודכן" : "הפרויקט נוצר בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setProjectForm({
         name: "",
         description: "",
@@ -639,6 +670,7 @@ export default function ClientProfile() {
         start_date: "",
         budget: "",
       });
+      setEditingProjectId(null);
       setIsAddProjectDialogOpen(false);
     }
   };
@@ -1395,10 +1427,10 @@ export default function ClientProfile() {
                     {projects.slice(0, 5).map((project) => (
                       <div
                         key={project.id}
-                        className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                        className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                       >
-                        <div className="text-right">
-                          <p className="font-medium">{project.name}</p>
+                        <div className="text-right flex-1 min-w-0">
+                          <p className="font-medium truncate">{project.name}</p>
                           <p className="text-sm text-muted-foreground">
                             {project.start_date
                               ? format(
@@ -1409,9 +1441,32 @@ export default function ClientProfile() {
                               : "-"}
                           </p>
                         </div>
-                        <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                          {project.status}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="ערוך פרויקט"
+                            onClick={() => {
+                              setEditingProjectId(project.id);
+                              setProjectForm({
+                                name: project.name || "",
+                                description: (project as any).description || "",
+                                status: project.status || "planning",
+                                start_date: project.start_date
+                                  ? format(new Date(project.start_date), "yyyy-MM-dd")
+                                  : "",
+                                budget: (project as any).budget?.toString() || "",
+                              });
+                              setIsAddProjectDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                            {project.status}
+                          </Badge>
+                        </div>
                       </div>
                     ))}
                     {projects.length === 0 && (
@@ -1447,10 +1502,10 @@ export default function ClientProfile() {
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                          className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                         >
-                          <div className="text-right">
-                            <p className="font-medium">{task.title}</p>
+                          <div className="text-right flex-1 min-w-0">
+                            <p className="font-medium truncate">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.due_date
                                 ? format(
@@ -1461,9 +1516,30 @@ export default function ClientProfile() {
                                 : "ללא תאריך יעד"}
                             </p>
                           </div>
-                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                            {task.priority}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="ערוך משימה"
+                              onClick={() => {
+                                setEditingTaskId(task.id);
+                                setEditingTaskInitial({
+                                  title: task.title || "",
+                                  description: (task as any).description || "",
+                                  priority: (task as any).priority || "medium",
+                                  dueDate: task.due_date ? new Date(task.due_date) : undefined,
+                                  clientId: clientId,
+                                });
+                                setIsAddTaskDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                              {task.priority}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     {tasks.filter((t) => t.status !== "completed").length ===
@@ -1497,28 +1573,52 @@ export default function ClientProfile() {
                     {meetings
                       .filter((m) => new Date(m.start_time) >= new Date())
                       .slice(0, 5)
-                      .map((meeting) => (
-                        <div
-                          key={meeting.id}
-                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
-                        >
-                          <div className="text-right">
-                            <p className="font-medium">{meeting.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(
-                                new Date(meeting.start_time),
-                                "dd/MM/yyyy HH:mm",
-                                { locale: he },
+                      .map((meeting) => {
+                        const startDt = new Date(meeting.start_time);
+                        const endDt = (meeting as any).end_time ? new Date((meeting as any).end_time) : null;
+                        return (
+                          <div
+                            key={meeting.id}
+                            className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="text-right flex-1 min-w-0">
+                              <p className="font-medium truncate">{meeting.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {format(startDt, "dd/MM/yyyy HH:mm", { locale: he })}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="ערוך פגישה"
+                                onClick={() => {
+                                  setEditingMeetingObj(meeting);
+                                  setEditingMeetingInitial({
+                                    title: meeting.title || "",
+                                    description: (meeting as any).description || "",
+                                    meetingType: (meeting as any).meeting_type || "in_person",
+                                    date: startDt,
+                                    startTime: format(startDt, "HH:mm"),
+                                    endTime: endDt ? format(endDt, "HH:mm") : format(startDt, "HH:mm"),
+                                    location: meeting.location || "",
+                                    clientId: clientId,
+                                  });
+                                  setIsAddMeetingDialogOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              {meeting.location && (
+                                <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                                  {meeting.location}
+                                </Badge>
                               )}
-                            </p>
+                            </div>
                           </div>
-                          {meeting.location && (
-                            <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                              {meeting.location}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     {meetings.filter(
                       (m) => new Date(m.start_time) >= new Date(),
                     ).length === 0 && (
@@ -1590,10 +1690,10 @@ export default function ClientProfile() {
                       .map((reminder) => (
                         <div
                           key={reminder.id}
-                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                          className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                         >
-                          <div className="text-right">
-                            <p className="font-medium">{reminder.title}</p>
+                          <div className="text-right flex-1 min-w-0">
+                            <p className="font-medium truncate">{reminder.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {format(
                                 new Date(reminder.remind_at),
@@ -1602,15 +1702,29 @@ export default function ClientProfile() {
                               )}
                             </p>
                           </div>
-                          <Badge
-                            className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10"
-                          >
-                            {reminder.is_dismissed
-                              ? "נדחה"
-                              : reminder.is_sent
-                                ? "נשלח"
-                                : "ממתין"}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="ערוך תזכורת"
+                              onClick={() => {
+                                setEditingReminder(reminder);
+                                setEditReminderOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Badge
+                              className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10"
+                            >
+                              {reminder.is_dismissed
+                                ? "נדחה"
+                                : reminder.is_sent
+                                  ? "נשלח"
+                                  : "ממתין"}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     {reminders.length === 0 && (
@@ -2728,72 +2842,145 @@ export default function ClientProfile() {
           onRefresh={refetchCustomTabs}
         />
 
-        {/* Add Task Dialog - Navy/Gold Styled */}
+        {/* Add/Edit Task Dialog - Navy/Gold Styled */}
         <QuickAddTask
           open={isAddTaskDialogOpen}
-          onOpenChange={setIsAddTaskDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddTaskDialogOpen(o);
+            if (!o) {
+              setEditingTaskId(null);
+              setEditingTaskInitial(undefined);
+            }
+          }}
           clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
-          initialData={{ clientId: clientId }}
+          isEditing={!!editingTaskId}
+          initialData={editingTaskInitial ?? { clientId: clientId }}
           onSubmit={async (taskData) => {
             if (!user) return;
-            const { data, error } = await supabase
-              .from("tasks")
-              .insert({
-                title: taskData.title,
-                description: taskData.description || null,
-                priority: taskData.priority || 'medium',
-                status: taskData.status || 'pending',
-                due_date: taskData.due_date || null,
-                client_id: clientId,
-                created_by: user.id,
-              })
-              .select();
-            if (error) {
-              toast({ title: "שגיאה ביצירת המשימה", description: error.message, variant: "destructive" });
-              throw error;
+            if (editingTaskId) {
+              const { error } = await supabase
+                .from("tasks")
+                .update({
+                  title: taskData.title,
+                  description: taskData.description || null,
+                  priority: taskData.priority || 'medium',
+                  due_date: taskData.due_date || null,
+                })
+                .eq("id", editingTaskId);
+              if (error) {
+                toast({ title: "שגיאה בעדכון המשימה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "המשימה עודכנה" });
+            } else {
+              const { error } = await supabase
+                .from("tasks")
+                .insert({
+                  title: taskData.title,
+                  description: taskData.description || null,
+                  priority: taskData.priority || 'medium',
+                  status: taskData.status || 'pending',
+                  due_date: taskData.due_date || null,
+                  client_id: clientId,
+                  created_by: user.id,
+                })
+                .select();
+              if (error) {
+                toast({ title: "שגיאה ביצירת המשימה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "המשימה נוצרה בהצלחה" });
             }
-            toast({ title: "המשימה נוצרה בהצלחה" });
             refresh();
+            invalidateSyncedQueries();
           }}
         />
 
-        {/* Add Meeting Dialog - Navy/Gold Styled */}
+        {/* Add/Edit Meeting Dialog - Navy/Gold Styled */}
         <QuickAddMeeting
           open={isAddMeetingDialogOpen}
-          onOpenChange={setIsAddMeetingDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddMeetingDialogOpen(o);
+            if (!o) {
+              setEditingMeetingObj(null);
+              setEditingMeetingInitial(undefined);
+            }
+          }}
           clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
-          initialData={{ clientId: clientId }}
+          editingMeeting={editingMeetingObj}
+          initialData={editingMeetingInitial ?? { clientId: clientId }}
           onSubmit={async (meetingData) => {
             if (!user) return;
-            const { error } = await supabase.from("meetings").insert({
-              title: meetingData.title,
-              description: meetingData.description || null,
-              meeting_type: meetingData.meeting_type || 'in_person',
-              start_time: meetingData.start_time,
-              end_time: meetingData.end_time,
-              location: meetingData.location || null,
-              client_id: clientId,
-              created_by: user.id,
-              status: 'scheduled',
-            });
-            if (error) {
-              toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
-              throw error;
+            if (editingMeetingObj?.id) {
+              const { error } = await supabase.from("meetings").update({
+                title: meetingData.title,
+                description: meetingData.description || null,
+                meeting_type: meetingData.meeting_type || 'in_person',
+                start_time: meetingData.start_time,
+                end_time: meetingData.end_time,
+                location: meetingData.location || null,
+              }).eq("id", editingMeetingObj.id);
+              if (error) {
+                toast({ title: "שגיאה בעדכון הפגישה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "הפגישה עודכנה" });
+            } else {
+              const { error } = await supabase.from("meetings").insert({
+                title: meetingData.title,
+                description: meetingData.description || null,
+                meeting_type: meetingData.meeting_type || 'in_person',
+                start_time: meetingData.start_time,
+                end_time: meetingData.end_time,
+                location: meetingData.location || null,
+                client_id: clientId,
+                created_by: user.id,
+                status: 'scheduled',
+              });
+              if (error) {
+                toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "הפגישה נוצרה בהצלחה" });
             }
-            toast({ title: "הפגישה נוצרה בהצלחה" });
             refresh();
+            invalidateSyncedQueries();
           }}
         />
 
-        {/* Add Project Dialog */}
+        {/* Edit Reminder Dialog (controlled) */}
+        {editingReminder && (
+          <AddReminderDialog
+            entityType={editingReminder.entity_type || "client"}
+            entityId={editingReminder.entity_id || clientId}
+            editingReminder={editingReminder}
+            open={editReminderOpen}
+            onOpenChange={(o) => {
+              setEditReminderOpen(o);
+              if (!o) {
+                setEditingReminder(null);
+                refresh();
+                invalidateSyncedQueries();
+              }
+            }}
+          />
+        )}
+
+        {/* Add/Edit Project Dialog */}
         <Dialog
           open={isAddProjectDialogOpen}
-          onOpenChange={setIsAddProjectDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddProjectDialogOpen(o);
+            if (!o) {
+              setEditingProjectId(null);
+              setProjectForm({ name: "", description: "", status: "planning", start_date: "", budget: "" });
+            }
+          }}
         >
           <DialogContent className="sm:max-w-[500px]" dir="rtl">
             <DialogHeader>
-              <DialogTitle>הוסף פרויקט חדש</DialogTitle>
-              <DialogDescription>הוסף פרויקט חדש ללקוח</DialogDescription>
+              <DialogTitle>{editingProjectId ? "עריכת פרויקט" : "הוסף פרויקט חדש"}</DialogTitle>
+              <DialogDescription>{editingProjectId ? "עדכן את פרטי הפרויקט" : "הוסף פרויקט חדש ללקוח"}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -2884,7 +3071,7 @@ export default function ClientProfile() {
                 onClick={handleCreateProject}
                 disabled={!projectForm.name}
               >
-                צור פרויקט
+                {editingProjectId ? "עדכן פרויקט" : "צור פרויקט"}
               </Button>
             </DialogFooter>
           </DialogContent>
