@@ -100,9 +100,24 @@ export function SortMenu({
   const { sortBy, setSortBy, sortOrder, setSortOrder, groupBy, setGroupBy } =
     useEntitySort(entity);
 
-  const labels = entity === "tasks" ? FIELD_LABELS_TASK : FIELD_LABELS_MEETING;
-  const fields = entity === "tasks" ? TASK_FIELDS : MEETING_FIELDS;
-  const groups = entity === "tasks" ? TASK_GROUPS : MEETING_GROUPS;
+  const labels =
+    entity === "tasks"
+      ? FIELD_LABELS_TASK
+      : entity === "meetings"
+        ? FIELD_LABELS_MEETING
+        : FIELD_LABELS_REMINDER;
+  const fields =
+    entity === "tasks"
+      ? TASK_FIELDS
+      : entity === "meetings"
+        ? MEETING_FIELDS
+        : REMINDER_FIELDS;
+  const groups =
+    entity === "tasks"
+      ? TASK_GROUPS
+      : entity === "meetings"
+        ? MEETING_GROUPS
+        : REMINDER_GROUPS;
 
   return (
     <DropdownMenu>
