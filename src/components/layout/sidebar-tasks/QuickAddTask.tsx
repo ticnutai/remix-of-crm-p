@@ -310,7 +310,7 @@ export const QuickAddTask = forwardRef<HTMLDivElement, QuickAddTaskProps>(
               ) : (
                 <>
                   <CheckSquare className="h-4 w-4" />
-                  צור משימה
+                  {isEditing ? "עדכן משימה" : "צור משימה"}
                 </>
               )}
             </Button>
