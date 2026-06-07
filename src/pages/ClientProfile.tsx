@@ -399,9 +399,11 @@ export default function ClientProfile() {
   // Cloud-synced sort preferences (shared with TasksAndMeetings page)
   const taskSortPref = useEntitySort("tasks");
   const meetingSortPref = useEntitySort("meetings");
+  const reminderSortPref = useEntitySort("reminders");
   const resolveUser = useProfileNames([
     ...tasks.map((t: any) => t.created_by),
     ...meetings.map((m: any) => m.created_by),
+    ...reminders.map((r: any) => r.created_by || r.user_id),
   ]);
 
   const sortedTasks = useMemo(
@@ -419,6 +421,17 @@ export default function ClientProfile() {
   const sortedUpcomingMeetings = useMemo(
     () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
     [sortedMeetings],
+  );
+  const sortedReminders = useMemo(
+    () => sortItems(reminders as any[], reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue),
+    [reminders, reminderSortPref.sortBy, reminderSortPref.sortOrder],
+  );
+  const remindersGroups = useMemo(
+    () =>
+      reminderSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedReminders }]
+        : groupItems(sortedReminders, (it) => getGroupKey(it, reminderSortPref.groupBy, "reminders", resolveUser)),
+    [sortedReminders, reminderSortPref.groupBy, resolveUser],
   );
 
   const tasksGroups = useMemo(
