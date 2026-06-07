@@ -66,6 +66,7 @@ import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeti
 import { AddReminderDialog } from "@/components/reminders/AddReminderDialog";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
 import { ScopeToggle, ViewScope } from "@/components/shared/ScopeToggle";
+import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
 import { usePermissions } from "@/hooks/usePermissions";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -157,6 +158,7 @@ const TasksAndMeetings = () => {
   const { isAdmin } = usePermissions();
   const [viewScope, setViewScope] = useSyncedSetting<ViewScope>({ key: "tasks-meetings-scope", defaultValue: "all" });
   const effectiveScope: ViewScope = isAdmin ? viewScope : "mine";
+  const userFilter = useUserFilter();
 
 
   // Dialog states
@@ -258,6 +260,7 @@ const TasksAndMeetings = () => {
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     if (effectiveScope === "mine" && !ownsTask(task)) return false;
+    if (isAdmin && !userFilter.matches(task, "tasks")) return false;
     const matchesSearch =
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       task.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -276,6 +279,7 @@ const TasksAndMeetings = () => {
   // Filter meetings
   const filteredMeetings = meetings.filter((meeting) => {
     if (effectiveScope === "mine" && !ownsMeeting(meeting)) return false;
+    if (isAdmin && !userFilter.matches(meeting, "meetings")) return false;
     return (
       meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       meeting.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -283,7 +287,11 @@ const TasksAndMeetings = () => {
   });
 
   // Filter reminders by scope (used inside RemindersTabContent below)
-  const scopedReminders = reminders.filter((r) => effectiveScope !== "mine" || ownsReminder(r));
+  const scopedReminders = reminders.filter((r) => {
+    if (effectiveScope === "mine" && !ownsReminder(r)) return false;
+    if (isAdmin && !userFilter.matches(r, "reminders")) return false;
+    return true;
+  });
 
   // Sort tasks
   const sortedTasks = sortItems(
@@ -857,7 +865,10 @@ const TasksAndMeetings = () => {
               <TasksViewToggle view={taskView} onViewChange={setTaskView} />
             )}
             {isAdmin && (
-              <ScopeToggle scope={viewScope} onChange={setViewScope} />
+              <div className="flex items-center gap-2">
+                <ScopeToggle scope={viewScope} onChange={setViewScope} />
+                <UserFilterMenu align="end" />
+              </div>
             )}
           </div>
 
