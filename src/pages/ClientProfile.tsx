@@ -369,6 +369,22 @@ export default function ClientProfile() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
   const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+  // Edit states for overview cards
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTaskInitial, setEditingTaskInitial] = useState<any>(undefined);
+  const [editingMeetingObj, setEditingMeetingObj] = useState<any>(null);
+  const [editingMeetingInitial, setEditingMeetingInitial] = useState<any>(undefined);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingReminder, setEditingReminder] = useState<any>(null);
+  const [editReminderOpen, setEditReminderOpen] = useState(false);
+
+  const invalidateSyncedQueries = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    queryClient.invalidateQueries({ queryKey: ["reminders"] });
+    queryClient.invalidateQueries({ queryKey: ["projects-list"] });
+  }, [queryClient]);
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
