@@ -158,12 +158,12 @@ const TasksAndMeetings = () => {
   const [hoverDialogSettings, setHoverDialogSettings] = useState<HoverDialogSettings>(
     DEFAULT_HOVER_DIALOG_SETTINGS,
   );
-  const [columnSortConfig, setColumnSortConfig] = useState<
+  const [columnSortConfig, setColumnSortConfig] = useSyncedSetting<
     Record<ColumnKey, ColumnSortConfig>
-  >(DEFAULT_COLUMN_SORT_CONFIG);
-  const [columnHoverPreviewEnabled, setColumnHoverPreviewEnabled] = useState<
+  >({ key: "tasks-meetings-column-sort", defaultValue: DEFAULT_COLUMN_SORT_CONFIG });
+  const [columnHoverPreviewEnabled, setColumnHoverPreviewEnabled] = useSyncedSetting<
     Record<ColumnKey, boolean>
-  >(DEFAULT_COLUMN_HOVER_PREVIEW);
+  >({ key: "tasks-meetings-column-hover", defaultValue: DEFAULT_COLUMN_HOVER_PREVIEW });
   const hoverOpenTimerRef = useRef<number | null>(null);
   const hoverCloseTimerRef = useRef<number | null>(null);
 
