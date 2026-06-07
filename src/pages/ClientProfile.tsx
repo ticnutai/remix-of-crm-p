@@ -422,9 +422,16 @@ export default function ClientProfile() {
     () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
     [sortedMeetings],
   );
+  const clientReminders = useMemo(
+    () =>
+      (reminders as any[]).filter(
+        (r) => r.entity_type === "client" && r.entity_id === clientId,
+      ),
+    [reminders, clientId],
+  );
   const sortedReminders = useMemo(
-    () => sortItems(reminders as any[], reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue),
-    [reminders, reminderSortPref.sortBy, reminderSortPref.sortOrder],
+    () => sortItems(clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder, getReminderSortValue),
+    [clientReminders, reminderSortPref.sortBy, reminderSortPref.sortOrder],
   );
   const remindersGroups = useMemo(
     () =>
