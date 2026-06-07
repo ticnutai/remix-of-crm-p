@@ -3069,7 +3069,7 @@ export default function ClientProfile() {
                 onClick={handleCreateProject}
                 disabled={!projectForm.name}
               >
-                צור פרויקט
+                {editingProjectId ? "עדכן פרויקט" : "צור פרויקט"}
               </Button>
             </DialogFooter>
           </DialogContent>
