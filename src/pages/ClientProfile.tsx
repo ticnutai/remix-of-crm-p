@@ -1558,28 +1558,52 @@ export default function ClientProfile() {
                     {meetings
                       .filter((m) => new Date(m.start_time) >= new Date())
                       .slice(0, 5)
-                      .map((meeting) => (
-                        <div
-                          key={meeting.id}
-                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
-                        >
-                          <div className="text-right">
-                            <p className="font-medium">{meeting.title}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {format(
-                                new Date(meeting.start_time),
-                                "dd/MM/yyyy HH:mm",
-                                { locale: he },
+                      .map((meeting) => {
+                        const startDt = new Date(meeting.start_time);
+                        const endDt = (meeting as any).end_time ? new Date((meeting as any).end_time) : null;
+                        return (
+                          <div
+                            key={meeting.id}
+                            className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="text-right flex-1 min-w-0">
+                              <p className="font-medium truncate">{meeting.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {format(startDt, "dd/MM/yyyy HH:mm", { locale: he })}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="ערוך פגישה"
+                                onClick={() => {
+                                  setEditingMeetingObj(meeting);
+                                  setEditingMeetingInitial({
+                                    title: meeting.title || "",
+                                    description: (meeting as any).description || "",
+                                    meetingType: (meeting as any).meeting_type || "in_person",
+                                    date: startDt,
+                                    startTime: format(startDt, "HH:mm"),
+                                    endTime: endDt ? format(endDt, "HH:mm") : format(startDt, "HH:mm"),
+                                    location: meeting.location || "",
+                                    clientId: clientId,
+                                  });
+                                  setIsAddMeetingDialogOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              {meeting.location && (
+                                <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                                  {meeting.location}
+                                </Badge>
                               )}
-                            </p>
+                            </div>
                           </div>
-                          {meeting.location && (
-                            <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                              {meeting.location}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     {meetings.filter(
                       (m) => new Date(m.start_time) >= new Date(),
                     ).length === 0 && (
