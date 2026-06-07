@@ -2964,15 +2964,21 @@ export default function ClientProfile() {
           />
         )}
 
-        {/* Add Project Dialog */}
+        {/* Add/Edit Project Dialog */}
         <Dialog
           open={isAddProjectDialogOpen}
-          onOpenChange={setIsAddProjectDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddProjectDialogOpen(o);
+            if (!o) {
+              setEditingProjectId(null);
+              setProjectForm({ name: "", description: "", status: "planning", start_date: "", budget: "" });
+            }
+          }}
         >
           <DialogContent className="sm:max-w-[500px]" dir="rtl">
             <DialogHeader>
-              <DialogTitle>הוסף פרויקט חדש</DialogTitle>
-              <DialogDescription>הוסף פרויקט חדש ללקוח</DialogDescription>
+              <DialogTitle>{editingProjectId ? "עריכת פרויקט" : "הוסף פרויקט חדש"}</DialogTitle>
+              <DialogDescription>{editingProjectId ? "עדכן את פרטי הפרויקט" : "הוסף פרויקט חדש ללקוח"}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
