@@ -205,89 +205,9 @@ const TasksAndMeetings = () => {
     );
   }, [hoverDialogSettings]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(COLUMN_SETTINGS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        sort?: Partial<Record<ColumnKey, Partial<ColumnSortConfig>>>;
-        hoverPreview?: Partial<Record<ColumnKey, boolean>>;
-      };
+  // columnSortConfig & columnHoverPreviewEnabled are now cloud-synced
+  // via useSyncedSetting (cross-device persistence).
 
-      if (parsed.sort) {
-        setColumnSortConfig((prev) => ({
-          tasks: {
-            field:
-              parsed.sort?.tasks?.field === "name" ||
-              parsed.sort?.tasks?.field === "priority" ||
-              parsed.sort?.tasks?.field === "time"
-                ? parsed.sort.tasks.field
-                : prev.tasks.field,
-            order:
-              parsed.sort?.tasks?.order === "asc" || parsed.sort?.tasks?.order === "desc"
-                ? parsed.sort.tasks.order
-                : prev.tasks.order,
-          },
-          meetings: {
-            field:
-              parsed.sort?.meetings?.field === "name" ||
-              parsed.sort?.meetings?.field === "priority" ||
-              parsed.sort?.meetings?.field === "time"
-                ? parsed.sort.meetings.field
-                : prev.meetings.field,
-            order:
-              parsed.sort?.meetings?.order === "asc" ||
-              parsed.sort?.meetings?.order === "desc"
-                ? parsed.sort.meetings.order
-                : prev.meetings.order,
-          },
-          reminders: {
-            field:
-              parsed.sort?.reminders?.field === "name" ||
-              parsed.sort?.reminders?.field === "priority" ||
-              parsed.sort?.reminders?.field === "time"
-                ? parsed.sort.reminders.field
-                : prev.reminders.field,
-            order:
-              parsed.sort?.reminders?.order === "asc" ||
-              parsed.sort?.reminders?.order === "desc"
-                ? parsed.sort.reminders.order
-                : prev.reminders.order,
-          },
-        }));
-      }
-
-      if (parsed.hoverPreview) {
-        setColumnHoverPreviewEnabled((prev) => ({
-          tasks:
-            typeof parsed.hoverPreview?.tasks === "boolean"
-              ? parsed.hoverPreview.tasks
-              : prev.tasks,
-          meetings:
-            typeof parsed.hoverPreview?.meetings === "boolean"
-              ? parsed.hoverPreview.meetings
-              : prev.meetings,
-          reminders:
-            typeof parsed.hoverPreview?.reminders === "boolean"
-              ? parsed.hoverPreview.reminders
-              : prev.reminders,
-        }));
-      }
-    } catch {
-      setColumnSortConfig(DEFAULT_COLUMN_SORT_CONFIG);
-      setColumnHoverPreviewEnabled(DEFAULT_COLUMN_HOVER_PREVIEW);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      COLUMN_SETTINGS_KEY,
-      JSON.stringify({
-        sort: columnSortConfig,
-        hoverPreview: columnHoverPreviewEnabled,
-      }),
-    );
-  }, [columnSortConfig, columnHoverPreviewEnabled]);
 
   useEffect(() => {
     if (!authLoading && !user) {
