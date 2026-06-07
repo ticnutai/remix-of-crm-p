@@ -11,6 +11,15 @@ import { useClientData } from "@/hooks/useClientData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  SortMenu,
+  useEntitySort,
+  getTaskSortValue,
+  getMeetingSortValue,
+  getGroupKey,
+} from "@/components/shared/SortMenu";
+import { sortItems, groupItems } from "@/utils/sortAndDedup";
+import { useProfileNames } from "@/hooks/useProfileNames";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
 import { isValidPhone, formatPhoneDisplay } from "@/utils/phoneValidation";
 import {
@@ -385,6 +394,46 @@ export default function ClientProfile() {
     queryClient.invalidateQueries({ queryKey: ["reminders"] });
     queryClient.invalidateQueries({ queryKey: ["projects-list"] });
   }, [queryClient]);
+
+  // Cloud-synced sort preferences (shared with TasksAndMeetings page)
+  const taskSortPref = useEntitySort("tasks");
+  const meetingSortPref = useEntitySort("meetings");
+  const resolveUser = useProfileNames([
+    ...tasks.map((t: any) => t.created_by),
+    ...meetings.map((m: any) => m.created_by),
+  ]);
+
+  const sortedTasks = useMemo(
+    () => sortItems(tasks as any[], taskSortPref.sortBy, taskSortPref.sortOrder, getTaskSortValue),
+    [tasks, taskSortPref.sortBy, taskSortPref.sortOrder],
+  );
+  const sortedOpenTasks = useMemo(
+    () => sortedTasks.filter((t: any) => t.status !== "completed"),
+    [sortedTasks],
+  );
+  const sortedMeetings = useMemo(
+    () => sortItems(meetings as any[], meetingSortPref.sortBy, meetingSortPref.sortOrder, getMeetingSortValue),
+    [meetings, meetingSortPref.sortBy, meetingSortPref.sortOrder],
+  );
+  const sortedUpcomingMeetings = useMemo(
+    () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
+    [sortedMeetings],
+  );
+
+  const tasksGroups = useMemo(
+    () =>
+      taskSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedTasks }]
+        : groupItems(sortedTasks, (it) => getGroupKey(it, taskSortPref.groupBy, "tasks", resolveUser)),
+    [sortedTasks, taskSortPref.groupBy, resolveUser],
+  );
+  const meetingsGroups = useMemo(
+    () =>
+      meetingSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedMeetings }]
+        : groupItems(sortedMeetings, (it) => getGroupKey(it, meetingSortPref.groupBy, "meetings", resolveUser)),
+    [sortedMeetings, meetingSortPref.groupBy, resolveUser],
+  );
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -1482,22 +1531,24 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsAddTaskDialogOpen(true)}
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      title="הוסף משימה"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsAddTaskDialogOpen(true)}
+                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                        title="הוסף משימה"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <SortMenu entity="tasks" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">משימות פתוחות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {tasks
-                      .filter((t) => t.status !== "completed")
+                    {sortedOpenTasks
                       .slice(0, 5)
                       .map((task) => (
                         <div
@@ -1556,22 +1607,24 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsAddMeetingDialogOpen(true)}
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      title="הוסף פגישה"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsAddMeetingDialogOpen(true)}
+                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                        title="הוסף פגישה"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <SortMenu entity="meetings" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">פגישות קרובות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {meetings
-                      .filter((m) => new Date(m.start_time) >= new Date())
+                    {sortedUpcomingMeetings
                       .slice(0, 5)
                       .map((meeting) => {
                         const startDt = new Date(meeting.start_time);
@@ -1826,12 +1879,22 @@ export default function ClientProfile() {
           <TabsContent value="tasks" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                <CardTitle className="text-lg">משימות</CardTitle>
+                <div className="flex items-center justify-between">
+                  <SortMenu entity="tasks" />
+                  <CardTitle className="text-lg">משימות</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-96">
                   <div className="divide-y divide-border/30">
-                    {tasks.map((task) => (
+                    {tasksGroups.map((g) => (
+                      <React.Fragment key={g.key || "all"}>
+                        {g.key && (
+                          <div className="px-4 py-2 bg-muted/40 text-right text-sm font-semibold sticky top-0 z-10 border-b">
+                            {g.key} <span className="text-muted-foreground font-normal">({g.items.length})</span>
+                          </div>
+                        )}
+                        {g.items.map((task: any) => (
                       <div
                         key={task.id}
                         className="p-4 hover:bg-muted/30 transition-colors"
@@ -1869,6 +1932,8 @@ export default function ClientProfile() {
                         )}
                       </div>
                     ))}
+                      </React.Fragment>
+                    ))}
                     {tasks.length === 0 && (
                       <p className="text-muted-foreground text-center py-8">
                         אין משימות
@@ -1884,12 +1949,22 @@ export default function ClientProfile() {
           <TabsContent value="meetings" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                <CardTitle className="text-lg">פגישות</CardTitle>
+                <div className="flex items-center justify-between">
+                  <SortMenu entity="meetings" />
+                  <CardTitle className="text-lg">פגישות</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-96">
                   <div className="divide-y divide-border/30">
-                    {meetings.map((meeting) => (
+                    {meetingsGroups.map((g) => (
+                      <React.Fragment key={g.key || "all"}>
+                        {g.key && (
+                          <div className="px-4 py-2 bg-muted/40 text-right text-sm font-semibold sticky top-0 z-10 border-b">
+                            {g.key} <span className="text-muted-foreground font-normal">({g.items.length})</span>
+                          </div>
+                        )}
+                        {g.items.map((meeting: any) => (
                       <div
                         key={meeting.id}
                         className="p-4 hover:bg-muted/30 transition-colors"
