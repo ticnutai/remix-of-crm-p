@@ -1487,10 +1487,10 @@ export default function ClientProfile() {
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                          className="group flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
                         >
-                          <div className="text-right">
-                            <p className="font-medium">{task.title}</p>
+                          <div className="text-right flex-1 min-w-0">
+                            <p className="font-medium truncate">{task.title}</p>
                             <p className="text-sm text-muted-foreground">
                               {task.due_date
                                 ? format(
@@ -1501,9 +1501,30 @@ export default function ClientProfile() {
                                 : "ללא תאריך יעד"}
                             </p>
                           </div>
-                          <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
-                            {task.priority}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="ערוך משימה"
+                              onClick={() => {
+                                setEditingTaskId(task.id);
+                                setEditingTaskInitial({
+                                  title: task.title || "",
+                                  description: (task as any).description || "",
+                                  priority: (task as any).priority || "medium",
+                                  dueDate: task.due_date ? new Date(task.due_date) : undefined,
+                                  clientId: clientId,
+                                });
+                                setIsAddTaskDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                              {task.priority}
+                            </Badge>
+                          </div>
                         </div>
                       ))}
                     {tasks.filter((t) => t.status !== "completed").length ===
