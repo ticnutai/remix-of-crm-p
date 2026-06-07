@@ -19,6 +19,7 @@ import {
   getReminderSortValue,
   getGroupKey,
 } from "@/components/shared/SortMenu";
+import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
 import { sortItems, groupItems } from "@/utils/sortAndDedup";
 import { useProfileNames } from "@/hooks/useProfileNames";
 import { BulkFileUploader } from "@/components/files/BulkFileUploader";
