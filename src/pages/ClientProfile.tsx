@@ -632,23 +632,35 @@ export default function ClientProfile() {
   const handleCreateProject = async () => {
     if (!projectForm.name || !user) return;
 
-    const { error } = await supabase.from("projects").insert({
-      ...projectForm,
-      client_id: clientId,
-      created_by: user.id,
-      budget: projectForm.budget ? parseFloat(projectForm.budget) : undefined,
-      start_date: projectForm.start_date || undefined,
-    });
+    const payload: any = {
+      name: projectForm.name,
+      description: projectForm.description || null,
+      status: projectForm.status,
+      budget: projectForm.budget ? parseFloat(projectForm.budget) : null,
+      start_date: projectForm.start_date || null,
+    };
+
+    let error;
+    if (editingProjectId) {
+      ({ error } = await supabase.from("projects").update(payload).eq("id", editingProjectId));
+    } else {
+      ({ error } = await supabase.from("projects").insert({
+        ...payload,
+        client_id: clientId,
+        created_by: user.id,
+      }));
+    }
 
     if (error) {
       toast({
-        title: "שגיאה ביצירת הפרויקט",
+        title: editingProjectId ? "שגיאה בעדכון הפרויקט" : "שגיאה ביצירת הפרויקט",
         description: error.message,
         variant: "destructive",
       });
     } else {
-      toast({ title: "הפרויקט נוצר בהצלחה" });
+      toast({ title: editingProjectId ? "הפרויקט עודכן" : "הפרויקט נוצר בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setProjectForm({
         name: "",
         description: "",
@@ -656,6 +668,7 @@ export default function ClientProfile() {
         start_date: "",
         budget: "",
       });
+      setEditingProjectId(null);
       setIsAddProjectDialogOpen(false);
     }
   };
