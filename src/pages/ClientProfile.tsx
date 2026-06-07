@@ -570,6 +570,7 @@ export default function ClientProfile() {
       console.log("✅ [ClientProfile] Task created successfully:", data);
       toast({ title: "המשימה נוצרה בהצלחה" });
       refresh();
+      invalidateSyncedQueries();
       setTaskForm({
         title: "",
         description: "",
