@@ -1733,26 +1733,29 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <AddReminderDialog
-                      entityType="client"
-                      entityId={clientId}
-                      trigger={
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:bg-primary/10"
-                          title="הוסף תזכורת"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
+                    <div className="flex items-center gap-1">
+                      <AddReminderDialog
+                        entityType="client"
+                        entityId={clientId}
+                        trigger={
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 hover:bg-primary/10"
+                            title="הוסף תזכורת"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <SortMenu entity="reminders" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">תזכורות אחרונות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {reminders
+                    {sortedReminders
                       .slice(0, 5)
                       .map((reminder) => (
                         <div
