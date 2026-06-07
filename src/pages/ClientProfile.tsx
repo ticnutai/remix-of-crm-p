@@ -2827,62 +2827,129 @@ export default function ClientProfile() {
           onRefresh={refetchCustomTabs}
         />
 
-        {/* Add Task Dialog - Navy/Gold Styled */}
+        {/* Add/Edit Task Dialog - Navy/Gold Styled */}
         <QuickAddTask
           open={isAddTaskDialogOpen}
-          onOpenChange={setIsAddTaskDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddTaskDialogOpen(o);
+            if (!o) {
+              setEditingTaskId(null);
+              setEditingTaskInitial(undefined);
+            }
+          }}
           clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
-          initialData={{ clientId: clientId }}
+          isEditing={!!editingTaskId}
+          initialData={editingTaskInitial ?? { clientId: clientId }}
           onSubmit={async (taskData) => {
             if (!user) return;
-            const { data, error } = await supabase
-              .from("tasks")
-              .insert({
-                title: taskData.title,
-                description: taskData.description || null,
-                priority: taskData.priority || 'medium',
-                status: taskData.status || 'pending',
-                due_date: taskData.due_date || null,
-                client_id: clientId,
-                created_by: user.id,
-              })
-              .select();
-            if (error) {
-              toast({ title: "שגיאה ביצירת המשימה", description: error.message, variant: "destructive" });
-              throw error;
+            if (editingTaskId) {
+              const { error } = await supabase
+                .from("tasks")
+                .update({
+                  title: taskData.title,
+                  description: taskData.description || null,
+                  priority: taskData.priority || 'medium',
+                  due_date: taskData.due_date || null,
+                })
+                .eq("id", editingTaskId);
+              if (error) {
+                toast({ title: "שגיאה בעדכון המשימה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "המשימה עודכנה" });
+            } else {
+              const { error } = await supabase
+                .from("tasks")
+                .insert({
+                  title: taskData.title,
+                  description: taskData.description || null,
+                  priority: taskData.priority || 'medium',
+                  status: taskData.status || 'pending',
+                  due_date: taskData.due_date || null,
+                  client_id: clientId,
+                  created_by: user.id,
+                })
+                .select();
+              if (error) {
+                toast({ title: "שגיאה ביצירת המשימה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "המשימה נוצרה בהצלחה" });
             }
-            toast({ title: "המשימה נוצרה בהצלחה" });
             refresh();
+            invalidateSyncedQueries();
           }}
         />
 
-        {/* Add Meeting Dialog - Navy/Gold Styled */}
+        {/* Add/Edit Meeting Dialog - Navy/Gold Styled */}
         <QuickAddMeeting
           open={isAddMeetingDialogOpen}
-          onOpenChange={setIsAddMeetingDialogOpen}
+          onOpenChange={(o) => {
+            setIsAddMeetingDialogOpen(o);
+            if (!o) {
+              setEditingMeetingObj(null);
+              setEditingMeetingInitial(undefined);
+            }
+          }}
           clients={client ? [{ id: client.id, name: client.name || '', email: client.email, phone: client.phone, whatsapp: (client as any).whatsapp }] : []}
-          initialData={{ clientId: clientId }}
+          editingMeeting={editingMeetingObj}
+          initialData={editingMeetingInitial ?? { clientId: clientId }}
           onSubmit={async (meetingData) => {
             if (!user) return;
-            const { error } = await supabase.from("meetings").insert({
-              title: meetingData.title,
-              description: meetingData.description || null,
-              meeting_type: meetingData.meeting_type || 'in_person',
-              start_time: meetingData.start_time,
-              end_time: meetingData.end_time,
-              location: meetingData.location || null,
-              client_id: clientId,
-              created_by: user.id,
-              status: 'scheduled',
-            });
-            if (error) {
-              toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
-              throw error;
+            if (editingMeetingObj?.id) {
+              const { error } = await supabase.from("meetings").update({
+                title: meetingData.title,
+                description: meetingData.description || null,
+                meeting_type: meetingData.meeting_type || 'in_person',
+                start_time: meetingData.start_time,
+                end_time: meetingData.end_time,
+                location: meetingData.location || null,
+              }).eq("id", editingMeetingObj.id);
+              if (error) {
+                toast({ title: "שגיאה בעדכון הפגישה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "הפגישה עודכנה" });
+            } else {
+              const { error } = await supabase.from("meetings").insert({
+                title: meetingData.title,
+                description: meetingData.description || null,
+                meeting_type: meetingData.meeting_type || 'in_person',
+                start_time: meetingData.start_time,
+                end_time: meetingData.end_time,
+                location: meetingData.location || null,
+                client_id: clientId,
+                created_by: user.id,
+                status: 'scheduled',
+              });
+              if (error) {
+                toast({ title: "שגיאה ביצירת הפגישה", description: error.message, variant: "destructive" });
+                throw error;
+              }
+              toast({ title: "הפגישה נוצרה בהצלחה" });
             }
-            toast({ title: "הפגישה נוצרה בהצלחה" });
             refresh();
+            invalidateSyncedQueries();
           }}
         />
+
+        {/* Edit Reminder Dialog (controlled) */}
+        {editingReminder && (
+          <AddReminderDialog
+            entityType={editingReminder.entity_type || "client"}
+            entityId={editingReminder.entity_id || clientId}
+            editingReminder={editingReminder}
+            open={editReminderOpen}
+            onOpenChange={(o) => {
+              setEditReminderOpen(o);
+              if (!o) {
+                setEditingReminder(null);
+                refresh();
+                invalidateSyncedQueries();
+              }
+            }}
+          />
+        )}
 
         {/* Add Project Dialog */}
         <Dialog
