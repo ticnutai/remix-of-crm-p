@@ -394,6 +394,46 @@ export default function ClientProfile() {
     queryClient.invalidateQueries({ queryKey: ["reminders"] });
     queryClient.invalidateQueries({ queryKey: ["projects-list"] });
   }, [queryClient]);
+
+  // Cloud-synced sort preferences (shared with TasksAndMeetings page)
+  const taskSortPref = useEntitySort("tasks");
+  const meetingSortPref = useEntitySort("meetings");
+  const resolveUser = useProfileNames([
+    ...tasks.map((t: any) => t.created_by),
+    ...meetings.map((m: any) => m.created_by),
+  ]);
+
+  const sortedTasks = useMemo(
+    () => sortItems(tasks as any[], taskSortPref.sortBy, taskSortPref.sortOrder, getTaskSortValue),
+    [tasks, taskSortPref.sortBy, taskSortPref.sortOrder],
+  );
+  const sortedOpenTasks = useMemo(
+    () => sortedTasks.filter((t: any) => t.status !== "completed"),
+    [sortedTasks],
+  );
+  const sortedMeetings = useMemo(
+    () => sortItems(meetings as any[], meetingSortPref.sortBy, meetingSortPref.sortOrder, getMeetingSortValue),
+    [meetings, meetingSortPref.sortBy, meetingSortPref.sortOrder],
+  );
+  const sortedUpcomingMeetings = useMemo(
+    () => sortedMeetings.filter((m: any) => new Date(m.start_time) >= new Date()),
+    [sortedMeetings],
+  );
+
+  const tasksGroups = useMemo(
+    () =>
+      taskSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedTasks }]
+        : groupItems(sortedTasks, (it) => getGroupKey(it, taskSortPref.groupBy, "tasks", resolveUser)),
+    [sortedTasks, taskSortPref.groupBy, resolveUser],
+  );
+  const meetingsGroups = useMemo(
+    () =>
+      meetingSortPref.groupBy === "none"
+        ? [{ key: "", items: sortedMeetings }]
+        : groupItems(sortedMeetings, (it) => getGroupKey(it, meetingSortPref.groupBy, "meetings", resolveUser)),
+    [sortedMeetings, meetingSortPref.groupBy, resolveUser],
+  );
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
