@@ -1607,22 +1607,24 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsAddMeetingDialogOpen(true)}
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      title="הוסף פגישה"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsAddMeetingDialogOpen(true)}
+                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                        title="הוסף פגישה"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <SortMenu entity="meetings" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">פגישות קרובות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {meetings
-                      .filter((m) => new Date(m.start_time) >= new Date())
+                    {sortedUpcomingMeetings
                       .slice(0, 5)
                       .map((meeting) => {
                         const startDt = new Date(meeting.start_time);
