@@ -1949,12 +1949,22 @@ export default function ClientProfile() {
           <TabsContent value="meetings" dir="rtl">
             <Card className="border border-[hsl(222,47%,25%)]/50">
               <CardHeader className="text-right border-b border-border/50 bg-muted/30">
-                <CardTitle className="text-lg">פגישות</CardTitle>
+                <div className="flex items-center justify-between">
+                  <SortMenu entity="meetings" />
+                  <CardTitle className="text-lg">פגישות</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-96">
                   <div className="divide-y divide-border/30">
-                    {meetings.map((meeting) => (
+                    {meetingsGroups.map((g) => (
+                      <React.Fragment key={g.key || "all"}>
+                        {g.key && (
+                          <div className="px-4 py-2 bg-muted/40 text-right text-sm font-semibold sticky top-0 z-10 border-b">
+                            {g.key} <span className="text-muted-foreground font-normal">({g.items.length})</span>
+                          </div>
+                        )}
+                        {g.items.map((meeting: any) => (
                       <div
                         key={meeting.id}
                         className="p-4 hover:bg-muted/30 transition-colors"
