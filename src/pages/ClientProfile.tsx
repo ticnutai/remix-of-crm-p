@@ -1531,22 +1531,24 @@ export default function ClientProfile() {
               <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
                 <CardHeader className="text-right border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsAddTaskDialogOpen(true)}
-                      className="h-8 w-8 p-0 hover:bg-primary/10"
-                      title="הוסף משימה"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsAddTaskDialogOpen(true)}
+                        className="h-8 w-8 p-0 hover:bg-primary/10"
+                        title="הוסף משימה"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                      <SortMenu entity="tasks" iconOnly showGroup={false} />
+                    </div>
                     <CardTitle className="text-lg">משימות פתוחות</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-48">
-                    {tasks
-                      .filter((t) => t.status !== "completed")
+                    {sortedOpenTasks
                       .slice(0, 5)
                       .map((task) => (
                         <div
