@@ -1,50 +1,68 @@
-## מה כבר קיים
-- בטבלאות `tasks`, `meetings`, `reminders` יש כבר עמודות שיוך: `assigned_to` (משימה), `attendees[]` (פגישה), `user_id` (תזכורת בעלים).
-- ב-RLS: רוב המדיניות כבר מאפשרת רק לבעלים/משתויך לראות, ולאדמין/מנהל לראות הכל (חוץ מ"פרטי").
-- יש `is_private` בכל 3 הטבלאות + סוויצ׳ "פרטי" ב-QuickAdd.
-- אין UI לבחירת משתמש מבצע, ואין אייקון מתג "שלי / של כולם".
-- ⚠️ קיימות 2 מדיניויות מסוכנות `Anyone can manage` על `tasks` ו-`reminders` שמבטלות בפועל את ההפרדה — חובה למחוק.
+## מטרה
+להרחיב את מערכת ה-HR/Payroll הקיימת לתלוש שכר ישראלי מלא ומדויק, **בלי כפילויות** - להישען על כל מה שכבר קיים (מס, ביטל"א, פנסיה, השתלמות, נוכחות, חופשות, גרסאות חוק) ולהשלים רק את החסר.
 
-## מה ייווסף
+## עקרון מנחה
+לא מוחקים שום קוד קיים. רק:
+- מוסיפים עמודות חסרות ל-`employees`
+- מרחיבים `calcPayroll` עם רכיבים חדשים (הבראה, נסיעות לפי ק"מ, שווי רכב/טלפון/ביגוד)
+- מחליפים את `EmployeeEditDialog` הקיים ב-Wizard מודרני עם 6 טאבים
+- מוסיפים מודול PDF לתלוש שכר
+- מוסיפים עוזר AI שמזהה חסרים ומציע ערכים
 
-### 1. תיקון אבטחה (Migration)
-- מחיקת המדיניויות `Anyone can manage tasks` ו-`Anyone can manage reminders`.
-- הוספת מדיניות UPDATE/DELETE לאדמין על `reminders` (כיום הוא לא יכול לשייך-מחדש תזכורת של משתמש אחר).
-- ניקוי כפילות מדיניויות SELECT/UPDATE על `tasks`.
-- התוצאה: עובד רגיל יראה רק את שיצר/שהוא משויך אליו; אדמין רואה את הכל (פרט ל"פרטי").
+---
 
-### 2. אייקון תצוגה לאדמין (UI)
-בדפי `TasksAndMeetings` ו-`Reminders` יתווסף כפתור אייקון בכותרת שמופיע רק לאדמין:
-- `Eye` = "כל המשתמשים" (ברירת מחדל לאדמין)
-- `User` = "רק שלי"
-- ההעדפה תישמר ב-`useSyncedSetting` תחת `tasks-view-scope` ו-`reminders-view-scope`.
-- סינון יבוצע לפי `created_by`/`user_id` של המשתמש המחובר.
+## שלב 1 - הרחבת DB (migration אחד)
 
-### 3. שדה "שייך אל" בדיאלוגי יצירה (Assignment)
-- **QuickAddTask** — בורר משתמש (`assigned_to`). אדמין רואה את כל העובדים; עובד רגיל רואה רק את עצמו (ברירת מחדל = עצמו).
-- **QuickAddMeeting** — בורר משתתפים מרובה (`attendees[]`).
-- **AddReminderDialog** — בורר נמען (`user_id`) + אופציה "שלח גם אליי".
+הוספת עמודות חסרות ל-`employees`:
 
-### 4. העברה / שיוך-מחדש מתוך פריט קיים
-- ב-`EventPreviewDialog` יתווסף כפתור "העבר אל…" שפותח בורר עובד ומעדכן `assigned_to` / `attendees` / `user_id`.
-- מותר רק לאדמין או ליוצר/בעלים.
+**אישי:**
+- `gender` TEXT CHECK('male','female','other')
+- `marital_status` TEXT CHECK('single','married','divorced','widowed','separated')
+- `children_count` INTEGER DEFAULT 0
+- `children_data` JSONB (מערך {name, birth_date, has_custody})
+- `spouse_works` BOOLEAN
+- `spouse_id_number` TEXT
 
-### 5. מקור נתוני העובדים
-שימוש בטבלת `profiles` (כל המשתמשים הפעילים והמאושרים) דרך הוק חדש קטן `useTeamMembers()` — לא קיים כיום, ייווצר.
+**כתובת ומוצא:**
+- `address_street`, `address_city`, `address_zip` TEXT
+- `address_lat`, `address_lng` NUMERIC
+- `country_of_origin` TEXT
+- `aliyah_date` DATE (עולה חדש - 1/3/4.5 נק' זיכוי לפי שנה)
+- `disability_pct` NUMERIC(5,2)
 
-## תרשים זרימה
+**השכלה ומקצוע:**
+- `academic_degree` TEXT, `degree_completion_year` INTEGER
+- `profession_code` TEXT
 
-```
-[Admin]                              [Employee]
-  ├─ Toggle Eye/User  ──┐              └─ Always sees only own
-  │                     │
-  ├─ Sees all / mine ──┘
-  │
-  └─ "Reassign" ─► picks user ─► UPDATE assigned_to/user_id/attendees
-```
+**העסקה:**
+- `position_ratio_pct` NUMERIC(5,2) DEFAULT 100  (יחס משרה)
+- `work_distance_km` NUMERIC(6,2)  (לחישוב נסיעות אוטומטי)
+- `has_company_car` BOOLEAN, `company_car_value` NUMERIC
+- `has_company_phone` BOOLEAN, `company_phone_value` NUMERIC
+- `clothing_allowance_annual` NUMERIC
+- `recuperation_days_used` NUMERIC(5,2) DEFAULT 0
 
-## פרטים טכניים
-- שמות מפתחות: `tasks-view-scope`, `meetings-view-scope`, `reminders-view-scope` (ערכים: `mine` | `all`).
-- הוק חדש: `src/hooks/useTeamMembers.ts` — שולף `profiles` שמאושרים, מחזיר `[{id, full_name, email}]`.
-- לא נשנה את `useTasksOptimized/useMeetingsOptimized/useReminders` — הסינון יתבצע ב-UI כדי לא לשבור caches.
-- כל הדיאלוגים ימשיכו להשתמש בעיצוב Navy/Gold הקיים.
+**בנק (פירוק):**
+- `bank_code` TEXT, `bank_branch` TEXT, `bank_account_number` TEXT
+
+**פנסיה/השתלמות מורחב:**
+- `pension_fund_name` TEXT, `pension_policy_number` TEXT
+- `study_fund_name` TEXT, `study_fund_policy_number` TEXT
+
+טבלה חדשה `payroll_recuperation_rates`:
+- שנה, ערך יום הבראה לפי מגזר (ברירת מחדל 471₪ ל-2026)
+
+---
+
+## שלב 2 - הרחבת `src/lib/payroll.ts`
+
+**פונקציות חדשות (לא מחליפות קיימות):**
+
+1. `calcTaxCreditPoints(employee, year)` - חישוב אוטומטי לפי חוק:
+   - תושב = 2.25
+   - אישה = +0.5
+   - ילד 0-5 = +2.5 לכל ילד (לאם) / +1 (לאב עם משמורת)
+   - ילד 6-17 = +1
+   - הורה יחיד = +1
+   - עולה חדש = 3/2/1 לפי שנה מעלייה
+   - סיום תואר ראשון = +1 (3 שנים) / שני = +0
