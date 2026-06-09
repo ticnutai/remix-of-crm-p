@@ -13,6 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
@@ -21,21 +29,50 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   Download,
+  FileSpreadsheet,
   FileText,
   AlertTriangle,
   Edit2,
   Settings,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { MonthlyTimesheet } from "@/components/attendance/MonthlyTimesheet";
 import {
   AttendanceRecord, AttendanceUser, listAllRecords, listAllUsers,
   summarizeByUser, findMissingDays,
   formatDate, formatTime, formatMinutes,
-  exportSummaryToExcel, exportDetailToExcel, exportSummaryToPdf,
+  exportSummaryToExcel,
+  exportDetailToExcel,
+  exportSummaryToPdf,
+  exportDetailToPdf,
+  exportSummaryToWord,
+  exportDetailToWord,
 } from "@/lib/attendance";
 import { supabase } from "@/integrations/supabase/client";
+
+type SortDirection = "asc" | "desc";
+type WorkMonthSummarySortKey =
+  | "full_name"
+  | "shifts"
+  | "total_minutes"
+  | "break_minutes"
+  | "overtime_minutes"
+  | "target_minutes"
+  | "gap_minutes"
+  | "utilization_pct"
+  | "missing_clock_outs";
+type WorkMonthDetailSortKey =
+  | "date"
+  | "employee"
+  | "clock_in"
+  | "clock_out"
+  | "duration_minutes"
+  | "break_minutes"
+  | "notes";
 
 export default function AttendanceAdmin() {
   const { isAdmin, isManager, isSuperManager, isLoading } = useAuth();
@@ -57,6 +94,14 @@ export default function AttendanceAdmin() {
     key: "attendance-admin-work-month-user-filter",
     defaultValue: "all",
   });
+  const [workMonthSummarySort, setWorkMonthSummarySort] = useState<{
+    key: WorkMonthSummarySortKey;
+    direction: SortDirection;
+  }>({ key: "total_minutes", direction: "desc" });
+  const [workMonthDetailSort, setWorkMonthDetailSort] = useState<{
+    key: WorkMonthDetailSortKey;
+    direction: SortDirection;
+  }>({ key: "date", direction: "desc" });
   const [userFilter, setUserFilter] = useSyncedSetting<string>({ key: "attendance-admin-user-filter", defaultValue: "all" });
   const [editing, setEditing] = useState<AttendanceRecord | null>(null);
   const [activeTab, setActiveTab] = useSyncedSetting<string>({ key: "attendance-admin-tab", defaultValue: "summary" });
@@ -162,19 +207,109 @@ export default function AttendanceAdmin() {
     setMonthOffset(diff);
   };
 
+  const toggleWorkMonthSummarySort = (key: WorkMonthSummarySortKey) => {
+    setWorkMonthSummarySort((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: key === "full_name" ? "asc" : "desc" };
+    });
+  };
+
+  const toggleWorkMonthDetailSort = (key: WorkMonthDetailSortKey) => {
+    setWorkMonthDetailSort((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: key === "employee" || key === "notes" ? "asc" : "desc" };
+    });
+  };
+
   const workMonthSummaryRows = useMemo(() => {
-    if (workMonthUserFilter === "all") return summaryWithTargets;
-    return summaryWithTargets.filter((u) => u.user_id === workMonthUserFilter);
-  }, [summaryWithTargets, workMonthUserFilter]);
+    const baseRows = workMonthUserFilter === "all"
+      ? summaryWithTargets
+      : summaryWithTargets.filter((u) => u.user_id === workMonthUserFilter);
+
+    const nullSafeNumber = (value: number | null | undefined) => {
+      if (value === null || value === undefined) {
+        return workMonthSummarySort.direction === "asc"
+          ? Number.POSITIVE_INFINITY
+          : Number.NEGATIVE_INFINITY;
+      }
+      return value;
+    };
+
+    return [...baseRows].sort((a, b) => {
+      let compare = 0;
+      switch (workMonthSummarySort.key) {
+        case "full_name":
+          compare = a.full_name.localeCompare(b.full_name, "he");
+          break;
+        case "shifts":
+          compare = a.shifts - b.shifts;
+          break;
+        case "total_minutes":
+          compare = a.total_minutes - b.total_minutes;
+          break;
+        case "break_minutes":
+          compare = a.break_minutes - b.break_minutes;
+          break;
+        case "overtime_minutes":
+          compare = a.overtime_minutes - b.overtime_minutes;
+          break;
+        case "target_minutes":
+          compare = nullSafeNumber(a.targetMinutes) - nullSafeNumber(b.targetMinutes);
+          break;
+        case "gap_minutes":
+          compare = nullSafeNumber(a.gapMinutes) - nullSafeNumber(b.gapMinutes);
+          break;
+        case "utilization_pct":
+          compare = nullSafeNumber(a.utilizationPct) - nullSafeNumber(b.utilizationPct);
+          break;
+        case "missing_clock_outs":
+          compare = a.missing_clock_outs - b.missing_clock_outs;
+          break;
+      }
+      return workMonthSummarySort.direction === "asc" ? compare : -compare;
+    });
+  }, [summaryWithTargets, workMonthUserFilter, workMonthSummarySort]);
 
   const workMonthDetailRows = useMemo(() => {
-    const rows = workMonthUserFilter === "all"
+    const baseRows = workMonthUserFilter === "all"
       ? records
       : records.filter((r) => r.user_id === workMonthUserFilter);
-    return [...rows].sort(
-      (a, b) => new Date(b.clock_in).getTime() - new Date(a.clock_in).getTime(),
-    );
-  }, [records, workMonthUserFilter]);
+
+    return [...baseRows].sort((a, b) => {
+      const nameA = getAttendanceRecordDisplayName(a);
+      const nameB = getAttendanceRecordDisplayName(b);
+
+      let compare = 0;
+      switch (workMonthDetailSort.key) {
+        case "date":
+          compare = new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime();
+          break;
+        case "employee":
+          compare = nameA.localeCompare(nameB, "he");
+          break;
+        case "clock_in":
+          compare = new Date(a.clock_in).getTime() - new Date(b.clock_in).getTime();
+          break;
+        case "clock_out":
+          compare = (a.clock_out ? new Date(a.clock_out).getTime() : 0) - (b.clock_out ? new Date(b.clock_out).getTime() : 0);
+          break;
+        case "duration_minutes":
+          compare = (a.duration_minutes ?? 0) - (b.duration_minutes ?? 0);
+          break;
+        case "break_minutes":
+          compare = (a.break_minutes ?? 0) - (b.break_minutes ?? 0);
+          break;
+        case "notes":
+          compare = (a.notes ?? "").localeCompare(b.notes ?? "", "he");
+          break;
+      }
+      return workMonthDetailSort.direction === "asc" ? compare : -compare;
+    });
+  }, [records, workMonthUserFilter, workMonthDetailSort]);
 
   const workMonthTotals = useMemo(() => {
     const totalMinutes = workMonthDetailRows.reduce(
@@ -245,15 +380,48 @@ export default function AttendanceAdmin() {
             >
               <Settings className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => exportSummaryToExcel(summary, range.label)}>
-              <Download className="ml-1 h-4 w-4" /> Excel סיכום
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportDetailToExcel(records, range.label)}>
-              <Download className="ml-1 h-4 w-4" /> Excel פירוט
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => exportSummaryToPdf(summary, range.label)}>
-              <FileText className="ml-1 h-4 w-4" /> PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  title="ייצוא דוחות"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52" dir="rtl">
+                <DropdownMenuLabel className="text-right">ייצוא דוחות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToExcel(summary, range.label)}>
+                  <span>Excel סיכום</span>
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportDetailToExcel(records, range.label)}>
+                  <span>Excel פירוט</span>
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToPdf(summary, range.label)}>
+                  <span>PDF סיכום</span>
+                  <FileText className="h-4 w-4 text-red-600" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportDetailToPdf(records, range.label)}>
+                  <span>PDF פירוט</span>
+                  <FileText className="h-4 w-4 text-red-600" />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToWord(summary, range.label)}>
+                  <span>Word סיכום</span>
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportDetailToWord(records, range.label)}>
+                  <span>Word פירוט</span>
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -329,15 +497,60 @@ export default function AttendanceAdmin() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-right">
-                        <th className="p-2">עובד</th>
-                        <th className="p-2">משמרות</th>
-                        <th className="p-2">סה״כ שעות</th>
-                        <th className="p-2">הפסקות</th>
-                        <th className="p-2">שעות נוספות</th>
-                        <th className="p-2">תקן שעות</th>
-                        <th className="p-2">פער לתקן</th>
-                        <th className="p-2">ביצוע</th>
-                        <th className="p-2">חוסר יציאה</th>
+                        <SortableHeader
+                          label="עובד"
+                          isActive={workMonthSummarySort.key === "full_name"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("full_name")}
+                        />
+                        <SortableHeader
+                          label="משמרות"
+                          isActive={workMonthSummarySort.key === "shifts"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("shifts")}
+                        />
+                        <SortableHeader
+                          label="סה״כ שעות"
+                          isActive={workMonthSummarySort.key === "total_minutes"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("total_minutes")}
+                        />
+                        <SortableHeader
+                          label="הפסקות"
+                          isActive={workMonthSummarySort.key === "break_minutes"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("break_minutes")}
+                        />
+                        <SortableHeader
+                          label="שעות נוספות"
+                          isActive={workMonthSummarySort.key === "overtime_minutes"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("overtime_minutes")}
+                        />
+                        <SortableHeader
+                          label="תקן שעות"
+                          isActive={workMonthSummarySort.key === "target_minutes"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("target_minutes")}
+                        />
+                        <SortableHeader
+                          label="פער לתקן"
+                          isActive={workMonthSummarySort.key === "gap_minutes"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("gap_minutes")}
+                        />
+                        <SortableHeader
+                          label="ביצוע"
+                          isActive={workMonthSummarySort.key === "utilization_pct"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("utilization_pct")}
+                        />
+                        <SortableHeader
+                          label="חוסר יציאה"
+                          isActive={workMonthSummarySort.key === "missing_clock_outs"}
+                          direction={workMonthSummarySort.direction}
+                          onClick={() => toggleWorkMonthSummarySort("missing_clock_outs")}
+                        />
                       </tr>
                     </thead>
                     <tbody>
@@ -379,13 +592,48 @@ export default function AttendanceAdmin() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-right">
-                        <th className="p-2">תאריך</th>
-                        <th className="p-2">עובד</th>
-                        <th className="p-2">כניסה</th>
-                        <th className="p-2">יציאה</th>
-                        <th className="p-2">סה״כ</th>
-                        <th className="p-2">הפסקה</th>
-                        <th className="p-2">הערות</th>
+                        <SortableHeader
+                          label="תאריך"
+                          isActive={workMonthDetailSort.key === "date"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("date")}
+                        />
+                        <SortableHeader
+                          label="עובד"
+                          isActive={workMonthDetailSort.key === "employee"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("employee")}
+                        />
+                        <SortableHeader
+                          label="כניסה"
+                          isActive={workMonthDetailSort.key === "clock_in"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("clock_in")}
+                        />
+                        <SortableHeader
+                          label="יציאה"
+                          isActive={workMonthDetailSort.key === "clock_out"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("clock_out")}
+                        />
+                        <SortableHeader
+                          label="סה״כ"
+                          isActive={workMonthDetailSort.key === "duration_minutes"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("duration_minutes")}
+                        />
+                        <SortableHeader
+                          label="הפסקה"
+                          isActive={workMonthDetailSort.key === "break_minutes"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("break_minutes")}
+                        />
+                        <SortableHeader
+                          label="הערות"
+                          isActive={workMonthDetailSort.key === "notes"}
+                          direction={workMonthDetailSort.direction}
+                          onClick={() => toggleWorkMonthDetailSort("notes")}
+                        />
                       </tr>
                     </thead>
                     <tbody>
@@ -401,8 +649,8 @@ export default function AttendanceAdmin() {
                       )}
                       {workMonthDetailRows.map((r) => (
                         <tr key={r.id} className="border-b hover:bg-muted/40">
-                          <td className="p-2">{formatDate(r.clock_in)}</td>
-                          <td className="p-2">{r.profile?.full_name ?? r.user_id.slice(0, 8)}</td>
+                          <td className="p-2">{formatDateWithWeekday(r.clock_in)}</td>
+                          <td className="p-2">{getAttendanceRecordDisplayName(r)}</td>
                           <td className="p-2">{formatTime(r.clock_in)}</td>
                           <td className="p-2">{r.clock_out ? formatTime(r.clock_out) : <Badge variant="outline">פתוח</Badge>}</td>
                           <td className="p-2">{formatMinutes(r.duration_minutes ?? 0)}</td>
@@ -530,7 +778,7 @@ export default function AttendanceAdmin() {
                   <tbody>
                     {filtered.map(r => (
                       <tr key={r.id} className="border-b hover:bg-muted/40">
-                        <td className="p-2">{formatDate(r.clock_in)}</td>
+                        <td className="p-2">{formatDateWithWeekday(r.clock_in)}</td>
                         <td className="p-2">{r.profile?.full_name ?? r.user_id.slice(0, 8)}</td>
                         <td className="p-2">{formatTime(r.clock_in)}</td>
                         <td className="p-2">{r.clock_out ? formatTime(r.clock_out) : <Badge variant="outline">פתוח</Badge>}</td>
@@ -743,6 +991,38 @@ function WorkMonthNavigator({
   );
 }
 
+function SortableHeader({
+  label,
+  isActive,
+  direction,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  direction: SortDirection;
+  onClick: () => void;
+}) {
+  const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+  return (
+    <th className="p-2 group">
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1 text-right"
+        title={`מיון לפי ${label}`}
+      >
+        <span>{label}</span>
+        <Icon className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+      </button>
+    </th>
+  );
+}
+
+function getAttendanceRecordDisplayName(record: AttendanceRecord): string {
+  return record.profile?.full_name ?? record.user_id.slice(0, 8);
+}
+
 function ManagerEditDialog({
   record, onClose, onSaved,
 }: { record: AttendanceRecord; onClose: () => void; onSaved: () => void }) {
@@ -875,6 +1155,13 @@ function formatSignedMinutes(mins: number): string {
   return `${sign}${formatMinutes(Math.abs(mins))}`;
 }
 
+function formatDateWithWeekday(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const weekday = HEBREW_WEEKDAYS[d.getDay()] ?? "";
+  return `${formatDate(iso)} (${weekday})`;
+}
+
 const HEBREW_MONTHS = [
   "ינואר",
   "פברואר",
@@ -889,6 +1176,8 @@ const HEBREW_MONTHS = [
   "נובמבר",
   "דצמבר",
 ];
+
+const HEBREW_WEEKDAYS = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 
 function monthDiffInCalendarMonths(base: Date, target: Date): number {
   return (

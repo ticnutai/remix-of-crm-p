@@ -346,7 +346,7 @@ export function findMissingDays(
 
 // ---------- exports ----------
 export function exportSummaryToExcel(summary: UserSummary[], monthLabel: string) {
-  const rows = summary.map(s => ({
+  const rows = summary.map((s) => ({
     "שם עובד":       s.full_name,
     "אימייל":         s.email,
     "מס׳ משמרות":    s.shifts,
@@ -356,13 +356,14 @@ export function exportSummaryToExcel(summary: UserSummary[], monthLabel: string)
     "חוסר יציאה":    s.missing_clock_outs,
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
+  applyWorksheetRtl(ws, Object.keys(rows[0] ?? {}).length || 7);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "סיכום");
-  XLSX.writeFile(wb, `attendance_${monthLabel}.xlsx`);
+  XLSX.writeFile(wb, `attendance_${sanitizeForFilename(monthLabel)}.xlsx`);
 }
 
 export function exportDetailToExcel(records: AttendanceRecord[], monthLabel: string) {
-  const rows = records.map(r => ({
+  const rows = records.map((r) => ({
     "תאריך":         formatDate(r.clock_in),
     "שם עובד":      r.profile?.full_name ?? r.user_id,
     "כניסה":         formatTime(r.clock_in),
@@ -373,28 +374,227 @@ export function exportDetailToExcel(records: AttendanceRecord[], monthLabel: str
     "נערך":          r.is_edited ? "כן" : "",
   }));
   const ws = XLSX.utils.json_to_sheet(rows);
+  applyWorksheetRtl(ws, Object.keys(rows[0] ?? {}).length || 8);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "פירוט");
-  XLSX.writeFile(wb, `attendance_detail_${monthLabel}.xlsx`);
+  XLSX.writeFile(wb, `attendance_detail_${sanitizeForFilename(monthLabel)}.xlsx`);
 }
 
 export function exportSummaryToPdf(summary: UserSummary[], monthLabel: string) {
   const doc = new jsPDF({ orientation: "landscape" });
+  doc.setR2L(true);
+  const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFontSize(14);
-  doc.text(`Attendance summary - ${monthLabel}`, 14, 14);
+  doc.text(`דוח נוכחות - סיכום (${monthLabel})`, pageWidth - 14, 14, {
+    align: "right",
+  });
   autoTable(doc, {
     startY: 20,
-    head: [["Employee", "Email", "Shifts", "Total", "Breaks", "Overtime", "Missing out"]],
-    body: summary.map(s => [
-      s.full_name, s.email, s.shifts,
-      formatMinutes(s.total_minutes),
-      formatMinutes(s.break_minutes),
-      formatMinutes(s.overtime_minutes),
+    head: [["חוסר יציאה", "שעות נוספות", "הפסקות", "סה״כ", "משמרות", "אימייל", "עובד"]],
+    body: summary.map((s) => [
       s.missing_clock_outs,
+      formatMinutes(s.overtime_minutes),
+      formatMinutes(s.break_minutes),
+      formatMinutes(s.total_minutes),
+      s.shifts,
+      s.email,
+      s.full_name,
     ]),
-    styles: { fontSize: 9 },
+    styles: {
+      fontSize: 9,
+      halign: "right",
+      cellPadding: 3,
+    },
+    headStyles: {
+      halign: "right",
+    },
+    margin: { left: 14, right: 14 },
   });
-  doc.save(`attendance_${monthLabel}.pdf`);
+  doc.save(`attendance_${sanitizeForFilename(monthLabel)}.pdf`);
+}
+
+export function exportDetailToPdf(records: AttendanceRecord[], monthLabel: string) {
+  const doc = new jsPDF({ orientation: "landscape" });
+  doc.setR2L(true);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.setFontSize(14);
+  doc.text(`דוח נוכחות - פירוט (${monthLabel})`, pageWidth - 14, 14, {
+    align: "right",
+  });
+
+  autoTable(doc, {
+    startY: 20,
+    head: [["נערך", "הערות", "הפסקה", "סה״כ", "יציאה", "כניסה", "שם עובד", "תאריך"]],
+    body: records.map((r) => [
+      r.is_edited ? "כן" : "",
+      r.notes ?? "",
+      formatMinutes(r.break_minutes ?? 0),
+      formatMinutes(r.duration_minutes ?? 0),
+      formatTime(r.clock_out),
+      formatTime(r.clock_in),
+      r.profile?.full_name ?? r.user_id,
+      formatDate(r.clock_in),
+    ]),
+    styles: {
+      fontSize: 9,
+      halign: "right",
+      cellPadding: 3,
+    },
+    headStyles: {
+      halign: "right",
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(`attendance_detail_${sanitizeForFilename(monthLabel)}.pdf`);
+}
+
+export function exportSummaryToWord(summary: UserSummary[], monthLabel: string) {
+  const headers = [
+    "עובד",
+    "אימייל",
+    "משמרות",
+    "סה״כ שעות",
+    "שעות הפסקה",
+    "שעות נוספות",
+    "חוסר יציאה",
+  ];
+  const rows = summary.map((s) => [
+    s.full_name,
+    s.email,
+    String(s.shifts),
+    formatMinutes(s.total_minutes),
+    formatMinutes(s.break_minutes),
+    formatMinutes(s.overtime_minutes),
+    String(s.missing_clock_outs),
+  ]);
+
+  exportTableToWord({
+    title: `דוח נוכחות - סיכום (${monthLabel})`,
+    headers,
+    rows,
+    fileName: `attendance_${sanitizeForFilename(monthLabel)}.doc`,
+  });
+}
+
+export function exportDetailToWord(records: AttendanceRecord[], monthLabel: string) {
+  const headers = [
+    "תאריך",
+    "שם עובד",
+    "כניסה",
+    "יציאה",
+    "סה״כ",
+    "הפסקה",
+    "הערות",
+    "נערך",
+  ];
+  const rows = records.map((r) => [
+    formatDate(r.clock_in),
+    r.profile?.full_name ?? r.user_id,
+    formatTime(r.clock_in),
+    formatTime(r.clock_out),
+    formatMinutes(r.duration_minutes ?? 0),
+    formatMinutes(r.break_minutes ?? 0),
+    r.notes ?? "",
+    r.is_edited ? "כן" : "",
+  ]);
+
+  exportTableToWord({
+    title: `דוח נוכחות - פירוט (${monthLabel})`,
+    headers,
+    rows,
+    fileName: `attendance_detail_${sanitizeForFilename(monthLabel)}.doc`,
+  });
+}
+
+function sanitizeForFilename(input: string): string {
+  return input
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "_")
+    .trim();
+}
+
+function applyWorksheetRtl(ws: XLSX.WorkSheet, columnCount: number) {
+  (ws as any)["!views"] = [{ rightToLeft: true }];
+  ws["!cols"] = Array.from({ length: columnCount }, () => ({ wch: 18 }));
+}
+
+function exportTableToWord({
+  title,
+  headers,
+  rows,
+  fileName,
+}: {
+  title: string;
+  headers: string[];
+  rows: string[][];
+  fileName: string;
+}) {
+  const html = `<!DOCTYPE html>
+  <html dir="rtl" lang="he">
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        body {
+          direction: rtl;
+          text-align: right;
+          font-family: Arial, "Segoe UI", sans-serif;
+          margin: 24px;
+        }
+        h2 {
+          margin: 0 0 8px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          direction: rtl;
+        }
+        th, td {
+          border: 1px solid #d1d5db;
+          padding: 8px;
+          text-align: right;
+          vertical-align: top;
+          word-break: break-word;
+        }
+        th {
+          background: #f3f4f6;
+        }
+      </style>
+    </head>
+    <body>
+      <h2>${escapeHtml(title)}</h2>
+      <table>
+        <thead>
+          <tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </body>
+  </html>`;
+
+  const blob = new Blob([`\ufeff${html}`], {
+    type: "application/msword;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ============================================================================
