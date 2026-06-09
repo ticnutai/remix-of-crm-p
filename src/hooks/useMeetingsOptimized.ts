@@ -46,6 +46,7 @@ export interface MeetingInsert {
 const MEETINGS_KEY = ["meetings"] as const;
 const MEETINGS_TODAY_KEY = ["meetings", "today"] as const;
 const MEETINGS_WEEK_KEY = ["meetings", "week"] as const;
+const SMART_DASHBOARD_STATS_KEY = ["smart-dashboard-stats"] as const;
 
 // Fetch functions — no client-side user filter; RLS handles visibility
 // (admins see all non-private rows; others see own rows only)
@@ -208,6 +209,7 @@ export function useMeetingsOptimized() {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_TODAY_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_WEEK_KEY });
+      queryClient.invalidateQueries({ queryKey: SMART_DASHBOARD_STATS_KEY });
     },
   });
 
@@ -283,6 +285,7 @@ export function useMeetingsOptimized() {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_TODAY_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_WEEK_KEY });
+      queryClient.invalidateQueries({ queryKey: SMART_DASHBOARD_STATS_KEY });
     },
   });
 
@@ -343,6 +346,7 @@ export function useMeetingsOptimized() {
       queryClient.invalidateQueries({ queryKey: MEETINGS_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_TODAY_KEY });
       queryClient.invalidateQueries({ queryKey: MEETINGS_WEEK_KEY });
+      queryClient.invalidateQueries({ queryKey: SMART_DASHBOARD_STATS_KEY });
     },
   });
 
