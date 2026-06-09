@@ -958,12 +958,11 @@ export function exportTimesheetPdf(
   employeeName?: string,
   signed?: boolean,
 ) {
-  const summary = summarizeMonth(records);
-  const shiftsCount = records.filter((record) => !!record.clock_out).length;
-  const missingClockOuts = records.filter((record) => !record.clock_out).length;
-  const resolvedEmployeeName = employeeName
-    ?? records.find((record) => record.profile?.full_name)?.profile?.full_name
-    ?? "עובד";
+  const { resolvedEmployeeName, summaryItems } = buildEmployeeTimesheetSummary(
+    records,
+    monthLabel,
+    employeeName,
+  );
 
   const headers = ["תאריך", "כניסה", "יציאה", "הפסקה", "סה״כ", "סוג יום", "הערות"];
   const rows = records.map((r) => [
@@ -975,18 +974,6 @@ export function exportTimesheetPdf(
     DAY_TYPE_LABELS[(r.day_type ?? "work") as DayType] ?? (r.day_type ?? "work"),
     r.notes ?? "",
   ]);
-
-  const summaryItems = [
-    { label: "שם עובד", value: resolvedEmployeeName },
-    { label: "חודש עבודה", value: monthLabel },
-    { label: "סה״כ משמרות", value: String(shiftsCount) },
-    { label: "סה״כ שעות", value: formatMinutes(summary.totalMinutes) },
-    { label: "סה״כ הפסקות", value: formatMinutes(summary.breakMinutes) },
-    { label: "סה״כ שעות נוספות", value: formatMinutes(summary.overtimeMinutes) },
-    { label: "חוסרי יציאה", value: String(missingClockOuts) },
-    { label: "ימי חופשה", value: String(summary.vacationDays) },
-    { label: "ימי מחלה", value: String(summary.sickDays) },
-  ];
 
   const html = buildAttendancePdfHtml({
     title: "דוח שעות חודשי",
@@ -1006,6 +993,126 @@ export function exportTimesheetPdf(
   }).catch((error) => {
     console.error("Failed exporting timesheet PDF", error);
   });
+}
+
+export function exportTimesheetExcel(
+  records: AttendanceRecord[],
+  monthLabel: string,
+  employeeName?: string,
+) {
+  const { resolvedEmployeeName, summaryItems } = buildEmployeeTimesheetSummary(
+    records,
+    monthLabel,
+    employeeName,
+  );
+
+  const summaryRows = summaryItems.map((item) => ({
+    "שדה": item.label,
+    "ערך": item.value,
+  }));
+
+  const detailRows = records.map((r) => ({
+    "תאריך": r.work_date ?? (r.clock_in ?? "").slice(0, 10),
+    "כניסה": r.clock_in ? isoToLocalHHMM(r.clock_in) : "—",
+    "יציאה": r.clock_out ? isoToLocalHHMM(r.clock_out) : "—",
+    "הפסקה": formatMinutes(r.break_minutes ?? 0),
+    "סה״כ": formatMinutes(r.duration_minutes ?? 0),
+    "סוג יום": DAY_TYPE_LABELS[(r.day_type ?? "work") as DayType] ?? (r.day_type ?? "work"),
+    "הערות": r.notes ?? "",
+  }));
+
+  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+  applyWorksheetRtl(wsSummary, Object.keys(summaryRows[0] ?? {}).length || 2);
+
+  const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+  applyWorksheetRtl(wsDetail, Object.keys(detailRows[0] ?? {}).length || 7);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsSummary, "סיכום");
+  XLSX.utils.book_append_sheet(wb, wsDetail, "פירוט");
+
+  const safeEmployee = sanitizeForFilename(resolvedEmployeeName);
+  XLSX.writeFile(wb, `timesheet_${safeEmployee}_${sanitizeForFilename(monthLabel)}.xlsx`);
+}
+
+export function exportTimesheetWord(
+  records: AttendanceRecord[],
+  monthLabel: string,
+  employeeName?: string,
+) {
+  const { resolvedEmployeeName, summaryItems } = buildEmployeeTimesheetSummary(
+    records,
+    monthLabel,
+    employeeName,
+  );
+
+  const headers = ["תאריך", "כניסה", "יציאה", "הפסקה", "סה״כ", "סוג יום", "הערות"];
+  const rows = records.map((r) => [
+    r.work_date ?? (r.clock_in ?? "").slice(0, 10),
+    r.clock_in ? isoToLocalHHMM(r.clock_in) : "—",
+    r.clock_out ? isoToLocalHHMM(r.clock_out) : "—",
+    formatMinutes(r.break_minutes ?? 0),
+    formatMinutes(r.duration_minutes ?? 0),
+    DAY_TYPE_LABELS[(r.day_type ?? "work") as DayType] ?? (r.day_type ?? "work"),
+    r.notes ?? "",
+  ]);
+
+  const bodyHtml = buildAttendancePdfHtml({
+    title: "דוח שעות חודשי",
+    subtitle: `${resolvedEmployeeName} | חודש עבודה: ${monthLabel}`,
+    summaryItems,
+    headers,
+    rows,
+  });
+
+  const html = `<!DOCTYPE html>
+  <html dir="rtl" lang="he">
+    <head><meta charset="utf-8" /></head>
+    <body>${bodyHtml}</body>
+  </html>`;
+
+  const blob = new Blob([`\ufeff${html}`], {
+    type: "application/msword;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeEmployee = sanitizeForFilename(resolvedEmployeeName);
+  a.href = url;
+  a.download = `timesheet_${safeEmployee}_${sanitizeForFilename(monthLabel)}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function buildEmployeeTimesheetSummary(
+  records: AttendanceRecord[],
+  monthLabel: string,
+  employeeName?: string,
+) {
+  const summary = summarizeMonth(records);
+  const shiftsCount = records.filter((record) => !!record.clock_out).length;
+  const missingClockOuts = records.filter((record) => !record.clock_out).length;
+  const resolvedEmployeeName = employeeName
+    ?? records.find((record) => record.profile?.full_name)?.profile?.full_name
+    ?? "עובד";
+
+  const summaryItems = [
+    { label: "שם עובד", value: resolvedEmployeeName },
+    { label: "חודש עבודה", value: monthLabel },
+    { label: "סה״כ משמרות", value: String(shiftsCount) },
+    { label: "סה״כ שעות", value: formatMinutes(summary.totalMinutes) },
+    { label: "סה״כ הפסקות", value: formatMinutes(summary.breakMinutes) },
+    { label: "סה״כ שעות נוספות", value: formatMinutes(summary.overtimeMinutes) },
+    { label: "חוסרי יציאה", value: String(missingClockOuts) },
+    { label: "ימי חופשה", value: String(summary.vacationDays) },
+    { label: "ימי מחלה", value: String(summary.sickDays) },
+  ];
+
+  return {
+    resolvedEmployeeName,
+    summaryItems,
+  };
 }
 
 function buildAttendancePdfHtml({

@@ -53,6 +53,8 @@ import {
   exportSummaryToWord,
   exportDetailToWord,
   exportTimesheetPdf,
+  exportTimesheetExcel,
+  exportTimesheetWord,
 } from "@/lib/attendance";
 import { summarizeAttendanceHours } from "@/lib/attendancePayroll";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,6 +78,7 @@ type WorkMonthDetailSortKey =
   | "duration_minutes"
   | "break_minutes"
   | "notes";
+type EmployeeExportFormat = "pdf" | "excel" | "word";
 
 interface PayrollRunLite {
   employee_id: string;
@@ -721,7 +724,11 @@ export default function AttendanceAdmin() {
     });
   };
 
-  const exportEmployeeTimesheet = (userId: string, employeeName: string) => {
+  const exportEmployeeTimesheet = (
+    userId: string,
+    employeeName: string,
+    format: EmployeeExportFormat = "pdf",
+  ) => {
     const employeeRecords = records.filter((record) => record.user_id === userId);
     if (employeeRecords.length === 0) {
       toast({
@@ -732,10 +739,20 @@ export default function AttendanceAdmin() {
       return;
     }
 
+    if (format === "excel") {
+      exportTimesheetExcel(employeeRecords, range.label, employeeName);
+      return;
+    }
+
+    if (format === "word") {
+      exportTimesheetWord(employeeRecords, range.label, employeeName);
+      return;
+    }
+
     exportTimesheetPdf(employeeRecords, range.label, employeeName);
   };
 
-  const exportSelectedEmployeeTimesheet = () => {
+  const exportSelectedEmployeeTimesheet = (format: EmployeeExportFormat = "pdf") => {
     if (workMonthUserFilter === "all") {
       toast({
         title: "בחר עובד",
@@ -746,7 +763,7 @@ export default function AttendanceAdmin() {
 
     const selectedEmployee = summaryWithTargets.find((item) => item.user_id === workMonthUserFilter);
     const employeeName = selectedEmployee?.full_name || "עובד";
-    exportEmployeeTimesheet(workMonthUserFilter, employeeName);
+    exportEmployeeTimesheet(workMonthUserFilter, employeeName, format);
   };
 
   return (
@@ -810,9 +827,17 @@ export default function AttendanceAdmin() {
                   <span>PDF פירוט</span>
                   <FileText className="h-4 w-4 text-red-600" />
                 </DropdownMenuItem>
-                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={exportSelectedEmployeeTimesheet}>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSelectedEmployeeTimesheet("pdf")}>
                   <span>PDF עובד נבחר</span>
                   <Download className="h-4 w-4 text-amber-700" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSelectedEmployeeTimesheet("excel")}>
+                  <span>Excel עובד נבחר</span>
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSelectedEmployeeTimesheet("word")}>
+                  <span>Word עובד נבחר</span>
+                  <FileText className="h-4 w-4 text-blue-600" />
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToWord(summary, range.label)}>
@@ -988,15 +1013,32 @@ export default function AttendanceAdmin() {
                               : "—"}
                           </td>
                           <td className="p-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name)}
-                              title={`ייצוא דוח אישי עבור ${u.full_name}`}
-                            >
-                              <Download className="h-4 w-4 ml-1" />
-                              PDF
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  title={`ייצוא דוח אישי עבור ${u.full_name}`}
+                                >
+                                  <Download className="h-4 w-4 ml-1" />
+                                  ייצוא
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" dir="rtl">
+                                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "pdf")}>
+                                  <span>PDF</span>
+                                  <FileText className="h-4 w-4 text-red-600" />
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "excel")}>
+                                  <span>Excel</span>
+                                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "word")}>
+                                  <span>Word</span>
+                                  <FileText className="h-4 w-4 text-blue-600" />
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         </tr>
                       ))}
@@ -1145,15 +1187,32 @@ export default function AttendanceAdmin() {
                             : "—"}
                         </td>
                         <td className="p-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name)}
-                            title={`ייצוא דוח אישי עבור ${u.full_name}`}
-                          >
-                            <Download className="h-4 w-4 ml-1" />
-                            PDF
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                title={`ייצוא דוח אישי עבור ${u.full_name}`}
+                              >
+                                <Download className="h-4 w-4 ml-1" />
+                                ייצוא
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" dir="rtl">
+                              <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "pdf")}>
+                                <span>PDF</span>
+                                <FileText className="h-4 w-4 text-red-600" />
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "excel")}>
+                                <span>Excel</span>
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "word")}>
+                                <span>Word</span>
+                                <FileText className="h-4 w-4 text-blue-600" />
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </td>
                       </tr>
                     ))}
