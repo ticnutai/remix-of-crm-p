@@ -46,6 +46,7 @@ import {
   summarizeAttendanceHours,
 } from "@/lib/attendancePayroll";
 import * as XLSX from "xlsx";
+import { EmployeeWizard } from "@/components/hr/EmployeeWizard";
 
 // --- Types (loose — generated types may not include new tables yet) ----------
 interface Employee {
