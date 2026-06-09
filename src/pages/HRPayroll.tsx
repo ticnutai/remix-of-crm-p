@@ -498,8 +498,8 @@ function EmployeesTab({ employees, onChanged }: {
       </CardContent>
 
       {(editing || creating) && (
-        <EmployeeEditDialog
-          employee={editing}
+        <EmployeeWizard
+          employee={editing as any}
           open={true}
           onClose={() => { setEditing(null); setCreating(false); }}
           onSaved={() => { setEditing(null); setCreating(false); onChanged(); }}
