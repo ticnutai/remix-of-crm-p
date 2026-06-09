@@ -48,12 +48,6 @@ import { toast } from "@/hooks/use-toast";
 import { PermissionsMatrix } from "@/components/employees/PermissionsMatrix";
 import { UserApprovalsTab } from "@/components/employees/UserApprovalsTab";
 import { AddEmployeePanel } from "@/components/employees/AddEmployeePanel";
-import { HRPayrollContent } from "@/pages/HRPayroll";
-import {
-  AttendanceRecordLite,
-  getMonthIsoWindow,
-  summarizeAttendanceByUser,
-} from "@/lib/attendancePayroll";
 import {
   Users,
   UserPlus,
@@ -86,20 +80,40 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-// Interface for payroll calculation
-interface PayrollData {
-  employee: Employee;
-  totalHours: number;
-  hourlyRate: number;
-  grossAmount: number;
-  vatRate: number;
-  vatAmount: number;
-  netAmount: number;
-  entriesCount: number;
+interface PayrollRunRecord {
+  id: string;
+  employee_id: string;
+  period_year: number;
+  period_month: number;
+  worked_hours: number | null;
+  overtime_hours_125: number | null;
+  overtime_hours_150: number | null;
+  gross_total: number | null;
+  net_total: number | null;
+  status: string;
+  created_at: string;
+}
+
+interface PayrollEmployeeLink {
+  employeeId: string;
+  name: string;
+  userId: string | null;
+  profileId: string | null;
+  position: string | null;
+  email: string | null;
+}
+
+interface PayrollRunView extends PayrollRunRecord {
+  employeeDisplayName: string;
+  employeeSubtitle: string;
+  attendanceUserId: string | null;
 }
 
 interface Employee {
   id: string;
+  employee_id: string | null;
+  user_id: string | null;
+  profile_id: string | null;
   email: string;
   full_name: string;
   phone: string | null;
@@ -257,205 +271,140 @@ export default function Employees() {
   });
   const [selectedEmployeeForPayroll, setSelectedEmployeeForPayroll] =
     useState<string>("all");
-  const [payrollHourlyRateOverrides, setPayrollHourlyRateOverrides] = useState<
-    Record<string, string>
+  const [payrollRuns, setPayrollRuns] = useState<PayrollRunRecord[]>([]);
+  const [payrollEmployeeLinks, setPayrollEmployeeLinks] = useState<
+    Record<string, PayrollEmployeeLink>
   >({});
-  const [payrollVatRate, setPayrollVatRate] = useState<string>("17");
-  const [attendanceRecords, setAttendanceRecords] = useState<
-    AttendanceRecordLite[]
-  >([]);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
-  const [savingPayrollRates, setSavingPayrollRates] = useState(false);
 
-  // Fetch attendance records for payroll
-  const fetchAttendanceForPayroll = useCallback(async () => {
+  // Fetch saved payroll runs only (single source of truth)
+  const fetchPayrollRuns = useCallback(async () => {
     setLoadingPayroll(true);
     try {
       const [year, month] = payrollMonth.split("-").map(Number);
       if (!year || !month) {
-        setAttendanceRecords([]);
+        setPayrollRuns([]);
+        setPayrollEmployeeLinks({});
         return;
       }
-      const { from, to } = getMonthIsoWindow(year, month);
+
+      const { data: employeeRows, error: employeeError } = await supabase
+        .from("employees")
+        .select("id, name, user_id, profile_id, position, email")
+        .eq("is_active", true);
+
+      if (employeeError) {
+        throw employeeError;
+      }
+
+      const linkMap: Record<string, PayrollEmployeeLink> = {};
+      (employeeRows || []).forEach((row: any) => {
+        linkMap[row.id] = {
+          employeeId: row.id,
+          name: row.name || "עובד",
+          userId: row.user_id ?? null,
+          profileId: row.profile_id ?? null,
+          position: row.position ?? null,
+          email: row.email ?? null,
+        };
+      });
+      setPayrollEmployeeLinks(linkMap);
+
+      let employeeIdsFilter: string[] | null = null;
+      if (selectedEmployeeForPayroll !== "all") {
+        employeeIdsFilter = Object.values(linkMap)
+          .filter(
+            (link) =>
+              link.userId === selectedEmployeeForPayroll ||
+              link.profileId === selectedEmployeeForPayroll,
+          )
+          .map((link) => link.employeeId);
+
+        if (employeeIdsFilter.length === 0) {
+          setPayrollRuns([]);
+          return;
+        }
+      }
 
       let query = supabase
-        .from("attendance_records")
-        .select("user_id, clock_in, clock_out, duration_minutes")
-        .gte("clock_in", from)
-        .lte("clock_in", to)
-        .not("clock_out", "is", null);
+        .from("payroll_runs")
+        .select(
+          "id, employee_id, period_year, period_month, worked_hours, overtime_hours_125, overtime_hours_150, gross_total, net_total, status, created_at",
+        )
+        .eq("period_year", year)
+        .eq("period_month", month);
 
-      if (selectedEmployeeForPayroll !== "all") {
-        query = query.eq("user_id", selectedEmployeeForPayroll);
+      if (employeeIdsFilter) {
+        query = query.in("employee_id", employeeIdsFilter);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.order("net_total", {
+        ascending: false,
+      });
 
       if (error) {
-        console.error("Error fetching attendance records:", error);
-        toast({
-          title: "שגיאה",
-          description: "לא ניתן לטעון את נתוני הנוכחות",
-          variant: "destructive",
-        });
-        return;
+        throw error;
       }
 
-      setAttendanceRecords((data || []) as AttendanceRecordLite[]);
-    } catch (error) {
-      console.error("Error:", error);
+      setPayrollRuns((data || []) as PayrollRunRecord[]);
+    } catch (error: any) {
+      console.error("Error fetching payroll runs:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לטעון תלושי שכר שמורים",
+        variant: "destructive",
+      });
     } finally {
       setLoadingPayroll(false);
     }
   }, [payrollMonth, selectedEmployeeForPayroll]);
 
-  // Fetch attendance when payroll tab is active
+  // Fetch payroll runs when payroll tab is active
   useEffect(() => {
     if (activeTab === "payroll") {
-      fetchAttendanceForPayroll();
+      fetchPayrollRuns();
     }
-  }, [activeTab, fetchAttendanceForPayroll]);
+  }, [activeTab, fetchPayrollRuns]);
 
-  // Calculate payroll data
-  const payrollData = useMemo(() => {
-    const vatRate = parseFloat(payrollVatRate) || 0;
+  const payrollRunsView = useMemo<PayrollRunView[]>(() => {
+    return payrollRuns
+      .map((run) => {
+        const link = payrollEmployeeLinks[run.employee_id];
+        const matchedProfile = employees.find(
+          (employee) =>
+            employee.id === link?.userId || employee.id === link?.profileId,
+        );
 
-    const attendanceByEmployee = summarizeAttendanceByUser(attendanceRecords);
+        const employeeDisplayName =
+          link?.name || matchedProfile?.full_name || "עובד לא מזוהה";
+        const employeeSubtitle =
+          link?.position ||
+          matchedProfile?.position ||
+          link?.email ||
+          matchedProfile?.email ||
+          "";
 
-    const getEffectiveHourlyRate = (employee: Employee) => {
-      const overrideRaw = payrollHourlyRateOverrides[employee.id];
-      if (overrideRaw !== undefined) {
-        const parsedOverride = parseFloat(overrideRaw);
-        if (!Number.isNaN(parsedOverride) && parsedOverride >= 0) {
-          return parsedOverride;
-        }
-      }
-      return employee.hourly_rate || 0;
-    };
-
-    // Calculate payroll for each employee
-    const result: PayrollData[] = [];
-
-    const employeeList =
-      selectedEmployeeForPayroll === "all"
-        ? employees
-        : employees.filter((e) => e.id === selectedEmployeeForPayroll);
-
-    employeeList.forEach((employee) => {
-      const attendanceSummary = attendanceByEmployee[employee.id];
-      const totalHours = attendanceSummary?.totalHours || 0;
-      const entriesCount = attendanceSummary?.entriesCount || 0;
-
-      const hourlyRate = getEffectiveHourlyRate(employee);
-
-      const grossAmount = totalHours * hourlyRate;
-      const vatAmount = grossAmount * (vatRate / 100);
-      const netAmount = grossAmount + vatAmount;
-
-      if (totalHours > 0 || selectedEmployeeForPayroll !== "all") {
-        result.push({
-          employee,
-          totalHours,
-          hourlyRate,
-          grossAmount,
-          vatRate,
-          vatAmount,
-          netAmount,
-          entriesCount,
-        });
-      }
-    });
-
-    return result.sort((a, b) => b.netAmount - a.netAmount);
-  }, [
-    employees,
-    attendanceRecords,
-    payrollHourlyRateOverrides,
-    payrollVatRate,
-    selectedEmployeeForPayroll,
-  ]);
-
-  const setHourlyRateOverride = (employeeId: string, value: string) => {
-    setPayrollHourlyRateOverrides((prev) => ({ ...prev, [employeeId]: value }));
-  };
-
-  const getHourlyRateInputValue = (employee: Employee) => {
-    const override = payrollHourlyRateOverrides[employee.id];
-    if (override !== undefined) return override;
-    return employee.hourly_rate?.toString() || "";
-  };
-
-  const savePayrollHourlyRates = async () => {
-    const targetEmployees =
-      selectedEmployeeForPayroll === "all"
-        ? employees
-        : employees.filter((employee) => employee.id === selectedEmployeeForPayroll);
-
-    const updates = targetEmployees
-      .filter((employee) => payrollHourlyRateOverrides[employee.id] !== undefined)
-      .map((employee) => {
-        const raw = payrollHourlyRateOverrides[employee.id].trim();
-        const parsed = raw === "" ? null : parseFloat(raw);
         return {
-          id: employee.id,
-          hourly_rate: Number.isNaN(parsed as number) ? employee.hourly_rate : parsed,
+          ...run,
+          employeeDisplayName,
+          employeeSubtitle,
+          attendanceUserId: link?.userId || link?.profileId || null,
         };
-      });
+      })
+      .sort((a, b) => Number(b.net_total || 0) - Number(a.net_total || 0));
+  }, [payrollRuns, payrollEmployeeLinks, employees]);
 
-    if (updates.length === 0) {
-      toast({
-        title: "אין שינויים לשמירה",
-        description: "עדכן לפחות תעריף אחד לפני שמירה.",
-      });
-      return;
-    }
-
-    setSavingPayrollRates(true);
-    try {
-      const results = await Promise.all(
-        updates.map((update) =>
-          supabase
-            .from("profiles")
-            .update({ hourly_rate: update.hourly_rate })
-            .eq("id", update.id),
-        ),
-      );
-
-      const firstError = results.find((result) => result.error)?.error;
-      if (firstError) {
-        throw firstError;
-      }
-
-      setEmployees((prev) =>
-        prev.map((employee) => {
-          const update = updates.find((u) => u.id === employee.id);
-          if (!update) return employee;
-          return { ...employee, hourly_rate: update.hourly_rate as number | null };
-        }),
-      );
-
-      setPayrollHourlyRateOverrides((prev) => {
-        const next = { ...prev };
-        updates.forEach((update) => {
-          delete next[update.id];
-        });
-        return next;
-      });
-
-      toast({
-        title: "התעריפים נשמרו",
-        description: `עודכנו ${updates.length} עובדים בהצלחה.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "שגיאה בשמירת תעריפים",
-        description: error?.message || "לא ניתן לשמור את התעריפים כרגע.",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingPayrollRates(false);
-    }
-  };
+  const payrollSummary = useMemo(() => {
+    return payrollRunsView.reduce(
+      (acc, run) => {
+        acc.totalNet += Number(run.net_total ?? 0);
+        acc.totalGross += Number(run.gross_total ?? 0);
+        acc.totalHours += Number(run.worked_hours ?? 0);
+        return acc;
+      },
+      { totalNet: 0, totalGross: 0, totalHours: 0 },
+    );
+  }, [payrollRunsView]);
 
   // Format month display in Hebrew
   const formatMonth = (monthStr: string) => {
@@ -492,58 +441,179 @@ export default function Employees() {
     navigate(`/attendance/admin?${params.toString()}`);
   }, [navigate, payrollMonth]);
 
+  const formatNIS = (value: number | null | undefined) => {
+    return `₪${Number(value ?? 0).toFixed(2)}`;
+  };
+
+  const getPayrollStatusLabel = (status: string) => {
+    switch (status) {
+      case "paid":
+        return "שולם";
+      case "final":
+        return "סופי";
+      case "draft":
+        return "טיוטה";
+      case "cancelled":
+        return "בוטל";
+      default:
+        return status;
+    }
+  };
+
+  const getPayrollStatusVariant = (status: string) => {
+    switch (status) {
+      case "paid":
+      case "final":
+        return "default" as const;
+      case "draft":
+        return "secondary" as const;
+      default:
+        return "outline" as const;
+    }
+  };
+
+  const getEmployeeUserId = (employee: Employee) =>
+    employee.user_id || employee.profile_id || null;
+
+  const getEmployeeProfileId = (employee: Employee) =>
+    employee.profile_id || employee.user_id || null;
+
   // Fetch employees with their roles
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true);
+    try {
+      const [profilesRes, employeesRes, rolesRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "id, email, full_name, phone, department, position, hourly_rate, is_active, created_at, custom_data",
+          )
+          .order("full_name"),
+        supabase
+          .from("employees")
+          .select(
+            "id, user_id, profile_id, name, email, phone, department, position, hourly_rate, is_active, created_at",
+          ),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
 
-    // Fetch profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("full_name");
+      if (profilesRes.error) {
+        throw profilesRes.error;
+      }
+      if (employeesRes.error) {
+        throw employeesRes.error;
+      }
+      if (rolesRes.error) {
+        console.error("Error fetching roles:", rolesRes.error);
+      }
 
-    if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      const rolePriority: Record<Employee["role"], number> = {
+        employee: 1,
+        manager: 2,
+        super_manager: 3,
+        admin: 4,
+      };
+      const rolesMap: Record<string, Employee["role"]> = {};
+      (rolesRes.data || []).forEach((row: any) => {
+        const role = row.role as Employee["role"];
+        const current = rolesMap[row.user_id] || "employee";
+        if ((rolePriority[role] || 0) >= (rolePriority[current] || 0)) {
+          rolesMap[row.user_id] = role;
+        }
+      });
+
+      const employeeRows = (employeesRes.data || []) as Array<{
+        id: string;
+        user_id: string | null;
+        profile_id: string | null;
+        name: string | null;
+        email: string | null;
+        phone: string | null;
+        department: string | null;
+        position: string | null;
+        hourly_rate: number | null;
+        is_active: boolean | null;
+        created_at: string | null;
+      }>;
+
+      const byAuthId = new Map<string, (typeof employeeRows)[number]>();
+      employeeRows.forEach((row) => {
+        if (row.profile_id) byAuthId.set(row.profile_id, row);
+        if (row.user_id) byAuthId.set(row.user_id, row);
+      });
+
+      const seenEmployeeIds = new Set<string>();
+      const merged: Employee[] = (profilesRes.data || []).map((profile: any) => {
+        const linkedEmployee = byAuthId.get(profile.id);
+        if (linkedEmployee?.id) {
+          seenEmployeeIds.add(linkedEmployee.id);
+        }
+
+        const resolvedUserId = linkedEmployee?.user_id || profile.id;
+
+        return {
+          id: profile.id,
+          employee_id: linkedEmployee?.id || null,
+          user_id: resolvedUserId,
+          profile_id: linkedEmployee?.profile_id || profile.id,
+          email: (linkedEmployee?.email || profile.email || "") as string,
+          full_name:
+            (linkedEmployee?.name || profile.full_name || profile.email || "ללא שם") as string,
+          phone: (linkedEmployee?.phone ?? profile.phone ?? null) as string | null,
+          department: (linkedEmployee?.department ?? profile.department ?? null) as string | null,
+          position: (linkedEmployee?.position ?? profile.position ?? null) as string | null,
+          hourly_rate:
+            typeof linkedEmployee?.hourly_rate === "number"
+              ? linkedEmployee.hourly_rate
+              : (profile.hourly_rate as number | null),
+          is_active:
+            typeof linkedEmployee?.is_active === "boolean"
+              ? linkedEmployee.is_active
+              : Boolean(profile.is_active),
+          created_at:
+            linkedEmployee?.created_at || profile.created_at || new Date().toISOString(),
+          role: rolesMap[resolvedUserId] || "employee",
+          custom_data: (profile.custom_data as Record<string, any>) || {},
+        };
+      });
+
+      employeeRows.forEach((row) => {
+        if (seenEmployeeIds.has(row.id)) return;
+        const authId = row.profile_id || row.user_id || row.id;
+        if (merged.some((employee) => employee.id === authId)) return;
+
+        merged.push({
+          id: authId,
+          employee_id: row.id,
+          user_id: row.user_id || null,
+          profile_id: row.profile_id || null,
+          email: row.email || "",
+          full_name: row.name || row.email || "ללא שם",
+          phone: row.phone,
+          department: row.department,
+          position: row.position,
+          hourly_rate: row.hourly_rate,
+          is_active: row.is_active ?? true,
+          created_at: row.created_at || new Date().toISOString(),
+          role: (row.user_id ? rolesMap[row.user_id] : undefined) || "employee",
+          custom_data: null,
+        });
+      });
+
+      merged.sort((a, b) =>
+        (a.full_name || "").localeCompare(b.full_name || "", "he"),
+      );
+      setEmployees(merged);
+    } catch (error: any) {
+      console.error("Error fetching employees:", error);
       toast({
         title: "שגיאה",
         description: "לא ניתן לטעון את רשימת העובדים",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    // Fetch roles for all users
-    const { data: roles, error: rolesError } = await supabase
-      .from("user_roles")
-      .select("user_id, role");
-
-    if (rolesError) {
-      console.error("Error fetching roles:", rolesError);
-    }
-
-    // Combine profiles with roles
-    const rolesMap: Record<string, "admin" | "manager" | "employee"> = {};
-    (roles || []).forEach((r) => {
-      // If user has multiple roles, prioritize admin > manager > employee
-      const currentRole = rolesMap[r.user_id];
-      if (
-        !currentRole ||
-        r.role === "admin" ||
-        (r.role === "manager" && currentRole === "employee")
-      ) {
-        rolesMap[r.user_id] = r.role as "admin" | "manager" | "employee";
-      }
-    });
-
-    const employeesWithRoles: Employee[] = (profiles || []).map((profile) => ({
-      ...profile,
-      role: rolesMap[profile.id] || "employee",
-      custom_data: (profile.custom_data as Record<string, any>) || {},
-    }));
-
-    setEmployees(employeesWithRoles);
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -574,64 +644,124 @@ export default function Employees() {
 
     setIsSaving(true);
 
-    // Update profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .update({
-        full_name: editForm.full_name,
+    const targetEmployee = editDialog.employee;
+    const userId = getEmployeeUserId(targetEmployee);
+    const profileId = getEmployeeProfileId(targetEmployee);
+    const parsedHourlyRate = editForm.hourly_rate
+      ? parseFloat(editForm.hourly_rate)
+      : null;
+
+    let employeeRecordId = targetEmployee.employee_id;
+
+    try {
+      const employeePayload = {
+        user_id: userId,
+        profile_id: profileId,
+        name: editForm.full_name,
+        email: targetEmployee.email || null,
         phone: editForm.phone || null,
         department: editForm.department || null,
         position: editForm.position || null,
-        hourly_rate: editForm.hourly_rate
-          ? parseFloat(editForm.hourly_rate)
-          : null,
+        hourly_rate: parsedHourlyRate,
         is_active: editForm.is_active,
-      })
-      .eq("id", editDialog.employee.id);
+        status: editForm.is_active ? "active" : "inactive",
+      };
 
-    if (profileError) {
-      console.error("Error updating profile:", profileError);
-      toast({
-        title: "שגיאה",
-        description: "לא ניתן לעדכן את פרטי העובד",
-        variant: "destructive",
-      });
-      setIsSaving(false);
-      return;
-    }
+      if (!employeeRecordId) {
+        const orFilters = [
+          profileId ? `profile_id.eq.${profileId}` : null,
+          userId ? `user_id.eq.${userId}` : null,
+        ].filter(Boolean) as string[];
 
-    // Update role if admin and role changed
-    if (isAdmin && editForm.role !== editDialog.employee.role) {
-      // Delete existing roles
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", editDialog.employee.id);
+        if (orFilters.length > 0) {
+          const { data: existingEmployeeRows, error: existingEmployeeError } =
+            await supabase
+              .from("employees")
+              .select("id")
+              .or(orFilters.join(","))
+              .limit(1);
 
-      // Insert new role
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: editDialog.employee.id,
-        role: editForm.role,
-      });
+          if (existingEmployeeError) {
+            throw existingEmployeeError;
+          }
 
-      if (roleError) {
-        console.error("Error updating role:", roleError);
+          employeeRecordId = existingEmployeeRows?.[0]?.id ?? null;
+        }
+      }
+
+      if (employeeRecordId) {
+        const { error: employeeUpdateError } = await supabase
+          .from("employees")
+          .update(employeePayload)
+          .eq("id", employeeRecordId);
+        if (employeeUpdateError) throw employeeUpdateError;
+      } else {
+        const { error: employeeInsertError } = await supabase
+          .from("employees")
+          .insert(employeePayload);
+        if (employeeInsertError) throw employeeInsertError;
+      }
+
+      if (profileId) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: editForm.full_name,
+            phone: editForm.phone || null,
+            is_active: editForm.is_active,
+            department: editForm.department || null,
+            position: editForm.position || null,
+            hourly_rate: parsedHourlyRate,
+          })
+          .eq("id", profileId);
+
+        if (profileError) {
+          throw profileError;
+        }
+      }
+
+      if (isAdmin && userId && editForm.role !== editDialog.employee.role) {
+        await supabase.from("user_roles").delete().eq("user_id", userId);
+
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: userId,
+          role: editForm.role,
+        });
+
+        if (roleError) {
+          console.error("Error updating role:", roleError);
+          toast({
+            title: "אזהרה",
+            description: "פרטי העובד עודכנו אך לא ניתן לעדכן את ההרשאה",
+            variant: "destructive",
+          });
+        }
+      }
+
+      if (!profileId) {
         toast({
-          title: "אזהרה",
-          description: "פרטי העובד עודכנו אך לא ניתן לעדכן את ההרשאה",
-          variant: "destructive",
+          title: "עודכן חלקית",
+          description: "הרשומה אינה מקושרת לפרופיל התחברות. עודכנו רק נתוני עובדים.",
         });
       }
+
+      toast({
+        title: "העובד עודכן",
+        description: "פרטי העובד נשמרו בהצלחה",
+      });
+
+      setEditDialog({ open: false, employee: null });
+      fetchEmployees();
+    } catch (error: any) {
+      console.error("Error updating employee:", error);
+      toast({
+        title: "שגיאה",
+        description: error?.message || "לא ניתן לעדכן את פרטי העובד",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
-
-    toast({
-      title: "העובד עודכן",
-      description: "פרטי העובד נשמרו בהצלחה",
-    });
-
-    setEditDialog({ open: false, employee: null });
-    setIsSaving(false);
-    fetchEmployees();
   };
 
   const handleAddEmployee = async () => {
@@ -722,8 +852,12 @@ export default function Employees() {
   const handleDeleteEmployee = async () => {
     if (!deleteDialog.employee) return;
 
+    const targetEmployee = deleteDialog.employee;
+    const userId = getEmployeeUserId(targetEmployee);
+    const profileId = getEmployeeProfileId(targetEmployee);
+
     // Prevent deleting self
-    if (deleteDialog.employee.id === user?.id) {
+    if (userId && userId === user?.id) {
       toast({
         title: "שגיאה",
         description: "לא ניתן למחוק את המשתמש שלך",
@@ -735,53 +869,75 @@ export default function Employees() {
     setIsDeleting(true);
 
     try {
-      // First, delete from user_roles
-      const { error: rolesError } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", deleteDialog.employee.id);
+      if (userId) {
+        const { error: rolesError } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId);
 
-      if (rolesError) {
-        console.error("Error deleting roles:", rolesError);
+        if (rolesError) {
+          console.error("Error deleting roles:", rolesError);
+        }
       }
 
-      // Delete from time_entries (if any)
-      const { error: timeError } = await supabase
-        .from("time_entries")
-        .delete()
-        .eq("user_id", deleteDialog.employee.id);
+      if (userId) {
+        const { error: timeError } = await supabase
+          .from("time_entries")
+          .delete()
+          .eq("user_id", userId);
 
-      if (timeError) {
-        console.error("Error deleting time_entries:", timeError);
+        if (timeError) {
+          console.error("Error deleting time_entries:", timeError);
+        }
       }
 
-      // Then delete from profiles
-      const { error: profileError, data: profileData } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", deleteDialog.employee.id)
-        .select();
-
-      if (profileError) {
-        console.error("Error deleting profile:", profileError);
-        toast({
-          title: "שגיאה",
-          description: `לא ניתן למחוק את העובד: ${profileError.message}`,
-          variant: "destructive",
-        });
-        setIsDeleting(false);
-        return;
+      if (profileId) {
+        await supabase
+          .from("employee_client_assignments")
+          .delete()
+          .eq("employee_id", profileId);
       }
 
-      // Check if anything was actually deleted
-      if (!profileData || profileData.length === 0) {
-        toast({
-          title: "שגיאה",
-          description: "המחיקה נחסמה - אין לך הרשאות מספיקות",
-          variant: "destructive",
-        });
-        setIsDeleting(false);
-        return;
+      if (targetEmployee.employee_id) {
+        await supabase
+          .from("employees")
+          .delete()
+          .eq("id", targetEmployee.employee_id);
+      } else {
+        const orFilters = [
+          profileId ? `profile_id.eq.${profileId}` : null,
+          userId ? `user_id.eq.${userId}` : null,
+        ].filter(Boolean) as string[];
+
+        if (orFilters.length > 0) {
+          await supabase
+            .from("employees")
+            .delete()
+            .or(orFilters.join(","));
+        } else {
+          await supabase
+            .from("employees")
+            .delete()
+            .eq("id", targetEmployee.id);
+        }
+      }
+
+      if (profileId) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .delete()
+          .eq("id", profileId);
+
+        if (profileError) {
+          console.error("Error deleting profile:", profileError);
+          toast({
+            title: "שגיאה",
+            description: `לא ניתן למחוק את העובד: ${profileError.message}`,
+            variant: "destructive",
+          });
+          setIsDeleting(false);
+          return;
+        }
       }
 
       toast({
@@ -823,6 +979,16 @@ export default function Employees() {
       return;
     }
 
+    const targetUserId = getEmployeeUserId(resetPasswordDialog.employee);
+    if (!targetUserId) {
+      toast({
+        title: "לא ניתן לאפס סיסמה",
+        description: "העובד אינו מקושר למשתמש התחברות.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsResetting(true);
 
     try {
@@ -839,7 +1005,7 @@ export default function Employees() {
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-          userId: resetPasswordDialog.employee.id,
+          userId: targetUserId,
           newPassword,
         }),
       });
@@ -871,12 +1037,22 @@ export default function Employees() {
 
   // Handle open client assignment dialog
   const handleOpenClientAssign = async (employee: Employee) => {
+    const profileId = getEmployeeProfileId(employee);
+    if (!profileId) {
+      toast({
+        title: "לא ניתן להקצות לקוחות",
+        description: "העובד אינו מקושר לפרופיל התחברות.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setClientAssignDialog({ open: true, employee });
     setClientSearchQuery("");
     setIsSavingClients(false);
 
     // Fetch current assignments for this employee
-    const current = await fetchAssignments(employee.id);
+    const current = await fetchAssignments(profileId);
     const ids = new Set<string>((current || []).map((a: any) => a.client_id));
     setSelectedClientIds(ids);
   };
@@ -886,8 +1062,19 @@ export default function Employees() {
     if (!clientAssignDialog.employee) return;
 
     setIsSavingClients(true);
+    const profileId = getEmployeeProfileId(clientAssignDialog.employee);
+    if (!profileId) {
+      toast({
+        title: "שגיאה",
+        description: "לא נמצא פרופיל מקושר לעובד.",
+        variant: "destructive",
+      });
+      setIsSavingClients(false);
+      return;
+    }
+
     const success = await setClientAssignments(
-      clientAssignDialog.employee.id,
+      profileId,
       Array.from(selectedClientIds),
       user?.id,
     );
@@ -1327,15 +1514,6 @@ export default function Employees() {
                 <span>אישור משתמשים</span>
               </TabsTrigger>
             )}
-            {(isAdmin || isManager) && (
-              <TabsTrigger
-                value="hr-payroll"
-                className="gap-2 px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <DollarSign className="h-4 w-4" />
-                <span>שכר ופנסיה</span>
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Employees Tab */}
@@ -1550,16 +1728,15 @@ export default function Employees() {
 
           {/* Payroll Tab */}
           <TabsContent value="payroll" className="space-y-6">
-            {/* Payroll Controls */}
             <Card className="card-elegant">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calculator className="h-5 w-5 text-primary" />
-                  הגדרות חישוב שכר
+                  תלושי שכר שמורים (קריאה בלבד)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -1597,148 +1774,77 @@ export default function Employees() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2 lg:col-span-2">
-                    <Label className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      תעריף שעתי לפי עובד/ת (₪)
-                    </Label>
-
-                    {selectedEmployeeForPayroll === "all" ? (
-                      <div className="max-h-52 overflow-y-auto rounded-md border border-primary/20 p-2 space-y-2">
-                        {employees.map((employee) => (
-                          <div
-                            key={employee.id}
-                            className="flex items-center gap-2"
-                          >
-                            <div className="flex-1 text-sm truncate">
-                              {employee.full_name}
-                            </div>
-                            <Input
-                              type="number"
-                              value={getHourlyRateInputValue(employee)}
-                              onChange={(e) =>
-                                setHourlyRateOverride(
-                                  employee.id,
-                                  e.target.value,
-                                )
-                              }
-                              placeholder="מתעריף עובד"
-                              className="w-36"
-                              dir="ltr"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      (() => {
-                        const selectedEmployee = employees.find(
-                          (employee) =>
-                            employee.id === selectedEmployeeForPayroll,
-                        );
-                        if (!selectedEmployee) return null;
-                        return (
-                          <Input
-                            type="number"
-                            value={getHourlyRateInputValue(selectedEmployee)}
-                            onChange={(e) =>
-                              setHourlyRateOverride(
-                                selectedEmployee.id,
-                                e.target.value,
-                              )
-                            }
-                            placeholder="מתעריף עובד"
-                            dir="ltr"
-                          />
-                        );
-                      })()
-                    )}
-
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        אפשר להגדיר תעריף שונה לכל עובד/ת ולשמור קבוע.
-                      </p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={savePayrollHourlyRates}
-                        disabled={savingPayrollRates}
-                      >
-                        {savingPayrollRates && (
-                          <Loader2 className="h-4 w-4 animate-spin ml-1" />
-                        )}
-                        שמור תעריפים
-                      </Button>
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4 text-muted-foreground" />
-                      מע"מ (%)
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      ניהול שכר
                     </Label>
-                    <Input
-                      type="number"
-                      value={payrollVatRate}
-                      onChange={(e) => setPayrollVatRate(e.target.value)}
-                      placeholder="17"
-                      dir="ltr"
-                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate("/hr")}
+                    >
+                      פתח ניהול מלא ב-HR
+                    </Button>
                   </div>
                 </div>
 
                 <div className="flex justify-end mt-4">
-                  <Button
-                    onClick={fetchAttendanceForPayroll}
-                    disabled={loadingPayroll}
-                  >
+                  <Button onClick={fetchPayrollRuns} disabled={loadingPayroll}>
                     {loadingPayroll && (
                       <Loader2 className="h-4 w-4 animate-spin ml-2" />
                     )}
-                    <Calculator className="h-4 w-4 ml-2" />
-                    חשב
+                    <Download className="h-4 w-4 ml-2" />
+                    רענן תלושים
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Payroll Summary */}
             {loadingPayroll ? (
               <div className="flex items-center justify-center p-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : payrollData.length === 0 ? (
+            ) : payrollRunsView.length === 0 ? (
               <Card>
                 <CardContent className="p-12 text-center text-muted-foreground">
                   <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>לא נמצאו רשומות נוכחות לתקופה זו</p>
+                  <p>לא נמצאו תלושי שכר שמורים לתקופה זו</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-6">
-                {payrollData.map((data) => (
+                {payrollRunsView.map((run) => (
                   <Card
-                    key={data.employee.id}
+                    key={run.id}
                     className="card-elegant overflow-hidden"
                   >
-                    {/* Payslip Header */}
                     <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
-                            {data.employee.full_name?.charAt(0) || "?"}
+                            {run.employeeDisplayName?.charAt(0) || "?"}
                           </div>
                           <div>
                             <button
                               type="button"
                               className="text-xl font-bold underline-offset-4 hover:underline text-right"
-                              onClick={() => navigateToAttendanceForPayroll(data.employee.id)}
-                              title="פתח נוכחות עובדים לעובד/ת"
+                              onClick={() =>
+                                run.attendanceUserId &&
+                                navigateToAttendanceForPayroll(run.attendanceUserId)
+                              }
+                              title={
+                                run.attendanceUserId
+                                  ? "פתח נוכחות עובדים לעובד/ת"
+                                  : "אין משתמש מקושר לנוכחות"
+                              }
+                              disabled={!run.attendanceUserId}
                             >
-                              {data.employee.full_name}
+                              {run.employeeDisplayName}
                             </button>
                             <p className="text-sm opacity-90">
-                              {data.employee.position || data.employee.email}
+                              {run.employeeSubtitle || "—"}
                             </p>
                           </div>
                         </div>
@@ -1747,14 +1853,15 @@ export default function Employees() {
                           <p className="text-lg font-bold">
                             {formatMonth(payrollMonth)}
                           </p>
+                          <Badge variant={getPayrollStatusVariant(run.status)} className="mt-1">
+                            {getPayrollStatusLabel(run.status)}
+                          </Badge>
                         </div>
                       </div>
                     </div>
 
-                    {/* Payslip Body */}
                     <CardContent className="p-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Work Details */}
                         <div className="space-y-4">
                           <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
                             <Clock className="h-5 w-5 text-primary" />
@@ -1763,28 +1870,33 @@ export default function Employees() {
                           <div className="space-y-3">
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">
-                                סה"כ שעות עבודה
+                                שעות עבודה
                               </span>
                               <span className="font-semibold text-lg">
-                                {data.totalHours.toFixed(2)}
+                                {Number(run.worked_hours ?? 0).toFixed(2)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-muted-foreground">
-                                תעריף שעתי
+                                נוספות 125%
                               </span>
                               <span className="font-semibold">
-                                ₪{data.hourlyRate.toFixed(2)}
+                                {Number(run.overtime_hours_125 ?? 0).toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-muted-foreground">נוספות 150%</span>
+                              <span className="font-semibold">
+                                {Number(run.overtime_hours_150 ?? 0).toFixed(2)}
                               </span>
                             </div>
                             <div className="flex justify-between items-center text-sm text-muted-foreground">
-                              <span>מספר רישומים</span>
-                              <span>{data.entriesCount}</span>
+                              <span>נוצר בתאריך</span>
+                              <span>{new Date(run.created_at).toLocaleDateString("he-IL")}</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Payment Details */}
                         <div className="space-y-4">
                           <h4 className="font-semibold text-lg flex items-center gap-2 border-b pb-2">
                             <DollarSign className="h-5 w-5 text-success" />
@@ -1796,15 +1908,7 @@ export default function Employees() {
                                 סכום ברוטו
                               </span>
                               <span className="font-semibold">
-                                ₪{data.grossAmount.toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-muted-foreground">
-                                מע"מ ({data.vatRate}%)
-                              </span>
-                              <span className="font-semibold text-orange-500">
-                                ₪{data.vatAmount.toFixed(2)}
+                                {formatNIS(run.gross_total)}
                               </span>
                             </div>
                             <div className="h-px bg-border my-2" />
@@ -1813,14 +1917,13 @@ export default function Employees() {
                                 סה"כ לתשלום
                               </span>
                               <span className="font-bold text-2xl text-success">
-                                ₪{data.netAmount.toFixed(2)}
+                                {formatNIS(run.net_total)}
                               </span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Actions */}
                       <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
                         <Button
                           variant="outline"
@@ -1829,7 +1932,7 @@ export default function Employees() {
                             const printContent = `
                               <html dir="rtl">
                               <head>
-                                <title>תלוש שכר - ${data.employee.full_name}</title>
+                                <title>תלוש שכר - ${run.employeeDisplayName}</title>
                                 <style>
                                   body { font-family: Arial, sans-serif; padding: 40px; }
                                   .header { background: linear-gradient(to right, #3b82f6, #60a5fa); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; }
@@ -1844,21 +1947,20 @@ export default function Employees() {
                               </head>
                               <body>
                                 <div class="header">
-                                  <h1>${data.employee.full_name}</h1>
+                                  <h1>${run.employeeDisplayName}</h1>
                                   <p>תלוש שכר - ${formatMonth(payrollMonth)}</p>
                                 </div>
                                 <div class="section">
                                   <h3>פירוט שעות</h3>
-                                  <div class="row"><span>סה"כ שעות עבודה</span><span>${data.totalHours.toFixed(2)}</span></div>
-                                  <div class="row"><span>תעריף שעתי</span><span>₪${data.hourlyRate.toFixed(2)}</span></div>
-                                  <div class="row"><span>מספר רישומים</span><span>${data.entriesCount}</span></div>
+                                  <div class="row"><span>סה"כ שעות עבודה</span><span>${Number(run.worked_hours ?? 0).toFixed(2)}</span></div>
+                                  <div class="row"><span>נוספות 125%</span><span>${Number(run.overtime_hours_125 ?? 0).toFixed(2)}</span></div>
+                                  <div class="row"><span>נוספות 150%</span><span>${Number(run.overtime_hours_150 ?? 0).toFixed(2)}</span></div>
                                 </div>
                                 <div class="section">
                                   <h3>פירוט תשלום</h3>
-                                  <div class="row"><span>סכום ברוטו</span><span>₪${data.grossAmount.toFixed(2)}</span></div>
-                                  <div class="row"><span>מע"מ (${data.vatRate}%)</span><span>₪${data.vatAmount.toFixed(2)}</span></div>
+                                  <div class="row"><span>סכום ברוטו</span><span>${formatNIS(run.gross_total)}</span></div>
                                   <div class="divider"></div>
-                                  <div class="row"><span>סה"כ לתשלום</span><span class="total">₪${data.netAmount.toFixed(2)}</span></div>
+                                  <div class="row"><span>סה"כ לתשלום</span><span class="total">${formatNIS(run.net_total)}</span></div>
                                 </div>
                               </body>
                               </html>
@@ -1874,13 +1976,19 @@ export default function Employees() {
                           <Printer className="h-4 w-4 ml-2" />
                           הדפס
                         </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate("/hr")}
+                        >
+                          <DollarSign className="h-4 w-4 ml-2" />
+                          עריכה ב-HR
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
 
-                {/* Total Summary */}
-                {payrollData.length > 1 && (
+                {payrollRunsView.length > 1 && (
                   <Card className="card-elegant bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
@@ -1893,7 +2001,7 @@ export default function Employees() {
                               סיכום כולל
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {payrollData.length} עובדים •{" "}
+                              {payrollRunsView.length} תלושים •{" "}
                               {formatMonth(payrollMonth)}
                             </p>
                           </div>
@@ -1903,16 +2011,11 @@ export default function Employees() {
                             סה"כ לתשלום
                           </p>
                           <p className="text-3xl font-bold text-primary">
-                            ₪
-                            {payrollData
-                              .reduce((sum, d) => sum + d.netAmount, 0)
-                              .toFixed(2)}
+                            {formatNIS(payrollSummary.totalNet)}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {payrollData
-                              .reduce((sum, d) => sum + d.totalHours, 0)
-                              .toFixed(1)}{" "}
-                            שעות
+                            ברוטו {formatNIS(payrollSummary.totalGross)} •{" "}
+                            {payrollSummary.totalHours.toFixed(1)} שעות
                           </p>
                         </div>
                       </div>
@@ -1932,11 +2035,6 @@ export default function Employees() {
             {isAdmin && (
             <TabsContent value="approvals" className="space-y-6">
               <UserApprovalsTab />
-            </TabsContent>
-          )}
-            {(isAdmin || isManager) && (
-            <TabsContent value="hr-payroll">
-              <HRPayrollContent />
             </TabsContent>
           )}
         </Tabs>

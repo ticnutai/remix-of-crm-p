@@ -16,7 +16,6 @@ import {
 import { LogIn, LogOut, Coffee, Edit2, Download } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MonthlyTimesheet } from "@/components/attendance/MonthlyTimesheet";
-import { HRPayrollContent } from "@/pages/HRPayroll";
 import {
   AttendanceRecord, getOpenShift, clockIn, clockOut,
   getOpenBreak, startBreak, endBreak,
@@ -71,6 +70,12 @@ export default function Attendance() {
   };
 
   useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [user?.id, monthOffset]);
+
+  useEffect(() => {
+    if (attendanceTab === "hr-payroll") {
+      setAttendanceTab("timesheet");
+    }
+  }, [attendanceTab, setAttendanceTab]);
 
   // live clock
   useEffect(() => {
@@ -139,7 +144,6 @@ export default function Attendance() {
           <TabsList>
             <TabsTrigger value="timesheet">גיליון חודשי</TabsTrigger>
             <TabsTrigger value="quick">כניסה מהירה / היסטוריה</TabsTrigger>
-            <TabsTrigger value="hr-payroll">שכר ופנסיה</TabsTrigger>
           </TabsList>
 
           <TabsContent value="timesheet" className="space-y-4">
@@ -281,10 +285,6 @@ export default function Attendance() {
             </div>
           </CardContent>
         </Card>
-          </TabsContent>
-
-          <TabsContent value="hr-payroll">
-            <HRPayrollContent />
           </TabsContent>
         </Tabs>
       </div>
