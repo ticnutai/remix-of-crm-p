@@ -6065,6 +6065,78 @@ export type Database = {
         }
         Relationships: []
       }
+      payroll_law_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          health_full_rate: number
+          health_reduced_rate: number
+          id: string
+          income_tax_brackets: Json
+          is_active: boolean
+          ni_full_rate: number
+          ni_health_ceiling: number
+          ni_health_threshold: number
+          ni_reduced_rate: number
+          source_snapshot_ni: string | null
+          source_snapshot_tax: string | null
+          source_url_ni: string
+          source_url_tax: string
+          tax_credit_point_value: number
+          updated_at: string
+          version_name: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          health_full_rate?: number
+          health_reduced_rate?: number
+          id?: string
+          income_tax_brackets?: Json
+          is_active?: boolean
+          ni_full_rate?: number
+          ni_health_ceiling?: number
+          ni_health_threshold?: number
+          ni_reduced_rate?: number
+          source_snapshot_ni?: string | null
+          source_snapshot_tax?: string | null
+          source_url_ni: string
+          source_url_tax: string
+          tax_credit_point_value?: number
+          updated_at?: string
+          version_name: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          health_full_rate?: number
+          health_reduced_rate?: number
+          id?: string
+          income_tax_brackets?: Json
+          is_active?: boolean
+          ni_full_rate?: number
+          ni_health_ceiling?: number
+          ni_health_threshold?: number
+          ni_reduced_rate?: number
+          source_snapshot_ni?: string | null
+          source_snapshot_tax?: string | null
+          source_url_ni?: string
+          source_url_tax?: string
+          tax_credit_point_value?: number
+          updated_at?: string
+          version_name?: string
+        }
+        Relationships: []
+      }
       payroll_runs: {
         Row: {
           base_pay: number | null
