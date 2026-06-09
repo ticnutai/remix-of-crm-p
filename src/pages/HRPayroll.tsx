@@ -51,6 +51,7 @@ import * as XLSX from "xlsx";
 interface Employee {
   id: string;
   user_id: string | null;
+  profile_id?: string | null;
   name: string;
   email: string | null;
   phone: string | null;
@@ -137,7 +138,79 @@ interface PayrollLawVersion {
   approved_at: string | null;
 }
 
+type EmploymentType = "monthly" | "hourly" | "contractor";
+
 const sb = supabase as any;
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function normalizeEmploymentType(
+  rawType: unknown,
+  hourlyRate: number,
+  monthlySalary: number,
+): EmploymentType {
+  if (rawType === "monthly" || rawType === "hourly" || rawType === "contractor") {
+    return rawType;
+  }
+  if (hourlyRate > 0 && monthlySalary <= 0) return "hourly";
+  return "monthly";
+}
+
+const EMPLOYEE_FORM_DEFAULTS: Partial<Employee> = {
+  name: "",
+  email: "",
+  phone: "",
+  position: "",
+  department: "",
+  employment_type: "monthly",
+  monthly_salary: 0,
+  hourly_rate: 0,
+  standard_monthly_hours: 182,
+  tax_credit_points: 2.25,
+  transport_allowance: 0,
+  meal_allowance: 0,
+  pension_employee_pct: 6.0,
+  pension_employer_pct: 6.5,
+  pension_severance_pct: 6.0,
+  study_fund_employee_pct: 0,
+  study_fund_employer_pct: 0,
+  is_active: true,
+  hire_date: null,
+  birth_date: null,
+  termination_date: null,
+  bank_account: "",
+  id_number: "",
+  notes: "",
+};
+
+function normalizeEmployeeForForm(employee: Partial<Employee> | null | undefined): Partial<Employee> {
+  const merged = {
+    ...EMPLOYEE_FORM_DEFAULTS,
+    ...(employee || {}),
+  };
+
+  const hourlyRate = toFiniteNumber(merged.hourly_rate, 0);
+  const monthlySalary = toFiniteNumber(merged.monthly_salary, 0);
+
+  return {
+    ...merged,
+    employment_type: normalizeEmploymentType(merged.employment_type, hourlyRate, monthlySalary),
+    monthly_salary: monthlySalary,
+    hourly_rate: hourlyRate,
+    standard_monthly_hours: toFiniteNumber(merged.standard_monthly_hours, 182),
+    tax_credit_points: toFiniteNumber(merged.tax_credit_points, 2.25),
+    transport_allowance: toFiniteNumber(merged.transport_allowance, 0),
+    meal_allowance: toFiniteNumber(merged.meal_allowance, 0),
+    pension_employee_pct: toFiniteNumber(merged.pension_employee_pct, 6.0),
+    pension_employer_pct: toFiniteNumber(merged.pension_employer_pct, 6.5),
+    pension_severance_pct: toFiniteNumber(merged.pension_severance_pct, 6.0),
+    study_fund_employee_pct: toFiniteNumber(merged.study_fund_employee_pct, 0),
+    study_fund_employer_pct: toFiniteNumber(merged.study_fund_employer_pct, 0),
+  };
+}
 
 // =============================================================================
 export function HRPayrollContent() {
@@ -154,17 +227,63 @@ export function HRPayrollContent() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [empRes, leaveRes, payRes] = await Promise.all([
+      const [empRes, leaveRes, payRes, profileRes] = await Promise.all([
         sb.from("employees").select("*").order("name"),
         sb.from("employee_leaves").select("*").order("start_date", { ascending: false }),
         sb.from("payroll_runs").select("*")
           .order("period_year", { ascending: false })
           .order("period_month", { ascending: false }),
+        sb.from("profiles").select("id, full_name, email, phone, department, position, hourly_rate, is_active"),
       ]);
       if (empRes.error)   throw empRes.error;
       if (leaveRes.error) throw leaveRes.error;
       if (payRes.error)   throw payRes.error;
-      setEmployees(empRes.data || []);
+      if (profileRes.error) throw profileRes.error;
+
+      const profilesById = new Map<string, any>();
+      (profileRes.data || []).forEach((profile: any) => {
+        profilesById.set(profile.id, profile);
+      });
+
+      const normalizedEmployees = (empRes.data || []).map((rawEmployee: any) => {
+        const profileId = rawEmployee.profile_id || rawEmployee.user_id || null;
+        const profile = profileId ? profilesById.get(profileId) : null;
+        const monthlySalary = toFiniteNumber(rawEmployee.monthly_salary, 0);
+        const hourlyRate = toFiniteNumber(
+          rawEmployee.hourly_rate ?? profile?.hourly_rate,
+          0,
+        );
+        const employmentType = normalizeEmploymentType(
+          rawEmployee.employment_type,
+          hourlyRate,
+          monthlySalary,
+        );
+
+        return {
+          ...rawEmployee,
+          profile_id: rawEmployee.profile_id ?? null,
+          name: rawEmployee.name || profile?.full_name || rawEmployee.email || "עובד",
+          email: rawEmployee.email ?? profile?.email ?? null,
+          phone: rawEmployee.phone ?? profile?.phone ?? null,
+          department: rawEmployee.department ?? profile?.department ?? null,
+          position: rawEmployee.position ?? profile?.position ?? null,
+          is_active: rawEmployee.is_active ?? profile?.is_active ?? true,
+          employment_type: employmentType,
+          monthly_salary: monthlySalary,
+          hourly_rate: hourlyRate,
+          standard_monthly_hours: toFiniteNumber(rawEmployee.standard_monthly_hours, 182),
+          tax_credit_points: toFiniteNumber(rawEmployee.tax_credit_points, 2.25),
+          transport_allowance: toFiniteNumber(rawEmployee.transport_allowance, 0),
+          meal_allowance: toFiniteNumber(rawEmployee.meal_allowance, 0),
+          pension_employee_pct: toFiniteNumber(rawEmployee.pension_employee_pct, 6.0),
+          pension_employer_pct: toFiniteNumber(rawEmployee.pension_employer_pct, 6.5),
+          pension_severance_pct: toFiniteNumber(rawEmployee.pension_severance_pct, 6.0),
+          study_fund_employee_pct: toFiniteNumber(rawEmployee.study_fund_employee_pct, 0),
+          study_fund_employer_pct: toFiniteNumber(rawEmployee.study_fund_employer_pct, 0),
+        } as Employee;
+      });
+
+      setEmployees(normalizedEmployees);
       setLeaves(leaveRes.data || []);
       setPayrollRuns(payRes.data || []);
     } catch (e: any) {
@@ -395,16 +514,14 @@ function EmployeeEditDialog({ employee, open, onClose, onSaved }: {
   employee: Employee | null; open: boolean; onClose: () => void; onSaved: () => void;
 }) {
   const { toast } = useToast();
-  const [form, setForm] = useState<Partial<Employee>>(employee || {
-    name: "", email: "", phone: "", position: "", department: "",
-    employment_type: "monthly", monthly_salary: 0, hourly_rate: 0,
-    standard_monthly_hours: 182, tax_credit_points: 2.25,
-    transport_allowance: 0, meal_allowance: 0,
-    pension_employee_pct: 6.0, pension_employer_pct: 6.5, pension_severance_pct: 6.0,
-    study_fund_employee_pct: 0, study_fund_employer_pct: 0,
-    is_active: true, hire_date: null,
-  });
+  const [form, setForm] = useState<Partial<Employee>>(
+    normalizeEmployeeForForm(employee),
+  );
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(normalizeEmployeeForForm(employee));
+  }, [employee]);
 
   const set = <K extends keyof Employee>(k: K, v: Employee[K]) =>
     setForm(prev => ({ ...prev, [k]: v }));
@@ -415,7 +532,37 @@ function EmployeeEditDialog({ employee, open, onClose, onSaved }: {
     }
     setSaving(true);
     try {
-      const payload = { ...form };
+      const normalized = normalizeEmployeeForForm(form);
+      const payload = {
+        name: normalized.name?.trim(),
+        email: normalized.email || null,
+        phone: normalized.phone || null,
+        position: normalized.position || null,
+        department: normalized.department || null,
+        employment_type: normalizeEmploymentType(
+          normalized.employment_type,
+          toFiniteNumber(normalized.hourly_rate, 0),
+          toFiniteNumber(normalized.monthly_salary, 0),
+        ),
+        monthly_salary: toFiniteNumber(normalized.monthly_salary, 0),
+        hourly_rate: toFiniteNumber(normalized.hourly_rate, 0),
+        standard_monthly_hours: toFiniteNumber(normalized.standard_monthly_hours, 182),
+        tax_credit_points: toFiniteNumber(normalized.tax_credit_points, 2.25),
+        transport_allowance: toFiniteNumber(normalized.transport_allowance, 0),
+        meal_allowance: toFiniteNumber(normalized.meal_allowance, 0),
+        pension_employee_pct: toFiniteNumber(normalized.pension_employee_pct, 6.0),
+        pension_employer_pct: toFiniteNumber(normalized.pension_employer_pct, 6.5),
+        pension_severance_pct: toFiniteNumber(normalized.pension_severance_pct, 6.0),
+        study_fund_employee_pct: toFiniteNumber(normalized.study_fund_employee_pct, 0),
+        study_fund_employer_pct: toFiniteNumber(normalized.study_fund_employer_pct, 0),
+        is_active: normalized.is_active !== false,
+        hire_date: normalized.hire_date || null,
+        birth_date: normalized.birth_date || null,
+        termination_date: normalized.termination_date || null,
+        bank_account: normalized.bank_account || null,
+        id_number: normalized.id_number || null,
+        notes: normalized.notes || null,
+      };
       // Convert empty strings to null for date columns
       if (!payload.hire_date) payload.hire_date = null;
       if (!payload.birth_date) payload.birth_date = null;
@@ -428,6 +575,24 @@ function EmployeeEditDialog({ employee, open, onClose, onSaved }: {
         res = await sb.from("employees").insert(payload);
       }
       if (res.error) throw res.error;
+
+      const profileId = employee?.profile_id ?? employee?.user_id ?? null;
+      if (profileId) {
+        const { error: profileUpdateError } = await sb
+          .from("profiles")
+          .update({
+            full_name: payload.name,
+            phone: payload.phone,
+            department: payload.department,
+            position: payload.position,
+            hourly_rate: payload.hourly_rate,
+            is_active: payload.is_active,
+          })
+          .eq("id", profileId);
+
+        if (profileUpdateError) throw profileUpdateError;
+      }
+
       toast({ title: employee?.id ? "עודכן" : "נוצר", description: form.name });
       onSaved();
     } catch (e: any) {
