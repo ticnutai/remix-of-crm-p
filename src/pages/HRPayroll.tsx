@@ -28,18 +28,24 @@ import {
 } from "@/components/ui/table";
 import {
   Users, CalendarDays, Coins, FileSpreadsheet, Plus,
-  Edit2, Trash2, Download, AlertTriangle, CheckCircle2, Link2,
+  Edit2, Trash2, Download, AlertTriangle, CheckCircle2, Link2, ExternalLink,
 } from "lucide-react";
 import {
-  annualLeaveEntitlement, yearsOfService, calcPayroll,
-  workingDaysBetween, fmtNIS, LEAVE_TYPE_LABELS,
+  annualLeaveEntitlement,
+  yearsOfService,
+  calcPayrollWithLaw,
+  DEFAULT_PAYROLL_LAW_PROFILE,
+  type PayrollLawProfile,
+  workingDaysBetween,
+  fmtNIS,
+  LEAVE_TYPE_LABELS,
 } from "@/lib/payroll";
 import { exportToPDF } from "@/lib/pdf-export";
 import {
   OvertimeMode,
-  getMonthIsoWindow,
   summarizeAttendanceHours,
 } from "@/lib/attendancePayroll";
+import * as XLSX from "xlsx";
 
 // --- Types (loose — generated types may not include new tables yet) ----------
 interface Employee {
@@ -111,6 +117,24 @@ interface PayrollRun {
   status: "draft" | "final" | "paid" | "cancelled";
   notes: string | null;
   calculation_meta?: Record<string, any> | null;
+}
+
+interface PayrollLawVersion {
+  id: string;
+  version_name: string;
+  effective_from: string;
+  source_url_tax: string;
+  source_url_ni: string;
+  tax_credit_point_value: number;
+  income_tax_brackets: Array<{ upTo: number; rate: number }>;
+  ni_reduced_rate: number;
+  ni_full_rate: number;
+  health_reduced_rate: number;
+  health_full_rate: number;
+  ni_health_threshold: number;
+  ni_health_ceiling: number;
+  is_active: boolean;
+  approved_at: string | null;
 }
 
 const sb = supabase as any;
@@ -835,9 +859,21 @@ function PayrollTab({ employees, runs, onChanged }: {
   const { toast } = useToast();
   const navigate = useNavigate();
   const now = new Date();
+  const [workMonthStartDay, setWorkMonthStartDay] = useSyncedSetting<number>({
+    key: "payroll-work-month-start-day",
+    defaultValue: 1,
+  });
   const [overtimeModeDefault, setOvertimeModeDefault] = useSyncedSetting<OvertimeMode>({
     key: "payroll-overtime-default-mode",
     defaultValue: "manual",
+  });
+  const [internalSignatureEnabled, setInternalSignatureEnabled] = useSyncedSetting<boolean>({
+    key: "payroll-internal-signature-enabled",
+    defaultValue: true,
+  });
+  const [internalSignatureLabel, setInternalSignatureLabel] = useSyncedSetting<string>({
+    key: "payroll-internal-signature-label",
+    defaultValue: "נבדק פנימית",
   });
   const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
   const [year,  setYear]  = useState(now.getFullYear());
@@ -846,11 +882,15 @@ function PayrollTab({ employees, runs, onChanged }: {
   const [workedHours, setWorkedHours] = useState<number>(182);
   const [ot125, setOt125] = useState<number>(0);
   const [ot150, setOt150] = useState<number>(0);
+  const [vacationDays, setVacationDays] = useState<number>(0);
+  const [sickDays, setSickDays] = useState<number>(0);
   const [otherAdditions, setOtherAdditions] = useState<number>(0);
   const [otherDeductions, setOtherDeductions] = useState<number>(0);
   const [saving, setSaving] = useState(false);
-  const [loadingHours, setLoadingHours] = useState(false);
+  const [autoDrafting, setAutoDrafting] = useState(false);
+  const [loadingInputs, setLoadingInputs] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [activeLawVersion, setActiveLawVersion] = useState<PayrollLawVersion | null>(null);
   const [linkCandidates, setLinkCandidates] = useState<Array<{
     id: string;
     full_name: string | null;
@@ -869,6 +909,54 @@ function PayrollTab({ employees, runs, onChanged }: {
   }, [overtimeModeDefault, employeeId, year, month]);
 
   const emp = employees.find(e => e.id === employeeId);
+  const workWindow = useMemo(
+    () => getWorkMonthWindowByStartDay(year, month, workMonthStartDay),
+    [year, month, workMonthStartDay],
+  );
+
+  const lawProfile = useMemo<PayrollLawProfile>(() => {
+    if (!activeLawVersion) return DEFAULT_PAYROLL_LAW_PROFILE;
+    return {
+      tax_credit_point_value: Number(activeLawVersion.tax_credit_point_value || 248),
+      income_tax_brackets:
+        Array.isArray(activeLawVersion.income_tax_brackets) && activeLawVersion.income_tax_brackets.length > 0
+          ? activeLawVersion.income_tax_brackets
+          : DEFAULT_PAYROLL_LAW_PROFILE.income_tax_brackets,
+      ni_reduced_rate: Number(activeLawVersion.ni_reduced_rate || DEFAULT_PAYROLL_LAW_PROFILE.ni_reduced_rate),
+      ni_full_rate: Number(activeLawVersion.ni_full_rate || DEFAULT_PAYROLL_LAW_PROFILE.ni_full_rate),
+      health_reduced_rate: Number(activeLawVersion.health_reduced_rate || DEFAULT_PAYROLL_LAW_PROFILE.health_reduced_rate),
+      health_full_rate: Number(activeLawVersion.health_full_rate || DEFAULT_PAYROLL_LAW_PROFILE.health_full_rate),
+      ni_health_threshold: Number(activeLawVersion.ni_health_threshold || DEFAULT_PAYROLL_LAW_PROFILE.ni_health_threshold),
+      ni_health_ceiling: Number(activeLawVersion.ni_health_ceiling || DEFAULT_PAYROLL_LAW_PROFILE.ni_health_ceiling),
+    };
+  }, [activeLawVersion]);
+
+  const loadActiveLawVersion = useCallback(async () => {
+    try {
+      const { data, error } = await sb
+        .from("payroll_law_versions")
+        .select("*")
+        .eq("is_active", true)
+        .order("approved_at", { ascending: false })
+        .limit(1);
+
+      if (error) {
+        if (String(error.message || "").includes("does not exist")) return;
+        throw error;
+      }
+      setActiveLawVersion((data && data[0]) || null);
+    } catch (e: any) {
+      toast({
+        title: "אזהרה",
+        description: `לא ניתן לטעון גרסת חוק פעילה: ${e.message}`,
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    void loadActiveLawVersion();
+  }, [loadActiveLawVersion]);
 
   const loadLinkCandidates = useCallback(async () => {
     setLoadingLinkCandidates(true);
@@ -904,31 +992,47 @@ function PayrollTab({ employees, runs, onChanged }: {
     if (matched) setLinkUserId(matched.id);
   }, [linkDialogOpen, linkCandidates, emp?.email]);
 
-  const calc = useMemo(() => {
+  const buildCalc = useCallback((inputs: {
+    workedHours: number;
+    overtime125: number;
+    overtime150: number;
+    additions: number;
+    deductions: number;
+  }) => {
     if (!emp) return null;
     const basePay = emp.employment_type === "monthly"
       ? Number(emp.monthly_salary) || 0
-      : (Number(emp.hourly_rate) || 0) * workedHours;
-    return calcPayroll({
+      : (Number(emp.hourly_rate) || 0) * inputs.workedHours;
+
+    return calcPayrollWithLaw({
       basePay,
       hourlyRate: Number(emp.hourly_rate) || undefined,
-      overtime125Hours: ot125,
-      overtime150Hours: ot150,
+      overtime125Hours: inputs.overtime125,
+      overtime150Hours: inputs.overtime150,
       transport: Number(emp.transport_allowance) || 0,
-      meal:      Number(emp.meal_allowance) || 0,
-      otherAdditions,
-      otherDeductions,
-      pensionEmployeePct:  Number(emp.pension_employee_pct),
-      pensionEmployerPct:  Number(emp.pension_employer_pct),
+      meal: Number(emp.meal_allowance) || 0,
+      otherAdditions: inputs.additions,
+      otherDeductions: inputs.deductions,
+      pensionEmployeePct: Number(emp.pension_employee_pct),
+      pensionEmployerPct: Number(emp.pension_employer_pct),
       pensionSeverancePct: Number(emp.pension_severance_pct),
-      studyEmployeePct:    Number(emp.study_fund_employee_pct),
-      studyEmployerPct:    Number(emp.study_fund_employer_pct),
-      taxCreditPoints:     Number(emp.tax_credit_points),
-    });
-  }, [emp, workedHours, ot125, ot150, otherAdditions, otherDeductions]);
+      studyEmployeePct: Number(emp.study_fund_employee_pct),
+      studyEmployerPct: Number(emp.study_fund_employer_pct),
+      taxCreditPoints: Number(emp.tax_credit_points),
+    }, lawProfile);
+  }, [emp, lawProfile]);
 
-  // Pull worked hours from attendance_records for the selected month
-  const fetchHoursFromAttendance = async () => {
+  const calc = useMemo(() => {
+    return buildCalc({
+      workedHours,
+      overtime125: ot125,
+      overtime150: ot150,
+      additions: otherAdditions,
+      deductions: otherDeductions,
+    });
+  }, [buildCalc, workedHours, ot125, ot150, otherAdditions, otherDeductions]);
+
+  const fetchPayrollInputs = useCallback(async (apply = true) => {
     if (!emp?.user_id) {
       toast({
         title: "אין user_id מקושר",
@@ -936,48 +1040,85 @@ function PayrollTab({ employees, runs, onChanged }: {
         variant: "destructive",
       });
       setLinkDialogOpen(true);
-      return;
+      return null;
     }
-    setLoadingHours(true);
+    setLoadingInputs(true);
     try {
-      const { from, to } = getMonthIsoWindow(year, month);
+      const fromIso = workWindow.from.toISOString();
+      const toIso = workWindow.to.toISOString();
       const { data, error } = await sb.from("attendance_records")
         .select("user_id, clock_in, clock_out, duration_minutes")
         .eq("user_id", emp.user_id)
-        .gte("clock_in", from)
-        .lte("clock_in", to)
+        .gte("clock_in", fromIso)
+        .lte("clock_in", toIso)
         .not("clock_out", "is", null)
         .not("duration_minutes", "is", null);
       if (error) throw error;
       const summary = summarizeAttendanceHours((data || []) as any[]);
 
+      const leavesRes = await sb
+        .from("employee_leaves")
+        .select("leave_type, start_date, end_date, status")
+        .eq("employee_id", emp.id)
+        .eq("status", "approved")
+        .lte("start_date", workWindow.toDate)
+        .gte("end_date", workWindow.fromDate);
+
+      if (leavesRes.error) throw leavesRes.error;
+
+      const leaveRows = (leavesRes.data || []) as Array<{
+        leave_type: string;
+        start_date: string;
+        end_date: string;
+      }>;
+
+      const vacationAuto = leaveRows
+        .filter((row) => row.leave_type === "vacation")
+        .reduce((acc, row) => acc + overlapWorkingDaysInRange(row.start_date, row.end_date, workWindow.fromDate, workWindow.toDate), 0);
+
+      const sickAuto = leaveRows
+        .filter((row) => row.leave_type === "sick")
+        .reduce((acc, row) => acc + overlapWorkingDaysInRange(row.start_date, row.end_date, workWindow.fromDate, workWindow.toDate), 0);
+
+      let resolvedWorkedHours = summary.totalHours;
+      let resolvedOt125 = ot125;
+      let resolvedOt150 = ot150;
+
       if (overtimeMode === "auto") {
-        setWorkedHours(summary.regularHours);
-        setOt125(summary.overtime125Hours);
-        setOt150(summary.overtime150Hours);
-        toast({
-          title: "נטען מנוכחות",
-          description: `${summary.totalHours} ש' סה"כ | רגילות ${summary.regularHours} | 125% ${summary.overtime125Hours} | 150% ${summary.overtime150Hours}`,
-        });
+        resolvedWorkedHours = summary.regularHours;
+        resolvedOt125 = summary.overtime125Hours;
+        resolvedOt150 = summary.overtime150Hours;
       } else if (overtimeMode === "none") {
-        setWorkedHours(summary.totalHours);
-        setOt125(0);
-        setOt150(0);
-        toast({
-          title: "נטען מנוכחות",
-          description: `${summary.totalHours} ש' נטענו. שעות נוספות אופסו לפי מצב "ללא".`,
-        });
-      } else {
-        setWorkedHours(summary.totalHours);
-        toast({
-          title: "נטען מנוכחות",
-          description: `${summary.totalHours} ש' נטענו. שעות נוספות נשארו ידניות.`,
-        });
+        resolvedWorkedHours = summary.totalHours;
+        resolvedOt125 = 0;
+        resolvedOt150 = 0;
       }
+
+      if (apply) {
+        setWorkedHours(resolvedWorkedHours);
+        setOt125(resolvedOt125);
+        setOt150(resolvedOt150);
+        setVacationDays(vacationAuto);
+        setSickDays(sickAuto);
+      }
+
+      toast({
+        title: "נתוני תלוש נטענו",
+        description: `${summary.totalHours} ש' | חופשה ${vacationAuto} | מחלה ${sickAuto} | טווח ${workWindow.label}`,
+      });
+
+      return {
+        workedHours: resolvedWorkedHours,
+        overtime125: resolvedOt125,
+        overtime150: resolvedOt150,
+        vacationDays: vacationAuto,
+        sickDays: sickAuto,
+      };
     } catch (e: any) {
       toast({ title: "שגיאה", description: e.message, variant: "destructive" });
-    } finally { setLoadingHours(false); }
-  };
+      return null;
+    } finally { setLoadingInputs(false); }
+  }, [emp, ot125, ot150, overtimeMode, toast, workWindow]);
 
   const handleLinkEmployeeUser = async () => {
     if (!emp?.id || !linkUserId) {
@@ -1000,46 +1141,117 @@ function PayrollTab({ employees, runs, onChanged }: {
     }
   };
 
-  const handleSaveRun = async (status: "draft" | "final") => {
-    if (!emp || !calc) return;
+  const handleSaveRun = async (
+    status: "draft" | "final",
+    overrides?: {
+      workedHours: number;
+      overtime125: number;
+      overtime150: number;
+      vacationDays: number;
+      sickDays: number;
+    },
+    sourceType: "manual" | "attendance_auto" = "manual",
+  ) => {
+    if (!emp) return;
+
+    const resolved = {
+      workedHours: overrides?.workedHours ?? workedHours,
+      overtime125: overrides?.overtime125 ?? ot125,
+      overtime150: overrides?.overtime150 ?? ot150,
+      vacationDays: overrides?.vacationDays ?? vacationDays,
+      sickDays: overrides?.sickDays ?? sickDays,
+      additions: otherAdditions,
+      deductions: otherDeductions,
+    };
+
+    const calcSnapshot = buildCalc({
+      workedHours: resolved.workedHours,
+      overtime125: resolved.overtime125,
+      overtime150: resolved.overtime150,
+      additions: resolved.additions,
+      deductions: resolved.deductions,
+    });
+
+    if (!calcSnapshot) return;
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const signatureMeta = internalSignatureEnabled
+        ? {
+            signed: true,
+            signature_label: internalSignatureLabel || "נבדק פנימית",
+            signed_by: user?.id || null,
+            signed_at: new Date().toISOString(),
+          }
+        : {
+            signed: false,
+          };
+
       const payload = {
         employee_id: emp.id,
         period_year: year,
         period_month: month,
-        worked_hours: workedHours,
-        overtime_hours_125: ot125,
-        overtime_hours_150: ot150,
-        base_pay: calc.base_pay,
-        overtime_pay: calc.overtime_pay,
-        transport: calc.transport,
-        meal: calc.meal,
-        other_additions: calc.other_additions,
-        gross_total: calc.gross_total,
-        pensionable_base: calc.pensionable_base,
-        pension_employee:  calc.pension.employee,
-        pension_employer:  calc.pension.employer,
-        pension_severance: calc.pension.severance,
-        study_fund_employee: calc.pension.study_employee,
-        study_fund_employer: calc.pension.study_employer,
-        income_tax: calc.income_tax,
-        national_insurance: calc.national_insurance,
-        health_tax: calc.health_tax,
-        other_deductions: calc.other_deductions,
-        net_total: calc.net_total,
-        employer_total_cost: calc.employer_total_cost,
+        worked_hours: resolved.workedHours,
+        overtime_hours_125: resolved.overtime125,
+        overtime_hours_150: resolved.overtime150,
+        vacation_days: resolved.vacationDays,
+        sick_days: resolved.sickDays,
+        base_pay: calcSnapshot.base_pay,
+        overtime_pay: calcSnapshot.overtime_pay,
+        transport: calcSnapshot.transport,
+        meal: calcSnapshot.meal,
+        other_additions: calcSnapshot.other_additions,
+        gross_total: calcSnapshot.gross_total,
+        pensionable_base: calcSnapshot.pensionable_base,
+        pension_employee:  calcSnapshot.pension.employee,
+        pension_employer:  calcSnapshot.pension.employer,
+        pension_severance: calcSnapshot.pension.severance,
+        study_fund_employee: calcSnapshot.pension.study_employee,
+        study_fund_employer: calcSnapshot.pension.study_employer,
+        income_tax: calcSnapshot.income_tax,
+        national_insurance: calcSnapshot.national_insurance,
+        health_tax: calcSnapshot.health_tax,
+        other_deductions: calcSnapshot.other_deductions,
+        net_total: calcSnapshot.net_total,
+        employer_total_cost: calcSnapshot.employer_total_cost,
         status,
         created_by: user?.id || null,
         calculation_meta: {
           computed_at: new Date().toISOString(),
-          source: "attendance_records",
+          source: sourceType === "attendance_auto" ? "attendance_records" : "manual",
           source_filters: "closed_records_with_duration",
-          attendance_window: { year, month },
+          attendance_window: {
+            year,
+            month,
+            from: workWindow.fromDate,
+            to: workWindow.toDate,
+            start_day: workMonthStartDay,
+          },
           overtime_mode: overtimeMode,
-          overtime_hours_125: ot125,
-          overtime_hours_150: ot150,
+          overtime_hours_125: resolved.overtime125,
+          overtime_hours_150: resolved.overtime150,
+          leave_days: {
+            vacation_days: resolved.vacationDays,
+            sick_days: resolved.sickDays,
+          },
+          law_profile: activeLawVersion
+            ? {
+                id: activeLawVersion.id,
+                version_name: activeLawVersion.version_name,
+                effective_from: activeLawVersion.effective_from,
+                source_url_tax: activeLawVersion.source_url_tax,
+                source_url_ni: activeLawVersion.source_url_ni,
+              }
+            : {
+                version_name: "default-2026",
+                source_url_tax: "https://www.taxes.gov.il",
+                source_url_ni: "https://www.btl.gov.il",
+              },
+          internal_signature: signatureMeta,
+          compliance_note:
+            "חישוב משוער לשימוש תפעולי בלבד. לפני תשלום בפועל יש לאמת מול חשב שכר/רו\"ח.",
         },
       };
       const { error } = await sb.from("payroll_runs")
@@ -1050,6 +1262,18 @@ function PayrollTab({ employees, runs, onChanged }: {
     } catch (e: any) {
       toast({ title: "שגיאה", description: e.message, variant: "destructive" });
     } finally { setSaving(false); }
+  };
+
+  const handleGenerateDraft = async () => {
+    if (!emp) return;
+    setAutoDrafting(true);
+    try {
+      const loaded = await fetchPayrollInputs(true);
+      if (!loaded) return;
+      await handleSaveRun("draft", loaded, "attendance_auto");
+    } finally {
+      setAutoDrafting(false);
+    }
   };
 
   const getRunMetadata = (run: PayrollRun) => {
@@ -1078,6 +1302,8 @@ function PayrollTab({ employees, runs, onChanged }: {
       overtimeModeLabel,
       sourceFilters: String(meta.source_filters || ""),
       computedAt: meta.computed_at ? String(meta.computed_at) : null,
+      signature: meta.internal_signature || null,
+      complianceNote: String(meta.compliance_note || ""),
     };
   };
 
@@ -1099,6 +1325,8 @@ function PayrollTab({ employees, runs, onChanged }: {
             ["שעות עבודה", `${Number(run.worked_hours || 0).toFixed(2)}`],
             ["שעות נוספות 125%", `${Number(run.overtime_hours_125 || 0).toFixed(2)}`],
             ["שעות נוספות 150%", `${Number(run.overtime_hours_150 || 0).toFixed(2)}`],
+            ["ימי חופשה", `${Number(run.vacation_days || 0).toFixed(2)}`],
+            ["ימי מחלה", `${Number(run.sick_days || 0).toFixed(2)}`],
             ["שכר בסיס", fmtNIS(Number(run.base_pay || 0))],
             ["שעות נוספות (תשלום)", fmtNIS(Number(run.overtime_pay || 0))],
             ["נסיעות", fmtNIS(Number(run.transport || 0))],
@@ -1124,7 +1352,19 @@ function PayrollTab({ employees, runs, onChanged }: {
         type: "text",
         content: `חושב בתאריך: ${metadata.computedAt || "לא זמין"}`,
       },
+      {
+        type: "text",
+        content: `חתימה פנימית: ${metadata.signature?.signed ? "כן" : "לא"}`,
+      },
+      {
+        type: "text",
+        content: `תווית חתימה: ${metadata.signature?.signature_label || "-"}`,
+      },
       { type: "text", content: `סטטוס תלוש: ${run.status}` },
+      {
+        type: "text",
+        content: metadata.complianceNote || "חישוב משוער - נדרש אימות חשב שכר.",
+      },
     ] as any;
 
     exportToPDF(sections, {
@@ -1145,13 +1385,74 @@ function PayrollTab({ employees, runs, onChanged }: {
     navigate(`/attendance/admin?${params.toString()}`);
   };
 
+  const exportPayrollRunCsv = (run: PayrollRun) => {
+    const employee = employees.find((item) => item.id === run.employee_id);
+    const metadata = getRunMetadata(run);
+    const rows = [
+      ["עובד", employee?.name || "—"],
+      ["תקופה", `${run.period_month}/${run.period_year}`],
+      ["שעות עבודה", Number(run.worked_hours || 0).toFixed(2)],
+      ["שעות נוספות 125%", Number(run.overtime_hours_125 || 0).toFixed(2)],
+      ["שעות נוספות 150%", Number(run.overtime_hours_150 || 0).toFixed(2)],
+      ["ימי חופשה", Number(run.vacation_days || 0).toFixed(2)],
+      ["ימי מחלה", Number(run.sick_days || 0).toFixed(2)],
+      ["ברוטו", Number(run.gross_total || 0).toFixed(2)],
+      ["נטו", Number(run.net_total || 0).toFixed(2)],
+      ["סטטוס", run.status],
+      ["חתימה פנימית", metadata.signature?.signed ? "כן" : "לא"],
+      ["תווית חתימה", metadata.signature?.signature_label || ""],
+      ["חושב בתאריך", metadata.computedAt || ""],
+    ];
+
+    const csv = "\uFEFF" + rows.map((row) => row.map((col) => `\"${String(col).replace(/\"/g, "\"\"")}\"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payroll_${employee?.name || run.employee_id}_${run.period_year}_${String(run.period_month).padStart(2, "0")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportPayrollRunExcel = (run: PayrollRun) => {
+    const employee = employees.find((item) => item.id === run.employee_id);
+    const metadata = getRunMetadata(run);
+    const data = [
+      { item: "עובד", value: employee?.name || "—" },
+      { item: "תקופה", value: `${run.period_month}/${run.period_year}` },
+      { item: "שעות עבודה", value: Number(run.worked_hours || 0).toFixed(2) },
+      { item: "שעות נוספות 125%", value: Number(run.overtime_hours_125 || 0).toFixed(2) },
+      { item: "שעות נוספות 150%", value: Number(run.overtime_hours_150 || 0).toFixed(2) },
+      { item: "ימי חופשה", value: Number(run.vacation_days || 0).toFixed(2) },
+      { item: "ימי מחלה", value: Number(run.sick_days || 0).toFixed(2) },
+      { item: "ברוטו", value: Number(run.gross_total || 0).toFixed(2) },
+      { item: "נטו", value: Number(run.net_total || 0).toFixed(2) },
+      { item: "סטטוס", value: run.status },
+      { item: "חתימה פנימית", value: metadata.signature?.signed ? "כן" : "לא" },
+      { item: "תווית חתימה", value: metadata.signature?.signature_label || "" },
+      { item: "חושב בתאריך", value: metadata.computedAt || "" },
+    ];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Payslip");
+    XLSX.writeFile(wb, `payroll_${employee?.name || run.employee_id}_${run.period_year}_${String(run.period_month).padStart(2, "0")}.xlsx`);
+  };
+
   return (
     <>
+      <div className="rounded-md border bg-amber-50 border-amber-300 p-3 text-sm flex items-start gap-2">
+        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+        <div>
+          <strong>הערת תאימות:</strong> החישוב הוא משוער תפעולית. לפני תשלום בפועל נדרש אימות מול חשב שכר/רו"ח.
+        </div>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>חישוב שכר חודשי</CardTitle>
-          <CardDescription>בחר עובד וחודש לחישוב משוער של ברוטו, נטו והפרשות.</CardDescription>
+          <CardTitle>יצירת תלוש אוטומטית</CardTitle>
+          <CardDescription>
+            כפתור אחד יחשב שעות, חופשה/מחלה, שכר והפרשות לפי נתוני המערכת וישמור כטיוטה.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <Field label="עובד">
@@ -1171,6 +1472,20 @@ function PayrollTab({ employees, runs, onChanged }: {
             <Field label="חודש">
               <Input type="number" min={1} max={12} value={month}
                      onChange={e => setMonth(Number(e.target.value))} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="תחילת חודש עבודה">
+              <Input
+                type="number"
+                min={1}
+                max={28}
+                value={workMonthStartDay}
+                onChange={e => setWorkMonthStartDay(Math.min(28, Math.max(1, Number(e.target.value) || 1)))}
+              />
+            </Field>
+            <Field label="טווח מחושב">
+              <Input value={workWindow.label} readOnly />
             </Field>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1211,8 +1526,8 @@ function PayrollTab({ employees, runs, onChanged }: {
               <Input type="number" step="0.5" value={workedHours}
                      onChange={e => setWorkedHours(Number(e.target.value))} />
             </Field>
-            <Button variant="outline" onClick={fetchHoursFromAttendance} disabled={loadingHours}>
-              {loadingHours ? "..." : "משוך מנוכחות"}
+            <Button variant="outline" onClick={() => fetchPayrollInputs(true)} disabled={loadingInputs}>
+              {loadingInputs ? "..." : "משוך נוכחות+חופשות"}
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -1226,6 +1541,16 @@ function PayrollTab({ employees, runs, onChanged }: {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-2">
+            <Field label="ימי חופשה (ניתן לתיקון ידני)">
+              <Input type="number" step="0.5" value={vacationDays}
+                     onChange={e => setVacationDays(Number(e.target.value))} />
+            </Field>
+            <Field label="ימי מחלה (ניתן לתיקון ידני)">
+              <Input type="number" step="0.5" value={sickDays}
+                     onChange={e => setSickDays(Number(e.target.value))} />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <Field label="תוספות נוספות (₪)">
               <Input type="number" value={otherAdditions}
                      onChange={e => setOtherAdditions(Number(e.target.value))} />
@@ -1235,7 +1560,49 @@ function PayrollTab({ employees, runs, onChanged }: {
                      onChange={e => setOtherDeductions(Number(e.target.value))} />
             </Field>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="חתימה פנימית">
+              <Select
+                value={internalSignatureEnabled ? "enabled" : "disabled"}
+                onValueChange={(v) => setInternalSignatureEnabled(v === "enabled")}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="enabled">פעילה</SelectItem>
+                  <SelectItem value="disabled">כבויה</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="תווית חתימה">
+              <Input
+                value={internalSignatureLabel}
+                onChange={(e) => setInternalSignatureLabel(e.target.value)}
+                placeholder="נבדק פנימית"
+              />
+            </Field>
+          </div>
+          <div className="rounded-md border p-2 text-xs text-muted-foreground space-y-1">
+            <div className="font-medium text-foreground">מקורות רשמיים פעילים:</div>
+            <div className="flex items-center gap-2">
+              <a className="underline" href={activeLawVersion?.source_url_tax || "https://www.taxes.gov.il"} target="_blank" rel="noreferrer">
+                רשות המסים
+              </a>
+              <ExternalLink className="h-3 w-3" />
+            </div>
+            <div className="flex items-center gap-2">
+              <a className="underline" href={activeLawVersion?.source_url_ni || "https://www.btl.gov.il"} target="_blank" rel="noreferrer">
+                ביטוח לאומי
+              </a>
+              <ExternalLink className="h-3 w-3" />
+            </div>
+            <div>
+              גרסת חוק פעילה: {activeLawVersion?.version_name || "ברירת מחדל 2026"}
+            </div>
+          </div>
           <div className="flex gap-2 pt-2">
+            <Button onClick={handleGenerateDraft} disabled={saving || autoDrafting || loadingInputs}>
+              {autoDrafting ? "מייצר..." : "צור תלוש אוטומטי (טיוטה)"}
+            </Button>
             <Button onClick={() => handleSaveRun("draft")} disabled={saving} variant="outline">
               שמור כטיוטה
             </Button>
@@ -1258,6 +1625,8 @@ function PayrollTab({ employees, runs, onChanged }: {
             <div className="space-y-1 text-sm">
               <Row label='שכר בסיס' value={fmtNIS(calc.base_pay)} />
               <Row label='שעות נוספות' value={fmtNIS(calc.overtime_pay)} />
+              <Row label='ימי חופשה' value={String(vacationDays)} muted />
+              <Row label='ימי מחלה' value={String(sickDays)} muted />
               <Row label='נסיעות' value={fmtNIS(calc.transport)} />
               <Row label='ארוחות' value={fmtNIS(calc.meal)} />
               <Row label='תוספות נוספות' value={fmtNIS(calc.other_additions)} />
@@ -1278,6 +1647,9 @@ function PayrollTab({ employees, runs, onChanged }: {
               <hr className="my-2" />
               <Row label="נטו לתשלום" value={fmtNIS(calc.net_total)} bold large />
               <Row label="עלות מעביד כוללת" value={fmtNIS(calc.employer_total_cost)} bold />
+              <div className="text-xs text-muted-foreground pt-2">
+                גרסת חוק: {activeLawVersion?.version_name || "ברירת מחדל 2026"}
+              </div>
             </div>
           ) : (
             <div className="text-muted-foreground text-sm">בחר עובד להצגת חישוב.</div>
@@ -1329,6 +1701,7 @@ function PayrollTab({ employees, runs, onChanged }: {
                         <div className="flex flex-wrap gap-1">
                           <Badge variant="outline">{metadata.sourceLabel}</Badge>
                           <Badge variant="secondary">{metadata.overtimeModeLabel}</Badge>
+                          {metadata.signature?.signed && <Badge variant="default">חתום פנימית</Badge>}
                         </div>
                       </TableCell>
                       <TableCell>{fmtNIS(Number(r.gross_total))}</TableCell>
@@ -1342,13 +1715,17 @@ function PayrollTab({ employees, runs, onChanged }: {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => exportPayrollRunPdf(r)}
-                        >
-                          <Download className="h-4 w-4 ml-1" /> PDF
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" onClick={() => exportPayrollRunPdf(r)}>
+                            <Download className="h-4 w-4 ml-1" /> PDF
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => exportPayrollRunCsv(r)}>
+                            CSV
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => exportPayrollRunExcel(r)}>
+                            Excel
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -1404,6 +1781,40 @@ function PayrollTab({ employees, runs, onChanged }: {
       </Dialog>
     </>
   );
+}
+
+function getWorkMonthWindowByStartDay(year: number, month: number, startDayRaw: number) {
+  const startDay = Math.min(28, Math.max(1, Number(startDayRaw) || 1));
+  const from = new Date(year, month - 1, startDay, 0, 0, 0, 0);
+  const to = new Date(year, month, startDay, 0, 0, 0, 0);
+  to.setMilliseconds(to.getMilliseconds() - 1);
+
+  return {
+    from,
+    to,
+    fromDate: toISODateOnly(from),
+    toDate: toISODateOnly(to),
+    label: `${toISODateOnly(from)} - ${toISODateOnly(to)}`,
+  };
+}
+
+function toISODateOnly(value: Date) {
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function overlapWorkingDaysInRange(
+  leaveStart: string,
+  leaveEnd: string,
+  rangeStart: string,
+  rangeEnd: string,
+) {
+  const from = leaveStart > rangeStart ? leaveStart : rangeStart;
+  const to = leaveEnd < rangeEnd ? leaveEnd : rangeEnd;
+  if (to < from) return 0;
+  return workingDaysBetween(from, to);
 }
 
 function Row({ label, value, bold, muted, large }: {

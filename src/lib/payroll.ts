@@ -40,6 +40,28 @@ export const STANDARD_MONTHLY_HOURS = 182;
 /** Daily wage divisor for monthly employees. */
 export const WORK_DAYS_PER_MONTH = 22;
 
+export interface PayrollLawProfile {
+  tax_credit_point_value: number;
+  income_tax_brackets: Array<{ upTo: number; rate: number }>;
+  ni_reduced_rate: number;
+  ni_full_rate: number;
+  health_reduced_rate: number;
+  health_full_rate: number;
+  ni_health_threshold: number;
+  ni_health_ceiling: number;
+}
+
+export const DEFAULT_PAYROLL_LAW_PROFILE: PayrollLawProfile = {
+  tax_credit_point_value: TAX_CREDIT_POINT_VALUE,
+  income_tax_brackets: INCOME_TAX_BRACKETS,
+  ni_reduced_rate: NI_REDUCED_RATE,
+  ni_full_rate: NI_FULL_RATE,
+  health_reduced_rate: HEALTH_REDUCED_RATE,
+  health_full_rate: HEALTH_FULL_RATE,
+  ni_health_threshold: NI_HEALTH_THRESHOLD,
+  ni_health_ceiling: NI_HEALTH_CEILING,
+};
+
 // ---------- Annual leave entitlement (Israeli law, 5-day week) ----------
 
 /** Returns annual vacation entitlement in working days, given years of service. */
@@ -73,9 +95,16 @@ export function yearsOfService(hireDate: Date | string | null, ref: Date = new D
 
 /** Compute progressive monthly income tax on a gross amount. */
 export function calcIncomeTaxRaw(monthlyGross: number): number {
+  return calcIncomeTaxRawWithBrackets(monthlyGross, INCOME_TAX_BRACKETS);
+}
+
+export function calcIncomeTaxRawWithBrackets(
+  monthlyGross: number,
+  brackets: Array<{ upTo: number; rate: number }>,
+): number {
   let tax = 0;
   let prev = 0;
-  for (const b of INCOME_TAX_BRACKETS) {
+  for (const b of brackets) {
     if (monthlyGross <= prev) break;
     const slice = Math.min(monthlyGross, b.upTo) - prev;
     tax += slice * b.rate;
@@ -87,7 +116,15 @@ export function calcIncomeTaxRaw(monthlyGross: number): number {
 
 /** Apply tax credit points (each point reduces tax by the point value). */
 export function applyCreditPoints(rawTax: number, creditPoints: number): number {
-  const reduction = (creditPoints || 0) * TAX_CREDIT_POINT_VALUE;
+  return applyCreditPointsWithValue(rawTax, creditPoints, TAX_CREDIT_POINT_VALUE);
+}
+
+export function applyCreditPointsWithValue(
+  rawTax: number,
+  creditPoints: number,
+  pointValue: number,
+): number {
+  const reduction = (creditPoints || 0) * pointValue;
   return Math.max(0, rawTax - reduction);
 }
 
@@ -96,11 +133,27 @@ export function calcNationalInsuranceAndHealth(monthlyGross: number): {
   national_insurance: number;
   health_tax: number;
 } {
-  const reducedBase = Math.min(monthlyGross, NI_HEALTH_THRESHOLD);
-  const fullBase    = Math.max(0, Math.min(monthlyGross, NI_HEALTH_CEILING) - NI_HEALTH_THRESHOLD);
+  return calcNationalInsuranceAndHealthWithRates(
+    monthlyGross,
+    DEFAULT_PAYROLL_LAW_PROFILE,
+  );
+}
+
+export function calcNationalInsuranceAndHealthWithRates(
+  monthlyGross: number,
+  law: PayrollLawProfile,
+): {
+  national_insurance: number;
+  health_tax: number;
+} {
+  const reducedBase = Math.min(monthlyGross, law.ni_health_threshold);
+  const fullBase = Math.max(
+    0,
+    Math.min(monthlyGross, law.ni_health_ceiling) - law.ni_health_threshold,
+  );
   return {
-    national_insurance: reducedBase * NI_REDUCED_RATE + fullBase * NI_FULL_RATE,
-    health_tax:         reducedBase * HEALTH_REDUCED_RATE + fullBase * HEALTH_FULL_RATE,
+    national_insurance: reducedBase * law.ni_reduced_rate + fullBase * law.ni_full_rate,
+    health_tax: reducedBase * law.health_reduced_rate + fullBase * law.health_full_rate,
   };
 }
 
@@ -199,6 +252,13 @@ export interface PayrollResult {
 
 /** Compute a full monthly payroll snapshot. APPROXIMATE. */
 export function calcPayroll(inputs: PayrollInputs): PayrollResult {
+  return calcPayrollWithLaw(inputs, DEFAULT_PAYROLL_LAW_PROFILE);
+}
+
+export function calcPayrollWithLaw(
+  inputs: PayrollInputs,
+  law: PayrollLawProfile = DEFAULT_PAYROLL_LAW_PROFILE,
+): PayrollResult {
   const base_pay = inputs.basePay || 0;
   const hourlyRate = inputs.hourlyRate ?? (base_pay > 0 ? base_pay / STANDARD_MONTHLY_HOURS : 0);
   const ot125 = (inputs.overtime125Hours || 0) * hourlyRate * 1.25;
@@ -221,9 +281,13 @@ export function calcPayroll(inputs: PayrollInputs): PayrollResult {
     studyEmployerPct: inputs.studyEmployerPct,
   });
 
-  const rawTax = calcIncomeTaxRaw(gross_total);
-  const income_tax = applyCreditPoints(rawTax, inputs.taxCreditPoints ?? 2.25);
-  const ni = calcNationalInsuranceAndHealth(gross_total);
+  const rawTax = calcIncomeTaxRawWithBrackets(gross_total, law.income_tax_brackets);
+  const income_tax = applyCreditPointsWithValue(
+    rawTax,
+    inputs.taxCreditPoints ?? 2.25,
+    law.tax_credit_point_value,
+  );
+  const ni = calcNationalInsuranceAndHealthWithRates(gross_total, law);
   const other_deductions = inputs.otherDeductions || 0;
 
   const total_deductions =

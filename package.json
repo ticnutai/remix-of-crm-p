@@ -36,7 +36,8 @@
     "sync:pull": "pwsh -File sync-pull.ps1",
     "sync:full": "pwsh -File sync-full.ps1",
     "sync:status": "pwsh -File sync-status.ps1",
-    "sync": "npm run sync:full"
+    "sync": "npm run sync:full",
+    "sync:payroll-law": "node scripts/sync-official-payroll-law.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
