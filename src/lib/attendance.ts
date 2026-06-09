@@ -958,6 +958,13 @@ export function exportTimesheetPdf(
   employeeName?: string,
   signed?: boolean,
 ) {
+  const summary = summarizeMonth(records);
+  const shiftsCount = records.filter((record) => !!record.clock_out).length;
+  const missingClockOuts = records.filter((record) => !record.clock_out).length;
+  const resolvedEmployeeName = employeeName
+    ?? records.find((record) => record.profile?.full_name)?.profile?.full_name
+    ?? "עובד";
+
   const headers = ["תאריך", "כניסה", "יציאה", "הפסקה", "סה״כ", "סוג יום", "הערות"];
   const rows = records.map((r) => [
     r.work_date ?? (r.clock_in ?? "").slice(0, 10),
@@ -969,9 +976,22 @@ export function exportTimesheetPdf(
     r.notes ?? "",
   ]);
 
+  const summaryItems = [
+    { label: "שם עובד", value: resolvedEmployeeName },
+    { label: "חודש עבודה", value: monthLabel },
+    { label: "סה״כ משמרות", value: String(shiftsCount) },
+    { label: "סה״כ שעות", value: formatMinutes(summary.totalMinutes) },
+    { label: "סה״כ הפסקות", value: formatMinutes(summary.breakMinutes) },
+    { label: "סה״כ שעות נוספות", value: formatMinutes(summary.overtimeMinutes) },
+    { label: "חוסרי יציאה", value: String(missingClockOuts) },
+    { label: "ימי חופשה", value: String(summary.vacationDays) },
+    { label: "ימי מחלה", value: String(summary.sickDays) },
+  ];
+
   const html = buildAttendancePdfHtml({
     title: "דוח שעות חודשי",
-    subtitle: `${employeeName ?? "עובד"} | חודש עבודה: ${monthLabel}`,
+    subtitle: `${resolvedEmployeeName} | חודש עבודה: ${monthLabel}`,
+    summaryItems,
     headers,
     rows,
     footerNote: signed
@@ -979,7 +999,7 @@ export function exportTimesheetPdf(
       : undefined,
   });
 
-  const safeEmployee = sanitizeForFilename(employeeName ?? "user");
+  const safeEmployee = sanitizeForFilename(resolvedEmployeeName);
   void downloadPdf(html, `timesheet_${safeEmployee}_${sanitizeForFilename(monthLabel)}.pdf`, {
     orientation: "landscape",
     margin: 8,
@@ -991,12 +1011,14 @@ export function exportTimesheetPdf(
 function buildAttendancePdfHtml({
   title,
   subtitle,
+  summaryItems,
   headers,
   rows,
   footerNote,
 }: {
   title: string;
   subtitle?: string;
+  summaryItems?: Array<{ label: string; value: string }>;
   headers: string[];
   rows: string[][];
   footerNote?: string;
@@ -1017,6 +1039,28 @@ function buildAttendancePdfHtml({
         margin: 0 0 14px;
         color: #475569;
         font-size: 13px;
+      }
+      .attendance-pdf .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0 0 12px;
+      }
+      .attendance-pdf .summary-item {
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px;
+        background: #f8fafc;
+      }
+      .attendance-pdf .summary-label {
+        font-size: 11px;
+        color: #475569;
+        margin-bottom: 3px;
+      }
+      .attendance-pdf .summary-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0f172a;
       }
       .attendance-pdf table {
         width: 100%;
@@ -1050,6 +1094,14 @@ function buildAttendancePdfHtml({
     <div class="attendance-pdf">
       <h2>${escapeHtml(title)}</h2>
       ${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ""}
+      ${summaryItems && summaryItems.length > 0
+        ? `<div class="summary-grid">${summaryItems.map((item) => `
+            <div class="summary-item">
+              <div class="summary-label">${escapeHtml(item.label)}</div>
+              <div class="summary-value">${escapeHtml(item.value)}</div>
+            </div>
+          `).join("")}</div>`
+        : ""}
       <table>
         <thead>
           <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
