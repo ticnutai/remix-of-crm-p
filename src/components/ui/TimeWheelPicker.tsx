@@ -133,7 +133,7 @@ export const TimeWheelPicker: React.FC<TimeWheelPickerProps> = ({
       <PopoverContent
         align="end"
         sideOffset={4}
-        className="p-0 w-auto z-[70]"
+        className="p-0 w-auto min-w-0 min-h-0 max-w-fit max-h-[80vh] resize-none overflow-hidden z-[70]"
         style={{ borderColor: accent.gold }}
       >
         <div className="flex" dir="ltr">
