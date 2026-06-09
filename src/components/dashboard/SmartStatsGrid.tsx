@@ -556,7 +556,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
             <Settings2 className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56" dir="rtl">
+        <DropdownMenuContent align="end" className="w-56 rtl">
           <DropdownMenuLabel className="text-right">בחירת פונקציות לקרוסלה</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {CAROUSEL_OPTIONS.map((option) => (
