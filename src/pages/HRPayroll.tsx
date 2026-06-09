@@ -46,6 +46,7 @@ import {
   summarizeAttendanceHours,
 } from "@/lib/attendancePayroll";
 import * as XLSX from "xlsx";
+import { EmployeeWizard } from "@/components/hr/EmployeeWizard";
 
 // --- Types (loose — generated types may not include new tables yet) ----------
 interface Employee {
@@ -498,8 +499,8 @@ function EmployeesTab({ employees, onChanged }: {
       </CardContent>
 
       {(editing || creating) && (
-        <EmployeeEditDialog
-          employee={editing}
+        <EmployeeWizard
+          employee={editing as any}
           open={true}
           onClose={() => { setEditing(null); setCreating(false); }}
           onSaved={() => { setEditing(null); setCreating(false); onChanged(); }}

@@ -4615,100 +4615,196 @@ export type Database = {
       }
       employees: {
         Row: {
+          academic_degree: string | null
+          address_city: string | null
+          address_lat: number | null
+          address_lng: number | null
+          address_street: string | null
+          address_zip: string | null
+          aliyah_date: string | null
           bank_account: string | null
+          bank_account_number: string | null
+          bank_branch: string | null
+          bank_code: string | null
           birth_date: string | null
+          children_count: number | null
+          children_data: Json | null
+          clothing_allowance_annual: number | null
+          company_car_value: number | null
+          company_phone_value: number | null
+          country_of_origin: string | null
           created_at: string | null
+          degree_completion_year: number | null
           department: string | null
+          disability_pct: number | null
           email: string | null
           employment_type: string
+          gender: string | null
+          has_company_car: boolean | null
+          has_company_phone: boolean | null
           hire_date: string | null
           hourly_rate: number | null
           id: string
           id_number: string | null
           is_active: boolean
+          marital_status: string | null
           meal_allowance: number | null
           monthly_salary: number | null
           name: string
           notes: string | null
           pension_employee_pct: number | null
           pension_employer_pct: number | null
+          pension_fund_name: string | null
+          pension_policy_number: string | null
           pension_severance_pct: number | null
           phone: string | null
           position: string | null
+          position_ratio_pct: number | null
+          profession_code: string | null
           profile_id: string | null
+          recuperation_days_used: number | null
+          spouse_id_number: string | null
+          spouse_works: boolean | null
           standard_monthly_hours: number | null
           status: string | null
           study_fund_employee_pct: number | null
           study_fund_employer_pct: number | null
+          study_fund_name: string | null
+          study_fund_policy_number: string | null
           tax_credit_points: number | null
           termination_date: string | null
           transport_allowance: number | null
           updated_at: string | null
           user_id: string | null
+          work_distance_km: number | null
         }
         Insert: {
+          academic_degree?: string | null
+          address_city?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
+          address_street?: string | null
+          address_zip?: string | null
+          aliyah_date?: string | null
           bank_account?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_code?: string | null
           birth_date?: string | null
+          children_count?: number | null
+          children_data?: Json | null
+          clothing_allowance_annual?: number | null
+          company_car_value?: number | null
+          company_phone_value?: number | null
+          country_of_origin?: string | null
           created_at?: string | null
+          degree_completion_year?: number | null
           department?: string | null
+          disability_pct?: number | null
           email?: string | null
           employment_type?: string
+          gender?: string | null
+          has_company_car?: boolean | null
+          has_company_phone?: boolean | null
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
           id_number?: string | null
           is_active?: boolean
+          marital_status?: string | null
           meal_allowance?: number | null
           monthly_salary?: number | null
           name: string
           notes?: string | null
           pension_employee_pct?: number | null
           pension_employer_pct?: number | null
+          pension_fund_name?: string | null
+          pension_policy_number?: string | null
           pension_severance_pct?: number | null
           phone?: string | null
           position?: string | null
+          position_ratio_pct?: number | null
+          profession_code?: string | null
           profile_id?: string | null
+          recuperation_days_used?: number | null
+          spouse_id_number?: string | null
+          spouse_works?: boolean | null
           standard_monthly_hours?: number | null
           status?: string | null
           study_fund_employee_pct?: number | null
           study_fund_employer_pct?: number | null
+          study_fund_name?: string | null
+          study_fund_policy_number?: string | null
           tax_credit_points?: number | null
           termination_date?: string | null
           transport_allowance?: number | null
           updated_at?: string | null
           user_id?: string | null
+          work_distance_km?: number | null
         }
         Update: {
+          academic_degree?: string | null
+          address_city?: string | null
+          address_lat?: number | null
+          address_lng?: number | null
+          address_street?: string | null
+          address_zip?: string | null
+          aliyah_date?: string | null
           bank_account?: string | null
+          bank_account_number?: string | null
+          bank_branch?: string | null
+          bank_code?: string | null
           birth_date?: string | null
+          children_count?: number | null
+          children_data?: Json | null
+          clothing_allowance_annual?: number | null
+          company_car_value?: number | null
+          company_phone_value?: number | null
+          country_of_origin?: string | null
           created_at?: string | null
+          degree_completion_year?: number | null
           department?: string | null
+          disability_pct?: number | null
           email?: string | null
           employment_type?: string
+          gender?: string | null
+          has_company_car?: boolean | null
+          has_company_phone?: boolean | null
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
           id_number?: string | null
           is_active?: boolean
+          marital_status?: string | null
           meal_allowance?: number | null
           monthly_salary?: number | null
           name?: string
           notes?: string | null
           pension_employee_pct?: number | null
           pension_employer_pct?: number | null
+          pension_fund_name?: string | null
+          pension_policy_number?: string | null
           pension_severance_pct?: number | null
           phone?: string | null
           position?: string | null
+          position_ratio_pct?: number | null
+          profession_code?: string | null
           profile_id?: string | null
+          recuperation_days_used?: number | null
+          spouse_id_number?: string | null
+          spouse_works?: boolean | null
           standard_monthly_hours?: number | null
           status?: string | null
           study_fund_employee_pct?: number | null
           study_fund_employer_pct?: number | null
+          study_fund_name?: string | null
+          study_fund_policy_number?: string | null
           tax_credit_points?: number | null
           termination_date?: string | null
           transport_allowance?: number | null
           updated_at?: string | null
           user_id?: string | null
+          work_distance_km?: number | null
         }
         Relationships: [
           {
@@ -6134,6 +6230,36 @@ export type Database = {
           tax_credit_point_value?: number
           updated_at?: string
           version_name?: string
+        }
+        Relationships: []
+      }
+      payroll_recuperation_rates: {
+        Row: {
+          created_at: string
+          daily_rate: number
+          id: string
+          notes: string | null
+          sector: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          daily_rate: number
+          id?: string
+          notes?: string | null
+          sector?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          daily_rate?: number
+          id?: string
+          notes?: string | null
+          sector?: string
+          updated_at?: string
+          year?: number
         }
         Relationships: []
       }
