@@ -153,6 +153,20 @@ export default defineConfig(({ mode }) => {
     build: {
       // Code splitting for better caching
       rollupOptions: {
+        onwarn(warning, warn) {
+          const warningId = typeof warning.id === "string" ? warning.id : "";
+
+          // pdfjs-dist (v3) ships CJS bundles that include eval("require") for
+          // Node fallback logic. In browser builds this path is not executed.
+          if (
+            warning.code === "EVAL" &&
+            warningId.includes("node_modules/pdfjs-dist/")
+          ) {
+            return;
+          }
+
+          warn(warning);
+        },
         output: {
           manualChunks(id) {
             // Vendor chunks - rarely change, better caching
