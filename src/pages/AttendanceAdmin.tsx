@@ -807,7 +807,7 @@ export default function AttendanceAdmin() {
                   <Download className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52" dir="rtl">
+              <DropdownMenuContent align="end" className="w-52 rtl">
                 <DropdownMenuLabel className="text-right">ייצוא דוחות</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToExcel(summary, range.label)}>
@@ -1024,7 +1024,7 @@ export default function AttendanceAdmin() {
                                   ייצוא
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" dir="rtl">
+                              <DropdownMenuContent align="end" className="rtl">
                                 <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "pdf")}>
                                   <span>PDF</span>
                                   <FileText className="h-4 w-4 text-red-600" />
@@ -1198,7 +1198,7 @@ export default function AttendanceAdmin() {
                                 ייצוא
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" dir="rtl">
+                            <DropdownMenuContent align="end" className="rtl">
                               <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name, "pdf")}>
                                 <span>PDF</span>
                                 <FileText className="h-4 w-4 text-red-600" />
