@@ -1,10 +1,11 @@
 // Smart Dashboard Stats Widget
 // ווידג'ט סטטיסטיקות חכמות לדשבורד
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -40,10 +41,52 @@ interface SmartStat {
   href?: string;
 }
 
+const SMART_DASHBOARD_STATS_KEY = ["smart-dashboard-stats"] as const;
+
 export function useSmartDashboardStats() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const invalidateSmartStats = () => {
+      queryClient.invalidateQueries({ queryKey: SMART_DASHBOARD_STATS_KEY });
+    };
+
+    // Keep homepage stats synced immediately after CRUD in related modules.
+    const channel = supabase
+      .channel(`smart-dashboard-stats-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "meetings" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "clients" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invoices" },
+        invalidateSmartStats,
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient, user?.id]);
+
   // Fetch all data needed for smart stats
   const { data, isLoading } = useQuery({
-    queryKey: ["smart-dashboard-stats"],
+    queryKey: [...SMART_DASHBOARD_STATS_KEY, user?.id],
     queryFn: async () => {
       const now = new Date();
       const currentMonthStart = startOfMonth(now);
@@ -155,8 +198,10 @@ export function useSmartDashboardStats() {
         leads,
       };
     },
+    enabled: !!user,
     staleTime: 3 * 60 * 1000, // 3 minutes
     refetchInterval: 5 * 60 * 1000, // refetch every 5 min
+    refetchOnWindowFocus: true,
   });
 
   const stats = useMemo<SmartStat[]>(() => {
