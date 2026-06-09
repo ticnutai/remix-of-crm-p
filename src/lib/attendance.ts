@@ -1,8 +1,7 @@
 // Attendance helpers — shared by employee + admin pages.
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { downloadPdf } from "@/lib/pdfGenerator";
 
 export const REGULAR_DAY_MINUTES = 510; // 8.5h
 export const OVERTIME_RATE_125 = 120;   // first 2h over 8.5h
@@ -381,72 +380,58 @@ export function exportDetailToExcel(records: AttendanceRecord[], monthLabel: str
 }
 
 export function exportSummaryToPdf(summary: UserSummary[], monthLabel: string) {
-  const doc = new jsPDF({ orientation: "landscape" });
-  doc.setR2L(true);
-  const pageWidth = doc.internal.pageSize.getWidth();
-  doc.setFontSize(14);
-  doc.text(`דוח נוכחות - סיכום (${monthLabel})`, pageWidth - 14, 14, {
-    align: "right",
+  const headers = ["עובד", "אימייל", "משמרות", "סה״כ", "הפסקות", "שעות נוספות", "חוסר יציאה"];
+  const rows = summary.map((s) => [
+    s.full_name,
+    s.email,
+    String(s.shifts),
+    formatMinutes(s.total_minutes),
+    formatMinutes(s.break_minutes),
+    formatMinutes(s.overtime_minutes),
+    String(s.missing_clock_outs),
+  ]);
+
+  const html = buildAttendancePdfHtml({
+    title: "דוח נוכחות - סיכום",
+    subtitle: `חודש עבודה: ${monthLabel}`,
+    headers,
+    rows,
   });
-  autoTable(doc, {
-    startY: 20,
-    head: [["חוסר יציאה", "שעות נוספות", "הפסקות", "סה״כ", "משמרות", "אימייל", "עובד"]],
-    body: summary.map((s) => [
-      s.missing_clock_outs,
-      formatMinutes(s.overtime_minutes),
-      formatMinutes(s.break_minutes),
-      formatMinutes(s.total_minutes),
-      s.shifts,
-      s.email,
-      s.full_name,
-    ]),
-    styles: {
-      fontSize: 9,
-      halign: "right",
-      cellPadding: 3,
-    },
-    headStyles: {
-      halign: "right",
-    },
-    margin: { left: 14, right: 14 },
+
+  void downloadPdf(html, `attendance_${sanitizeForFilename(monthLabel)}.pdf`, {
+    orientation: "landscape",
+    margin: 8,
+  }).catch((error) => {
+    console.error("Failed exporting summary PDF", error);
   });
-  doc.save(`attendance_${sanitizeForFilename(monthLabel)}.pdf`);
 }
 
 export function exportDetailToPdf(records: AttendanceRecord[], monthLabel: string) {
-  const doc = new jsPDF({ orientation: "landscape" });
-  doc.setR2L(true);
-  const pageWidth = doc.internal.pageSize.getWidth();
-  doc.setFontSize(14);
-  doc.text(`דוח נוכחות - פירוט (${monthLabel})`, pageWidth - 14, 14, {
-    align: "right",
+  const headers = ["תאריך", "שם עובד", "כניסה", "יציאה", "סה״כ", "הפסקה", "הערות", "נערך"];
+  const rows = records.map((r) => [
+    formatDate(r.clock_in),
+    r.profile?.full_name ?? r.user_id,
+    formatTime(r.clock_in),
+    formatTime(r.clock_out),
+    formatMinutes(r.duration_minutes ?? 0),
+    formatMinutes(r.break_minutes ?? 0),
+    r.notes ?? "",
+    r.is_edited ? "כן" : "",
+  ]);
+
+  const html = buildAttendancePdfHtml({
+    title: "דוח נוכחות - פירוט",
+    subtitle: `חודש עבודה: ${monthLabel}`,
+    headers,
+    rows,
   });
 
-  autoTable(doc, {
-    startY: 20,
-    head: [["נערך", "הערות", "הפסקה", "סה״כ", "יציאה", "כניסה", "שם עובד", "תאריך"]],
-    body: records.map((r) => [
-      r.is_edited ? "כן" : "",
-      r.notes ?? "",
-      formatMinutes(r.break_minutes ?? 0),
-      formatMinutes(r.duration_minutes ?? 0),
-      formatTime(r.clock_out),
-      formatTime(r.clock_in),
-      r.profile?.full_name ?? r.user_id,
-      formatDate(r.clock_in),
-    ]),
-    styles: {
-      fontSize: 9,
-      halign: "right",
-      cellPadding: 3,
-    },
-    headStyles: {
-      halign: "right",
-    },
-    margin: { left: 14, right: 14 },
+  void downloadPdf(html, `attendance_detail_${sanitizeForFilename(monthLabel)}.pdf`, {
+    orientation: "landscape",
+    margin: 8,
+  }).catch((error) => {
+    console.error("Failed exporting detail PDF", error);
   });
-
-  doc.save(`attendance_detail_${sanitizeForFilename(monthLabel)}.pdf`);
 }
 
 export function exportSummaryToWord(summary: UserSummary[], monthLabel: string) {
@@ -973,28 +958,110 @@ export function exportTimesheetPdf(
   employeeName?: string,
   signed?: boolean,
 ) {
-  const doc = new jsPDF();
-  doc.setFontSize(14);
-  doc.text(`Timesheet ${employeeName ?? ""} - ${monthLabel}`, 14, 14);
-  autoTable(doc, {
-    startY: 20,
-    head: [["Date","In","Out","Break","Total","Type","Notes"]],
-    body: records.map(r => [
-      r.work_date ?? (r.clock_in ?? "").slice(0,10),
-      r.clock_in ? isoToLocalHHMM(r.clock_in) : "-",
-      r.clock_out ? isoToLocalHHMM(r.clock_out) : "-",
-      formatMinutes(r.break_minutes ?? 0),
-      formatMinutes(r.duration_minutes ?? 0),
-      r.day_type ?? "work",
-      r.notes ?? "",
-    ]),
-    styles: { fontSize: 9 },
+  const headers = ["תאריך", "כניסה", "יציאה", "הפסקה", "סה״כ", "סוג יום", "הערות"];
+  const rows = records.map((r) => [
+    r.work_date ?? (r.clock_in ?? "").slice(0, 10),
+    r.clock_in ? isoToLocalHHMM(r.clock_in) : "—",
+    r.clock_out ? isoToLocalHHMM(r.clock_out) : "—",
+    formatMinutes(r.break_minutes ?? 0),
+    formatMinutes(r.duration_minutes ?? 0),
+    DAY_TYPE_LABELS[(r.day_type ?? "work") as DayType] ?? (r.day_type ?? "work"),
+    r.notes ?? "",
+  ]);
+
+  const html = buildAttendancePdfHtml({
+    title: "דוח שעות חודשי",
+    subtitle: `${employeeName ?? "עובד"} | חודש עבודה: ${monthLabel}`,
+    headers,
+    rows,
+    footerNote: signed
+      ? `נחתם פנימית: ${new Date().toLocaleString("he-IL")}`
+      : undefined,
   });
-  if (signed) {
-    const y = (doc as any).lastAutoTable?.finalY ?? 30;
-    doc.setFontSize(10);
-    doc.text(`Signed: ${new Date().toLocaleString("he-IL")}`, 14, y + 12);
-  }
-  doc.save(`timesheet_${employeeName ?? "user"}_${monthLabel}.pdf`);
+
+  const safeEmployee = sanitizeForFilename(employeeName ?? "user");
+  void downloadPdf(html, `timesheet_${safeEmployee}_${sanitizeForFilename(monthLabel)}.pdf`, {
+    orientation: "landscape",
+    margin: 8,
+  }).catch((error) => {
+    console.error("Failed exporting timesheet PDF", error);
+  });
+}
+
+function buildAttendancePdfHtml({
+  title,
+  subtitle,
+  headers,
+  rows,
+  footerNote,
+}: {
+  title: string;
+  subtitle?: string;
+  headers: string[];
+  rows: string[][];
+  footerNote?: string;
+}) {
+  return `
+    <style>
+      .attendance-pdf {
+        direction: rtl;
+        text-align: right;
+        font-family: Heebo, Arial, sans-serif;
+        color: #0f172a;
+      }
+      .attendance-pdf h2 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+      .attendance-pdf .subtitle {
+        margin: 0 0 14px;
+        color: #475569;
+        font-size: 13px;
+      }
+      .attendance-pdf table {
+        width: 100%;
+        border-collapse: collapse;
+        direction: rtl;
+        table-layout: fixed;
+      }
+      .attendance-pdf th,
+      .attendance-pdf td {
+        border: 1px solid #cbd5e1;
+        padding: 8px 10px;
+        text-align: right;
+        vertical-align: top;
+        word-break: break-word;
+        font-size: 12px;
+      }
+      .attendance-pdf th {
+        background: #1d4f7a;
+        color: #ffffff;
+        font-weight: 700;
+      }
+      .attendance-pdf tbody tr:nth-child(even) {
+        background: #f8fafc;
+      }
+      .attendance-pdf .footer-note {
+        margin-top: 12px;
+        font-size: 12px;
+        color: #475569;
+      }
+    </style>
+    <div class="attendance-pdf">
+      <h2>${escapeHtml(title)}</h2>
+      ${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ""}
+      <table>
+        <thead>
+          <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${rows.length > 0
+            ? rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")
+            : `<tr><td colspan="${headers.length}">אין נתונים להצגה</td></tr>`}
+        </tbody>
+      </table>
+      ${footerNote ? `<div class="footer-note">${escapeHtml(footerNote)}</div>` : ""}
+    </div>
+  `;
 }
 

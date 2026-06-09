@@ -52,6 +52,7 @@ import {
   exportDetailToPdf,
   exportSummaryToWord,
   exportDetailToWord,
+  exportTimesheetPdf,
 } from "@/lib/attendance";
 import { summarizeAttendanceHours } from "@/lib/attendancePayroll";
 import { supabase } from "@/integrations/supabase/client";
@@ -720,6 +721,34 @@ export default function AttendanceAdmin() {
     });
   };
 
+  const exportEmployeeTimesheet = (userId: string, employeeName: string) => {
+    const employeeRecords = records.filter((record) => record.user_id === userId);
+    if (employeeRecords.length === 0) {
+      toast({
+        title: "אין נתונים לייצוא",
+        description: `לא נמצאו רישומי נוכחות עבור ${employeeName} בחודש העבודה ${range.label}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    exportTimesheetPdf(employeeRecords, range.label, employeeName);
+  };
+
+  const exportSelectedEmployeeTimesheet = () => {
+    if (workMonthUserFilter === "all") {
+      toast({
+        title: "בחר עובד",
+        description: "בחר עובד ספציפי בשדה 'הצג עבור' כדי לייצא דוח אישי.",
+      });
+      return;
+    }
+
+    const selectedEmployee = summaryWithTargets.find((item) => item.user_id === workMonthUserFilter);
+    const employeeName = selectedEmployee?.full_name || "עובד";
+    exportEmployeeTimesheet(workMonthUserFilter, employeeName);
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto p-4 space-y-4" dir="rtl">
@@ -780,6 +809,10 @@ export default function AttendanceAdmin() {
                 <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportDetailToPdf(records, range.label)}>
                   <span>PDF פירוט</span>
                   <FileText className="h-4 w-4 text-red-600" />
+                </DropdownMenuItem>
+                <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={exportSelectedEmployeeTimesheet}>
+                  <span>PDF עובד נבחר</span>
+                  <Download className="h-4 w-4 text-amber-700" />
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="flex items-center justify-end gap-2" onClick={() => exportSummaryToWord(summary, range.label)}>
@@ -923,17 +956,18 @@ export default function AttendanceAdmin() {
                           direction={workMonthSummarySort.direction}
                           onClick={() => toggleWorkMonthSummarySort("missing_clock_outs")}
                         />
+                        <th className="p-2 text-right">ייצוא עובד</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading && (
                         <tr>
-                          <td colSpan={9} className="p-4 text-center">טוען...</td>
+                          <td colSpan={10} className="p-4 text-center">טוען...</td>
                         </tr>
                       )}
                       {!loading && workMonthSummaryRows.length === 0 && (
                         <tr>
-                          <td colSpan={9} className="p-4 text-center text-muted-foreground">אין נתונים</td>
+                          <td colSpan={10} className="p-4 text-center text-muted-foreground">אין נתונים</td>
                         </tr>
                       )}
                       {workMonthSummaryRows.map((u) => (
@@ -952,6 +986,17 @@ export default function AttendanceAdmin() {
                             {u.missing_clock_outs > 0
                               ? <Badge variant="destructive">{u.missing_clock_outs}</Badge>
                               : "—"}
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name)}
+                              title={`ייצוא דוח אישי עבור ${u.full_name}`}
+                            >
+                              <Download className="h-4 w-4 ml-1" />
+                              PDF
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -1070,11 +1115,12 @@ export default function AttendanceAdmin() {
                       <th className="p-2">הפסקות</th>
                       <th className="p-2">שעות נוספות</th>
                       <th className="p-2">חוסר יציאה</th>
+                      <th className="p-2">ייצוא</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {loading && <tr><td colSpan={10} className="p-4 text-center">טוען...</td></tr>}
-                    {!loading && summaryWithTargets.length === 0 && <tr><td colSpan={10} className="p-4 text-center text-muted-foreground">אין נתונים</td></tr>}
+                    {loading && <tr><td colSpan={11} className="p-4 text-center">טוען...</td></tr>}
+                    {!loading && summaryWithTargets.length === 0 && <tr><td colSpan={11} className="p-4 text-center text-muted-foreground">אין נתונים</td></tr>}
                     {summaryWithTargets.map(u => (
                       <tr key={u.user_id} className="border-b hover:bg-muted/40">
                         <td className="p-2 font-medium">
@@ -1097,6 +1143,17 @@ export default function AttendanceAdmin() {
                           {u.missing_clock_outs > 0
                             ? <Badge variant="destructive">{u.missing_clock_outs}</Badge>
                             : "—"}
+                        </td>
+                        <td className="p-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => exportEmployeeTimesheet(u.user_id, u.full_name)}
+                            title={`ייצוא דוח אישי עבור ${u.full_name}`}
+                          >
+                            <Download className="h-4 w-4 ml-1" />
+                            PDF
+                          </Button>
                         </td>
                       </tr>
                     ))}
