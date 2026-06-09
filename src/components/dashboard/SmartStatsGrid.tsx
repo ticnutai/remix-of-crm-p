@@ -6,9 +6,18 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useSyncedSetting } from "@/hooks/useSyncedSetting";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   UserPlus,
   TrendingUp,
@@ -16,11 +25,18 @@ import {
   AlertTriangle,
   CheckCircle2,
   Calendar,
-  Clock,
+  Settings2,
+  ChevronLeft,
+  ChevronRight,
+  KanbanSquare,
+  Folder,
+  Bell,
+  CalendarDays,
   Star,
 } from "lucide-react";
 import {
-  differenceInDays,
+  startOfDay,
+  endOfDay,
   startOfMonth,
   endOfMonth,
   subMonths,
@@ -41,7 +57,92 @@ interface SmartStat {
   href?: string;
 }
 
+type CarouselOptionId =
+  | "work-stages"
+  | "calendar-board"
+  | "files-hub"
+  | "reminders-today";
+
+interface SmartDashboardData {
+  newClientsThisMonth: number;
+  newClientsLastMonth: number;
+  tasksDueToday: number;
+  tasksDueThisWeek: number;
+  openTasks: number;
+  completedTasksThisMonth: number;
+  meetingsThisWeek: number;
+  activeClients: number;
+  totalClients: number;
+  conversionRate: number;
+  overdueTasks: number;
+  unpaidInvoices: number;
+  leads: number;
+  remindersToday: number;
+  calendarEventsThisWeek: number;
+  filesThisWeek: number;
+  openStageTasks: number;
+}
+
+interface CarouselOptionConfig {
+  id: CarouselOptionId;
+  label: string;
+  subLabel: string;
+  href: string;
+  color: string;
+  bgColor: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value: (data: SmartDashboardData) => number;
+}
+
 const SMART_DASHBOARD_STATS_KEY = ["smart-dashboard-stats"] as const;
+const DEFAULT_CAROUSEL_OPTION_IDS: CarouselOptionId[] = [
+  "work-stages",
+  "calendar-board",
+  "files-hub",
+];
+
+const CAROUSEL_OPTIONS: CarouselOptionConfig[] = [
+  {
+    id: "work-stages",
+    label: "שלבי עבודה",
+    subLabel: "משימות שלבים פתוחות",
+    href: "/clients",
+    color: "text-amber-600",
+    bgColor: "bg-amber-500/10",
+    icon: KanbanSquare,
+    value: (data) => data.openStageTasks,
+  },
+  {
+    id: "calendar-board",
+    label: "לוח שנה",
+    subLabel: "אירועים השבוע",
+    href: "/calendar",
+    color: "text-indigo-600",
+    bgColor: "bg-indigo-500/10",
+    icon: CalendarDays,
+    value: (data) => data.calendarEventsThisWeek,
+  },
+  {
+    id: "files-hub",
+    label: "קבצים",
+    subLabel: "קבצים חדשים השבוע",
+    href: "/files",
+    color: "text-cyan-600",
+    bgColor: "bg-cyan-500/10",
+    icon: Folder,
+    value: (data) => data.filesThisWeek,
+  },
+  {
+    id: "reminders-today",
+    label: "תזכורות להיום",
+    subLabel: "תזכורות פעילות",
+    href: "/reminders",
+    color: "text-fuchsia-600",
+    bgColor: "bg-fuchsia-500/10",
+    icon: Bell,
+    value: (data) => data.remindersToday,
+  },
+];
 
 export function useSmartDashboardStats() {
   const { user } = useAuth();
@@ -77,6 +178,26 @@ export function useSmartDashboardStats() {
         { event: "*", schema: "public", table: "invoices" },
         invalidateSmartStats,
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reminders" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "calendar_events" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "files" },
+        invalidateSmartStats,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_stage_tasks" },
+        invalidateSmartStats,
+      )
       .subscribe();
 
     return () => {
@@ -89,6 +210,8 @@ export function useSmartDashboardStats() {
     queryKey: [...SMART_DASHBOARD_STATS_KEY, user?.id],
     queryFn: async () => {
       const now = new Date();
+      const todayStart = startOfDay(now);
+      const todayEnd = endOfDay(now);
       const currentMonthStart = startOfMonth(now);
       const currentMonthEnd = endOfMonth(now);
       const lastMonthStart = startOfMonth(subMonths(now, 1));
@@ -101,6 +224,10 @@ export function useSmartDashboardStats() {
         { data: tasks },
         { data: meetings },
         { data: invoices },
+        { data: reminders },
+        { data: calendarEvents },
+        { data: files },
+        { data: stageTasks },
       ] = await Promise.all([
         supabase.from("clients").select("id, name, status, created_at, tags"),
         supabase
@@ -108,6 +235,12 @@ export function useSmartDashboardStats() {
           .select("id, status, due_date, created_at, client_id"),
         supabase.from("meetings").select("id, start_time, client_id, created_at"),
         supabase.from("invoices").select("id, status, amount, created_at"),
+        supabase.from("reminders").select("id, remind_at, is_dismissed"),
+        supabase
+          .from("calendar_events")
+          .select("id, start_time, is_completed"),
+        supabase.from("files").select("id, created_at, is_archived"),
+        supabase.from("client_stage_tasks").select("id, completed"),
       ]);
 
       // New clients this month
@@ -122,13 +255,14 @@ export function useSmartDashboardStats() {
       }).length;
 
       // Tasks due today/this week
-      const todayStr = now.toISOString().split("T")[0];
-      const tasksDueToday = (tasks || []).filter(
-        (t) =>
-          t.due_date === todayStr &&
-          t.status !== "completed" &&
-          t.status !== "done",
-      ).length;
+      const tasksDueToday = (tasks || []).filter((t) => {
+        if (!t.due_date || t.status === "completed" || t.status === "done") {
+          return false;
+        }
+        const due = new Date(t.due_date);
+        if (Number.isNaN(due.getTime())) return false;
+        return due >= todayStart && due <= todayEnd;
+      }).length;
 
       const tasksDueThisWeek = (tasks || []).filter((t) => {
         if (!t.due_date || t.status === "completed" || t.status === "done")
@@ -182,6 +316,30 @@ export function useSmartDashboardStats() {
           i.status === "overdue",
       ).length;
 
+      const remindersToday = (reminders || []).filter((r) => {
+        if (r.is_dismissed) return false;
+        const remindAt = new Date(r.remind_at);
+        if (Number.isNaN(remindAt.getTime())) return false;
+        return remindAt >= todayStart && remindAt <= todayEnd;
+      }).length;
+
+      const calendarEventsThisWeek = (calendarEvents || []).filter((e) => {
+        if (e.is_completed) return false;
+        const start = new Date(e.start_time);
+        if (Number.isNaN(start.getTime())) return false;
+        return start >= weekStart && start <= weekEnd;
+      }).length;
+
+      const filesThisWeek = (files || []).filter((f) => {
+        if (f.is_archived) return false;
+        const createdAt = new Date(f.created_at);
+        if (Number.isNaN(createdAt.getTime())) return false;
+        return createdAt >= weekStart && createdAt <= weekEnd;
+      }).length;
+
+      const openStageTasks = (stageTasks || []).filter((s) => !s.completed)
+        .length;
+
       return {
         newClientsThisMonth,
         newClientsLastMonth,
@@ -196,6 +354,10 @@ export function useSmartDashboardStats() {
         overdueTasks,
         unpaidInvoices,
         leads,
+        remindersToday,
+        calendarEventsThisWeek,
+        filesThisWeek,
+        openStageTasks,
       };
     },
     enabled: !!user,
@@ -287,69 +449,244 @@ export function useSmartDashboardStats() {
     ];
   }, [data]);
 
-  return { stats, isLoading, data };
+  return { stats, isLoading, data: data as SmartDashboardData | undefined };
 }
 
 // Smart Stats Grid Component
 export function SmartStatsGrid({ className }: { className?: string }) {
-  const { stats, isLoading } = useSmartDashboardStats();
+  const { stats, isLoading, data } = useSmartDashboardStats();
   const navigate = useNavigate();
+  const [carouselOptionIds, setCarouselOptionIds] = useSyncedSetting<
+    CarouselOptionId[]
+  >({
+    key: "dashboard-smart-carousel-options",
+    defaultValue: DEFAULT_CAROUSEL_OPTION_IDS,
+  });
+  const [carouselIndex, setCarouselIndex] = useSyncedSetting<number>({
+    key: "dashboard-smart-carousel-index",
+    defaultValue: 0,
+  });
+
+  const normalizedCarouselOptionIds = useMemo(() => {
+    const allowed = new Set(CAROUSEL_OPTIONS.map((option) => option.id));
+    const next: CarouselOptionId[] = [];
+
+    for (const rawId of carouselOptionIds) {
+      if (allowed.has(rawId) && !next.includes(rawId)) {
+        next.push(rawId);
+      }
+    }
+
+    return next.length > 0 ? next : DEFAULT_CAROUSEL_OPTION_IDS;
+  }, [carouselOptionIds]);
+
+  useEffect(() => {
+    if (JSON.stringify(carouselOptionIds) === JSON.stringify(normalizedCarouselOptionIds)) {
+      return;
+    }
+    setCarouselOptionIds(normalizedCarouselOptionIds);
+  }, [carouselOptionIds, normalizedCarouselOptionIds, setCarouselOptionIds]);
+
+  useEffect(() => {
+    if (carouselIndex < normalizedCarouselOptionIds.length) return;
+    setCarouselIndex(0);
+  }, [carouselIndex, normalizedCarouselOptionIds.length, setCarouselIndex]);
+
+  const currentCarouselStat = useMemo<SmartStat | null>(() => {
+    if (!data || normalizedCarouselOptionIds.length === 0) return null;
+
+    const safeIndex =
+      ((carouselIndex % normalizedCarouselOptionIds.length) +
+        normalizedCarouselOptionIds.length) %
+      normalizedCarouselOptionIds.length;
+    const currentId = normalizedCarouselOptionIds[safeIndex];
+    const option = CAROUSEL_OPTIONS.find((item) => item.id === currentId);
+    if (!option) return null;
+
+    const Icon = option.icon;
+
+    return {
+      id: `carousel-${option.id}`,
+      label: option.label,
+      value: option.value(data),
+      subLabel: option.subLabel,
+      icon: <Icon className="h-5 w-5" />,
+      color: option.color,
+      bgColor: option.bgColor,
+      href: option.href,
+    };
+  }, [data, normalizedCarouselOptionIds, carouselIndex]);
+
+  const rotateCarousel = (direction: number) => {
+    setCarouselIndex((prev) => {
+      const total = normalizedCarouselOptionIds.length || 1;
+      return (prev + direction + total) % total;
+    });
+  };
+
+  const toggleCarouselOption = (optionId: CarouselOptionId, checked: boolean) => {
+    setCarouselOptionIds((prev) => {
+      const unique = Array.from(new Set(prev)).filter((id) =>
+        CAROUSEL_OPTIONS.some((option) => option.id === id),
+      );
+
+      if (checked) {
+        if (unique.includes(optionId)) return unique;
+        return [...unique, optionId];
+      }
+
+      if (!unique.includes(optionId)) return unique;
+      if (unique.length <= 1) return unique;
+
+      return unique.filter((id) => id !== optionId);
+    });
+  };
+
+  const renderHeader = () => (
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-semibold text-muted-foreground">מדדים חכמים</p>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            title="בחירת פונקציות לקרוסלה"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56" dir="rtl">
+          <DropdownMenuLabel className="text-right">בחירת פונקציות לקרוסלה</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {CAROUSEL_OPTIONS.map((option) => (
+            <DropdownMenuCheckboxItem
+              key={option.id}
+              checked={normalizedCarouselOptionIds.includes(option.id)}
+              onCheckedChange={(checked) =>
+                toggleCarouselOption(option.id, checked === true)
+              }
+            >
+              {option.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3",
-          className,
-        )}
-      >
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-8 bg-muted rounded mb-2" />
-              <div className="h-4 bg-muted rounded w-2/3" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className={cn("space-y-3", className)} dir="rtl">
+        {renderHeader()}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4">
+                <div className="h-8 bg-muted rounded mb-2" />
+                <div className="h-4 bg-muted rounded w-2/3" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className={cn(
-        "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3",
-        className,
-      )}
-      dir="rtl"
-    >
-      {stats.map((stat) => (
-        <Card
-          key={stat.id}
-          className={cn("hover:shadow-md transition-shadow", stat.href && "cursor-pointer")}
-          onClick={stat.href ? () => navigate(stat.href!) : undefined}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn("p-2 rounded-lg", stat.bgColor, stat.color)}>
-                {stat.icon}
+    <div className={cn("space-y-3", className)} dir="rtl">
+      {renderHeader()}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {currentCarouselStat && (
+          <Card
+            key={currentCarouselStat.id}
+            className="cursor-pointer border-primary/30 hover:shadow-md transition-shadow"
+            onClick={() => navigate(currentCarouselStat.href || "/")}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="פריט קודם"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    rotateCarousel(-1);
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="text-[11px] text-muted-foreground">פונקציות</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="פריט הבא"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    rotateCarousel(1);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </div>
-            <div className="text-sm font-medium text-foreground">
-              {stat.label}
-            </div>
-            {stat.subLabel && (
+
+              <div className="flex items-center gap-3 mb-2">
+                <div
+                  className={cn(
+                    "p-2 rounded-lg",
+                    currentCarouselStat.bgColor,
+                    currentCarouselStat.color,
+                  )}
+                >
+                  {currentCarouselStat.icon}
+                </div>
+                <div className="text-2xl font-bold">{currentCarouselStat.value}</div>
+              </div>
+
+              <div className="text-sm font-medium text-foreground">
+                {currentCarouselStat.label}
+              </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {stat.subLabel}
+                {currentCarouselStat.subLabel}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {stats.map((stat) => (
+          <Card
+            key={stat.id}
+            className={cn(
+              "hover:shadow-md transition-shadow",
+              stat.href && "cursor-pointer",
             )}
-            {stat.progress !== undefined && (
-              <Progress value={stat.progress} className="h-1.5 mt-2" />
-            )}
-          </CardContent>
-        </Card>
-      ))}
+            onClick={stat.href ? () => navigate(stat.href) : undefined}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className={cn("p-2 rounded-lg", stat.bgColor, stat.color)}>
+                  {stat.icon}
+                </div>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </div>
+              <div className="text-sm font-medium text-foreground">
+                {stat.label}
+              </div>
+              {stat.subLabel && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {stat.subLabel}
+                </div>
+              )}
+              {stat.progress !== undefined && (
+                <Progress value={stat.progress} className="h-1.5 mt-2" />
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
