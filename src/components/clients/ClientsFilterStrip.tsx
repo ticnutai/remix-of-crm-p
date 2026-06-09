@@ -531,7 +531,7 @@ export function ClientsFilterStrip({
                   <div
                     key={cls.value}
                     className={cn(
-                      "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                      "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                       isVisible
                         ? "bg-primary/10 border-primary"
                         : "bg-muted/30 border-border opacity-60",
@@ -652,7 +652,7 @@ export function ClientsFilterStrip({
                     <div
                       key={category.id}
                       className={cn(
-                        "group flex flex-row-reverse items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
+                        "group flex items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
                         filters.categories.includes(category.id)
                           ? "bg-primary/10 border-primary"
                           : "bg-background border-border hover:border-primary/50",
@@ -877,7 +877,7 @@ export function ClientsFilterStrip({
                     <div
                       key={stage.stage_name}
                       className={cn(
-                        "flex flex-row-reverse items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
                         filters.stages.includes(stage.stage_name)
                           ? "bg-primary/10 border-primary"
                           : "bg-background border-border hover:border-primary/50",
@@ -888,7 +888,7 @@ export function ClientsFilterStrip({
                         checked={filters.stages.includes(stage.stage_name)}
                         onCheckedChange={() => toggleStage(stage.stage_name)}
                       />
-                      <span className="font-medium text-foreground flex-1">
+                      <span className="font-medium text-foreground text-right flex-1">
                         {stage.stage_name}
                       </span>
                     </div>
