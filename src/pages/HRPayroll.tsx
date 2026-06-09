@@ -28,12 +28,18 @@ import {
 } from "@/components/ui/table";
 import {
   Users, CalendarDays, Coins, FileSpreadsheet, Plus,
-  Edit2, Trash2, Download, AlertTriangle, CheckCircle2,
+  Edit2, Trash2, Download, AlertTriangle, CheckCircle2, Link2,
 } from "lucide-react";
 import {
   annualLeaveEntitlement, yearsOfService, calcPayroll,
   workingDaysBetween, fmtNIS, LEAVE_TYPE_LABELS,
 } from "@/lib/payroll";
+import { exportToPDF } from "@/lib/pdf-export";
+import {
+  OvertimeMode,
+  getMonthIsoWindow,
+  summarizeAttendanceHours,
+} from "@/lib/attendancePayroll";
 
 // --- Types (loose — generated types may not include new tables yet) ----------
 interface Employee {
@@ -104,6 +110,7 @@ interface PayrollRun {
   employer_total_cost: number;
   status: "draft" | "final" | "paid" | "cancelled";
   notes: string | null;
+  calculation_meta?: Record<string, any> | null;
 }
 
 const sb = supabase as any;
@@ -826,10 +833,16 @@ function PayrollTab({ employees, runs, onChanged }: {
   employees: Employee[]; runs: PayrollRun[]; onChanged: () => void;
 }) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const now = new Date();
+  const [overtimeModeDefault, setOvertimeModeDefault] = useSyncedSetting<OvertimeMode>({
+    key: "payroll-overtime-default-mode",
+    defaultValue: "manual",
+  });
   const [employeeId, setEmployeeId] = useState(employees[0]?.id || "");
   const [year,  setYear]  = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [overtimeMode, setOvertimeMode] = useState<OvertimeMode>("manual");
   const [workedHours, setWorkedHours] = useState<number>(182);
   const [ot125, setOt125] = useState<number>(0);
   const [ot150, setOt150] = useState<number>(0);
@@ -837,12 +850,59 @@ function PayrollTab({ employees, runs, onChanged }: {
   const [otherDeductions, setOtherDeductions] = useState<number>(0);
   const [saving, setSaving] = useState(false);
   const [loadingHours, setLoadingHours] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkCandidates, setLinkCandidates] = useState<Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  }>>([]);
+  const [loadingLinkCandidates, setLoadingLinkCandidates] = useState(false);
+  const [linkUserId, setLinkUserId] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
 
   useEffect(() => {
     if (!employeeId && employees[0]) setEmployeeId(employees[0].id);
   }, [employees, employeeId]);
 
+  useEffect(() => {
+    setOvertimeMode(overtimeModeDefault);
+  }, [overtimeModeDefault, employeeId, year, month]);
+
   const emp = employees.find(e => e.id === employeeId);
+
+  const loadLinkCandidates = useCallback(async () => {
+    setLoadingLinkCandidates(true);
+    try {
+      const { data, error } = await sb
+        .from("profiles")
+        .select("id, full_name, email, is_active, approval_status")
+        .order("full_name", { ascending: true });
+      if (error) throw error;
+      const options = (data || [])
+        .filter((p: any) => p.is_active !== false && (p.approval_status ?? "approved") === "approved")
+        .map((p: any) => ({ id: p.id, full_name: p.full_name, email: p.email }));
+      setLinkCandidates(options);
+    } catch (e: any) {
+      toast({ title: "שגיאה בטעינה", description: e.message, variant: "destructive" });
+    } finally {
+      setLoadingLinkCandidates(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!linkDialogOpen) return;
+    setLinkUserId("");
+    void loadLinkCandidates();
+  }, [linkDialogOpen, loadLinkCandidates]);
+
+  useEffect(() => {
+    if (!linkDialogOpen) return;
+    if (!emp?.email) return;
+    const matched = linkCandidates.find(
+      (candidate) => candidate.email?.toLowerCase() === emp.email?.toLowerCase(),
+    );
+    if (matched) setLinkUserId(matched.id);
+  }, [linkDialogOpen, linkCandidates, emp?.email]);
 
   const calc = useMemo(() => {
     if (!emp) return null;
@@ -870,26 +930,74 @@ function PayrollTab({ employees, runs, onChanged }: {
   // Pull worked hours from attendance_records for the selected month
   const fetchHoursFromAttendance = async () => {
     if (!emp?.user_id) {
-      toast({ title: "אין user_id מקושר", description: "לא ניתן למשוך נוכחות", variant: "destructive" });
+      toast({
+        title: "אין user_id מקושר",
+        description: "צריך לקשר את העובד למשתמש לפני משיכת נוכחות.",
+        variant: "destructive",
+      });
+      setLinkDialogOpen(true);
       return;
     }
     setLoadingHours(true);
     try {
-      const from = new Date(year, month - 1, 1).toISOString();
-      const to   = new Date(year, month, 0, 23, 59, 59).toISOString();
+      const { from, to } = getMonthIsoWindow(year, month);
       const { data, error } = await sb.from("attendance_records")
-        .select("duration_minutes")
+        .select("user_id, clock_in, clock_out, duration_minutes")
         .eq("user_id", emp.user_id)
         .gte("clock_in", from)
         .lte("clock_in", to)
-        .not("clock_out", "is", null);
+        .not("clock_out", "is", null)
+        .not("duration_minutes", "is", null);
       if (error) throw error;
-      const totalMin = (data || []).reduce((s: number, r: any) => s + (r.duration_minutes || 0), 0);
-      setWorkedHours(Math.round((totalMin / 60) * 10) / 10);
-      toast({ title: "נטען", description: `${Math.round(totalMin / 60)} שעות מנוכחות` });
+      const summary = summarizeAttendanceHours((data || []) as any[]);
+
+      if (overtimeMode === "auto") {
+        setWorkedHours(summary.regularHours);
+        setOt125(summary.overtime125Hours);
+        setOt150(summary.overtime150Hours);
+        toast({
+          title: "נטען מנוכחות",
+          description: `${summary.totalHours} ש' סה"כ | רגילות ${summary.regularHours} | 125% ${summary.overtime125Hours} | 150% ${summary.overtime150Hours}`,
+        });
+      } else if (overtimeMode === "none") {
+        setWorkedHours(summary.totalHours);
+        setOt125(0);
+        setOt150(0);
+        toast({
+          title: "נטען מנוכחות",
+          description: `${summary.totalHours} ש' נטענו. שעות נוספות אופסו לפי מצב "ללא".`,
+        });
+      } else {
+        setWorkedHours(summary.totalHours);
+        toast({
+          title: "נטען מנוכחות",
+          description: `${summary.totalHours} ש' נטענו. שעות נוספות נשארו ידניות.`,
+        });
+      }
     } catch (e: any) {
       toast({ title: "שגיאה", description: e.message, variant: "destructive" });
     } finally { setLoadingHours(false); }
+  };
+
+  const handleLinkEmployeeUser = async () => {
+    if (!emp?.id || !linkUserId) {
+      toast({ title: "בחר משתמש לקישור", variant: "destructive" });
+      return;
+    }
+    setSavingLink(true);
+    try {
+      const { error } = await sb.from("employees")
+        .update({ user_id: linkUserId })
+        .eq("id", emp.id);
+      if (error) throw error;
+      toast({ title: "קישור נשמר", description: "העובד קושר למשתמש בהצלחה" });
+      setLinkDialogOpen(false);
+      onChanged();
+    } catch (e: any) {
+      toast({ title: "שגיאה בקישור", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingLink(false);
+    }
   };
 
   const handleSaveRun = async (status: "draft" | "final") => {
@@ -924,7 +1032,15 @@ function PayrollTab({ employees, runs, onChanged }: {
         employer_total_cost: calc.employer_total_cost,
         status,
         created_by: user?.id || null,
-        calculation_meta: { computed_at: new Date().toISOString() },
+        calculation_meta: {
+          computed_at: new Date().toISOString(),
+          source: "attendance_records",
+          source_filters: "closed_records_with_duration",
+          attendance_window: { year, month },
+          overtime_mode: overtimeMode,
+          overtime_hours_125: ot125,
+          overtime_hours_150: ot150,
+        },
       };
       const { error } = await sb.from("payroll_runs")
         .upsert(payload, { onConflict: "employee_id,period_year,period_month" });
@@ -936,8 +1052,102 @@ function PayrollTab({ employees, runs, onChanged }: {
     } finally { setSaving(false); }
   };
 
+  const getRunMetadata = (run: PayrollRun) => {
+    const meta = (run.calculation_meta || {}) as Record<string, any>;
+    const source = String(meta.source || "manual");
+    const overtimeMode = String(meta.overtime_mode || "manual");
+
+    const sourceLabel =
+      source === "attendance_records"
+        ? "נוכחות"
+        : source === "time_entries"
+          ? "רישומי זמן"
+          : "ידני";
+
+    const overtimeModeLabel =
+      overtimeMode === "auto"
+        ? "נוספות אוטומטי"
+        : overtimeMode === "none"
+          ? "ללא נוספות"
+          : "נוספות ידני";
+
+    return {
+      source,
+      sourceLabel,
+      overtimeMode,
+      overtimeModeLabel,
+      sourceFilters: String(meta.source_filters || ""),
+      computedAt: meta.computed_at ? String(meta.computed_at) : null,
+    };
+  };
+
+  const exportPayrollRunPdf = (run: PayrollRun) => {
+    const employee = employees.find((item) => item.id === run.employee_id);
+    const employeeName = employee?.name || "עובד";
+    const period = `${run.period_month}/${run.period_year}`;
+    const metadata = getRunMetadata(run);
+
+    const sections = [
+      { type: "title", content: `תלוש שכר - ${employeeName}` },
+      { type: "subtitle", content: `תקופה: ${period}` },
+      { type: "space" },
+      {
+        type: "table",
+        data: {
+          headers: ["פריט", "ערך"],
+          rows: [
+            ["שעות עבודה", `${Number(run.worked_hours || 0).toFixed(2)}`],
+            ["שעות נוספות 125%", `${Number(run.overtime_hours_125 || 0).toFixed(2)}`],
+            ["שעות נוספות 150%", `${Number(run.overtime_hours_150 || 0).toFixed(2)}`],
+            ["שכר בסיס", fmtNIS(Number(run.base_pay || 0))],
+            ["שעות נוספות (תשלום)", fmtNIS(Number(run.overtime_pay || 0))],
+            ["נסיעות", fmtNIS(Number(run.transport || 0))],
+            ["ארוחות", fmtNIS(Number(run.meal || 0))],
+            ["תוספות נוספות", fmtNIS(Number(run.other_additions || 0))],
+            ["ברוטו", fmtNIS(Number(run.gross_total || 0))],
+            ["מס הכנסה", fmtNIS(Number(run.income_tax || 0))],
+            ["ביטוח לאומי", fmtNIS(Number(run.national_insurance || 0))],
+            ["מס בריאות", fmtNIS(Number(run.health_tax || 0))],
+            ["נטו", fmtNIS(Number(run.net_total || 0))],
+            ["עלות מעביד", fmtNIS(Number(run.employer_total_cost || 0))],
+          ],
+        },
+      },
+      { type: "divider" },
+      { type: "text", content: `מקור נתונים: ${metadata.sourceLabel}` },
+      { type: "text", content: `מצב שעות נוספות: ${metadata.overtimeModeLabel}` },
+      {
+        type: "text",
+        content: `פילטר מקור: ${metadata.sourceFilters || "לא זמין"}`,
+      },
+      {
+        type: "text",
+        content: `חושב בתאריך: ${metadata.computedAt || "לא זמין"}`,
+      },
+      { type: "text", content: `סטטוס תלוש: ${run.status}` },
+    ] as any;
+
+    exportToPDF(sections, {
+      title: `תלוש שכר ${employeeName}`,
+      subtitle: period,
+      companyName: "TENARCH CRM Pro",
+      rtl: true,
+    });
+  };
+
+  const navigateToAttendanceTimesheet = (userId: string, periodYear: number, periodMonth: number) => {
+    const params = new URLSearchParams({
+      tab: "timesheet",
+      employeeId: userId,
+      year: String(periodYear),
+      month: String(periodMonth),
+    });
+    navigate(`/attendance/admin?${params.toString()}`);
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card>
         <CardHeader>
           <CardTitle>חישוב שכר חודשי</CardTitle>
@@ -963,6 +1173,39 @@ function PayrollTab({ employees, runs, onChanged }: {
                      onChange={e => setMonth(Number(e.target.value))} />
             </Field>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Field label="מצב שעות נוספות (לחישוב הנוכחי)">
+              <Select value={overtimeMode} onValueChange={(v) => setOvertimeMode(v as OvertimeMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">ידני (מומלץ)</SelectItem>
+                  <SelectItem value="auto">אוטומטי 125%/150%</SelectItem>
+                  <SelectItem value="none">ללא שעות נוספות</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="ברירת מחדל לשעות נוספות">
+              <Select
+                value={overtimeModeDefault}
+                onValueChange={(v) => setOvertimeModeDefault(v as OvertimeMode)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">ידני (מומלץ)</SelectItem>
+                  <SelectItem value="auto">אוטומטי 125%/150%</SelectItem>
+                  <SelectItem value="none">ללא שעות נוספות</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          {emp && !emp.user_id && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm flex items-center justify-between gap-2">
+              <span>לעובד זה אין user_id מקושר ולכן אי אפשר למשוך נוכחות.</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => setLinkDialogOpen(true)}>
+                <Link2 className="h-4 w-4 ml-1" /> קשר עובד למשתמש
+              </Button>
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <Field label='שעות עבודה (לעובד שעתי / שע"נ)'>
               <Input type="number" step="0.5" value={workedHours}
@@ -1053,19 +1296,41 @@ function PayrollTab({ employees, runs, onChanged }: {
                 <TableRow>
                   <TableHead>עובד</TableHead>
                   <TableHead>תקופה</TableHead>
+                  <TableHead>מקור/מצב</TableHead>
                   <TableHead>ברוטו</TableHead>
                   <TableHead>נטו</TableHead>
                   <TableHead>עלות מעביד</TableHead>
                   <TableHead>סטטוס</TableHead>
+                  <TableHead>פעולות</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {runs.map(r => {
                   const e = employees.find(x => x.id === r.employee_id);
+                  const metadata = getRunMetadata(r);
                   return (
                     <TableRow key={r.id}>
-                      <TableCell>{e?.name || "—"}</TableCell>
+                      <TableCell>
+                        {e?.user_id ? (
+                          <button
+                            type="button"
+                            className="font-medium underline-offset-4 hover:underline"
+                            onClick={() => navigateToAttendanceTimesheet(e.user_id as string, r.period_year, r.period_month)}
+                            title="פתח נוכחות עובדים לעובד/ת"
+                          >
+                            {e.name}
+                          </button>
+                        ) : (
+                          e?.name || "—"
+                        )}
+                      </TableCell>
                       <TableCell>{r.period_month}/{r.period_year}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant="outline">{metadata.sourceLabel}</Badge>
+                          <Badge variant="secondary">{metadata.overtimeModeLabel}</Badge>
+                        </div>
+                      </TableCell>
                       <TableCell>{fmtNIS(Number(r.gross_total))}</TableCell>
                       <TableCell>{fmtNIS(Number(r.net_total))}</TableCell>
                       <TableCell>{fmtNIS(Number(r.employer_total_cost))}</TableCell>
@@ -1076,12 +1341,21 @@ function PayrollTab({ employees, runs, onChanged }: {
                            r.status === "draft" ? "טיוטה" : "בוטל"}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => exportPayrollRunPdf(r)}
+                        >
+                          <Download className="h-4 w-4 ml-1" /> PDF
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {runs.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       אין תלושים שמורים.
                     </TableCell>
                   </TableRow>
@@ -1091,7 +1365,44 @@ function PayrollTab({ employees, runs, onChanged }: {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+
+      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
+        <DialogContent dir="rtl">
+          <DialogHeader>
+            <DialogTitle>קישור עובד למשתמש</DialogTitle>
+            <DialogDescription>
+              בחר משתמש מערכת להצמדה לעובד, כדי לחשב שכר מנתוני נוכחות.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Field label="עובד">
+              <Input value={emp?.name || ""} readOnly />
+            </Field>
+            <Field label="משתמש מערכת">
+              <Select value={linkUserId} onValueChange={setLinkUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingLinkCandidates ? "טוען משתמשים..." : "בחר משתמש"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {linkCandidates.map((candidate) => (
+                    <SelectItem key={candidate.id} value={candidate.id}>
+                      {candidate.full_name || candidate.email || candidate.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>ביטול</Button>
+            <Button onClick={handleLinkEmployeeUser} disabled={savingLink || !linkUserId}>
+              {savingLink ? "שומר..." : "שמור קישור"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

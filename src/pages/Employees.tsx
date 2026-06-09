@@ -50,6 +50,11 @@ import { UserApprovalsTab } from "@/components/employees/UserApprovalsTab";
 import { AddEmployeePanel } from "@/components/employees/AddEmployeePanel";
 import { HRPayrollContent } from "@/pages/HRPayroll";
 import {
+  AttendanceRecordLite,
+  getMonthIsoWindow,
+  summarizeAttendanceByUser,
+} from "@/lib/attendancePayroll";
+import {
   Users,
   UserPlus,
   Shield,
@@ -81,15 +86,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-// Interface for time entries
-interface TimeEntry {
-  id: string;
-  user_id: string;
-  duration_minutes: number;
-  start_time: string;
-  description?: string;
-}
-
 // Interface for payroll calculation
 interface PayrollData {
   employee: Employee;
@@ -99,7 +95,7 @@ interface PayrollData {
   vatRate: number;
   vatAmount: number;
   netAmount: number;
-  entries: TimeEntry[];
+  entriesCount: number;
 }
 
 interface Employee {
@@ -261,26 +257,33 @@ export default function Employees() {
   });
   const [selectedEmployeeForPayroll, setSelectedEmployeeForPayroll] =
     useState<string>("all");
-  const [payrollHourlyRate, setPayrollHourlyRate] = useState<string>("");
+  const [payrollHourlyRateOverrides, setPayrollHourlyRateOverrides] = useState<
+    Record<string, string>
+  >({});
   const [payrollVatRate, setPayrollVatRate] = useState<string>("17");
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<
+    AttendanceRecordLite[]
+  >([]);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
+  const [savingPayrollRates, setSavingPayrollRates] = useState(false);
 
-  // Fetch time entries for payroll
-  const fetchTimeEntries = useCallback(async () => {
+  // Fetch attendance records for payroll
+  const fetchAttendanceForPayroll = useCallback(async () => {
     setLoadingPayroll(true);
     try {
       const [year, month] = payrollMonth.split("-").map(Number);
-      const startDate = new Date(year, month - 1, 1)
-        .toISOString()
-        .split("T")[0];
-      const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+      if (!year || !month) {
+        setAttendanceRecords([]);
+        return;
+      }
+      const { from, to } = getMonthIsoWindow(year, month);
 
       let query = supabase
-        .from("time_entries")
-        .select("id, user_id, duration_minutes, start_time, description")
-        .gte("start_time", startDate)
-        .lte("start_time", endDate + "T23:59:59");
+        .from("attendance_records")
+        .select("user_id, clock_in, clock_out, duration_minutes")
+        .gte("clock_in", from)
+        .lte("clock_in", to)
+        .not("clock_out", "is", null);
 
       if (selectedEmployeeForPayroll !== "all") {
         query = query.eq("user_id", selectedEmployeeForPayroll);
@@ -289,16 +292,16 @@ export default function Employees() {
       const { data, error } = await query;
 
       if (error) {
-        console.error("Error fetching time entries:", error);
+        console.error("Error fetching attendance records:", error);
         toast({
           title: "שגיאה",
-          description: "לא ניתן לטעון את רישומי הזמן",
+          description: "לא ניתן לטעון את נתוני הנוכחות",
           variant: "destructive",
         });
         return;
       }
 
-      setTimeEntries(data || []);
+      setAttendanceRecords((data || []) as AttendanceRecordLite[]);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -306,25 +309,29 @@ export default function Employees() {
     }
   }, [payrollMonth, selectedEmployeeForPayroll]);
 
-  // Fetch time entries when payroll tab is active
+  // Fetch attendance when payroll tab is active
   useEffect(() => {
     if (activeTab === "payroll") {
-      fetchTimeEntries();
+      fetchAttendanceForPayroll();
     }
-  }, [activeTab, fetchTimeEntries]);
+  }, [activeTab, fetchAttendanceForPayroll]);
 
   // Calculate payroll data
   const payrollData = useMemo(() => {
     const vatRate = parseFloat(payrollVatRate) || 0;
 
-    // Group entries by employee
-    const entriesByEmployee: Record<string, TimeEntry[]> = {};
-    timeEntries.forEach((entry) => {
-      if (!entriesByEmployee[entry.user_id]) {
-        entriesByEmployee[entry.user_id] = [];
+    const attendanceByEmployee = summarizeAttendanceByUser(attendanceRecords);
+
+    const getEffectiveHourlyRate = (employee: Employee) => {
+      const overrideRaw = payrollHourlyRateOverrides[employee.id];
+      if (overrideRaw !== undefined) {
+        const parsedOverride = parseFloat(overrideRaw);
+        if (!Number.isNaN(parsedOverride) && parsedOverride >= 0) {
+          return parsedOverride;
+        }
       }
-      entriesByEmployee[entry.user_id].push(entry);
-    });
+      return employee.hourly_rate || 0;
+    };
 
     // Calculate payroll for each employee
     const result: PayrollData[] = [];
@@ -335,17 +342,11 @@ export default function Employees() {
         : employees.filter((e) => e.id === selectedEmployeeForPayroll);
 
     employeeList.forEach((employee) => {
-      const employeeEntries = entriesByEmployee[employee.id] || [];
-      const totalMinutes = employeeEntries.reduce(
-        (sum, entry) => sum + (entry.duration_minutes || 0),
-        0,
-      );
-      const totalHours = totalMinutes / 60;
+      const attendanceSummary = attendanceByEmployee[employee.id];
+      const totalHours = attendanceSummary?.totalHours || 0;
+      const entriesCount = attendanceSummary?.entriesCount || 0;
 
-      // Use custom hourly rate if set, otherwise use employee's rate
-      const hourlyRate = payrollHourlyRate
-        ? parseFloat(payrollHourlyRate)
-        : employee.hourly_rate || 0;
+      const hourlyRate = getEffectiveHourlyRate(employee);
 
       const grossAmount = totalHours * hourlyRate;
       const vatAmount = grossAmount * (vatRate / 100);
@@ -360,7 +361,7 @@ export default function Employees() {
           vatRate,
           vatAmount,
           netAmount,
-          entries: employeeEntries,
+          entriesCount,
         });
       }
     });
@@ -368,11 +369,93 @@ export default function Employees() {
     return result.sort((a, b) => b.netAmount - a.netAmount);
   }, [
     employees,
-    timeEntries,
-    payrollHourlyRate,
+    attendanceRecords,
+    payrollHourlyRateOverrides,
     payrollVatRate,
     selectedEmployeeForPayroll,
   ]);
+
+  const setHourlyRateOverride = (employeeId: string, value: string) => {
+    setPayrollHourlyRateOverrides((prev) => ({ ...prev, [employeeId]: value }));
+  };
+
+  const getHourlyRateInputValue = (employee: Employee) => {
+    const override = payrollHourlyRateOverrides[employee.id];
+    if (override !== undefined) return override;
+    return employee.hourly_rate?.toString() || "";
+  };
+
+  const savePayrollHourlyRates = async () => {
+    const targetEmployees =
+      selectedEmployeeForPayroll === "all"
+        ? employees
+        : employees.filter((employee) => employee.id === selectedEmployeeForPayroll);
+
+    const updates = targetEmployees
+      .filter((employee) => payrollHourlyRateOverrides[employee.id] !== undefined)
+      .map((employee) => {
+        const raw = payrollHourlyRateOverrides[employee.id].trim();
+        const parsed = raw === "" ? null : parseFloat(raw);
+        return {
+          id: employee.id,
+          hourly_rate: Number.isNaN(parsed as number) ? employee.hourly_rate : parsed,
+        };
+      });
+
+    if (updates.length === 0) {
+      toast({
+        title: "אין שינויים לשמירה",
+        description: "עדכן לפחות תעריף אחד לפני שמירה.",
+      });
+      return;
+    }
+
+    setSavingPayrollRates(true);
+    try {
+      const results = await Promise.all(
+        updates.map((update) =>
+          supabase
+            .from("profiles")
+            .update({ hourly_rate: update.hourly_rate })
+            .eq("id", update.id),
+        ),
+      );
+
+      const firstError = results.find((result) => result.error)?.error;
+      if (firstError) {
+        throw firstError;
+      }
+
+      setEmployees((prev) =>
+        prev.map((employee) => {
+          const update = updates.find((u) => u.id === employee.id);
+          if (!update) return employee;
+          return { ...employee, hourly_rate: update.hourly_rate as number | null };
+        }),
+      );
+
+      setPayrollHourlyRateOverrides((prev) => {
+        const next = { ...prev };
+        updates.forEach((update) => {
+          delete next[update.id];
+        });
+        return next;
+      });
+
+      toast({
+        title: "התעריפים נשמרו",
+        description: `עודכנו ${updates.length} עובדים בהצלחה.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "שגיאה בשמירת תעריפים",
+        description: error?.message || "לא ניתן לשמור את התעריפים כרגע.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPayrollRates(false);
+    }
+  };
 
   // Format month display in Hebrew
   const formatMonth = (monthStr: string) => {
@@ -393,6 +476,21 @@ export default function Employees() {
     ];
     return `${monthNames[month - 1]} ${year}`;
   };
+
+  const navigateToAttendanceForPayroll = useCallback((employeeId: string) => {
+    const [year, month] = payrollMonth.split("-").map(Number);
+    const params = new URLSearchParams({
+      tab: "timesheet",
+      employeeId,
+    });
+
+    if (Number.isFinite(year) && Number.isFinite(month)) {
+      params.set("year", String(year));
+      params.set("month", String(month));
+    }
+
+    navigate(`/attendance/admin?${params.toString()}`);
+  }, [navigate, payrollMonth]);
 
   // Fetch employees with their roles
   const fetchEmployees = useCallback(async () => {
@@ -1499,21 +1597,79 @@ export default function Employees() {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:col-span-2">
                     <Label className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      תעריף שעתי (₪)
+                      תעריף שעתי לפי עובד/ת (₪)
                     </Label>
-                    <Input
-                      type="number"
-                      value={payrollHourlyRate}
-                      onChange={(e) => setPayrollHourlyRate(e.target.value)}
-                      placeholder="מתעריף עובד"
-                      dir="ltr"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      השאר ריק לשימוש בתעריף העובד
-                    </p>
+
+                    {selectedEmployeeForPayroll === "all" ? (
+                      <div className="max-h-52 overflow-y-auto rounded-md border border-primary/20 p-2 space-y-2">
+                        {employees.map((employee) => (
+                          <div
+                            key={employee.id}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="flex-1 text-sm truncate">
+                              {employee.full_name}
+                            </div>
+                            <Input
+                              type="number"
+                              value={getHourlyRateInputValue(employee)}
+                              onChange={(e) =>
+                                setHourlyRateOverride(
+                                  employee.id,
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="מתעריף עובד"
+                              className="w-36"
+                              dir="ltr"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      (() => {
+                        const selectedEmployee = employees.find(
+                          (employee) =>
+                            employee.id === selectedEmployeeForPayroll,
+                        );
+                        if (!selectedEmployee) return null;
+                        return (
+                          <Input
+                            type="number"
+                            value={getHourlyRateInputValue(selectedEmployee)}
+                            onChange={(e) =>
+                              setHourlyRateOverride(
+                                selectedEmployee.id,
+                                e.target.value,
+                              )
+                            }
+                            placeholder="מתעריף עובד"
+                            dir="ltr"
+                          />
+                        );
+                      })()
+                    )}
+
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        אפשר להגדיר תעריף שונה לכל עובד/ת ולשמור קבוע.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={savePayrollHourlyRates}
+                        disabled={savingPayrollRates}
+                      >
+                        {savingPayrollRates && (
+                          <Loader2 className="h-4 w-4 animate-spin ml-1" />
+                        )}
+                        שמור תעריפים
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -1532,7 +1688,10 @@ export default function Employees() {
                 </div>
 
                 <div className="flex justify-end mt-4">
-                  <Button onClick={fetchTimeEntries} disabled={loadingPayroll}>
+                  <Button
+                    onClick={fetchAttendanceForPayroll}
+                    disabled={loadingPayroll}
+                  >
                     {loadingPayroll && (
                       <Loader2 className="h-4 w-4 animate-spin ml-2" />
                     )}
@@ -1552,7 +1711,7 @@ export default function Employees() {
               <Card>
                 <CardContent className="p-12 text-center text-muted-foreground">
                   <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>לא נמצאו רישומי זמן לתקופה זו</p>
+                  <p>לא נמצאו רשומות נוכחות לתקופה זו</p>
                 </CardContent>
               </Card>
             ) : (
@@ -1570,9 +1729,14 @@ export default function Employees() {
                             {data.employee.full_name?.charAt(0) || "?"}
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold">
+                            <button
+                              type="button"
+                              className="text-xl font-bold underline-offset-4 hover:underline text-right"
+                              onClick={() => navigateToAttendanceForPayroll(data.employee.id)}
+                              title="פתח נוכחות עובדים לעובד/ת"
+                            >
                               {data.employee.full_name}
-                            </h3>
+                            </button>
                             <p className="text-sm opacity-90">
                               {data.employee.position || data.employee.email}
                             </p>
@@ -1615,7 +1779,7 @@ export default function Employees() {
                             </div>
                             <div className="flex justify-between items-center text-sm text-muted-foreground">
                               <span>מספר רישומים</span>
-                              <span>{data.entries.length}</span>
+                              <span>{data.entriesCount}</span>
                             </div>
                           </div>
                         </div>
@@ -1687,7 +1851,7 @@ export default function Employees() {
                                   <h3>פירוט שעות</h3>
                                   <div class="row"><span>סה"כ שעות עבודה</span><span>${data.totalHours.toFixed(2)}</span></div>
                                   <div class="row"><span>תעריף שעתי</span><span>₪${data.hourlyRate.toFixed(2)}</span></div>
-                                  <div class="row"><span>מספר רישומים</span><span>${data.entries.length}</span></div>
+                                  <div class="row"><span>מספר רישומים</span><span>${data.entriesCount}</span></div>
                                 </div>
                                 <div class="section">
                                   <h3>פירוט תשלום</h3>

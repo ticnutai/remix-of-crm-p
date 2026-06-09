@@ -39,7 +39,7 @@ export function useUserFilter() {
   });
   const [scope, setScope] = useSyncedSetting<UserFilterScope>({
     key: SCOPE_KEY,
-    defaultValue: "created_by",
+    defaultValue: "both",
   });
 
   const targetId = value === "mine" ? user?.id ?? null : value === "all" ? null : value;

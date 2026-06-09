@@ -17,6 +17,7 @@ import {
 import { QuickAddTask } from "@/components/layout/sidebar-tasks/QuickAddTask";
 import { QuickAddMeeting } from "@/components/layout/sidebar-tasks/QuickAddMeeting";
 import { DedupToggleButton } from "@/components/DedupToggleButton";
+import { UserFilterMenu, useUserFilter } from "@/components/shared/UserFilterMenu";
 import { useDedup } from "@/contexts/DedupContext";
 import {
   Dialog,
@@ -58,6 +59,8 @@ interface Task {
   id: string;
   title: string;
   description: string | null;
+  created_by?: string | null;
+  assigned_to?: string | null;
   status: string;
   priority: string;
   due_date: string | null;
@@ -69,6 +72,8 @@ interface Meeting {
   id: string;
   title: string;
   description: string | null;
+  created_by?: string | null;
+  assigned_to?: string | null;
   start_time: string;
   end_time: string;
   location: string | null;
@@ -82,6 +87,7 @@ interface Reminder {
   id: string;
   title: string;
   message: string | null;
+  user_id?: string | null;
   remind_at: string;
   is_dismissed: boolean;
   client?: { name: string } | null;
@@ -89,6 +95,7 @@ interface Reminder {
 
 interface TimeEntry {
   id: string;
+  user_id?: string | null;
   start_time: string;
   end_time: string | null;
   duration_minutes: number | null;
@@ -130,7 +137,12 @@ const getTaskStatusLabel = (status: string) => {
 
 export default function MyDay() {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isManager } = useAuth();
+  const {
+    value: userFilterValue,
+    targetId: userFilterTargetId,
+    matches: userFilterMatches,
+  } = useUserFilter();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -138,6 +150,12 @@ export default function MyDay() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [meetingsView, setMeetingsView] = useSyncedSetting<ViewType>({ key: "myday-meetings-view", defaultValue: "list" });
   const [tasksView, setTasksView] = useSyncedSetting<ViewType>({ key: "myday-tasks-view", defaultValue: "list" });
+
+  const showUserFilter = isManager;
+  const createTargetUserId =
+    showUserFilter && userFilterValue !== "all" && userFilterTargetId
+      ? userFilterTargetId
+      : (user?.id ?? null);
 
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -205,7 +223,10 @@ export default function MyDay() {
     const { user_id, ...cleanData } = taskData; // strip user_id if form sent it
     const insertPayload = {
       ...cleanData,
-      created_by: user?.id,
+      created_by: createTargetUserId,
+      assigned_to:
+        cleanData.assigned_to ??
+        (showUserFilter && userFilterValue !== "all" ? userFilterTargetId : null),
     };
 
     console.log(
@@ -250,7 +271,7 @@ export default function MyDay() {
     const { user_id, ...cleanData } = meetingData; // strip user_id if form sent it
     const insertPayload = {
       ...cleanData,
-      created_by: user?.id,
+      created_by: createTargetUserId,
     };
 
     console.log(
@@ -303,7 +324,7 @@ export default function MyDay() {
       ...cleanData,
       remind_at: remindAt,
       message: description || cleanData.message || null,
-      user_id: user?.id,
+      user_id: createTargetUserId,
     };
 
     console.log(
@@ -363,7 +384,7 @@ export default function MyDay() {
     }
     const insertPayload = {
       ...cleanData,
-      user_id: user?.id,
+      user_id: createTargetUserId,
     };
 
     console.log(
@@ -407,47 +428,43 @@ export default function MyDay() {
     console.log("📊 [MyDay] fetchTodayData range:", todayStart, "->", todayEnd);
 
     const [tasksRes, meetingsRes, remindersRes, timeRes] = await Promise.all([
-      // Tasks due today or overdue (scoped to current user)
+      // Tasks due today or overdue (RLS-scoped, then user-filtered client-side)
       supabase
         .from("tasks")
         .select(
-          "id, title, description, status, priority, due_date, client:clients(name), project:projects(name)",
+          "id, title, description, created_by, assigned_to, status, priority, due_date, client:clients(name), project:projects(name)",
         )
-        .eq("created_by", user.id)
         .or(`due_date.lte.${todayEnd},status.neq.completed`)
         .neq("status", "completed")
         .order("priority", { ascending: false }),
 
-      // Meetings today (scoped to current user)
+      // Meetings today (RLS-scoped, then user-filtered client-side)
       supabase
         .from("meetings")
         .select(
-          "id, title, description, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
+          "id, title, description, created_by, start_time, end_time, location, meeting_type, status, client:clients(name), project:projects(name)",
         )
-        .eq("created_by", user.id)
         .gte("start_time", todayStart)
         .lte("start_time", todayEnd)
         .order("start_time", { ascending: true }),
 
-      // Reminders for today (use user_id filter to scope to current user)
+      // Reminders for today (RLS-scoped, then user-filtered client-side)
       supabase
         .from("reminders")
         .select(
-          "id, title, message, remind_at, is_dismissed, client:clients(name)",
+          "id, title, message, user_id, remind_at, is_dismissed, client:clients(name)",
         )
-        .eq("user_id", user.id)
         .gte("remind_at", todayStart)
         .lte("remind_at", todayEnd)
         .eq("is_dismissed", false)
         .order("remind_at", { ascending: true }),
 
-      // Time entries today (scoped to current user)
+      // Time entries today (RLS-scoped, then user-filtered client-side)
       supabase
         .from("time_entries")
         .select(
-          "id, start_time, end_time, duration_minutes, description, project:projects(name), client:clients(name)",
+          "id, user_id, start_time, end_time, duration_minutes, description, project:projects(name), client:clients(name)",
         )
-        .eq("user_id", user.id)
         .gte("start_time", todayStart)
         .lte("start_time", todayEnd)
         .order("start_time", { ascending: true }),
@@ -507,31 +524,51 @@ export default function MyDay() {
   const GreetingIcon = greeting.icon;
   const { showDuplicates } = useDedup();
 
+  const filteredTasks = React.useMemo(() => {
+    if (!showUserFilter || !userFilterTargetId) return tasks;
+    return tasks.filter((task) => userFilterMatches(task, "tasks"));
+  }, [tasks, showUserFilter, userFilterTargetId, userFilterMatches]);
+
+  const filteredMeetings = React.useMemo(() => {
+    if (!showUserFilter || !userFilterTargetId) return meetings;
+    return meetings.filter((meeting) => userFilterMatches(meeting, "meetings"));
+  }, [meetings, showUserFilter, userFilterTargetId, userFilterMatches]);
+
+  const visibleReminders = React.useMemo(() => {
+    if (!showUserFilter || !userFilterTargetId) return reminders;
+    return reminders.filter((reminder) => userFilterMatches(reminder, "reminders"));
+  }, [reminders, showUserFilter, userFilterTargetId, userFilterMatches]);
+
+  const visibleTimeEntries = React.useMemo(() => {
+    if (!showUserFilter || !userFilterTargetId) return timeEntries;
+    return timeEntries.filter((entry) => entry.user_id === userFilterTargetId);
+  }, [timeEntries, showUserFilter, userFilterTargetId]);
+
   // Client-side dedup for meetings and tasks (extra safety layer)
   const visibleMeetings = React.useMemo(() => {
-    if (showDuplicates) return meetings;
+    if (showDuplicates) return filteredMeetings;
     const seen = new Map<string, (typeof meetings)[0]>();
-    meetings.forEach((m) => {
+    filteredMeetings.forEach((m) => {
       const key = `${m.title.trim().toLowerCase()}|${m.start_time?.slice(0, 16) ?? ""}`;
       if (!seen.has(key)) seen.set(key, m);
     });
     return Array.from(seen.values());
-  }, [meetings, showDuplicates]);
+  }, [filteredMeetings, showDuplicates]);
 
   const visibleTasks = React.useMemo(() => {
-    if (showDuplicates) return tasks;
+    if (showDuplicates) return filteredTasks;
     const seen = new Map<string, (typeof tasks)[0]>();
-    tasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       const key = `${t.title.trim().toLowerCase()}|${(t.due_date ?? "").slice(0, 10)}`;
       if (!seen.has(key)) seen.set(key, t);
     });
     return Array.from(seen.values());
-  }, [tasks, showDuplicates]);
+  }, [filteredTasks, showDuplicates]);
   const totalTasks = visibleTasks.length;
   const pendingMeetings = visibleMeetings.filter(
     (m) => m.status === "scheduled",
   ).length;
-  const totalTimeMinutes = timeEntries.reduce(
+  const totalTimeMinutes = visibleTimeEntries.reduce(
     (sum, e) => sum + (e.duration_minutes || 0),
     0,
   );
@@ -556,7 +593,10 @@ export default function MyDay() {
               </p>
             </div>
           </div>
-          <DedupToggleButton />
+          <div className="flex items-center gap-2">
+            {showUserFilter && <UserFilterMenu align="end" />}
+            <DedupToggleButton />
+          </div>
         </div>
 
         {/* Quick Stats */}
@@ -591,7 +631,7 @@ export default function MyDay() {
                 <Bell className="h-6 w-6 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{reminders.length}</p>
+                <p className="text-2xl font-bold">{visibleReminders.length}</p>
                 <p className="text-sm text-muted-foreground">תזכורות</p>
               </div>
             </CardContent>
@@ -846,14 +886,14 @@ export default function MyDay() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {reminders.length === 0 ? (
+              {visibleReminders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>אין תזכורות להיום</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {reminders.map((reminder) => (
+                  {visibleReminders.map((reminder) => (
                     <HoverItemWrapper
                       key={reminder.id}
                       onClick={() =>
@@ -909,14 +949,14 @@ export default function MyDay() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {timeEntries.length === 0 ? (
+              {visibleTimeEntries.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>לא נרשם זמן עבודה היום</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {timeEntries.map((entry) => (
+                  {visibleTimeEntries.map((entry) => (
                     <div
                       key={entry.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
