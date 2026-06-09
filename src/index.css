@@ -28,6 +28,7 @@
   html {
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
+    direction: rtl;
   }
 
   body {
@@ -35,6 +36,53 @@
     overflow-x: hidden; /* Changed from auto to hidden to prevent horizontal scroll */
     width: 100%;
     max-width: none; /* Remove max-width limit */
+    direction: rtl;
+    text-align: right;
+  }
+
+  #root {
+    direction: rtl;
+    text-align: right;
+  }
+
+  body :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    span,
+    label,
+    legend,
+    li,
+    dt,
+    dd,
+    th,
+    td,
+    input,
+    textarea,
+    select,
+    button,
+    [role="button"],
+    [role="menu"],
+    [role="menuitem"],
+    [role="listbox"],
+    [role="option"],
+    [role="combobox"],
+    [role="dialog"],
+    [role="tooltip"],
+    [contenteditable="true"]
+  ) {
+    direction: rtl;
+    text-align: right;
+  }
+
+  /* Keep Radix portal content aligned with the app-wide RTL baseline. */
+  [data-radix-popper-content-wrapper] {
+    direction: rtl;
+    text-align: right;
   }
 
   :root {

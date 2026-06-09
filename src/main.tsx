@@ -3,6 +3,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Enforce permanent global RTL baseline for the entire app.
+document.documentElement.setAttribute("dir", "rtl");
+document.documentElement.setAttribute("lang", "he");
+document.body.setAttribute("dir", "rtl");
+
 // Environment validation
 const requiredEnvVars = [
   "VITE_SUPABASE_URL",
