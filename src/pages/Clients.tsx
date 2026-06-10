@@ -199,6 +199,7 @@ export default function Clients() {
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
+  const [isHeaderStripHovered, setIsHeaderStripHovered] = useState(false);
   const [showAccessView, setShowAccessView] = useSyncedSetting<boolean>({ key: "clients-show-access-view", defaultValue: false });
 
   // Wrapper: persist showStagesView to cloud
@@ -2501,6 +2502,8 @@ export default function Clients() {
             marginBottom: "6px",
             border: "1px solid #d4a843",
           }}
+          onMouseEnter={() => setIsHeaderStripHovered(true)}
+          onMouseLeave={() => setIsHeaderStripHovered(false)}
         >
           <div
             style={{
@@ -2573,16 +2576,18 @@ export default function Clients() {
                 };
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => { pageCustomizer.setInitialTab("layout"); pageCustomizer.openPanel(); }}
-                      style={iconBtnBase}
-                      onMouseEnter={(e) => handleEnter(e, false)}
-                      onMouseLeave={(e) => handleLeave(e, false)}
-                      title="התאמה אישית של הדף (פריסה + פונקציות)"
-                      aria-label="התאמה אישית של הדף"
-                    >
-                      <Settings style={{ width: "16px", height: "16px" }} />
-                    </button>
+                    {isHeaderStripHovered && (
+                      <button
+                        onClick={() => { pageCustomizer.setInitialTab("layout"); pageCustomizer.openPanel(); }}
+                        style={iconBtnBase}
+                        onMouseEnter={(e) => handleEnter(e, false)}
+                        onMouseLeave={(e) => handleLeave(e, false)}
+                        title="התאמה אישית של הדף (פריסה + פונקציות)"
+                        aria-label="התאמה אישית של הדף"
+                      >
+                        <Settings style={{ width: "16px", height: "16px" }} />
+                      </button>
+                    )}
 
                     {pcEnabled("add-client") && (
                     <button
@@ -2597,7 +2602,7 @@ export default function Clients() {
                     </button>
                     )}
 
-                    {pcEnabled("goto-table") && (
+                    {isHeaderStripHovered && pcEnabled("goto-table") && (
                     <button
                       onClick={() => navigate("/datatable-pro")}
                       style={iconBtnBase}
@@ -2610,7 +2615,7 @@ export default function Clients() {
                     </button>
                     )}
 
-                    {pcEnabled("bulk-select") && (
+                    {isHeaderStripHovered && pcEnabled("bulk-select") && (
                     <button
                       onClick={toggleSelectionMode}
                       style={{ ...iconBtnBase, ...(selectionMode ? activeStyle : {}) }}
@@ -2623,7 +2628,7 @@ export default function Clients() {
                     </button>
                     )}
 
-                    {pcEnabled("stages-toggle") && (
+                    {isHeaderStripHovered && pcEnabled("stages-toggle") && (
                     <button
                       onClick={() => {
                         setShowStagesView(!showStagesView);
@@ -2639,7 +2644,7 @@ export default function Clients() {
                     </button>
                     )}
 
-                    {pcEnabled("stats-toggle") && (
+                    {isHeaderStripHovered && pcEnabled("stats-toggle") && (
                     <button
                       onClick={() => {
                         setShowStatisticsView(!showStatisticsView);
@@ -2675,7 +2680,7 @@ export default function Clients() {
                     />
                     )}
 
-                    {pcEnabled("access-mgmt") && (isAdmin || isManager) && (
+                    {isHeaderStripHovered && pcEnabled("access-mgmt") && (isAdmin || isManager) && (
                       <button
                         onClick={() => {
                           setShowAccessView(!showAccessView);
@@ -2949,34 +2954,36 @@ export default function Clients() {
               ) : (
                 <>
                   {/* Features / Sparkles button */}
-                  <button
-                    onClick={() => setShowFeaturesHelp(true)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "30px",
-                      height: "30px",
-                      backgroundColor: "transparent",
-                      border: "1.5px solid #d4a843",
-                      borderRadius: "50%",
-                      color: "#d4a843",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#d4a843";
-                      e.currentTarget.style.color = "#ffffff";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color = "#d4a843";
-                    }}
-                    title="תכונות זמינות"
-                    aria-label="תכונות זמינות"
-                  >
-                    <Sparkles style={{ width: "15px", height: "15px" }} />
-                  </button>
+                  {isHeaderStripHovered && (
+                    <button
+                      onClick={() => setShowFeaturesHelp(true)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "30px",
+                        height: "30px",
+                        backgroundColor: "transparent",
+                        border: "1.5px solid #d4a843",
+                        borderRadius: "50%",
+                        color: "#d4a843",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#d4a843";
+                        e.currentTarget.style.color = "#ffffff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color = "#d4a843";
+                      }}
+                      title="תכונות זמינות"
+                      aria-label="תכונות זמינות"
+                    >
+                      <Sparkles style={{ width: "15px", height: "15px" }} />
+                    </button>
+                  )}
                 </>
               )}
 

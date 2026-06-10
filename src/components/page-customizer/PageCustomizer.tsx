@@ -144,6 +144,7 @@ interface PanelProps {
 }
 
 export function PageCustomizerPanel({ ctl, title = "התאמה אישית של העמוד" }: PanelProps) {
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     try {
       const raw = localStorage.getItem("page-customizer-pos");
@@ -154,12 +155,25 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
   const [dragging, setDragging] = useState(false);
   const dragOffset = React.useRef({ x: 0, y: 0 });
 
+  const getViewportBounds = useCallback(() => {
+    const panelWidth = panelRef.current?.getBoundingClientRect().width ?? 380;
+    const panelHeight = panelRef.current?.getBoundingClientRect().height ?? (window.innerHeight - 16);
+    const margin = 8;
+    return {
+      minX: margin,
+      minY: margin,
+      maxX: Math.max(margin, window.innerWidth - panelWidth - margin),
+      maxY: Math.max(margin, window.innerHeight - panelHeight - margin),
+    };
+  }, []);
+
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e: MouseEvent) => {
+      const bounds = getViewportBounds();
       setPos({
-        x: Math.max(0, Math.min(window.innerWidth - 360, e.clientX - dragOffset.current.x)),
-        y: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y)),
+        x: Math.max(bounds.minX, Math.min(bounds.maxX, e.clientX - dragOffset.current.x)),
+        y: Math.max(bounds.minY, Math.min(bounds.maxY, e.clientY - dragOffset.current.y)),
       });
     };
     const onUp = () => {
@@ -172,7 +186,28 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, pos]);
+  }, [dragging, getViewportBounds, pos]);
+
+  useEffect(() => {
+    if (!ctl.isOpen) return;
+    const clampToViewport = () => {
+      const bounds = getViewportBounds();
+      setPos((prev) => ({
+        x: Math.max(bounds.minX, Math.min(bounds.maxX, prev.x)),
+        y: Math.max(bounds.minY, Math.min(bounds.maxY, prev.y)),
+      }));
+    };
+
+    const rafId = window.requestAnimationFrame(() => {
+      clampToViewport();
+      window.requestAnimationFrame(clampToViewport);
+    });
+    window.addEventListener("resize", clampToViewport);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", clampToViewport);
+    };
+  }, [ctl.isOpen, getViewportBounds]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -206,8 +241,9 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
 
   return (
     <div
+      ref={panelRef}
       style={{ left: pos.x, top: pos.y }}
-      className="fixed z-50 w-[380px] rounded-xl border bg-background shadow-2xl flex flex-col overflow-hidden"
+      className="fixed z-50 w-[380px] h-[min(700px,calc(100vh-16px))] max-h-[calc(100vh-16px)] rounded-xl border bg-background shadow-2xl flex flex-col overflow-hidden"
       dir="rtl"
     >
       {/* Header / drag handle */}
@@ -232,7 +268,7 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
         </div>
       </div>
 
-      <Tabs defaultValue={ctl.initialTab} className="flex flex-col">
+      <Tabs defaultValue={ctl.initialTab} className="flex flex-col flex-1 min-h-0">
         <TabsList className="m-3 mb-0 grid grid-cols-2">
           <TabsTrigger value="layout" className="gap-1.5">
             <LayoutTemplate className="h-4 w-4" />
@@ -245,13 +281,16 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
         </TabsList>
 
         {/* ── LAYOUT TAB ── */}
-        <TabsContent value="layout" className="m-0">
+        <TabsContent
+          value="layout"
+          className="m-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col"
+        >
           <div className="px-3 pt-3 pb-1">
             <p className="text-xs text-muted-foreground">
               לחץ על כפתור ההדלקה כדי להציג/להסתיר חלק. גרור לשינוי סדר.
             </p>
           </div>
-          <ScrollArea className="max-h-[55vh]">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="px-3 pb-3 pt-2 space-y-2">
               {ctl.orderedSections.length === 0 && (
                 <div className="text-sm text-muted-foreground text-center py-8">
@@ -280,13 +319,16 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
         </TabsContent>
 
         {/* ── FEATURES TAB ── */}
-        <TabsContent value="features" className="m-0">
+        <TabsContent
+          value="features"
+          className="m-0 min-h-0 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col"
+        >
           <div className="px-3 pt-3 pb-1">
             <p className="text-xs text-muted-foreground">
               לחץ על כפתור ההדלקה כדי להפעיל/לכבות פונקציה.
             </p>
           </div>
-          <ScrollArea className="max-h-[55vh]">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="px-3 pb-3 pt-2 space-y-2">
               {ctl.features.length === 0 && (
                 <div className="text-sm text-muted-foreground text-center py-8">
