@@ -3030,6 +3030,7 @@ export default function Clients() {
 
         {/* ═══ Compact Row 2: Filter Strip ═══ */}
         {pcVisible("filter-strip") && pcEnabled("filter-strip") && (
+        <div style={{ marginBottom: '16px' }}>
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
