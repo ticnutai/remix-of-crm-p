@@ -77,7 +77,10 @@ interface ClientsFilterStripProps {
   clientsWithTasks: Set<string>;
   clientsWithMeetings: Set<string>;
   categories?: ClientCategory[];
+  categoryCounts?: Record<string, number>;
+  stageCounts?: Record<string, number>;
   allTags?: string[];
+  visibleClientsCount?: number;
   onOpenCategoryManager?: () => void;
   onUpdate?: () => void;
 }
@@ -97,7 +100,10 @@ export function ClientsFilterStrip({
   clientsWithTasks,
   clientsWithMeetings,
   categories = [],
+  categoryCounts = {},
+  stageCounts = {},
   allTags = [],
+  visibleClientsCount,
   onOpenCategoryManager,
   onUpdate,
 }: ClientsFilterStripProps) {
@@ -349,6 +355,16 @@ export function ClientsFilterStrip({
             </div>
           </PopoverContent>
         </Popover>
+
+        {typeof visibleClientsCount === "number" && visibleClientsCount > 0 && (
+          <div className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-[#d4a843] bg-[#fff8e7]">
+            <Users className="h-3.5 w-3.5 text-[#1e3a5f]" />
+            <span className="text-[11px] text-[#1e3a5f]">מוצגים</span>
+            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-[#1e3a5f] text-white">
+              {visibleClientsCount}
+            </Badge>
+          </div>
+        )}
 
         {/* Unified Sort & Date Filter */}
         {visibleFilterSections.has("sort") && (
@@ -648,79 +664,91 @@ export function ClientsFilterStrip({
                     אין קטגוריות מוגדרות
                   </p>
                 ) : (
-                  categories.map((category) => (
-                    <div
-                      key={category.id}
-                      className={cn(
-                        "group flex items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
-                        filters.categories.includes(category.id)
-                          ? "bg-primary/10 border-primary"
-                          : "bg-background border-border hover:border-primary/50",
-                      )}
-                    >
-                      <Checkbox
-                        checked={filters.categories.includes(category.id)}
-                        onCheckedChange={() => toggleCategory(category.id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                  categories.map((category) => {
+                    const categoryClientCount = categoryCounts[category.id] || 0;
+
+                    return (
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white flex-shrink-0"
-                        style={{ backgroundColor: category.color }}
-                      >
-                        {iconMap[category.icon] || (
-                          <FolderOpen className="h-3 w-3" />
+                        key={category.id}
+                        className={cn(
+                          "group flex items-center gap-2 p-2 pr-3 rounded-lg border transition-all",
+                          filters.categories.includes(category.id)
+                            ? "bg-primary/10 border-primary"
+                            : "bg-background border-border hover:border-primary/50",
                         )}
-                      </div>
-                      <button
-                        className="font-medium flex-1 text-right cursor-pointer bg-transparent border-0 p-0"
-                        onClick={() => toggleCategory(category.id)}
-                        type="button"
                       >
-                        {category.name}
-                      </button>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-amber-100 hover:text-amber-700"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCategoriesDialogOpen(false);
-                            setAddToCategoryId(category.id);
-                          }}
-                          title={`הוסף לקוחות ל${category.name}`}
+                        <Checkbox
+                          checked={filters.categories.includes(category.id)}
+                          onCheckedChange={() => toggleCategory(category.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
                         >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCategoriesDialogOpen(false);
-                            onOpenCategoryManager?.();
-                          }}
-                          title="ערוך קטגוריה"
+                          {iconMap[category.icon] || (
+                            <FolderOpen className="h-3 w-3" />
+                          )}
+                        </div>
+                        <button
+                          className="font-medium flex-1 text-right cursor-pointer bg-transparent border-0 p-0"
+                          onClick={() => toggleCategory(category.id)}
+                          type="button"
                         >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCategoriesDialogOpen(false);
-                            onOpenCategoryManager?.();
-                          }}
-                          title="מחק קטגוריה"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                          {category.name}
+                        </button>
+                        {categoryClientCount > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
+                          >
+                            {categoryClientCount}
+                          </Badge>
+                        )}
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-amber-100 hover:text-amber-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCategoriesDialogOpen(false);
+                              setAddToCategoryId(category.id);
+                            }}
+                            title={`הוסף לקוחות ל${category.name}`}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-blue-100 hover:text-blue-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCategoriesDialogOpen(false);
+                              onOpenCategoryManager?.();
+                            }}
+                            title="ערוך קטגוריה"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-red-100 hover:text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCategoriesDialogOpen(false);
+                              onOpenCategoryManager?.();
+                            }}
+                            title="מחק קטגוריה"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </ScrollArea>
@@ -873,26 +901,38 @@ export function ClientsFilterStrip({
                     אין שלבים מוגדרים
                   </p>
                 ) : (
-                  stageDefinitions.map((stage) => (
-                    <div
-                      key={stage.stage_name}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                        filters.stages.includes(stage.stage_name)
-                          ? "bg-primary/10 border-primary"
-                          : "bg-background border-border hover:border-primary/50",
-                      )}
-                      onClick={() => toggleStage(stage.stage_name)}
-                    >
-                      <Checkbox
-                        checked={filters.stages.includes(stage.stage_name)}
-                        onCheckedChange={() => toggleStage(stage.stage_name)}
-                      />
-                      <span className="font-medium text-foreground text-right flex-1">
-                        {stage.stage_name}
-                      </span>
-                    </div>
-                  ))
+                  stageDefinitions.map((stage) => {
+                    const stageClientCount = stageCounts[stage.stage_name] || 0;
+
+                    return (
+                      <div
+                        key={stage.stage_name}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                          filters.stages.includes(stage.stage_name)
+                            ? "bg-primary/10 border-primary"
+                            : "bg-background border-border hover:border-primary/50",
+                        )}
+                        onClick={() => toggleStage(stage.stage_name)}
+                      >
+                        <Checkbox
+                          checked={filters.stages.includes(stage.stage_name)}
+                          onCheckedChange={() => toggleStage(stage.stage_name)}
+                        />
+                        <span className="font-medium text-foreground text-right flex-1">
+                          {stage.stage_name}
+                        </span>
+                        {stageClientCount > 0 && (
+                          <Badge
+                            variant="secondary"
+                            className="h-5 min-w-5 px-1.5 text-[10px] bg-primary/10 text-primary"
+                          >
+                            {stageClientCount}
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </ScrollArea>

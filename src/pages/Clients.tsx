@@ -78,9 +78,6 @@ import {
   Search,
   Phone,
   Mail,
-  Grid3X3,
-  LayoutGrid,
-  List,
   Pencil,
   Trash2,
   Eye,
@@ -89,8 +86,6 @@ import {
   Calendar,
   Square,
   Rows3,
-  GalleryVertical,
-  CircleUser,
   Sheet,
   Upload,
   Loader2,
@@ -154,7 +149,6 @@ export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showViewOptions, setShowViewOptions] = useState(false);
 
   // Persistent view settings from cloud
   const {
@@ -588,6 +582,25 @@ export default function Clients() {
     });
     return counts;
   }, [clients]);
+
+  const stageCounts = useMemo(() => {
+    const byStage = new Map<string, Set<string>>();
+
+    clientStages.forEach((stage) => {
+      if (!stage.stage_name || !stage.client_id) return;
+      if (!byStage.has(stage.stage_name)) {
+        byStage.set(stage.stage_name, new Set());
+      }
+      byStage.get(stage.stage_name)!.add(stage.client_id);
+    });
+
+    const counts: Record<string, number> = {};
+    byStage.forEach((clientIds, stageName) => {
+      counts[stageName] = clientIds.size;
+    });
+
+    return counts;
+  }, [clientStages]);
 
   // Data fetching effect moved below function declarations
 
@@ -2935,7 +2948,7 @@ export default function Clients() {
                 </>
               ) : (
                 <>
-                  {/* Features / Sparkles button - moved here next to Eye */}
+                  {/* Features / Sparkles button */}
                   <button
                     onClick={() => setShowFeaturesHelp(true)}
                     style={{
@@ -2964,369 +2977,6 @@ export default function Clients() {
                   >
                     <Sparkles style={{ width: "15px", height: "15px" }} />
                   </button>
-
-                  {/* View Mode Toggle */}
-                  <div style={{ position: "relative" }}>
-                    <button
-                      onClick={() => setShowViewOptions(!showViewOptions)}
-                      style={{
-                        width: "30px",
-                        height: "30px",
-                        borderRadius: "50%",
-                        backgroundColor: "transparent",
-                        border: "1.5px solid #d4a843",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      className="hover:bg-amber-500/20"
-                      title="אפשרויות תצוגה"
-                    >
-                      <Eye
-                        style={{
-                          width: "15px",
-                          height: "15px",
-                          color: "#d4a843",
-                        }}
-                      />
-                    </button>
-
-                    {/* View Options Dropdown - Enhanced */}
-                    {showViewOptions && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "48px",
-                          left: "0",
-                          backgroundColor: "#1e293b",
-                          border: "2px solid #d4a843",
-                          borderRadius: "16px",
-                          padding: "12px",
-                          zIndex: 50,
-                          minWidth: "280px",
-                          boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
-                        }}
-                        dir="rtl"
-                      >
-                        {/* Header */}
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            borderBottom: "1px solid #334155",
-                            paddingBottom: "10px",
-                            marginBottom: "10px",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <Eye
-                              style={{
-                                width: "18px",
-                                height: "18px",
-                                color: "#d4a843",
-                              }}
-                            />
-                            <span
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                color: "#ffffff",
-                              }}
-                            >
-                              אפשרויות תצוגה
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => setShowViewOptions(false)}
-                            style={{
-                              width: "24px",
-                              height: "24px",
-                              borderRadius: "50%",
-                              backgroundColor: "transparent",
-                              border: "1px solid #64748b",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer",
-                              color: "#94a3b8",
-                            }}
-                          >
-                            <X style={{ width: "14px", height: "14px" }} />
-                          </button>
-                        </div>
-
-                        {/* Cards Category */}
-                        <div style={{ marginBottom: "8px" }}>
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#64748b",
-                              padding: "4px 8px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            📇 כרטיסים
-                          </div>
-                          {[
-                            {
-                              mode: "grid" as const,
-                              icon: LayoutGrid,
-                              label: "רשת גדולה",
-                              desc: "כרטיסים רחבים עם כל הפרטים",
-                            },
-                            {
-                              mode: "cards" as const,
-                              icon: Rows3,
-                              label: "כרטיסים אופקיים",
-                              desc: "תצוגה מלבנית עם אווטאר",
-                            },
-                            {
-                              mode: "portrait" as const,
-                              icon: CircleUser,
-                              label: "פורטרט",
-                              desc: "תמונות פרופיל גדולות",
-                            },
-                            {
-                              mode: "luxury" as const,
-                              icon: Sparkles,
-                              label: "✨ יוקרתי",
-                              desc: "עיצוב לבן-זהב מעוצב",
-                            },
-                          ].map(({ mode, icon: Icon, label, desc }) => (
-                            <button
-                              key={mode}
-                              onClick={() => {
-                                setViewMode(mode);
-                                setShowViewOptions(false);
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: "10px 12px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                backgroundColor:
-                                  viewMode === mode
-                                    ? "rgba(212, 168, 67, 0.15)"
-                                    : "transparent",
-                                color:
-                                  viewMode === mode ? "#fbbf24" : "#ffffff",
-                                border:
-                                  viewMode === mode
-                                    ? "1px solid #d4a843"
-                                    : "1px solid transparent",
-                                borderRadius: "10px",
-                                cursor: "pointer",
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                marginTop: "4px",
-                                textAlign: "right",
-                                transition: "all 0.2s",
-                              }}
-                              className="hover:bg-slate-700/50"
-                            >
-                              <div
-                                style={{
-                                  width: "36px",
-                                  height: "36px",
-                                  borderRadius: "8px",
-                                  backgroundColor:
-                                    viewMode === mode ? "#d4a843" : "#334155",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                <Icon
-                                  style={{
-                                    width: "18px",
-                                    height: "18px",
-                                    color:
-                                      viewMode === mode ? "#1e293b" : "#94a3b8",
-                                  }}
-                                />
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: "600" }}>{label}</div>
-                                <div
-                                  style={{
-                                    fontSize: "11px",
-                                    color: "#64748b",
-                                    marginTop: "2px",
-                                  }}
-                                >
-                                  {desc}
-                                </div>
-                              </div>
-                              {viewMode === mode && (
-                                <Check
-                                  style={{
-                                    width: "16px",
-                                    height: "16px",
-                                    color: "#22c55e",
-                                  }}
-                                />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Lists Category */}
-                        <div style={{ marginBottom: "8px" }}>
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#64748b",
-                              padding: "4px 8px",
-                              fontWeight: "600",
-                            }}
-                          >
-                            📋 רשימות
-                          </div>
-                          {[
-                            {
-                              mode: "list" as const,
-                              icon: List,
-                              label: "רשימה מפורטת",
-                              desc: "שורות עם כל המידע",
-                            },
-                            {
-                              mode: "minimal" as const,
-                              icon: GalleryVertical,
-                              label: "מינימלי",
-                              desc: "שם וסטטוס בלבד",
-                            },
-                            {
-                              mode: "compact" as const,
-                              icon: Grid3X3,
-                              label: "קומפקטי",
-                              desc: "רשת צפופה, הרבה לקוחות",
-                            },
-                          ].map(({ mode, icon: Icon, label, desc }) => (
-                            <button
-                              key={mode}
-                              onClick={() => {
-                                setViewMode(mode);
-                                setShowViewOptions(false);
-                              }}
-                              style={{
-                                width: "100%",
-                                padding: "10px 12px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                backgroundColor:
-                                  viewMode === mode
-                                    ? "rgba(212, 168, 67, 0.15)"
-                                    : "transparent",
-                                color:
-                                  viewMode === mode ? "#fbbf24" : "#ffffff",
-                                border:
-                                  viewMode === mode
-                                    ? "1px solid #d4a843"
-                                    : "1px solid transparent",
-                                borderRadius: "10px",
-                                cursor: "pointer",
-                                fontSize: "14px",
-                                fontWeight: "500",
-                                marginTop: "4px",
-                                textAlign: "right",
-                                transition: "all 0.2s",
-                              }}
-                              className="hover:bg-slate-700/50"
-                            >
-                              <div
-                                style={{
-                                  width: "36px",
-                                  height: "36px",
-                                  borderRadius: "8px",
-                                  backgroundColor:
-                                    viewMode === mode ? "#d4a843" : "#334155",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                              >
-                                <Icon
-                                  style={{
-                                    width: "18px",
-                                    height: "18px",
-                                    color:
-                                      viewMode === mode ? "#1e293b" : "#94a3b8",
-                                  }}
-                                />
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: "600" }}>{label}</div>
-                                <div
-                                  style={{
-                                    fontSize: "11px",
-                                    color: "#64748b",
-                                    marginTop: "2px",
-                                  }}
-                                >
-                                  {desc}
-                                </div>
-                              </div>
-                              {viewMode === mode && (
-                                <Check
-                                  style={{
-                                    width: "16px",
-                                    height: "16px",
-                                    color: "#22c55e",
-                                  }}
-                                />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Quick Tips */}
-                        <div
-                          style={{
-                            marginTop: "12px",
-                            padding: "10px",
-                            backgroundColor: "#0f172a",
-                            borderRadius: "10px",
-                            border: "1px solid #334155",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#94a3b8",
-                              fontWeight: "600",
-                              marginBottom: "6px",
-                            }}
-                          >
-                            💡 טיפים
-                          </div>
-                          <ul
-                            style={{
-                              fontSize: "10px",
-                              color: "#64748b",
-                              margin: 0,
-                              paddingRight: "16px",
-                              lineHeight: "1.6",
-                            }}
-                          >
-                            <li>הקלד אותיות לחיפוש מהיר</li>
-                            <li>לחץ על "בחירה מרובה" למחיקת מספר לקוחות</li>
-                            <li>מעבר לטבלה מלאה בכפתור "טבלה"</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </>
               )}
 
@@ -3405,7 +3055,10 @@ export default function Clients() {
           clientsWithTasks={clientsWithTasks}
           clientsWithMeetings={clientsWithMeetings}
           categories={categories}
+          categoryCounts={categoryCounts}
+          stageCounts={stageCounts}
           allTags={allTags}
+          visibleClientsCount={filteredClients.length}
           onOpenCategoryManager={() => setIsCategoryManagerOpen(true)}
           onUpdate={() => {
             fetchClients();

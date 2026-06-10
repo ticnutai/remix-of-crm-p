@@ -1,5 +1,6 @@
 // Attendance — employee self-service clock in/out + history.
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import { AppLayout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Attendance() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [attendanceTab, setAttendanceTab] = useSyncedSetting<string>({ key: "attendance-tab", defaultValue: "timesheet" });
   const [openShift, setOpenShift]   = useState<AttendanceRecord | null>(null);
   const [openBreak, setOpenBreak2]  = useState<AttendanceBreak | null>(null);
@@ -76,6 +78,20 @@ export default function Attendance() {
       setAttendanceTab("timesheet");
     }
   }, [attendanceTab, setAttendanceTab]);
+
+  // Deep-link support from global attendance alerts.
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "timesheet" || tabParam === "quick") {
+      setAttendanceTab(tabParam);
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("tab");
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [searchParams, setAttendanceTab, setSearchParams]);
+
+  const focusDateParam = searchParams.get("focusDate") || undefined;
 
   // live clock
   useEffect(() => {
@@ -152,6 +168,7 @@ export default function Attendance() {
                 userId={user.id}
                 employeeName={profile?.full_name ?? user.email ?? undefined}
                 isManager={false}
+                focusDate={focusDateParam}
               />
             )}
           </TabsContent>

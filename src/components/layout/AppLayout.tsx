@@ -1,7 +1,8 @@
 // App Layout - Full width content with overlay sidebar
-import React, { useState, useCallback, forwardRef } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,9 @@ import { FloatingTimer } from '@/components/timer/FloatingTimer';
 import { TimerPiPController } from '@/components/timer/TimerPiPController';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { OverlaySidebar } from './OverlaySidebar';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { isWorkday } from '@/hooks/useIsraeliWorkdays';
 // loadGesturesConfig removed for debug
 import { useCustomTables } from '@/hooks/useCustomTables';
 import { cn } from '@/lib/utils';
@@ -33,6 +37,7 @@ import {
   HardDrive,
   Bot,
   MapPinned,
+  AlertTriangle,
 } from 'lucide-react';
 
 // Navigation items for mobile
@@ -75,7 +80,14 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isLoading: authLoading, isAdmin, isManager, isSuperManager } = useAuth();
   const { tables } = useCustomTables();
+
+  const [missingHoursAlertOpen, setMissingHoursAlertOpen] = useState(false);
+  const [missingHoursAlert, setMissingHoursAlert] = useState<{
+    date: string;
+    reason: 'missing_checkout' | 'missing_day';
+  } | null>(null);
   
   // Sidebar state - restored with auto-hide support
   const [sidebarPinned, setSidebarPinned] = useState(() => {
@@ -107,6 +119,108 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
     navigate(url);
     setMobileMenuOpen(false);
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkMissingHoursForYesterday = async () => {
+      if (authLoading || !user?.id) return;
+      if (isAdmin || isManager || isSuperManager) return;
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      // Skip non-working days (Friday/Saturday + configured Israeli holidays).
+      if (!isWorkday(yesterday)) return;
+
+      const ymdDate = yesterday.toISOString().slice(0, 10);
+      const loginMarker = user.last_sign_in_at || 'unknown-login';
+      const seenKey = `missing-hours-popup-seen:${user.id}:${loginMarker}:${ymdDate}`;
+      if (sessionStorage.getItem(seenKey)) return;
+
+      const { data: byWorkDate, error: byWorkDateError } = await supabase
+        .from('attendance_records' as any)
+        .select('id, work_date, clock_in, clock_out, day_type')
+        .eq('user_id', user.id)
+        .eq('work_date', ymdDate);
+
+      if (byWorkDateError) {
+        console.error('Failed checking attendance by work_date:', byWorkDateError);
+        return;
+      }
+
+      let records = (byWorkDate || []) as Array<{
+        id: string;
+        work_date: string | null;
+        clock_in: string;
+        clock_out: string | null;
+        day_type: string | null;
+      }>;
+
+      // Backward compatibility for older rows without work_date.
+      if (records.length === 0) {
+        const dayStart = new Date(yesterday);
+        const nextDayStart = new Date(yesterday);
+        nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+        const { data: legacyRows, error: legacyError } = await supabase
+          .from('attendance_records' as any)
+          .select('id, work_date, clock_in, clock_out, day_type')
+          .eq('user_id', user.id)
+          .gte('clock_in', dayStart.toISOString())
+          .lt('clock_in', nextDayStart.toISOString());
+
+        if (legacyError) {
+          console.error('Failed checking attendance by clock_in:', legacyError);
+          return;
+        }
+
+        records = (legacyRows || []) as Array<{
+          id: string;
+          work_date: string | null;
+          clock_in: string;
+          clock_out: string | null;
+          day_type: string | null;
+        }>;
+      }
+
+      const hasNonWorkDayRecord = records.some((row) => {
+        const dayType = row.day_type || 'work';
+        return dayType !== 'work' && dayType !== 'wfh';
+      });
+      if (hasNonWorkDayRecord) return;
+
+      let reason: 'missing_checkout' | 'missing_day' | null = null;
+      if (records.length === 0) {
+        reason = 'missing_day';
+      } else if (records.some((row) => !row.clock_out)) {
+        reason = 'missing_checkout';
+      }
+
+      if (!reason || cancelled) return;
+
+      sessionStorage.setItem(seenKey, '1');
+      setMissingHoursAlert({ date: ymdDate, reason });
+      setMissingHoursAlertOpen(true);
+    };
+
+    void checkMissingHoursForYesterday();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, user?.id, user?.last_sign_in_at, isAdmin, isManager, isSuperManager]);
+
+  const goToYesterdayTimesheet = useCallback(() => {
+    if (!missingHoursAlert) return;
+    const params = new URLSearchParams({
+      tab: 'timesheet',
+      focusDate: missingHoursAlert.date,
+    });
+    setMissingHoursAlertOpen(false);
+    navigate(`/attendance?${params.toString()}`);
+  }, [missingHoursAlert, navigate]);
 
   // Sidebar visibility state
   const sidebarVisible = !isMobile && (sidebarPinned || sidebarShowing);
@@ -268,6 +382,35 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
       )}
       
       {/* Floating Timer Button + Document Picture-in-Picture window */}
+      <Dialog open={missingHoursAlertOpen} onOpenChange={setMissingHoursAlertOpen}>
+        <DialogContent dir="rtl" className="max-w-2xl border-2 border-red-500">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-7 w-7" />
+              אנא השלם שעות עבודה חסרים
+            </DialogTitle>
+            <DialogDescription className="text-base leading-7 pt-2">
+              {missingHoursAlert?.reason === 'missing_checkout'
+                ? 'אתמול נרשמה כניסה לעבודה ללא יציאה. חשוב להשלים את הדיווח.'
+                : 'לא נמצא דיווח נוכחות ליום העבודה הקודם. חשוב להשלים את שעות העבודה החסרות.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm">
+            תאריך לבדיקה: {missingHoursAlert?.date ?? '—'}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setMissingHoursAlertOpen(false)}>
+              הבנתי
+            </Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={goToYesterdayTimesheet}>
+              מעבר לעריכה ידנית של אתמול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <FloatingTimer />
       <TimerPiPController />
     </div>

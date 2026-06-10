@@ -73,12 +73,20 @@ interface MonthlyTimesheetProps {
   userId: string;
   employeeName?: string;
   isManager: boolean;
+  focusDate?: string;
 }
 
-export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTimesheetProps) {
+export function MonthlyTimesheet({ userId, employeeName, isManager, focusDate }: MonthlyTimesheetProps) {
   const today = new Date();
-  const [year, setYear] = useState(today.getFullYear());
-  const [month0, setMonth0] = useState(today.getMonth());
+  const parsedFocusDate = useMemo(() => {
+    if (!focusDate || !/^\d{4}-\d{2}-\d{2}$/.test(focusDate)) return null;
+    const parsed = new Date(`${focusDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }, [focusDate]);
+
+  const [year, setYear] = useState(parsedFocusDate?.getFullYear() ?? today.getFullYear());
+  const [month0, setMonth0] = useState(parsedFocusDate?.getMonth() ?? today.getMonth());
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoFillOpen, setAutoFillOpen] = useState(false);
@@ -110,6 +118,12 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
   }, [userId, employeeName]);
 
   const monthLabel = `${month0 + 1}/${year}`;
+
+  useEffect(() => {
+    if (!parsedFocusDate) return;
+    setYear(parsedFocusDate.getFullYear());
+    setMonth0(parsedFocusDate.getMonth());
+  }, [parsedFocusDate]);
 
   // Full reload — shows spinner only when we don't have a local cache yet.
   // If we have cached records (from localStorage) we render those instantly
@@ -340,6 +354,7 @@ export function MonthlyTimesheet({ userId, employeeName, isManager }: MonthlyTim
                   onDelete={() => handleDelete(cell.record?.id)}
                   onApprove={(v) => handleApprove(cell.record?.id, v)}
                   isManager={isManager}
+                  isFocusTarget={focusDate === cell.date}
                 />
               ))}
             </tbody>
@@ -402,9 +417,10 @@ interface DayRowProps {
   onDelete: () => void;
   onApprove: (v: boolean) => void;
   isManager: boolean;
+  isFocusTarget: boolean;
 }
 
-const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, isManager }: DayRowProps) {
+const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, isManager, isFocusTarget }: DayRowProps) {
   const r = cell.record;
   const [ci, setCi] = useState(isoToLocalHHMM(r?.clock_in));
   const [co, setCo] = useState(isoToLocalHHMM(r?.clock_out));
@@ -445,22 +461,25 @@ const DayRow = React.memo(function DayRow({ cell, onSave, onDelete, onApprove, i
   const dateObj = new Date(cell.date);
   const isToday = cell.date === new Date().toISOString().slice(0, 10);
 
-  // Auto-scroll today's row into view once on mount
+  // Auto-scroll today's row (or a deep-linked focus row) into view once.
   const rowRef = React.useRef<HTMLTableRowElement>(null);
   React.useEffect(() => {
-    if (isToday) {
+    if (isToday || isFocusTarget) {
       const t = setTimeout(() => {
         rowRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       }, 200);
       return () => clearTimeout(t);
     }
-  }, [isToday]);
+  }, [isToday, isFocusTarget]);
 
   const rowClass = [
     "border-b",
     cell.isWeekend ? "bg-muted/20 text-muted-foreground" : "",
     isToday
       ? "bg-amber-100/70 dark:bg-amber-900/30 ring-2 ring-amber-400 ring-inset font-semibold"
+      : "",
+    isFocusTarget && !isToday
+      ? "bg-red-50 ring-2 ring-red-300 ring-inset"
       : "",
     approved && !isToday ? "bg-emerald-50/40" : "",
   ].filter(Boolean).join(" ");

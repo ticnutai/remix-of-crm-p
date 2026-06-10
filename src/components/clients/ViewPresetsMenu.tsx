@@ -3,7 +3,11 @@ import { useState } from "react";
 import {
   LayoutTemplate,
   Grid3x3,
+  LayoutGrid,
   List,
+  Rows3,
+  GalleryVertical,
+  CircleUser,
   Table2,
   Sparkles,
   Save,
@@ -120,6 +124,56 @@ const BUILT_IN_PRESETS: BuiltInPreset[] = [
       showStagesView: true,
       showStatisticsView: false,
     },
+  },
+];
+
+const MANUAL_VIEW_MODES: Array<{
+  mode: ClientsViewMode;
+  name: string;
+  description: string;
+  icon: typeof LayoutTemplate;
+}> = [
+  {
+    mode: "grid",
+    name: "רשת גדולה",
+    description: "כרטיסים רחבים עם כל הפרטים",
+    icon: LayoutGrid,
+  },
+  {
+    mode: "cards",
+    name: "כרטיסים אופקיים",
+    description: "תצוגה מלבנית עם אווטאר",
+    icon: Rows3,
+  },
+  {
+    mode: "portrait",
+    name: "פורטרט",
+    description: "תמונות פרופיל גדולות",
+    icon: CircleUser,
+  },
+  {
+    mode: "luxury",
+    name: "יוקרתי",
+    description: "עיצוב לבן-זהב מעוצב",
+    icon: Sparkles,
+  },
+  {
+    mode: "list",
+    name: "רשימה מפורטת",
+    description: "שורות עם כל המידע",
+    icon: List,
+  },
+  {
+    mode: "minimal",
+    name: "מינימלי",
+    description: "שם וסטטוס בלבד",
+    icon: GalleryVertical,
+  },
+  {
+    mode: "compact",
+    name: "קומפקטי",
+    description: "רשת צפופה, הרבה לקוחות",
+    icon: Grid3x3,
   },
 ];
 
@@ -247,6 +301,40 @@ export function ViewPresetsMenu({ current, onApply }: Props) {
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate">
                     {preset.description}
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            בחירה ידנית של פריסה
+          </DropdownMenuLabel>
+          {MANUAL_VIEW_MODES.map((option) => {
+            const Icon = option.icon;
+            const active = current.viewMode === option.mode;
+            return (
+              <DropdownMenuItem
+                key={option.mode}
+                onSelect={() =>
+                  handleApply({ ...current, viewMode: option.mode }, option.name)
+                }
+                className="flex items-start gap-2 py-2 cursor-pointer"
+              >
+                <Icon
+                  className="h-4 w-4 mt-0.5 shrink-0"
+                  style={{ color: "#d4a843" }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium">{option.name}</span>
+                    {active && (
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {option.description}
                   </div>
                 </div>
               </DropdownMenuItem>
