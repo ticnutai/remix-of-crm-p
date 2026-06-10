@@ -3073,6 +3073,7 @@ export default function Clients() {
             fetchCategoriesAndTags();
           }}
         />
+        </div>
         )}
 
         {/* Statistics View - When Enabled */}
