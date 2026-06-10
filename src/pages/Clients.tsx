@@ -2499,7 +2499,7 @@ export default function Clients() {
             backgroundColor: "#1e293b",
             borderRadius: "10px",
             padding: "8px 12px",
-            marginBottom: "6px",
+            marginBottom: "16px",
             border: "1px solid #d4a843",
           }}
           onMouseEnter={() => setIsHeaderStripHovered(true)}
