@@ -2499,7 +2499,7 @@ export default function Clients() {
             backgroundColor: "#1e293b",
             borderRadius: "10px",
             padding: "8px 12px",
-            marginBottom: "6px",
+            marginBottom: "16px",
             border: "1px solid #d4a843",
           }}
           onMouseEnter={() => setIsHeaderStripHovered(true)}
@@ -3030,6 +3030,7 @@ export default function Clients() {
 
         {/* ═══ Compact Row 2: Filter Strip ═══ */}
         {pcVisible("filter-strip") && pcEnabled("filter-strip") && (
+        <div style={{ marginBottom: '16px' }}>
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
@@ -3072,6 +3073,7 @@ export default function Clients() {
             fetchCategoriesAndTags();
           }}
         />
+        </div>
         )}
 
         {/* Statistics View - When Enabled */}
