@@ -118,6 +118,7 @@ import {
   CopyStagesDialog,
 } from "./StageTemplateDialogs";
 import { useClientFolders } from "@/hooks/useClientFolders";
+import { TaskPaymentBadge } from "./TaskPaymentBadge";
 import { Folder, FolderPlus, ChevronRight, ChevronLeft } from "lucide-react";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
@@ -802,6 +803,12 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
                 {isTimerTab && <Timer className="h-3.5 w-3.5 shrink-0 text-sky-600" />}
                 <TaskTitleWithConsultants taskId={task.id} title={task.title} />
               </p>
+              <TaskPaymentBadge
+                clientId={clientId}
+                stageName={stage.stage_name}
+                taskTitle={task.title}
+                className="mt-1"
+              />
               {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
                 <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="rounded-full bg-cyan-100 px-2 py-0.5 font-medium text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-200">
@@ -1533,6 +1540,7 @@ const DateChangeDialog: React.FC<DateChangeDialogProps> = ({ open, onOpenChange,
 interface SortableExpandedTaskProps {
   task: ClientStageTask;
   stageId: string;
+  stageName?: string;
   index: number;
   showTaskCount: boolean;
   clientId: string;
@@ -1555,6 +1563,7 @@ interface SortableExpandedTaskProps {
 function SortableExpandedTaskItem({
   task,
   stageId,
+  stageName,
   index,
   showTaskCount,
   clientId,
@@ -1669,6 +1678,12 @@ function SortableExpandedTaskItem({
           {isTimerTab && <Timer className="h-4 w-4 shrink-0 text-sky-600" />}
           <TaskTitleWithConsultants taskId={task.id} title={task.title} />
         </p>
+        <TaskPaymentBadge
+          clientId={clientId}
+          stageName={stageName}
+          taskTitle={task.title}
+          className="mt-1"
+        />
         {isTimerTab && task.auto_timer_days && !isTimerTabActive && (
           <p className="mt-1 text-xs text-right text-slate-500 dark:text-slate-400">
             לחץ והאשר להפעלת {task.auto_timer_days} ימי עבודה
@@ -4442,6 +4457,7 @@ export function ClientStagesBoard({
                                   <SortableExpandedTaskItem
                                     task={task}
                                     stageId={expandedStageData.stage_id}
+                                    stageName={expandedStageData.stage_name}
                                     index={index}
                                     showTaskCount={
                                       showTaskCount[

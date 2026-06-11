@@ -60,6 +60,7 @@ import { cn } from '@/lib/utils';
 import { useClientStages, ClientStageTask } from '@/hooks/useClientStages';
 import { AddReminderDialog } from '@/components/reminders/AddReminderDialog';
 import { StageTaskActionsPopup, StageTaskIndicator } from './StageTaskActionsPopup';
+import { TaskPaymentBadge } from './TaskPaymentBadge';
 import { DayCounterCell } from '@/components/tables/DayCounterCell';
 import { format, parseISO } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -363,6 +364,11 @@ export function ClientStagesTable({ clientId }: ClientStagesTableProps) {
                               >
                                 {isTimerTabTask(task) && <Timer className="h-3.5 w-3.5 text-sky-600 shrink-0" />}
                                 <span>{task.title}</span>
+                                <TaskPaymentBadge
+                                  clientId={clientId}
+                                  stageName={task.stageName}
+                                  taskTitle={task.title}
+                                />
                               </span>
                               {isTimerTabTask(task) && task.auto_timer_days && !task.started_at && (
                                 <div className="mt-1 text-xs text-muted-foreground">
