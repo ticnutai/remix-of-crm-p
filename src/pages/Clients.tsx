@@ -217,6 +217,11 @@ export default function Clients() {
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
   const [showAccessView, setShowAccessView] = useSyncedSetting<boolean>({ key: "clients-show-access-view", defaultValue: false });
+  const [autoJumpToFirstResult, setAutoJumpToFirstResult] =
+    useSyncedSetting<boolean>({
+      key: "clients-auto-jump-first-result",
+      defaultValue: true,
+    });
 
   // Wrapper: persist showStagesView to cloud
   const setShowStagesView = useCallback(
@@ -345,6 +350,7 @@ export default function Clients() {
   );
   const keyboardTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const clientRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pendingKeyboardScrollClientIdRef = useRef<string | null>(null);
 
   // Add client dialog state
   const [isAddClientDialogOpen, setIsAddClientDialogOpen] = useState(false);
@@ -589,6 +595,87 @@ export default function Clients() {
     clientsWithMeetings,
   ]);
 
+  const scrollToClientCard = useCallback((clientId: string) => {
+    const clientElement = clientRefs.current.get(clientId);
+    if (!clientElement) return false;
+
+    clientElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    return true;
+  }, []);
+
+  const ensureClientVisibleForKeyboardSearch = useCallback(
+    (clientId: string) => {
+      const targetIndex = filteredClients.findIndex(
+        (client) => client.id === clientId,
+      );
+      if (targetIndex === -1) return;
+
+      const requiredCount = targetIndex + 1;
+
+      if (requiredCount > displayedCount) {
+        // Grow rendered items so the matched client card is mounted, then scroll in a follow-up effect.
+        pendingKeyboardScrollClientIdRef.current = clientId;
+        setDisplayedCount((prev) => {
+          const nextBatchCount = Math.ceil(requiredCount / PAGE_SIZE) * PAGE_SIZE;
+          return Math.min(filteredClients.length, Math.max(prev, nextBatchCount));
+        });
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        void scrollToClientCard(clientId);
+      });
+    },
+    [displayedCount, filteredClients, scrollToClientCard],
+  );
+
+  useEffect(() => {
+    const pendingClientId = pendingKeyboardScrollClientIdRef.current;
+    if (!pendingClientId) return;
+
+    const didScroll = scrollToClientCard(pendingClientId);
+    if (didScroll) {
+      pendingKeyboardScrollClientIdRef.current = null;
+    }
+  }, [displayedCount, filteredClients, scrollToClientCard]);
+
+  const selectedSearchClient = useMemo(() => {
+    if (!highlightedClientId) return null;
+    return filteredClients.find((client) => client.id === highlightedClientId) || null;
+  }, [filteredClients, highlightedClientId]);
+
+  useEffect(() => {
+    const trimmedQuery = searchQuery.trim();
+
+    if (!trimmedQuery) {
+      if (!keyboardSearch) {
+        setHighlightedClientId(null);
+      }
+      return;
+    }
+
+    if (!autoJumpToFirstResult) return;
+
+    const firstMatch = filteredClients[0];
+    if (!firstMatch) {
+      if (!keyboardSearch) {
+        setHighlightedClientId(null);
+      }
+      return;
+    }
+
+    setHighlightedClientId((prev) =>
+      prev === firstMatch.id ? prev : firstMatch.id,
+    );
+    ensureClientVisibleForKeyboardSearch(firstMatch.id);
+  }, [
+    autoJumpToFirstResult,
+    searchQuery,
+    keyboardSearch,
+    filteredClients,
+    ensureClientVisibleForKeyboardSearch,
+  ]);
+
   // Calculate client count per category for sidebar
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -701,6 +788,7 @@ export default function Clients() {
             );
             if (matchingClient) {
               setHighlightedClientId(matchingClient.id);
+              ensureClientVisibleForKeyboardSearch(matchingClient.id);
             }
           }
 
@@ -743,12 +831,7 @@ export default function Clients() {
 
       if (matchingClient) {
         setHighlightedClientId(matchingClient.id);
-
-        // Scroll to the client card
-        const clientElement = clientRefs.current.get(matchingClient.id);
-        if (clientElement) {
-          clientElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        ensureClientVisibleForKeyboardSearch(matchingClient.id);
 
         // Show toast with found client
         toast({
@@ -780,7 +863,12 @@ export default function Clients() {
         clearTimeout(keyboardTimeoutRef.current);
       }
     };
-  }, [keyboardSearch, filteredClients, matchesQueryTokens]);
+  }, [
+    keyboardSearch,
+    filteredClients,
+    matchesQueryTokens,
+    ensureClientVisibleForKeyboardSearch,
+  ]);
 
   const fetchFilterData = useCallback(async () => {
     try {
@@ -3014,37 +3102,95 @@ export default function Clients() {
               {pcVisible("search") && pcEnabled("search-bar") && (
               <div
                 style={{
-                  position: "relative",
-                  width: "220px",
-                  maxWidth: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  justifyContent: "flex-end",
                 }}
               >
-                <Search
+                <button
+                  onClick={() => setAutoJumpToFirstResult(!autoJumpToFirstResult)}
                   style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    width: "14px",
-                    height: "14px",
-                    color: "#d4a843",
-                  }}
-                />
-                <Input
-                  type="text"
-                  placeholder="חיפוש לקוחות..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{
-                    paddingRight: "32px",
                     height: "30px",
-                    fontSize: "12px",
-                    backgroundColor: "#ffffff",
-                    border: "1.5px solid #d4a843",
-                    color: "#1e293b",
+                    padding: "0 10px",
+                    borderRadius: "15px",
+                    backgroundColor: autoJumpToFirstResult
+                      ? "#f59e0b"
+                      : "transparent",
+                    border: "1.5px solid #f59e0b",
+                    color: autoJumpToFirstResult ? "#111827" : "#fbbf24",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
                   }}
-                  className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
-                />
+                  title={
+                    autoJumpToFirstResult
+                      ? "קפיצה אוטומטית לתוצאה הראשונה פעילה"
+                      : "קפיצה אוטומטית לתוצאה הראשונה כבויה"
+                  }
+                  aria-label="הפעל או כבה קפיצה אוטומטית לתוצאה הראשונה"
+                >
+                  <Clock style={{ width: "12px", height: "12px" }} />
+                  קפיצה אוטומטית
+                </button>
+
+                <div
+                  style={{
+                    position: "relative",
+                    width: "220px",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <Search
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      width: "14px",
+                      height: "14px",
+                      color: "#d4a843",
+                    }}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="חיפוש לקוחות..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      paddingRight: "32px",
+                      height: "30px",
+                      fontSize: "12px",
+                      backgroundColor: "#ffffff",
+                      border: "1.5px solid #d4a843",
+                      color: "#1e293b",
+                    }}
+                    className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
+                  />
+                </div>
+
+                {searchQuery.trim() !== "" && selectedSearchClient && (
+                  <Badge
+                    variant="outline"
+                    style={{
+                      height: "30px",
+                      borderColor: "#f59e0b",
+                      color: "#fbbf24",
+                      backgroundColor: "rgba(245, 158, 11, 0.08)",
+                      maxWidth: "280px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    תוצאה נבחרת: {selectedSearchClient.name}
+                  </Badge>
+                )}
               </div>
               )}
             </div>
