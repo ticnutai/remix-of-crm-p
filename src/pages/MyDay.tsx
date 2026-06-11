@@ -122,6 +122,9 @@ const meetingTypeIcons = {
   phone: Phone,
 };
 
+const floatingAddButtonClass =
+  "absolute left-3 bottom-3 h-7 w-7 rounded-full border border-[hsl(45,80%,45%)] bg-[hsl(45,100%,96%)] text-[hsl(45,80%,38%)] shadow-[0_6px_14px_hsl(45_80%_45%_/_0.24)] hover:bg-[hsl(45,95%,91%)] hover:scale-105 active:scale-95 transition-all duration-200 z-10";
+
 const getTaskStatusLabel = (status: string) => {
   switch (status) {
     case "pending":
@@ -658,9 +661,9 @@ export default function MyDay() {
             <Button
               size="icon"
               onClick={() => setMeetingDialogOpen(true)}
-              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
+              className={floatingAddButtonClass}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
             <CardHeader className="pb-14">
               <div className="flex items-center justify-between">
@@ -753,9 +756,9 @@ export default function MyDay() {
             <Button
               size="icon"
               onClick={() => setTaskDialogOpen(true)}
-              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
+              className={floatingAddButtonClass}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
             <CardHeader className="pb-14">
               <div className="flex items-center justify-between">
@@ -875,9 +878,9 @@ export default function MyDay() {
             <Button
               size="icon"
               onClick={() => setReminderDialogOpen(true)}
-              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
+              className={floatingAddButtonClass}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
             <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -938,9 +941,9 @@ export default function MyDay() {
             <Button
               size="icon"
               onClick={() => setTimeDialogOpen(true)}
-              className="absolute left-3 bottom-3 h-8 w-8 bg-transparent border-2 border-[hsl(45,80%,45%)] hover:bg-[hsl(45,80%,45%)]/10 text-[hsl(45,80%,45%)] z-10"
+              className={floatingAddButtonClass}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
             <CardHeader className="pb-14">
               <CardTitle className="flex items-center gap-2 text-lg">

@@ -72,6 +72,7 @@ export const DEFAULT_LAYOUTS: WidgetLayout[] = [
 
 const STORAGE_KEY = 'widget-layouts-v3';
 const GAP_STORAGE_KEY = 'widget-grid-gap';
+const DASHBOARD_THEME_KEY = 'dashboard-theme';
 
 // Size cycle order
 const SIZE_CYCLE: WidgetSize[] = ['small', 'medium', 'large', 'full'];
@@ -193,10 +194,10 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   // Dashboard theme - synced to cloud
   const [dashboardTheme, setDashboardThemeState] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem('dashboard-theme');
-      return saved || 'navy-gold';
+      const saved = localStorage.getItem(DASHBOARD_THEME_KEY);
+      return saved || 'classic';
     } catch (e) {
-      return 'navy-gold';
+      return 'classic';
     }
   });
 
@@ -245,7 +246,7 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('user_settings')
-          .select('setting_value')
+          .select('setting_value,updated_at')
           .eq('user_id', user.id)
           .eq('setting_key', CLOUD_SETTING_KEY)
           .maybeSingle();
@@ -283,10 +284,14 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
           }
           // Load dashboard theme from cloud
           if (settingValue.dashboardTheme) {
-            setDashboardThemeState(settingValue.dashboardTheme);
-            localStorage.setItem('dashboard-theme', settingValue.dashboardTheme);
-            // Dispatch event for DashboardThemeProvider to sync
-            window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: settingValue.dashboardTheme }));
+            const localTheme = localStorage.getItem(DASHBOARD_THEME_KEY);
+            // Prefer the current local theme to avoid stale cloud values overwriting a fresh local selection.
+            const themeToApply = localTheme || settingValue.dashboardTheme;
+            setDashboardThemeState(themeToApply);
+            localStorage.setItem(DASHBOARD_THEME_KEY, themeToApply);
+            window.dispatchEvent(
+              new CustomEvent('dashboardThemeChanged', { detail: themeToApply }),
+            );
           }
         } else {
           // No data in cloud, using defaults
@@ -412,12 +417,35 @@ export function WidgetLayoutProvider({ children }: { children: ReactNode }) {
   // Set dashboard theme - synced to cloud for cross-device persistence
   const setDashboardTheme = useCallback((theme: string) => {
     setDashboardThemeState(theme);
-    localStorage.setItem('dashboard-theme', theme);
+    localStorage.setItem(DASHBOARD_THEME_KEY, theme);
     // Dispatch event for DashboardThemeProvider to sync
     window.dispatchEvent(new CustomEvent('dashboardThemeChanged', { detail: theme }));
     // Trigger cloud save with the new theme value
     saveToCloud(layouts, { dashboardTheme: theme });
-  }, [layouts, saveToCloud]);
+
+    // Immediate cloud write to avoid losing theme changes when navigating away quickly.
+    if (user?.id) {
+      const payload = {
+        user_id: user.id,
+        setting_key: CLOUD_SETTING_KEY,
+        setting_value: {
+          layouts,
+          gridGap,
+          equalizeHeights,
+          autoExpand,
+          dashboardTheme: theme,
+          gapX,
+          gapY,
+          lastUpdated: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      void (supabase as any)
+        .from('user_settings')
+        .upsert(payload, { onConflict: 'user_id,setting_key' });
+    }
+  }, [layouts, saveToCloud, user?.id, gridGap, equalizeHeights, autoExpand, gapX, gapY]);
 
   // Set horizontal gap
   const setGapX = useCallback((gap: number) => {

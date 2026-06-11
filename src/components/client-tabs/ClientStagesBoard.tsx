@@ -3482,7 +3482,7 @@ export function ClientStagesBoard({
                     checked={selectedStages.has(stage.stage_id)}
                     onCheckedChange={() => toggleStageSelection(stage.stage_id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="h-7 w-7 rounded-full border-2 border-white bg-gradient-to-br from-white to-slate-100 shadow-[0_6px_14px_rgba(15,23,42,0.28)] ring-1 ring-primary/30 cursor-pointer transition-all hover:scale-105 hover:ring-primary/50 data-[state=checked]:border-emerald-300 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-emerald-500 data-[state=checked]:to-emerald-600 data-[state=checked]:text-white [&_svg]:h-4 [&_svg]:w-4"
+                    className="h-4 w-4 rounded-full border border-white/80 bg-white/85 shadow-[0_1px_4px_rgba(15,23,42,0.14)] ring-1 ring-primary/15 cursor-pointer transition-all hover:ring-primary/30 data-[state=checked]:border-emerald-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-white [&_svg]:h-2.5 [&_svg]:w-2.5"
                   />
                 </div>
               )}
@@ -3518,7 +3518,7 @@ export function ClientStagesBoard({
                 {/* Header Actions - visible on hover - Bottom Right */}
                 {isHovered && (
                   <div
-                    className="absolute bottom-2 right-2 flex gap-1"
+                    className="absolute bottom-2 right-2 z-20 grid w-fit max-w-[180px] grid-cols-4 justify-items-center gap-1 rounded-lg border border-white/30 bg-black/15 p-1.5 shadow-sm backdrop-blur-sm"
                     style={{ color: effectiveHeaderTextColor }}
                   >
                     {/* Edit Stage Button */}
@@ -3535,14 +3535,14 @@ export function ClientStagesBoard({
                         setManageStagesDialog(true);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0",
+                        "h-5 w-5 p-0 rounded-sm",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="ערוך שלב"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Pencil className="h-2.5 w-2.5" />
                     </Button>
                     {/* Delete Stage Button */}
                     <Button
@@ -3553,14 +3553,14 @@ export function ClientStagesBoard({
                         handleDeleteStage(stage.stage_id);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0 hover:text-destructive",
+                        "h-5 w-5 p-0 rounded-sm hover:text-destructive",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="מחק שלב"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-2.5 w-2.5" />
                     </Button>
                     {/* Copy Stage Button */}
                     <Button
@@ -3571,14 +3571,14 @@ export function ClientStagesBoard({
                         handleCopyStage(stage.stage_id);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0 hover:text-green-600",
+                        "h-5 w-5 p-0 rounded-sm hover:text-green-600",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="העתק שלב (Ctrl+C)"
                     >
-                      <Clipboard className="h-3.5 w-3.5" />
+                      <Clipboard className="h-2.5 w-2.5" />
                     </Button>
                     <Button
                       size="sm"
@@ -3588,14 +3588,14 @@ export function ClientStagesBoard({
                         toggleTaskCount(stage.stage_id);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0",
+                        "h-5 w-5 p-0 rounded-sm",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="מספר משימות"
                     >
-                      <Hash className="h-3.5 w-3.5" />
+                      <Hash className="h-2.5 w-2.5" />
                     </Button>
                     <Button
                       size="sm"
@@ -3605,14 +3605,14 @@ export function ClientStagesBoard({
                         setExpandedStage(stage.stage_id);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0",
+                        "h-5 w-5 p-0 rounded-sm",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="הרחב תצוגה"
                     >
-                      <Maximize2 className="h-3.5 w-3.5" />
+                      <Maximize2 className="h-2.5 w-2.5" />
                     </Button>
                     <Button
                       size="sm"
@@ -3622,14 +3622,14 @@ export function ClientStagesBoard({
                         setSaveAsTemplateDialog(stage.stage_id);
                       }}
                       className={cn(
-                        "h-7 w-7 p-0",
+                        "h-5 w-5 p-0 rounded-sm",
                         isActiveStage &&
                           !isStageCompleted &&
                           "hover:bg-white/20",
                       )}
                       title="שמור כתבנית"
                     >
-                      <BookTemplate className="h-3.5 w-3.5" />
+                      <BookTemplate className="h-2.5 w-2.5" />
                     </Button>
 
                     {/* Move to Folder */}
@@ -3640,7 +3640,7 @@ export function ClientStagesBoard({
                           variant="ghost"
                           onClick={(e) => e.stopPropagation()}
                           className={cn(
-                            "h-7 w-7 p-0",
+                            "h-5 w-5 p-0 rounded-sm",
                             isActiveStage &&
                               !isStageCompleted &&
                               "hover:bg-white/20",
@@ -3648,7 +3648,7 @@ export function ClientStagesBoard({
                           )}
                           title="העבר לתיקייה"
                         >
-                          <Folder className="h-3.5 w-3.5" />
+                          <Folder className="h-2.5 w-2.5" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-48 p-1" align="end">
@@ -3706,14 +3706,14 @@ export function ClientStagesBoard({
                             size="sm"
                             variant="ghost"
                             className={cn(
-                              "h-7 w-7 p-0",
+                              "h-5 w-5 p-0 rounded-sm",
                               isActiveStage &&
                                 !isStageCompleted &&
                                 "hover:bg-white/20",
                             )}
                             title="הפעל טיימר ימים"
                           >
-                            <Timer className="h-3.5 w-3.5" />
+                            <Timer className="h-2.5 w-2.5" />
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-60 p-2" align="end">
@@ -3868,14 +3868,14 @@ export function ClientStagesBoard({
                           stopStageTimer(stage.stage_id);
                         }}
                         className={cn(
-                          "h-7 w-7 p-0 hover:text-red-500",
+                          "h-5 w-5 p-0 rounded-sm hover:text-red-500",
                           isActiveStage &&
                             !isStageCompleted &&
                             "hover:bg-white/20",
                         )}
                         title="עצור טיימר"
                       >
-                        <Square className="h-3.5 w-3.5" />
+                        <Square className="h-2.5 w-2.5" />
                       </Button>
                     )}
                   </div>
