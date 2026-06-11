@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -75,73 +76,77 @@ export interface ClientStage {
   }[];
 }
 
+// Shared react-query key — all useStageTemplates() instances share one cached
+// fetch, so mounting the hook in several tabs/components issues a single
+// (deduplicated) network request instead of one set per instance.
+const STAGE_TEMPLATES_QUERY_KEY = ["stage-templates"] as const;
+
+async function fetchStageTemplates(): Promise<StageTemplate[]> {
+  // Fetch templates
+  const { data: templatesData, error: templatesError } = await db
+    .from("stage_templates")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (templatesError) throw templatesError;
+
+  // Fetch all template stages
+  const { data: stagesData, error: stagesError } = await db
+    .from("stage_template_stages")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (stagesError) throw stagesError;
+
+  // Fetch all template tasks
+  const { data: tasksData, error: tasksError } = await db
+    .from("stage_template_tasks")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (tasksError) throw tasksError;
+
+  // Combine data
+  return (templatesData || []).map((template) => {
+    const templateStages = (stagesData || [])
+      .filter((s) => s.template_id === template.id)
+      .map((stage) => ({
+        ...stage,
+        tasks: (tasksData || []).filter(
+          (t) => t.template_stage_id === stage.id,
+        ),
+      }));
+
+    const templateTasks = (tasksData || []).filter(
+      (t) => t.template_id === template.id && !t.template_stage_id,
+    );
+
+    return {
+      ...template,
+      stages: templateStages,
+      tasks: templateTasks,
+    };
+  });
+}
+
 export function useStageTemplates() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [templates, setTemplates] = useState<StageTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Load all templates
+  const { data: templates = [], isLoading: loading } = useQuery({
+    queryKey: STAGE_TEMPLATES_QUERY_KEY,
+    queryFn: fetchStageTemplates,
+    meta: {
+      onError: () =>
+        toast({ title: "שגיאה בטעינת תבניות", variant: "destructive" }),
+    },
+  });
+
+  // Refresh = re-fetch the shared query (used by all mutations below).
   const loadTemplates = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch templates
-      const { data: templatesData, error: templatesError } = await db
-        .from("stage_templates")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (templatesError) throw templatesError;
-
-      // Fetch all template stages
-      const { data: stagesData, error: stagesError } = await db
-        .from("stage_template_stages")
-        .select("*")
-        .order("sort_order", { ascending: true });
-
-      if (stagesError) throw stagesError;
-
-      // Fetch all template tasks
-      const { data: tasksData, error: tasksError } = await db
-        .from("stage_template_tasks")
-        .select("*")
-        .order("sort_order", { ascending: true });
-
-      if (tasksError) throw tasksError;
-
-      // Combine data
-      const templatesWithData = (templatesData || []).map((template) => {
-        const templateStages = (stagesData || [])
-          .filter((s) => s.template_id === template.id)
-          .map((stage) => ({
-            ...stage,
-            tasks: (tasksData || []).filter(
-              (t) => t.template_stage_id === stage.id,
-            ),
-          }));
-
-        const templateTasks = (tasksData || []).filter(
-          (t) => t.template_id === template.id && !t.template_stage_id,
-        );
-
-        return {
-          ...template,
-          stages: templateStages,
-          tasks: templateTasks,
-        };
-      });
-
-      setTemplates(templatesWithData);
-    } catch (error) {
-      console.error("Error loading templates:", error);
-      toast({
-        title: "שגיאה בטעינת תבניות",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+    await queryClient.invalidateQueries({ queryKey: STAGE_TEMPLATES_QUERY_KEY });
+  }, [queryClient]);
 
   // Save a single stage as template
   const saveStageAsTemplate = useCallback(
@@ -1130,10 +1135,7 @@ export function useStageTemplates() {
     [templates, toast],
   );
 
-  // Initial load
-  useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+  // Initial load handled by react-query (useQuery above).
 
   // Reorder stages in a template
   const reorderTemplateStages = useCallback(
