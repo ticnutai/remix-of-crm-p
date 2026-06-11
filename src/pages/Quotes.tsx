@@ -119,6 +119,7 @@ export default function Quotes() {
   const [savedQuotesSearch, setSavedQuotesSearch] = useState("");
   const [savedQuotesStatusFilter, setSavedQuotesStatusFilter] = useSyncedSetting<string>({ key: "saved-quotes-status-filter", defaultValue: "all" });
   const [deleteSavedQuoteId, setDeleteSavedQuoteId] = useState<string | null>(null);
+  const [signingSavedQuoteId, setSigningSavedQuoteId] = useState<string | null>(null);
 
   const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
     queryKey: ["saved-quotes"],
@@ -141,6 +142,41 @@ export default function Quotes() {
     queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
     setDeleteSavedQuoteId(null);
     toast({ title: "הצעה נמחקה" });
+  };
+
+  const handleMarkSavedQuoteAsSigned = async (savedQuote: any) => {
+    if (!savedQuote?.id) return;
+    const currentStatus = (savedQuote.status || "").toLowerCase();
+    if (["signed", "converted"].includes(currentStatus)) return;
+
+    try {
+      setSigningSavedQuoteId(savedQuote.id);
+      const { error } = await (supabase as any)
+        .from("saved_quotes")
+        .update({
+          status: "signed",
+          signed_at: new Date().toISOString(),
+        })
+        .eq("id", savedQuote.id);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ["saved-quotes"] });
+      await queryClient.invalidateQueries({ queryKey: ["client-saved-quotes"] });
+
+      toast({
+        title: "סומן כנחתם",
+        description: "ההצעה סומנה כנחתמה ועוברת ל'הצעה חתומה' בעמוד הלקוח",
+      });
+    } catch (err: any) {
+      toast({
+        title: "שגיאה בסימון חתימה",
+        description: err?.message || "לא ניתן לעדכן סטטוס",
+        variant: "destructive",
+      });
+    } finally {
+      setSigningSavedQuoteId(null);
+    }
   };
 
   const filteredSavedQuotes = savedQuotes.filter((sq: any) => {
@@ -633,6 +669,7 @@ export default function Quotes() {
                     <SelectItem value="draft">טיוטה</SelectItem>
                     <SelectItem value="sent">נשלח</SelectItem>
                     <SelectItem value="accepted">אושר</SelectItem>
+                    <SelectItem value="signed">נחתם</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -673,14 +710,17 @@ export default function Quotes() {
                           draft: { label: "טיוטה", cls: "bg-muted text-muted-foreground" },
                           sent: { label: "נשלח", cls: "bg-blue-100 text-blue-700" },
                           accepted: { label: "אושר", cls: "bg-green-100 text-green-700" },
+                          signed: { label: "נחתם", cls: "bg-emerald-100 text-emerald-700 border border-emerald-200" },
+                          converted: { label: "הומר", cls: "bg-emerald-100 text-emerald-700 border border-emerald-200" },
                         };
                         const st = statusCfg[sq.status] || statusCfg.draft;
+                        const isSigned = ["signed", "converted"].includes((sq.status || "").toLowerCase());
                         const basePrice = sq.base_price || 0;
                         const vatRate = sq.vat_rate || 17;
                         const vatAmount = Math.round(basePrice * vatRate / 100);
 
                         return (
-                          <TableRow key={sq.id}>
+                          <TableRow key={sq.id} className={cn(isSigned && "bg-emerald-50/40 hover:bg-emerald-50/60")}>
                             <TableCell className="font-medium">{sq.title || "ללא שם"}</TableCell>
                             <TableCell>
                               {sq.clients?.name ? (
@@ -699,7 +739,21 @@ export default function Quotes() {
                             <TableCell className="text-muted-foreground text-sm">{vatRate}% (₪{vatAmount.toLocaleString()})</TableCell>
                             <TableCell className="font-semibold">₪{(sq.total_with_vat || 0).toLocaleString()}</TableCell>
                             <TableCell>
-                              <Badge className={st.cls}>{st.label}</Badge>
+                              <div className="flex items-center justify-end gap-1">
+                                {!isSigned && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100"
+                                    title="נחתם חוזה"
+                                    onClick={() => handleMarkSavedQuoteAsSigned(sq)}
+                                    disabled={signingSavedQuoteId === sq.id}
+                                  >
+                                    <FileSignature className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Badge className={st.cls}>{st.label}</Badge>
+                              </div>
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {sq.updated_at ? format(new Date(sq.updated_at), 'dd/MM/yyyy', { locale: he }) : '-'}
@@ -720,6 +774,12 @@ export default function Quotes() {
                                     <User className="h-4 w-4 ml-2" />
                                     פתח תיק לקוח
                                   </DropdownMenuItem>
+                                  {!isSigned && (
+                                    <DropdownMenuItem onClick={() => handleMarkSavedQuoteAsSigned(sq)}>
+                                      <FileSignature className="h-4 w-4 ml-2 text-emerald-700" />
+                                      נחתם חוזה
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
                                     className="text-destructive"

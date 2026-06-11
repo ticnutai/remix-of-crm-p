@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +99,6 @@ import {
   Move,
   FolderPlus,
   UserPlus,
-  Users,
   ExternalLink,
 } from "lucide-react";
 import {
@@ -139,6 +139,7 @@ import {
 } from "@/components/ui/popover";
 import { useClients } from "@/hooks/useClients";
 import { supabase } from "@/integrations/supabase/client";
+import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 import companyHeaderImg from "@/assets/company-header.png";
 import {
   DesignTemplatesSelector,
@@ -172,6 +173,37 @@ interface PaymentStep {
   description: string;
   vatRate?: number; // אחוז מע״מ ייחודי לשלב (אם שונה מברירת מחדל)
   useCustomVat?: boolean; // האם להשתמש במע״מ ייחודי
+  linkSource?: "stage_template" | "quote_template";
+  templateStageId?: string;
+  templateStageName?: string;
+  templateTaskId?: string;
+  templateTaskName?: string;
+  quoteTemplateStageId?: string;
+  quoteTemplateStageName?: string;
+  quoteTemplateItemId?: string;
+  quoteTemplateItemText?: string;
+  triggerMode?: "manual" | "date" | "task_completion";
+  triggerDate?: string | null;
+}
+
+interface StageTemplateTaskOption {
+  id: string;
+  title: string;
+  template_stage_id: string | null;
+}
+
+interface StageTemplateStageOption {
+  id: string;
+  stage_name: string;
+  sort_order: number;
+  tasks: StageTemplateTaskOption[];
+}
+
+interface StageTemplateOption {
+  id: string;
+  name: string;
+  description: string | null;
+  stages: StageTemplateStageOption[];
 }
 interface StripLayer {
   url: string;
@@ -275,6 +307,57 @@ interface QuoteVersion {
     projectDetails?: any;
   };
 }
+
+const MAX_QUOTE_VERSIONS = 5;
+
+function buildAutoVersionLabel(
+  versionNumber: number,
+  snapshot: QuoteVersion["data"],
+  previousVersion: QuoteVersion | null,
+): string {
+  if (!previousVersion?.data) {
+    return `גרסה ${versionNumber} - בסיס`;
+  }
+
+  const prev = previousVersion.data;
+  const changes: string[] = [];
+
+  if (JSON.stringify(snapshot.stages || []) !== JSON.stringify(prev.stages || [])) {
+    changes.push("שלבים");
+  }
+
+  if (
+    JSON.stringify(snapshot.paymentSteps || []) !==
+    JSON.stringify(prev.paymentSteps || [])
+  ) {
+    changes.push("תשלומים");
+  }
+
+  if (Number(snapshot.basePrice || 0) !== Number(prev.basePrice || 0)) {
+    changes.push("תמחור");
+  }
+
+  if (
+    JSON.stringify(snapshot.projectDetails || {}) !==
+    JSON.stringify(prev.projectDetails || {})
+  ) {
+    changes.push("פרטי פרויקט");
+  }
+
+  if (
+    JSON.stringify(snapshot.designSettings || {}) !==
+    JSON.stringify(prev.designSettings || {})
+  ) {
+    changes.push("עיצוב");
+  }
+
+  if (changes.length === 0) {
+    return `גרסה ${versionNumber} - שמירה`;
+  }
+
+  return `גרסה ${versionNumber} - ${changes.slice(0, 3).join(" + ")}`;
+}
+
 type PreviewDevice = "desktop" | "tablet" | "mobile";
 interface ProjectDetails {
   clientId: string;
@@ -286,150 +369,8 @@ interface ProjectDetails {
   address: string;
   projectType: string;
   phone?: string;
-}
-
-// Client selector component with search
-function ClientSelector({
-  clients,
-  selectedClient,
-  onSelect,
-  open,
-  onOpenChange,
-}: {
-  clients: Array<{
-    id: string;
-    name: string;
-    email?: string | null;
-    phone?: string | null;
-    gush?: string | null;
-    helka?: string | null;
-    migrash?: string | null;
-    taba?: string | null;
-    address?: string | null;
-  }>;
-  selectedClient: string;
-  onSelect: (client: any) => void;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const filtered = useMemo(
-    () =>
-      clients.filter(
-        (c) =>
-          c.name?.toLowerCase().includes(search.toLowerCase()) ||
-          c.email?.toLowerCase().includes(search.toLowerCase()) ||
-          c.phone?.includes(search) ||
-          c.gush?.includes(search) ||
-          c.address?.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [clients, search],
-  );
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl z-[9999]" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-[#B8860B]" />
-            בחר לקוח ({clients.length})
-          </DialogTitle>
-        </DialogHeader>
-        <div className="relative mb-3">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="חפש לפי שם, טלפון, גוש או כתובת..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pr-10"
-            dir="rtl"
-          />
-        </div>
-        <ScrollArea className="h-[400px]">
-          <div className="space-y-2">
-            {filtered.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                לא נמצאו לקוחות
-                {clients.length === 0 && (
-                  <p className="text-xs mt-2">טוען לקוחות...</p>
-                )}
-              </div>
-            ) : (
-              filtered.map((client) => (
-                <div
-                  key={client.id}
-                  className={`p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors ${selectedClient === client.id ? "bg-[#DAA520]/10 border-2 border-[#DAA520]" : "border border-gray-200"}`}
-                  onClick={() => {
-                    onSelect(client);
-                    onOpenChange(false);
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8f] flex items-center justify-center">
-                        <span className="text-xs font-medium text-white">
-                          {client.name?.charAt(0) || "?"}
-                        </span>
-                      </div>
-                      <span className="font-semibold text-lg">
-                        {client.name}
-                      </span>
-                    </div>
-                    {selectedClient === client.id && (
-                      <Check className="h-5 w-5 text-[#B8860B]" />
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mr-10">
-                    {client.email && (
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {client.email}
-                      </div>
-                    )}
-                    {client.phone && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs">📞</span>
-                        {client.phone}
-                      </div>
-                    )}
-                    {client.address && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {client.address}
-                      </div>
-                    )}
-                    {client.gush && (
-                      <div>
-                        <span className="text-gray-400">גוש:</span>{" "}
-                        {client.gush}
-                      </div>
-                    )}
-                    {client.helka && (
-                      <div>
-                        <span className="text-gray-400">חלקה:</span>{" "}
-                        {client.helka}
-                      </div>
-                    )}
-                    {client.migrash && (
-                      <div>
-                        <span className="text-gray-400">מגרש:</span>{" "}
-                        {client.migrash}
-                      </div>
-                    )}
-                    {client.taba && (
-                      <div>
-                        <span className="text-gray-400">תב"ע:</span>{" "}
-                        {client.taba}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-      </DialogContent>
-    </Dialog>
-  );
+  stageTemplateId?: string;
+  stageTemplateName?: string;
 }
 
 // Email dialog component
@@ -897,13 +838,85 @@ function ProjectDetailsEditor({
   details,
   onUpdate,
   clients,
-  onOpenClientSelector,
+  stageTemplates = [],
+  onTemplateChange,
 }: {
   details: ProjectDetails;
   onUpdate: (details: ProjectDetails) => void;
   clients: any[];
-  onOpenClientSelector: () => void;
+  stageTemplates: StageTemplateOption[];
+  onTemplateChange?: (template: StageTemplateOption | null) => void;
 }) {
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+
+  const normalizeClientName = useCallback(
+    (value?: string | null) =>
+      (value || "").trim().replace(/\s+/g, " ").toLowerCase(),
+    [],
+  );
+
+  const isQuoteLeadClient = useCallback((client: any) => {
+    const source = (client?.source || "").toString();
+    const notes = (client?.notes || "").toString();
+    return source.includes("הצעת מחיר") || notes.includes("הצעת מחיר");
+  }, []);
+
+  const exactClientMatch = useMemo(() => {
+    const normalized = normalizeClientName(details.clientName);
+    if (!normalized) return null;
+    return (
+      clients.find((c) => normalizeClientName(c?.name) === normalized) || null
+    );
+  }, [clients, details.clientName, normalizeClientName]);
+
+  const selectedClientRecord = useMemo(
+    () =>
+      clients.find((c) => c.id === details.clientId) || exactClientMatch || null,
+    [clients, details.clientId, exactClientMatch],
+  );
+
+  const shouldShowCreateOption =
+    Boolean(details.clientName?.trim()) && !exactClientMatch;
+
+  const selectedTemplate = useMemo(
+    () =>
+      stageTemplates.find((t) => t.id === details.stageTemplateId) || null,
+    [stageTemplates, details.stageTemplateId],
+  );
+
+  const filteredClients = useMemo(() => {
+    const query = (details.clientName || "").trim().toLowerCase();
+    const list = clients.filter((c) => {
+      if (!query) return true;
+      return (
+        c.name?.toLowerCase().includes(query) ||
+        c.email?.toLowerCase().includes(query) ||
+        c.phone?.includes(query)
+      );
+    });
+    return list;
+  }, [clients, details.clientName]);
+
+  const applyClientToDetails = useCallback(
+    (client: any) => {
+      onUpdate({
+        ...details,
+        clientId: client.id,
+        clientName: client.name || "",
+        gush: client.gush || "",
+        helka: client.helka || "",
+        migrash: client.migrash || "",
+        taba: client.taba || "",
+        address: client.address || "",
+        projectType: details.projectType || "",
+        phone: client.phone || details.phone,
+        ...(client.email ? ({ email: client.email } as any) : {}),
+      } as any);
+      setShowClientDropdown(false);
+    },
+    [details, onUpdate],
+  );
+
   const fields = [
     { key: "clientName", label: "שם הלקוח", icon: User },
     { key: "gush", label: "גוש", icon: MapPin },
@@ -915,28 +928,183 @@ function ProjectDetailsEditor({
   ];
   return (
     <div className="bg-white rounded-xl border p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center mb-4">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <User className="h-6 w-6 text-[#B8860B]" />
           פרטי הפרויקט והלקוח
         </h2>
-        <Button variant="outline" size="sm" onClick={onOpenClientSelector}>
-          <User className="h-4 w-4 ml-1" />
-          בחר לקוח
-        </Button>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {fields.map((field) => (
-          <FieldWithOptions
-            key={field.key}
-            fieldKey={field.key}
-            label={field.label}
-            icon={field.icon}
-            value={(details as any)[field.key] || ""}
-            onChange={(val) => onUpdate({ ...details, [field.key]: val })}
-            placeholder={`הזן ${field.label}...`}
-          />
-        ))}
+        {fields.map((field) => {
+          if (field.key === "clientName") {
+            const Icon = field.icon;
+            return (
+              <div key={field.key} className="space-y-1 relative">
+                <Label className="text-sm text-gray-600 flex items-center gap-1">
+                  <Icon className="h-3 w-3" />
+                  {field.label}
+                </Label>
+
+                <Popover
+                  open={showClientDropdown}
+                  onOpenChange={setShowClientDropdown}
+                >
+                  <PopoverPrimitive.Anchor asChild>
+                    <Input
+                      value={(details as any)[field.key] || ""}
+                      onClick={() => setShowClientDropdown(true)}
+                      onFocus={() => setShowClientDropdown(true)}
+                      onChange={(e) => {
+                        onUpdate({
+                          ...details,
+                          clientName: e.target.value,
+                          clientId: "",
+                        } as any);
+                        setShowClientDropdown(true);
+                      }}
+                      placeholder={`הזן ${field.label}...`}
+                      dir="rtl"
+                    />
+                  </PopoverPrimitive.Anchor>
+
+                  <PopoverContent
+                    align="start"
+                    sideOffset={4}
+                    dir="rtl"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    className="w-[var(--radix-popover-trigger-width)] p-0 z-[9999]"
+                  >
+                    <div
+                      className="max-h-64 overflow-y-auto overscroll-contain"
+                      style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      {filteredClients.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-3">
+                          לא נמצאו לקוחות
+                        </p>
+                      ) : (
+                        filteredClients.map((client: any) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => applyClientToDetails(client)}
+                            className="w-full text-right px-3 py-2.5 text-sm hover:bg-[#B8860B]/10 transition-colors border-b last:border-0"
+                          >
+                            <div className="font-medium flex items-center gap-2 justify-start">
+                              <span>{client.name}</span>
+                              {isQuoteLeadClient(client) && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] h-5 border-amber-300 text-amber-700"
+                                >
+                                  הצעת מחיר
+                                </Badge>
+                              )}
+                            </div>
+                            {(client.phone || client.email) && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {client.phone || ""}
+                                {client.phone && client.email ? " • " : ""}
+                                {client.email || ""}
+                              </div>
+                            )}
+                          </button>
+                        ))
+                      )}
+
+                      {shouldShowCreateOption && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const typedName = details.clientName.trim();
+                            if (!typedName) return;
+                            onUpdate({
+                              ...details,
+                              clientName: typedName,
+                              clientId: "",
+                            } as any);
+                            setShowClientDropdown(false);
+                          }}
+                          className="w-full text-right px-3 py-2.5 text-sm bg-amber-50 hover:bg-amber-100 transition-colors border-t border-amber-200"
+                        >
+                          <span className="font-medium">+ צור לקוח חדש: {details.clientName.trim()}</span>
+                          <div className="text-[11px] text-amber-700 mt-0.5">
+                            יסומן כליד מסוג "הצעת מחיר" בשמירה
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                {selectedClientRecord && isQuoteLeadClient(selectedClientRecord) && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    הערה: זה לקוח מסוג "הצעת מחיר" (טרם נסגר)
+                  </p>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <FieldWithOptions
+              key={field.key}
+              fieldKey={field.key}
+              label={field.label}
+              icon={field.icon}
+              value={(details as any)[field.key] || ""}
+              onChange={(val) => onUpdate({ ...details, [field.key]: val })}
+              placeholder={`הזן ${field.label}...`}
+            />
+          );
+        })}
+      </div>
+
+      <div className="mt-4 space-y-2">
+        <Label className="text-sm text-gray-600 flex items-center gap-1">
+          <Layers className="h-3.5 w-3.5" />
+          שיוך פנימי לתבנית שלבים
+        </Label>
+        <Select
+          value={details.stageTemplateId || "__none__"}
+          onValueChange={(value) => {
+            if (value === "__none__") {
+              onUpdate({
+                ...details,
+                stageTemplateId: "",
+                stageTemplateName: "",
+              });
+              onTemplateChange?.(null);
+              return;
+            }
+
+            const template = stageTemplates.find((t) => t.id === value) || null;
+            onUpdate({
+              ...details,
+              stageTemplateId: template?.id || "",
+              stageTemplateName: template?.name || "",
+            });
+            onTemplateChange?.(template);
+          }}
+        >
+          <SelectTrigger className="bg-white">
+            <SelectValue placeholder="בחר תבנית שלבים לפרויקט" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">ללא שיוך תבנית</SelectItem>
+            {stageTemplates.map((template) => (
+              <SelectItem key={template.id} value={template.id}>
+                {template.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          השיוך פנימי בלבד ולא יוצג ללקוח במסמך ההצעה.
+          {selectedTemplate ? ` נבחרה תבנית: ${selectedTemplate.name}` : ""}
+        </p>
       </div>
     </div>
   );
@@ -1360,14 +1528,211 @@ function PaymentStepEditor({
   onUpdate,
   onDelete,
   defaultVatRate,
+  templateStages = [],
+  templateName,
+  quoteTemplateStages = [],
+  templateKey,
 }: {
   step: PaymentStep;
   onUpdate: (step: PaymentStep) => void;
   onDelete: () => void;
   defaultVatRate: number;
+  templateStages: StageTemplateStageOption[];
+  templateName?: string;
+  quoteTemplateStages?: TemplateStage[];
+  templateKey?: string;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [assignmentSourceTab, setAssignmentSourceTab] = useState<
+    "stage-template" | "quote-template"
+  >("stage-template");
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [activeStageTemplateTab, setActiveStageTemplateTab] = useState("");
+  const [activeQuoteTemplateTab, setActiveQuoteTemplateTab] = useState("");
+  const assignmentSourceStorageKey = useMemo(
+    () => `quote-payment-assignment-source:${templateKey || "draft-template"}`,
+    [templateKey],
+  );
+  const [lastUsedSourceTab, setLastUsedSourceTab] = useState<
+    "stage-template" | "quote-template"
+  >(() => {
+    try {
+      const stored = localStorage.getItem(
+        `quote-payment-assignment-source:${templateKey || "draft-template"}`,
+      );
+      return stored === "quote-template" ? "quote-template" : "stage-template";
+    } catch {
+      return "stage-template";
+    }
+  });
   const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVatRate) : defaultVatRate;
+  const selectedTemplateStage = useMemo(
+    () => templateStages.find((s) => s.id === step.templateStageId) || null,
+    [templateStages, step.templateStageId],
+  );
+
+  const templateTasks = selectedTemplateStage?.tasks || [];
+  const selectedTemplateTask = useMemo(
+    () => templateTasks.find((task) => task.id === step.templateTaskId) || null,
+    [templateTasks, step.templateTaskId],
+  );
+  const quoteTemplateStageOptions = useMemo(
+    () =>
+      (quoteTemplateStages || []).map((stage) => ({
+        id: stage.id,
+        name: stage.name,
+        tasks: (stage.items || [])
+          .map((item) => ({ id: item.id, title: (item.text || "").trim() }))
+          .filter((item) => item.title.length > 0),
+      })),
+    [quoteTemplateStages],
+  );
+
+  const selectedQuoteStage = useMemo(
+    () =>
+      quoteTemplateStageOptions.find(
+        (stage) => stage.id === step.quoteTemplateStageId,
+      ) || null,
+    [quoteTemplateStageOptions, step.quoteTemplateStageId],
+  );
+
+  const selectedQuoteTask = useMemo(
+    () =>
+      selectedQuoteStage?.tasks.find(
+        (task) => task.id === step.quoteTemplateItemId,
+      ) || null,
+    [selectedQuoteStage, step.quoteTemplateItemId],
+  );
+
+  useEffect(() => {
+    if (!templateStages.length || activeStageTemplateTab) return;
+    setActiveStageTemplateTab(templateStages[0].id);
+  }, [templateStages, activeStageTemplateTab]);
+
+  useEffect(() => {
+    if (!quoteTemplateStageOptions.length || activeQuoteTemplateTab) return;
+    setActiveQuoteTemplateTab(quoteTemplateStageOptions[0].id);
+  }, [quoteTemplateStageOptions, activeQuoteTemplateTab]);
+
+  const assignmentSummary =
+    step.linkSource === "quote_template" && (step.quoteTemplateItemText || selectedQuoteTask?.title)
+      ? `שיוך תשלום: ${step.quoteTemplateStageName || selectedQuoteStage?.name || "שלב בתבנית ההצעה"} → ${step.quoteTemplateItemText || selectedQuoteTask?.title}`
+      : step.templateTaskName
+        ? `שיוך תשלום: ${step.templateStageName || "שלב"} → ${step.templateTaskName}`
+        : templateName
+          ? `לא נבחרה משימה (תבנית: ${templateName})`
+          : "לא נבחרה תבנית שלבים בפרטי הפרויקט";
+
+  const hasStageAssignment = !!(step.templateStageId || step.templateTaskId);
+  const hasQuoteAssignment = !!(step.quoteTemplateStageId || step.quoteTemplateItemId);
+
+  const assignmentSourceBadge = hasQuoteAssignment
+    ? { label: "מקור: תבנית ההצעה", className: "text-blue-700 border-blue-300" }
+    : hasStageAssignment
+      ? { label: "מקור: תבנית שלבי לקוח", className: "text-amber-700 border-amber-300" }
+      : null;
+
+  const rememberSourceTab = useCallback(
+    (sourceTab: "stage-template" | "quote-template") => {
+      setLastUsedSourceTab(sourceTab);
+      try {
+        localStorage.setItem(assignmentSourceStorageKey, sourceTab);
+      } catch {
+        // no-op
+      }
+    },
+    [assignmentSourceStorageKey],
+  );
+
+  const openAssignmentDialog = useCallback(() => {
+    const preferredTab = hasQuoteAssignment
+      ? "quote-template"
+      : hasStageAssignment
+        ? "stage-template"
+        : lastUsedSourceTab;
+    setIsExpanded(true);
+    setAssignmentSourceTab(preferredTab);
+    setAssignmentDialogOpen(true);
+  }, [hasQuoteAssignment, hasStageAssignment, lastUsedSourceTab]);
+
+  const activeStageTemplateForDialog = useMemo(
+    () =>
+      templateStages.find((stage) => stage.id === activeStageTemplateTab) ||
+      templateStages[0] ||
+      null,
+    [templateStages, activeStageTemplateTab],
+  );
+
+  const activeQuoteTemplateStageForDialog = useMemo(
+    () =>
+      quoteTemplateStageOptions.find(
+        (stage) => stage.id === activeQuoteTemplateTab,
+      ) ||
+      quoteTemplateStageOptions[0] ||
+      null,
+    [quoteTemplateStageOptions, activeQuoteTemplateTab],
+  );
+
+  const normalizedAssignmentSearch = assignmentSearch.trim().toLowerCase();
+
+  const filteredStageTemplateTasks = useMemo(() => {
+    const baseTasks = activeStageTemplateForDialog?.tasks || [];
+    if (!normalizedAssignmentSearch) return baseTasks;
+    return baseTasks.filter((task) =>
+      task.title.toLowerCase().includes(normalizedAssignmentSearch),
+    );
+  }, [activeStageTemplateForDialog, normalizedAssignmentSearch]);
+
+  const filteredQuoteTemplateItems = useMemo(() => {
+    const baseItems = activeQuoteTemplateStageForDialog?.tasks || [];
+    if (!normalizedAssignmentSearch) return baseItems;
+    return baseItems.filter((item) =>
+      item.title.toLowerCase().includes(normalizedAssignmentSearch),
+    );
+  }, [activeQuoteTemplateStageForDialog, normalizedAssignmentSearch]);
+
+  const assignFromStageTemplate = (
+    stage: StageTemplateStageOption,
+    task: StageTemplateTaskOption,
+  ) => {
+    onUpdate({
+      ...step,
+      linkSource: "stage_template",
+      templateStageId: stage.id,
+      templateStageName: stage.stage_name,
+      templateTaskId: task.id,
+      templateTaskName: task.title,
+      quoteTemplateStageId: "",
+      quoteTemplateStageName: "",
+      quoteTemplateItemId: "",
+      quoteTemplateItemText: "",
+    });
+    rememberSourceTab("stage-template");
+    setAssignmentDialogOpen(false);
+  };
+
+  const assignFromQuoteTemplate = (
+    stage: { id: string; name: string },
+    item: { id: string; title: string },
+  ) => {
+    onUpdate({
+      ...step,
+      linkSource: "quote_template",
+      quoteTemplateStageId: stage.id,
+      quoteTemplateStageName: stage.name,
+      quoteTemplateItemId: item.id,
+      quoteTemplateItemText: item.title,
+      templateStageId: "",
+      templateStageName: "",
+      templateTaskId: "",
+      templateTaskName: "",
+      triggerMode: step.triggerMode === "task_completion" ? "task_completion" : step.triggerMode,
+    });
+    rememberSourceTab("quote-template");
+    setAssignmentDialogOpen(false);
+  };
+
   return (
     <div className="bg-white rounded-lg border p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-center gap-3">
@@ -1385,6 +1750,16 @@ function PaymentStepEditor({
             placeholder="שם שלב התשלום"
             dir="rtl"
           />
+          <div className="flex flex-wrap items-center gap-2 mt-1">
+            <p className="text-[11px] text-muted-foreground">
+              {assignmentSummary}
+            </p>
+            {assignmentSourceBadge && (
+              <Badge variant="outline" className={`text-[10px] ${assignmentSourceBadge.className}`}>
+                {assignmentSourceBadge.label}
+              </Badge>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Input
@@ -1398,6 +1773,15 @@ function PaymentStepEditor({
             max={100}
           />
           <span className="text-gray-500">%</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={openAssignmentDialog}
+          >
+            <Layers className="h-3 w-3 ml-1" />
+            שיוך
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -1427,6 +1811,96 @@ function PaymentStepEditor({
             className="min-h-[60px]"
             dir="rtl"
           />
+
+          <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/40 p-3 space-y-3">
+            <p className="text-xs text-amber-800">
+              שיוך פנימי בלבד: בחר משימה לקישור התשלום להתקדמות בפועל.
+            </p>
+
+            {templateStages.length === 0 && quoteTemplateStageOptions.length === 0 && (
+              <div className="rounded-md border border-amber-200 bg-white p-2 text-xs text-amber-800">
+                לא נמצאו מקורות שיוך. בחר תבנית שלבים בפרטי הפרויקט או הוסף שלבים בתוכן תבנית ההצעה.
+              </div>
+            )}
+
+            {(templateStages.length > 0 || quoteTemplateStageOptions.length > 0) && (
+              <div className="rounded-md border bg-white p-2 space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 px-2 text-xs w-full justify-between"
+                  onClick={openAssignmentDialog}
+                >
+                  <span>פתח בורר שיוך מהיר (דיאלוג)</span>
+                  <Layers className="h-3.5 w-3.5" />
+                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                  <div className="rounded border bg-muted/30 px-2 py-1.5">
+                    תבנית שלבי לקוח: {templateStages.length} שלבים
+                  </div>
+                  <div className="rounded border bg-muted/30 px-2 py-1.5">
+                    תבנית ההצעה: {quoteTemplateStageOptions.length} שלבים
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step.linkSource === "stage_template" && selectedTemplateTask && (
+              <div className="rounded-md border border-green-200 bg-green-50 px-2 py-1.5 text-xs text-green-800">
+                משימה משויכת: {step.templateStageName || selectedTemplateStage?.stage_name} → {selectedTemplateTask.title}
+              </div>
+            )}
+
+            {step.linkSource === "quote_template" && (step.quoteTemplateItemText || selectedQuoteTask?.title) && (
+              <div className="rounded-md border border-green-200 bg-green-50 px-2 py-1.5 text-xs text-green-800">
+                משימה משויכת מתבנית ההצעה: {step.quoteTemplateStageName || selectedQuoteStage?.name} → {step.quoteTemplateItemText || selectedQuoteTask?.title}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  טריגר דרישת תשלום
+                </Label>
+                <Select
+                  value={step.triggerMode || "manual"}
+                  onValueChange={(value: "manual" | "date" | "task_completion") =>
+                    onUpdate({
+                      ...step,
+                      triggerMode: value,
+                      triggerDate: value === "date" ? step.triggerDate || "" : null,
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-8 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">ידני</SelectItem>
+                    <SelectItem value="task_completion">סיום משימה משויכת</SelectItem>
+                    <SelectItem value="date">תאריך יעד קבוע</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {step.triggerMode === "date" && (
+                <div className="space-y-1">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    תאריך יעד לתשלום
+                  </Label>
+                  <Input
+                    type="date"
+                    value={step.triggerDate || ""}
+                    onChange={(e) => onUpdate({ ...step, triggerDate: e.target.value || null })}
+                    className="h-8 bg-white"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="flex items-center gap-3 bg-amber-50 rounded-lg p-3">
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
@@ -1454,6 +1928,161 @@ function PaymentStepEditor({
           </div>
         </div>
       )}
+
+      <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+        <DialogContent className="max-w-3xl" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>שיוך מהיר לשלב תשלום</DialogTitle>
+          </DialogHeader>
+
+          <Tabs
+            value={assignmentSourceTab}
+            onValueChange={(value) => {
+              const sourceTab = value as "stage-template" | "quote-template";
+              setAssignmentSourceTab(sourceTab);
+              rememberSourceTab(sourceTab);
+            }}
+            className="space-y-3"
+          >
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="stage-template">תבנית שלבי לקוח</TabsTrigger>
+              <TabsTrigger value="quote-template">תבנית ההצעה</TabsTrigger>
+            </TabsList>
+
+            <div className="relative">
+              <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={assignmentSearch}
+                onChange={(e) => setAssignmentSearch(e.target.value)}
+                placeholder="חיפוש משימה..."
+                className="pr-9"
+              />
+            </div>
+
+            <TabsContent value="stage-template" className="space-y-3 m-0">
+              {templateStages.length === 0 ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  אין תבנית שלבי לקוח משויכת לפרויקט.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {templateStages.map((stage) => (
+                      <Button
+                        key={stage.id}
+                        type="button"
+                        variant={
+                          (activeStageTemplateForDialog?.id || "") === stage.id
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        className="h-8"
+                        onClick={() => setActiveStageTemplateTab(stage.id)}
+                      >
+                        {stage.stage_name}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <ScrollArea className="h-56 rounded-md border p-2">
+                    <div className="space-y-2">
+                      {filteredStageTemplateTasks.length === 0 ? (
+                        <p className="text-xs text-muted-foreground px-1 py-2">
+                          לא נמצאו משימות בשלב זה בהתאם לחיפוש.
+                        </p>
+                      ) : (
+                        filteredStageTemplateTasks.map((task) => {
+                          const stage = activeStageTemplateForDialog;
+                          if (!stage) return null;
+                          const isSelected =
+                            step.linkSource === "stage_template" &&
+                            step.templateTaskId === task.id;
+                          return (
+                            <button
+                              key={task.id}
+                              type="button"
+                              onClick={() => assignFromStageTemplate(stage, task)}
+                              className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
+                                isSelected
+                                  ? "border-amber-400 bg-amber-50 text-amber-900"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              {task.title}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="quote-template" className="space-y-3 m-0">
+              {quoteTemplateStageOptions.length === 0 ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  אין שלבים זמינים בתוכן תבנית ההצעה.
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {quoteTemplateStageOptions.map((stage) => (
+                      <Button
+                        key={stage.id}
+                        type="button"
+                        variant={
+                          (activeQuoteTemplateStageForDialog?.id || "") === stage.id
+                            ? "default"
+                            : "outline"
+                        }
+                        size="sm"
+                        className="h-8"
+                        onClick={() => setActiveQuoteTemplateTab(stage.id)}
+                      >
+                        {stage.name}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <ScrollArea className="h-56 rounded-md border p-2">
+                    <div className="space-y-2">
+                      {filteredQuoteTemplateItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground px-1 py-2">
+                          לא נמצאו סעיפים בשלב זה בהתאם לחיפוש.
+                        </p>
+                      ) : (
+                        filteredQuoteTemplateItems.map((item) => {
+                          const stage = activeQuoteTemplateStageForDialog;
+                          if (!stage) return null;
+                          const isSelected =
+                            step.linkSource === "quote_template" &&
+                            step.quoteTemplateItemId === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => assignFromQuoteTemplate(stage, item)}
+                              className={`w-full text-right text-sm rounded border px-3 py-2 transition-colors ${
+                                isSelected
+                                  ? "border-amber-400 bg-amber-50 text-amber-900"
+                                  : "border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              {item.title}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -2097,6 +2726,20 @@ export function HtmlTemplateEditor({
         name: s.description || s.name || "",
         percentage: s.percentage || 0,
         description: s.description || "",
+        vatRate: s.vatRate,
+        useCustomVat: s.useCustomVat || false,
+        linkSource:
+          s.linkSource || (s.quoteTemplateItemId ? "quote_template" : "stage_template"),
+        templateStageId: s.templateStageId || "",
+        templateStageName: s.templateStageName || "",
+        templateTaskId: s.templateTaskId || "",
+        templateTaskName: s.templateTaskName || "",
+        quoteTemplateStageId: s.quoteTemplateStageId || "",
+        quoteTemplateStageName: s.quoteTemplateStageName || "",
+        quoteTemplateItemId: s.quoteTemplateItemId || "",
+        quoteTemplateItemText: s.quoteTemplateItemText || "",
+        triggerMode: s.triggerMode || "manual",
+        triggerDate: s.triggerDate || null,
       }));
     }
     return [
@@ -2104,7 +2747,7 @@ export function HtmlTemplateEditor({
       { id: "2", name: "הגשה לרישוי", percentage: 25, description: "" },
       { id: "3", name: 'אישור תב"ע', percentage: 25, description: "" },
       { id: "4", name: "היתר בנייה", percentage: 20, description: "" },
-    ];
+    ].map((step) => ({ ...step, triggerMode: "manual" as const, triggerDate: null }));
   });
   const [designSettings, setDesignSettings] = useState<DesignSettings>(() => {
     const ds = template.design_settings as any;
@@ -2154,7 +2797,7 @@ export function HtmlTemplateEditor({
   });
   const [projectDetails, setProjectDetails] = useState<ProjectDetails>(() => {
     const saved = (template as any).project_details;
-    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.gush || saved.helka || saved.address || saved.projectType)) {
+    if (saved && typeof saved === 'object' && (saved.clientName || saved.clientId || saved.gush || saved.helka || saved.address || saved.projectType || saved.stageTemplateId)) {
       return {
         clientId: saved.clientId || "",
         clientName: saved.clientName || "",
@@ -2164,6 +2807,8 @@ export function HtmlTemplateEditor({
         taba: saved.taba || "",
         address: saved.address || "",
         projectType: saved.projectType || "",
+        stageTemplateId: saved.stageTemplateId || "",
+        stageTemplateName: saved.stageTemplateName || "",
       };
     }
     return {
@@ -2175,9 +2820,12 @@ export function HtmlTemplateEditor({
       taba: "",
       address: "",
       projectType: "",
+      stageTemplateId: "",
+      stageTemplateName: "",
     };
   });
-  const [showClientSelector, setShowClientSelector] = useState(false);
+  const [stageTemplates, setStageTemplates] = useState<StageTemplateOption[]>([]);
+  const [isLoadingStageTemplates, setIsLoadingStageTemplates] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [interactiveEditMode, setInteractiveEditMode] = useState(false);
@@ -2501,16 +3149,31 @@ export function HtmlTemplateEditor({
     if (!open) return;
     const fetchClients = async () => {
       try {
-        const { data, error } = await supabase
-          .from("clients")
-          .select("id, name, email, phone, gush, helka, migrash, taba, address")
-          .order("name");
-        if (error) {
-          console.error("Error fetching clients:", error);
-          return;
+        const pageSize = 1000;
+        let from = 0;
+        const allRows: any[] = [];
+
+        while (true) {
+          const { data, error } = await supabase
+            .from("clients")
+            .select("id, name, email, phone, gush, helka, migrash, taba, address")
+            .order("name")
+            .range(from, from + pageSize - 1);
+
+          if (error) {
+            console.error("Error fetching clients:", error);
+            return;
+          }
+
+          if (!data || data.length === 0) break;
+          allRows.push(...data);
+
+          if (data.length < pageSize) break;
+          from += pageSize;
         }
-        console.log("Fetched clients:", data?.length || 0);
-        if (data) setExtendedClients(data);
+
+        console.log("Fetched clients:", allRows.length);
+        setExtendedClients(allRows);
       } catch (e) {
         console.error("Failed to fetch clients:", e);
       }
@@ -2532,9 +3195,91 @@ export function HtmlTemplateEditor({
         migrash: c.migrash || null,
         taba: c.taba || null,
         address: c.address || null,
+        source: c.source || null,
+        notes: c.notes || null,
       }));
     return [];
   }, [extendedClients, clients]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const loadStageTemplates = async () => {
+      setIsLoadingStageTemplates(true);
+      try {
+        const [templatesRes, stagesRes, tasksRes] = await Promise.all([
+          (supabase as any)
+            .from("stage_templates")
+            .select("id, name, description")
+            .order("name", { ascending: true }),
+          (supabase as any)
+            .from("stage_template_stages")
+            .select("id, template_id, stage_name, sort_order")
+            .order("sort_order", { ascending: true }),
+          (supabase as any)
+            .from("stage_template_tasks")
+            .select("id, template_id, template_stage_id, title, sort_order")
+            .order("sort_order", { ascending: true }),
+        ]);
+
+        if (templatesRes.error) throw templatesRes.error;
+        if (stagesRes.error) throw stagesRes.error;
+        if (tasksRes.error) throw tasksRes.error;
+
+        const stagesByTemplate = new Map<string, any[]>();
+        for (const stage of stagesRes.data || []) {
+          const list = stagesByTemplate.get(stage.template_id) || [];
+          list.push(stage);
+          stagesByTemplate.set(stage.template_id, list);
+        }
+
+        const tasksByStage = new Map<string, any[]>();
+        for (const task of tasksRes.data || []) {
+          const key = task.template_stage_id || "";
+          const list = tasksByStage.get(key) || [];
+          list.push(task);
+          tasksByStage.set(key, list);
+        }
+
+        const mappedTemplates: StageTemplateOption[] = (templatesRes.data || []).map((tpl: any) => {
+          const stageList = (stagesByTemplate.get(tpl.id) || [])
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((stage) => ({
+              id: stage.id,
+              stage_name: stage.stage_name,
+              sort_order: stage.sort_order || 0,
+              tasks: (tasksByStage.get(stage.id) || [])
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+                .map((task) => ({
+                  id: task.id,
+                  title: task.title,
+                  template_stage_id: task.template_stage_id,
+                })),
+            }));
+
+          return {
+            id: tpl.id,
+            name: tpl.name,
+            description: tpl.description,
+            stages: stageList,
+          };
+        });
+
+        setStageTemplates(mappedTemplates);
+      } catch (error) {
+        console.error("Failed loading stage templates:", error);
+      } finally {
+        setIsLoadingStageTemplates(false);
+      }
+    };
+
+    loadStageTemplates();
+  }, [open]);
+
+  const selectedStageTemplate = useMemo(
+    () => stageTemplates.find((t) => t.id === projectDetails.stageTemplateId) || null,
+    [stageTemplates, projectDetails.stageTemplateId],
+  );
 
   useEffect(() => {
     setEditedTemplate(template);
@@ -2547,6 +3292,20 @@ export function HtmlTemplateEditor({
           name: s.description || s.name || "",
           percentage: s.percentage || 0,
           description: s.description || "",
+          vatRate: s.vatRate,
+          useCustomVat: s.useCustomVat || false,
+          linkSource:
+            s.linkSource || (s.quoteTemplateItemId ? "quote_template" : "stage_template"),
+          templateStageId: s.templateStageId || "",
+          templateStageName: s.templateStageName || "",
+          templateTaskId: s.templateTaskId || "",
+          templateTaskName: s.templateTaskName || "",
+          quoteTemplateStageId: s.quoteTemplateStageId || "",
+          quoteTemplateStageName: s.quoteTemplateStageName || "",
+          quoteTemplateItemId: s.quoteTemplateItemId || "",
+          quoteTemplateItemText: s.quoteTemplateItemText || "",
+          triggerMode: s.triggerMode || "manual",
+          triggerDate: s.triggerDate || null,
         })),
       );
     }
@@ -2559,7 +3318,7 @@ export function HtmlTemplateEditor({
     const pt = (template as any).pricing_tiers;
     if (pt && Array.isArray(pt) && pt.length > 0) setPricingTiers(pt);
     const pd = (template as any).project_details;
-    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.gush || pd.helka || pd.address || pd.projectType)) {
+    if (pd && typeof pd === 'object' && (pd.clientName || pd.clientId || pd.gush || pd.helka || pd.address || pd.projectType || pd.stageTemplateId)) {
       setProjectDetails({
         clientId: pd.clientId || "",
         clientName: pd.clientName || "",
@@ -2569,26 +3328,94 @@ export function HtmlTemplateEditor({
         taba: pd.taba || "",
         address: pd.address || "",
         projectType: pd.projectType || "",
+        stageTemplateId: pd.stageTemplateId || "",
+        stageTemplateName: pd.stageTemplateName || "",
       });
     }
   }, [template]);
 
-  const handleClientSelect = (client: any) => {
-    setProjectDetails({
-      clientId: client.id,
-      clientName: client.name || "",
-      gush: client.gush || "",
-      helka: client.helka || "",
-      migrash: client.migrash || "",
-      taba: client.taba || "",
-      address: client.address || "",
-      projectType: projectDetails.projectType,
-    });
-  };
-
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
+      let resolvedProjectDetails: any = { ...projectDetails };
+
+      const normalizeClientName = (value: string) =>
+        value.trim().replace(/\s+/g, " ").toLowerCase();
+
+      // Auto-link existing client or create a new quote-lead client when user typed a name manually.
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        const typedName = (resolvedProjectDetails.clientName || "").trim();
+        if (user && typedName && !resolvedProjectDetails.clientId) {
+          const localExisting = allClients.find(
+            (c: any) =>
+              normalizeClientName(c?.name || "") ===
+              normalizeClientName(typedName),
+          );
+
+          if (localExisting?.id) {
+            resolvedProjectDetails = {
+              ...resolvedProjectDetails,
+              clientId: localExisting.id,
+              clientName: localExisting.name || typedName,
+            };
+          } else {
+            const quoteLeadNote = `סטטוס ליד: הצעת מחיר (טרם נסגר)\nנוצר אוטומטית מהצעת מחיר: ${editedTemplate.name || "הצעת מחיר"}\nסוג פרויקט: ${resolvedProjectDetails.projectType || "לא צוין"}`;
+
+            const { data: newClient, error: createError } = await (
+              supabase as any
+            )
+              .from("clients")
+              .insert({
+                name: typedName,
+                gush: resolvedProjectDetails.gush || null,
+                helka: resolvedProjectDetails.helka || null,
+                migrash: resolvedProjectDetails.migrash || null,
+                taba: resolvedProjectDetails.taba || null,
+                address: resolvedProjectDetails.address || null,
+                phone: resolvedProjectDetails.phone || null,
+                email: resolvedProjectDetails.email || null,
+                user_id: user.id,
+                created_by: user.id,
+                source: "הצעת מחיר",
+                status: "active",
+                notes: quoteLeadNote,
+              })
+              .select("id, name")
+              .single();
+
+            if (createError) throw createError;
+
+            resolvedProjectDetails = {
+              ...resolvedProjectDetails,
+              clientId: newClient.id,
+              clientName: newClient.name || typedName,
+            };
+
+            toast({
+              title: "ליד חדש נשמר מההצעה",
+              description: `${resolvedProjectDetails.clientName} סומן כ"הצעת מחיר"`,
+            });
+          }
+
+          if (
+            resolvedProjectDetails.clientId !== projectDetails.clientId ||
+            resolvedProjectDetails.clientName !== projectDetails.clientName
+          ) {
+            setProjectDetails((prev: any) => ({
+              ...prev,
+              clientId: resolvedProjectDetails.clientId,
+              clientName: resolvedProjectDetails.clientName,
+            }));
+          }
+        }
+      } catch (linkErr) {
+        console.warn("Could not auto-link client on save:", linkErr);
+      }
+
       const templatePayload = {
         ...editedTemplate,
         payment_schedule: paymentSteps.map((s) => ({
@@ -2597,11 +3424,22 @@ export function HtmlTemplateEditor({
           description: s.description || s.name,
           vatRate: s.vatRate,
           useCustomVat: s.useCustomVat,
+          linkSource: s.linkSource || "stage_template",
+          templateStageId: s.templateStageId || null,
+          templateStageName: s.templateStageName || null,
+          templateTaskId: s.templateTaskId || null,
+          templateTaskName: s.templateTaskName || null,
+          quoteTemplateStageId: s.quoteTemplateStageId || null,
+          quoteTemplateStageName: s.quoteTemplateStageName || null,
+          quoteTemplateItemId: s.quoteTemplateItemId || null,
+          quoteTemplateItemText: s.quoteTemplateItemText || null,
+          triggerMode: s.triggerMode || "manual",
+          triggerDate: s.triggerDate || null,
         })),
         design_settings: designSettings as any,
         text_boxes: textBoxes,
         upgrades: upgrades,
-        project_details: projectDetails,
+        project_details: resolvedProjectDetails,
         base_price: editedTemplate.base_price || 0,
         pricing_tiers: pricingTiers,
       };
@@ -2611,16 +3449,39 @@ export function HtmlTemplateEditor({
 
       // 2. Also save to saved_quotes table
       try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
+          let previousTemplateId: string | null = null;
+          if (resolvedProjectDetails.clientId) {
+            const { data: latestClientQuote } = await (supabase as any)
+              .from("saved_quotes")
+              .select("project_details, updated_at")
+              .eq("client_id", resolvedProjectDetails.clientId)
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const latestProjectDetails =
+              latestClientQuote?.project_details &&
+              typeof latestClientQuote.project_details === "object"
+                ? latestClientQuote.project_details
+                : null;
+
+            previousTemplateId =
+              latestProjectDetails?.stageTemplateId ||
+              latestProjectDetails?.stage_template_id ||
+              null;
+          }
+
           const basePrice = editedTemplate.base_price || 0;
           const vatRate = editedTemplate.vat_rate || 17;
           const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
 
           const savedQuoteData = {
             user_id: user.id,
-            client_id: projectDetails.clientId || null,
+            client_id: resolvedProjectDetails.clientId || null,
             template_id: editedTemplate.id || null,
             title: editedTemplate.name || "הצעת מחיר",
             description: editedTemplate.description || "",
@@ -2629,7 +3490,7 @@ export function HtmlTemplateEditor({
             vat_rate: vatRate,
             total_with_vat: totalWithVat,
             template_data: templatePayload as any,
-            project_details: projectDetails as any,
+            project_details: resolvedProjectDetails as any,
             payment_schedule: templatePayload.payment_schedule as any,
             design_settings: designSettings as any,
             text_boxes: textBoxes as any,
@@ -2656,6 +3517,35 @@ export function HtmlTemplateEditor({
               .from("saved_quotes")
               .insert(savedQuoteData);
           }
+
+          if (
+            resolvedProjectDetails.clientId &&
+            resolvedProjectDetails.stageTemplateId
+          ) {
+            try {
+              const syncResult = await syncClientStagesFromTemplate({
+                clientId: resolvedProjectDetails.clientId,
+                templateId: resolvedProjectDetails.stageTemplateId,
+                previousTemplateId,
+                clearAllOnTemplateChange: true,
+              });
+
+              if (
+                syncResult.clearedAll ||
+                syncResult.addedStages > 0 ||
+                syncResult.addedTasks > 0
+              ) {
+                toast({
+                  title: "עודכן כרטיס הלקוח",
+                  description: syncResult.clearedAll
+                    ? `הוחלפה תבנית: בוצע איפוס ונוספו ${syncResult.addedStages} שלבים ו-${syncResult.addedTasks} משימות`
+                    : `נוספו ${syncResult.addedStages} שלבים ו-${syncResult.addedTasks} משימות מהתבנית המשויכת`,
+                });
+              }
+            } catch (syncError) {
+              console.error("Could not sync client stages from quote save:", syncError);
+            }
+          }
         }
       } catch (sqErr) {
         console.warn("Could not save to saved_quotes:", sqErr);
@@ -2679,6 +3569,7 @@ export function HtmlTemplateEditor({
     textBoxes,
     upgrades,
     projectDetails,
+    allClients,
     pricingTiers,
     onSave,
     toast,
@@ -3111,6 +4002,17 @@ export function HtmlTemplateEditor({
         percentage: 0,
         description: "",
         useCustomVat: false,
+        linkSource: "stage_template",
+        templateStageId: "",
+        templateStageName: "",
+        templateTaskId: "",
+        templateTaskName: "",
+        quoteTemplateStageId: "",
+        quoteTemplateStageName: "",
+        quoteTemplateItemId: "",
+        quoteTemplateItemText: "",
+        triggerMode: "manual",
+        triggerDate: null,
       },
     ]);
   const addTextBox = () =>
@@ -3628,8 +4530,7 @@ export function HtmlTemplateEditor({
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const [showAssignClientDialog, setShowAssignClientDialog] = useState(false);
-  const [assignClientSearch, setAssignClientSearch] = useState("");
+
   const [calculationResult, setCalculationResult] =
     useState<CalculationResult | null>(null);
 
@@ -3639,6 +4540,7 @@ export function HtmlTemplateEditor({
   const [comparingVersion, setComparingVersion] = useState<QuoteVersion | null>(
     null,
   );
+  const [viewingVersion, setViewingVersion] = useState<QuoteVersion | null>(null);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isSavingVersion, setIsSavingVersion] = useState(false);
 
@@ -3653,21 +4555,19 @@ export function HtmlTemplateEditor({
           .select("*")
           .eq("template_id", template.id)
           .order("version_number", { ascending: false })
-          .limit(20);
+          .limit(MAX_QUOTE_VERSIONS);
         if (error) {
           console.error("Error loading versions:", error);
           return;
         }
-        if (data && data.length > 0) {
-          setQuoteVersions(
-            data.map((v: any) => ({
-              id: v.id,
-              timestamp: v.created_at,
-              label: v.label || `גרסה ${v.version_number}`,
-              data: v.snapshot || {},
-            })),
-          );
-        }
+        setQuoteVersions(
+          (data || []).map((v: any) => ({
+            id: v.id,
+            timestamp: v.created_at,
+            label: v.label || `גרסה ${v.version_number}`,
+            data: v.snapshot || {},
+          })),
+        );
       } catch (e) {
         console.error("Failed to load versions:", e);
       } finally {
@@ -3813,7 +4713,9 @@ export function HtmlTemplateEditor({
 
       const nextNum =
         (maxData && maxData.length > 0 ? maxData[0].version_number : 0) + 1;
-      const versionLabel = label || `גרסה ${nextNum}`;
+      const versionLabel =
+        label?.trim() ||
+        buildAutoVersionLabel(nextNum, snapshot, quoteVersions[0] || null);
 
       const { data: inserted, error } = await (supabase as any)
         .from("quote_template_versions")
@@ -3830,6 +4732,32 @@ export function HtmlTemplateEditor({
 
       if (error) throw error;
 
+      // Keep only the newest N versions in cloud
+      const { data: allVersions, error: allVersionsError } = await (supabase as any)
+        .from("quote_template_versions")
+        .select("id, version_number")
+        .eq("template_id", editedTemplate.id)
+        .order("version_number", { ascending: false });
+
+      if (allVersionsError) throw allVersionsError;
+
+      const versionsRows = allVersions || [];
+      if (versionsRows.length > MAX_QUOTE_VERSIONS) {
+        const deleteIds = versionsRows
+          .slice(MAX_QUOTE_VERSIONS)
+          .map((v: any) => v.id)
+          .filter(Boolean);
+
+        if (deleteIds.length > 0) {
+          const { error: pruneError } = await (supabase as any)
+            .from("quote_template_versions")
+            .delete()
+            .in("id", deleteIds);
+
+          if (pruneError) throw pruneError;
+        }
+      }
+
       // Add to local state
       const newVersion: QuoteVersion = {
         id: inserted.id,
@@ -3837,8 +4765,11 @@ export function HtmlTemplateEditor({
         label: versionLabel,
         data: snapshot,
       };
-      setQuoteVersions((prev) => [newVersion, ...prev].slice(0, 20));
-      toast({ title: "גרסה נשמרה בענן ☁️", description: versionLabel });
+      setQuoteVersions((prev) => [newVersion, ...prev].slice(0, MAX_QUOTE_VERSIONS));
+      toast({
+        title: "גרסה נשמרה בענן ☁️",
+        description: `${versionLabel} (נשמרות עד ${MAX_QUOTE_VERSIONS} גרסאות אחרונות)`,
+      });
     } catch (err: any) {
       console.error("Save version error:", err);
       toast({
@@ -3862,13 +4793,13 @@ export function HtmlTemplateEditor({
     if (version.data.textBoxes) setTextBoxes(version.data.textBoxes);
     if (version.data.designSettings)
       setDesignSettings(version.data.designSettings);
-    if (version.data.upgrades)
-      (window as any).__upgrades = version.data.upgrades;
-    if (version.data.pricingTiers)
-      (window as any).__pricingTiers = version.data.pricingTiers;
+    if (version.data.upgrades) setUpgrades(version.data.upgrades);
+    if (version.data.pricingTiers) setPricingTiers(version.data.pricingTiers);
     if (version.data.projectDetails)
       setProjectDetails(version.data.projectDetails);
     toast({ title: "גרסה שוחזרה", description: version.label });
+    setViewingVersion(null);
+    setComparingVersion(null);
     setShowVersionDialog(false);
   };
 
@@ -3880,6 +4811,8 @@ export function HtmlTemplateEditor({
         .eq("id", versionId);
       if (error) throw error;
       setQuoteVersions((prev) => prev.filter((v) => v.id !== versionId));
+      if (comparingVersion?.id === versionId) setComparingVersion(null);
+      if (viewingVersion?.id === versionId) setViewingVersion(null);
       toast({ title: "גרסה נמחקה" });
     } catch {
       toast({ title: "שגיאה במחיקת גרסה", variant: "destructive" });
@@ -4062,7 +4995,7 @@ export function HtmlTemplateEditor({
             created_by: user.id,
             source: "הצעת מחיר",
             status: "active",
-            notes: `נוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
+            notes: `סטטוס ליד: הצעת מחיר (טרם נסגר)\nנוצר מהצעת מחיר: ${editedTemplate.name}\nסוג פרויקט: ${projectDetails.projectType || "לא צוין"}`,
           })
           .select("id")
           .single();
@@ -4135,7 +5068,7 @@ export function HtmlTemplateEditor({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
+    <Sheet open={open} onOpenChange={onClose} modal={false}>
       <SheetContent
         side="right"
         hideClose
@@ -4145,23 +5078,14 @@ export function HtmlTemplateEditor({
           position: "fixed",
           top: 0,
           left: 0,
-          right: 0,
+          right: "var(--app-sidebar-offset, 0px)",
           bottom: 0,
-          width: "100vw",
+          width: "calc(100vw - var(--app-sidebar-offset, 0px))",
           height: "100vh",
           maxWidth: "none",
           zIndex: 300,
         }}
       >
-        {/* Client Selector Dialog */}
-        <ClientSelector
-          clients={allClients}
-          selectedClient={projectDetails.clientId}
-          onSelect={handleClientSelect}
-          open={showClientSelector}
-          onOpenChange={setShowClientSelector}
-        />
-
         {/* Email Dialog */}
         <EmailDialog
           open={showEmailDialog}
@@ -4689,13 +5613,64 @@ export function HtmlTemplateEditor({
                   details={projectDetails}
                   onUpdate={setProjectDetails}
                   clients={allClients}
-                  onOpenClientSelector={() => setShowClientSelector(true)}
+                  stageTemplates={stageTemplates}
+                  onTemplateChange={(template) => {
+                    const templateStageIds = new Set(
+                      (template?.stages || []).map((stage) => stage.id),
+                    );
+                    const templateTaskIds = new Set(
+                      (template?.stages || [])
+                        .flatMap((stage) => stage.tasks || [])
+                        .map((task) => task.id),
+                    );
+
+                    setPaymentSteps((prev) =>
+                      prev.map((step) => {
+                        if (step.linkSource === "quote_template") {
+                          return step;
+                        }
+
+                        if (!step.templateStageId && !step.templateTaskId) {
+                          return step;
+                        }
+
+                        const keepStage =
+                          !!step.templateStageId &&
+                          templateStageIds.has(step.templateStageId);
+                        const keepTask =
+                          !!step.templateTaskId &&
+                          templateTaskIds.has(step.templateTaskId);
+
+                        if (keepStage && keepTask) {
+                          return step;
+                        }
+
+                        return {
+                          ...step,
+                          linkSource: keepTask || keepStage ? "stage_template" : step.linkSource,
+                          templateStageId: keepStage ? step.templateStageId : "",
+                          templateStageName: keepStage ? step.templateStageName : "",
+                          templateTaskId: keepTask ? step.templateTaskId : "",
+                          templateTaskName: keepTask ? step.templateTaskName : "",
+                          triggerMode:
+                            step.triggerMode === "task_completion" && !keepTask
+                              ? "manual"
+                              : step.triggerMode,
+                        };
+                      }),
+                    );
+                  }}
                 />
+                {isLoadingStageTemplates && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    טוען תבניות שלבים...
+                  </p>
+                )}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h3 className="font-semibold text-blue-800 mb-2">💡 טיפ</h3>
                   <p className="text-sm text-blue-700">
-                    לחץ על "בחר לקוח" כדי למלא את הפרטים אוטומטית מנתוני הלקוח
-                    במערכת. תוכל גם להזין את הפרטים ידנית.
+                    לחץ על שדה "שם הלקוח" כדי לפתוח רשימת לקוחות מלאה ולשייך
+                    בלחיצה אחת. תוכל גם להזין את הפרטים ידנית.
                   </p>
                 </div>
               </div>
@@ -5004,12 +5979,25 @@ export function HtmlTemplateEditor({
                       {totalPaymentPercentage}%
                     </div>
                   )}
+                  {selectedStageTemplate ? (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                      תבנית שלבים משויכת: <strong>{selectedStageTemplate.name}</strong>. אפשר ללחוץ "שיוך" בכל שלב תשלום כדי לבחור משימה מתוך השלבים.
+                    </div>
+                  ) : (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
+                      כדי לשייך תשלום למשימה, בחר קודם תבנית ב"פרטי הפרויקט והלקוח".
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {paymentSteps.map((step) => (
                       <PaymentStepEditor
                         key={step.id}
                         step={step}
+                        templateKey={editedTemplate.id || editedTemplate.name || "draft-template"}
                         defaultVatRate={editedTemplate.vat_rate || 17}
+                        templateStages={selectedStageTemplate?.stages || []}
+                        templateName={selectedStageTemplate?.name}
+                        quoteTemplateStages={editedTemplate.stages || []}
                         onUpdate={(updated) =>
                           setPaymentSteps(
                             paymentSteps.map((s) =>
@@ -5036,10 +6024,30 @@ export function HtmlTemplateEditor({
                           const effectiveVat = step.useCustomVat ? (step.vatRate ?? defaultVat) : defaultVat;
                           const stepVat = Math.round(stepAmount * effectiveVat / 100);
                           const isCustom = step.useCustomVat && effectiveVat !== defaultVat;
+                          const hasQuoteSource =
+                            !!(step.quoteTemplateItemId || step.quoteTemplateStageId);
+                          const hasStageSource = !!(step.templateTaskId || step.templateStageId);
                           return (
                             <div key={step.id} className="flex justify-between">
-                              <span>
-                                {step.name} ({step.percentage}%)
+                              <span className="flex items-center gap-2">
+                                <span>
+                                  {step.name} ({step.percentage}%)
+                                </span>
+                                {hasQuoteSource && (
+                                  <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700">
+                                    תבנית ההצעה
+                                  </Badge>
+                                )}
+                                {!hasQuoteSource && hasStageSource && (
+                                  <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700">
+                                    תבנית שלבי לקוח
+                                  </Badge>
+                                )}
+                                {!hasQuoteSource && !hasStageSource && (
+                                  <Badge variant="outline" className="text-[10px]">
+                                    ללא שיוך
+                                  </Badge>
+                                )}
                               </span>
                               <div className="text-left">
                                 <span className="font-semibold">
@@ -9661,14 +10669,6 @@ export function HtmlTemplateEditor({
                 וואטסאפ
               </Button>
               <Button
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                size="sm"
-                onClick={() => setShowAssignClientDialog(true)}
-              >
-                <Users className="h-4 w-4 ml-1" />
-                שייך ללקוח
-              </Button>
-              <Button
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
                 onClick={() => setShowCreateClientDialog(true)}
@@ -9773,126 +10773,22 @@ export function HtmlTemplateEditor({
           </DialogContent>
         </Dialog>
 
-        {/* Assign to Existing Client Dialog */}
-        <Dialog open={showAssignClientDialog} onOpenChange={setShowAssignClientDialog}>
-          <DialogContent className="max-w-md" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-purple-600" />
-                שייך הצעה ללקוח קיים
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <Input
-                placeholder="חפש לקוח..."
-                value={assignClientSearch}
-                onChange={(e) => setAssignClientSearch(e.target.value)}
-                dir="rtl"
-              />
-              <div className="border rounded-lg max-h-64 overflow-y-auto">
-                {allClients
-                  .filter((c: any) =>
-                    !assignClientSearch ||
-                    c.name?.toLowerCase().includes(assignClientSearch.toLowerCase()) ||
-                    c.email?.toLowerCase().includes(assignClientSearch.toLowerCase()) ||
-                    c.phone?.includes(assignClientSearch)
-                  )
-                  .slice(0, 50)
-                  .map((client: any) => (
-                    <button
-                      key={client.id}
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const { supabase } = await import("@/integrations/supabase/client");
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (!user) throw new Error("לא מחובר");
-
-                          const basePrice = editedTemplate.base_price || 0;
-                          const vatRate = editedTemplate.vat_rate || 17;
-                          const totalWithVat = Math.round(basePrice * (1 + vatRate / 100));
-
-                          // Save/update in saved_quotes with the client_id
-                          const savedData = {
-                            user_id: user.id,
-                            client_id: client.id,
-                            template_id: editedTemplate.id || null,
-                            title: editedTemplate.name || "הצעת מחיר",
-                            description: editedTemplate.description || "",
-                            status: "draft",
-                            base_price: basePrice,
-                            vat_rate: vatRate,
-                            total_with_vat: totalWithVat,
-                            template_data: editedTemplate as any,
-                            project_details: { ...projectDetails, clientId: client.id, clientName: client.name } as any,
-                            payment_schedule: paymentSteps as any,
-                            design_settings: designSettings as any,
-                            text_boxes: textBoxes as any,
-                            upgrades: upgrades as any,
-                            pricing_tiers: pricingTiers as any,
-                          };
-
-                          const { data: existing } = await (supabase as any)
-                            .from("saved_quotes")
-                            .select("id")
-                            .eq("user_id", user.id)
-                            .eq("template_id", editedTemplate.id)
-                            .eq("client_id", client.id)
-                            .maybeSingle();
-
-                          if (existing?.id) {
-                            await (supabase as any).from("saved_quotes").update(savedData).eq("id", existing.id);
-                          } else {
-                            await (supabase as any).from("saved_quotes").insert(savedData);
-                          }
-
-                          // Update local project details
-                          setProjectDetails((prev: any) => ({ ...prev, clientId: client.id, clientName: client.name }));
-
-                          setShowAssignClientDialog(false);
-                          setAssignClientSearch("");
-                          toast({
-                            title: "✅ הצעה שויכה ללקוח",
-                            description: `${editedTemplate.name} → ${client.name}`,
-                          });
-                        } catch (err: any) {
-                          toast({ title: "שגיאה", description: err?.message, variant: "destructive" });
-                        }
-                      }}
-                      className="w-full text-right px-3 py-2.5 text-sm hover:bg-purple-50 transition-colors border-b last:border-0 flex items-center justify-between"
-                    >
-                      <div className="text-right">
-                        <span className="font-medium">{client.name}</span>
-                        {client.phone && <span className="text-xs text-muted-foreground mr-2">{client.phone}</span>}
-                        {client.email && <div className="text-xs text-muted-foreground">{client.email}</div>}
-                      </div>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
-                    </button>
-                  ))
-                }
-                {allClients.filter((c: any) =>
-                  !assignClientSearch ||
-                  c.name?.toLowerCase().includes(assignClientSearch.toLowerCase())
-                ).length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">לא נמצאו לקוחות</p>
-                )}
-              </div>
-              {projectDetails.clientId && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm">
-                  <span className="font-medium">משויך כעת:</span> {projectDetails.clientName || "לקוח"}
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Version History Dialog */}
-        <Dialog open={showVersionDialog} onOpenChange={setShowVersionDialog}>
+        <Dialog
+          open={showVersionDialog}
+          onOpenChange={(isOpen) => {
+            setShowVersionDialog(isOpen);
+            if (!isOpen) {
+              setComparingVersion(null);
+              setViewingVersion(null);
+            }
+          }}
+        >
           <DialogContent className="max-w-lg" dir="rtl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <GitBranch className="h-5 w-5 text-[#B8860B]" />
-                היסטוריית גרסאות{" "}
+                היסטוריית גרסאות (עד {MAX_QUOTE_VERSIONS}){" "}
                 {isLoadingVersions && (
                   <span className="text-xs text-gray-400 animate-pulse">
                     טוען...
@@ -9942,6 +10838,19 @@ export function HtmlTemplateEditor({
                             variant="outline"
                             className="h-7 text-xs"
                             onClick={() =>
+                              setViewingVersion(
+                                viewingVersion?.id === version.id ? null : version,
+                              )
+                            }
+                          >
+                            <Eye className="h-3 w-3 ml-1" />
+                            {viewingVersion?.id === version.id ? "סגור" : "צפה"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() =>
                               setComparingVersion(
                                 comparingVersion?.id === version.id
                                   ? null
@@ -9973,6 +10882,34 @@ export function HtmlTemplateEditor({
                           </Button>
                         </div>
                       </div>
+                      {viewingVersion?.id === version.id && (
+                        <div className="mt-3 pt-3 border-t text-xs space-y-2">
+                          <p className="font-medium text-gray-700">תצוגת גרסה:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="font-medium mb-1">פרויקט</p>
+                              <p>לקוח: {version.data.projectDetails?.clientName || "-"}</p>
+                              <p>סוג: {version.data.projectDetails?.projectType || "-"}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded p-2">
+                              <p className="font-medium mb-1">כספים</p>
+                              <p>מחיר בסיס: ₪{(version.data.basePrice || 0).toLocaleString()}</p>
+                              <p>שלבי תשלום: {version.data.paymentSteps?.length || 0}</p>
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 rounded p-2">
+                            <p className="font-medium mb-1">שלבי עבודה</p>
+                            <p className="text-gray-600">
+                              {(version.data.stages || []).map((s: any) => s.name).filter(Boolean).slice(0, 5).join(" • ") || "אין שלבים"}
+                            </p>
+                            {(version.data.stages?.length || 0) > 5 && (
+                              <p className="text-gray-500 mt-1">
+                                ועוד {(version.data.stages?.length || 0) - 5} שלבים...
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       {comparingVersion?.id === version.id && (
                         <div className="mt-3 pt-3 border-t text-xs space-y-1">
                           <p className="font-medium text-gray-600">

@@ -10,7 +10,7 @@ import { AppLayout } from "@/components/layout";
 import { useClientData } from "@/hooks/useClientData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   SortMenu,
   useEntitySort,
@@ -143,6 +143,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ToastAction } from "@/components/ui/toast";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
@@ -380,6 +381,7 @@ export default function ClientProfile() {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
   const [isCreateLoginDialogOpen, setIsCreateLoginDialogOpen] = useState(false);
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
   const queryClient = useQueryClient();
   // Edit states for overview cards
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -540,6 +542,118 @@ export default function ClientProfile() {
     [sortedReminders, reminderSortPref.groupBy, resolveUser],
   );
 
+  const { data: clientSavedQuotes = [], isLoading: isQuotesWidgetLoading } = useQuery({
+    queryKey: ["client-saved-quotes", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("saved_quotes")
+        .select("id, title, status, total_with_vat, base_price, project_details, created_at, updated_at")
+        .eq("client_id", clientId)
+        .order("updated_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const linkedProjectStageTemplate = useMemo(() => {
+    const candidates = (clientSavedQuotes as any[])
+      .map((quote) => {
+        const projectDetails =
+          quote?.project_details && typeof quote.project_details === "object"
+            ? quote.project_details
+            : null;
+
+        const stageTemplateId =
+          projectDetails?.stageTemplateId ||
+          projectDetails?.stage_template_id ||
+          null;
+
+        if (!stageTemplateId) return null;
+
+        return {
+          id: String(stageTemplateId),
+          name: String(
+            projectDetails?.stageTemplateName ||
+              projectDetails?.stage_template_name ||
+              "",
+          ),
+          updatedAt: quote?.updated_at || quote?.created_at || null,
+        };
+      })
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          new Date((b as any).updatedAt || 0).getTime() -
+          new Date((a as any).updatedAt || 0).getTime(),
+      );
+
+    return (candidates[0] as { id: string; name: string; updatedAt: string | null } | null) || null;
+  }, [clientSavedQuotes]);
+
+  const { data: clientContractsWidget = [], isLoading: isContractsWidgetLoading } = useQuery({
+    queryKey: ["client-contracts-widget", clientId],
+    enabled: !!clientId,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("contracts")
+        .select("id, contract_number, title, status, contract_value, start_date, created_at, updated_at")
+        .eq("client_id", clientId)
+        .order("updated_at", { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const quoteStatusLabels: Record<string, string> = {
+    draft: "טיוטה",
+    sent: "נשלח",
+    viewed: "נצפה",
+    signed: "חתום",
+    converted: "הומר",
+    cancelled: "בוטל",
+  };
+
+  const unsignedSavedQuotes = useMemo(
+    () =>
+      (clientSavedQuotes as any[]).filter(
+        (q) => !["signed", "converted"].includes((q.status || "").toLowerCase()),
+      ),
+    [clientSavedQuotes],
+  );
+
+  const signedProposals = useMemo(() => {
+    const signedFromQuotes = (clientSavedQuotes as any[])
+      .filter((q) => ["signed", "converted"].includes((q.status || "").toLowerCase()))
+      .map((q) => ({
+        id: `sq-${q.id}`,
+        source: "quote" as const,
+        title: q.title || "הצעה ללא כותרת",
+        amount: q.total_with_vat || q.base_price || 0,
+        status: q.status || "signed",
+        date: q.updated_at || q.created_at,
+      }));
+
+    const signedFromContracts = (clientContractsWidget as any[])
+      .filter((c) => ["active", "completed", "signed"].includes((c.status || "").toLowerCase()))
+      .map((c) => ({
+        id: `ct-${c.id}`,
+        source: "contract" as const,
+        title: c.title || c.contract_number || "חוזה ללא כותרת",
+        amount: c.contract_value || 0,
+        status: c.status || "active",
+        date: c.updated_at || c.created_at || c.start_date,
+      }));
+
+    return [...signedFromQuotes, ...signedFromContracts].sort(
+      (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+    );
+  }, [clientSavedQuotes, clientContractsWidget]);
+
   const tasksGroups = useMemo(
     () =>
       taskSortPref.groupBy === "none"
@@ -667,6 +781,48 @@ export default function ClientProfile() {
     } as any);
     setIsEditDialogOpen(false);
   };
+
+  const confirmDeleteClient = useCallback(async () => {
+    if (!clientId || isDeletingClient) return;
+
+    setIsDeletingClient(true);
+
+    try {
+      const { error } = await supabase.from("clients").delete().eq("id", clientId);
+
+      if (error) throw error;
+
+      toast({
+        title: "הלקוח נמחק בהצלחה",
+      });
+
+      navigate("/clients");
+    } catch (error: any) {
+      console.error("Error deleting client:", error);
+      toast({
+        title: "שגיאה במחיקת הלקוח",
+        description: error?.message || "לא ניתן למחוק את הלקוח כרגע",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingClient(false);
+    }
+  }, [clientId, isDeletingClient, navigate, toast]);
+
+  const handleDeleteClientRequest = useCallback(() => {
+    if (!client) return;
+
+    toast({
+      title: "לאשר מחיקת לקוח",
+      description: `האם למחוק את ${client.name}? פעולה זו אינה ניתנת לביטול.`,
+      variant: "destructive",
+      action: (
+        <ToastAction altText="אישור מחיקה" onClick={confirmDeleteClient}>
+          מחק
+        </ToastAction>
+      ),
+    });
+  }, [client, confirmDeleteClient, toast]);
 
   // Create invoice
   const handleCreateInvoice = async () => {
@@ -1035,6 +1191,22 @@ export default function ClientProfile() {
               <RefreshCw className="h-4 w-4 ml-2" />
               רענן
             </Button>
+            {(isAdmin || isManager) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeleteClientRequest}
+                disabled={isDeletingClient}
+                className="h-9 w-9 p-0 border-red-500/60 text-red-600 hover:bg-red-500/10 hover:border-red-500"
+                title="מחק לקוח"
+              >
+                {isDeletingClient ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             {(isAdmin || isManager) && (
               <Button
                 size="sm"
@@ -1571,7 +1743,10 @@ export default function ClientProfile() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-4">
             {/* Client Stages Tracker - Above everything */}
-            <ClientStagesSection clientId={clientId!} />
+            <ClientStagesSection
+              clientId={clientId!}
+              linkedProjectTemplateId={linkedProjectStageTemplate?.id || null}
+            />
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Recent Projects */}
@@ -1938,6 +2113,93 @@ export default function ClientProfile() {
                       </p>
                     )}
                   </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Quotes & Contracts Overview Widget */}
+              <Card className="border border-[hsl(222,47%,25%)]/50 shadow-sm">
+                <CardHeader className="text-right border-b border-border/50 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 hover:bg-primary/10"
+                      onClick={() => setActiveTab("quotes-contracts")}
+                      title="פתח טאב הצעות מחיר וחוזים"
+                    >
+                      <ExternalLink className="h-4 w-4 ml-1" />
+                      פתח
+                    </Button>
+                    <CardTitle className="text-lg">הצעות מחיר וחוזים</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Tabs defaultValue="quotes" dir="rtl" className="w-full">
+                    <div className="px-3 pt-3">
+                      <TabsList className="w-full grid grid-cols-2">
+                        <TabsTrigger value="quotes" className="text-xs">
+                          הצעות מחיר ({unsignedSavedQuotes.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="signed" className="text-xs">
+                          הצעה חתומה ({signedProposals.length})
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
+
+                    <TabsContent value="quotes" className="m-0">
+                      <ScrollArea className="h-48">
+                        {isQuotesWidgetLoading ? (
+                          <p className="text-muted-foreground text-center py-4">טוען הצעות...</p>
+                        ) : unsignedSavedQuotes.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">אין הצעות מחיר משויכות</p>
+                        ) : (
+                          unsignedSavedQuotes.slice(0, 8).map((quote) => (
+                            <div
+                              key={quote.id}
+                              className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                            >
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="font-medium truncate">{quote.title || "הצעה ללא כותרת"}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  ₪{Number(quote.total_with_vat || quote.base_price || 0).toLocaleString()}
+                                </p>
+                              </div>
+                              <Badge className="border border-[hsl(222,47%,25%)] bg-[hsl(222,47%,20%)]/10">
+                                {quoteStatusLabels[(quote.status || "draft").toLowerCase()] || quote.status || "טיוטה"}
+                              </Badge>
+                            </div>
+                          ))
+                        )}
+                      </ScrollArea>
+                    </TabsContent>
+
+                    <TabsContent value="signed" className="m-0">
+                      <ScrollArea className="h-48">
+                        {isContractsWidgetLoading && signedProposals.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">טוען הצעות חתומות...</p>
+                        ) : signedProposals.length === 0 ? (
+                          <p className="text-muted-foreground text-center py-4">אין הצעה חתומה ללקוח זה</p>
+                        ) : (
+                          signedProposals.slice(0, 8).map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between py-3 px-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors"
+                            >
+                              <div className="text-right min-w-0 flex-1">
+                                <p className="font-medium truncate">{item.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  ₪{Number(item.amount || 0).toLocaleString()}
+                                </p>
+                              </div>
+                              <Badge className="border border-emerald-300 bg-emerald-50 text-emerald-700">
+                                {item.source === "contract" ? "חוזה" : "הצעה חתומה"}
+                              </Badge>
+                            </div>
+                          ))
+                        )}
+                      </ScrollArea>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
 
@@ -3650,7 +3912,13 @@ export default function ClientProfile() {
 }
 
 // Client Stages Section with View Toggle
-function ClientStagesSection({ clientId }: { clientId: string }) {
+function ClientStagesSection({
+  clientId,
+  linkedProjectTemplateId,
+}: {
+  clientId: string;
+  linkedProjectTemplateId?: string | null;
+}) {
   const [viewMode, setViewMode] = React.useState<"list" | "board" | "table">(
     "board",
   );
@@ -3669,7 +3937,12 @@ function ClientStagesSection({ clientId }: { clientId: string }) {
       </div>
 
       {viewMode === "board" ? (
-        <ClientStagesBoard clientId={clientId} viewMode={viewMode} onViewModeChange={setViewMode} />
+        <ClientStagesBoard
+          clientId={clientId}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          linkedProjectTemplateId={linkedProjectTemplateId}
+        />
       ) : viewMode === "table" ? (
         <React.Suspense
           fallback={

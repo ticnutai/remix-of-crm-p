@@ -135,6 +135,23 @@ interface ClientStageInfo {
 }
 
 export default function Clients() {
+  const normalizeSearchText = useCallback(
+    (value: string) => value.toLowerCase().trim().replace(/\s+/g, " "),
+    [],
+  );
+
+  const matchesQueryTokens = useCallback(
+    (searchableText: string, query: string) => {
+      const normalizedText = normalizeSearchText(searchableText);
+      const queryTokens = normalizeSearchText(query).split(" ").filter(Boolean);
+
+      if (queryTokens.length === 0) return true;
+
+      return queryTokens.every((token) => normalizedText.includes(token));
+    },
+    [normalizeSearchText],
+  );
+
   const navigate = useNavigate();
   const { isLoading: authLoading, isAdmin, isManager } = useAuth();
 
@@ -199,7 +216,6 @@ export default function Clients() {
   const [minimalColumns, setMinimalColumnsLocal] = useState<2 | 3>(2);
   const [showStagesView, setShowStagesViewLocal] = useState(false);
   const [showStatisticsView, setShowStatisticsViewLocal] = useState(false);
-  const [isHeaderStripHovered, setIsHeaderStripHovered] = useState(false);
   const [showAccessView, setShowAccessView] = useSyncedSetting<boolean>({ key: "clients-show-access-view", defaultValue: false });
 
   // Wrapper: persist showStagesView to cloud
@@ -443,14 +459,14 @@ export default function Clients() {
 
     // Search filter
     if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (client) =>
-          client.name.toLowerCase().includes(query) ||
-          client.email?.toLowerCase().includes(query) ||
-          client.phone?.toLowerCase().includes(query) ||
-          client.company?.toLowerCase().includes(query),
-      );
+      result = result.filter((client) => {
+        const searchableText =
+          [client.name, client.email, client.phone, client.company]
+            .filter(Boolean)
+            .join(" ");
+
+        return matchesQueryTokens(searchableText, searchQuery);
+      });
     }
 
     // Stage filter - filter by stage name (not stage_id) to match all clients with same stage name
@@ -680,7 +696,8 @@ export default function Clients() {
           } else {
             // Find matching client with new search
             const matchingClient = filteredClients.find((client) =>
-              client.name.toLowerCase().startsWith(newSearch.toLowerCase()),
+              client.name.toLowerCase().startsWith(newSearch.toLowerCase()) ||
+              matchesQueryTokens(client.name, newSearch),
             );
             if (matchingClient) {
               setHighlightedClientId(matchingClient.id);
@@ -720,7 +737,8 @@ export default function Clients() {
 
       // Find matching client
       const matchingClient = filteredClients.find((client) =>
-        client.name.toLowerCase().startsWith(newSearch.toLowerCase()),
+        client.name.toLowerCase().startsWith(newSearch.toLowerCase()) ||
+        matchesQueryTokens(client.name, newSearch),
       );
 
       if (matchingClient) {
@@ -742,7 +760,7 @@ export default function Clients() {
         // No match found
         toast({
           title: "לא נמצא",
-          description: `אין לקוח שמתחיל ב-"${newSearch}"`,
+          description: `אין לקוח שתואם ל-"${newSearch}"`,
           variant: "destructive",
           duration: 1500,
         });
@@ -762,7 +780,7 @@ export default function Clients() {
         clearTimeout(keyboardTimeoutRef.current);
       }
     };
-  }, [keyboardSearch, filteredClients]);
+  }, [keyboardSearch, filteredClients, matchesQueryTokens]);
 
   const fetchFilterData = useCallback(async () => {
     try {
@@ -2495,6 +2513,7 @@ export default function Clients() {
       >
         {/* ═══ Compact Header — Row 1: Title + Buttons + Search ═══ */}
         <div
+          className="group"
           style={{
             backgroundColor: "#1e293b",
             borderRadius: "10px",
@@ -2502,8 +2521,6 @@ export default function Clients() {
             marginBottom: "16px",
             border: "1px solid #d4a843",
           }}
-          onMouseEnter={() => setIsHeaderStripHovered(true)}
-          onMouseLeave={() => setIsHeaderStripHovered(false)}
         >
           <div
             style={{
@@ -2576,128 +2593,134 @@ export default function Clients() {
                 };
                 return (
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    {isHeaderStripHovered && (
+                    {/* Fixed controls near title: keep stable to prevent hover jumps */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                      {pcEnabled("add-client") && (
                       <button
-                        onClick={() => { pageCustomizer.setInitialTab("layout"); pageCustomizer.openPanel(); }}
+                        onClick={() => setIsAddClientDialogOpen(true)}
                         style={iconBtnBase}
                         onMouseEnter={(e) => handleEnter(e, false)}
                         onMouseLeave={(e) => handleLeave(e, false)}
-                        title="התאמה אישית של הדף (פריסה + פונקציות)"
-                        aria-label="התאמה אישית של הדף"
+                        title="הוסף לקוח חדש"
+                        aria-label="הוסף לקוח חדש"
                       >
-                        <Settings style={{ width: "16px", height: "16px" }} />
+                        <UserPlus style={{ width: "16px", height: "16px" }} />
                       </button>
-                    )}
+                      )}
 
-                    {pcEnabled("add-client") && (
-                    <button
-                      onClick={() => setIsAddClientDialogOpen(true)}
-                      style={iconBtnBase}
-                      onMouseEnter={(e) => handleEnter(e, false)}
-                      onMouseLeave={(e) => handleLeave(e, false)}
-                      title="הוסף לקוח חדש"
-                      aria-label="הוסף לקוח חדש"
-                    >
-                      <UserPlus style={{ width: "16px", height: "16px" }} />
-                    </button>
-                    )}
-
-                    {isHeaderStripHovered && pcEnabled("goto-table") && (
-                    <button
-                      onClick={() => navigate("/datatable-pro")}
-                      style={iconBtnBase}
-                      onMouseEnter={(e) => handleEnter(e, false)}
-                      onMouseLeave={(e) => handleLeave(e, false)}
-                      title="עבור לטבלת לקוחות"
-                      aria-label="עבור לטבלת לקוחות"
-                    >
-                      <Rows3 style={{ width: "16px", height: "16px" }} />
-                    </button>
-                    )}
-
-                    {isHeaderStripHovered && pcEnabled("bulk-select") && (
-                    <button
-                      onClick={toggleSelectionMode}
-                      style={{ ...iconBtnBase, ...(selectionMode ? activeStyle : {}) }}
-                      onMouseEnter={(e) => handleEnter(e, selectionMode)}
-                      onMouseLeave={(e) => handleLeave(e, selectionMode)}
-                      title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
-                      aria-label={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
-                    >
-                      <CheckSquare style={{ width: "16px", height: "16px" }} />
-                    </button>
-                    )}
-
-                    {isHeaderStripHovered && pcEnabled("stages-toggle") && (
-                    <button
-                      onClick={() => {
-                        setShowStagesView(!showStagesView);
-                        if (!showStagesView) setShowStatisticsView(false);
-                      }}
-                      style={{ ...iconBtnBase, ...(showStagesView ? activeStyle : {}) }}
-                      onMouseEnter={(e) => handleEnter(e, showStagesView)}
-                      onMouseLeave={(e) => handleLeave(e, showStagesView)}
-                      title="תצוגה לפי שלבים"
-                      aria-label="תצוגה לפי שלבים"
-                    >
-                      <Layers style={{ width: "16px", height: "16px" }} />
-                    </button>
-                    )}
-
-                    {isHeaderStripHovered && pcEnabled("stats-toggle") && (
-                    <button
-                      onClick={() => {
-                        setShowStatisticsView(!showStatisticsView);
-                        if (!showStatisticsView) setShowStagesView(false);
-                      }}
-                      style={{ ...iconBtnBase, ...(showStatisticsView ? activeStyle : {}) }}
-                      onMouseEnter={(e) => handleEnter(e, showStatisticsView)}
-                      onMouseLeave={(e) => handleLeave(e, showStatisticsView)}
-                      title="סטטיסטיקות לקוחות"
-                      aria-label="סטטיסטיקות לקוחות"
-                    >
-                      <BarChart3 style={{ width: "16px", height: "16px" }} />
-                    </button>
-                    )}
-
-                    {pcEnabled("view-presets") && (
-                    <ViewPresetsMenu
-                      current={{
-                        viewMode,
-                        minimalColumns,
-                        sortBy: filters.sortBy,
-                        showStagesView,
-                        showStatisticsView,
-                      }}
-                      onApply={(state: ViewPresetState) => {
-                        setViewMode(state.viewMode);
-                        setMinimalColumns(state.minimalColumns);
-                        setFilters((prev) => ({ ...prev, sortBy: state.sortBy }));
-                        saveSortBy(state.sortBy);
-                        setShowStagesView(state.showStagesView);
-                        setShowStatisticsView(state.showStatisticsView);
-                      }}
-                    />
-                    )}
-
-                    {isHeaderStripHovered && pcEnabled("access-mgmt") && (isAdmin || isManager) && (
-                      <button
-                        onClick={() => {
-                          setShowAccessView(!showAccessView);
-                          if (!showAccessView) {
-                            setShowStagesView(false);
-                            setShowStatisticsView(false);
-                          }
+                      {pcEnabled("view-presets") && (
+                      <ViewPresetsMenu
+                        current={{
+                          viewMode,
+                          minimalColumns,
+                          sortBy: filters.sortBy,
+                          showStagesView,
+                          showStatisticsView,
                         }}
-                        style={{ ...iconBtnBase, ...(showAccessView ? activeStyle : {}) }}
-                        onMouseEnter={(e) => handleEnter(e, showAccessView)}
-                        onMouseLeave={(e) => handleLeave(e, showAccessView)}
-                        title="ניהול גישות לפורטל"
-                        aria-label="ניהול גישות לפורטל"
-                      >
-                        <Shield style={{ width: "16px", height: "16px" }} />
-                      </button>
-                    )}
+                        onApply={(state: ViewPresetState) => {
+                          setViewMode(state.viewMode);
+                          setMinimalColumns(state.minimalColumns);
+                          setFilters((prev) => ({ ...prev, sortBy: state.sortBy }));
+                          saveSortBy(state.sortBy);
+                          setShowStagesView(state.showStagesView);
+                          setShowStatisticsView(state.showStatisticsView);
+                        }}
+                      />
+                      )}
+                    </div>
+
+                    <div
+                      className="overflow-hidden invisible opacity-0 max-w-0 pointer-events-none transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:max-w-[520px] group-hover:pointer-events-auto"
+                      style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap" }}
+                    >
+                        <button
+                          onClick={() => { pageCustomizer.setInitialTab("layout"); pageCustomizer.openPanel(); }}
+                          style={iconBtnBase}
+                          onMouseEnter={(e) => handleEnter(e, false)}
+                          onMouseLeave={(e) => handleLeave(e, false)}
+                          title="התאמה אישית של הדף (פריסה + פונקציות)"
+                          aria-label="התאמה אישית של הדף"
+                        >
+                          <Settings style={{ width: "16px", height: "16px" }} />
+                        </button>
+
+                        {pcEnabled("goto-table") && (
+                        <button
+                          onClick={() => navigate("/datatable-pro")}
+                          style={iconBtnBase}
+                          onMouseEnter={(e) => handleEnter(e, false)}
+                          onMouseLeave={(e) => handleLeave(e, false)}
+                          title="עבור לטבלת לקוחות"
+                          aria-label="עבור לטבלת לקוחות"
+                        >
+                          <Rows3 style={{ width: "16px", height: "16px" }} />
+                        </button>
+                        )}
+
+                        {pcEnabled("bulk-select") && (
+                        <button
+                          onClick={toggleSelectionMode}
+                          style={{ ...iconBtnBase, ...(selectionMode ? activeStyle : {}) }}
+                          onMouseEnter={(e) => handleEnter(e, selectionMode)}
+                          onMouseLeave={(e) => handleLeave(e, selectionMode)}
+                          title={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
+                          aria-label={selectionMode ? "בטל בחירה מרובה" : "הפעל בחירה מרובה"}
+                        >
+                          <CheckSquare style={{ width: "16px", height: "16px" }} />
+                        </button>
+                        )}
+
+                        {pcEnabled("stages-toggle") && (
+                        <button
+                          onClick={() => {
+                            setShowStagesView(!showStagesView);
+                            if (!showStagesView) setShowStatisticsView(false);
+                          }}
+                          style={{ ...iconBtnBase, ...(showStagesView ? activeStyle : {}) }}
+                          onMouseEnter={(e) => handleEnter(e, showStagesView)}
+                          onMouseLeave={(e) => handleLeave(e, showStagesView)}
+                          title="תצוגה לפי שלבים"
+                          aria-label="תצוגה לפי שלבים"
+                        >
+                          <Layers style={{ width: "16px", height: "16px" }} />
+                        </button>
+                        )}
+
+                        {pcEnabled("stats-toggle") && (
+                        <button
+                          onClick={() => {
+                            setShowStatisticsView(!showStatisticsView);
+                            if (!showStatisticsView) setShowStagesView(false);
+                          }}
+                          style={{ ...iconBtnBase, ...(showStatisticsView ? activeStyle : {}) }}
+                          onMouseEnter={(e) => handleEnter(e, showStatisticsView)}
+                          onMouseLeave={(e) => handleLeave(e, showStatisticsView)}
+                          title="סטטיסטיקות לקוחות"
+                          aria-label="סטטיסטיקות לקוחות"
+                        >
+                          <BarChart3 style={{ width: "16px", height: "16px" }} />
+                        </button>
+                        )}
+
+                        {pcEnabled("access-mgmt") && (isAdmin || isManager) && (
+                          <button
+                            onClick={() => {
+                              setShowAccessView(!showAccessView);
+                              if (!showAccessView) {
+                                setShowStagesView(false);
+                                setShowStatisticsView(false);
+                              }
+                            }}
+                            style={{ ...iconBtnBase, ...(showAccessView ? activeStyle : {}) }}
+                            onMouseEnter={(e) => handleEnter(e, showAccessView)}
+                            onMouseLeave={(e) => handleLeave(e, showAccessView)}
+                            title="ניהול גישות לפורטל"
+                            aria-label="ניהול גישות לפורטל"
+                          >
+                            <Shield style={{ width: "16px", height: "16px" }} />
+                          </button>
+                        )}
+                    </div>
                   </div>
                 );
               })()}
@@ -2954,7 +2977,7 @@ export default function Clients() {
               ) : (
                 <>
                   {/* Features / Sparkles button */}
-                  {isHeaderStripHovered && (
+                  <div className="overflow-hidden invisible opacity-0 max-w-0 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:max-w-[40px]">
                     <button
                       onClick={() => setShowFeaturesHelp(true)}
                       style={{
@@ -2983,7 +3006,7 @@ export default function Clients() {
                     >
                       <Sparkles style={{ width: "15px", height: "15px" }} />
                     </button>
-                  )}
+                  </div>
                 </>
               )}
 

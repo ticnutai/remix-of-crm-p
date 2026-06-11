@@ -225,6 +225,16 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
   // Sidebar visibility state
   const sidebarVisible = !isMobile && (sidebarPinned || sidebarShowing);
 
+  // Expose current desktop sidebar offset for full-canvas overlays/editors.
+  useEffect(() => {
+    const offset = sidebarVisible ? `${sidebarWidth + 16}px` : '0px';
+    document.documentElement.style.setProperty('--app-sidebar-offset', offset);
+
+    return () => {
+      document.documentElement.style.setProperty('--app-sidebar-offset', '0px');
+    };
+  }, [sidebarVisible, sidebarWidth]);
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden" dir="rtl">
       {/* Main Content - Uses paddingRight instead of width calc to avoid scrollbar issues */}

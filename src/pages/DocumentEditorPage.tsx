@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowRight, FileText, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentEditor, DocumentType, DocumentData } from '@/components/document-editor';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
 import { useContracts, Contract } from '@/hooks/useContracts';
 import { useClients } from '@/hooks/useClients';
@@ -214,44 +215,47 @@ export default function DocumentEditorPage() {
     navigate('/quotes');
   };
 
+  const editorTitle = documentType === 'quote' ? 'עורך הצעות מחיר מתקדם' : 'עורך חוזים מתקדם';
+
   if (isLoading || !initialData) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
+      <AppLayout title={editorTitle}>
+        <div className="h-[calc(100svh-12rem)] min-h-[380px] flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      {/* Header */}
-      <div className="border-b bg-background px-4 py-2 flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={handleBack}>
-          <ArrowRight className="h-4 w-4 ml-1" />
-          חזור
-        </Button>
-        <div className="flex items-center gap-2">
-          {documentType === 'quote' ? (
-            <FileText className="h-5 w-5 text-primary" />
-          ) : (
-            <ScrollText className="h-5 w-5 text-primary" />
-          )}
-          <span className="font-semibold">
-            {documentType === 'quote' ? 'עורך הצעות מחיר מתקדם' : 'עורך חוזים מתקדם'}
-          </span>
+    <AppLayout title={editorTitle}>
+      <div className="space-y-3">
+        <div className="border rounded-lg bg-background px-3 py-2 flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={handleBack}>
+            <ArrowRight className="h-4 w-4 ml-1" />
+            חזור
+          </Button>
+          <div className="flex items-center gap-2">
+            {documentType === 'quote' ? (
+              <FileText className="h-5 w-5 text-primary" />
+            ) : (
+              <ScrollText className="h-5 w-5 text-primary" />
+            )}
+            <span className="font-semibold">{editorTitle}</span>
+          </div>
+        </div>
+
+        <div className="h-[calc(100svh-13.5rem)] min-h-[440px] overflow-hidden rounded-xl border bg-background">
+          <DocumentEditor
+            documentType={documentType}
+            initialData={initialData}
+            onSave={handleSave}
+            onExportPDF={handleExportPDF}
+            onPrint={handlePrint}
+            className="h-full"
+          />
         </div>
       </div>
-
-      {/* Editor */}
-      <div className="flex-1 overflow-hidden">
-        <DocumentEditor
-          documentType={documentType}
-          initialData={initialData}
-          onSave={handleSave}
-          onExportPDF={handleExportPDF}
-          onPrint={handlePrint}
-        />
-      </div>
-    </div>
+    </AppLayout>
   );
 }

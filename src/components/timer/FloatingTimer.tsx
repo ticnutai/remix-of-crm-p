@@ -65,6 +65,12 @@ import {
 const TIMER_POSITION_KEY = "timer-position";
 const TIMER_SIZE_KEY = "timer-size";
 const TIMER_MINIMIZED_KEY = "timer-widget-minimized";
+const TIMER_BUTTON_SIZES_KEY = "timer-button-sizes";
+const MIN_FLOATING_BUTTON_SIZE = 28;
+const MAX_FLOATING_BUTTON_SIZE = 120;
+
+const clampFloatingButtonSize = (size: number) =>
+  Math.max(MIN_FLOATING_BUTTON_SIZE, Math.min(MAX_FLOATING_BUTTON_SIZE, size));
 
 // Preset sizes for mobile quick resize
 const SIZE_PRESETS = {
@@ -115,7 +121,19 @@ function FloatingTimerContent() {
     defaultValue: {},
   });
 
-  const buttonSize = perPageButtonSize[currentPage] || 64;
+  const [localButtonSizes, setLocalButtonSizes] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem(TIMER_BUTTON_SIZES_KEY);
+    if (!saved) return {};
+    try {
+      return JSON.parse(saved) as Record<string, number>;
+    } catch {
+      return {};
+    }
+  });
+
+  const cloudButtonSize = perPageButtonSize[currentPage];
+  const localButtonSize = localButtonSizes[currentPage];
+  const buttonSize = clampFloatingButtonSize(cloudButtonSize ?? localButtonSize ?? 64);
   const settingsReady = !isLoadingSize && !isLoadingPos;
   const [showSizeSlider, setShowSizeSlider] = useState(false);
   const [open, setOpen] = useState(false);
@@ -364,6 +382,46 @@ function FloatingTimerContent() {
     localStorage.setItem(TIMER_POSITION_KEY, JSON.stringify(position));
   }, [position]);
 
+  // Keep local size cache synced when cloud value exists
+  useEffect(() => {
+    if (typeof cloudButtonSize !== "number") return;
+    const normalized = clampFloatingButtonSize(cloudButtonSize);
+    setLocalButtonSizes((prev) => {
+      if (prev[currentPage] === normalized) return prev;
+      const next = { ...prev, [currentPage]: normalized };
+      localStorage.setItem(TIMER_BUTTON_SIZES_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [cloudButtonSize, currentPage]);
+
+  // If cloud setting is missing for this page, seed it from local cache
+  useEffect(() => {
+    if (isLoadingSize) return;
+    if (typeof cloudButtonSize === "number") return;
+    if (typeof localButtonSize !== "number") return;
+    const normalized = clampFloatingButtonSize(localButtonSize);
+    setPerPageButtonSize((prev) => ({ ...prev, [currentPage]: normalized }));
+  }, [
+    isLoadingSize,
+    cloudButtonSize,
+    localButtonSize,
+    currentPage,
+    setPerPageButtonSize,
+  ]);
+
+  const handleButtonSizeChange = useCallback(
+    (rawSize: number) => {
+      const normalized = clampFloatingButtonSize(rawSize);
+      setLocalButtonSizes((prev) => {
+        const next = { ...prev, [currentPage]: normalized };
+        localStorage.setItem(TIMER_BUTTON_SIZES_KEY, JSON.stringify(next));
+        return next;
+      });
+      setPerPageButtonSize((prev) => ({ ...prev, [currentPage]: normalized }));
+    },
+    [currentPage, setPerPageButtonSize],
+  );
+
   const savePositionToCloud = useCallback((pos: { x: number; y: number }) => {
     setPerPagePositions(prev => ({ ...prev, [currentPage]: pos }));
   }, [currentPage, setPerPagePositions]);
@@ -495,6 +553,11 @@ function FloatingTimerContent() {
   // Don't render until cloud settings are loaded to prevent size/position flash
   if (!settingsReady) return null;
 
+  const mainButtonIconSize = Math.max(
+    14,
+    Math.min(28, Math.round(buttonSize * 0.42)),
+  );
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -553,11 +616,12 @@ function FloatingTimerContent() {
               {(!isMinimized || timerState.elapsed === 0) && (
                 <Timer
                   className={cn(
-                    "h-7 w-7 transition-colors duration-300",
+                    "transition-colors duration-300",
                     timerState.isRunning
                       ? "text-[hsl(45,85%,60%)]"
                       : "text-[hsl(45,70%,55%)] group-hover:text-[hsl(45,85%,65%)]",
                   )}
+                  style={{ width: mainButtonIconSize, height: mainButtonIconSize }}
                   strokeWidth={1.8}
                 />
               )}
@@ -773,7 +837,7 @@ function FloatingTimerContent() {
         {/* Resize Handles - 8 directions - Touch & Mouse support */}
         {/* Corners - larger touch targets for mobile */}
         <div
-          className="absolute -top-2 -right-2 w-8 h-8 cursor-ne-resize z-50 hover:bg-[hsl(45,80%,50%)]/30 active:bg-[hsl(45,80%,50%)]/50 rounded-full transition-colors touch-none"
+          className="absolute -top-2 right-2 w-8 h-8 cursor-ne-resize z-50 hover:bg-[hsl(45,80%,50%)]/30 active:bg-[hsl(45,80%,50%)]/50 rounded-full transition-colors touch-none"
           onMouseDown={(e) => onResizeStart(e, "ne")}
           onTouchStart={(e) => onResizeStart(e, "ne")}
         />
@@ -1026,7 +1090,7 @@ function FloatingTimerContent() {
           </div>
 
           {/* Settings & Resize Buttons */}
-          <div className="absolute top-1 left-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 sm:opacity-100 transition-opacity duration-200">
             {/* Mobile Resize Button - Always visible on mobile */}
             {isMobile && (
               <TooltipProvider>
@@ -1173,11 +1237,11 @@ function FloatingTimerContent() {
               <Slider
                 value={[buttonSize]}
                 onValueChange={([val]) => {
-                  setPerPageButtonSize(prev => ({ ...prev, [currentPage]: val }));
+                  handleButtonSizeChange(val);
                 }}
-                min={40}
-                max={120}
-                step={4}
+                min={MIN_FLOATING_BUTTON_SIZE}
+                max={MAX_FLOATING_BUTTON_SIZE}
+                step={2}
                 className="w-full"
               />
               <div className="flex justify-between text-[10px]" style={{ color: timerTheme.labelsColor || "hsl(45,60%,60%)" }}>

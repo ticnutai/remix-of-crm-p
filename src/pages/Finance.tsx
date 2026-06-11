@@ -73,12 +73,23 @@ import {
   Grid2X2,
   CloudUpload,
   Shield,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ShareDialog } from "@/components/shared/ShareDialog";
 import {
   format,
   startOfMonth,
   endOfMonth,
+  startOfYear,
+  endOfYear,
+  startOfWeek,
+  endOfWeek,
   subMonths,
   parseISO,
 } from "date-fns";
@@ -168,6 +179,24 @@ interface Project {
   id: string;
   name: string;
   client_id: string | null;
+}
+
+interface ContractFinanceRow {
+  id: string;
+  client_id: string;
+  contract_value: number;
+  signed_date: string;
+  status: string | null;
+}
+
+interface ContractPaymentScheduleRow {
+  id: string;
+  contract_id: string;
+  amount: number;
+  paid_amount: number | null;
+  due_date: string;
+  paid_date: string | null;
+  status: string | null;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -360,6 +389,8 @@ const formatCurrency = (amount: number): string => {
   return `₪${Math.round(amount).toLocaleString("he-IL")}`;
 };
 
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
 export default function Finance() {
   const { user, isAdmin, isManager } = useAuth();
   const { toast } = useToast();
@@ -368,6 +399,10 @@ export default function Finance() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [contracts, setContracts] = useState<ContractFinanceRow[]>([]);
+  const [contractPaymentSchedules, setContractPaymentSchedules] = useState<
+    ContractPaymentScheduleRow[]
+  >([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -433,6 +468,23 @@ export default function Finance() {
   const [monthFilter, setMonthFilter] = useSyncedSetting<string>({ key: "finance-month-filter", defaultValue: "all" });
   const [clientFilter, setClientFilter] = useSyncedSetting<string>({ key: "finance-client-filter", defaultValue: "all" });
   const [showAnalytics, setShowAnalytics] = useSyncedSetting<boolean>({ key: "finance-show-analytics", defaultValue: false });
+
+  // Contracts analytics filters
+  const [contractTimeScope, setContractTimeScope] = useSyncedSetting<
+    "all" | "week" | "month" | "year"
+  >({ key: "finance-contract-time-scope", defaultValue: "all" });
+  const [contractDateBasis, setContractDateBasis] = useSyncedSetting<
+    "paid_date" | "due_date" | "signed_date"
+  >({ key: "finance-contract-date-basis", defaultValue: "paid_date" });
+  const [contractStatusScope, setContractStatusScope] = useSyncedSetting<
+    "all" | "active_completed" | "active" | "completed"
+  >({ key: "finance-contract-status-scope", defaultValue: "active_completed" });
+  const [contractsClientSortBy, setContractsClientSortBy] = useSyncedSetting<
+    "collected" | "remaining" | "total" | "rate" | "name"
+  >({ key: "finance-contract-client-sort-by", defaultValue: "collected" });
+  const [contractsClientSortDir, setContractsClientSortDir] = useSyncedSetting<
+    "asc" | "desc"
+  >({ key: "finance-contract-client-sort-dir", defaultValue: "desc" });
 
   // Page sections configuration
   const defaultSections: FinanceSection[] = [
@@ -560,6 +612,18 @@ export default function Finance() {
       widgets: ["top-clients", "debts"],
     },
     {
+      id: "contracts-clients",
+      name: "גבייה לפי לקוח",
+      icon: <Wallet className="h-4 w-4" />,
+      widgets: ["contracts-clients-collection"],
+    },
+    {
+      id: "contracts-total",
+      name: "סיכום חוזים",
+      icon: <Shield className="h-4 w-4" />,
+      widgets: ["contracts-portfolio-summary"],
+    },
+    {
       id: "reports",
       name: "דוחות",
       icon: <PieChart className="h-4 w-4" />,
@@ -658,6 +722,26 @@ export default function Finance() {
       size: "medium",
       collapsed: false,
       tabId: "clients",
+    },
+    {
+      id: "contracts-clients-collection",
+      name: "כמה גבינו מכל לקוח",
+      icon: <Wallet className="h-4 w-4" />,
+      visible: true,
+      order: 0,
+      size: "full",
+      collapsed: false,
+      tabId: "contracts-clients",
+    },
+    {
+      id: "contracts-portfolio-summary",
+      name: "סיכום גבייה מכל החוזים",
+      icon: <Shield className="h-4 w-4" />,
+      visible: true,
+      order: 0,
+      size: "full",
+      collapsed: false,
+      tabId: "contracts-total",
     },
     {
       id: "profit-loss",
@@ -811,7 +895,8 @@ export default function Finance() {
     if (!user) return;
     setIsLoading(true);
     try {
-      const [invoicesRes, clientsRes, projectsRes] = await Promise.all([
+      const [invoicesRes, clientsRes, projectsRes, contractsRes, schedulesRes] =
+        await Promise.all([
         supabase
           .from("invoices")
           .select(
@@ -824,6 +909,14 @@ export default function Finance() {
           .order("created_at", { ascending: false }),
         supabase.from("clients").select("id, name").order("name"),
         supabase.from("projects").select("id, name, client_id").order("name"),
+        supabase
+          .from("contracts")
+          .select("id, client_id, contract_value, signed_date, status")
+          .order("signed_date", { ascending: false }),
+        supabase
+          .from("payment_schedules")
+          .select("id, contract_id, amount, paid_amount, due_date, paid_date, status")
+          .order("due_date", { ascending: false }),
       ]);
 
       if (invoicesRes.data) {
@@ -837,6 +930,30 @@ export default function Finance() {
       }
       if (clientsRes.data) setClients(clientsRes.data);
       if (projectsRes.data) setProjects(projectsRes.data);
+      if (contractsRes.data) {
+        setContracts(
+          contractsRes.data.map((contract) => ({
+            id: contract.id,
+            client_id: contract.client_id,
+            contract_value: Number(contract.contract_value || 0),
+            signed_date: contract.signed_date,
+            status: contract.status,
+          })),
+        );
+      }
+      if (schedulesRes.data) {
+        setContractPaymentSchedules(
+          schedulesRes.data.map((schedule) => ({
+            id: schedule.id,
+            contract_id: schedule.contract_id,
+            amount: Number(schedule.amount || 0),
+            paid_amount: schedule.paid_amount != null ? Number(schedule.paid_amount) : 0,
+            due_date: schedule.due_date,
+            paid_date: schedule.paid_date,
+            status: schedule.status,
+          })),
+        );
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -1128,6 +1245,326 @@ export default function Finance() {
     }),
     [filteredInvoices, clients, years, invoices],
   );
+
+  type ContractPeriodScope = "all" | "week" | "month" | "year";
+
+  const getPeriodRange = useCallback((scope: ContractPeriodScope) => {
+    const now = new Date();
+
+    switch (scope) {
+      case "week":
+        return {
+          start: startOfWeek(now, { weekStartsOn: 0 }),
+          end: endOfWeek(now, { weekStartsOn: 0 }),
+        };
+      case "month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      default:
+        return null;
+    }
+  }, []);
+
+  const isDateInRange = useCallback(
+    (value: string | null | undefined, scope: ContractPeriodScope) => {
+      if (!value) return false;
+      const range = getPeriodRange(scope);
+      if (!range) return true;
+
+      const date = parseISO(value);
+      return date >= range.start && date <= range.end;
+    },
+    [getPeriodRange],
+  );
+
+  const normalizedContractStatus = useCallback(
+    (status: string | null | undefined): string =>
+      (status || "").toLowerCase(),
+    [],
+  );
+
+  const isContractStatusIncluded = useCallback(
+    (status: string | null | undefined) => {
+      const normalized = normalizedContractStatus(status);
+
+      if (contractStatusScope === "all") return true;
+      if (contractStatusScope === "active") return normalized === "active";
+      if (contractStatusScope === "completed") return normalized === "completed";
+
+      return (
+        normalized === "active" ||
+        normalized === "completed" ||
+        normalized === "signed"
+      );
+    },
+    [contractStatusScope, normalizedContractStatus],
+  );
+
+  const contractClientNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const client of clients) {
+      map.set(client.id, client.name);
+    }
+    return map;
+  }, [clients]);
+
+  const contractsMetricsByScope = useMemo(() => {
+    const schedulesByContractId = contractPaymentSchedules.reduce(
+      (acc, schedule) => {
+        if (!acc.has(schedule.contract_id)) {
+          acc.set(schedule.contract_id, [] as ContractPaymentScheduleRow[]);
+        }
+        acc.get(schedule.contract_id)?.push(schedule);
+        return acc;
+      },
+      new Map<string, ContractPaymentScheduleRow[]>(),
+    );
+
+    const contractsById = contracts.reduce(
+      (acc, contract) => {
+        acc.set(contract.id, contract);
+        return acc;
+      },
+      new Map<string, ContractFinanceRow>(),
+    );
+
+    const calculateForScope = (scope: ContractPeriodScope) => {
+      const statusFilteredContracts = contracts.filter((contract) =>
+        isContractStatusIncluded(contract.status),
+      );
+
+      const scopedContracts = statusFilteredContracts.filter((contract) => {
+        if (scope === "all") return true;
+
+        if (contractDateBasis === "signed_date") {
+          return isDateInRange(contract.signed_date, scope);
+        }
+
+        const schedules = schedulesByContractId.get(contract.id) || [];
+        if (schedules.length === 0) return false;
+
+        const targetField =
+          contractDateBasis === "paid_date" ? "paid_date" : "due_date";
+
+        return schedules.some((schedule) =>
+          isDateInRange(schedule[targetField], scope),
+        );
+      });
+
+      const scopedContractIds = new Set(scopedContracts.map((contract) => contract.id));
+
+      const scopedSchedules = contractPaymentSchedules.filter((schedule) =>
+        scopedContractIds.has(schedule.contract_id),
+      );
+
+      const schedulesForCollected = scopedSchedules.filter((schedule) => {
+        if (contractDateBasis === "signed_date") return true;
+        if (scope === "all") return true;
+
+        const targetDate =
+          contractDateBasis === "paid_date" ? schedule.paid_date : schedule.due_date;
+        return isDateInRange(targetDate, scope);
+      });
+
+      const totalContractValue = round2(
+        scopedContracts.reduce(
+          (sum, contract) => sum + Number(contract.contract_value || 0),
+          0,
+        ),
+      );
+
+      const totalCollected = round2(
+        schedulesForCollected.reduce((sum, schedule) => {
+          const paidAmount = Number(schedule.paid_amount || 0);
+          if (paidAmount <= 0) return sum;
+          return sum + Math.min(paidAmount, Number(schedule.amount || 0));
+        }, 0),
+      );
+
+      const totalRemaining = round2(Math.max(totalContractValue - totalCollected, 0));
+
+      const clientsMap = new Map<
+        string,
+        {
+          clientId: string;
+          clientName: string;
+          contractsCount: number;
+          totalContractValue: number;
+          collected: number;
+        }
+      >();
+
+      for (const contract of scopedContracts) {
+        const key = contract.client_id;
+        const current =
+          clientsMap.get(key) ||
+          {
+            clientId: key,
+            clientName: contractClientNameById.get(key) || "לקוח לא מזוהה",
+            contractsCount: 0,
+            totalContractValue: 0,
+            collected: 0,
+          };
+
+        current.contractsCount += 1;
+        current.totalContractValue = round2(
+          current.totalContractValue + Number(contract.contract_value || 0),
+        );
+        clientsMap.set(key, current);
+      }
+
+      for (const schedule of schedulesForCollected) {
+        const contract = contractsById.get(schedule.contract_id);
+        if (!contract) continue;
+
+        const key = contract.client_id;
+        const current = clientsMap.get(key);
+        if (!current) continue;
+
+        current.collected = round2(
+          current.collected + Math.min(Number(schedule.paid_amount || 0), Number(schedule.amount || 0)),
+        );
+      }
+
+      const perClientRows = Array.from(clientsMap.values())
+        .map((row) => {
+          const remaining = round2(Math.max(row.totalContractValue - row.collected, 0));
+          const collectionRate =
+            row.totalContractValue > 0
+              ? round2((row.collected / row.totalContractValue) * 100)
+              : 0;
+
+          return {
+            ...row,
+            remaining,
+            collectionRate,
+          };
+        })
+        .sort((a, b) => b.collected - a.collected);
+
+      return {
+        totalContractValue,
+        totalCollected,
+        totalRemaining,
+        contractsCount: scopedContracts.length,
+        perClientRows,
+      };
+    };
+
+    const all = calculateForScope("all");
+    const week = calculateForScope("week");
+    const month = calculateForScope("month");
+    const year = calculateForScope("year");
+
+    return {
+      all,
+      week,
+      month,
+      year,
+      selected:
+        contractTimeScope === "all"
+          ? all
+          : contractTimeScope === "week"
+            ? week
+            : contractTimeScope === "month"
+              ? month
+              : year,
+    };
+  }, [
+    contractPaymentSchedules,
+    contracts,
+    contractDateBasis,
+    contractStatusScope,
+    contractTimeScope,
+    contractClientNameById,
+    isContractStatusIncluded,
+    isDateInRange,
+  ]);
+
+  const contractSelectedMetrics = contractsMetricsByScope.selected;
+
+  const sortedContractClientRows = useMemo(() => {
+    const rows = [...contractSelectedMetrics.perClientRows];
+
+    rows.sort((a, b) => {
+      let compare = 0;
+      switch (contractsClientSortBy) {
+        case "name":
+          compare = a.clientName.localeCompare(b.clientName, "he");
+          break;
+        case "remaining":
+          compare = a.remaining - b.remaining;
+          break;
+        case "total":
+          compare = a.totalContractValue - b.totalContractValue;
+          break;
+        case "rate":
+          compare = a.collectionRate - b.collectionRate;
+          break;
+        default:
+          compare = a.collected - b.collected;
+      }
+
+      return contractsClientSortDir === "asc" ? compare : -compare;
+    });
+
+    return rows;
+  }, [
+    contractSelectedMetrics.perClientRows,
+    contractsClientSortBy,
+    contractsClientSortDir,
+  ]);
+
+  const exportContractsClientsCsv = useCallback(() => {
+    const rows = sortedContractClientRows;
+    if (rows.length === 0) {
+      toast({
+        title: "אין נתונים לייצוא",
+        description: "לא נמצאו שורות בטבלת הלקוחות לפי הסינון הנוכחי",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const headers = [
+      "לקוח",
+      "מספר חוזים",
+      "נגבה",
+      "סה\"כ חוזים",
+      "נותר",
+      "אחוז גבייה",
+    ];
+
+    const csvRows = rows.map((row) => [
+      row.clientName,
+      String(row.contractsCount),
+      String(row.collected),
+      String(row.totalContractValue),
+      String(row.remaining),
+      String(row.collectionRate),
+    ]);
+
+    const csv = [headers, ...csvRows]
+      .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `finance-contracts-clients-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "הקובץ יוצא בהצלחה",
+      description: `${rows.length} שורות יוצאו ל-CSV`,
+    });
+  }, [sortedContractClientRows, toast]);
+
 
   // Create invoice
   const handleCreateInvoice = async () => {
@@ -1962,13 +2399,65 @@ export default function Finance() {
               </div>
             </div>
 
+            <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="mb-2 text-sm font-medium text-primary">פילטר גבייה מחוזים</div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">טווח זמן</Label>
+                  <Select value={contractTimeScope} onValueChange={(value) => setContractTimeScope(value as "all" | "week" | "month" | "year") }>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">הכל</SelectItem>
+                      <SelectItem value="week">השבוע</SelectItem>
+                      <SelectItem value="month">החודש</SelectItem>
+                      <SelectItem value="year">השנה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">בסיס זמן</Label>
+                  <Select value={contractDateBasis} onValueChange={(value) => setContractDateBasis(value as "paid_date" | "due_date" | "signed_date") }>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="paid_date">לפי תאריך גבייה</SelectItem>
+                      <SelectItem value="due_date">לפי תאריך יעד</SelectItem>
+                      <SelectItem value="signed_date">לפי תאריך חתימה</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs">סטטוס חוזה</Label>
+                  <Select value={contractStatusScope} onValueChange={(value) => setContractStatusScope(value as "all" | "active_completed" | "active" | "completed") }>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active_completed">פעילים + הושלמו</SelectItem>
+                      <SelectItem value="active">פעילים בלבד</SelectItem>
+                      <SelectItem value="completed">הושלמו בלבד</SelectItem>
+                      <SelectItem value="all">כל הסטטוסים</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             {/* Clear Filters & Summary */}
             {(dateFromFilter ||
               dateToFilter ||
               yearFilter !== "all" ||
               monthFilter !== "all" ||
               clientFilter !== "all" ||
-              filter !== "all") && (
+              filter !== "all" ||
+              contractTimeScope !== "all" ||
+              contractDateBasis !== "paid_date" ||
+              contractStatusScope !== "active_completed") && (
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between p-3 bg-accent/30 rounded-lg">
                   <div className="flex items-center gap-4">
@@ -1998,6 +2487,9 @@ export default function Finance() {
                       setMonthFilter("all");
                       setClientFilter("all");
                       setFilter("all");
+                      setContractTimeScope("all");
+                      setContractDateBasis("paid_date");
+                      setContractStatusScope("active_completed");
                     }}
                     className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
@@ -2262,6 +2754,339 @@ export default function Finance() {
                         )}
                       </div>
                     </ScrollArea>
+                  );
+                case "contracts-clients-collection":
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="text-sm text-muted-foreground">
+                          גבייה לפי לקוח על בסיס חוזים
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">
+                            {contractDateBasis === "paid_date"
+                              ? "בסיס: תאריך גבייה"
+                              : contractDateBasis === "due_date"
+                                ? "בסיס: תאריך יעד"
+                                : "בסיס: תאריך חתימה"}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {contractTimeScope === "all"
+                              ? "טווח: הכל"
+                              : contractTimeScope === "week"
+                                ? "טווח: השבוע"
+                                : contractTimeScope === "month"
+                                  ? "טווח: החודש"
+                                  : "טווח: השנה"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>נגבה בפועל</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    סכום כל paid_amount בשלבי התשלום של החוזים לפי הסינון
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-2xl font-bold text-green-700">
+                              {formatCurrency(contractSelectedMetrics.totalCollected)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>כמה מתוך כמה</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    נגבה חלקי סך ערך החוזים בטווח שנבחר
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-lg font-bold">
+                              {formatCurrency(contractSelectedMetrics.totalCollected)} מתוך {" "}
+                              {formatCurrency(contractSelectedMetrics.totalContractValue)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>סה"כ כסף בחוזים</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    סכום contract_value של כל החוזים בסינון הנוכחי
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-2xl font-bold text-primary">
+                              {formatCurrency(contractSelectedMetrics.totalContractValue)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <CardTitle className="text-base">טבלת לקוחות</CardTitle>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={contractsClientSortBy}
+                                onValueChange={(value) =>
+                                  setContractsClientSortBy(
+                                    value as
+                                      | "collected"
+                                      | "remaining"
+                                      | "total"
+                                      | "rate"
+                                      | "name",
+                                  )
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-[170px] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="collected">מיון לפי נגבה</SelectItem>
+                                  <SelectItem value="remaining">מיון לפי נותר</SelectItem>
+                                  <SelectItem value="total">מיון לפי סה"כ חוזים</SelectItem>
+                                  <SelectItem value="rate">מיון לפי אחוז גבייה</SelectItem>
+                                  <SelectItem value="name">מיון לפי שם לקוח</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8"
+                                onClick={() =>
+                                  setContractsClientSortDir((prev) =>
+                                    prev === "asc" ? "desc" : "asc",
+                                  )
+                                }
+                              >
+                                {contractsClientSortDir === "asc"
+                                  ? "סדר עולה"
+                                  : "סדר יורד"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1"
+                                onClick={exportContractsClientsCsv}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                                CSV
+                              </Button>
+                            </div>
+                          </div>
+                          <CardDescription>
+                            {contractSelectedMetrics.perClientRows.length} לקוחות, {" "}
+                            {contractSelectedMetrics.contractsCount} חוזים
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {contractSelectedMetrics.perClientRows.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              אין נתוני חוזים לתצוגה לפי הסינון הנוכחי
+                            </div>
+                          ) : (
+                            <ScrollArea className="h-[320px]">
+                              <div className="space-y-2">
+                                {sortedContractClientRows.map((row, index) => (
+                                  <div
+                                    key={row.clientId}
+                                    className="rounded-lg border p-3 flex items-center justify-between"
+                                  >
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-semibold">{row.clientName}</p>
+                                        {index < 5 && (
+                                          <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                            TOP {index + 1}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">
+                                        {row.contractsCount} חוזים • {row.collectionRate}% גבייה
+                                      </p>
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-sm text-green-700 font-bold">
+                                        נגבה: {formatCurrency(row.collected)}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground">
+                                        מתוך: {formatCurrency(row.totalContractValue)}
+                                      </p>
+                                      <p className="text-sm text-amber-700 font-medium">
+                                        נותר: {formatCurrency(row.remaining)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                case "contracts-portfolio-summary":
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <Card className="border-green-200">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>כמה גבינו</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    סך גבייה בפועל מהחוזים בטווח שנבחר
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-2xl font-bold text-green-700">
+                              {formatCurrency(contractSelectedMetrics.totalCollected)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-amber-200">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>כמה נשאר לגבות</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    סה"כ חוזים פחות נגבה בפועל
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-2xl font-bold text-amber-700">
+                              {formatCurrency(contractSelectedMetrics.totalRemaining)}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              סכום חוזים פחות מה שנגבה
+                            </p>
+                          </CardContent>
+                        </Card>
+                        <Card className="border-primary/40">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <span>סה"כ כספים בחוזים</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button type="button" className="text-muted-foreground hover:text-foreground">
+                                      <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent dir="rtl">
+                                    סך ערך החוזים (contract_value) ללא תלות בגבייה
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <p className="text-2xl font-bold text-primary">
+                              {formatCurrency(contractSelectedMetrics.totalContractValue)}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base">חלוקה לפי זמנים</CardTitle>
+                          <CardDescription>
+                            שבוע = ראשון עד שבת | סטטוס חוזים לפי בחירה
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {[
+                              {
+                                key: "week",
+                                label: "השבוע",
+                                metrics: contractsMetricsByScope.week,
+                              },
+                              {
+                                key: "month",
+                                label: "החודש",
+                                metrics: contractsMetricsByScope.month,
+                              },
+                              {
+                                key: "year",
+                                label: "השנה",
+                                metrics: contractsMetricsByScope.year,
+                              },
+                            ].map((period) => (
+                              <div
+                                key={period.key}
+                                className="rounded-lg border p-3 bg-accent/20 space-y-1.5"
+                              >
+                                <p className="font-semibold">{period.label}</p>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">נגבה</span>
+                                  <span className="font-medium text-green-700">
+                                    {formatCurrency(period.metrics.totalCollected)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">נותר</span>
+                                  <span className="font-medium text-amber-700">
+                                    {formatCurrency(period.metrics.totalRemaining)}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm pt-1 border-t">
+                                  <span className="text-muted-foreground">סה"כ חוזים</span>
+                                  <span className="font-bold">
+                                    {formatCurrency(period.metrics.totalContractValue)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   );
                 case "profit-loss":
                   return (

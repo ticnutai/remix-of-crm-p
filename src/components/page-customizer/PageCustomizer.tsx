@@ -153,7 +153,12 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
     return { x: window.innerWidth - 440, y: 100 };
   });
   const [dragging, setDragging] = useState(false);
+  const posRef = React.useRef(pos);
   const dragOffset = React.useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    posRef.current = pos;
+  }, [pos]);
 
   const getViewportBounds = useCallback(() => {
     const panelWidth = panelRef.current?.getBoundingClientRect().width ?? 380;
@@ -171,14 +176,13 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
     if (!dragging) return;
     const onMove = (e: MouseEvent) => {
       const bounds = getViewportBounds();
-      setPos({
-        x: Math.max(bounds.minX, Math.min(bounds.maxX, e.clientX - dragOffset.current.x)),
-        y: Math.max(bounds.minY, Math.min(bounds.maxY, e.clientY - dragOffset.current.y)),
-      });
+      const nextX = Math.max(bounds.minX, Math.min(bounds.maxX, e.clientX - dragOffset.current.x));
+      const nextY = Math.max(bounds.minY, Math.min(bounds.maxY, e.clientY - dragOffset.current.y));
+      setPos((prev) => (prev.x === nextX && prev.y === nextY ? prev : { x: nextX, y: nextY }));
     };
     const onUp = () => {
       setDragging(false);
-      try { localStorage.setItem("page-customizer-pos", JSON.stringify(pos)); } catch { /* ignore */ }
+      try { localStorage.setItem("page-customizer-pos", JSON.stringify(posRef.current)); } catch { /* ignore */ }
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -186,7 +190,7 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [dragging, getViewportBounds, pos]);
+  }, [dragging, getViewportBounds]);
 
   useEffect(() => {
     if (!ctl.isOpen) return;
@@ -198,10 +202,7 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
       }));
     };
 
-    const rafId = window.requestAnimationFrame(() => {
-      clampToViewport();
-      window.requestAnimationFrame(clampToViewport);
-    });
+    const rafId = window.requestAnimationFrame(clampToViewport);
     window.addEventListener("resize", clampToViewport);
     return () => {
       window.cancelAnimationFrame(rafId);

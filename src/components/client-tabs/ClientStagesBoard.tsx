@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSyncedSetting } from "@/hooks/useSyncedSetting";
 import {
@@ -134,6 +134,7 @@ interface ClientStagesBoardProps {
   clientId: string;
   viewMode?: "board" | "list" | "table";
   onViewModeChange?: (mode: "board" | "list" | "table") => void;
+  linkedProjectTemplateId?: string | null;
 }
 
 // Icon mapping
@@ -2137,7 +2138,12 @@ function SortableStageItem({
     </div>
   );
 }
-export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: ClientStagesBoardProps) {
+export function ClientStagesBoard({
+  clientId,
+  viewMode,
+  onViewModeChange,
+  linkedProjectTemplateId,
+}: ClientStagesBoardProps) {
   const {
     stages: allStages,
     loading,
@@ -2166,7 +2172,10 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
     pasteStageData,
     refresh,
     assignStageToFolder,
+    syncTemplateFromProject,
   } = useClientStages(clientId);
+
+  const autoTemplateSyncAttemptRef = useRef<string | null>(null);
 
   // Folder system
   const {
@@ -2194,6 +2203,47 @@ export function ClientStagesBoard({ clientId, viewMode, onViewModeChange }: Clie
   const stages = selectedFolderId
     ? allStages.filter((s) => s.folder_id === selectedFolderId)
     : allStages;
+
+  useEffect(() => {
+    if (!clientId || !linkedProjectTemplateId || loading) return;
+
+    const syncKey = `${clientId}:${linkedProjectTemplateId}`;
+    if (autoTemplateSyncAttemptRef.current === syncKey) return;
+
+    autoTemplateSyncAttemptRef.current = syncKey;
+
+    const detectedTemplateIds = Array.from(
+      new Set(
+        allStages
+          .map((stage) => {
+            const match = String(stage.stage_id || "").match(/^template_([^_]+)_/);
+            return match?.[1] || null;
+          })
+          .filter(Boolean),
+      ),
+    ) as string[];
+
+    const previousTemplateId =
+      detectedTemplateIds.find((templateId) => templateId !== linkedProjectTemplateId) ||
+      null;
+
+    const alreadyLinkedToTemplate = detectedTemplateIds.includes(
+      linkedProjectTemplateId,
+    );
+
+    if (alreadyLinkedToTemplate) return;
+
+    void syncTemplateFromProject(linkedProjectTemplateId, {
+      previousTemplateId,
+      clearAllOnTemplateChange: true,
+    });
+  }, [
+    clientId,
+    linkedProjectTemplateId,
+    loading,
+    allStages,
+    syncTemplateFromProject,
+  ]);
 
   const [addingTask, setAddingTask] = useState<{
     stageId: string;

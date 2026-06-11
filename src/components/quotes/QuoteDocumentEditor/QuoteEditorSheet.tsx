@@ -143,7 +143,7 @@ export function QuoteEditorSheet({
   }, [isDirty, onOpenChange]);
 
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
+    <Sheet open={open} onOpenChange={handleClose} modal={false}>
       <SheetContent 
         side="right" 
         hideClose
@@ -153,9 +153,9 @@ export function QuoteEditorSheet({
           position: 'fixed',
           top: 0,
           left: 0,
-          right: 0,
+          right: 'var(--app-sidebar-offset, 0px)',
           bottom: 0,
-          width: '100vw',
+          width: 'calc(100vw - var(--app-sidebar-offset, 0px))',
           height: '100vh',
           maxWidth: 'none',
           padding: 0,

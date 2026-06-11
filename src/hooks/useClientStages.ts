@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { syncClientStagesFromTemplate } from "@/lib/clientStageTemplateSync";
 
 export interface ClientStageTask {
   id: string;
@@ -90,6 +91,11 @@ type AddTaskOptions = {
 
 type ToggleTaskOptions = {
   clearTimerOnUncomplete?: boolean;
+};
+
+type SyncTemplateOptions = {
+  previousTemplateId?: string | null;
+  clearAllOnTemplateChange?: boolean;
 };
 
 function isSchemaColumnError(error: unknown): boolean {
@@ -1508,6 +1514,41 @@ export function useClientStages(clientId: string) {
     }
   };
 
+  // Sync missing stages/tasks from a template without duplicating existing client data
+  const syncTemplateFromProject = useCallback(
+    async (templateId: string, options?: SyncTemplateOptions) => {
+    try {
+      const result = await syncClientStagesFromTemplate({
+        clientId,
+        templateId,
+        previousTemplateId: options?.previousTemplateId || null,
+        clearAllOnTemplateChange: options?.clearAllOnTemplateChange ?? true,
+      });
+
+      if (result.addedStages > 0 || result.addedTasks > 0 || result.clearedAll) {
+        await loadData();
+        toast({
+          title: "עודכן מהתבנית",
+          description: result.clearedAll
+            ? `בוצע איפוס מלא והוחלו ${result.addedStages} שלבים ו-${result.addedTasks} משימות מהתבנית החדשה`
+            : `נוספו ${result.addedStages} שלבים ו-${result.addedTasks} משימות מהתבנית המשויכת`,
+        });
+      }
+
+      return result;
+    } catch (error: unknown) {
+      console.error("Error syncing template from project details:", error);
+      toast({
+        title: "שגיאה",
+        description: "לא ניתן לסנכרן שלבים מהתבנית המשויכת",
+        variant: "destructive",
+      });
+      return null;
+    }
+    },
+    [clientId, loadData],
+  );
+
   // Delete a template
   const deleteTemplate = async (templateId: string) => {
     try {
@@ -1567,6 +1608,7 @@ export function useClientStages(clientId: string) {
     saveAsTemplate,
     loadTemplates,
     applyTemplate,
+    syncTemplateFromProject,
     deleteTemplate,
     refresh: loadData,
   };

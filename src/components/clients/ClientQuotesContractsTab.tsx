@@ -31,6 +31,17 @@ interface ClientQuotesContractsTabProps {
   clientName: string;
 }
 
+interface UnifiedQuoteRow {
+  id: string;
+  rawId: string;
+  source: 'quotes' | 'saved_quotes';
+  displayNumber: string;
+  title: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+}
+
 const quoteStatusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   draft: { label: 'טיוטה', color: 'bg-muted text-muted-foreground', icon: Clock },
   sent: { label: 'נשלח', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Send },
@@ -58,9 +69,9 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  // Fetch quotes for this client
-  const { data: quotes = [], isLoading: quotesLoading } = useQuery({
-    queryKey: ['client-quotes', clientId],
+  // Fetch legacy quotes table for this client
+  const { data: classicQuotes = [], isLoading: classicQuotesLoading } = useQuery({
+    queryKey: ['client-quotes-legacy', clientId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quotes')
@@ -71,6 +82,50 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
       return data || [];
     },
   });
+
+  // Fetch template-linked quotes for this client
+  const { data: savedQuotes = [], isLoading: savedQuotesLoading } = useQuery({
+    queryKey: ['client-saved-quotes', clientId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('saved_quotes')
+        .select('id, title, status, total_with_vat, base_price, created_at, updated_at')
+        .eq('client_id', clientId)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const quotes = useMemo<UnifiedQuoteRow[]>(() => {
+    const mappedLegacy = (classicQuotes as any[]).map((q) => ({
+      id: `q-${q.id}`,
+      rawId: q.id,
+      source: 'quotes' as const,
+      displayNumber: q.quote_number || `Q-${String(q.id).slice(0, 8)}`,
+      title: q.title || 'הצעה ללא כותרת',
+      amount: Number(q.total_amount || 0),
+      status: (q.status || 'draft').toLowerCase(),
+      createdAt: q.created_at,
+    }));
+
+    const mappedSaved = (savedQuotes as any[]).map((q) => ({
+      id: `sq-${q.id}`,
+      rawId: q.id,
+      source: 'saved_quotes' as const,
+      displayNumber: `SQ-${String(q.id).slice(0, 8)}`,
+      title: q.title || 'הצעה ללא כותרת',
+      amount: Number(q.total_with_vat || q.base_price || 0),
+      status: (q.status || 'draft').toLowerCase(),
+      createdAt: q.updated_at || q.created_at,
+    }));
+
+    return [...mappedSaved, ...mappedLegacy].sort(
+      (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+    );
+  }, [classicQuotes, savedQuotes]);
+
+  const quotesLoading = classicQuotesLoading || savedQuotesLoading;
 
   // Fetch contracts for this client
   const { data: contracts = [], isLoading: contractsLoading } = useQuery({
@@ -91,7 +146,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(q =>
-        q.quote_number?.toLowerCase().includes(s) ||
+        q.displayNumber?.toLowerCase().includes(s) ||
         q.title?.toLowerCase().includes(s)
       );
     }
@@ -100,8 +155,8 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
     }
     result.sort((a, b) => {
       let cmp = 0;
-      if (sortField === 'date') cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      else if (sortField === 'amount') cmp = (a.total_amount || 0) - (b.total_amount || 0);
+      if (sortField === 'date') cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      else if (sortField === 'amount') cmp = (a.amount || 0) - (b.amount || 0);
       else if (sortField === 'status') cmp = (a.status || '').localeCompare(b.status || '');
       return sortOrder === 'desc' ? -cmp : cmp;
     });
@@ -132,7 +187,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
 
   const formatCurrency = (amount: number) => `₪${(amount || 0).toLocaleString('he-IL')}`;
 
-  const totalQuotesValue = quotes.reduce((sum, q) => sum + (q.total_amount || 0), 0);
+  const totalQuotesValue = quotes.reduce((sum, q) => sum + (q.amount || 0), 0);
   const totalContractsValue = contracts.reduce((sum, c) => sum + (c.contract_value || 0), 0);
 
   return (
@@ -281,7 +336,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p>אין הצעות מחיר ללקוח זה</p>
-                        <Button variant="link" size="sm" onClick={() => navigate(`/document-editor?type=quote&client=${clientId}`)}>
+                        <Button variant="link" size="sm" onClick={() => navigate('/quotes')}>
                           צור הצעה חדשה
                         </Button>
                       </TableCell>
@@ -294,11 +349,17 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                         <TableRow
                           key={quote.id}
                           className="hover:bg-muted/30 cursor-pointer"
-                          onClick={() => navigate(`/document-editor?type=quote&id=${quote.id}&client=${clientId}`)}
+                          onClick={() => {
+                            if (quote.source === 'quotes') {
+                              navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
+                              return;
+                            }
+                            navigate('/quotes');
+                          }}
                         >
-                          <TableCell className="font-mono font-medium text-sm">{quote.quote_number}</TableCell>
+                          <TableCell className="font-mono font-medium text-sm">{quote.displayNumber}</TableCell>
                           <TableCell className="max-w-[200px] truncate">{quote.title}</TableCell>
-                          <TableCell className="font-medium">{formatCurrency(quote.total_amount)}</TableCell>
+                          <TableCell className="font-medium">{formatCurrency(quote.amount)}</TableCell>
                           <TableCell>
                             <Badge className={cn('gap-1 text-xs', status.color)}>
                               <StatusIcon className="h-3 w-3" />
@@ -306,7 +367,7 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
-                            {format(new Date(quote.created_at), 'dd/MM/yyyy', { locale: he })}
+                            {format(new Date(quote.createdAt), 'dd/MM/yyyy', { locale: he })}
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -318,7 +379,11 @@ export function ClientQuotesContractsTab({ clientId, clientName }: ClientQuotesC
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/document-editor?type=quote&id=${quote.id}&client=${clientId}`);
+                                  if (quote.source === 'quotes') {
+                                    navigate(`/document-editor?type=quote&id=${quote.rawId}&client=${clientId}`);
+                                    return;
+                                  }
+                                  navigate('/quotes');
                                 }}>
                                   <PenTool className="h-4 w-4 ml-2" />
                                   עורך מתקדם
