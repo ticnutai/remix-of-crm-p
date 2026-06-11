@@ -2584,18 +2584,14 @@ export default function Clients() {
 
   return (
     <AppLayout title="לקוחות">
-      {/* Main Container - Pure White Background with Gold Frame */}
+      {/* Page Layout - Header strip above framed content */}
       <div
         dir="rtl"
         style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          border: "3px solid #d4a843",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-          padding: "24px",
           height: "calc(100vh - 100px)",
           display: "flex",
           flexDirection: "column",
+          gap: "34px",
           overflow: "hidden",
         }}
       >
@@ -2604,9 +2600,9 @@ export default function Clients() {
           className="group"
           style={{
             backgroundColor: "#1e293b",
-            borderRadius: "10px",
-            padding: "8px 12px",
-            marginBottom: "16px",
+            borderRadius: "12px",
+            padding: "12px 16px",
+            marginBottom: 0,
             border: "1px solid #d4a843",
           }}
         >
@@ -2614,7 +2610,7 @@ export default function Clients() {
             style={{
               display: "flex",
               flexWrap: "wrap",
-              gap: "6px",
+              gap: "10px",
               alignItems: "center",
               justifyContent: "space-between",
             }}
@@ -3210,9 +3206,25 @@ export default function Clients() {
           </div>
         </div>
 
+        {/* Framed Content - starts from classification tabs */}
+        <div
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            border: "3px solid #d4a843",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+            padding: "20px 24px 24px",
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+
         {/* ═══ Compact Row 2: Filter Strip ═══ */}
         {pcVisible("filter-strip") && pcEnabled("filter-strip") && (
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: '36px' }}>
         <ClientsFilterStrip
           filters={filters}
           onFiltersChange={(newFilters) => {
@@ -3333,7 +3345,8 @@ export default function Clients() {
                 minHeight: 0,
                 display: "flex",
                 flexDirection: "row",
-                gap: "16px",
+                gap: "22px",
+                paddingTop: "8px",
                 overflow: "hidden",
               }}
             >
@@ -3431,12 +3444,12 @@ export default function Clients() {
                                     : "repeat(auto-fill, minmax(280px, 1fr))",
                         gap:
                           viewMode === "list"
-                            ? "8px"
+                            ? "12px"
                             : viewMode === "minimal"
-                              ? "8px"
+                              ? "10px"
                               : viewMode === "portrait"
-                                ? "12px"
-                                : "16px",
+                                ? "16px"
+                                : "20px",
                         // גלילה אנכית
                         overflowY: "auto",
                         overflowX: "hidden",
@@ -3588,6 +3601,7 @@ export default function Clients() {
             {/* End of Clients Content Area with Sidebar */}
           </>
         ) : null}
+        </div>
       </div>
       {/* End of Main Container */}
 

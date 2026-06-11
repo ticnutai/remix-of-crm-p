@@ -161,19 +161,37 @@ export function ClientQuickClassify({
   };
 
   const currentCategory = categories.find(c => c.id === currentCategoryId);
+  const normalizedCategoryName = (currentCategory?.name || '').toLowerCase();
+
+  const isTabaChangeCategory =
+    normalizedCategoryName.includes('תבע') ||
+    normalizedCategoryName.includes('תב"ע') ||
+    normalizedCategoryName.includes('תב״ע') ||
+    normalizedCategoryName.includes('שינוי');
+
+  const isBuildingPermitCategory =
+    normalizedCategoryName.includes('היתר') ||
+    normalizedCategoryName.includes('בניה') ||
+    normalizedCategoryName.includes('בנייה');
+
+  // Category split styling:
+  // - Building permits => navy background + gold icon
+  // - TABA changes     => white background + navy icon
+  // - No category      => white background + navy icon
+  const useNavyBackground =
+    !!currentCategory && isBuildingPermitCategory && !isTabaChangeCategory;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center transition-all z-10",
-            "bg-white/90 hover:bg-white border-2 shadow-sm",
-            currentCategory 
-              ? "border-current" 
-              : "border-muted-foreground/30 hover:border-primary"
+            "absolute top-2 left-2 w-[22px] h-[22px] rounded-full flex items-center justify-center transition-all z-10",
+            "border shadow-sm",
+            useNavyBackground
+              ? "bg-[#1e3a5f] text-[#d4a843] border-[#d4a843]"
+              : "bg-white text-[#1e3a5f] border-[#d4a843]"
           )}
-          style={currentCategory ? { borderColor: currentCategory.color } : undefined}
           onClick={(e) => {
             e.stopPropagation();
             setIsOpen(true);
@@ -181,14 +199,11 @@ export function ClientQuickClassify({
           title="סווג לקוח"
         >
           {currentCategory ? (
-            <div 
-              className="w-4 h-4 rounded-full flex items-center justify-center text-white"
-              style={{ backgroundColor: currentCategory.color }}
-            >
-              {iconMap[currentCategory.icon] || <FolderOpen className="h-2.5 w-2.5" />}
-            </div>
+            <span className="flex items-center justify-center [&_svg]:h-3 [&_svg]:w-3">
+              {iconMap[currentCategory.icon] || <FolderOpen className="h-3 w-3" />}
+            </span>
           ) : (
-            <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+            <Tag className="h-3 w-3" />
           )}
         </button>
       </PopoverTrigger>
