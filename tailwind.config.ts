@@ -1,9 +1,11 @@
 import type { Config } from "tailwindcss";
+import designKitPreset from "./design-transfer-kit.tailwind.preset";
 
 export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  presets: [designKitPreset],
   theme: {
     container: {
       center: true,

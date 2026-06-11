@@ -380,24 +380,7 @@ function DashboardContent() {
           <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-2 sm:space-y-3 md:space-y-4">
             {/* Dashboard Header */}
             <div className="flex items-center justify-between gap-2 flex-row-reverse">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                <div
-                  className={cn(
-                    "h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0",
-                    isNavyGold &&
-                      "bg-gradient-to-br from-[hsl(45,80%,55%)] to-[hsl(45,90%,45%)]",
-                    isModernDark &&
-                      "bg-gradient-to-br from-[hsl(210,100%,50%)] to-[hsl(210,100%,40%)]",
-                  )}
-                  style={{
-                    backgroundColor:
-                      !isNavyGold && !isModernDark
-                        ? "hsl(var(--primary))"
-                        : undefined,
-                  }}
-                >
-                  <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-white" />
-                </div>
+              <div className="flex items-center min-w-0 flex-1">
                 <div className="min-w-0 flex-1">
                   <h1
                     className="text-lg sm:text-xl md:text-2xl font-bold truncate"
@@ -524,7 +507,7 @@ function DashboardContent() {
                           className="text-xl font-bold mb-1 flex items-center gap-2"
                           style={{ color: themeConfig.colors.text }}
                         >
-                          🤖 כלים חכמים
+                          כלים חכמים
                           <Badge variant="secondary" className="text-xs">
                             חדש!
                           </Badge>

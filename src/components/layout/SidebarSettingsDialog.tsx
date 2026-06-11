@@ -100,6 +100,8 @@ const colorPresets = [
   { name: 'ירוק טבעי', bg: '#F5FDF5', text: '#1A3A1A', accent: '#4CAF50', border: '#4CAF5060' },
   { name: 'סגול מלכותי', bg: '#FAF5FF', text: '#3B1F5C', accent: '#9333EA', border: '#9333EA50' },
   { name: 'אפור אלגנטי', bg: '#F5F5F5', text: '#333333', accent: '#666666', border: '#CCCCCC' },
+  { name: 'בהיר אפרפר', bg: '#F1F2F4', text: '#242E42', accent: '#E6B736', border: '#E2B736' },
+  { name: 'SKILS אפור בהיר', bg: '#F3F4F6', text: '#111827', accent: '#9CA3AF', border: '#D1D5DB' },
   { name: 'תכלת ים', bg: '#F0F9FF', text: '#0C4A6E', accent: '#0EA5E9', border: '#0EA5E950' },
   { name: 'שקיעה חמה', bg: '#FFFBF0', text: '#78350F', accent: '#F59E0B', border: '#F59E0B60' },
   { name: 'לבנדר', bg: '#F5F3FF', text: '#4C1D95', accent: '#8B5CF6', border: '#8B5CF660' },

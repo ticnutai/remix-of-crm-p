@@ -73,8 +73,8 @@ export const dashboardThemes: Record<DashboardTheme, DashboardThemeConfig> = {
   },
   'classic': {
     id: 'classic',
-    name: 'Classic',
-    description: 'העיצוב המקורי של המערכת',
+    name: 'בהיר אפרפר',
+    description: 'ערכת עיצוב בהירה בגווני אפרפר-נייבי-זהב מבוססת טוקנים גלובליים',
     colors: {
       background: 'hsl(var(--background))',
       cardBackground: 'hsl(var(--card))',
@@ -193,10 +193,20 @@ const DashboardThemeContext = createContext<DashboardThemeContextType | undefine
 
 const DASHBOARD_THEME_KEY = 'dashboard-theme';
 
+const normalizeDashboardTheme = (saved: string | null): DashboardTheme => {
+  if (!saved) return 'classic';
+  if (saved in dashboardThemes) {
+    const theme = saved as DashboardTheme;
+    // Migrate legacy hard-coded dashboard palettes to token-based classic mode.
+    return theme === 'navy-gold' || theme === 'mouse-gray' ? 'classic' : theme;
+  }
+  return 'classic';
+};
+
 export function DashboardThemeProvider({ children }: { children: ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState<DashboardTheme>(() => {
     const saved = localStorage.getItem(DASHBOARD_THEME_KEY);
-    return (saved as DashboardTheme) || 'navy-gold';
+    return normalizeDashboardTheme(saved);
   });
 
   const themeConfig = dashboardThemes[currentTheme];
@@ -205,7 +215,7 @@ export function DashboardThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleThemeChange = (e: CustomEvent<string>) => {
       if (e.detail && dashboardThemes[e.detail as DashboardTheme]) {
-        setCurrentTheme(e.detail as DashboardTheme);
+        setCurrentTheme(normalizeDashboardTheme(e.detail));
       }
     };
 
@@ -218,7 +228,7 @@ export function DashboardThemeProvider({ children }: { children: ReactNode }) {
   }, [currentTheme]);
 
   const setTheme = (theme: DashboardTheme) => {
-    setCurrentTheme(theme);
+    setCurrentTheme(normalizeDashboardTheme(theme));
   };
 
   return (

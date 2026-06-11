@@ -59,7 +59,7 @@ const mainNavItems = [
   { title: 'Gmail', url: '/gmail', icon: Mail },
   { title: '📁 קבצים', url: '/files', icon: HardDrive },
   { title: 'תכנון & GIS', url: '/planning-gis', icon: MapPinned },
-  { title: '🤖 כלים חכמים', url: '/smart-tools', icon: Bot },
+  { title: 'כלים חכמים', url: '/smart-tools', icon: Bot },
   { title: '🏢 פורטל לקוחות', url: '/portal-management', icon: Users },
 ];
 

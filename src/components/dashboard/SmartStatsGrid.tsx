@@ -111,6 +111,9 @@ const DEFAULT_CAROUSEL_OPTION_IDS: CarouselOptionId[] = [
   "files-hub",
 ];
 
+const SMART_ICON_UNIFIED_CLASS =
+  "p-1.5 rounded-lg border border-[#d4af37]/80 bg-[#162d5a] text-[#d4af37] [&_svg]:h-4 [&_svg]:w-4";
+
 const CAROUSEL_OPTIONS: CarouselOptionConfig[] = [
   {
     id: "work-stages",
@@ -564,15 +567,14 @@ export function SmartStatsGrid({ className }: { className?: string }) {
     });
   };
 
-  const renderHeader = () => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm font-semibold text-muted-foreground">מדדים חכמים</p>
+  const renderHoverSettingsButton = () => (
+    <div className="absolute top-0 left-0 z-10">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
             title="בחירת פונקציות לקרוסלה"
           >
             <Settings2 className="h-4 w-4" />
@@ -611,8 +613,8 @@ export function SmartStatsGrid({ className }: { className?: string }) {
     );
 
     return (
-      <div className={cn("space-y-3", className)} dir="rtl">
-        {renderHeader()}
+      <div className={cn("group relative", className)} dir="rtl">
+        {renderHoverSettingsButton()}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {Array.from({ length: loadingCardsCount }, (_, i) => i + 1).map(
             (itemId) => (
@@ -630,8 +632,8 @@ export function SmartStatsGrid({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn("space-y-3", className)} dir="rtl">
-      {renderHeader()}
+    <div className={cn("group relative", className)} dir="rtl">
+      {renderHoverSettingsButton()}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {isCarouselVisible && currentCarouselStat && (
@@ -640,8 +642,21 @@ export function SmartStatsGrid({ className }: { className?: string }) {
             className="cursor-pointer border-primary/30 hover:shadow-md transition-shadow"
             onClick={() => navigate(currentCarouselStat.href || "/")}
           >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="p-4 h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-2">
+                <div
+                  className={SMART_ICON_UNIFIED_CLASS}
+                >
+                  {currentCarouselStat.icon}
+                </div>
+                <div className="text-2xl font-bold">{currentCarouselStat.value}</div>
+              </div>
+
+              <div className="text-sm font-medium text-foreground">
+                {currentCarouselStat.label}
+              </div>
+
+              <div className="mt-auto pt-2 flex items-center justify-between">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -654,7 +669,9 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <span className="text-[11px] text-muted-foreground">פונקציות</span>
+                <span className="text-[11px] text-muted-foreground truncate max-w-[90px] text-center">
+                  {currentCarouselStat.label}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -667,26 +684,6 @@ export function SmartStatsGrid({ className }: { className?: string }) {
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-              </div>
-
-              <div className="flex items-center gap-3 mb-2">
-                <div
-                  className={cn(
-                    "p-2 rounded-lg",
-                    currentCarouselStat.bgColor,
-                    currentCarouselStat.color,
-                  )}
-                >
-                  {currentCarouselStat.icon}
-                </div>
-                <div className="text-2xl font-bold">{currentCarouselStat.value}</div>
-              </div>
-
-              <div className="text-sm font-medium text-foreground">
-                {currentCarouselStat.label}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {currentCarouselStat.subLabel}
               </div>
             </CardContent>
           </Card>
@@ -703,7 +700,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className={cn("p-2 rounded-lg", stat.bgColor, stat.color)}>
+                <div className={SMART_ICON_UNIFIED_CLASS}>
                   {stat.icon}
                 </div>
                 <div className="text-2xl font-bold">{stat.value}</div>

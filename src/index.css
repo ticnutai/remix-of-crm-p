@@ -3,6 +3,7 @@
 
 /* All mono/display fonts consolidated into a single request (was 14 separate HTTP requests) */
 @import url("https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&family=Fira+Code:wght@300;400;500&family=Source+Code+Pro:wght@300;400;500&family=Roboto+Mono:wght@300;400;500&family=IBM+Plex+Mono:wght@300;400;500&family=Space+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Orbitron:wght@400;500;600&family=Share+Tech+Mono&family=Oxanium:wght@300;400;500&family=Rajdhani:wght@300;400;500&family=Teko:wght@300;400;500&family=Oswald:wght@300;400;500&family=Bebas+Neue&display=swap");
+@import "./styles/design-tokens.css";
 
 @tailwind base;
 @tailwind components;
@@ -86,55 +87,50 @@
   }
 
   :root {
-    /* Navy Executive Color Palette */
-    --background: 220 20% 97%;
-    --foreground: 222 47% 11%;
+    /* SKILS warm cream/navy/gold palette */
+    --background: 40 24% 94%;
+    --foreground: 222 52% 14%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 40 35% 97%;
+    --card-foreground: 222 52% 14%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 40 35% 97%;
+    --popover-foreground: 222 52% 14%;
 
-    /* Navy Blue Primary */
-    --primary: 222 47% 20%;
-    --primary-foreground: 45 30% 96%;
+    --primary: 223 63% 16%;
+    --primary-foreground: 43 90% 96%;
 
-    /* Gold Accent */
-    --secondary: 45 70% 50%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 40 44% 90%;
+    --secondary-foreground: 222 52% 14%;
 
-    /* Cream/Muted */
-    --muted: 45 30% 96%;
-    --muted-foreground: 222 20% 45%;
+    --muted: 40 26% 91%;
+    --muted-foreground: 222 20% 36%;
 
-    /* Gold Accent */
-    --accent: 45 70% 50%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 41 72% 47%;
+    --accent-foreground: 223 63% 16%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 43 90% 96%;
 
-    /* Borders - Thin Gold/Blue */
-    --border: 222 30% 85%;
-    --border-gold: 45 70% 50%;
-    --border-navy: 222 47% 30%;
+    --border: 40 40% 72%;
+    --border-gold: 41 72% 47%;
+    --border-navy: 223 63% 16%;
 
-    --input: 222 30% 90%;
-    --ring: 45 70% 50%;
+    --input: 40 33% 82%;
+    --ring: 41 72% 47%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Table specific colors */
-    --table-header: 222 47% 15%;
-    --table-header-foreground: 45 30% 96%;
-    --table-row-hover: 222 30% 95%;
-    --table-row-selected: 45 50% 95%;
-    --table-border: 222 30% 88%;
-    --table-border-gold: 45 70% 55%;
+    --table-header: 40 35% 88%;
+    --table-header-foreground: 223 63% 16%;
+    --table-row-hover: 40 28% 92%;
+    --table-row-selected: 40 35% 90%;
+    --table-border: 40 30% 78%;
+    --table-border-gold: 41 72% 47%;
 
     /* Navy - used in Calendar/toggles */
-    --navy: 222 47% 20%;
+    --navy: 223 63% 16%;
 
     /* Success/Warning/Info */
     --success: 142 70% 45%;
@@ -144,68 +140,68 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    /* Sidebar - Navy */
-    --sidebar-background: 222 47% 12%;
-    --sidebar-foreground: 45 30% 96%;
-    --sidebar-primary: 45 70% 50%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-accent-foreground: 45 30% 96%;
-    --sidebar-border: 222 47% 20%;
-    --sidebar-ring: 45 70% 50%;
+    /* Sidebar */
+    --sidebar-background: 40 35% 97%;
+    --sidebar-foreground: 222 52% 14%;
+    --sidebar-primary: 223 63% 16%;
+    --sidebar-primary-foreground: 43 90% 96%;
+    --sidebar-accent: 40 40% 92%;
+    --sidebar-accent-foreground: 222 52% 14%;
+    --sidebar-border: 40 40% 72%;
+    --sidebar-ring: 41 72% 47%;
   }
 
   .dark {
-    --background: 222 47% 8%;
-    --foreground: 45 30% 96%;
+    --background: 220 50% 6%;
+    --foreground: 40 20% 95%;
 
-    --card: 222 47% 12%;
-    --card-foreground: 45 30% 96%;
+    --card: 220 45% 9%;
+    --card-foreground: 40 20% 95%;
 
-    --popover: 222 47% 12%;
-    --popover-foreground: 45 30% 96%;
+    --popover: 220 45% 9%;
+    --popover-foreground: 40 20% 95%;
 
-    --primary: 45 70% 55%;
-    --primary-foreground: 222 47% 11%;
+    --primary: 220 80% 30%;
+    --primary-foreground: 40 20% 98%;
 
-    --secondary: 222 47% 25%;
-    --secondary-foreground: 45 30% 96%;
+    --secondary: 220 40% 15%;
+    --secondary-foreground: 40 20% 95%;
 
-    --muted: 222 47% 18%;
+    --muted: 220 35% 12%;
     --muted-foreground: 220 20% 65%;
 
-    --accent: 45 70% 50%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 220 70% 40%;
+    --accent-foreground: 40 20% 98%;
 
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 40 20% 98%;
 
-    --border: 222 47% 22%;
-    --border-gold: 45 70% 45%;
-    --border-navy: 222 47% 35%;
+    --border: 220 35% 20%;
+    --border-gold: 220 70% 40%;
+    --border-navy: 220 80% 30%;
 
-    --input: 222 47% 20%;
-    --ring: 45 70% 50%;
+    --input: 220 35% 20%;
+    --ring: 220 80% 30%;
 
     /* Navy - used in Calendar/toggles */
-    --navy: 222 47% 30%;
+    --navy: 220 80% 30%;
 
     /* Table dark mode */
-    --table-header: 222 47% 18%;
-    --table-header-foreground: 45 30% 96%;
-    --table-row-hover: 222 47% 15%;
-    --table-row-selected: 45 40% 20%;
-    --table-border: 222 47% 25%;
-    --table-border-gold: 45 70% 45%;
+    --table-header: 220 35% 14%;
+    --table-header-foreground: 40 20% 95%;
+    --table-row-hover: 220 28% 12%;
+    --table-row-selected: 220 32% 15%;
+    --table-border: 220 30% 24%;
+    --table-border-gold: 220 70% 40%;
 
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 45 30% 96%;
-    --sidebar-primary: 45 70% 50%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 47% 15%;
-    --sidebar-accent-foreground: 45 30% 96%;
-    --sidebar-border: 222 47% 18%;
-    --sidebar-ring: 45 70% 50%;
+    --sidebar-background: 220 50% 6%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 220 80% 30%;
+    --sidebar-primary-foreground: 40 20% 98%;
+    --sidebar-accent: 220 40% 12%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 220 35% 20%;
+    --sidebar-ring: 220 80% 30%;
   }
 }
 
