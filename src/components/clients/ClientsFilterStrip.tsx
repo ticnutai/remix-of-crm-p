@@ -281,6 +281,11 @@ export function ClientsFilterStrip({
     tag.toLowerCase().includes(tagSearch.toLowerCase()),
   );
 
+  const selectedCategories = useMemo(
+    () => categories.filter((category) => filters.categories.includes(category.id)),
+    [categories, filters.categories],
+  );
+
   // Visible filter sections (persisted)
   const FILTER_SECTIONS: { id: string; label: string }[] = [
     { id: "sort", label: "מיון / תאריך" },
@@ -357,10 +362,16 @@ export function ClientsFilterStrip({
         </Popover>
 
         {typeof visibleClientsCount === "number" && visibleClientsCount > 0 && (
-          <div className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-[#d4a843] bg-[#fff8e7]">
-            <Users className="h-3.5 w-3.5 text-[#1e3a5f]" />
-            <span className="text-[11px] text-[#1e3a5f]">מוצגים</span>
-            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-[#1e3a5f] text-white">
+          <div
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-[#d4a843]"
+            style={{
+              background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <Users className="h-3.5 w-3.5 text-[#d4a843]" />
+            <span className="text-[11px] text-[#f5d27a]">מוצגים</span>
+            <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-[#d4a843] text-[#1e3a5f] border border-[#f5d27a]">
               {visibleClientsCount}
             </Badge>
           </div>
@@ -608,6 +619,19 @@ export function ClientsFilterStrip({
             >
               <FolderOpen className="h-4 w-4" />
               קטגוריות
+              {selectedCategories.length > 0 && (
+                <span className="inline-flex items-center -space-x-1 rtl:space-x-reverse mr-1">
+                  {selectedCategories.slice(0, 2).map((category) => (
+                    <span
+                      key={category.id}
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[#f5d27a] bg-[#1e3a5f] text-[#d4a843]"
+                      title={category.name}
+                    >
+                      {iconMap[category.icon] || <FolderOpen className="h-3 w-3" />}
+                    </span>
+                  ))}
+                </span>
+              )}
               {filters.categories.length > 0 && (
                 <Badge
                   variant="secondary"

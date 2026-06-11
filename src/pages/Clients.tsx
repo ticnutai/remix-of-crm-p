@@ -75,6 +75,10 @@ import { isValidPhoneForDisplay } from "@/lib/phone-utils";
 import { useInactiveClients } from "@/components/alerts";
 import {
   Users,
+  Heart,
+  Building,
+  Handshake,
+  FolderOpen,
   Search,
   Phone,
   Mail,
@@ -133,6 +137,17 @@ interface ClientStageInfo {
   stage_id: string;
   stage_name: string;
 }
+
+const clientCategoryIconMap: Record<
+  string,
+  (props: { className?: string; style?: React.CSSProperties }) => React.ReactNode
+> = {
+  Users: (props) => <Users {...props} />,
+  Heart: (props) => <Heart {...props} />,
+  Building: (props) => <Building {...props} />,
+  Handshake: (props) => <Handshake {...props} />,
+  FolderOpen: (props) => <FolderOpen {...props} />,
+};
 
 export default function Clients() {
   const normalizeSearchText = useCallback(
@@ -1403,9 +1418,44 @@ export default function Clients() {
     const hasReminder = clientsWithReminders.has(client.id);
     const hasTask = clientsWithTasks.has(client.id);
     const hasMeeting = clientsWithMeetings.has(client.id);
+    const category = client.category_id
+      ? categories.find((c) => c.id === client.category_id)
+      : null;
     const [showActions, setShowActions] = useState(false);
     const hoverTimerRef = React.useRef<NodeJS.Timeout | null>(null);
     const isHighlighted = highlightedClientId === client.id;
+    const categoryIconRenderer = category
+      ? clientCategoryIconMap[category.icon] || clientCategoryIconMap.FolderOpen
+      : null;
+
+    const renderCategoryIndicator = (sizePx: number, iconSizePx: number) => {
+      if (!category || !categoryIconRenderer) return null;
+
+      return (
+        <div
+          style={{
+            width: `${sizePx}px`,
+            height: `${sizePx}px`,
+            borderRadius: "50%",
+            backgroundColor: "#1e3a5f",
+            border: "1.5px solid #ffffff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 8px rgba(30,58,95,0.35)",
+          }}
+          title={`קטגוריה: ${category.name}`}
+        >
+          {categoryIconRenderer({
+            style: {
+              width: `${iconSizePx}px`,
+              height: `${iconSizePx}px`,
+              color: "#ffffff",
+            },
+          })}
+        </div>
+      );
+    };
 
     // Register ref for keyboard navigation
     const cardRef = useCallback(
@@ -1584,8 +1634,9 @@ export default function Clients() {
           <SelectionCheckbox position="top-left" />
 
           {/* Indicators */}
-          {(hasReminder || hasTask || hasMeeting) && (
+          {(category || hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-2 right-2 flex gap-1">
+              {renderCategoryIndicator(14, 8)}
               {hasReminder && (
                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
                   <Bell className="w-2 h-2 text-white" />
@@ -1748,20 +1799,23 @@ export default function Clients() {
           {/* Left colored section */}
           <div
             style={{
-              width: "80px",
-              minWidth: "80px",
-              background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
+              width: "132px",
+              minWidth: "132px",
+              background:
+                "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 55%, #1e3a5f 100%)",
+              borderRight: "2px solid #d4a843",
+              boxShadow: "inset -10px 0 18px rgba(0,0,0,0.12)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: "12px",
+              padding: "18px 14px",
             }}
           >
             <div
               style={{
-                width: "50px",
-                height: "50px",
+                width: "68px",
+                height: "68px",
                 borderRadius: "50%",
                 backgroundColor: "rgba(255,255,255,0.15)",
                 border: "2px solid #d4a843",
@@ -1772,7 +1826,7 @@ export default function Clients() {
             >
               <span
                 style={{
-                  fontSize: "22px",
+                  fontSize: "28px",
                   fontWeight: "700",
                   color: "#d4a843",
                 }}
@@ -1793,8 +1847,9 @@ export default function Clients() {
             }}
           >
             {/* Indicators */}
-            {(hasReminder || hasTask || hasMeeting) && (
+            {(category || hasReminder || hasTask || hasMeeting) && (
               <div className="absolute top-3 left-3 flex gap-1">
+                {renderCategoryIndicator(16, 9)}
                 {hasReminder && (
                   <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
                     <Bell className="w-2.5 h-2.5 text-white" />
@@ -1996,8 +2051,9 @@ export default function Clients() {
           <SelectionCheckbox position="top-left" />
 
           {/* Indicators */}
-          {(hasReminder || hasTask || hasMeeting) && (
+          {(category || hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-3 right-3 flex gap-1.5">
+              {renderCategoryIndicator(16, 9)}
               {hasReminder && (
                 <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.55)]">
                   <Bell className="w-2.5 h-2.5 text-white" />
@@ -2265,6 +2321,8 @@ export default function Clients() {
             </span>
           </div>
 
+          {renderCategoryIndicator(16, 9)}
+
           {/* Name */}
           <h3
             style={{
@@ -2354,11 +2412,12 @@ export default function Clients() {
           />
         )}
         {/* Client Indicators - Top Right */}
-        {(hasReminder || hasTask || hasMeeting) && (
+        {(category || hasReminder || hasTask || hasMeeting) && (
           <div
             className="absolute top-2 right-2"
             style={{ display: "flex", gap: "4px", zIndex: 5 }}
           >
+            {renderCategoryIndicator(20, 11)}
             {hasReminder && (
               <div
                 style={{
@@ -2601,11 +2660,11 @@ export default function Clients() {
         <div
           className="group"
           style={{
-            backgroundColor: "#1e293b",
+            background: "linear-gradient(180deg, #1e3a5f 0%, #2d5a87 100%)",
             borderRadius: "12px",
             padding: "12px 16px",
             marginBottom: 0,
-            border: "1px solid #d4a843",
+            border: "1.5px solid #d4a843",
           }}
         >
           <div
@@ -2663,12 +2722,12 @@ export default function Clients() {
                 };
                 const activeStyle: React.CSSProperties = {
                   backgroundColor: "#d4a843",
-                  color: "#1e293b",
+                  color: "#1e3a5f",
                 };
                 const handleEnter = (e: React.MouseEvent<HTMLButtonElement>, isActive: boolean) => {
                   if (!isActive) {
                     e.currentTarget.style.backgroundColor = "#d4a843";
-                    e.currentTarget.style.color = "#1e293b";
+                    e.currentTarget.style.color = "#1e3a5f";
                   }
                 };
                 const handleLeave = (e: React.MouseEvent<HTMLButtonElement>, isActive: boolean) => {
@@ -3123,14 +3182,14 @@ export default function Clients() {
                         : "transparent",
                       border: "1.5px solid #d4a843",
                       borderRadius: "50%",
-                      color: autoJumpToFirstResult ? "#1e293b" : "#d4a843",
+                      color: autoJumpToFirstResult ? "#1e3a5f" : "#d4a843",
                       cursor: "pointer",
                       transition: "all 0.2s",
                     }}
                     onMouseEnter={(e) => {
                       if (!autoJumpToFirstResult) {
                         e.currentTarget.style.backgroundColor = "#d4a843";
-                        e.currentTarget.style.color = "#1e293b";
+                        e.currentTarget.style.color = "#1e3a5f";
                       }
                     }}
                     onMouseLeave={(e) => {
@@ -3179,7 +3238,7 @@ export default function Clients() {
                       fontSize: "12px",
                       backgroundColor: "#ffffff",
                       border: "1.5px solid #d4a843",
-                      color: "#1e293b",
+                      color: "#1e3a5f",
                     }}
                     className="placeholder:text-amber-600/50 focus:border-amber-500 focus:ring-amber-500"
                   />
