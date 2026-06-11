@@ -34,6 +34,26 @@
         padding: 12px;
       }
 
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 1fr;
+          gap: 10px;
+          padding: 8px;
+        }
+
+        #toolsPanel {
+          order: 2;
+        }
+
+        .canvas-wrap {
+          order: 1;
+        }
+
+        #layersPanel {
+          order: 3;
+        }
+      }
+
       .panel {
         background: var(--card);
         border: 1px solid var(--line);
@@ -174,6 +194,43 @@
         background: linear-gradient(135deg, #f4f7fb 0%, #f1f3fa 100%);
       }
 
+      .compare-strip {
+        display: none;
+        border-bottom: 1px solid var(--line);
+        padding: 10px 12px;
+        background: #f9fbff;
+      }
+
+      .compare-strip.show {
+        display: block;
+      }
+
+      .compare-title {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .compare-image-wrap {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px;
+      }
+
+      .compare-image {
+        width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+        display: block;
+      }
+
+      .result-title {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 8px 12px 0;
+      }
+
       svg {
         width: 100%;
         height: 100%;
@@ -241,6 +298,11 @@
 
       .clean-mode #selectionOverlay,
       .clean-mode #selectionRect {
+        display: none;
+      }
+
+      .clean-mode #compareStrip,
+      .clean-mode #resultTitle {
         display: none;
       }
 
@@ -430,6 +492,13 @@
           <div><strong>סטודיו לוגו/סטריפ וקטורי</strong></div>
           <div class="canvas-meta" id="modeInfo">מצב בחירה: כל מה שנוגע</div>
         </div>
+        <div class="compare-strip" id="compareStrip">
+          <div class="compare-title">תמונת מקור שהעלית</div>
+          <div class="compare-image-wrap">
+            <img id="uploadedPreview" class="compare-image" alt="תמונת מקור" />
+          </div>
+        </div>
+        <div class="result-title" id="resultTitle">תוצאה וקטורית לעריכה (מתעדכן למטה)</div>
         <div class="canvas-stage" id="stage">
           <svg id="svgCanvas" viewBox="0 0 1200 340" xmlns="http://www.w3.org/2000/svg">
             <rect x="0" y="0" width="1200" height="340" fill="#f8fafc"></rect>
@@ -457,6 +526,7 @@
 
     <canvas id="workCanvas" style="display:none"></canvas>
 
+    <script src="/vendor/imagetracerjs/imagetracer_v1.2.6.js"></script>
     <script type="module">
       import { init as initPotrace, potrace } from "/vendor/esm-potrace-wasm/index.js";
 
@@ -470,6 +540,8 @@
       const layersList = document.getElementById("layersList");
       const toastEl = document.getElementById("toast");
       const workCanvas = document.getElementById("workCanvas");
+      const compareStrip = document.getElementById("compareStrip");
+      const uploadedPreview = document.getElementById("uploadedPreview");
 
       let selectedIds = new Set();
       let selectionMode = "touch";
@@ -527,6 +599,17 @@
         toastEl.textContent = msg;
         toastEl.classList.add("show");
         setTimeout(() => toastEl.classList.remove("show"), 1300);
+      }
+
+      function setSourcePreview(src) {
+        if (!src) {
+          uploadedPreview.removeAttribute("src");
+          compareStrip.classList.remove("show");
+          return;
+        }
+
+        uploadedPreview.src = src;
+        compareStrip.classList.add("show");
       }
 
       function uid() {
@@ -694,6 +777,16 @@
 
         const candidates = srcSvg.querySelectorAll("path, line, rect, text, polygon, polyline, circle, ellipse");
         candidates.forEach((node) => {
+          const nodeFill = (node.getAttribute("fill") || "").replace(/\s+/g, "").toLowerCase();
+          if (
+            nodeFill === "#fff" ||
+            nodeFill === "#ffffff" ||
+            nodeFill === "white" ||
+            nodeFill === "rgb(255,255,255)"
+          ) {
+            return;
+          }
+
           const clone = document.createElementNS(SVG_NS, node.tagName);
           for (const attr of node.attributes) {
             clone.setAttribute(attr.name, attr.value);
@@ -731,26 +824,41 @@
 
         if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
           const svgText = await file.text();
+          const svgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`;
+          setSourcePreview(svgDataUrl);
           parseAndImportSvg(svgText);
-          referenceSrc = "";
-          referenceImage.setAttribute("href", "");
+          referenceSrc = svgDataUrl;
+          referenceImage.setAttribute("href", referenceSrc);
           t("SVG יובא לעריכה");
           return;
         }
 
         referenceSrc = await imageFileToDataUrl(file);
+        setSourcePreview(referenceSrc);
         referenceImage.setAttribute("href", referenceSrc);
 
         const img = new Image();
         img.onload = async () => {
+          const MAX_TRACE_PIXELS = 320000;
+          const sourcePixels = img.width * img.height;
+          let traceWidth = img.width;
+          let traceHeight = img.height;
+
+          if (sourcePixels > MAX_TRACE_PIXELS) {
+            const scale = Math.sqrt(MAX_TRACE_PIXELS / sourcePixels);
+            traceWidth = Math.max(1, Math.round(img.width * scale));
+            traceHeight = Math.max(1, Math.round(img.height * scale));
+            t("תמונה גדולה זוהתה, בוצע כיווץ לחילוץ יציב");
+          }
+
           const ctx = workCanvas.getContext("2d", { willReadFrequently: true });
-          workCanvas.width = img.width;
-          workCanvas.height = img.height;
-          ctx.clearRect(0, 0, img.width, img.height);
-          ctx.drawImage(img, 0, 0);
+          workCanvas.width = traceWidth;
+          workCanvas.height = traceHeight;
+          ctx.clearRect(0, 0, traceWidth, traceHeight);
+          ctx.drawImage(img, 0, 0, traceWidth, traceHeight);
 
           const threshold = Number(document.getElementById("bwThreshold").value || 160);
-          const imgData = ctx.getImageData(0, 0, img.width, img.height);
+          const imgData = ctx.getImageData(0, 0, traceWidth, traceHeight);
           const data = imgData.data;
           for (let i = 0; i < data.length; i += 4) {
             const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
@@ -769,23 +877,99 @@
             smoothed: { turdsize: 3, alphamax: 1.2, opttolerance: 0.35 },
           };
 
+          const imageTracerOptions = {
+            sharp: { ltres: 0.5, qtres: 0.5, pathomit: 4 },
+            detailed: { ltres: 1, qtres: 1, pathomit: 8 },
+            smoothed: { ltres: 2, qtres: 2, pathomit: 12 },
+          };
+
           try {
+            const tracer = window.ImageTracer;
+            if (tracer && typeof tracer.imagedataToSVG === "function") {
+              const tracedSvg = tracer.imagedataToSVG(imgData, {
+                colorsampling: 0,
+                numberofcolors: 2,
+                mincolorratio: 0,
+                colorquantcycles: 1,
+                layering: 0,
+                strokewidth: 0,
+                linefilter: false,
+                roundcoords: 1,
+                viewbox: true,
+                desc: false,
+                pal: [
+                  { r: 255, g: 255, b: 255, a: 255 },
+                  { r: 0, g: 0, b: 0, a: 255 },
+                ],
+                ...imageTracerOptions[preset],
+              });
+
+              if (tracedSvg && typeof tracedSvg === "string") {
+                parseAndImportSvg(tracedSvg);
+                svg.setAttribute("viewBox", `0 0 ${traceWidth} ${traceHeight}`);
+                referenceImage.setAttribute("width", String(traceWidth));
+                referenceImage.setAttribute("height", String(traceHeight));
+                return;
+              }
+            }
+
             await ensurePotraceInitialized();
-            const tracedSvg = await potrace(imgData, {
-              pathonly: false,
-              extractcolors: false,
-              turnpolicy: 4,
-              ...presetOptions[preset],
-            });
+
+            let tracedSvg = "";
+            let tracedWidth = traceWidth;
+            let tracedHeight = traceHeight;
+            let lastError = null;
+
+            const attempts = [1, 0.8, 0.65, 0.5, 0.35, 0.25];
+            for (const factor of attempts) {
+              const attemptWidth = Math.max(1, Math.round(traceWidth * factor));
+              const attemptHeight = Math.max(1, Math.round(traceHeight * factor));
+              const attemptCanvas = document.createElement("canvas");
+              attemptCanvas.width = attemptWidth;
+              attemptCanvas.height = attemptHeight;
+              const attemptCtx = attemptCanvas.getContext("2d", {
+                willReadFrequently: true,
+              });
+              attemptCtx.drawImage(workCanvas, 0, 0, attemptWidth, attemptHeight);
+
+              const bitmap = await createImageBitmap(attemptCanvas);
+              try {
+                tracedSvg = await potrace(bitmap, {
+                  pathonly: false,
+                  extractcolors: false,
+                  turnpolicy: 4,
+                  ...presetOptions[preset],
+                });
+                tracedWidth = attemptWidth;
+                tracedHeight = attemptHeight;
+                if (factor < 1) {
+                  t("בוצע חילוץ ברזולוציה מופחתת ליציבות");
+                }
+                break;
+              } catch (err) {
+                lastError = err;
+                const message = String(err?.message || err || "");
+                const canRetry = err instanceof RangeError || message.includes("offset is out of bounds");
+                if (!canRetry) {
+                  throw err;
+                }
+              } finally {
+                if (typeof bitmap.close === "function") bitmap.close();
+              }
+            }
+
+            if (!tracedSvg) {
+              throw lastError || new Error("Potrace failed after retries");
+            }
+
             parseAndImportSvg(tracedSvg);
+            svg.setAttribute("viewBox", `0 0 ${tracedWidth} ${tracedHeight}`);
+            referenceImage.setAttribute("width", String(tracedWidth));
+            referenceImage.setAttribute("height", String(tracedHeight));
           } catch (err) {
             console.error("[POTRACE] extraction failed", err);
             t("חילוץ Potrace נכשל");
           }
-
-          svg.setAttribute("viewBox", `0 0 ${img.width} ${img.height}`);
-          referenceImage.setAttribute("width", String(img.width));
-          referenceImage.setAttribute("height", String(img.height));
         };
         img.src = referenceSrc;
       }
@@ -893,7 +1077,23 @@
         }
       });
 
-      document.getElementById("imgInput").addEventListener("change", () => t("קובץ נטען"));
+      document.getElementById("imgInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+          setSourcePreview("");
+          return;
+        }
+
+        if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+          const svgText = await file.text();
+          setSourcePreview(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`);
+        } else {
+          const previewUrl = await imageFileToDataUrl(file);
+          setSourcePreview(previewUrl);
+        }
+
+        t("קובץ נטען");
+      });
       document.getElementById("extractBtn").addEventListener("click", extractToSvg);
 
       document.getElementById("refVisible").addEventListener("change", (e) => {
@@ -1233,6 +1433,7 @@
         elementsLayer.innerHTML = project.elements || "";
         getElements().forEach(initElement);
         referenceSrc = project.referenceSrc || "";
+        setSourcePreview(referenceSrc);
         referenceImage.setAttribute("href", referenceSrc);
         document.getElementById("refOpacity").value = project.refOpacity ?? 25;
         referenceImage.setAttribute("opacity", String((project.refOpacity ?? 25) / 100));
