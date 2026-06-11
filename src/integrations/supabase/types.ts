@@ -7308,6 +7308,75 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_quote_payment_events: {
+        Row: {
+          amount_net: number
+          amount_total: number
+          amount_vat: number
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_full_payment: boolean
+          notes: string | null
+          payment_date: string
+          saved_quote_id: string
+          step_id: string
+          step_name: string
+          updated_at: string
+          vat_rate: number
+        }
+        Insert: {
+          amount_net?: number
+          amount_total?: number
+          amount_vat?: number
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_full_payment?: boolean
+          notes?: string | null
+          payment_date?: string
+          saved_quote_id: string
+          step_id: string
+          step_name: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Update: {
+          amount_net?: number
+          amount_total?: number
+          amount_vat?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_full_payment?: boolean
+          notes?: string | null
+          payment_date?: string
+          saved_quote_id?: string
+          step_id?: string
+          step_name?: string
+          updated_at?: string
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_quote_payment_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_quote_payment_events_saved_quote_id_fkey"
+            columns: ["saved_quote_id"]
+            isOneToOne: false
+            referencedRelation: "saved_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_quotes: {
         Row: {
           base_price: number | null
