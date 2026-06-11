@@ -17,6 +17,14 @@ export type WidgetId =
   | 'stats-projects' 
   | 'stats-revenue' 
   | 'stats-hours'
+  | 'smart-carousel'
+  | 'smart-new-clients'
+  | 'smart-tasks-today'
+  | 'smart-meetings-week'
+  | 'smart-conversion-rate'
+  | 'smart-overdue-tasks'
+  | 'smart-completed-month'
+  | 'smart-tools'
   | 'chart-revenue'
   | 'chart-projects'
   | 'chart-hours'
@@ -43,15 +51,23 @@ export const DEFAULT_LAYOUTS: WidgetLayout[] = [
   { id: 'stats-projects', name: 'פרויקטים פתוחים', visible: true, order: 2, size: 'small', collapsed: false },
   { id: 'stats-revenue', name: 'הכנסות החודש', visible: true, order: 3, size: 'small', collapsed: false },
   { id: 'stats-hours', name: 'שעות עבודה', visible: true, order: 4, size: 'small', collapsed: false },
-  { id: 'dynamic-stats', name: 'סטטוס דינמי', visible: true, order: 5, size: 'medium', collapsed: false },
-  { id: 'chart-revenue', name: 'גרף הכנסות', visible: true, order: 6, size: 'medium', collapsed: false },
-  { id: 'chart-projects', name: 'סטטוס פרויקטים', visible: true, order: 7, size: 'medium', collapsed: false },
-  { id: 'chart-hours', name: 'גרף שעות עבודה', visible: true, order: 8, size: 'full', collapsed: false },
-  { id: 'table-hours', name: 'טבלת שעות', visible: true, order: 9, size: 'full', collapsed: false },
-  { id: 'table-clients', name: 'רשימת לקוחות', visible: true, order: 10, size: 'full', collapsed: false },
-  { id: 'table-clients-2', name: 'טבלה דינמית נוספת', visible: false, order: 11, size: 'full', collapsed: false },
-  { id: 'table-vip', name: 'לקוחות VIP', visible: true, order: 12, size: 'full', collapsed: false },
-  { id: 'features-info', name: 'תכונות ומידע', visible: true, order: 13, size: 'full', collapsed: false },
+  { id: 'smart-carousel', name: 'פונקציות מהירות (קרוסלה)', visible: true, order: 5, size: 'small', collapsed: false },
+  { id: 'smart-new-clients', name: 'לקוחות חדשים', visible: true, order: 6, size: 'small', collapsed: false },
+  { id: 'smart-tasks-today', name: 'משימות להיום', visible: true, order: 7, size: 'small', collapsed: false },
+  { id: 'smart-meetings-week', name: 'פגישות השבוע', visible: true, order: 8, size: 'small', collapsed: false },
+  { id: 'smart-conversion-rate', name: 'שיעור המרה', visible: true, order: 9, size: 'small', collapsed: false },
+  { id: 'smart-overdue-tasks', name: 'משימות באיחור', visible: true, order: 10, size: 'small', collapsed: false },
+  { id: 'smart-completed-month', name: 'הושלמו החודש', visible: true, order: 11, size: 'small', collapsed: false },
+  { id: 'smart-tools', name: 'כלים חכמים', visible: true, order: 12, size: 'full', collapsed: false },
+  { id: 'dynamic-stats', name: 'סטטוס דינמי', visible: true, order: 13, size: 'medium', collapsed: false },
+  { id: 'chart-revenue', name: 'גרף הכנסות', visible: true, order: 14, size: 'medium', collapsed: false },
+  { id: 'chart-projects', name: 'סטטוס פרויקטים', visible: true, order: 15, size: 'medium', collapsed: false },
+  { id: 'chart-hours', name: 'גרף שעות עבודה', visible: true, order: 16, size: 'full', collapsed: false },
+  { id: 'table-hours', name: 'טבלת שעות', visible: true, order: 17, size: 'full', collapsed: false },
+  { id: 'table-clients', name: 'רשימת לקוחות', visible: true, order: 18, size: 'full', collapsed: false },
+  { id: 'table-clients-2', name: 'טבלה דינמית נוספת', visible: false, order: 19, size: 'full', collapsed: false },
+  { id: 'table-vip', name: 'לקוחות VIP', visible: true, order: 20, size: 'full', collapsed: false },
+  { id: 'features-info', name: 'תכונות ומידע', visible: true, order: 21, size: 'full', collapsed: false },
 ];
 
 const STORAGE_KEY = 'widget-layouts-v3';

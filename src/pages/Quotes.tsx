@@ -151,13 +151,19 @@ export default function Quotes() {
 
     try {
       setSigningSavedQuoteId(savedQuote.id);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) throw new Error("המשתמש לא מחובר");
+
       const { error } = await (supabase as any)
         .from("saved_quotes")
         .update({
           status: "signed",
-          signed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", savedQuote.id);
+        .eq("id", savedQuote.id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 

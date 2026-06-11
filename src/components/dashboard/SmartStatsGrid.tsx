@@ -44,6 +44,7 @@ import {
   endOfWeek,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useWidgetLayout } from "./WidgetLayoutManager";
 
 interface SmartStat {
   id: string;
@@ -95,6 +96,15 @@ interface CarouselOptionConfig {
 }
 
 const SMART_DASHBOARD_STATS_KEY = ["smart-dashboard-stats"] as const;
+const SMART_CAROUSEL_WIDGET_ID = "smart-carousel";
+const SMART_STAT_WIDGET_IDS: Record<string, string> = {
+  "new-clients": "smart-new-clients",
+  "tasks-due": "smart-tasks-today",
+  "meetings-week": "smart-meetings-week",
+  conversion: "smart-conversion-rate",
+  overdue: "smart-overdue-tasks",
+  completed: "smart-completed-month",
+};
 const DEFAULT_CAROUSEL_OPTION_IDS: CarouselOptionId[] = [
   "work-stages",
   "calendar-board",
@@ -456,6 +466,7 @@ export function useSmartDashboardStats() {
 export function SmartStatsGrid({ className }: { className?: string }) {
   const { stats, isLoading, data } = useSmartDashboardStats();
   const navigate = useNavigate();
+  const { isVisible } = useWidgetLayout();
   const [carouselOptionIds, setCarouselOptionIds] = useSyncedSetting<
     CarouselOptionId[]
   >({
@@ -517,6 +528,17 @@ export function SmartStatsGrid({ className }: { className?: string }) {
     };
   }, [data, normalizedCarouselOptionIds, carouselIndex]);
 
+  const isCarouselVisible = isVisible(SMART_CAROUSEL_WIDGET_ID);
+
+  const visibleStats = useMemo(() => {
+    return stats.filter((stat) => {
+      const widgetId = SMART_STAT_WIDGET_IDS[stat.id];
+      return widgetId ? isVisible(widgetId) : true;
+    });
+  }, [isVisible, stats]);
+
+  const hasVisibleSmartWidgets = isCarouselVisible || visibleStats.length > 0;
+
   const rotateCarousel = (direction: number) => {
     setCarouselIndex((prev) => {
       const total = normalizedCarouselOptionIds.length || 1;
@@ -575,19 +597,33 @@ export function SmartStatsGrid({ className }: { className?: string }) {
     </div>
   );
 
+  if (!hasVisibleSmartWidgets) {
+    return null;
+  }
+
   if (isLoading) {
+    const visibleStatCount = Object.values(SMART_STAT_WIDGET_IDS).filter((id) =>
+      isVisible(id),
+    ).length;
+    const loadingCardsCount = Math.max(
+      1,
+      (isCarouselVisible ? 1 : 0) + visibleStatCount,
+    );
+
     return (
       <div className={cn("space-y-3", className)} dir="rtl">
         {renderHeader()}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-8 bg-muted rounded mb-2" />
-                <div className="h-4 bg-muted rounded w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
+          {Array.from({ length: loadingCardsCount }, (_, i) => i + 1).map(
+            (itemId) => (
+              <Card key={itemId} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-8 bg-muted rounded mb-2" />
+                  <div className="h-4 bg-muted rounded w-2/3" />
+                </CardContent>
+              </Card>
+            ),
+          )}
         </div>
       </div>
     );
@@ -598,7 +634,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
       {renderHeader()}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {currentCarouselStat && (
+        {isCarouselVisible && currentCarouselStat && (
           <Card
             key={currentCarouselStat.id}
             className="cursor-pointer border-primary/30 hover:shadow-md transition-shadow"
@@ -656,7 +692,7 @@ export function SmartStatsGrid({ className }: { className?: string }) {
           </Card>
         )}
 
-        {stats.map((stat) => (
+        {visibleStats.map((stat) => (
           <Card
             key={stat.id}
             className={cn(
