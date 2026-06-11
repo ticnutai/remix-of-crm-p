@@ -13,6 +13,8 @@
         --line: #d7dce8;
         --accent: #0f766e;
         --accent-soft: #d4f4f1;
+        --tools-panel-width: 320px;
+        --layers-panel-width: 260px;
       }
 
       * {
@@ -28,17 +30,75 @@
 
       .app {
         display: grid;
-        grid-template-columns: 320px 1fr 260px;
+        grid-template-columns: var(--tools-panel-width) 1fr var(--layers-panel-width);
         min-height: 100vh;
         gap: 12px;
         padding: 12px;
+        transition: grid-template-columns 0.22s ease;
       }
 
-      @media (max-width: 1100px) {
+      .app.tools-collapsed {
+        grid-template-columns: 0 1fr var(--layers-panel-width);
+      }
+
+      .app.layers-collapsed {
+        grid-template-columns: var(--tools-panel-width) 1fr 0;
+      }
+
+      .app.tools-collapsed.layers-collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      .app.tools-collapsed #toolsPanel,
+      .app.layers-collapsed #layersPanel {
+        width: 0;
+        min-width: 0;
+        padding: 0;
+        border-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+        box-shadow: none;
+      }
+
+      .panel-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .btn.compact {
+        padding: 4px 8px;
+        font-size: 12px;
+      }
+
+      .canvas-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .mobile-sidebar-controls {
+        display: none;
+        margin: 0;
+      }
+
+      @media (max-width: 1200px) {
         .app {
           grid-template-columns: 1fr;
           gap: 10px;
           padding: 8px;
+        }
+
+        .app.mobile-sidebars #toolsPanel,
+        .app.mobile-sidebars #layersPanel {
+          display: none;
+        }
+
+        .app.mobile-sidebars.mobile-tools-open #toolsPanel,
+        .app.mobile-sidebars.mobile-layers-open #layersPanel {
+          display: block;
         }
 
         #toolsPanel {
@@ -51,6 +111,10 @@
 
         #layersPanel {
           order: 3;
+        }
+
+        .mobile-sidebar-controls {
+          display: flex;
         }
       }
 
@@ -349,7 +413,10 @@
   <body>
     <div class="app">
       <aside class="panel" id="toolsPanel">
-        <h3>כלי עריכה וקטורית</h3>
+        <div class="panel-title-row">
+          <h3>כלי עריכה וקטורית</h3>
+          <button class="btn compact" id="toggleToolsPanelBtn" type="button">הסתר</button>
+        </div>
 
         <div class="toolbar">
           <button class="btn" id="toggleModeBtn">מצב תצוגה נקייה</button>
@@ -490,7 +557,13 @@
       <main class="canvas-wrap">
         <div class="canvas-head">
           <div><strong>סטודיו לוגו/סטריפ וקטורי</strong></div>
-          <div class="canvas-meta" id="modeInfo">מצב בחירה: כל מה שנוגע</div>
+          <div class="canvas-head-actions">
+            <div class="toolbar mobile-sidebar-controls" id="mobileSidebarControls">
+              <button class="btn" id="mobileToolsToggleBtn" type="button">פתח כלים</button>
+              <button class="btn" id="mobileLayersToggleBtn" type="button">פתח שכבות</button>
+            </div>
+            <div class="canvas-meta" id="modeInfo">מצב בחירה: כל מה שנוגע</div>
+          </div>
         </div>
         <div class="compare-strip" id="compareStrip">
           <div class="compare-title">תמונת מקור שהעלית</div>
@@ -513,7 +586,10 @@
       </main>
 
       <aside class="panel" id="layersPanel">
-        <h3>שכבות</h3>
+        <div class="panel-title-row">
+          <h3>שכבות</h3>
+          <button class="btn compact" id="toggleLayersPanelBtn" type="button">הסתר</button>
+        </div>
         <div class="toolbar">
           <button class="btn" id="bringForwardBtn">קדימה</button>
           <button class="btn" id="sendBackwardBtn">אחורה</button>
@@ -542,6 +618,13 @@
       const workCanvas = document.getElementById("workCanvas");
       const compareStrip = document.getElementById("compareStrip");
       const uploadedPreview = document.getElementById("uploadedPreview");
+      const appRoot = document.querySelector(".app");
+      const toggleToolsPanelBtn = document.getElementById("toggleToolsPanelBtn");
+      const toggleLayersPanelBtn = document.getElementById("toggleLayersPanelBtn");
+      const mobileToolsToggleBtn = document.getElementById("mobileToolsToggleBtn");
+      const mobileLayersToggleBtn = document.getElementById("mobileLayersToggleBtn");
+      const sidebarMediaQuery = window.matchMedia("(max-width: 1200px)");
+      const SIDEBAR_STATE_KEY = "vector-logo-strip-sidebars-v1";
 
       let selectedIds = new Set();
       let selectionMode = "touch";
@@ -557,6 +640,105 @@
       let potraceInitialized = false;
 
       const SVG_NS = "http://www.w3.org/2000/svg";
+
+      function loadSidebarState() {
+        try {
+          const raw = localStorage.getItem(SIDEBAR_STATE_KEY);
+          if (!raw) {
+            return {
+              hasSaved: false,
+              state: { toolsOpen: true, layersOpen: true },
+            };
+          }
+
+          const parsed = JSON.parse(raw);
+          return {
+            hasSaved: true,
+            state: {
+              toolsOpen: parsed?.toolsOpen !== false,
+              layersOpen: parsed?.layersOpen !== false,
+            },
+          };
+        } catch {
+          return {
+            hasSaved: false,
+            state: { toolsOpen: true, layersOpen: true },
+          };
+        }
+      }
+
+      function saveSidebarState() {
+        localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(sidebarsState));
+      }
+
+      function updateSidebarButtons() {
+        const toolsOpen = sidebarsState.toolsOpen;
+        const layersOpen = sidebarsState.layersOpen;
+
+        toggleToolsPanelBtn.textContent = toolsOpen ? "הסתר" : "הצג";
+        toggleLayersPanelBtn.textContent = layersOpen ? "הסתר" : "הצג";
+
+        mobileToolsToggleBtn.textContent = toolsOpen ? "סגור כלים" : "פתח כלים";
+        mobileLayersToggleBtn.textContent = layersOpen ? "סגור שכבות" : "פתח שכבות";
+
+        mobileToolsToggleBtn.classList.toggle("active", toolsOpen);
+        mobileLayersToggleBtn.classList.toggle("active", layersOpen);
+
+        toggleToolsPanelBtn.setAttribute("aria-expanded", String(toolsOpen));
+        toggleLayersPanelBtn.setAttribute("aria-expanded", String(layersOpen));
+      }
+
+      function applySidebarState(persist = true) {
+        const isMobileLayout = sidebarMediaQuery.matches;
+
+        appRoot.classList.toggle("mobile-sidebars", isMobileLayout);
+
+        if (isMobileLayout) {
+          appRoot.classList.remove("tools-collapsed", "layers-collapsed");
+          appRoot.classList.toggle("mobile-tools-open", sidebarsState.toolsOpen);
+          appRoot.classList.toggle("mobile-layers-open", sidebarsState.layersOpen);
+        } else {
+          appRoot.classList.remove("mobile-tools-open", "mobile-layers-open");
+          appRoot.classList.toggle("tools-collapsed", !sidebarsState.toolsOpen);
+          appRoot.classList.toggle("layers-collapsed", !sidebarsState.layersOpen);
+        }
+
+        updateSidebarButtons();
+        if (persist) saveSidebarState();
+      }
+
+      function toggleToolsPanel() {
+        if (sidebarMediaQuery.matches) {
+          sidebarsState.toolsOpen = !sidebarsState.toolsOpen;
+          if (sidebarsState.toolsOpen) sidebarsState.layersOpen = false;
+        } else {
+          sidebarsState.toolsOpen = !sidebarsState.toolsOpen;
+        }
+        applySidebarState();
+      }
+
+      function toggleLayersPanel() {
+        if (sidebarMediaQuery.matches) {
+          sidebarsState.layersOpen = !sidebarsState.layersOpen;
+          if (sidebarsState.layersOpen) sidebarsState.toolsOpen = false;
+        } else {
+          sidebarsState.layersOpen = !sidebarsState.layersOpen;
+        }
+        applySidebarState();
+      }
+
+      const loadedSidebarState = loadSidebarState();
+      let sidebarsState = loadedSidebarState.state;
+      if (!loadedSidebarState.hasSaved && sidebarMediaQuery.matches) {
+        sidebarsState = { toolsOpen: false, layersOpen: false };
+      }
+
+      toggleToolsPanelBtn.addEventListener("click", toggleToolsPanel);
+      toggleLayersPanelBtn.addEventListener("click", toggleLayersPanel);
+      mobileToolsToggleBtn.addEventListener("click", toggleToolsPanel);
+      mobileLayersToggleBtn.addEventListener("click", toggleLayersPanel);
+      sidebarMediaQuery.addEventListener("change", () => applySidebarState(false));
+      applySidebarState(false);
 
       async function ensurePotraceInitialized() {
         if (potraceInitialized) return;
