@@ -3109,35 +3109,48 @@ export default function Clients() {
                   justifyContent: "flex-end",
                 }}
               >
-                <button
-                  onClick={() => setAutoJumpToFirstResult(!autoJumpToFirstResult)}
-                  style={{
-                    height: "30px",
-                    padding: "0 10px",
-                    borderRadius: "15px",
-                    backgroundColor: autoJumpToFirstResult
-                      ? "#f59e0b"
-                      : "transparent",
-                    border: "1.5px solid #f59e0b",
-                    color: autoJumpToFirstResult ? "#111827" : "#fbbf24",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                  title={
-                    autoJumpToFirstResult
-                      ? "קפיצה אוטומטית לתוצאה הראשונה פעילה"
-                      : "קפיצה אוטומטית לתוצאה הראשונה כבויה"
-                  }
-                  aria-label="הפעל או כבה קפיצה אוטומטית לתוצאה הראשונה"
-                >
-                  <Clock style={{ width: "12px", height: "12px" }} />
-                  קפיצה אוטומטית
-                </button>
+                <div className="overflow-hidden invisible opacity-0 max-w-0 transition-all duration-200 group-hover:visible group-hover:opacity-100 group-hover:max-w-[40px]">
+                  <button
+                    onClick={() =>
+                      setAutoJumpToFirstResult(!autoJumpToFirstResult)
+                    }
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "30px",
+                      height: "30px",
+                      backgroundColor: autoJumpToFirstResult
+                        ? "#d4a843"
+                        : "transparent",
+                      border: "1.5px solid #d4a843",
+                      borderRadius: "50%",
+                      color: autoJumpToFirstResult ? "#1e293b" : "#d4a843",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!autoJumpToFirstResult) {
+                        e.currentTarget.style.backgroundColor = "#d4a843";
+                        e.currentTarget.style.color = "#1e293b";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!autoJumpToFirstResult) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                        e.currentTarget.style.color = "#d4a843";
+                      }
+                    }}
+                    title={
+                      autoJumpToFirstResult
+                        ? "קפיצה אוטומטית לתוצאה הראשונה פעילה"
+                        : "קפיצה אוטומטית לתוצאה הראשונה כבויה"
+                    }
+                    aria-label="הפעל או כבה קפיצה אוטומטית לתוצאה הראשונה"
+                  >
+                    <Clock style={{ width: "15px", height: "15px" }} />
+                  </button>
+                </div>
 
                 <div
                   style={{
