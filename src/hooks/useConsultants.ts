@@ -1,5 +1,6 @@
 // Consultants Hook - Manage consultants (יועצים, מהנדסים, אדריכלים)
 import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,31 +63,32 @@ export function detectConsultantKeywords(
   return results;
 }
 
+// Shared react-query key — every useConsultants() instance shares one cached
+// fetch, so mounting it per row (e.g. in StageTaskActionsPopup) issues a
+// single network request instead of one per instance.
+const CONSULTANTS_QUERY_KEY = ["consultants"] as const;
+
 export function useConsultants() {
   const { toast } = useToast();
-  const [consultants, setConsultants] = useState<Consultant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // Load all consultants
   const loadConsultants = useCallback(async () => {
-    try {
+    await queryClient.invalidateQueries({ queryKey: CONSULTANTS_QUERY_KEY });
+  }, [queryClient]);
+
+  const { data: consultants = [], isLoading: loading } = useQuery({
+    queryKey: CONSULTANTS_QUERY_KEY,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("consultants")
         .select("*")
         .order("name");
 
       if (error) throw error;
-      setConsultants((data as Consultant[]) || []);
-    } catch (error) {
-      console.error("Error loading consultants:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadConsultants();
-  }, [loadConsultants]);
+      return (data as Consultant[]) || [];
+    },
+  });
 
   // Add a new consultant
   const addConsultant = async (
@@ -101,11 +103,7 @@ export function useConsultants() {
 
       if (error) throw error;
 
-      setConsultants((prev) =>
-        [...prev, data as Consultant].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
-      );
+      await loadConsultants();
       toast({
         title: "הצלחה",
         description: `${consultant.profession} "${consultant.name}" נוסף בהצלחה`,
@@ -134,9 +132,7 @@ export function useConsultants() {
 
       if (error) throw error;
 
-      setConsultants((prev) =>
-        prev.map((c) => (c.id === id ? (data as Consultant) : c)),
-      );
+      await loadConsultants();
       toast({
         title: "הצלחה",
         description: "פרטי היועץ עודכנו",
@@ -163,7 +159,7 @@ export function useConsultants() {
 
       if (error) throw error;
 
-      setConsultants((prev) => prev.filter((c) => c.id !== id));
+      await loadConsultants();
       toast({
         title: "הצלחה",
         description: "היועץ נמחק",

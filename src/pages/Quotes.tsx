@@ -317,14 +317,16 @@ export default function Quotes() {
   // Signature handler
   const handleSignQuote = async (signature: SignatureData) => {
     if (!signatureQuote) return;
-    
-    // Update quote status to signed
+
+    // Update quote status to signed AND persist the signature itself to the cloud
     await updateQuote.mutateAsync({
       id: signatureQuote.id,
       status: 'signed',
-      // Store signature data in metadata or a dedicated field
+      signature_data: signature.data,
+      signed_by: signature.name,
+      signed_date: signature.date || new Date().toISOString(),
     });
-    
+
     toast({
       title: 'הצעה נחתמה',
       description: `ההצעה ${signatureQuote.quote_number} נחתמה בהצלחה`,

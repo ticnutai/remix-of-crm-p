@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -62,7 +63,7 @@ export interface ReminderInsert {
   user_id?: string; // optional override (admin assignment); defaults to current user
 }
 
-// Decode literal unicode escapes stored in DB (e.g. \u05de → מ)
+// Decode literal unicode escapes stored in DB (e.g. מ → מ)
 function decodeUnicode(str: string | null | undefined): string | null {
   if (!str) return str ?? null;
   return str.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
@@ -78,43 +79,62 @@ function decodeReminder(r: Reminder): Reminder {
   };
 }
 
+// Shared react-query key. All hook instances share the same cached fetch,
+// so mounting useReminders() in many components (e.g. one per task row)
+// results in a single network request instead of one per instance.
+const REMINDERS_QUERY_KEY = ["reminders"] as const;
+
+async function fetchRemindersFromDb(): Promise<Reminder[]> {
+  // No client-side user_id filter — RLS handles row visibility.
+  // Admins see all non-private reminders; regular users see only their own.
+  const { data, error } = await supabase
+    .from("reminders")
+    .select("*")
+    .order("remind_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching reminders:", error);
+    throw error;
+  }
+  return ((data as Reminder[]) || []).map(decodeReminder);
+}
+
 // Module-level lock: prevents duplicate notifications when multiple
 // hook instances run checkReminders simultaneously
 let _checkInProgress = false;
 
+/**
+ * useReminders — data + CRUD for reminders.
+ *
+ * The list is fetched via react-query so every instance shares a single
+ * deduplicated request/cache. The periodic "due reminder" checker, realtime
+ * subscription and desktop-notification side-effects live in
+ * {@link useReminderEngine} (mounted once globally via {@link ReminderEngine}),
+ * NOT here — so this hook is cheap to mount per row.
+ */
 export function useReminders() {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [activeReminders, setActiveReminders] = useState<Reminder[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
   const { pushAction } = useUndoRedo();
-  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastCheckRef = useRef<number>(Date.now());
+  const queryClient = useQueryClient();
+
+  // activeReminders kept for API compatibility (populated by the engine's
+  // popup flow); local copy lets dismissReminder filter optimistically.
+  const [activeReminders, setActiveReminders] = useState<Reminder[]>([]);
+
+  const { data: reminders = [], isLoading: loading } = useQuery({
+    queryKey: [...REMINDERS_QUERY_KEY, user?.id],
+    queryFn: fetchRemindersFromDb,
+    enabled: !!user?.id,
+  });
+
+  const fetchReminders = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: REMINDERS_QUERY_KEY });
+  }, [queryClient]);
 
   const initNotificationPermission = useCallback(async () => {
     await requestDesktopPermission();
   }, []);
-
-  const fetchReminders = useCallback(async () => {
-    if (!user) return;
-
-    setLoading(true);
-    // No client-side user_id filter — RLS handles row visibility.
-    // Admins see all non-private reminders; regular users see only their own.
-    const { data, error } = await supabase
-      .from("reminders")
-      .select("*")
-      .order("remind_at", { ascending: true });
-
-    if (error) {
-      console.error("Error fetching reminders:", error);
-    } else {
-      setReminders(((data as Reminder[]) || []).map(decodeReminder));
-    }
-    setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
 
   const createReminder = useCallback(
     async (reminder: ReminderInsert) => {
@@ -256,6 +276,68 @@ export function useReminders() {
     [toast, fetchReminders, reminders, pushAction],
   );
 
+  const updateReminder = useCallback(
+    async (id: string, updates: Partial<ReminderInsert>) => {
+      try {
+        const { error } = await supabase
+          .from("reminders")
+          .update(updates)
+          .eq("id", id);
+
+        if (error) throw error;
+
+        await fetchReminders();
+        toast({ title: "תזכורת עודכנה" });
+        return true;
+      } catch (error) {
+        console.error("Error updating reminder:", error);
+        toast({ title: "שגיאה בעדכון תזכורת", variant: "destructive" });
+        return false;
+      }
+    },
+    [fetchReminders, toast],
+  );
+
+  return {
+    reminders,
+    activeReminders,
+    loading,
+    fetchReminders,
+    createReminder,
+    updateReminder,
+    dismissReminder,
+    deleteReminder,
+    requestNotificationPermission: initNotificationPermission,
+  };
+}
+
+// Guard so the periodic checker/realtime engine only ever runs in a single
+// mounted instance, even if <ReminderEngine /> is accidentally rendered twice.
+let _engineActive = false;
+
+/**
+ * useReminderEngine — the periodic "due reminder" checker, realtime
+ * subscription and desktop notifications. Must be mounted EXACTLY ONCE,
+ * globally (see {@link ReminderEngine}). Mounting it per component instance
+ * is what previously flooded the browser with requests/subscriptions.
+ */
+export function useReminderEngine() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, setActiveReminders] = useState<Reminder[]>([]);
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckRef = useRef<number>(Date.now());
+  const isOwnerRef = useRef(false);
+
+  const fetchReminders = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: REMINDERS_QUERY_KEY });
+  }, [queryClient]);
+
+  const initNotificationPermission = useCallback(async () => {
+    await requestDesktopPermission();
+  }, []);
+
   // Speak reminder using browser's speech synthesis
   const speakReminder = useCallback((reminder: Reminder) => {
     if ("speechSynthesis" in window) {
@@ -372,25 +454,33 @@ export function useReminders() {
     fetchReminders,
   ]);
 
+  // Claim single-owner status for this mount (prevents duplicate engines).
+  useEffect(() => {
+    if (_engineActive) {
+      isOwnerRef.current = false;
+      return;
+    }
+    _engineActive = true;
+    isOwnerRef.current = true;
+    return () => {
+      if (isOwnerRef.current) {
+        _engineActive = false;
+        isOwnerRef.current = false;
+      }
+    };
+  }, []);
+
   // Request notification permission on mount
   useEffect(() => {
     initNotificationPermission();
   }, [initNotificationPermission]);
 
-  // Fetch reminders on mount
-  useEffect(() => {
-    if (user) {
-      fetchReminders();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
   // ── Realtime subscription: refresh + check on any DB change ──
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !isOwnerRef.current) return;
 
     const channel = supabase
-      .channel(`reminders-realtime-${user.id}-${Math.random()}`)
+      .channel(`reminders-realtime-${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -415,7 +505,7 @@ export function useReminders() {
 
   // Check reminders every 30 seconds + drift monitor
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isOwnerRef.current) return;
 
     checkReminders();
     lastCheckRef.current = Date.now();
@@ -455,39 +545,14 @@ export function useReminders() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+}
 
-  // Update reminder
-  const updateReminder = useCallback(
-    async (id: string, updates: Partial<ReminderInsert>) => {
-      try {
-        const { error } = await supabase
-          .from("reminders")
-          .update(updates)
-          .eq("id", id);
-
-        if (error) throw error;
-
-        await fetchReminders();
-        toast({ title: "תזכורת עודכנה" });
-        return true;
-      } catch (error) {
-        console.error("Error updating reminder:", error);
-        toast({ title: "שגיאה בעדכון תזכורת", variant: "destructive" });
-        return false;
-      }
-    },
-    [fetchReminders, toast],
-  );
-
-  return {
-    reminders,
-    activeReminders,
-    loading,
-    fetchReminders,
-    createReminder,
-    updateReminder,
-    dismissReminder,
-    deleteReminder,
-    requestNotificationPermission: initNotificationPermission,
-  };
+/**
+ * ReminderEngine — render once at the app root (inside AppLayout) so the
+ * reminder checker/realtime/notifications run a single time globally,
+ * regardless of how many components call useReminders().
+ */
+export function ReminderEngine() {
+  useReminderEngine();
+  return null;
 }

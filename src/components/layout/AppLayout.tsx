@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { AppHeader } from './AppHeader';
 import { FloatingTimer } from '@/components/timer/FloatingTimer';
 import { TimerPiPController } from '@/components/timer/TimerPiPController';
+import { ReminderEngine } from '@/hooks/useReminders';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { OverlaySidebar } from './OverlaySidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -423,6 +424,7 @@ export const AppLayout = forwardRef<HTMLDivElement, AppLayoutProps>(function App
 
       <FloatingTimer />
       <TimerPiPController />
+      <ReminderEngine />
     </div>
   );
 });
