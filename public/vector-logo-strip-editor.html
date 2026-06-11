@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>עורך לוגו/סטריפ וקטורי</title>
+    <style>
+      :root {
+        --bg: #f3f4f8;
+        --card: #ffffff;
+        --ink: #12203a;
+        --muted: #5a6c8f;
+        --line: #d7dce8;
+        --accent: #0f766e;
+        --accent-soft: #d4f4f1;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Heebo, sans-serif;
+        background: radial-gradient(circle at 15% 0%, #eff2ff 0%, #f7f8fc 50%, #eef4f4 100%);
+        color: var(--ink);
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 320px 1fr 260px;
+        min-height: 100vh;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 6px 26px rgba(22, 29, 51, 0.08);
+        overflow: auto;
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 15px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .group {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+
+      label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      input,
+      select,
+      button,
+      textarea {
+        font: inherit;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 7px 8px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .btn {
+        border: 1px solid #cfd7ea;
+        background: #fff;
+        color: var(--ink);
+        border-radius: 9px;
+        padding: 7px 10px;
+        cursor: pointer;
+        transition: 0.18s ease;
+      }
+
+      .btn:hover {
+        border-color: #a7b6d6;
+        transform: translateY(-1px);
+      }
+
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .btn.primary {
+        background: linear-gradient(135deg, #0f766e, #0d9488);
+        color: #fff;
+        border: 0;
+      }
+
+      .btn.warn {
+        background: #8a1231;
+        color: #fff;
+        border: 0;
+      }
+
+      .btn.active {
+        background: var(--accent-soft);
+        border-color: #94ddd5;
+        color: #0f5f57;
+      }
+
+      .preset {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 3px;
+      }
+
+      .swatch {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid #9ea8bc;
+      }
+
+      .canvas-wrap {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        box-shadow: 0 10px 28px rgba(22, 29, 51, 0.08);
+        display: grid;
+        grid-template-rows: auto 1fr;
+        min-width: 0;
+      }
+
+      .canvas-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .canvas-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .canvas-stage {
+        position: relative;
+        min-height: 72vh;
+        background: linear-gradient(135deg, #f4f7fb 0%, #f1f3fa 100%);
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+        user-select: none;
+        touch-action: none;
+      }
+
+      .selection-box {
+        fill: rgba(30, 111, 255, 0.12);
+        stroke: #1e6fff;
+        stroke-width: 1;
+        stroke-dasharray: 5 3;
+        pointer-events: none;
+      }
+
+      .sel-outline {
+        fill: none;
+        stroke: #2a67ff;
+        stroke-width: 1.4;
+        pointer-events: none;
+      }
+
+      .layer-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .layer-item.active {
+        border-color: #89bbff;
+        background: #eaf2ff;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        background: #0f172a;
+        color: #fff;
+        border-radius: 10px;
+        padding: 9px 12px;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: 0.25s ease;
+        pointer-events: none;
+        z-index: 999;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .clean-mode .panel {
+        display: none;
+      }
+
+      .clean-mode .app {
+        grid-template-columns: 1fr;
+      }
+
+      .clean-mode #selectionOverlay,
+      .clean-mode #selectionRect {
+        display: none;
+      }
+
+      .anim-blink {
+        animation: blinkSoft 1.8s ease-in-out infinite;
+      }
+
+      .anim-float {
+        animation: floatSoft 2.2s ease-in-out infinite;
+      }
+
+      .anim-dash {
+        stroke-dasharray: 10 6;
+        animation: dashRun 2s linear infinite;
+      }
+
+      @keyframes blinkSoft {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+
+      @keyframes floatSoft {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
+      }
+
+      @keyframes dashRun {
+        to {
+          stroke-dashoffset: -32;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel" id="toolsPanel">
+        <h3>כלי עריכה וקטורית</h3>
+
+        <div class="toolbar">
+          <button class="btn" id="toggleModeBtn">מצב תצוגה נקייה</button>
+          <button class="btn" id="selectAllBtn">בחר כל הלוגו</button>
+          <button class="btn" id="clearSelBtn">נקה בחירה</button>
+          <button class="btn" id="undoBtn">Undo</button>
+          <button class="btn" id="redoBtn">Redo</button>
+          <button class="btn" id="copyBtn">Copy</button>
+          <button class="btn" id="pasteBtn">Paste</button>
+        </div>
+
+        <div class="group">
+          <h3>חילוץ מתמונה</h3>
+          <label>העלה PNG/JPG</label>
+          <input id="imgInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" />
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label>סף שחור/לבן</label>
+              <input id="bwThreshold" type="number" min="0" max="255" value="160" />
+            </div>
+            <div>
+              <label>דיוק</label>
+              <select id="tracePreset">
+                <option value="sharp">חד</option>
+                <option value="detailed" selected>מפורט</option>
+                <option value="smoothed">מוחלק</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn primary" style="margin-top:8px;" id="extractBtn">חלץ ל-SVG</button>
+
+          <div style="margin-top:8px;">
+            <label style="display:flex;gap:6px;align-items:center;">
+              <input type="checkbox" id="refVisible" checked /> הצג תמונת מקור שקופה
+            </label>
+            <label>שקיפות מקור</label>
+            <input id="refOpacity" type="range" min="0" max="100" value="25" />
+          </div>
+        </div>
+
+        <div class="group">
+          <h3>בחירה</h3>
+          <div class="toolbar">
+            <button class="btn active" id="selTouchBtn">כל מה שנוגע</button>
+            <button class="btn" id="selInsideBtn">רק אם כולו בפנים</button>
+          </div>
+          <div class="canvas-meta" id="selectionInfo">נבחרו 0 אלמנטים</div>
+        </div>
+
+        <div class="group">
+          <h3>צבעים וסגנון</h3>
+          <div class="row">
+            <div>
+              <label>מילוי</label>
+              <input id="fillColor" type="color" value="#000000" />
+            </div>
+            <div>
+              <label>מסגרת</label>
+              <input id="strokeColor" type="color" value="#000000" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div>
+              <label>עובי</label>
+              <input id="strokeWidth" type="number" min="0" value="1" />
+            </div>
+            <div>
+              <label>שקיפות</label>
+              <input id="opacityVal" type="number" min="0" max="1" step="0.1" value="1" />
+            </div>
+          </div>
+          <button class="btn" style="margin-top:8px;" id="applyStyleBtn">החל על הנבחרים</button>
+          <button class="btn" style="margin-top:8px;" id="pickSimilarBtn">בחר צבע דומה</button>
+
+          <div style="margin-top:8px;">
+            <button class="btn preset" data-color="#000000"><span class="swatch" style="background:#000000"></span>שחור</button>
+            <button class="btn preset" data-color="#ffffff"><span class="swatch" style="background:#ffffff"></span>לבן</button>
+            <button class="btn preset" data-color="#d4af37"><span class="swatch" style="background:#d4af37"></span>זהב</button>
+            <button class="btn preset" data-color="#1d4ed8"><span class="swatch" style="background:#1d4ed8"></span>כחול</button>
+            <button class="btn preset" data-color="#dc2626"><span class="swatch" style="background:#dc2626"></span>אדום</button>
+            <button class="btn preset" data-color="#16a34a"><span class="swatch" style="background:#16a34a"></span>ירוק</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3>אלמנטים חדשים</h3>
+          <div class="toolbar">
+            <button class="btn" id="addLineBtn">הוסף קו</button>
+            <button class="btn" id="addRectBtn">הוסף מלבן</button>
+            <button class="btn" id="addTextBtn">הוסף טקסט</button>
+          </div>
+          <label>טקסט</label>
+          <input id="newText" type="text" value="טקסט חדש" />
+          <label>גודל טקסט</label>
+          <input id="newTextSize" type="number" min="8" max="120" value="28" />
+        </div>
+
+        <div class="group">
+          <h3>קיבוץ ויישור</h3>
+          <div class="toolbar">
+            <button class="btn" id="groupBtn">קבץ</button>
+            <button class="btn" id="ungroupBtn">בטל קיבוץ</button>
+          </div>
+          <div class="toolbar">
+            <button class="btn" id="align90Btn">יישור 90° לנבחרים</button>
+            <button class="btn" id="autoAlignBtn">יישור אוטומטי ללוגו</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3>אנימציות</h3>
+          <select id="animType">
+            <option value="none">ללא אנימציה</option>
+            <option value="blink">הבהוב עדין</option>
+            <option value="float">ריחוף עדין</option>
+            <option value="dash">קו רץ</option>
+          </select>
+          <button class="btn" style="margin-top:8px;" id="applyAnimBtn">החל אנימציה</button>
+        </div>
+
+        <div class="group">
+          <h3>שמירה וייצוא</h3>
+          <div class="toolbar">
+            <button class="btn" id="saveLocalBtn">שמור</button>
+            <button class="btn" id="loadLocalBtn">טען</button>
+            <button class="btn primary" id="applyHostBtn">החל בעורך ההצעה</button>
+            <button class="btn" id="exportProjectBtn">ייצוא Project JSON</button>
+            <button class="btn" id="importProjectBtn">ייבוא Project JSON</button>
+            <input id="importProjectInput" type="file" accept="application/json,.json" style="display:none" />
+          </div>
+          <div class="toolbar">
+            <button class="btn" id="exportSvgBtn">ייצוא SVG</button>
+            <button class="btn" id="exportPngBtn">ייצוא PNG</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="canvas-wrap">
+        <div class="canvas-head">
+          <div><strong>סטודיו לוגו/סטריפ וקטורי</strong></div>
+          <div class="canvas-meta" id="modeInfo">מצב בחירה: כל מה שנוגע</div>
+        </div>
+        <div class="canvas-stage" id="stage">
+          <svg id="svgCanvas" viewBox="0 0 1200 340" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="1200" height="340" fill="#f8fafc"></rect>
+            <g id="referenceLayer">
+              <image id="referenceImage" x="0" y="0" width="1200" height="340" opacity="0.25" preserveAspectRatio="xMidYMid meet"></image>
+            </g>
+            <g id="elementsLayer"></g>
+            <g id="selectionOverlay"></g>
+            <rect id="selectionRect" class="selection-box" x="0" y="0" width="0" height="0" visibility="hidden"></rect>
+          </svg>
+        </div>
+      </main>
+
+      <aside class="panel" id="layersPanel">
+        <h3>שכבות</h3>
+        <div class="toolbar">
+          <button class="btn" id="bringForwardBtn">קדימה</button>
+          <button class="btn" id="sendBackwardBtn">אחורה</button>
+        </div>
+        <div id="layersList"></div>
+      </aside>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <canvas id="workCanvas" style="display:none"></canvas>
+
+    <script type="module">
+      import { init as initPotrace, potrace } from "/vendor/esm-potrace-wasm/index.js";
+
+      const svg = document.getElementById("svgCanvas");
+      const stage = document.getElementById("stage");
+      const referenceImage = document.getElementById("referenceImage");
+      const referenceLayer = document.getElementById("referenceLayer");
+      const elementsLayer = document.getElementById("elementsLayer");
+      const selectionOverlay = document.getElementById("selectionOverlay");
+      const selectionRect = document.getElementById("selectionRect");
+      const layersList = document.getElementById("layersList");
+      const toastEl = document.getElementById("toast");
+      const workCanvas = document.getElementById("workCanvas");
+
+      let selectedIds = new Set();
+      let selectionMode = "touch";
+      let idCounter = 1;
+      let groupCounter = 1;
+      let dragState = null;
+      let boxSelectState = null;
+      let referenceSrc = "";
+      let clipboardSvg = [];
+      let historyStack = [];
+      let historyIndex = -1;
+      let applyingHistory = false;
+      let potraceInitialized = false;
+
+      const SVG_NS = "http://www.w3.org/2000/svg";
+
+      async function ensurePotraceInitialized() {
+        if (potraceInitialized) return;
+        await initPotrace();
+        potraceInitialized = true;
+      }
+
+      function updateHistoryButtons() {
+        const undoBtn = document.getElementById("undoBtn");
+        const redoBtn = document.getElementById("redoBtn");
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= historyStack.length - 1;
+      }
+
+      function snapshotState() {
+        return JSON.stringify(serializeProject());
+      }
+
+      function pushHistory() {
+        if (applyingHistory) return;
+        const snap = snapshotState();
+        if (historyStack[historyIndex] === snap) return;
+        historyStack = historyStack.slice(0, historyIndex + 1);
+        historyStack.push(snap);
+        if (historyStack.length > 120) historyStack.shift();
+        historyIndex = historyStack.length - 1;
+        updateHistoryButtons();
+      }
+
+      function applyHistory(targetIndex) {
+        if (targetIndex < 0 || targetIndex >= historyStack.length) return;
+        applyingHistory = true;
+        loadProject(JSON.parse(historyStack[targetIndex]));
+        applyingHistory = false;
+        historyIndex = targetIndex;
+        updateHistoryButtons();
+      }
+
+      function t(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        setTimeout(() => toastEl.classList.remove("show"), 1300);
+      }
+
+      function uid() {
+        idCounter += 1;
+        return "el-" + idCounter;
+      }
+
+      function deriveNextIdCounter() {
+        let maxId = 1;
+        getElements().forEach((el) => {
+          const match = String(el.id || "").match(/^el-(\d+)$/);
+          if (!match) return;
+          maxId = Math.max(maxId, Number(match[1]));
+        });
+        idCounter = Math.max(idCounter, maxId);
+      }
+
+      function getElements() {
+        return Array.from(elementsLayer.children);
+      }
+
+      function ensureId(el) {
+        if (!el.id) el.id = uid();
+      }
+
+      function clearSelection() {
+        selectedIds.clear();
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+      }
+
+      function expandGroup(id) {
+        const el = document.getElementById(id);
+        if (!el) return [id];
+        const groupId = el.getAttribute("data-group-id");
+        if (!groupId) return [id];
+        return getElements().filter((n) => n.getAttribute("data-group-id") === groupId).map((n) => n.id);
+      }
+
+      function selectId(id, additive = false) {
+        const ids = expandGroup(id);
+        if (!additive) selectedIds.clear();
+        ids.forEach((itemId) => selectedIds.add(itemId));
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+      }
+
+      function toggleId(id) {
+        const ids = expandGroup(id);
+        const allSelected = ids.every((itemId) => selectedIds.has(itemId));
+        ids.forEach((itemId) => {
+          if (allSelected) selectedIds.delete(itemId);
+          else selectedIds.add(itemId);
+        });
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+      }
+
+      function updateSelectionInfo() {
+        document.getElementById("selectionInfo").textContent = `נבחרו ${selectedIds.size} אלמנטים`;
+      }
+
+      function toSvgPoint(clientX, clientY) {
+        const pt = svg.createSVGPoint();
+        pt.x = clientX;
+        pt.y = clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+      }
+
+      function makeSelOutline(el) {
+        const bbox = el.getBBox();
+        const r = document.createElementNS(SVG_NS, "rect");
+        r.setAttribute("x", bbox.x - 2);
+        r.setAttribute("y", bbox.y - 2);
+        r.setAttribute("width", bbox.width + 4);
+        r.setAttribute("height", bbox.height + 4);
+        r.setAttribute("class", "sel-outline");
+        selectionOverlay.appendChild(r);
+      }
+
+      function renderSelectionOverlay() {
+        selectionOverlay.innerHTML = "";
+        selectedIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) makeSelOutline(el);
+        });
+      }
+
+      function renderLayers() {
+        layersList.innerHTML = "";
+        getElements().forEach((el, index) => {
+          ensureId(el);
+          const div = document.createElement("div");
+          div.className = "layer-item" + (selectedIds.has(el.id) ? " active" : "");
+          div.textContent = `${index + 1}. ${el.tagName.toLowerCase()} (${el.id})`;
+          div.onclick = (e) => {
+            if (e.shiftKey || e.ctrlKey) toggleId(el.id);
+            else selectId(el.id);
+          };
+          layersList.appendChild(div);
+        });
+      }
+
+      function applyToSelected(cb) {
+        selectedIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) cb(el);
+        });
+        renderSelectionOverlay();
+        renderLayers();
+        pushHistory();
+      }
+
+      function initElement(el) {
+        ensureId(el);
+        if (!el.hasAttribute("data-base-transform")) {
+          el.setAttribute("data-base-transform", el.getAttribute("transform") || "");
+        }
+        if (!el.hasAttribute("data-tx")) el.setAttribute("data-tx", "0");
+        if (!el.hasAttribute("data-ty")) el.setAttribute("data-ty", "0");
+        const { tx, ty } = getTranslate(el);
+        setTranslate(el, tx, ty);
+      }
+
+      function setTranslate(el, tx, ty) {
+        el.setAttribute("data-tx", String(tx));
+        el.setAttribute("data-ty", String(ty));
+        const base = el.getAttribute("data-base-transform") || "";
+        el.setAttribute("transform", `${base} translate(${tx} ${ty})`.trim());
+      }
+
+      function getTranslate(el) {
+        return {
+          tx: Number(el.getAttribute("data-tx") || 0),
+          ty: Number(el.getAttribute("data-ty") || 0),
+        };
+      }
+
+      function addSvgElement(el) {
+        initElement(el);
+        elementsLayer.appendChild(el);
+      }
+
+      function applyAnimationToElement(el, type) {
+        el.classList.remove("anim-blink", "anim-float", "anim-dash");
+        if (type === "blink") el.classList.add("anim-blink");
+        if (type === "float") el.classList.add("anim-float");
+        if (type === "dash") el.classList.add("anim-dash");
+      }
+
+      function parseAndImportSvg(svgString) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, "image/svg+xml");
+        const srcSvg = doc.querySelector("svg");
+        if (!srcSvg) return;
+
+        const vb = srcSvg.getAttribute("viewBox");
+        if (vb) svg.setAttribute("viewBox", vb);
+
+        elementsLayer.innerHTML = "";
+        selectedIds.clear();
+
+        const candidates = srcSvg.querySelectorAll("path, line, rect, text, polygon, polyline, circle, ellipse");
+        candidates.forEach((node) => {
+          const clone = document.createElementNS(SVG_NS, node.tagName);
+          for (const attr of node.attributes) {
+            clone.setAttribute(attr.name, attr.value);
+          }
+          if (!clone.getAttribute("fill")) clone.setAttribute("fill", "#000000");
+          if (!clone.getAttribute("stroke")) clone.setAttribute("stroke", "none");
+          if (clone.tagName.toLowerCase() === "path") {
+            clone.setAttribute("fill-rule", clone.getAttribute("fill-rule") || "evenodd");
+          }
+          addSvgElement(clone);
+        });
+
+        renderLayers();
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        pushHistory();
+        t("חולצו אלמנטים וקטוריים");
+      }
+
+      async function imageFileToDataUrl(file) {
+        return await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = reject;
+          fr.readAsDataURL(file);
+        });
+      }
+
+      async function extractToSvg() {
+        const file = document.getElementById("imgInput").files?.[0];
+        if (!file) {
+          t("בחר קובץ תמונה קודם");
+          return;
+        }
+
+        if (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg")) {
+          const svgText = await file.text();
+          parseAndImportSvg(svgText);
+          referenceSrc = "";
+          referenceImage.setAttribute("href", "");
+          t("SVG יובא לעריכה");
+          return;
+        }
+
+        referenceSrc = await imageFileToDataUrl(file);
+        referenceImage.setAttribute("href", referenceSrc);
+
+        const img = new Image();
+        img.onload = async () => {
+          const ctx = workCanvas.getContext("2d", { willReadFrequently: true });
+          workCanvas.width = img.width;
+          workCanvas.height = img.height;
+          ctx.clearRect(0, 0, img.width, img.height);
+          ctx.drawImage(img, 0, 0);
+
+          const threshold = Number(document.getElementById("bwThreshold").value || 160);
+          const imgData = ctx.getImageData(0, 0, img.width, img.height);
+          const data = imgData.data;
+          for (let i = 0; i < data.length; i += 4) {
+            const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+            const v = lum < threshold ? 0 : 255;
+            data[i] = v;
+            data[i + 1] = v;
+            data[i + 2] = v;
+            data[i + 3] = 255;
+          }
+          ctx.putImageData(imgData, 0, 0);
+
+          const preset = document.getElementById("tracePreset").value;
+          const presetOptions = {
+            sharp: { turdsize: 1, alphamax: 0.2, opttolerance: 0.1 },
+            detailed: { turdsize: 2, alphamax: 1, opttolerance: 0.2 },
+            smoothed: { turdsize: 3, alphamax: 1.2, opttolerance: 0.35 },
+          };
+
+          try {
+            await ensurePotraceInitialized();
+            const tracedSvg = await potrace(imgData, {
+              pathonly: false,
+              extractcolors: false,
+              turnpolicy: 4,
+              ...presetOptions[preset],
+            });
+            parseAndImportSvg(tracedSvg);
+          } catch (err) {
+            console.error("[POTRACE] extraction failed", err);
+            t("חילוץ Potrace נכשל");
+          }
+
+          svg.setAttribute("viewBox", `0 0 ${img.width} ${img.height}`);
+          referenceImage.setAttribute("width", String(img.width));
+          referenceImage.setAttribute("height", String(img.height));
+        };
+        img.src = referenceSrc;
+      }
+
+      function selectionRectFromState() {
+        const x = Math.min(boxSelectState.start.x, boxSelectState.end.x);
+        const y = Math.min(boxSelectState.start.y, boxSelectState.end.y);
+        const width = Math.abs(boxSelectState.end.x - boxSelectState.start.x);
+        const height = Math.abs(boxSelectState.end.y - boxSelectState.start.y);
+        return { x, y, width, height };
+      }
+
+      function rectsIntersect(a, b) {
+        return !(b.x > a.x + a.width || b.x + b.width < a.x || b.y > a.y + a.height || b.y + b.height < a.y);
+      }
+
+      function rectInside(inner, outer) {
+        return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
+      }
+
+      function runBoxSelection(additive) {
+        const box = selectionRectFromState();
+        const next = additive ? new Set(selectedIds) : new Set();
+        getElements().forEach((el) => {
+          const r = el.getBBox();
+          const hit = selectionMode === "touch" ? rectsIntersect(box, r) : rectInside(r, box);
+          if (hit) next.add(el.id);
+        });
+        selectedIds = next;
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+      }
+
+      function startDragSelection(startPt, additive) {
+        boxSelectState = { start: startPt, end: startPt, additive };
+        selectionRect.setAttribute("x", startPt.x);
+        selectionRect.setAttribute("y", startPt.y);
+        selectionRect.setAttribute("width", "0");
+        selectionRect.setAttribute("height", "0");
+        selectionRect.setAttribute("visibility", "visible");
+      }
+
+      function updateDragSelection(endPt) {
+        boxSelectState.end = endPt;
+        const box = selectionRectFromState();
+        selectionRect.setAttribute("x", box.x);
+        selectionRect.setAttribute("y", box.y);
+        selectionRect.setAttribute("width", box.width);
+        selectionRect.setAttribute("height", box.height);
+      }
+
+      function endDragSelection() {
+        selectionRect.setAttribute("visibility", "hidden");
+        if (!boxSelectState) return;
+        runBoxSelection(boxSelectState.additive);
+        boxSelectState = null;
+      }
+
+      svg.addEventListener("pointerdown", (e) => {
+        const targetEl = e.target.closest("path, line, rect, text, polygon, polyline, circle, ellipse");
+        const pt = toSvgPoint(e.clientX, e.clientY);
+
+        if (targetEl && elementsLayer.contains(targetEl)) {
+          if (e.shiftKey || e.ctrlKey) toggleId(targetEl.id);
+          else if (!selectedIds.has(targetEl.id)) selectId(targetEl.id);
+
+          const draggedIds = Array.from(selectedIds);
+          dragState = {
+            startPt: pt,
+            items: draggedIds.map((id) => {
+              const el = document.getElementById(id);
+              return { el, ...getTranslate(el) };
+            }),
+          };
+        } else {
+          startDragSelection(pt, e.shiftKey || e.ctrlKey);
+        }
+      });
+
+      svg.addEventListener("pointermove", (e) => {
+        const pt = toSvgPoint(e.clientX, e.clientY);
+
+        if (dragState) {
+          const dx = pt.x - dragState.startPt.x;
+          const dy = pt.y - dragState.startPt.y;
+          dragState.items.forEach(({ el, tx, ty }) => setTranslate(el, tx + dx, ty + dy));
+          renderSelectionOverlay();
+          return;
+        }
+
+        if (boxSelectState) {
+          updateDragSelection(pt);
+        }
+      });
+
+      window.addEventListener("pointerup", () => {
+        if (dragState) {
+          dragState = null;
+          renderLayers();
+          pushHistory();
+        }
+        if (boxSelectState) {
+          endDragSelection();
+        }
+      });
+
+      document.getElementById("imgInput").addEventListener("change", () => t("קובץ נטען"));
+      document.getElementById("extractBtn").addEventListener("click", extractToSvg);
+
+      document.getElementById("refVisible").addEventListener("change", (e) => {
+        referenceLayer.style.display = e.target.checked ? "" : "none";
+      });
+      document.getElementById("refOpacity").addEventListener("input", (e) => {
+        referenceImage.setAttribute("opacity", String(Number(e.target.value) / 100));
+      });
+
+      document.getElementById("toggleModeBtn").addEventListener("click", () => {
+        document.body.classList.toggle("clean-mode");
+      });
+
+      document.getElementById("selectAllBtn").addEventListener("click", () => {
+        selectedIds = new Set(getElements().map((el) => el.id));
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+        t("נבחר כל הלוגו");
+      });
+
+      document.getElementById("clearSelBtn").addEventListener("click", () => {
+        clearSelection();
+        t("נוקה");
+      });
+
+      function copySelection() {
+        const selected = getElements().filter((el) => selectedIds.has(el.id));
+        if (selected.length === 0) {
+          t("אין אלמנטים נבחרים להעתקה");
+          return;
+        }
+        clipboardSvg = selected.map((el) => ({
+          tag: el.tagName.toLowerCase(),
+          attrs: Array.from(el.attributes).map((a) => [a.name, a.value]),
+          text: el.tagName.toLowerCase() === "text" ? el.textContent || "" : null,
+        }));
+        t(`הועתקו ${clipboardSvg.length} אלמנטים`);
+      }
+
+      function pasteClipboard() {
+        if (!clipboardSvg.length) {
+          t("הלוח ריק");
+          return;
+        }
+
+        selectedIds.clear();
+        clipboardSvg.forEach((item) => {
+          const el = document.createElementNS(SVG_NS, item.tag);
+          item.attrs.forEach(([name, value]) => {
+            if (name === "id") return;
+            el.setAttribute(name, value);
+          });
+          if (item.text !== null) el.textContent = item.text;
+
+          addSvgElement(el);
+          const { tx, ty } = getTranslate(el);
+          setTranslate(el, tx + 16, ty + 16);
+          selectedIds.add(el.id);
+        });
+
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+        pushHistory();
+        t(`הודבקו ${clipboardSvg.length} אלמנטים`);
+      }
+
+      document.getElementById("undoBtn").addEventListener("click", () => {
+        if (historyIndex <= 0) return;
+        applyHistory(historyIndex - 1);
+        t("בוטלה פעולה");
+      });
+
+      document.getElementById("redoBtn").addEventListener("click", () => {
+        if (historyIndex >= historyStack.length - 1) return;
+        applyHistory(historyIndex + 1);
+        t("שוחזרה פעולה");
+      });
+
+      document.getElementById("copyBtn").addEventListener("click", copySelection);
+      document.getElementById("pasteBtn").addEventListener("click", pasteClipboard);
+
+      document.getElementById("selTouchBtn").addEventListener("click", () => {
+        selectionMode = "touch";
+        document.getElementById("modeInfo").textContent = "מצב בחירה: כל מה שנוגע";
+        document.getElementById("selTouchBtn").classList.add("active");
+        document.getElementById("selInsideBtn").classList.remove("active");
+      });
+
+      document.getElementById("selInsideBtn").addEventListener("click", () => {
+        selectionMode = "inside";
+        document.getElementById("modeInfo").textContent = "מצב בחירה: רק אם כולו בפנים";
+        document.getElementById("selInsideBtn").classList.add("active");
+        document.getElementById("selTouchBtn").classList.remove("active");
+      });
+
+      document.getElementById("applyStyleBtn").addEventListener("click", () => {
+        const fill = document.getElementById("fillColor").value;
+        const stroke = document.getElementById("strokeColor").value;
+        const strokeWidth = document.getElementById("strokeWidth").value;
+        const opacity = document.getElementById("opacityVal").value;
+        applyToSelected((el) => {
+          el.setAttribute("fill", fill);
+          el.setAttribute("stroke", stroke);
+          el.setAttribute("stroke-width", strokeWidth);
+          el.setAttribute("opacity", opacity);
+        });
+      });
+
+      document.querySelectorAll(".preset").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const c = btn.getAttribute("data-color");
+          applyToSelected((el) => el.setAttribute("fill", c));
+        });
+      });
+
+      document.getElementById("pickSimilarBtn").addEventListener("click", () => {
+        const firstId = Array.from(selectedIds)[0];
+        if (!firstId) return;
+        const first = document.getElementById(firstId);
+        const fill = first.getAttribute("fill");
+        const stroke = first.getAttribute("stroke");
+        const next = new Set();
+        getElements().forEach((el) => {
+          if (el.getAttribute("fill") === fill && el.getAttribute("stroke") === stroke) next.add(el.id);
+        });
+        selectedIds = next;
+        renderSelectionOverlay();
+        updateSelectionInfo();
+        renderLayers();
+        t("נבחרו אלמנטים עם צבע דומה");
+      });
+
+      document.getElementById("addLineBtn").addEventListener("click", () => {
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", "100");
+        line.setAttribute("y1", "100");
+        line.setAttribute("x2", "320");
+        line.setAttribute("y2", "100");
+        line.setAttribute("stroke", "#000");
+        line.setAttribute("stroke-width", "3");
+        line.setAttribute("fill", "none");
+        addSvgElement(line);
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("addRectBtn").addEventListener("click", () => {
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", "120");
+        rect.setAttribute("y", "120");
+        rect.setAttribute("width", "200");
+        rect.setAttribute("height", "80");
+        rect.setAttribute("fill", "#f2f2f2");
+        rect.setAttribute("stroke", "#000");
+        rect.setAttribute("stroke-width", "2");
+        addSvgElement(rect);
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("addTextBtn").addEventListener("click", () => {
+        const text = document.createElementNS(SVG_NS, "text");
+        text.textContent = document.getElementById("newText").value || "טקסט";
+        text.setAttribute("x", "140");
+        text.setAttribute("y", "180");
+        text.setAttribute("font-size", document.getElementById("newTextSize").value || "28");
+        text.setAttribute("fill", "#000");
+        text.setAttribute("font-family", "Heebo, sans-serif");
+        addSvgElement(text);
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("groupBtn").addEventListener("click", () => {
+        if (selectedIds.size < 2) return;
+        const gid = "grp-" + groupCounter++;
+        applyToSelected((el) => el.setAttribute("data-group-id", gid));
+        t("קובצו אלמנטים");
+      });
+
+      document.getElementById("ungroupBtn").addEventListener("click", () => {
+        applyToSelected((el) => el.removeAttribute("data-group-id"));
+        t("בוטל קיבוץ");
+      });
+
+      function alignLine90(el) {
+        const x1 = Number(el.getAttribute("x1"));
+        const y1 = Number(el.getAttribute("y1"));
+        const x2 = Number(el.getAttribute("x2"));
+        const y2 = Number(el.getAttribute("y2"));
+        const dx = Math.abs(x2 - x1);
+        const dy = Math.abs(y2 - y1);
+        if (dx >= dy) el.setAttribute("y2", String(y1));
+        else el.setAttribute("x2", String(x1));
+      }
+
+      function parsePathD(d) {
+        const tokens = d.match(/[MLZmlz]|-?\d+(?:\.\d+)?/g) || [];
+        const out = [];
+        let i = 0;
+        while (i < tokens.length) {
+          const tkn = tokens[i++];
+          if (/[ML]/i.test(tkn)) {
+            const x = Number(tokens[i++]);
+            const y = Number(tokens[i++]);
+            out.push({ cmd: tkn.toUpperCase(), x, y });
+          } else if (/[Z]/i.test(tkn)) {
+            out.push({ cmd: "Z" });
+          }
+        }
+        return out;
+      }
+
+      function stringifyPath(cmds) {
+        return cmds
+          .map((c) => {
+            if (c.cmd === "Z") return "Z";
+            return `${c.cmd}${Math.round(c.x * 100) / 100} ${Math.round(c.y * 100) / 100}`;
+          })
+          .join(" ");
+      }
+
+      function alignPath90(el, autoOnly = false) {
+        const d = el.getAttribute("d") || "";
+        const cmds = parsePathD(d);
+        if (cmds.length < 3) return false;
+
+        let orthLike = 0;
+        let total = 0;
+        for (let i = 1; i < cmds.length; i++) {
+          const a = cmds[i - 1];
+          const b = cmds[i];
+          if (typeof a.x !== "number" || typeof a.y !== "number") continue;
+          if (typeof b.x !== "number" || typeof b.y !== "number") continue;
+          if (a.cmd === "Z" || b.cmd === "Z") continue;
+          const dx = Math.abs(b.x - a.x);
+          const dy = Math.abs(b.y - a.y);
+          if (Math.max(dx, dy) < 0.001) continue;
+          total++;
+          if (Math.min(dx, dy) / Math.max(dx, dy) < 0.25) orthLike++;
+        }
+
+        if (autoOnly && total > 0 && orthLike / total < 0.7) return false;
+
+        for (let i = 1; i < cmds.length; i++) {
+          const a = cmds[i - 1];
+          const b = cmds[i];
+          if (!a || !b || a.cmd === "Z" || b.cmd === "Z") continue;
+          const dx = Math.abs(b.x - a.x);
+          const dy = Math.abs(b.y - a.y);
+          if (dx >= dy) b.y = a.y;
+          else b.x = a.x;
+        }
+
+        el.setAttribute("d", stringifyPath(cmds));
+        return true;
+      }
+
+      document.getElementById("align90Btn").addEventListener("click", () => {
+        let count = 0;
+        applyToSelected((el) => {
+          const tag = el.tagName.toLowerCase();
+          if (tag === "line") {
+            alignLine90(el);
+            count++;
+          }
+          if (tag === "path") {
+            if (alignPath90(el, false)) count++;
+          }
+        });
+        t(`יושרו ${count} אלמנטים`);
+      });
+
+      document.getElementById("autoAlignBtn").addEventListener("click", () => {
+        let count = 0;
+        getElements().forEach((el) => {
+          const tag = el.tagName.toLowerCase();
+          if (tag === "line") {
+            alignLine90(el);
+            count++;
+          }
+          if (tag === "path") {
+            if (alignPath90(el, true)) count++;
+          }
+        });
+        renderSelectionOverlay();
+        if (count > 0) pushHistory();
+        t(`יושרו ${count} אלמנטים`);
+      });
+
+      document.getElementById("applyAnimBtn").addEventListener("click", () => {
+        const type = document.getElementById("animType").value;
+        applyToSelected((el) => applyAnimationToElement(el, type));
+      });
+
+      document.getElementById("bringForwardBtn").addEventListener("click", () => {
+        const ordered = getElements();
+        ordered.forEach((el, i) => {
+          if (!selectedIds.has(el.id)) return;
+          const next = ordered[i + 1];
+          if (next) elementsLayer.insertBefore(next, el);
+        });
+        renderLayers();
+        pushHistory();
+      });
+
+      document.getElementById("sendBackwardBtn").addEventListener("click", () => {
+        const ordered = getElements();
+        for (let i = ordered.length - 1; i >= 0; i--) {
+          const el = ordered[i];
+          if (!selectedIds.has(el.id)) continue;
+          const prev = ordered[i - 1];
+          if (prev) elementsLayer.insertBefore(el, prev);
+        }
+        renderLayers();
+        pushHistory();
+      });
+
+      function serializeProject() {
+        return {
+          version: 1,
+          viewBox: svg.getAttribute("viewBox"),
+          elements: elementsLayer.innerHTML,
+          referenceSrc,
+          refOpacity: Number(document.getElementById("refOpacity").value),
+          refVisible: document.getElementById("refVisible").checked,
+          idCounter,
+          groupCounter,
+        };
+      }
+
+      function loadProject(project) {
+        if (!project) return;
+        if (project.viewBox) svg.setAttribute("viewBox", project.viewBox);
+        elementsLayer.innerHTML = project.elements || "";
+        getElements().forEach(initElement);
+        referenceSrc = project.referenceSrc || "";
+        referenceImage.setAttribute("href", referenceSrc);
+        document.getElementById("refOpacity").value = project.refOpacity ?? 25;
+        referenceImage.setAttribute("opacity", String((project.refOpacity ?? 25) / 100));
+        document.getElementById("refVisible").checked = project.refVisible !== false;
+        referenceLayer.style.display = project.refVisible === false ? "none" : "";
+        idCounter = Number(project.idCounter || 1);
+        groupCounter = Number(project.groupCounter || 1);
+        deriveNextIdCounter();
+        clearSelection();
+        renderLayers();
+        updateHistoryButtons();
+      }
+
+      document.getElementById("saveLocalBtn").addEventListener("click", () => {
+        localStorage.setItem("vector-logo-strip-project", JSON.stringify(serializeProject()));
+        t("נשמר");
+      });
+
+      document.getElementById("applyHostBtn").addEventListener("click", () => {
+        applyToHost("manual");
+      });
+
+      document.getElementById("loadLocalBtn").addEventListener("click", () => {
+        const raw = localStorage.getItem("vector-logo-strip-project");
+        if (!raw) {
+          t("לא נמצאה שמירה");
+          return;
+        }
+        loadProject(JSON.parse(raw));
+        historyStack = [];
+        historyIndex = -1;
+        pushHistory();
+        t("נטען");
+      });
+
+      document.getElementById("exportProjectBtn").addEventListener("click", () => {
+        const payload = JSON.stringify(serializeProject(), null, 2);
+        downloadBlob(
+          "vector-logo-strip-project.json",
+          new Blob([payload], { type: "application/json;charset=utf-8" }),
+        );
+        t("קובץ Project JSON יוצא");
+      });
+
+      document.getElementById("importProjectBtn").addEventListener("click", () => {
+        document.getElementById("importProjectInput").click();
+      });
+
+      document.getElementById("importProjectInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+          const raw = await file.text();
+          const parsed = JSON.parse(raw);
+          loadProject(parsed);
+          historyStack = [];
+          historyIndex = -1;
+          pushHistory();
+          t("Project JSON נטען");
+        } catch (err) {
+          console.error("[PROJECT IMPORT] failed", err);
+          t("ייבוא JSON נכשל");
+        } finally {
+          e.target.value = "";
+        }
+      });
+
+      function buildCleanSvgClone() {
+        const clone = svg.cloneNode(true);
+        clone.querySelector("#selectionOverlay")?.remove();
+        clone.querySelector("#selectionRect")?.remove();
+        clone.querySelector("#referenceLayer")?.remove();
+        clone.querySelectorAll("[data-editor-only='1']").forEach((n) => n.remove());
+        clone.querySelectorAll("*").forEach((el) => {
+          el.removeAttribute("data-tx");
+          el.removeAttribute("data-ty");
+          el.removeAttribute("data-base-transform");
+        });
+
+        if (clone.querySelector(".anim-blink, .anim-float, .anim-dash")) {
+          const style = document.createElementNS(SVG_NS, "style");
+          style.textContent = `
+            .anim-blink { animation: blinkSoft 1.8s ease-in-out infinite; }
+            .anim-float { animation: floatSoft 2.2s ease-in-out infinite; }
+            .anim-dash { stroke-dasharray: 10 6; animation: dashRun 2s linear infinite; }
+            @keyframes blinkSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+            @keyframes floatSoft { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+            @keyframes dashRun { to { stroke-dashoffset: -32; } }
+          `;
+          clone.insertBefore(style, clone.firstChild);
+        }
+
+        return clone;
+      }
+
+      function buildCleanSvgXml() {
+        const clean = buildCleanSvgClone();
+        return new XMLSerializer().serializeToString(clean);
+      }
+
+      function svgXmlToDataUrl(xml) {
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
+      }
+
+      function applyToHost(reason = "manual") {
+        const xml = buildCleanSvgXml();
+        const payload = {
+          type: "vector-logo-strip:apply",
+          version: 1,
+          reason,
+          svgXml: xml,
+          dataUrl: svgXmlToDataUrl(xml),
+          project: serializeProject(),
+          ts: Date.now(),
+        };
+
+        const targets = [window.parent, window.opener].filter((target) => {
+          return target && target !== window && !target.closed;
+        });
+
+        let sent = false;
+        targets.forEach((target) => {
+          try {
+            target.postMessage(payload, window.location.origin);
+            sent = true;
+          } catch (err) {
+            console.warn("[HOST APPLY] postMessage failed", err);
+          }
+        });
+
+        if (sent) t("העדכון נשלח לעורך ההצעה");
+        else t("לא נמצא חלון יעד לעדכון");
+      }
+
+      function isTypingContext(target) {
+        if (!target) return false;
+        const tag = String(target.tagName || "").toLowerCase();
+        return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+      }
+
+      document.addEventListener("keydown", (e) => {
+        const accel = e.ctrlKey || e.metaKey;
+        if (!accel || isTypingContext(e.target)) return;
+
+        const key = e.key.toLowerCase();
+        if (key === "z" && !e.shiftKey) {
+          e.preventDefault();
+          if (historyIndex > 0) {
+            applyHistory(historyIndex - 1);
+            t("בוטלה פעולה");
+          }
+          return;
+        }
+
+        if ((key === "y") || (key === "z" && e.shiftKey)) {
+          e.preventDefault();
+          if (historyIndex < historyStack.length - 1) {
+            applyHistory(historyIndex + 1);
+            t("שוחזרה פעולה");
+          }
+          return;
+        }
+
+        if (key === "c") {
+          e.preventDefault();
+          copySelection();
+          return;
+        }
+
+        if (key === "v") {
+          e.preventDefault();
+          pasteClipboard();
+        }
+      });
+
+      function downloadBlob(filename, blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      document.getElementById("exportSvgBtn").addEventListener("click", () => {
+        const xml = buildCleanSvgXml();
+        downloadBlob("logo-strip-clean.svg", new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+        t("קובץ SVG יוצא");
+      });
+
+      document.getElementById("exportPngBtn").addEventListener("click", () => {
+        const clean = buildCleanSvgClone();
+        const xml = new XMLSerializer().serializeToString(clean);
+        const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(svgBlob);
+        const img = new Image();
+        img.onload = () => {
+          const vb = (clean.getAttribute("viewBox") || "0 0 1200 340").split(/\s+/).map(Number);
+          const w = Math.max(1, Math.round(vb[2] || 1200));
+          const h = Math.max(1, Math.round(vb[3] || 340));
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          c.toBlob((blob) => {
+            if (blob) downloadBlob("logo-strip.png", blob);
+            t("קובץ PNG יוצא");
+            URL.revokeObjectURL(url);
+          }, "image/png");
+        };
+        img.src = url;
+      });
+
+      // Initial sample
+      const sample = document.createElementNS(SVG_NS, "path");
+      sample.setAttribute("d", "M80 260 L300 260 L300 240 L360 240 L360 180 L430 180 L430 260 L800 260 L800 230 L880 230 L880 260 L1120 260 L1120 270 L80 270 Z");
+      sample.setAttribute("fill", "#000000");
+      sample.setAttribute("fill-rule", "evenodd");
+      addSvgElement(sample);
+
+      renderLayers();
+      updateSelectionInfo();
+      pushHistory();
+    </script>
+  </body>
+</html>

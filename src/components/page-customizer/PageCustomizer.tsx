@@ -210,6 +210,29 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
     };
   }, [ctl.isOpen, getViewportBounds]);
 
+  useEffect(() => {
+    if (!ctl.isOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      ctl.closePanel();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [ctl.isOpen, ctl.closePanel]);
+
+  const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-panel-action="true"]')) return;
+    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    setDragging(true);
+  };
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   if (!ctl.isOpen) return null;
@@ -250,36 +273,62 @@ export function PageCustomizerPanel({ ctl, title = "התאמה אישית של �
       {/* Header / drag handle */}
       <div
         className="flex items-center justify-between px-3 py-2 border-b bg-muted/50 cursor-move select-none"
-        onMouseDown={(e) => {
-          dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-          setDragging(true);
-        }}
+        onMouseDown={handleHeaderMouseDown}
       >
         <div className="flex items-center gap-2 text-sm font-semibold">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
           {title}
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={ctl.reset} title="איפוס">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={ctl.reset}
+            title="איפוס"
+            data-panel-action="true"
+          >
             <RotateCcw className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={ctl.closePanel} title="סגור">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={ctl.closePanel}
+            title="סגור"
+            data-panel-action="true"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue={ctl.initialTab} className="flex flex-col flex-1 min-h-0">
-        <TabsList className="m-3 mb-0 grid grid-cols-2">
-          <TabsTrigger value="layout" className="gap-1.5">
-            <LayoutTemplate className="h-4 w-4" />
-            פריסה
-          </TabsTrigger>
-          <TabsTrigger value="features" className="gap-1.5">
-            <SettingsIcon className="h-4 w-4" />
-            פונקציות
-          </TabsTrigger>
-        </TabsList>
+        <div className="m-3 mb-0 flex items-center gap-2">
+          <TabsList className="m-0 grid grid-cols-2 flex-1">
+            <TabsTrigger value="layout" className="gap-1.5">
+              <LayoutTemplate className="h-4 w-4" />
+              פריסה
+            </TabsTrigger>
+            <TabsTrigger value="features" className="gap-1.5">
+              <SettingsIcon className="h-4 w-4" />
+              פונקציות
+            </TabsTrigger>
+          </TabsList>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={ctl.closePanel}
+            title="סגור"
+            aria-label="סגור חלון התאמה אישית"
+            data-panel-action="true"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
         {/* ── LAYOUT TAB ── */}
         <TabsContent

@@ -2718,6 +2718,11 @@ export function HtmlTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("מתקדם");
   const [activeTab, setActiveTab] = useState("project");
+  const [logoStripMode, setLogoStripMode] = useState<"logo" | "maker">(
+    "logo",
+  );
+  const [showEmbeddedVectorEditor, setShowEmbeddedVectorEditor] =
+    useState(false);
   const [paymentSteps, setPaymentSteps] = useState<PaymentStep[]>(() => {
     const saved = template.payment_schedule;
     if (saved && Array.isArray(saved) && saved.length > 0) {
@@ -2862,6 +2867,69 @@ export function HtmlTemplateEditor({
     "cover" | "contain" | "stretch" | "manual"
   >("contain");
   const [isConvertingStrip, setIsConvertingStrip] = useState(false);
+  const embeddedVectorEditorFrameRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    // Backward compatibility if an old state still points to the removed tab id.
+    if (activeTab === "strip-maker") {
+      setActiveTab("logo-strip");
+      setLogoStripMode("maker");
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleVectorEditorApply = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      const payload = event.data as {
+        type?: string;
+        dataUrl?: string;
+        svgXml?: string;
+      };
+
+      if (!payload || payload.type !== "vector-logo-strip:apply") return;
+
+      const incomingLogoUrl =
+        typeof payload.dataUrl === "string" && payload.dataUrl.startsWith("data:image/svg+xml")
+          ? payload.dataUrl
+          : typeof payload.svgXml === "string"
+            ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(payload.svgXml)}`
+            : "";
+
+      if (!incomingLogoUrl) return;
+
+      setDesignSettings((prev) => ({
+        ...prev,
+        logoUrl: incomingLogoUrl,
+        logoPosition: "custom-strip",
+        showLogo: true,
+        stripProcessed: false,
+        stripLayers: undefined,
+        originalLogoUrl: prev.originalLogoUrl || prev.logoUrl || incomingLogoUrl,
+      }));
+
+      setStripSourceImage(incomingLogoUrl);
+      setActiveTab("logo-strip");
+      setLogoStripMode("logo");
+
+      const img = new window.Image();
+      img.onload = () => {
+        setStripSourceDimensions({
+          w: img.width,
+          h: img.height,
+        });
+      };
+      img.src = incomingLogoUrl;
+
+      toast({
+        title: "לוגו עודכן מהעורך הווקטורי",
+        description: "העיצוב הוחל על הסטריפ בהצעה",
+      });
+    };
+
+    window.addEventListener("message", handleVectorEditorApply);
+    return () => window.removeEventListener("message", handleVectorEditorApply);
+  }, [toast]);
 
   // Helper: render HTML string to image via offscreen iframe
   const htmlStringToImage = useCallback(
@@ -5520,7 +5588,19 @@ export function HtmlTemplateEditor({
         {/* Tabs */}
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={(nextTab) => {
+            if (nextTab === "strip-maker") {
+              setLogoStripMode("maker");
+              setActiveTab("logo-strip");
+              return;
+            }
+
+            if (nextTab === "logo-strip") {
+              setLogoStripMode("logo");
+            }
+
+            setActiveTab(nextTab);
+          }}
           className="flex-1 flex flex-col overflow-hidden"
         >
           <div className="border-b bg-white px-6">
@@ -5558,28 +5638,21 @@ export function HtmlTemplateEditor({
                 className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700"
               >
                 <Crop className="h-4 w-4 ml-2" />
-                לוגו וסטריפ
-              </TabsTrigger>
-              <TabsTrigger
-                value="strip-maker"
-                className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700"
-              >
-                <Layers className="h-4 w-4 ml-2" />
-                מכין סטריפים
+                לוגו
               </TabsTrigger>
               <TabsTrigger
                 value="text-boxes"
                 className="data-[state=active]:bg-[#DAA520]/10 data-[state=active]:text-[#B8860B]"
               >
                 <Type className="h-4 w-4 ml-2" />
-                תיבות טקסט
+                טקסט
               </TabsTrigger>
               <TabsTrigger
                 value="tools"
                 className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700"
               >
                 <Wrench className="h-4 w-4 ml-2" />
-                כלים מתקדמים
+                כלים
               </TabsTrigger>
               <TabsTrigger
                 value="settings"
@@ -6860,10 +6933,85 @@ export function HtmlTemplateEditor({
           {/* Logo & Strip Tab */}
           <TabsContent
             value="logo-strip"
-            className="flex-1 m-0 overflow-hidden"
+            className={logoStripMode === "logo" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                <div className="bg-white rounded-xl border p-4 shadow-sm flex flex-wrap items-center gap-2 justify-between">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={logoStripMode === "logo" ? "default" : "outline"}
+                      onClick={() => setLogoStripMode("logo")}
+                    >
+                      <Crop className="h-4 w-4 ml-2" />
+                      לוגו וסטריפ
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={logoStripMode === "maker" ? "default" : "outline"}
+                      onClick={() => setLogoStripMode("maker")}
+                    >
+                      <Layers className="h-4 w-4 ml-2" />
+                      מכין סטריפים
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={showEmbeddedVectorEditor ? "default" : "outline"}
+                      onClick={() => setShowEmbeddedVectorEditor((prev) => !prev)}
+                    >
+                      <Columns className="h-4 w-4 ml-2" />
+                      {showEmbeddedVectorEditor ? "הסתר עורך פנימי" : "פתח עורך פנימי"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(
+                          "/vector-logo-strip-editor.html",
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
+                    >
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                      עורך בעמוד נפרד
+                    </Button>
+                  </div>
+                </div>
+
+                {showEmbeddedVectorEditor && (
+                  <div className="bg-white rounded-xl border p-3 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-muted-foreground">
+                        עורך וקטורי מתקדם (מוטמע בתוך הטאב)
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEmbeddedVectorEditor(false)}
+                      >
+                        סגור
+                      </Button>
+                    </div>
+                    <iframe
+                      title="Embedded Vector Logo Strip Editor"
+                      ref={embeddedVectorEditorFrameRef}
+                      src="/vector-logo-strip-editor.html?host=quote-editor"
+                      className="w-full rounded-lg border"
+                      style={{ height: "68vh" }}
+                    />
+                  </div>
+                )}
+
                 {/* Company Logo Strip - Prominent Upload Section */}
                 <div className="bg-gradient-to-l from-amber-50 to-orange-50 rounded-xl border-2 border-amber-200 p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
@@ -7852,13 +8000,88 @@ export function HtmlTemplateEditor({
             </ScrollArea>
           </TabsContent>
 
-          {/* Strip Maker Tab */}
+          {/* Strip Maker (merged into Logo & Strips tab) */}
           <TabsContent
-            value="strip-maker"
-            className="flex-1 m-0 overflow-hidden"
+            value="logo-strip"
+            className={logoStripMode === "maker" ? "flex-1 m-0 overflow-hidden" : "hidden"}
           >
             <ScrollArea className="h-full bg-gray-50">
               <div className="p-6 space-y-6 max-w-4xl mx-auto">
+                <div className="bg-white rounded-xl border p-4 shadow-sm flex flex-wrap items-center gap-2 justify-between">
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={logoStripMode === "logo" ? "default" : "outline"}
+                      onClick={() => setLogoStripMode("logo")}
+                    >
+                      <Crop className="h-4 w-4 ml-2" />
+                      לוגו וסטריפ
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={logoStripMode === "maker" ? "default" : "outline"}
+                      onClick={() => setLogoStripMode("maker")}
+                    >
+                      <Layers className="h-4 w-4 ml-2" />
+                      מכין סטריפים
+                    </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={showEmbeddedVectorEditor ? "default" : "outline"}
+                      onClick={() => setShowEmbeddedVectorEditor((prev) => !prev)}
+                    >
+                      <Columns className="h-4 w-4 ml-2" />
+                      {showEmbeddedVectorEditor ? "הסתר עורך פנימי" : "פתח עורך פנימי"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(
+                          "/vector-logo-strip-editor.html",
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
+                    >
+                      <ExternalLink className="h-4 w-4 ml-2" />
+                      עורך בעמוד נפרד
+                    </Button>
+                  </div>
+                </div>
+
+                {showEmbeddedVectorEditor && (
+                  <div className="bg-white rounded-xl border p-3 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-muted-foreground">
+                        עורך וקטורי מתקדם (מוטמע בתוך הטאב)
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEmbeddedVectorEditor(false)}
+                      >
+                        סגור
+                      </Button>
+                    </div>
+                    <iframe
+                      title="Embedded Vector Logo Strip Editor"
+                      ref={embeddedVectorEditorFrameRef}
+                      src="/vector-logo-strip-editor.html?host=quote-editor"
+                      className="w-full rounded-lg border"
+                      style={{ height: "68vh" }}
+                    />
+                  </div>
+                )}
+
                 {/* Upload Source */}
                 <div className="bg-white rounded-xl border p-6 shadow-sm">
                   <h2 className="text-xl font-bold mb-2 flex items-center gap-2">

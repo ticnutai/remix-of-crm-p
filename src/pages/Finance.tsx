@@ -100,7 +100,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -3880,7 +3880,7 @@ export default function Finance() {
                             className="text-xs"
                             tickFormatter={(value) => formatCurrency(value)}
                           />
-                          <Tooltip
+                          <RechartsTooltip
                             formatter={(value: number, name: string) => [
                               formatCurrency(value),
                               name === "total" ? 'סה"כ' : "שולם",
@@ -4109,7 +4109,7 @@ export default function Finance() {
                                       />
                                     ))}
                                   </Pie>
-                                  <Tooltip
+                                  <RechartsTooltip
                                     formatter={(value: number) =>
                                       formatCurrency(value)
                                     }
@@ -4256,7 +4256,7 @@ export default function Finance() {
                           className="text-xs"
                           tickFormatter={(value) => formatCurrency(value)}
                         />
-                        <Tooltip
+                        <RechartsTooltip
                           formatter={(value: number) => [
                             formatCurrency(value),
                             "הכנסות",
@@ -4307,7 +4307,7 @@ export default function Finance() {
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <RechartsTooltip />
                         <Legend />
                       </RechartsPie>
                     </ResponsiveContainer>

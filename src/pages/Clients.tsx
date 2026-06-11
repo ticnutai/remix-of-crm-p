@@ -1587,13 +1587,13 @@ export default function Clients() {
           {(hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-2 right-2 flex gap-1">
               {hasReminder && (
-                <div className="w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-                  <Bell className="w-2.5 h-2.5 text-white" />
+                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
+                  <Bell className="w-2 h-2 text-white" />
                 </div>
               )}
               {hasTask && (
-                <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
-                  <CheckSquare className="w-2.5 h-2.5 text-white" />
+                <div className="w-3.5 h-3.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.55)] flex items-center justify-center">
+                  <CheckSquare className="w-2 h-2 text-white" />
                 </div>
               )}
               {hasMeeting && (
@@ -1796,13 +1796,13 @@ export default function Clients() {
             {(hasReminder || hasTask || hasMeeting) && (
               <div className="absolute top-3 left-3 flex gap-1">
                 {hasReminder && (
-                  <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center">
-                    <Bell className="w-3 h-3 text-white" />
+                  <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)] flex items-center justify-center">
+                    <Bell className="w-2.5 h-2.5 text-white" />
                   </div>
                 )}
                 {hasTask && (
-                  <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                    <CheckSquare className="w-3 h-3 text-white" />
+                  <div className="w-4 h-4 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.55)] flex items-center justify-center">
+                    <CheckSquare className="w-2.5 h-2.5 text-white" />
                   </div>
                 )}
                 {hasMeeting && (
@@ -1999,13 +1999,13 @@ export default function Clients() {
           {(hasReminder || hasTask || hasMeeting) && (
             <div className="absolute top-3 right-3 flex gap-1.5">
               {hasReminder && (
-                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-md">
-                  <Bell className="w-3 h-3 text-white" />
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.55)]">
+                  <Bell className="w-2.5 h-2.5 text-white" />
                 </div>
               )}
               {hasTask && (
-                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-md">
-                  <CheckSquare className="w-3 h-3 text-white" />
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.55)]">
+                  <CheckSquare className="w-2.5 h-2.5 text-white" />
                 </div>
               )}
               {hasMeeting && (
@@ -2362,10 +2362,11 @@ export default function Clients() {
             {hasReminder && (
               <div
                 style={{
-                  width: "24px",
-                  height: "24px",
+                  width: "20px",
+                  height: "20px",
                   borderRadius: "50%",
-                  backgroundColor: "#f97316",
+                  backgroundColor: "#10b981",
+                  boxShadow: "0 0 10px rgba(16, 185, 129, 0.6)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2373,17 +2374,18 @@ export default function Clients() {
                 title="יש תזכורות"
               >
                 <Bell
-                  style={{ width: "12px", height: "12px", color: "#ffffff" }}
+                  style={{ width: "10px", height: "10px", color: "#ffffff" }}
                 />
               </div>
             )}
             {hasTask && (
               <div
                 style={{
-                  width: "24px",
-                  height: "24px",
+                  width: "20px",
+                  height: "20px",
                   borderRadius: "50%",
-                  backgroundColor: "#3b82f6",
+                  backgroundColor: "#2563eb",
+                  boxShadow: "0 0 10px rgba(37, 99, 235, 0.6)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -2391,7 +2393,7 @@ export default function Clients() {
                 title="יש משימות"
               >
                 <CheckSquare
-                  style={{ width: "12px", height: "12px", color: "#ffffff" }}
+                  style={{ width: "10px", height: "10px", color: "#ffffff" }}
                 />
               </div>
             )}
