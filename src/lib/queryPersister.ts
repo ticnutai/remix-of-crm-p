@@ -40,17 +40,43 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Creates an IndexedDB-based persister for React Query.
- * This stores the entire query cache as a single serialized blob.
+ * Recursively strips values that cannot be cloned by structuredClone
+ * (functions, symbols, DOM nodes, class instances with methods, etc.).
+ * Returns a plain JSON-safe copy.
  */
+function sanitizeForClone(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === null || value === undefined) return value;
+  const t = typeof value;
+  if (t === "function" || t === "symbol") return undefined;
+  if (t !== "object") return value;
+  const obj = value as object;
+  if (seen.has(obj)) return undefined;
+  seen.add(obj);
+  if (Array.isArray(value)) {
+    return value.map((v) => sanitizeForClone(v, seen));
+  }
+  // Drop class instances (Date / Map / Set / etc. — keep Date as ISO string)
+  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Map || value instanceof Set) return undefined;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const cleaned = sanitizeForClone(v, seen);
+    if (cleaned !== undefined) out[k] = cleaned;
+  }
+  return out;
+}
+
 export function createIDBPersister(): Persister {
   return {
     persistClient: async (client: PersistedClient) => {
       try {
+        const safe = sanitizeForClone(client) as PersistedClient;
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
-        store.put(client, CACHE_KEY);
+        store.put(safe, CACHE_KEY);
         await new Promise<void>((resolve, reject) => {
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
@@ -59,6 +85,7 @@ export function createIDBPersister(): Persister {
         console.warn("⚠️ Failed to persist query cache:", error);
       }
     },
+
 
     restoreClient: async (): Promise<PersistedClient | undefined> => {
       try {
